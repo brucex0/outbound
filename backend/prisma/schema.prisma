@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  firebaseUid   String    @unique
+  username      String    @unique
+  displayName   String
+  avatarUrl     String?
+  bio           String?
+  verified      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  activities    Activity[]
+  coachProfile  CoachProfile?
+  posts         Post[]
+  following     Follow[]  @relation("follower")
+  followers     Follow[]  @relation("following")
+  reactions     Reaction[]
+}
+
+model CoachProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+
+  // Coach identity
+  coachName       String    @default("Coach")
+  personality     String    @default("encouraging")  // encouraging | data-driven | direct | zen
+  voiceId         String    @default("default")
+
+  // Athlete snapshot (rebuilt after each activity)
+  fitnessLevel    String    @default("beginner")     // beginner | intermediate | advanced | elite
+  weeklyVolumeKm  Float     @default(0)
+  preferredPace   Float?    // seconds per km
+  strengths       String[]  @default([])
+  weaknesses      String[]  @default([])
+
+  // Goals
+  goals           Json      @default("[]")           // GoalItem[]
+
+  // Personal records
+  records         Json      @default("{}")           // { "5k": seconds, "10k": seconds, ... }
+
+  // Coaching memory — compressed history for on-device context
+  memorySnapshot  Json      @default("{}")           // last 30 days summary
+  lastBuiltAt     DateTime?
+
+  // Downloadable artifact version
+  version         Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Activity {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+
+  type          String    // running | cycling | hiking | swimming
+  title         String?
+  startedAt     DateTime
+  endedAt       DateTime?
+  durationSecs  Int?
+  distanceM     Float?
+  elevationM    Float?
+  avgPace       Float?    // secs/km
+  avgHeartRate  Int?
+  calories      Int?
+
+  route         Json?     // GeoJSON LineString
+  splits        Json?     // Split[]
+  photos        Photo[]
+  posts         Post[]
+
+  // AI coach analysis generated after activity
+  coachAnalysis Json?
+
+  createdAt     DateTime  @default(now())
+}
+
+model Photo {
+  id          String    @id @default(cuid())
+  activityId  String
+  activity    Activity  @relation(fields: [activityId], references: [id])
+  url         String
+  takenAt     DateTime
+  // Stats at moment of capture
+  paceAtShot  Float?
+  hrAtShot    Int?
+  distAtShot  Float?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime  @default(now())
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  activityId  String?
+  activity    Activity?  @relation(fields: [activityId], references: [id])
+  caption     String?
+  createdAt   DateTime   @default(now())
+  reactions   Reaction[]
+  comments    Comment[]
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  follower    User   @relation("follower", fields: [followerId], references: [id])
+  following   User   @relation("following", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+  type      String   // fire | clap | heart | strong
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+}

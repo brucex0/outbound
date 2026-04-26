@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Environment
+.env
+.env.local
+
+# Build
+dist/
+build/
+
+# Prisma
+backend/prisma/*.db
+
+# iOS
+ios/**/.build/
+ios/**/*.xcworkspace/xcuserdata/
+ios/**/*.xcodeproj/xcuserdata/
+ios/**/DerivedData/
+ios/**/*.ipa
+ios/**/*.dSYM.zip
+ios/**/*.dSYM
+ios/**/Pods/
+ios/**/GoogleService-Info.plist
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Xcode
+*.xcuserstate
