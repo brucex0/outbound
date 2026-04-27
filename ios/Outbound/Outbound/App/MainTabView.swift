@@ -3,10 +3,8 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            NavigationStack {
-                ActivityFeedView()
-            }
-            .tabItem { Label("Social", systemImage: "person.2.fill") }
+            ActivityFeedView()
+                .tabItem { Label("Social", systemImage: "person.2.fill") }
 
             RecordView()
                 .tabItem { Label("Record", systemImage: "record.circle.fill") }

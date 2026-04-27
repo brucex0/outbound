@@ -53,5 +53,5 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Network And Placeholders
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
-- `Social/ActivityFeedView.swift`: placeholder feed UI.
+- `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
 - `App/ProfileView.swift`: selected coach card, profile highlights, separate `Saved Routes` and `My Activities` sections, and sign-out control. Sign-out is a no-op while login is skipped.
