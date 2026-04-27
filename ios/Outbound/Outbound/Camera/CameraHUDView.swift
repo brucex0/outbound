@@ -9,6 +9,7 @@ struct CameraHUDView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     let capturedPhotoCount: Int
+    @Binding var activePage: SessionPage
     let onFinish: () -> Void
     let onCapture: (UIImage, PhotoMetadata) -> Void
 
@@ -72,10 +73,24 @@ struct CameraHUDView: View {
 
                 Spacer()
 
-                Label("\(capturedPhotoCount)", systemImage: "photo.on.rectangle")
-                    .font(.headline.monospacedDigit())
-                    .frame(minWidth: 78, alignment: .trailing)
-                    .foregroundStyle(.white)
+                // Switch to map — badge shows photo count
+                Button { activePage = .map } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "map.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .frame(width: 70, height: 70)
+                            .background(Circle().fill(.white.opacity(0.2)))
+                        if capturedPhotoCount > 0 {
+                            Text("\(capturedPhotoCount)")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(4)
+                                .background(Circle().fill(.orange))
+                                .offset(x: 4, y: -4)
+                        }
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)

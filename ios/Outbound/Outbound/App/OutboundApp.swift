@@ -4,6 +4,7 @@ import SwiftUI
 struct OutboundApp: App {
     @StateObject private var authStore = AuthStore()
     @StateObject private var coachStore = CoachStore()
+    @StateObject private var activityStore = ActivityStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -15,6 +16,7 @@ struct OutboundApp: App {
                 MainTabView()
                     .environmentObject(authStore)
                     .environmentObject(coachStore)
+                    .environmentObject(activityStore)
                     .task { await coachStore.syncIfNeeded() }
             } else {
                 AuthView()

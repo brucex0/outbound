@@ -6,7 +6,12 @@ enum LocalActivityStore {
     private static let manifestFileName = "activities.json"
 
     @discardableResult
-    static func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)]) throws -> SavedActivity {
+    static func save(
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        title: String,
+        coachNudge: String
+    ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
         let photoDirectory = activityDirectory.appendingPathComponent("photos", isDirectory: true)
@@ -22,6 +27,8 @@ enum LocalActivityStore {
 
         let activity = SavedActivity(
             id: activityId,
+            title: title,
+            coachNudge: coachNudge,
             createdAt: Date(),
             startedAt: summary.startedAt,
             endedAt: summary.endedAt,
@@ -43,6 +50,18 @@ enum LocalActivityStore {
         guard FileManager.default.fileExists(atPath: manifest.path) else { return [] }
         let data = try Data(contentsOf: manifest)
         return try decoder.decode([SavedActivity].self, from: data)
+    }
+
+    static func delete(_ activity: SavedActivity) throws {
+        var activities = try load()
+        activities.removeAll { $0.id == activity.id }
+        try saveManifest(activities)
+        let photoDir = try activitiesDirectory().appendingPathComponent(activity.id.uuidString)
+        try? FileManager.default.removeItem(at: photoDir)
+    }
+
+    static func imageURL(for photo: SavedPhoto) throws -> URL {
+        try activitiesDirectory().appendingPathComponent(photo.relativePath)
     }
 
     private static func saveManifest(_ activities: [SavedActivity]) throws {
@@ -73,21 +92,25 @@ enum LocalActivityStore {
     }
 
     private static let encoder: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return e
     }()
 
     private static let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
     }()
 }
 
-struct SavedActivity: Codable, Identifiable {
+struct SavedActivity: Codable, Identifiable, Hashable {
+    static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
+    let title: String
+    let coachNudge: String
     let createdAt: Date
     let startedAt: Date
     let endedAt: Date
@@ -96,6 +119,32 @@ struct SavedActivity: Codable, Identifiable {
     let avgPace: Double?
     let trackPoints: [SavedTrackPoint]
     let photos: [SavedPhoto]
+
+    // Backward-compatible decoder for activities saved before title/coachNudge existed
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        endedAt = try c.decode(Date.self, forKey: .endedAt)
+        durationSecs = try c.decode(Int.self, forKey: .durationSecs)
+        distanceM = try c.decode(Double.self, forKey: .distanceM)
+        avgPace = try c.decodeIfPresent(Double.self, forKey: .avgPace)
+        trackPoints = try c.decode([SavedTrackPoint].self, forKey: .trackPoints)
+        photos = try c.decode([SavedPhoto].self, forKey: .photos)
+        coachNudge = (try? c.decodeIfPresent(String.self, forKey: .coachNudge)) ?? ""
+        let day = startedAt.formatted(.dateTime.weekday(.wide))
+        title = ((try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil) ?? "\(day) Run"
+    }
+
+    init(id: UUID, title: String, coachNudge: String, createdAt: Date,
+         startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
+         avgPace: Double?, trackPoints: [SavedTrackPoint], photos: [SavedPhoto]) {
+        self.id = id; self.title = title; self.coachNudge = coachNudge
+        self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
+        self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
+        self.trackPoints = trackPoints; self.photos = photos
+    }
 }
 
 struct SavedTrackPoint: Codable {
