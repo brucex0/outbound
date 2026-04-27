@@ -2,10 +2,8 @@ import SwiftUI
 
 struct RecordView: View {
     @EnvironmentObject var coachStore: CoachStore
-    @StateObject private var locationManager = LocationManager()
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
-    @State private var isRecording = false
     @State private var showCamera = false
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
 
@@ -17,7 +15,12 @@ struct RecordView: View {
     var body: some View {
         ZStack {
             if showCamera {
-                CameraHUDView(recorder: recorder, coach: coach) { image, meta in
+                CameraHUDView(
+                    recorder: recorder,
+                    coach: coach,
+                    capturedPhotoCount: capturedPhotos.count,
+                    onFinish: stopRecording
+                ) { image, meta in
                     capturedPhotos.append((image, meta))
                 }
             } else {
@@ -55,25 +58,15 @@ struct RecordView: View {
 
             Spacer()
 
-            HStack(spacing: 20) {
-                Button {
-                    showCamera = true
-                } label: {
-                    Image(systemName: "camera.fill")
-                        .font(.title2)
-                        .padding(16)
-                        .background(Circle().fill(.secondary.opacity(0.2)))
-                }
-
-                Button {
-                    if isRecording { stopRecording() } else { startRecording() }
-                } label: {
-                    Text(isRecording ? "Finish" : "Start")
-                        .font(.headline)
-                        .frame(width: 120, height: 56)
-                        .background(Capsule().fill(isRecording ? .red : .orange))
-                        .foregroundStyle(.white)
-                }
+            Button {
+                startRecording()
+            } label: {
+                Label("Start", systemImage: "record.circle.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Capsule().fill(.orange))
+                    .foregroundStyle(.white)
             }
             .padding(.bottom, 40)
         }
@@ -81,17 +74,18 @@ struct RecordView: View {
     }
 
     private func startRecording() {
-        isRecording = true
+        capturedPhotos = []
         recorder.start()
         if let profile = coachStore.profile {
             coach.activate(with: profile)
         }
+        showCamera = true
     }
 
     private func stopRecording() {
-        isRecording = false
-        let summary = recorder.finish()
+        _ = recorder.finish()
         coach.deactivate()
+        showCamera = false
         // TODO: upload summary + photos to backend
     }
 }

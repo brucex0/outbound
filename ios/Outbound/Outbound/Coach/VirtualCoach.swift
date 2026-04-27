@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import Combine
 
 // On-device real-time coach — speaks periodic nudges during a run using
 // Apple Foundation Models (iOS 18+) with the downloaded CoachProfile as context.

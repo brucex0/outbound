@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseCore
 
 @main
 struct OutboundApp: App {
@@ -7,12 +6,12 @@ struct OutboundApp: App {
     @StateObject private var coachStore = CoachStore()
 
     init() {
-        FirebaseApp.configure()
+        FirebaseBootstrap.configureIfAvailable()
     }
 
     var body: some Scene {
         WindowGroup {
-            if authStore.isAuthenticated {
+            if AuthStore.isLoginSkipped || authStore.isAuthenticated {
                 MainTabView()
                     .environmentObject(authStore)
                     .environmentObject(coachStore)

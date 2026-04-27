@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreLocation
 
 enum RecordingState {
     case idle, active, paused
@@ -24,6 +25,10 @@ final class ActivityRecorder: ObservableObject {
     func start() {
         state = .active
         startDate = Date()
+        elapsedSeconds = 0
+        distanceMeters = 0
+        currentPace = nil
+        heartRate = nil
         locationManager.startTracking()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -69,5 +74,5 @@ struct ActivitySummary {
     let durationSecs: Int
     let distanceM: Double
     let avgPace: Double?
-    let trackPoints: [any Any]
+    let trackPoints: [CLLocation]
 }

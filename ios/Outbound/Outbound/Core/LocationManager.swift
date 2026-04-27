@@ -8,6 +8,7 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var trackPoints: [CLLocation] = []
 
     private let manager = CLLocationManager()
+    private var wantsTracking = false
 
     override init() {
         super.init()
@@ -20,15 +21,32 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func requestPermission() {
-        manager.requestAlwaysAuthorization()
+        manager.requestWhenInUseAuthorization()
     }
 
     func startTracking() {
         trackPoints = []
+        wantsTracking = true
+
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            requestPermission()
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.startUpdatingLocation()
+        case .denied, .restricted:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func startTrackingIfPermitted() {
+        guard wantsTracking else { return }
         manager.startUpdatingLocation()
     }
 
     func stopTracking() -> [CLLocation] {
+        wantsTracking = false
         manager.stopUpdatingLocation()
         return trackPoints
     }
@@ -61,6 +79,16 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorizationStatus = manager.authorizationStatus
+            switch manager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                self.startTrackingIfPermitted()
+            case .denied, .restricted:
+                self.wantsTracking = false
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }

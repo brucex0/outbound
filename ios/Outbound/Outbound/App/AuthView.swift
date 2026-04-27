@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseAuth
 
 struct AuthView: View {
     @EnvironmentObject var authStore: AuthStore
@@ -18,7 +17,17 @@ struct AuthView: View {
                 .foregroundStyle(.orange)
             Text("Outbound").font(.largeTitle.bold())
 
-            if step == .phone {
+            if !authStore.isFirebaseConfigured {
+                VStack(spacing: 12) {
+                    Text("Firebase configuration is missing.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("Continue Locally") { authStore.startLocalSession() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                }
+            } else if step == .phone {
                 VStack(spacing: 12) {
                     TextField("Phone number", text: $phone)
                         .keyboardType(.phonePad)
@@ -37,20 +46,26 @@ struct AuthView: View {
                         .tint(.orange)
                 }
             }
+
+            if let error = authStore.authError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
             Spacer()
         }
         .padding(32)
     }
 
     private func sendCode() {
-        PhoneAuthProvider.provider().verifyPhoneNumber(phone, uiDelegate: nil) { id, _ in
+        authStore.sendVerificationCode(to: phone) { id in
             if let id { verificationId = id; step = .code }
         }
     }
 
     private func verifyCode() {
         guard let vid = verificationId else { return }
-        let credential = PhoneAuthProvider.provider().credential(withVerificationID: vid, verificationCode: code)
-        Auth.auth().signIn(with: credential) { _, _ in }
+        authStore.verifyCode(verificationId: vid, code: code)
     }
 }
