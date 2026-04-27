@@ -13,6 +13,7 @@ struct PostRunSummaryView: View {
                 heroImage
                 statsSection
                 if !lastNudge.isEmpty { coachSection }
+                if photos.count > 1 { photoGrid }
                 actionButtons
             }
         }
@@ -72,12 +73,6 @@ struct PostRunSummaryView: View {
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            if photos.count > 1 {
-                Label("\(photos.count) photos captured", systemImage: "photo.on.rectangle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
@@ -99,6 +94,29 @@ struct PostRunSummaryView: View {
         .background(Color.orange.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 20)
+        .padding(.bottom, 8)
+    }
+
+    private var photoGrid: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Photos")
+                .font(.headline)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)],
+                spacing: 2
+            ) {
+                ForEach(photos.indices, id: \.self) { i in
+                    Image(uiImage: photos[i].0)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 160)
+                        .clipped()
+                }
+            }
+        }
         .padding(.bottom, 8)
     }
 

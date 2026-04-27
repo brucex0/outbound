@@ -111,9 +111,7 @@ struct ActivityDetailView: View {
             ) {
                 ForEach(activity.photos) { photo in
                     if let url = activityStore.imageURL(for: photo) {
-                        AsyncImage(url: url) { img in
-                            img.resizable().scaledToFill()
-                        } placeholder: {
+                        LocalImageView(url: url) {
                             Color(.systemGroupedBackground)
                         }
                         .frame(height: 160)

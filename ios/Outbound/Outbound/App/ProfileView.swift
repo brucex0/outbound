@@ -148,9 +148,7 @@ private struct RunCard: View {
     @ViewBuilder
     private var thumbnail: some View {
         if let photo = activity.photos.first, let url = activityStore.imageURL(for: photo) {
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
+            LocalImageView(url: url) {
                 Color.orange.opacity(0.25)
             }
             .frame(width: 56, height: 56)
