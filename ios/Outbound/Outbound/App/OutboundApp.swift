@@ -4,6 +4,7 @@ import SwiftUI
 struct OutboundApp: App {
     @StateObject private var authStore = AuthStore()
     @StateObject private var coachStore = CoachStore()
+    @StateObject private var coachCatalogStore = CoachCatalogStore()
     @StateObject private var activityStore = ActivityStore()
 
     init() {
@@ -16,6 +17,7 @@ struct OutboundApp: App {
                 MainTabView()
                     .environmentObject(authStore)
                     .environmentObject(coachStore)
+                    .environmentObject(coachCatalogStore)
                     .environmentObject(activityStore)
                     .task { await coachStore.syncIfNeeded() }
             } else {

@@ -10,7 +10,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 
     private let model: SystemLanguageModel
     private var session: LanguageModelSession?
-    private var activeProfileID: String?
+    private var activeSessionKey: String?
 
     init(model: SystemLanguageModel = .default) {
         self.model = model
@@ -21,15 +21,15 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         return true
     }
 
-    func beginSession(profile: CoachProfile?) {
+    func beginSession(profile: CoachProfile?, persona: CoachPersona?) {
         guard isAvailable else {
             session = nil
-            activeProfileID = nil
+            activeSessionKey = nil
             return
         }
 
-        activeProfileID = profile?.id
-        let instructions = Self.instructions(for: profile)
+        activeSessionKey = Self.sessionKey(profile: profile, persona: persona)
+        let instructions = Self.instructions(for: profile, persona: persona)
         session = LanguageModelSession(model: model) {
             instructions
         }
@@ -40,8 +40,8 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             throw AppleFoundationModelSessionAnalysisError.unavailable(model.availability)
         }
 
-        if session == nil || activeProfileID != request.profile?.id {
-            beginSession(profile: request.profile)
+        if session == nil || activeSessionKey != Self.sessionKey(profile: request.profile, persona: request.persona) {
+            beginSession(profile: request.profile, persona: request.persona)
         }
 
         guard let session else {
@@ -71,10 +71,10 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 
     func endSession() {
         session = nil
-        activeProfileID = nil
+        activeSessionKey = nil
     }
 
-    private static func instructions(for profile: CoachProfile?) -> String {
+    private static func instructions(for profile: CoachProfile?, persona: CoachPersona?) -> String {
         var lines = [
             "You are Outbound's on-device live session analyst.",
             "Analyze only the active workout data supplied in each prompt.",
@@ -82,6 +82,15 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             "Do not claim medical certainty. If heart-rate data looks concerning, suggest easing effort and checking how they feel.",
             "Keep spoken messages under 24 words."
         ]
+
+        if let persona {
+            lines.append("Coach persona: \(persona.template.displayName).")
+            lines.append("Sport focus: \(persona.template.sport.displayName).")
+            lines.append("Persona traits: \(persona.template.personality).")
+            lines.append("Coaching style: \(persona.template.coachingStyle).")
+            lines.append("User-selected intensity: \(persona.intensity.displayName).")
+            lines.append("System persona seed: \(persona.template.systemPromptSeed).")
+        }
 
         if let profile {
             lines.append("Coach name: \(profile.coachName).")
@@ -107,6 +116,10 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func sessionKey(profile: CoachProfile?, persona: CoachPersona?) -> String {
+        "\(profile?.id ?? "no-profile")|\(persona?.id ?? "no-persona")"
     }
 
     private static func prompt(for request: SessionAnalysisRequest) -> String {

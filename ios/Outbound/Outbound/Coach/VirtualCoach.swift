@@ -15,13 +15,13 @@ final class VirtualCoach: ObservableObject {
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = AVSpeechSynthesizer()
     private var profile: CoachProfile?
+    private var persona: CoachPersona?
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
     private var isActive = false
 
     private let firstAnalysisAfterSeconds = 20
-    private let analysisIntervalSeconds = 75
     private let maxSnapshotHistory = 20
 
     init(provider: (any SessionAnalysisProvider)? = nil) {
@@ -30,19 +30,21 @@ final class VirtualCoach: ObservableObject {
         providerName = selectedProvider.displayName
     }
 
-    func activate(with profile: CoachProfile?) {
+    func activate(with profile: CoachProfile?, persona: CoachPersona? = nil) {
         self.profile = profile
+        self.persona = persona
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
         lastNudge = ""
         latestAnalysis = nil
-        provider.beginSession(profile: profile)
-        fallbackProvider.beginSession(profile: profile)
+        provider.beginSession(profile: profile, persona: persona)
+        fallbackProvider.beginSession(profile: profile, persona: persona)
     }
 
     func deactivate() {
         isActive = false
+        persona = nil
         analysisTask?.cancel()
         analysisTask = nil
         isAnalyzing = false
@@ -74,12 +76,13 @@ final class VirtualCoach: ObservableObject {
             return true
         }
 
-        return snapshot.elapsedSeconds - lastAnalyzedElapsedSeconds >= analysisIntervalSeconds
+        return snapshot.elapsedSeconds - lastAnalyzedElapsedSeconds >= currentAnalysisIntervalSeconds
     }
 
     private func runAnalysis(for snapshot: ActiveSessionSnapshot) {
         let request = SessionAnalysisRequest(
             profile: profile,
+            persona: persona,
             snapshot: snapshot,
             recentSnapshots: snapshotHistory
         )
@@ -120,9 +123,25 @@ final class VirtualCoach: ObservableObject {
 
     private func speak(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.5
-        utterance.volume = 0.9
+        if let voice = persona?.voice {
+            if let identifier = voice.avFoundationIdentifier,
+               let selectedVoice = AVSpeechSynthesisVoice(identifier: identifier) {
+                utterance.voice = selectedVoice
+            } else {
+                utterance.voice = AVSpeechSynthesisVoice(language: voice.locale)
+            }
+            utterance.rate = voice.rate
+            utterance.pitchMultiplier = voice.pitch
+            utterance.volume = voice.volume
+        } else {
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            utterance.rate = 0.5
+            utterance.volume = 0.9
+        }
         synthesizer.speak(utterance)
+    }
+
+    private var currentAnalysisIntervalSeconds: Int {
+        persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
     }
 }

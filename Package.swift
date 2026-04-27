@@ -25,10 +25,13 @@ let package = Package(
                 "Camera",
                 "Social",
                 "GoogleService-Info.plist",
+                "Coach/CoachCatalogStore.swift",
+                "Coach/CoachSelectionView.swift",
                 "Coach/CoachStore.swift",
                 "Core/APIClient.swift",
                 "Core/ActivityRecorder.swift",
                 "Core/FirebaseBootstrap.swift",
+                "Core/LocalImageView.swift",
                 "Core/LocalActivityStore.swift",
                 "Core/LocationManager.swift"
             ],
@@ -36,6 +39,7 @@ let package = Package(
                 "Core/ActiveSessionSnapshot.swift",
                 "Core/SessionFormatting.swift",
                 "Coach/CoachProfile.swift",
+                "Coach/CoachTemplate.swift",
                 "Coach/SessionAnalysisProvider.swift",
                 "Coach/AppleFoundationModelSessionAnalysisProvider.swift",
                 "Coach/VirtualCoach.swift"

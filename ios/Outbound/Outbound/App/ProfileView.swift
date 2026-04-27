@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var coachStore: CoachStore
+    @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var activityStore: ActivityStore
 
     var body: some View {
@@ -33,22 +34,23 @@ struct ProfileView: View {
     private var coachCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                VStack(alignment: .leading) {
-                    Text(coachStore.profile?.coachName ?? "Your Coach")
-                        .font(.title2.bold())
-                    Text(coachStore.profile?.personality.capitalized ?? "Not set up yet")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                Text("Coach")
+                    .font(.title3.bold())
                 Spacer()
                 if coachStore.isSyncing {
                     ProgressView()
                 } else {
-                    Image(systemName: "brain.head.profile")
-                        .font(.largeTitle)
-                        .foregroundStyle(.orange)
+                    NavigationLink {
+                        CoachSelectionView()
+                            .environmentObject(coachCatalog)
+                    } label: {
+                        Label("Change", systemImage: "slider.horizontal.3")
+                            .font(.subheadline.bold())
+                    }
                 }
             }
+
+            CoachTemplateSummaryView(persona: coachCatalog.selectedPersona)
 
             if let profile = coachStore.profile {
                 HStack(spacing: 20) {
@@ -59,6 +61,7 @@ struct ProfileView: View {
                     StatBlock(label: "Consistency",
                               value: "\(Int(profile.memorySnapshot.consistencyScore * 100))%")
                 }
+                .padding(.top, 4)
             }
         }
         .padding()

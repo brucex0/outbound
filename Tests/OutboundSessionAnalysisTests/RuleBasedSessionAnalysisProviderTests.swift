@@ -7,6 +7,7 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
         let provider = RuleBasedSessionAnalysisProvider()
         let request = SessionAnalysisRequest(
             profile: makeProfile(preferredPaceSecs: 300),
+            persona: nil,
             snapshot: makeSnapshot(elapsedSeconds: 240, distanceMeters: 900, paceSecsPerKm: 330),
             recentSnapshots: []
         )
@@ -23,6 +24,7 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
         let provider = RuleBasedSessionAnalysisProvider()
         let request = SessionAnalysisRequest(
             profile: makeProfile(preferredPaceSecs: 330),
+            persona: nil,
             snapshot: makeSnapshot(elapsedSeconds: 360, distanceMeters: 1200, paceSecsPerKm: 300),
             recentSnapshots: []
         )
@@ -37,6 +39,7 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
         let provider = RuleBasedSessionAnalysisProvider()
         let request = SessionAnalysisRequest(
             profile: makeProfile(preferredPaceSecs: 300),
+            persona: nil,
             snapshot: makeSnapshot(
                 elapsedSeconds: 600,
                 distanceMeters: 1800,
@@ -62,6 +65,7 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
         ]
         let request = SessionAnalysisRequest(
             profile: makeProfile(preferredPaceSecs: nil),
+            persona: nil,
             snapshot: recentSnapshots[3],
             recentSnapshots: recentSnapshots
         )

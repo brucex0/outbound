@@ -5,6 +5,7 @@ enum SessionPage { case camera, map }
 struct RecordView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var coachStore: CoachStore
+    @EnvironmentObject var coachCatalog: CoachCatalogStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @State private var showCamera = false
@@ -114,7 +115,7 @@ struct RecordView: View {
         pendingActivity = nil
         activePage = .camera
         recorder.locationManager.requestPermission()
-        coach.activate(with: coachStore.profile)
+        coach.activate(with: coachStore.profile, persona: coachCatalog.selectedPersona)
         recorder.start()
         showCamera = true
     }
@@ -127,7 +128,7 @@ struct RecordView: View {
     }
 
     private func savePendingActivity(_ activity: PendingFinishedActivity) {
-        try? activityStore.save(
+        _ = try? activityStore.save(
             summary: activity.summary,
             photos: activity.photos,
             lastNudge: coach.lastNudge

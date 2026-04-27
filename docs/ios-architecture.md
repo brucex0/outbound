@@ -14,13 +14,13 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore` and `CoachStore`, and shows `MainTabView` when login is skipped or authenticated.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, and `ActivityStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
 - `App/MainTabView.swift`: three tabs: Home (`ActivityFeedView`), Record (`RecordView`), and Me (`ProfileView`).
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns recording screen state. Creates `LocationManager` and `ActivityRecorder`, starts/stops recording, forwards live snapshots to `VirtualCoach`, collects captured photos, and presents the Save/Discard sheet.
+- `Activity/RecordView.swift`: owns recording screen state. Creates `LocationManager` and `ActivityRecorder`, starts/stops recording, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos, and presents the Save/Discard sheet.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. `finish()` returns `ActivitySummary` with track points.
 - `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, and supports background location updates.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the coach.
@@ -40,9 +40,12 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Coach And Session Analysis
 
-- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then every 75 seconds, displays `lastNudge`, and speaks nudges with `AVSpeechSynthesizer`.
-- `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation.
-- `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26.
+- `Coach/CoachTemplate.swift`: predefined coach catalog model. Current fixtures include one female and one male coach for Run and Bike. Each template defines sport, persona traits, sample nudges, voice options, face options, and a prompt seed.
+- `Coach/CoachCatalogStore.swift`: local catalog and selected coach customization. Persists selected template, voice, face, coaching intensity, and nudge frequency in `UserDefaults`.
+- `Coach/CoachSelectionView.swift`: Me-tab coach picker and customization UI.
+- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then at the selected persona's nudge frequency, displays `lastNudge`, and speaks nudges with the selected voice settings.
+- `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation. `SessionAnalysisRequest` carries both the personalized `CoachProfile` and selected `CoachPersona`.
+- `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. Instructions include selected coach persona, style, intensity, and prompt seed.
 - `Coach/CoachProfile.swift`: athlete/coach profile model used to contextualize analysis.
 - `Coach/CoachStore.swift`: loads/syncs coach profile through `APIClient`; with login skipped it generally has no remote user ID.
 
@@ -50,4 +53,4 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: placeholder feed UI.
-- `App/ProfileView.swift`: profile/coach card and sign-out control. Sign-out is a no-op while login is skipped.
+- `App/ProfileView.swift`: selected coach card, coach picker entry point, saved-run list, and sign-out control. Sign-out is a no-op while login is skipped.

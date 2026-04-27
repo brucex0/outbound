@@ -8,6 +8,7 @@ enum SessionAnalysisUrgency: String {
 
 struct SessionAnalysisRequest {
     let profile: CoachProfile?
+    let persona: CoachPersona?
     let snapshot: ActiveSessionSnapshot
     let recentSnapshots: [ActiveSessionSnapshot]
 }
@@ -25,13 +26,13 @@ protocol SessionAnalysisProvider: AnyObject {
     var identifier: String { get }
     var displayName: String { get }
 
-    func beginSession(profile: CoachProfile?)
+    func beginSession(profile: CoachProfile?, persona: CoachPersona?)
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult
     func endSession()
 }
 
 extension SessionAnalysisProvider {
-    func beginSession(profile: CoachProfile?) {}
+    func beginSession(profile: CoachProfile?, persona: CoachPersona?) {}
     func endSession() {}
 }
 
@@ -67,6 +68,7 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
         let snapshot = request.snapshot
         let minutes = max(1, snapshot.elapsedSeconds / 60)
         let distance = String(format: "%.1f", snapshot.distanceKilometers)
+        let sport = request.persona?.template.sport ?? .run
         var parts = ["\(minutes) minutes in, \(distance) k done."]
 
         if let pace = snapshot.currentPaceSecsPerKm {
@@ -75,25 +77,31 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
             if let target = request.profile?.athlete.preferredPaceSecs {
                 let delta = pace - target
                 if delta > 15 {
-                    parts.append("Ease into a stronger rhythm over the next minute.")
+                    parts.append(slowerThanTargetCue(for: request))
                 } else if delta < -15 {
-                    parts.append("Back off slightly so you have enough left late.")
+                    parts.append(fasterThanTargetCue(for: request))
                 } else {
                     parts.append("You are right on target.")
                 }
             } else if paceTrendIsSlowing(request.recentSnapshots) {
-                parts.append("Cadence is drifting; reset your form and breathe low.")
+                parts.append(sport == .bike
+                             ? "Cadence is drifting; smooth the pedal stroke and reset your breathing."
+                             : "Cadence is drifting; reset your form and breathe low.")
             } else {
-                parts.append("Keep the effort smooth.")
+                parts.append(defaultSteadyCue(for: request))
             }
         } else {
-            parts.append("Settle in and let the GPS lock before chasing pace.")
+            parts.append(sport == .bike
+                         ? "Settle in and let the ride data stabilize before chasing speed."
+                         : "Settle in and let the GPS lock before chasing pace.")
         }
 
         if let heartRate = snapshot.heartRate, heartRate > 185 {
             parts.append("Heart rate is high; check effort and control your breathing.")
         } else if let insight = request.profile?.memorySnapshot.recentInsight, !insight.isEmpty {
             parts.append(insight)
+        } else if let cue = personaStyleCue(for: request) {
+            parts.append(cue)
         }
 
         return parts.joined(separator: " ")
@@ -121,5 +129,56 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
         let firstAverage = paces[..<midpoint].reduce(0, +) / Double(midpoint)
         let secondAverage = paces[midpoint...].reduce(0, +) / Double(paces.count - midpoint)
         return secondAverage - firstAverage > 20
+    }
+
+    private func slowerThanTargetCue(for request: SessionAnalysisRequest) -> String {
+        switch request.persona?.intensity ?? .balanced {
+        case .calm:
+            "Ease toward target gradually over the next minute."
+        case .balanced:
+            "Ease into a stronger rhythm over the next minute."
+        case .driven:
+            "Close the gap with control. Lift cadence now."
+        }
+    }
+
+    private func fasterThanTargetCue(for request: SessionAnalysisRequest) -> String {
+        switch request.persona?.intensity ?? .balanced {
+        case .calm:
+            "Back off a touch and keep the effort sustainable."
+        case .balanced:
+            "Back off slightly so you have enough left late."
+        case .driven:
+            "Do not burn the match early. Control this pace."
+        }
+    }
+
+    private func defaultSteadyCue(for request: SessionAnalysisRequest) -> String {
+        let sport = request.persona?.template.sport ?? .run
+        switch request.persona?.intensity ?? .balanced {
+        case .calm:
+            return sport == .bike ? "Keep the pedals smooth." : "Keep the effort relaxed and smooth."
+        case .balanced:
+            return "Keep the effort smooth."
+        case .driven:
+            return sport == .bike ? "Hold pressure through the pedals." : "Stay sharp and keep moving well."
+        }
+    }
+
+    private func personaStyleCue(for request: SessionAnalysisRequest) -> String? {
+        guard let persona = request.persona else { return nil }
+
+        switch (persona.template.sport, persona.intensity) {
+        case (.run, .calm):
+            return "Light feet, quiet shoulders."
+        case (.run, .driven):
+            return "Stay tall and commit to the stride."
+        case (.bike, .calm):
+            return "Quiet upper body, even pedal stroke."
+        case (.bike, .driven):
+            return "Stay loaded and drive clean power."
+        default:
+            return nil
+        }
     }
 }
