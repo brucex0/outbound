@@ -23,10 +23,13 @@ struct LocalImageView<Placeholder: View>: View {
                 placeholder
             }
         }
-        .task(id: url) {
-            uiImage = await Task.detached(priority: .userInitiated) {
-                UIImage(contentsOfFile: url.path)
-            }.value
+        .onAppear {
+            guard uiImage == nil else { return }
+            let path = url.path(percentEncoded: false)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let img = UIImage(contentsOfFile: path)
+                DispatchQueue.main.async { uiImage = img }
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 struct PostRunSummaryView: View {
@@ -12,8 +13,9 @@ struct PostRunSummaryView: View {
             VStack(spacing: 0) {
                 heroImage
                 statsSection
+                if summary.trackPoints.count > 1 { routeMap }
                 if !lastNudge.isEmpty { coachSection }
-                if photos.count > 1 { photoGrid }
+                if !photos.isEmpty { photoGrid }
                 actionButtons
             }
         }
@@ -95,6 +97,30 @@ struct PostRunSummaryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
+    }
+
+    private var routeMapPosition: MapCameraPosition {
+        let coords = summary.trackPoints.map(\.coordinate)
+        let lats = coords.map(\.latitude)
+        let lngs = coords.map(\.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: (lats.min()! + lats.max()!) / 2,
+            longitude: (lngs.min()! + lngs.max()!) / 2
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((lats.max()! - lats.min()!) * 1.6, 0.005),
+            longitudeDelta: max((lngs.max()! - lngs.min()!) * 1.6, 0.005)
+        )
+        return .region(MKCoordinateRegion(center: center, span: span))
+    }
+
+    private var routeMap: some View {
+        Map(position: .constant(routeMapPosition)) {
+            MapPolyline(coordinates: summary.trackPoints.map(\.coordinate))
+                .stroke(.orange, lineWidth: 4)
+        }
+        .frame(height: 200)
+        .disabled(true)
     }
 
     private var photoGrid: some View {
