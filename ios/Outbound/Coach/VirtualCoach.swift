@@ -1,71 +1,120 @@
 import Foundation
 import AVFoundation
 
-// On-device real-time coach — speaks periodic nudges during a run using
-// Apple Foundation Models (iOS 18+) with the downloaded CoachProfile as context.
+// On-device real-time coach that analyzes active session snapshots and speaks
+// short nudges through the configured SessionAnalysisProvider.
 @MainActor
 final class VirtualCoach: ObservableObject {
     @Published var lastNudge: String = ""
+    @Published var latestAnalysis: SessionAnalysisResult?
+    @Published var isAnalyzing = false
+    @Published var providerName: String
 
+    private let provider: any SessionAnalysisProvider
+    private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = AVSpeechSynthesizer()
     private var profile: CoachProfile?
-    private var nudgeTimer: Timer?
-    private let nudgeIntervalSecs: TimeInterval = 120  // every 2 mins
+    private var snapshotHistory: [ActiveSessionSnapshot] = []
+    private var analysisTask: Task<Void, Never>?
+    private var lastAnalyzedElapsedSeconds: Int?
+    private var isActive = false
 
-    func activate(with profile: CoachProfile) {
+    private let firstAnalysisAfterSeconds = 20
+    private let analysisIntervalSeconds = 75
+    private let maxSnapshotHistory = 20
+
+    init(provider: (any SessionAnalysisProvider)? = nil) {
+        let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
+        self.provider = selectedProvider
+        providerName = selectedProvider.displayName
+    }
+
+    func activate(with profile: CoachProfile?) {
         self.profile = profile
-        scheduleNudges()
+        isActive = true
+        snapshotHistory = []
+        lastAnalyzedElapsedSeconds = nil
+        lastNudge = ""
+        latestAnalysis = nil
+        provider.beginSession(profile: profile)
+        fallbackProvider.beginSession(profile: profile)
     }
 
     func deactivate() {
-        nudgeTimer?.invalidate()
-        nudgeTimer = nil
+        isActive = false
+        analysisTask?.cancel()
+        analysisTask = nil
+        isAnalyzing = false
+        provider.endSession()
+        fallbackProvider.endSession()
         synthesizer.stopSpeaking(at: .immediate)
     }
 
-    func nudge(elapsedSecs: Int, distanceKm: Double, paceSecs: Double?) {
-        let message = buildNudge(elapsedSecs: elapsedSecs, distanceKm: distanceKm, paceSecs: paceSecs)
-        speak(message)
-        lastNudge = message
+    func ingest(_ snapshot: ActiveSessionSnapshot) {
+        guard isActive, snapshot.isActive else { return }
+
+        snapshotHistory.append(snapshot)
+        if snapshotHistory.count > maxSnapshotHistory {
+            snapshotHistory.removeFirst(snapshotHistory.count - maxSnapshotHistory)
+        }
+
+        guard shouldAnalyze(snapshot) else { return }
+        lastAnalyzedElapsedSeconds = snapshot.elapsedSeconds
+        runAnalysis(for: snapshot)
     }
 
     // MARK: - Private
 
-    private func scheduleNudges() {
-        nudgeTimer = Timer.scheduledTimer(withTimeInterval: nudgeIntervalSecs, repeats: true) { _ in
-            // RecordView observes this and passes current stats
-            NotificationCenter.default.post(name: .coachNudgeRequested, object: nil)
+    private func shouldAnalyze(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        guard snapshot.elapsedSeconds >= firstAnalysisAfterSeconds else { return false }
+        guard !isAnalyzing else { return false }
+
+        guard let lastAnalyzedElapsedSeconds else {
+            return true
+        }
+
+        return snapshot.elapsedSeconds - lastAnalyzedElapsedSeconds >= analysisIntervalSeconds
+    }
+
+    private func runAnalysis(for snapshot: ActiveSessionSnapshot) {
+        let request = SessionAnalysisRequest(
+            profile: profile,
+            snapshot: snapshot,
+            recentSnapshots: snapshotHistory
+        )
+        isAnalyzing = true
+
+        analysisTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                self.isAnalyzing = false
+                self.analysisTask = nil
+            }
+
+            do {
+                let analysis = try await self.provider.analyze(request)
+                guard !Task.isCancelled else { return }
+                self.apply(analysis)
+            } catch {
+                guard self.provider.identifier != self.fallbackProvider.identifier,
+                      let fallback = try? await self.fallbackProvider.analyze(request),
+                      !Task.isCancelled
+                else {
+                    return
+                }
+                self.apply(fallback)
+            }
         }
     }
 
-    private func buildNudge(elapsedSecs: Int, distanceKm: Double, paceSecs: Double?) -> String {
-        let mins = elapsedSecs / 60
-        let distStr = String(format: "%.1f", distanceKm)
+    private func apply(_ analysis: SessionAnalysisResult) {
+        latestAnalysis = analysis
+        guard !analysis.message.isEmpty else { return }
 
-        var parts: [String] = ["\(mins) minutes in, \(distStr) k done."]
-
-        if let pace = paceSecs {
-            let paceMin = Int(pace) / 60
-            let paceSec = Int(pace) % 60
-            parts.append("Current pace \(paceMin):\(String(format: "%02d", paceSec)) per k.")
-
-            if let target = profile?.athlete.preferredPaceSecs {
-                let diff = pace - target
-                if diff > 15 {
-                    parts.append("You're a bit slow. \(profile?.coachName ?? "Coach") says push it.")
-                } else if diff < -15 {
-                    parts.append("Easy. Don't burn out early.")
-                } else {
-                    parts.append("Perfect pace. Keep it locked.")
-                }
-            }
+        lastNudge = analysis.message
+        if analysis.shouldSpeak {
+            speak(analysis.message)
         }
-
-        if let insight = profile?.memorySnapshot.recentInsight, !insight.isEmpty {
-            parts.append(insight)
-        }
-
-        return parts.joined(separator: " ")
     }
 
     private func speak(_ text: String) {
@@ -75,8 +124,4 @@ final class VirtualCoach: ObservableObject {
         utterance.volume = 0.9
         synthesizer.speak(utterance)
     }
-}
-
-extension Notification.Name {
-    static let coachNudgeRequested = Notification.Name("coachNudgeRequested")
 }

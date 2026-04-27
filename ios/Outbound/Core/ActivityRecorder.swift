@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreLocation
 
 enum RecordingState {
     case idle, active, paused
@@ -12,6 +13,7 @@ final class ActivityRecorder: ObservableObject {
     @Published var distanceMeters: Double = 0
     @Published var currentPace: Double?   // secs/km
     @Published var heartRate: Int?
+    @Published var liveSnapshot: ActiveSessionSnapshot = .empty
 
     let locationManager: LocationManager
     private var timer: AnyCancellable?
@@ -23,8 +25,12 @@ final class ActivityRecorder: ObservableObject {
 
     func start() {
         state = .active
+        elapsedSeconds = 0
+        distanceMeters = 0
+        currentPace = nil
         startDate = Date()
         locationManager.startTracking()
+        liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -33,10 +39,12 @@ final class ActivityRecorder: ObservableObject {
     func pause() {
         state = .paused
         timer?.cancel()
+        liveSnapshot = makeSnapshot()
     }
 
     func resume() {
         state = .active
+        liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -46,7 +54,7 @@ final class ActivityRecorder: ObservableObject {
         state = .idle
         timer?.cancel()
         let track = locationManager.stopTracking()
-        return ActivitySummary(
+        let summary = ActivitySummary(
             startedAt: startDate ?? Date(),
             endedAt: Date(),
             durationSecs: elapsedSeconds,
@@ -54,12 +62,29 @@ final class ActivityRecorder: ObservableObject {
             avgPace: distanceMeters > 0 ? Double(elapsedSeconds) / (distanceMeters / 1000) : nil,
             trackPoints: track
         )
+        liveSnapshot = makeSnapshot(isActive: false)
+        startDate = nil
+        return summary
     }
 
     private func tick() {
         elapsedSeconds += 1
         distanceMeters = locationManager.totalDistanceMeters
         currentPace = locationManager.currentPaceSecsPerKm
+        liveSnapshot = makeSnapshot()
+    }
+
+    private func makeSnapshot(isActive: Bool? = nil) -> ActiveSessionSnapshot {
+        ActiveSessionSnapshot(
+            recordedAt: Date(),
+            startedAt: startDate,
+            elapsedSeconds: elapsedSeconds,
+            distanceMeters: distanceMeters,
+            currentPaceSecsPerKm: currentPace,
+            heartRate: heartRate,
+            location: locationManager.location.map(SessionLocation.init),
+            isActive: isActive ?? (state == .active)
+        )
     }
 }
 
@@ -69,5 +94,5 @@ struct ActivitySummary {
     let durationSecs: Int
     let distanceM: Double
     let avgPace: Double?
-    let trackPoints: [any Any]
+    let trackPoints: [CLLocation]
 }

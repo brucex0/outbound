@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RecordView: View {
     @EnvironmentObject var coachStore: CoachStore
-    @StateObject private var locationManager = LocationManager()
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @State private var isRecording = false
@@ -24,12 +23,8 @@ struct RecordView: View {
                 statsView
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .coachNudgeRequested)) { _ in
-            coach.nudge(
-                elapsedSecs: recorder.elapsedSeconds,
-                distanceKm: recorder.distanceMeters / 1000,
-                paceSecs: recorder.currentPace
-            )
+        .onReceive(recorder.$liveSnapshot) { snapshot in
+            coach.ingest(snapshot)
         }
     }
 
@@ -82,10 +77,9 @@ struct RecordView: View {
 
     private func startRecording() {
         isRecording = true
+        recorder.locationManager.requestPermission()
+        coach.activate(with: coachStore.profile)
         recorder.start()
-        if let profile = coachStore.profile {
-            coach.activate(with: profile)
-        }
     }
 
     private func stopRecording() {

@@ -130,21 +130,3 @@ struct PhotoMetadata {
     let distAtShot: Double
     let coordinate: (any Any)?
 }
-
-extension Double {
-    var paceString: String {
-        let m = Int(self) / 60
-        let s = Int(self) % 60
-        return String(format: "%d:%02d /km", m, s)
-    }
-}
-
-extension Int {
-    func formatted() -> String {
-        let h = self / 3600
-        let m = (self % 3600) / 60
-        let s = self % 60
-        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
-        return String(format: "%d:%02d", m, s)
-    }
-}
