@@ -1,11 +1,13 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct LiveMapView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var coach: VirtualCoach
     let capturedPhotoCount: Int
+    let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
     let onFinish: () -> Void
 
@@ -49,16 +51,7 @@ struct LiveMapView: View {
                     .lineLimit(3)
             }
 
-            LazyVGrid(columns: statColumns, alignment: .leading, spacing: 10) {
-                CameraStatTile(icon: "timer",       label: "Time",
-                               value: recorder.elapsedSeconds.formatted())
-                CameraStatTile(icon: "figure.run",  label: "Distance",
-                               value: String(format: "%.2f km", recorder.distanceMeters / 1000))
-                CameraStatTile(icon: "speedometer", label: "Pace",
-                               value: recorder.currentPace?.paceString ?? "-- /km")
-                CameraStatTile(icon: "heart.fill",  label: "Heart Rate",
-                               value: recorder.heartRate.map { "\($0) bpm" } ?? "-- bpm")
-            }
+            activityStatsRow
 
             HStack(alignment: .center) {
                 // Finish
@@ -73,24 +66,14 @@ struct LiveMapView: View {
 
                 Spacer()
 
-                // Switch to camera
                 Button { activePage = .camera } label: {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "camera.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white)
-                            .frame(width: 70, height: 70)
-                            .background(Circle().fill(.white.opacity(0.2)))
-                        if capturedPhotoCount > 0 {
-                            Text("\(capturedPhotoCount)")
-                                .font(.caption2.bold())
-                                .foregroundStyle(.white)
-                                .padding(4)
-                                .background(Circle().fill(.orange))
-                                .offset(x: 4, y: -4)
-                        }
-                    }
+                    Image(systemName: "camera.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(Circle().fill(.white.opacity(0.2)))
                 }
+                .accessibilityLabel("Show Camera")
 
                 Spacer()
 
@@ -119,5 +102,28 @@ struct LiveMapView: View {
         .padding(.bottom, 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.black.opacity(0.52))
+    }
+
+    private var activityStatsRow: some View {
+        ZStack(alignment: .topTrailing) {
+            LazyVGrid(columns: statColumns, alignment: .leading, spacing: 10) {
+                CameraStatTile(icon: "timer",       label: "Time",
+                               value: recorder.elapsedSeconds.formatted())
+                CameraStatTile(icon: "figure.run",  label: "Distance",
+                               value: String(format: "%.2f km", recorder.distanceMeters / 1000))
+                CameraStatTile(icon: "speedometer", label: "Pace",
+                               value: recorder.currentPace?.paceString ?? "-- /km")
+                CameraStatTile(icon: "heart.fill",  label: "Heart Rate",
+                               value: recorder.heartRate.map { "\($0) bpm" } ?? "-- bpm")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            CapturedPhotoStackView(
+                image: lastCapturedPhoto,
+                count: capturedPhotoCount,
+                isConfirming: false
+            )
+        }
+        .frame(maxWidth: .infinity, minHeight: 98, alignment: .topLeading)
     }
 }

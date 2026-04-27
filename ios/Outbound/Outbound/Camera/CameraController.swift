@@ -8,6 +8,7 @@ final class CameraController: ObservableObject {
 
     private var photoOutput = AVCapturePhotoOutput()
     private var captureCallbacks: [Int64: (UIImage?) -> Void] = [:]
+    private var captureDelegates: [Int64: PhotoDelegate] = [:]
     private let sessionQueue = DispatchQueue(label: "outbound.camera.session")
     private var isConfigured = false
 
@@ -51,15 +52,26 @@ final class CameraController: ObservableObject {
     func capturePhoto(completion: @escaping (UIImage?) -> Void) {
         sessionQueue.async { [weak self] in
             guard let self else { return }
+            self.configureSessionIfNeeded()
+            guard self.isConfigured else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
             let settings = AVCapturePhotoSettings()
-            // Store callback keyed by expected photo ID
-            self.captureCallbacks[settings.uniqueID] = completion
-            self.photoOutput.capturePhoto(with: settings, delegate: PhotoDelegate { [weak self] image in
+            let captureID = settings.uniqueID
+            let delegate = PhotoDelegate { [weak self] image in
                 self?.sessionQueue.async {
-                    self?.captureCallbacks.removeValue(forKey: settings.uniqueID)
+                    self?.captureCallbacks.removeValue(forKey: captureID)
+                    self?.captureDelegates.removeValue(forKey: captureID)
                 }
                 completion(image)
-            })
+            }
+
+            // Store callback keyed by expected photo ID
+            self.captureCallbacks[captureID] = completion
+            self.captureDelegates[captureID] = delegate
+            self.photoOutput.capturePhoto(with: settings, delegate: delegate)
         }
     }
 
@@ -74,7 +86,11 @@ final class CameraController: ObservableObject {
             return
         }
         session.addInput(input)
-        if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+        guard session.canAddOutput(photoOutput) else {
+            session.commitConfiguration()
+            return
+        }
+        session.addOutput(photoOutput)
         session.commitConfiguration()
         isConfigured = true
     }

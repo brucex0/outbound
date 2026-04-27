@@ -25,6 +25,7 @@ struct RecordView: View {
                         recorder: recorder,
                         coach: coach,
                         capturedPhotoCount: capturedPhotos.count,
+                        lastCapturedPhoto: capturedPhotos.last?.0,
                         activePage: $activePage,
                         onFinish: finishRecording
                     ) { image, meta in
@@ -38,6 +39,7 @@ struct RecordView: View {
                         locationManager: recorder.locationManager,
                         coach: coach,
                         capturedPhotoCount: capturedPhotos.count,
+                        lastCapturedPhoto: capturedPhotos.last?.0,
                         activePage: $activePage,
                         onFinish: finishRecording
                     )

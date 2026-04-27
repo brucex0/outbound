@@ -6,6 +6,11 @@ node_modules/
 .env
 .env.local
 
+# Agent metadata
+.claude/
+.codex/
+ios/.codex/
+
 # Build
 .build/
 dist/
