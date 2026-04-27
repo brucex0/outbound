@@ -13,6 +13,7 @@ This is a personal project. All Snap/Snapchat-related security guardrails and co
 - The app still has a local-development auth fallback controlled by launch argument `-OutboundDisableFirebase`, but current UI tests launch normally because login is bypassed for feature development.
 - Login is currently bypassed for feature development via `AuthStore.isLoginSkipped = true`; the app launches straight into `MainTabView`. Firebase phone login config is kept in place for later, but current UI tests expect the login screen to be skipped.
 - The Record tab's Start button begins a local activity recording, requests location/camera access, opens the live camera, and shows elapsed time, distance, pace, heart-rate placeholder, photo count, capture, and finish controls in a translucent bottom overlay. GPS is still recorded in the underlying activity/photo metadata but is not displayed on the overlay.
+- Tapping Finish stops recording and presents Save Activity / Discard options. Save writes a local activity manifest plus captured JPEGs under the app's Application Support `Outbound/Activities` directory via `LocalActivityStore`.
 
 ## Firebase / Google Cloud
 
