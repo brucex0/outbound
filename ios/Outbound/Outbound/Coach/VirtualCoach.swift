@@ -25,12 +25,16 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
+    private var lastProgressAnnouncementElapsedSeconds: Int?
+    private var lastProgressTimeMilestone = 0
+    private var lastProgressDistanceMilestone = 0
     private var isActive = false
     private var recentSpokenFingerprints: [String] = []
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
     private let maxRecentSpokenFingerprints = 4
+    private let minimumProgressAnnouncementGapSeconds = 30
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil) {
@@ -57,6 +61,9 @@ final class VirtualCoach: NSObject, ObservableObject {
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
+        lastProgressAnnouncementElapsedSeconds = nil
+        lastProgressTimeMilestone = 0
+        lastProgressDistanceMilestone = 0
         recentSpokenFingerprints = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         latestAnalysis = nil
@@ -83,6 +90,8 @@ final class VirtualCoach: NSObject, ObservableObject {
         if snapshotHistory.count > maxSnapshotHistory {
             snapshotHistory.removeFirst(snapshotHistory.count - maxSnapshotHistory)
         }
+
+        announceProgressIfNeeded(for: snapshot)
 
         guard shouldAnalyze(snapshot) else { return }
         lastAnalyzedElapsedSeconds = snapshot.elapsedSeconds
@@ -122,7 +131,7 @@ final class VirtualCoach: NSObject, ObservableObject {
             do {
                 let analysis = try await self.provider.analyze(request)
                 guard !Task.isCancelled else { return }
-                self.apply(analysis)
+                self.apply(analysis, for: snapshot)
             } catch {
                 guard self.provider.identifier != self.fallbackProvider.identifier,
                       let fallback = try? await self.fallbackProvider.analyze(request),
@@ -130,12 +139,12 @@ final class VirtualCoach: NSObject, ObservableObject {
                 else {
                     return
                 }
-                self.apply(fallback)
+                self.apply(fallback, for: snapshot)
             }
         }
     }
 
-    private func apply(_ analysis: SessionAnalysisResult) {
+    private func apply(_ analysis: SessionAnalysisResult, for snapshot: ActiveSessionSnapshot) {
         latestAnalysis = analysis
         guard !analysis.message.isEmpty else { return }
 
@@ -150,15 +159,56 @@ final class VirtualCoach: NSObject, ObservableObject {
             recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
         }
 
-        speak(analysis)
+        speak(coachingAnnouncement(for: snapshot, message: analysis.message), urgency: analysis.urgency)
     }
 
-    private func speak(_ analysis: SessionAnalysisResult) {
-        let utterance = AVSpeechUtterance(string: spokenText(for: analysis.message))
+    private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
+        let timeInterval = currentProgressIntervalSeconds
+        let distanceIntervalMeters = currentProgressDistanceIntervalMeters
+
+        let nextTimeMilestone = snapshot.elapsedSeconds / timeInterval
+        let nextDistanceMilestone = Int(snapshot.distanceMeters / distanceIntervalMeters)
+        let reachedTimeMilestone = nextTimeMilestone > lastProgressTimeMilestone
+        let reachedDistanceMilestone = nextDistanceMilestone > lastProgressDistanceMilestone
+
+        guard reachedTimeMilestone || reachedDistanceMilestone else { return }
+
+        if let lastProgressAnnouncementElapsedSeconds,
+           snapshot.elapsedSeconds - lastProgressAnnouncementElapsedSeconds < minimumProgressAnnouncementGapSeconds {
+            return
+        }
+
+        lastProgressTimeMilestone = nextTimeMilestone
+        lastProgressDistanceMilestone = nextDistanceMilestone
+        lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+        speak(progressAnnouncement(for: snapshot))
+    }
+
+    private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
+        var parts = [
+            "Time \(snapshot.elapsedSeconds.spokenDurationString).",
+            String(format: "Distance %.2f kilometers.", snapshot.distanceKilometers)
+        ]
+
+        if let pace = snapshot.currentPaceSecsPerKm {
+            parts.append("Current pace \(pace.spokenPaceString).")
+        } else {
+            parts.append("Pace still settling.")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private func coachingAnnouncement(for snapshot: ActiveSessionSnapshot, message: String) -> String {
+        "\(progressAnnouncement(for: snapshot)) \(message)"
+    }
+
+    private func speak(_ text: String, urgency: SessionAnalysisUrgency = .steady) {
+        let utterance = AVSpeechUtterance(string: spokenText(for: text))
         if let voice = persona?.voice {
             utterance.voice = selectedSpeechVoice(for: voice)
-            utterance.rate = adjustedRate(for: voice, urgency: analysis.urgency)
-            utterance.pitchMultiplier = adjustedPitch(for: voice, urgency: analysis.urgency)
+            utterance.rate = adjustedRate(for: voice, urgency: urgency)
+            utterance.pitchMultiplier = adjustedPitch(for: voice, urgency: urgency)
             utterance.volume = voice.volume
         } else {
             utterance.voice = preferredVoice(for: "en-US")
@@ -172,6 +222,19 @@ final class VirtualCoach: NSObject, ObservableObject {
 
     private var currentAnalysisIntervalSeconds: Int {
         persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
+    }
+
+    private var currentProgressIntervalSeconds: Int {
+        persona?.nudgeFrequency.progressAnnouncementIntervalSeconds ?? 180
+    }
+
+    private var currentProgressDistanceIntervalMeters: Double {
+        switch persona?.template.sport ?? .run {
+        case .run:
+            1_000
+        case .bike:
+            5_000
+        }
     }
 
     private func spokenText(for message: String) -> String {

@@ -73,6 +73,14 @@ enum NudgeFrequency: String, Codable, CaseIterable, Identifiable {
         case .high: 45
         }
     }
+
+    var progressAnnouncementIntervalSeconds: Int {
+        switch self {
+        case .low: 300
+        case .normal: 180
+        case .high: 120
+        }
+    }
 }
 
 struct CoachVoice: Codable, Hashable, Identifiable {
