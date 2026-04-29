@@ -64,7 +64,7 @@ struct RecordView: View {
                 summary: activity.summary,
                 photos: activity.photos,
                 lastNudge: coach.lastNudge,
-                onSave: { savePendingActivity(activity) },
+                onSave: { saveRoute in savePendingActivity(activity, saveRoute: saveRoute) },
                 onDiscard: discardPendingActivity
             )
         }
@@ -89,11 +89,12 @@ struct RecordView: View {
         pendingActivity = PendingFinishedActivity(summary: summary, photos: capturedPhotos)
     }
 
-    private func savePendingActivity(_ activity: PendingFinishedActivity) {
+    private func savePendingActivity(_ activity: PendingFinishedActivity, saveRoute: Bool) {
         _ = try? activityStore.save(
             summary: activity.summary,
             photos: activity.photos,
-            lastNudge: coach.lastNudge
+            lastNudge: coach.lastNudge,
+            saveRoute: saveRoute
         )
         clearPending()
     }

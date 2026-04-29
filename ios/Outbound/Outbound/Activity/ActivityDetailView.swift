@@ -1,14 +1,21 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct ActivityDetailView: View {
     let activity: SavedActivity
     @EnvironmentObject var activityStore: ActivityStore
+    @State private var shareURL: URL?
+    @State private var shareError: ShareRouteError?
+
+    private var currentActivity: SavedActivity {
+        activityStore.activity(id: activity.id) ?? activity
+    }
 
     private var mapPosition: MapCameraPosition {
-        guard !activity.trackPoints.isEmpty else { return .automatic }
-        let lats = activity.trackPoints.map(\.latitude)
-        let lngs = activity.trackPoints.map(\.longitude)
+        guard currentActivity.hasRoute else { return .automatic }
+        let lats = currentActivity.routePoints.map(\.latitude)
+        let lngs = currentActivity.routePoints.map(\.longitude)
         let center = CLLocationCoordinate2D(
             latitude: (lats.min()! + lats.max()!) / 2,
             longitude: (lngs.min()! + lngs.max()!) / 2
@@ -21,22 +28,29 @@ struct ActivityDetailView: View {
     }
 
     private var routeCoordinates: [CLLocationCoordinate2D] {
-        activity.trackPoints.map {
-            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-        }
+        currentActivity.routeCoordinates
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 mapSection
+                routeControls
                 statsStrip
-                if !activity.coachNudge.isEmpty { coachSection }
-                if !activity.photos.isEmpty { photoGrid }
+                if !currentActivity.coachNudge.isEmpty { coachSection }
+                if !currentActivity.photos.isEmpty { photoGrid }
             }
         }
-        .navigationTitle(activity.title)
+        .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: isShareSheetPresented) {
+            if let shareURL {
+                ShareSheet(activityItems: [shareURL])
+            }
+        }
+        .alert(item: $shareError) { error in
+            Alert(title: Text("Unable to Share Route"), message: Text(error.message))
+        }
     }
 
     private var mapSection: some View {
@@ -44,7 +58,9 @@ struct ActivityDetailView: View {
             if routeCoordinates.count > 1 {
                 Map(position: .constant(mapPosition)) {
                     MapPolyline(coordinates: routeCoordinates)
-                        .stroke(.orange, lineWidth: 4)
+                        .stroke(.black.opacity(0.15), lineWidth: 7)
+                    MapPolyline(coordinates: routeCoordinates)
+                        .stroke(.orange, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                 }
                 .frame(height: 240)
                 .disabled(true)
@@ -65,14 +81,55 @@ struct ActivityDetailView: View {
         }
     }
 
+    private var routeControls: some View {
+        HStack(spacing: 12) {
+            if currentActivity.hasRoute {
+                Label("Private Route", systemImage: "lock.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Text("\(currentActivity.routePoints.count) points")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Menu {
+                ForEach(RouteExportFormat.allCases) { format in
+                    Button {
+                        shareRoute(format)
+                    } label: {
+                        Label("Share \(format.title)", systemImage: "square.and.arrow.up")
+                    }
+                }
+            } label: {
+                Label("Share Route", systemImage: "square.and.arrow.up")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.orange)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+            .disabled(!currentActivity.hasRoute)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
     private var statsStrip: some View {
         HStack(spacing: 0) {
             DetailStatCell(label: "Distance",
-                           value: String(format: "%.2f km", activity.distanceM / 1000))
+                           value: String(format: "%.2f km", currentActivity.distanceM / 1000))
             Divider().frame(height: 40)
             DetailStatCell(label: "Time",
-                           value: activity.durationSecs.formatted())
-            if let pace = activity.avgPace {
+                           value: currentActivity.durationSecs.formatted())
+            if let pace = currentActivity.avgPace {
                 Divider().frame(height: 40)
                 DetailStatCell(label: "Avg Pace", value: pace.paceString)
             }
@@ -86,7 +143,7 @@ struct ActivityDetailView: View {
         HStack(spacing: 12) {
             Image(systemName: "figure.run.circle.fill")
                 .foregroundStyle(.orange)
-            Text(activity.coachNudge)
+            Text(currentActivity.coachNudge)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -109,7 +166,7 @@ struct ActivityDetailView: View {
                 columns: [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)],
                 spacing: 2
             ) {
-                ForEach(activity.photos) { photo in
+                ForEach(currentActivity.photos) { photo in
                     if let url = activityStore.imageURL(for: photo) {
                         LocalImageView(url: url) {
                             Color(.systemGroupedBackground)
@@ -121,6 +178,40 @@ struct ActivityDetailView: View {
             }
         }
     }
+
+    private var isShareSheetPresented: Binding<Bool> {
+        Binding(
+            get: { shareURL != nil },
+            set: { isPresented in
+                if !isPresented {
+                    shareURL = nil
+                }
+            }
+        )
+    }
+
+    private func shareRoute(_ format: RouteExportFormat) {
+        do {
+            shareURL = try activityStore.exportRoute(for: currentActivity, format: format)
+        } catch {
+            shareError = ShareRouteError(message: error.localizedDescription)
+        }
+    }
+}
+
+private struct ShareRouteError: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct DetailStatCell: View {

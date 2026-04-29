@@ -19,9 +19,35 @@ struct LiveMapView: View {
         ZStack {
             Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
                 UserAnnotation()
-                if locationManager.trackPoints.count > 1 {
-                    MapPolyline(coordinates: locationManager.trackPoints.map(\.coordinate))
-                        .stroke(.orange, lineWidth: 4)
+                if let startCoordinate {
+                    Annotation("Trail Start", coordinate: startCoordinate) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 14, height: 14)
+                            .overlay {
+                                Circle()
+                                    .stroke(.white, lineWidth: 3)
+                            }
+                            .shadow(radius: 4)
+                    }
+                }
+                if trailCoordinates.count > 1 {
+                    MapPolyline(coordinates: trailCoordinates)
+                        .stroke(.black.opacity(0.2), lineWidth: 8)
+                    MapPolyline(coordinates: trailCoordinates)
+                        .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+                if let currentCoordinate {
+                    Annotation("Current Position", coordinate: currentCoordinate) {
+                        Circle()
+                            .fill(.orange)
+                            .frame(width: 16, height: 16)
+                            .overlay {
+                                Circle()
+                                    .stroke(.white, lineWidth: 3)
+                            }
+                            .shadow(radius: 4)
+                    }
                 }
             }
             .onMapCameraChange(frequency: .onEnd) { _ in
@@ -74,6 +100,18 @@ struct LiveMapView: View {
 
     private var shouldShowCoachNudge: Bool {
         recorder.state != .idle && !coach.lastNudge.isEmpty
+    }
+
+    private var trailCoordinates: [CLLocationCoordinate2D] {
+        locationManager.trackPoints.map(\.coordinate)
+    }
+
+    private var startCoordinate: CLLocationCoordinate2D? {
+        trailCoordinates.first
+    }
+
+    private var currentCoordinate: CLLocationCoordinate2D? {
+        trailCoordinates.last
     }
 
     private var coachNudgeBubble: some View {

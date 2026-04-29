@@ -9,12 +9,18 @@ final class ActivityStore: ObservableObject {
     init() { refresh() }
 
     @discardableResult
-    func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)], lastNudge: String) throws -> SavedActivity {
+    func save(
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        lastNudge: String,
+        saveRoute: Bool
+    ) throws -> SavedActivity {
         let activity = try LocalActivityStore.save(
             summary: summary,
             photos: photos,
             title: autoTitle(for: summary.startedAt),
-            coachNudge: lastNudge
+            coachNudge: lastNudge,
+            saveRoute: saveRoute
         )
         refresh()
         return activity
@@ -27,6 +33,18 @@ final class ActivityStore: ObservableObject {
 
     func imageURL(for photo: SavedPhoto) -> URL? {
         try? LocalActivityStore.imageURL(for: photo)
+    }
+
+    func activity(id: UUID) -> SavedActivity? {
+        activities.first { $0.id == id }
+    }
+
+    func exportRoute(for activity: SavedActivity, format: RouteExportFormat) throws -> URL {
+        try RouteFileExporter.export(activity: self.activity(id: activity.id) ?? activity, format: format)
+    }
+
+    var savedRoutes: [SavedActivity] {
+        activities.filter(\.hasRoute)
     }
 
     private func refresh() {

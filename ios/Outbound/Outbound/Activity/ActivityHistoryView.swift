@@ -12,7 +12,7 @@ struct ActivityHistoryView: View {
                 list
             }
         }
-        .navigationTitle("My Runs")
+        .navigationTitle("My Activities")
         .navigationDestination(item: $selectedActivity) { activity in
             ActivityDetailView(activity: activity)
                 .environmentObject(activityStore)
@@ -42,7 +42,7 @@ struct ActivityHistoryView: View {
             Image(systemName: "figure.run.circle")
                 .font(.system(size: 56))
                 .foregroundStyle(.orange)
-            Text("No runs yet")
+            Text("No activities yet")
                 .font(.title3.bold())
             Text("Tap Record to start your first activity.")
                 .font(.subheadline)
