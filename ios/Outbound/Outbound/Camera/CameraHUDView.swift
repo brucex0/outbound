@@ -2,15 +2,16 @@ import SwiftUI
 import AVFoundation
 import CoreLocation
 
-// Full-screen camera with transparent running stats overlay.
-// The camera stays live throughout the activity — tap shutter to capture a
-// photo tagged with current pace, HR, distance and GPS coords.
+// Full-screen camera with an always-available shutter, a right-edge utility
+// rail, and a bottom session card that swaps between Ready, Recording, and
+// Paused states.
 struct CameraHUDView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
+    let onStart: () -> Void
     let onFinish: () -> Void
     let onCapture: (UIImage, PhotoMetadata) -> Void
 
@@ -24,9 +25,11 @@ struct CameraHUDView: View {
     @State private var captureFlightID = 0
     @State private var shutterFrame: CGRect = .zero
     @State private var photoStackFrame: CGRect = .zero
-    private let statColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
+
     private let coordinateSpaceName = "CameraHUDCoordinateSpace"
+
     private var displayPhoto: UIImage? { lastCapturedPhoto ?? optimisticCapturedPhoto }
+
     private var displayPhotoCount: Int {
         if capturedPhotoCount > 0 { return capturedPhotoCount }
         return optimisticCapturedPhoto == nil ? 0 : 1
@@ -34,12 +37,13 @@ struct CameraHUDView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
+            ZStack {
                 CameraPreviewLayer(session: camera.session)
                     .ignoresSafeArea()
 
                 if showFlash {
-                    Color.white.opacity(0.6).ignoresSafeArea()
+                    Color.white.opacity(0.6)
+                        .ignoresSafeArea()
                         .transition(.opacity)
                 }
 
@@ -47,7 +51,40 @@ struct CameraHUDView: View {
                     cameraPermissionMessage
                 }
 
-                bottomDataOverlay
+                VStack(spacing: 12) {
+                    Spacer()
+
+                    if shouldShowCoachNudge {
+                        coachNudgeBubble
+                            .padding(.horizontal, 16)
+                    }
+
+                    SessionStatusCard(
+                        state: recorder.state,
+                        elapsedText: recorder.elapsedSeconds.formatted(),
+                        paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
+                        paceText: sessionPaceText,
+                        distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                        onStart: onStart,
+                        onPause: pauseActivity,
+                        onResume: resumeActivity,
+                        onFinish: onFinish
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 18)
+                }
+
+                VStack {
+                    Spacer()
+
+                    HStack {
+                        Spacer()
+
+                        rightControlRail
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, railBottomPadding)
+                }
 
                 if let flyingCapturedPhoto {
                     CaptureFlightThumbnail(
@@ -67,98 +104,60 @@ struct CameraHUDView: View {
         .onDisappear { camera.stop() }
     }
 
-    private var bottomDataOverlay: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if !coach.lastNudge.isEmpty {
-                Text(coach.lastNudge)
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .lineLimit(3)
-            }
-
-            if recorder.state == .paused {
-                pausedPill
-            }
-
-            activityStatsRow
-
-            HStack(alignment: .center) {
-                Button {
-                    onFinish()
-                } label: {
-                    Image(systemName: "stop.fill")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.red))
-                        .foregroundStyle(.white)
-                }
-                .accessibilityLabel("Finish")
-
-                Button(action: togglePauseResume) {
-                    Image(systemName: recorder.state == .paused ? "play.fill" : "pause.fill")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.white.opacity(0.2)))
-                        .foregroundStyle(.white)
-                }
-                .accessibilityLabel(recorder.state == .paused ? "Resume" : "Pause")
-
-                Spacer()
-
-                ShutterButton {
-                    capturePhoto()
-                }
-                .disabled(recorder.state == .paused)
-                .opacity(recorder.state == .paused ? 0.55 : 1)
-                .readFrame(in: coordinateSpaceName, key: ShutterFramePreferenceKey.self)
-
-                Spacer()
-
-                Button { activePage = .map } label: {
-                    Image(systemName: "map.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.white.opacity(0.2)))
-                }
-                .accessibilityLabel("Show Map")
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.black.opacity(0.52))
-        .accessibilityIdentifier("CameraDataOverlay")
+    private var shouldShowCoachNudge: Bool {
+        recorder.state != .idle && !coach.lastNudge.isEmpty
     }
 
-    private var pausedPill: some View {
-        Label("Paused", systemImage: "pause.circle.fill")
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(.yellow.opacity(0.22)))
-            .foregroundStyle(.yellow)
-    }
-
-    private var activityStatsRow: some View {
-        ZStack(alignment: .topTrailing) {
-            LazyVGrid(columns: statColumns, alignment: .leading, spacing: 10) {
-                CameraStatTile(icon: "timer", label: "Time", value: recorder.elapsedSeconds.formatted())
-                CameraStatTile(icon: "figure.run", label: "Distance", value: String(format: "%.2f km", recorder.distanceMeters / 1000))
-                CameraStatTile(icon: "speedometer", label: "Pace", value: recorder.currentPace?.paceString ?? "-- /km")
-                CameraStatTile(icon: "heart.fill", label: "Heart Rate", value: recorder.heartRate.map { "\($0) bpm" } ?? "-- bpm")
-            }
+    private var coachNudgeBubble: some View {
+        Text(coach.lastNudge)
+            .font(.caption)
+            .foregroundStyle(.white)
+            .lineLimit(3)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 
+    private var rightControlRail: some View {
+        VStack(spacing: 14) {
             CapturedPhotoStackView(
                 image: displayPhoto,
                 count: displayPhotoCount,
                 isConfirming: showCaptureSuccess
             )
             .readFrame(in: coordinateSpaceName, key: PhotoStackFramePreferenceKey.self)
+
+            Button { activePage = .map } label: {
+                Image(systemName: "map.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(.black.opacity(0.42)))
+            }
+            .accessibilityLabel("Show Map")
+
+            ShutterButton {
+                capturePhoto()
+            }
+            .readFrame(in: coordinateSpaceName, key: ShutterFramePreferenceKey.self)
         }
-        .frame(maxWidth: .infinity, minHeight: 98, alignment: .topLeading)
+    }
+
+    private var railBottomPadding: CGFloat {
+        recorder.state == .paused ? 230 : 184
+    }
+
+    private var sessionPaceText: String {
+        switch recorder.state {
+        case .idle:
+            return "--"
+        case .active:
+            return recorder.currentPace?.paceString ?? "--"
+        case .paused:
+            guard recorder.distanceMeters > 0 else { return "--" }
+            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString
+        }
     }
 
     private var cameraPermissionMessage: some View {
@@ -207,22 +206,20 @@ struct CameraHUDView: View {
                     paceAtShot: recorder.currentPace,
                     hrAtShot: recorder.heartRate,
                     distAtShot: recorder.distanceMeters,
-                    coordinate: recorder.locationManager.location?.coordinate
+                    coordinate: recorder.locationManager.location?.coordinate,
+                    captureContext: recorder.photoCaptureContext
                 )
                 onCapture(image, meta)
             }
         }
     }
 
-    private func togglePauseResume() {
-        switch recorder.state {
-        case .active:
-            recorder.pause()
-        case .paused:
-            recorder.resume()
-        case .idle:
-            break
-        }
+    private func pauseActivity() {
+        recorder.pause()
+    }
+
+    private func resumeActivity() {
+        recorder.resume()
     }
 
     private func startCaptureFlight(with image: UIImage) {
@@ -247,10 +244,10 @@ struct CameraHUDView: View {
     private func captureFlightPosition(in size: CGSize) -> CGPoint {
         let fallbackY = max(size.height - 62, 72)
         let start = shutterFrame.isEmpty
-            ? CGPoint(x: size.width / 2, y: fallbackY)
+            ? CGPoint(x: size.width - 44, y: fallbackY)
             : CGPoint(x: shutterFrame.midX, y: shutterFrame.midY)
         let end = photoStackFrame.isEmpty
-            ? CGPoint(x: max(size.width - 54, 58), y: max(size.height - 190, 72))
+            ? CGPoint(x: max(size.width - 58, 58), y: max(size.height - 310, 72))
             : CGPoint(x: photoStackFrame.midX, y: photoStackFrame.midY)
         return CGPoint(
             x: start.x + (end.x - start.x) * captureFlightProgress,
@@ -401,45 +398,159 @@ private struct CaptureFlightThumbnail: View {
     }
 }
 
-struct CameraStatTile: View {
-    let icon: String
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.caption)
-                .frame(width: 16)
-                .foregroundStyle(.orange)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.68))
-                Text(value)
-                    .font(.system(.callout, design: .rounded, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-        }
-    }
-}
-
 struct ShutterButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().fill(.white).frame(width: 70, height: 70)
-                Circle().stroke(.white.opacity(0.4), lineWidth: 4).frame(width: 80, height: 80)
+                Circle()
+                    .fill(.white)
+                    .frame(width: 64, height: 64)
+                Circle()
+                    .stroke(.white.opacity(0.4), lineWidth: 4)
+                    .frame(width: 74, height: 74)
             }
         }
         .accessibilityLabel("Capture Photo")
     }
+}
+
+struct SessionStatusCard: View {
+    let state: RecordingState
+    let elapsedText: String
+    let paceLabel: String
+    let paceText: String
+    let distanceText: String
+    let onStart: () -> Void
+    let onPause: () -> Void
+    let onResume: () -> Void
+    let onFinish: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(statusTitle)
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(statusColor)
+                .foregroundStyle(statusTextColor)
+
+            VStack(spacing: 18) {
+                HStack(spacing: 14) {
+                    SessionMetricColumn(value: elapsedText, label: "Time")
+                    SessionMetricColumn(value: paceText, label: paceLabel)
+                    SessionMetricColumn(value: distanceText, label: "Distance (km)")
+                }
+
+                controls
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 18)
+            .background(.white)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+    }
+
+    @ViewBuilder
+    private var controls: some View {
+        switch state {
+        case .idle:
+            Button(action: onStart) {
+                Text("Start")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
+        case .active:
+            Button(action: onPause) {
+                Text("Pause")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
+        case .paused:
+            HStack(spacing: 12) {
+                Button(action: onResume) {
+                    Label("Resume", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
+
+                Button(action: onFinish) {
+                    Label("Finish", systemImage: "flag.checkered")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SessionPrimaryButtonStyle(background: .black, foreground: .white))
+            }
+        }
+    }
+
+    private var statusTitle: String {
+        switch state {
+        case .idle: return "Ready"
+        case .active: return "Recording"
+        case .paused: return "Paused"
+        }
+    }
+
+    private var statusColor: Color {
+        switch state {
+        case .idle: return Color.white.opacity(0.92)
+        case .active: return .orange
+        case .paused: return Color(red: 0.95, green: 0.78, blue: 0.26)
+        }
+    }
+
+    private var statusTextColor: Color {
+        switch state {
+        case .idle: return .black
+        case .active: return .white
+        case .paused: return .black
+        }
+    }
+}
+
+private struct SessionMetricColumn: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.black)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct SessionPrimaryButtonStyle: ButtonStyle {
+    let background: Color
+    let foreground: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.semibold))
+            .padding(.vertical, 16)
+            .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
+            .foregroundStyle(foreground)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+enum PhotoCaptureContext: String, Codable {
+    case preActivity = "pre_activity"
+    case active
+    case paused
 }
 
 struct PhotoMetadata {
@@ -448,4 +559,5 @@ struct PhotoMetadata {
     let hrAtShot: Int?
     let distAtShot: Double
     let coordinate: CLLocationCoordinate2D?
+    let captureContext: PhotoCaptureContext
 }

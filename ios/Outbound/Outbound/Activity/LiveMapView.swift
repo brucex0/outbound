@@ -9,14 +9,13 @@ struct LiveMapView: View {
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
+    let onStart: () -> Void
     let onFinish: () -> Void
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
 
-    private let statColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 2)
-
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Map(position: $mapPosition, interactionModes: .zoom) {
                 UserAnnotation()
                 if locationManager.trackPoints.count > 1 {
@@ -26,9 +25,41 @@ struct LiveMapView: View {
             }
             .ignoresSafeArea()
 
-            bottomOverlay
+            VStack(spacing: 12) {
+                Spacer()
+
+                if shouldShowCoachNudge {
+                    coachNudgeBubble
+                        .padding(.horizontal, 16)
+                }
+
+                SessionStatusCard(
+                    state: recorder.state,
+                    elapsedText: recorder.elapsedSeconds.formatted(),
+                    paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
+                    paceText: sessionPaceText,
+                    distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                    onStart: onStart,
+                    onPause: pauseActivity,
+                    onResume: resumeActivity,
+                    onFinish: onFinish
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 18)
+            }
+
+            VStack {
+                Spacer()
+
+                HStack {
+                    Spacer()
+
+                    rightControlRail
+                }
+                .padding(.trailing, 16)
+                .padding(.bottom, railBottomPadding)
+            }
         }
-        // Keep map centered on runner
         .onReceive(locationManager.$location) { loc in
             guard let loc else { return }
             withAnimation(.easeInOut(duration: 0.6)) {
@@ -42,120 +73,81 @@ struct LiveMapView: View {
         }
     }
 
-    private var bottomOverlay: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if !coach.lastNudge.isEmpty {
-                Text(coach.lastNudge)
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .lineLimit(3)
-            }
-
-            if recorder.state == .paused {
-                pausedPill
-            }
-
-            activityStatsRow
-
-            HStack(alignment: .center) {
-                Button(action: onFinish) {
-                    Image(systemName: "stop.fill")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.red))
-                        .foregroundStyle(.white)
-                }
-                .accessibilityLabel("Finish")
-
-                Button(action: togglePauseResume) {
-                    Image(systemName: recorder.state == .paused ? "play.fill" : "pause.fill")
-                        .font(.title3.weight(.semibold))
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.white.opacity(0.2)))
-                        .foregroundStyle(.white)
-                }
-                .accessibilityLabel(recorder.state == .paused ? "Resume" : "Pause")
-
-                Spacer()
-
-                Button { activePage = .camera } label: {
-                    Image(systemName: "camera.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .frame(width: 58, height: 58)
-                        .background(Circle().fill(.white.opacity(0.2)))
-                }
-                .accessibilityLabel("Show Camera")
-
-                Spacer()
-
-                // Re-center
-                Button {
-                    if let loc = locationManager.location {
-                        withAnimation {
-                            mapPosition = .camera(MapCamera(
-                                centerCoordinate: loc.coordinate,
-                                distance: 400,
-                                heading: loc.course >= 0 ? loc.course : 0,
-                                pitch: 0
-                            ))
-                        }
-                    }
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.title3)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 78, alignment: .trailing)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.black.opacity(0.52))
+    private var shouldShowCoachNudge: Bool {
+        recorder.state != .idle && !coach.lastNudge.isEmpty
     }
 
-    private var pausedPill: some View {
-        Label("Paused", systemImage: "pause.circle.fill")
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(.yellow.opacity(0.22)))
-            .foregroundStyle(.yellow)
-    }
-
-    private var activityStatsRow: some View {
-        ZStack(alignment: .topTrailing) {
-            LazyVGrid(columns: statColumns, alignment: .leading, spacing: 10) {
-                CameraStatTile(icon: "timer",       label: "Time",
-                               value: recorder.elapsedSeconds.formatted())
-                CameraStatTile(icon: "figure.run",  label: "Distance",
-                               value: String(format: "%.2f km", recorder.distanceMeters / 1000))
-                CameraStatTile(icon: "speedometer", label: "Pace",
-                               value: recorder.currentPace?.paceString ?? "-- /km")
-                CameraStatTile(icon: "heart.fill",  label: "Heart Rate",
-                               value: recorder.heartRate.map { "\($0) bpm" } ?? "-- bpm")
-            }
+    private var coachNudgeBubble: some View {
+        Text(coach.lastNudge)
+            .font(.caption)
+            .foregroundStyle(.white)
+            .lineLimit(3)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 
+    private var rightControlRail: some View {
+        VStack(spacing: 14) {
             CapturedPhotoStackView(
                 image: lastCapturedPhoto,
                 count: capturedPhotoCount,
                 isConfirming: false
             )
+
+            Button { activePage = .camera } label: {
+                Image(systemName: "camera.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(.black.opacity(0.42)))
+            }
+            .accessibilityLabel("Show Camera")
+
+            Button {
+                if let loc = locationManager.location {
+                    withAnimation {
+                        mapPosition = .camera(MapCamera(
+                            centerCoordinate: loc.coordinate,
+                            distance: 400,
+                            heading: loc.course >= 0 ? loc.course : 0,
+                            pitch: 0
+                        ))
+                    }
+                }
+            } label: {
+                Image(systemName: "location.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(.black.opacity(0.42)))
+            }
+            .accessibilityLabel("Recenter Map")
         }
-        .frame(maxWidth: .infinity, minHeight: 98, alignment: .topLeading)
     }
 
-    private func togglePauseResume() {
+    private var railBottomPadding: CGFloat {
+        recorder.state == .paused ? 230 : 184
+    }
+
+    private var sessionPaceText: String {
         switch recorder.state {
-        case .active:
-            recorder.pause()
-        case .paused:
-            recorder.resume()
         case .idle:
-            break
+            return "--"
+        case .active:
+            return recorder.currentPace?.paceString ?? "--"
+        case .paused:
+            guard recorder.distanceMeters > 0 else { return "--" }
+            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString
         }
+    }
+
+    private func pauseActivity() {
+        recorder.pause()
+    }
+
+    private func resumeActivity() {
+        recorder.resume()
     }
 }

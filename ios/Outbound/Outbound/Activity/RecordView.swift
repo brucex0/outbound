@@ -28,6 +28,7 @@ struct RecordView: View {
                         capturedPhotoCount: capturedPhotos.count,
                         lastCapturedPhoto: capturedPhotos.last?.0,
                         activePage: $activePage,
+                        onStart: startRecording,
                         onFinish: finishRecording
                     ) { image, meta in
                         capturedPhotos.append((image, meta))
@@ -42,6 +43,7 @@ struct RecordView: View {
                         capturedPhotoCount: capturedPhotos.count,
                         lastCapturedPhoto: capturedPhotos.last?.0,
                         activePage: $activePage,
+                        onStart: startRecording,
                         onFinish: finishRecording
                     )
                     .tag(SessionPage.map)
@@ -68,6 +70,43 @@ struct RecordView: View {
         }
     }
 
+    private func startRecording() {
+        guard recorder.state == .idle else { return }
+        capturedPhotos = []
+        pendingActivity = nil
+        activePage = .camera
+        recorder.locationManager.requestPermission()
+        coach.activate(with: coachStore.profile, persona: coachCatalog.selectedPersona)
+        recorder.start()
+        showCamera = true
+    }
+
+    private func finishRecording() {
+        let summary = recorder.finish()
+        coach.deactivate()
+        showCamera = false
+        activePage = .camera
+        pendingActivity = PendingFinishedActivity(summary: summary, photos: capturedPhotos)
+    }
+
+    private func savePendingActivity(_ activity: PendingFinishedActivity) {
+        _ = try? activityStore.save(
+            summary: activity.summary,
+            photos: activity.photos,
+            lastNudge: coach.lastNudge
+        )
+        clearPending()
+    }
+
+    private func discardPendingActivity() {
+        clearPending()
+    }
+
+    private func clearPending() {
+        pendingActivity = nil
+        capturedPhotos = []
+    }
+
     private var readyView: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -78,8 +117,10 @@ struct RecordView: View {
                     .monospacedDigit()
 
                 HStack(spacing: 40) {
-                    StatBlock(label: "Distance",
-                              value: String(format: "%.2f km", recorder.distanceMeters / 1000))
+                    StatBlock(
+                        label: "Distance",
+                        value: String(format: "%.2f km", recorder.distanceMeters / 1000)
+                    )
                     if let pace = recorder.currentPace {
                         StatBlock(label: "Pace", value: pace.paceString)
                     }
@@ -108,41 +149,6 @@ struct RecordView: View {
             .padding(.bottom, 40)
         }
         .padding()
-    }
-
-    private func startRecording() {
-        capturedPhotos = []
-        pendingActivity = nil
-        activePage = .camera
-        recorder.locationManager.requestPermission()
-        coach.activate(with: coachStore.profile, persona: coachCatalog.selectedPersona)
-        recorder.start()
-        showCamera = true
-    }
-
-    private func finishRecording() {
-        let summary = recorder.finish()
-        coach.deactivate()
-        showCamera = false
-        pendingActivity = PendingFinishedActivity(summary: summary, photos: capturedPhotos)
-    }
-
-    private func savePendingActivity(_ activity: PendingFinishedActivity) {
-        _ = try? activityStore.save(
-            summary: activity.summary,
-            photos: activity.photos,
-            lastNudge: coach.lastNudge
-        )
-        clearPending()
-    }
-
-    private func discardPendingActivity() {
-        clearPending()
-    }
-
-    private func clearPending() {
-        pendingActivity = nil
-        capturedPhotos = []
     }
 }
 

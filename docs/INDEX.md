@@ -11,7 +11,7 @@ Primary flow:
 1. App launches directly into `MainTabView`.
 2. Record tab shows a Start button.
 3. Start requests location/camera permissions, starts `ActivityRecorder`, activates `VirtualCoach` with the selected coach persona, and opens the live camera.
-4. `CameraHUDView` displays a full-screen camera preview with a translucent bottom overlay: elapsed time, distance, pace, heart-rate placeholder, a round photo thumbnail stack pinned to the right edge of the activity overlay, capture, map toggle, and Finish.
+4. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
 5. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 6. Finish stops recording and presents Save Activity / Discard.
 7. Save writes the activity manifest, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.

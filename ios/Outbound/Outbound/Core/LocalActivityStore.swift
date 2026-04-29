@@ -172,6 +172,7 @@ struct SavedPhoto: Codable, Identifiable {
     let hrAtShot: Int?
     let distAtShot: Double
     let coordinate: SavedCoordinate?
+    let captureContext: PhotoCaptureContext
     let relativePath: String
 
     nonisolated init(metadata: PhotoMetadata, relativePath: String) {
@@ -181,7 +182,20 @@ struct SavedPhoto: Codable, Identifiable {
         hrAtShot = metadata.hrAtShot
         distAtShot = metadata.distAtShot
         coordinate = metadata.coordinate.map { SavedCoordinate(coordinate: $0) }
+        captureContext = metadata.captureContext
         self.relativePath = relativePath
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        takenAt = try c.decode(Date.self, forKey: .takenAt)
+        paceAtShot = try c.decodeIfPresent(Double.self, forKey: .paceAtShot)
+        hrAtShot = try c.decodeIfPresent(Int.self, forKey: .hrAtShot)
+        distAtShot = try c.decode(Double.self, forKey: .distAtShot)
+        coordinate = try c.decodeIfPresent(SavedCoordinate.self, forKey: .coordinate)
+        captureContext = (try? c.decode(PhotoCaptureContext.self, forKey: .captureContext)) ?? .active
+        relativePath = try c.decode(String.self, forKey: .relativePath)
     }
 }
 

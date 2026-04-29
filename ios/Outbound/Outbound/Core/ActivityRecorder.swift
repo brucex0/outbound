@@ -93,6 +93,17 @@ final class ActivityRecorder: ObservableObject {
             isActive: isActive ?? (state == .active)
         )
     }
+
+    var photoCaptureContext: PhotoCaptureContext {
+        switch state {
+        case .idle:
+            return .preActivity
+        case .active:
+            return .active
+        case .paused:
+            return .paused
+        }
+    }
 }
 
 struct ActivitySummary {
