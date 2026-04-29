@@ -13,14 +13,20 @@ struct LiveMapView: View {
     let onFinish: () -> Void
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var isFollowingUser = true
 
     var body: some View {
         ZStack {
-            Map(position: $mapPosition, interactionModes: .zoom) {
+            Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
                 UserAnnotation()
                 if locationManager.trackPoints.count > 1 {
                     MapPolyline(coordinates: locationManager.trackPoints.map(\.coordinate))
                         .stroke(.orange, lineWidth: 4)
+                }
+            }
+            .onMapCameraChange(frequency: .onEnd) { _ in
+                if mapPosition.positionedByUser {
+                    isFollowingUser = false
                 }
             }
             .ignoresSafeArea()
@@ -61,15 +67,8 @@ struct LiveMapView: View {
             }
         }
         .onReceive(locationManager.$location) { loc in
-            guard let loc else { return }
-            withAnimation(.easeInOut(duration: 0.6)) {
-                mapPosition = .camera(MapCamera(
-                    centerCoordinate: loc.coordinate,
-                    distance: 400,
-                    heading: loc.course >= 0 ? loc.course : 0,
-                    pitch: 0
-                ))
-            }
+            guard let loc, isFollowingUser else { return }
+            updateMapCamera(for: loc, animated: true)
         }
     }
 
@@ -107,14 +106,8 @@ struct LiveMapView: View {
 
             Button {
                 if let loc = locationManager.location {
-                    withAnimation {
-                        mapPosition = .camera(MapCamera(
-                            centerCoordinate: loc.coordinate,
-                            distance: 400,
-                            heading: loc.course >= 0 ? loc.course : 0,
-                            pitch: 0
-                        ))
-                    }
+                    isFollowingUser = true
+                    updateMapCamera(for: loc, animated: true)
                 }
             } label: {
                 Image(systemName: "location.fill")
@@ -149,5 +142,24 @@ struct LiveMapView: View {
 
     private func resumeActivity() {
         recorder.resume()
+    }
+
+    private func updateMapCamera(for location: CLLocation, animated: Bool) {
+        let update = {
+            mapPosition = .camera(MapCamera(
+                centerCoordinate: location.coordinate,
+                distance: 400,
+                heading: location.course >= 0 ? location.course : 0,
+                pitch: 0
+            ))
+        }
+
+        if animated {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                update()
+            }
+        } else {
+            update()
+        }
     }
 }
