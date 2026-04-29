@@ -43,7 +43,7 @@ struct CoachSelectionView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Picker("Nudges", selection: nudgeFrequencyBinding) {
+                Picker("Coach Updates", selection: nudgeFrequencyBinding) {
                     ForEach(NudgeFrequency.allCases) { frequency in
                         Text(frequency.displayName).tag(frequency)
                     }
@@ -56,6 +56,12 @@ struct CoachSelectionView: View {
                     Text(nudge)
                         .font(.subheadline)
                 }
+            }
+
+            Section {
+                Text("Coach update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Coach")

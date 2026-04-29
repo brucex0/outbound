@@ -42,8 +42,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Coach/CoachTemplate.swift`: predefined coach catalog model. Current fixtures include one female and one male coach for Run and Bike. Each template defines sport, persona traits, sample nudges, voice options, face options, and a prompt seed.
 - `Coach/CoachCatalogStore.swift`: local catalog and selected coach customization. Persists selected template, voice, face, coaching intensity, and nudge frequency in `UserDefaults`.
-- `Coach/CoachSelectionView.swift`: Me-tab coach picker and customization UI.
-- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then at the selected persona's nudge frequency, displays `lastNudge`, and speaks nudges with the selected voice settings.
+- `Coach/CoachSelectionView.swift`: Me-tab coach picker and customization UI. Coach update frequency controls both AI nudge cadence and spoken progress recaps.
+- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then at the selected persona's nudge frequency, displays `lastNudge`, speaks nudges with the selected voice settings, and periodically announces live time, distance, and pace checkpoints.
 - `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation. `SessionAnalysisRequest` carries both the personalized `CoachProfile` and selected `CoachPersona`.
 - `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. Instructions include selected coach persona, style, intensity, and prompt seed.
 - `Coach/CoachProfile.swift`: athlete/coach profile model used to contextualize analysis.

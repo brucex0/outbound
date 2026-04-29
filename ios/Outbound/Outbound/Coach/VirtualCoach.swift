@@ -19,10 +19,14 @@ final class VirtualCoach: ObservableObject {
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
+    private var lastProgressAnnouncementElapsedSeconds: Int?
+    private var lastProgressTimeMilestone = 0
+    private var lastProgressDistanceMilestone = 0
     private var isActive = false
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
+    private let minimumProgressAnnouncementGapSeconds = 30
 
     init(provider: (any SessionAnalysisProvider)? = nil) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
@@ -36,6 +40,9 @@ final class VirtualCoach: ObservableObject {
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
+        lastProgressAnnouncementElapsedSeconds = nil
+        lastProgressTimeMilestone = 0
+        lastProgressDistanceMilestone = 0
         lastNudge = ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
@@ -60,6 +67,8 @@ final class VirtualCoach: ObservableObject {
         if snapshotHistory.count > maxSnapshotHistory {
             snapshotHistory.removeFirst(snapshotHistory.count - maxSnapshotHistory)
         }
+
+        announceProgressIfNeeded(for: snapshot)
 
         guard shouldAnalyze(snapshot) else { return }
         lastAnalyzedElapsedSeconds = snapshot.elapsedSeconds
@@ -121,6 +130,43 @@ final class VirtualCoach: ObservableObject {
         }
     }
 
+    private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
+        let timeInterval = currentProgressIntervalSeconds
+        let distanceIntervalMeters = currentProgressDistanceIntervalMeters
+
+        let nextTimeMilestone = snapshot.elapsedSeconds / timeInterval
+        let nextDistanceMilestone = Int(snapshot.distanceMeters / distanceIntervalMeters)
+        let reachedTimeMilestone = nextTimeMilestone > lastProgressTimeMilestone
+        let reachedDistanceMilestone = nextDistanceMilestone > lastProgressDistanceMilestone
+
+        guard reachedTimeMilestone || reachedDistanceMilestone else { return }
+
+        if let lastProgressAnnouncementElapsedSeconds,
+           snapshot.elapsedSeconds - lastProgressAnnouncementElapsedSeconds < minimumProgressAnnouncementGapSeconds {
+            return
+        }
+
+        lastProgressTimeMilestone = nextTimeMilestone
+        lastProgressDistanceMilestone = nextDistanceMilestone
+        lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+        speak(progressAnnouncement(for: snapshot))
+    }
+
+    private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
+        var parts = [
+            "Time \(snapshot.elapsedSeconds.spokenDurationString).",
+            String(format: "Distance %.2f kilometers.", snapshot.distanceKilometers)
+        ]
+
+        if let pace = snapshot.currentPaceSecsPerKm {
+            parts.append("Current pace \(pace.spokenPaceString).")
+        } else {
+            parts.append("Pace still settling.")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
     private func speak(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         if let voice = persona?.voice {
@@ -143,5 +189,18 @@ final class VirtualCoach: ObservableObject {
 
     private var currentAnalysisIntervalSeconds: Int {
         persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
+    }
+
+    private var currentProgressIntervalSeconds: Int {
+        persona?.nudgeFrequency.progressAnnouncementIntervalSeconds ?? 180
+    }
+
+    private var currentProgressDistanceIntervalMeters: Double {
+        switch persona?.template.sport ?? .run {
+        case .run:
+            1_000
+        case .bike:
+            5_000
+        }
     }
 }
