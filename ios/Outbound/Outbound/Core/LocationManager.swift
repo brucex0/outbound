@@ -45,6 +45,15 @@ final class LocationManager: NSObject, ObservableObject {
         manager.startUpdatingLocation()
     }
 
+    func pauseTracking() {
+        guard wantsTracking else { return }
+        manager.stopUpdatingLocation()
+    }
+
+    func resumeTracking() {
+        startTrackingIfPermitted()
+    }
+
     func stopTracking() -> [CLLocation] {
         wantsTracking = false
         manager.stopUpdatingLocation()

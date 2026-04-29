@@ -76,6 +76,10 @@ struct CameraHUDView: View {
                     .lineLimit(3)
             }
 
+            if recorder.state == .paused {
+                pausedPill
+            }
+
             activityStatsRow
 
             HStack(alignment: .center) {
@@ -90,11 +94,25 @@ struct CameraHUDView: View {
                         .foregroundStyle(.white)
                 }
 
+                Button(action: togglePauseResume) {
+                    Label(
+                        recorder.state == .paused ? "Resume" : "Pause",
+                        systemImage: recorder.state == .paused ? "play.fill" : "pause.fill"
+                    )
+                    .font(.headline)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(.white.opacity(0.2)))
+                    .foregroundStyle(.white)
+                }
+
                 Spacer()
 
                 ShutterButton {
                     capturePhoto()
                 }
+                .disabled(recorder.state == .paused)
+                .opacity(recorder.state == .paused ? 0.55 : 1)
                 .readFrame(in: coordinateSpaceName, key: ShutterFramePreferenceKey.self)
 
                 Spacer()
@@ -115,6 +133,15 @@ struct CameraHUDView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.black.opacity(0.52))
         .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private var pausedPill: some View {
+        Label("Paused", systemImage: "pause.circle.fill")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(.yellow.opacity(0.22)))
+            .foregroundStyle(.yellow)
     }
 
     private var activityStatsRow: some View {
@@ -187,6 +214,17 @@ struct CameraHUDView: View {
                 )
                 onCapture(image, meta)
             }
+        }
+    }
+
+    private func togglePauseResume() {
+        switch recorder.state {
+        case .active:
+            recorder.pause()
+        case .paused:
+            recorder.resume()
+        case .idle:
+            break
         }
     }
 

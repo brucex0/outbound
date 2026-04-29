@@ -24,6 +24,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     func start() {
+        timer?.cancel()
         state = .active
         startDate = Date()
         elapsedSeconds = 0
@@ -38,13 +39,17 @@ final class ActivityRecorder: ObservableObject {
     }
 
     func pause() {
+        guard state == .active else { return }
         state = .paused
         timer?.cancel()
+        locationManager.pauseTracking()
         liveSnapshot = makeSnapshot()
     }
 
     func resume() {
+        guard state == .paused else { return }
         state = .active
+        locationManager.resumeTracking()
         liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -69,6 +74,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func tick() {
+        guard state == .active else { return }
         elapsedSeconds += 1
         distanceMeters = locationManager.totalDistanceMeters
         currentPace = locationManager.currentPaceSecsPerKm

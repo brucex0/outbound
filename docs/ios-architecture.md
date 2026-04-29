@@ -21,8 +21,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Recording
 
 - `Activity/RecordView.swift`: owns recording screen state. Creates `LocationManager` and `ActivityRecorder`, starts/stops recording, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos, and presents the Save/Discard sheet.
-- `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. `finish()` returns `ActivitySummary` with track points.
-- `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, and supports background location updates.
+- `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Supports pause/resume by stopping both the session timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
+- `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, supports background location updates, and can temporarily stop/resume GPS updates during a paused activity.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the coach.
 - `Core/SessionFormatting.swift`: shared formatting helpers for pace and elapsed seconds.
 
@@ -30,7 +30,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Camera/CameraController.swift`: AVFoundation capture session, camera authorization, session queue, retained photo-capture delegates, and still-photo capture.
 - `Camera/CameraPreviewLayer.swift`: SwiftUI wrapper for `AVCaptureVideoPreviewLayer`.
-- `Camera/CameraHUDView.swift`: full-screen camera plus bottom data overlay. The activity overlay pins a persistent round photo thumbnail slot to its right edge without shrinking the stats grid, shows a stacked last-photo thumbnail/count after capture, and animates the captured image from the shutter area into the stack after a valid capture. Captured photos are returned to `RecordView` with `PhotoMetadata`.
+- `Camera/CameraHUDView.swift`: full-screen camera plus bottom data overlay. The activity overlay pins a persistent round photo thumbnail slot to its right edge without shrinking the stats grid, shows a stacked last-photo thumbnail/count after capture, animates the captured image from the shutter area into the stack after a valid capture, and exposes pause/resume plus finish controls during an active recording. Captured photos are returned to `RecordView` with `PhotoMetadata`.
 
 ## Local Persistence
 
