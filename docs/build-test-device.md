@@ -12,8 +12,8 @@ Open this when validating changes, installing on device, editing signing setting
 ## Device IDs
 
 - User device name: `Bruce main`.
-- Xcode device ID: `00008150-000A1194026A401C`.
 - CoreDevice ID: `591E461F-4950-5FBD-A797-4777F1E83532`.
+- The device UDID may still appear inside `devicectl` JSON and local hostnames, but the build helper no longer depends on Xcode listing the phone as a direct build destination.
 - If launch fails with "profile has not been explicitly trusted by the user", trust the personal development profile on the phone: Settings -> General -> VPN & Device Management -> Developer App -> Trust.
 
 ## Build-Only Checks
@@ -62,7 +62,7 @@ Underlying commands:
 xcodebuild -quiet -allowProvisioningUpdates \
   -project ios/Outbound/Outbound.xcodeproj \
   -scheme Outbound \
-  -destination 'id=00008150-000A1194026A401C' \
+  -destination 'generic/platform=iOS' \
   -derivedDataPath /tmp/outbound-device-derived build
 
 xcrun devicectl device install app \
