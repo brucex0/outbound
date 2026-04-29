@@ -86,25 +86,22 @@ struct CameraHUDView: View {
                 Button {
                     onFinish()
                 } label: {
-                    Label("Finish", systemImage: "stop.fill")
-                        .font(.headline)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(Capsule().fill(.red))
+                    Image(systemName: "stop.fill")
+                        .font(.title3.weight(.semibold))
+                        .frame(width: 58, height: 58)
+                        .background(Circle().fill(.red))
                         .foregroundStyle(.white)
                 }
+                .accessibilityLabel("Finish")
 
                 Button(action: togglePauseResume) {
-                    Label(
-                        recorder.state == .paused ? "Resume" : "Pause",
-                        systemImage: recorder.state == .paused ? "play.fill" : "pause.fill"
-                    )
-                    .font(.headline)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Capsule().fill(.white.opacity(0.2)))
-                    .foregroundStyle(.white)
+                    Image(systemName: recorder.state == .paused ? "play.fill" : "pause.fill")
+                        .font(.title3.weight(.semibold))
+                        .frame(width: 58, height: 58)
+                        .background(Circle().fill(.white.opacity(0.2)))
+                        .foregroundStyle(.white)
                 }
+                .accessibilityLabel(recorder.state == .paused ? "Resume" : "Pause")
 
                 Spacer()
 
