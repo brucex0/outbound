@@ -5,6 +5,8 @@ struct ProfileView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var activityStore: ActivityStore
+    @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject var healthImportStore: HealthImportStore
 
     private let sectionPreviewLimit = 3
 
@@ -13,6 +15,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     coachCard
+                    appleHealthCard
                     highlightsSection
                     myActivitiesSection
                 }
@@ -89,6 +92,121 @@ struct ProfileView: View {
                 value: String(format: "%.1f km", weeklyDistanceKm),
                 systemImage: "calendar"
             )
+        }
+    }
+
+    private var appleHealthCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Apple Health")
+                        .font(.title3.bold())
+                    Text(healthAuthorizationStore.snapshot.statusTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer()
+
+                if healthAuthorizationStore.isRefreshing || healthAuthorizationStore.isRequestingAccess {
+                    ProgressView()
+                } else {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.title2)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Text(healthAuthorizationStore.snapshot.statusDetail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !healthAuthorizationStore.snapshot.readDataTypeTitles.isEmpty {
+                Text(healthAuthorizationStore.snapshot.readDataTypeTitles.joined(separator: " • "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let lastErrorMessage = healthAuthorizationStore.lastErrorMessage {
+                Text(lastErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            recentHealthWorkouts
+
+            if healthAuthorizationStore.snapshot.isHealthDataAvailable {
+                Button {
+                    Task {
+                        await healthAuthorizationStore.requestAuthorization()
+                        await healthImportStore.refreshRecentWorkouts()
+                    }
+                } label: {
+                    HStack {
+                        Text(healthAuthorizationStore.actionLabel)
+                            .font(.subheadline.bold())
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(healthAuthorizationStore.isRequestingAccess)
+            }
+        }
+        .padding()
+        .background(.red.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var recentHealthWorkouts: some View {
+        if healthImportStore.isLoading {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading recent workouts...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let lastErrorMessage = healthImportStore.lastErrorMessage {
+            Text(lastErrorMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if !healthImportStore.recentWorkouts.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recent Health Workouts")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                ForEach(healthImportStore.recentWorkouts) { workout in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(workout.activityName)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(workout.startedAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(workout.summaryLine)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(workout.sourceName)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
         }
     }
 

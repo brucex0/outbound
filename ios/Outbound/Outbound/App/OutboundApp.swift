@@ -6,6 +6,8 @@ struct OutboundApp: App {
     @StateObject private var coachStore = CoachStore()
     @StateObject private var coachCatalogStore = CoachCatalogStore()
     @StateObject private var activityStore = ActivityStore()
+    @StateObject private var healthAuthorizationStore = HealthAuthorizationStore()
+    @StateObject private var healthImportStore = HealthImportStore()
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
 
     init() {
@@ -20,8 +22,14 @@ struct OutboundApp: App {
                     .environmentObject(coachStore)
                     .environmentObject(coachCatalogStore)
                     .environmentObject(activityStore)
+                    .environmentObject(healthAuthorizationStore)
+                    .environmentObject(healthImportStore)
                     .environmentObject(dailyCheckInStore)
-                    .task { await coachStore.syncIfNeeded() }
+                    .task {
+                        await coachStore.syncIfNeeded()
+                        await healthAuthorizationStore.refresh()
+                        await healthImportStore.refreshRecentWorkouts()
+                    }
             } else {
                 AuthView()
                     .environmentObject(authStore)

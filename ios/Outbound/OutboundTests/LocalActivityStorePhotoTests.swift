@@ -36,8 +36,7 @@ struct LocalActivityStorePhotoTests {
             summary: summary,
             photos: [(makeTestImage(), metadata)],
             title: "Photo Persistence Test",
-            coachNudge: "Keep the cadence steady.",
-            saveRoute: false
+            coachNudge: "Keep the cadence steady."
         )
         defer { try? LocalActivityStore.delete(savedActivity) }
 
