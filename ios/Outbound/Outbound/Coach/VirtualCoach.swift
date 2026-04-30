@@ -16,6 +16,7 @@ final class VirtualCoach: ObservableObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var profile: CoachProfile?
     private var persona: CoachPersona?
+    private var sessionIntent: SessionIntent?
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
@@ -30,13 +31,18 @@ final class VirtualCoach: ObservableObject {
         providerName = selectedProvider.displayName
     }
 
-    func activate(with profile: CoachProfile?, persona: CoachPersona? = nil) {
+    func activate(
+        with profile: CoachProfile?,
+        persona: CoachPersona? = nil,
+        sessionIntent: SessionIntent? = nil
+    ) {
         self.profile = profile
         self.persona = persona
+        self.sessionIntent = sessionIntent
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
-        lastNudge = ""
+        lastNudge = sessionIntent?.coachLine ?? ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
         fallbackProvider.beginSession(profile: profile, persona: persona)
@@ -45,6 +51,7 @@ final class VirtualCoach: ObservableObject {
     func deactivate() {
         isActive = false
         persona = nil
+        sessionIntent = nil
         analysisTask?.cancel()
         analysisTask = nil
         isAnalyzing = false

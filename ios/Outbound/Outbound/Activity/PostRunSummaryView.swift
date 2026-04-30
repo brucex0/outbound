@@ -5,6 +5,7 @@ struct PostRunSummaryView: View {
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
     let lastNudge: String
+    let reflection: FinishReflection
     let onSave: (Bool) -> Void
     let onDiscard: () -> Void
     @State private var shouldSaveRoute = false
@@ -13,6 +14,7 @@ struct PostRunSummaryView: View {
         ScrollView {
             VStack(spacing: 0) {
                 heroImage
+                reflectionSection
                 statsSection
                 if summary.trackPoints.count > 1 { routeMap }
                 if summary.trackPoints.count > 1 { routeSaveSection }
@@ -78,6 +80,27 @@ struct PostRunSummaryView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 8)
+    }
+
+    private var reflectionSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(reflection.title)
+                .font(.title2.bold())
+            Text(reflection.body)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(reflection.highlight)
+                .font(.subheadline.bold())
+                .foregroundStyle(.orange)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 20)
         .padding(.top, 24)
         .padding(.bottom, 8)

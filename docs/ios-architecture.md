@@ -16,11 +16,11 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, and `ActivityStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
-- `App/MainTabView.swift`: three tabs: Home (`ActivityFeedView`), Record (`RecordView`), and Me (`ProfileView`).
+- `App/MainTabView.swift`: four tabs: Today (`TodayView`), Record (`RecordView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` also holds the pending suggested-session intent used to jump from Today into Record.
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the Record tab state. Creates `LocationManager` and `ActivityRecorder`, shows the pre-activity Start screen inside the main three-tab shell, opens the live camera/map recorder after Start, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the Save/Discard sheet after finish. The post-run save flow always saves the activity and offers a separate private `Save Route` toggle.
+- `Activity/RecordView.swift`: owns the Record tab state. Creates `LocationManager` and `ActivityRecorder`, shows either the default ready screen or a suggested-session confirmation state, opens the live camera/map recorder after Start, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. The post-run save flow always saves the activity and offers a separate private `Save Route` toggle.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Supports pause/resume by stopping both the session timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, supports background location updates, and can temporarily stop/resume GPS updates during a paused activity.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the coach.
@@ -44,11 +44,16 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Coach/CoachTemplate.swift`: predefined coach catalog model. Current fixtures include one female and one male coach for Run and Bike. Each template defines sport, persona traits, sample nudges, voice options, face options, and a prompt seed.
 - `Coach/CoachCatalogStore.swift`: local catalog and selected coach customization. Persists selected template, voice, face, coaching intensity, and nudge frequency in `UserDefaults`.
 - `Coach/CoachSelectionView.swift`: Me-tab coach picker and customization UI.
-- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then at the selected persona's nudge frequency, displays `lastNudge`, and speaks nudges with the selected voice settings.
+- `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after 20 seconds and then at the selected persona's nudge frequency, seeds the first message from the selected session intent when present, displays `lastNudge`, and speaks nudges with the selected voice settings.
 - `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation. `SessionAnalysisRequest` carries both the personalized `CoachProfile` and selected `CoachPersona`.
 - `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. Instructions include selected coach persona, style, intensity, and prompt seed.
 - `Coach/CoachProfile.swift`: athlete/coach profile model used to contextualize analysis.
 - `Coach/CoachStore.swift`: loads/syncs coach profile through `APIClient`; with login skipped it generally has no remote user ID.
+
+## Motivation
+
+- `App/OutboundApp.swift`: now also defines `DailyCheckInStore`, which persists one local readiness selection per day in `UserDefaults`.
+- `App/MainTabView.swift`: now also contains the motivation MVP types and `TodayView`, including spark, check-in, suggested actions, momentum strip, recent activity preview, and the local engine that derives motivation state and finish reflections.
 
 ## Network And Placeholders
 

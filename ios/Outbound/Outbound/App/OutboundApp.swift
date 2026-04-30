@@ -6,6 +6,7 @@ struct OutboundApp: App {
     @StateObject private var coachStore = CoachStore()
     @StateObject private var coachCatalogStore = CoachCatalogStore()
     @StateObject private var activityStore = ActivityStore()
+    @StateObject private var dailyCheckInStore = DailyCheckInStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -19,11 +20,76 @@ struct OutboundApp: App {
                     .environmentObject(coachStore)
                     .environmentObject(coachCatalogStore)
                     .environmentObject(activityStore)
+                    .environmentObject(dailyCheckInStore)
                     .task { await coachStore.syncIfNeeded() }
             } else {
                 AuthView()
                     .environmentObject(authStore)
             }
+        }
+    }
+}
+
+enum DailyReadiness: String, Codable, CaseIterable, Identifiable {
+    case lowEnergy = "Low energy"
+    case okay = "Okay"
+    case ready = "Ready"
+    case stressed = "Stressed"
+
+    var id: String { rawValue }
+
+    var summaryLabel: String { "Today: \(rawValue)" }
+}
+
+struct DailyCheckInEntry: Codable, Equatable {
+    let dayStamp: Date
+    let readiness: DailyReadiness
+}
+
+@MainActor
+final class DailyCheckInStore: ObservableObject {
+    @Published private(set) var todayEntry: DailyCheckInEntry?
+
+    private let defaults: UserDefaults
+    private let entryKey = "daily_check_in_entry_v1"
+    private let calendar: Calendar
+
+    init(
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current
+    ) {
+        self.defaults = defaults
+        self.calendar = calendar
+
+        if let data = defaults.data(forKey: entryKey),
+           let decoded = try? JSONDecoder().decode(DailyCheckInEntry.self, from: data),
+           calendar.isDateInToday(decoded.dayStamp) {
+            todayEntry = decoded
+        } else {
+            todayEntry = nil
+        }
+    }
+
+    var readiness: DailyReadiness? {
+        todayEntry?.readiness
+    }
+
+    func select(_ readiness: DailyReadiness, now: Date = Date()) {
+        let entry = DailyCheckInEntry(
+            dayStamp: calendar.startOfDay(for: now),
+            readiness: readiness
+        )
+        todayEntry = entry
+
+        guard let data = try? JSONEncoder().encode(entry) else { return }
+        defaults.set(data, forKey: entryKey)
+    }
+
+    func refresh(now: Date = Date()) {
+        guard let entry = todayEntry else { return }
+        if !calendar.isDate(entry.dayStamp, inSameDayAs: now) {
+            todayEntry = nil
+            defaults.removeObject(forKey: entryKey)
         }
     }
 }
