@@ -6,8 +6,9 @@ struct PostRunSummaryView: View {
     let photos: [(UIImage, PhotoMetadata)]
     let lastNudge: String
     let reflection: FinishReflection
-    let onSave: () -> Void
+    let onSave: (Bool) -> Void
     let onDiscard: () -> Void
+    @State private var shouldSaveRoute = false
 
     var body: some View {
         ScrollView {
@@ -16,6 +17,7 @@ struct PostRunSummaryView: View {
                 reflectionSection
                 statsSection
                 if summary.trackPoints.count > 1 { routeMap }
+                if summary.trackPoints.count > 1 { routeSaveSection }
                 if !lastNudge.isEmpty { coachSection }
                 if !photos.isEmpty { photoGrid }
                 actionButtons
@@ -169,9 +171,29 @@ struct PostRunSummaryView: View {
         .padding(.bottom, 8)
     }
 
+    private var routeSaveSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $shouldSaveRoute) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Save Route")
+                        .font(.headline)
+                    Text("Keep this route in your private Saved Routes collection so you can revisit and share it later.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 8)
+    }
+
     private var actionButtons: some View {
         VStack(spacing: 12) {
-            Button(action: onSave) {
+            Button(action: { onSave(shouldSaveRoute) }) {
                 Label("Save Activity", systemImage: "checkmark.circle.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)

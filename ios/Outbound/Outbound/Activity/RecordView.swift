@@ -7,17 +7,20 @@ struct RecordView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var checkInStore: DailyCheckInStore
-    @Binding private var plannedIntent: SessionIntent?
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @State private var showCamera = false
     @State private var activePage: SessionPage = .camera
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
     @State private var pendingActivity: PendingFinishedActivity?
+    @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
 
-    init(plannedIntent: Binding<SessionIntent?> = .constant(nil)) {
-        _plannedIntent = plannedIntent
+    private let onClose: (() -> Void)?
+
+    init(initialIntent: SessionIntent? = nil, onClose: (() -> Void)? = nil) {
+        _plannedIntent = State(initialValue: initialIntent)
+        self.onClose = onClose
         let loc = LocationManager()
         _recorder = StateObject(wrappedValue: ActivityRecorder(locationManager: loc))
     }
@@ -63,13 +66,27 @@ struct RecordView: View {
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
         }
+        .overlay(alignment: .topTrailing) {
+            if !showCamera, let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .padding(.top, 14)
+                .padding(.trailing, 16)
+                .accessibilityLabel("Close")
+            }
+        }
         .fullScreenCover(item: $pendingActivity) { activity in
             PostRunSummaryView(
                 summary: activity.summary,
                 photos: activity.photos,
                 lastNudge: coach.lastNudge,
                 reflection: activity.reflection,
-                onSave: { savePendingActivity(activity) },
+                onSave: { saveRoute in savePendingActivity(activity, saveRoute: saveRoute) },
                 onDiscard: discardPendingActivity
             )
         }
@@ -109,17 +126,20 @@ struct RecordView: View {
         )
     }
 
-    private func savePendingActivity(_ activity: PendingFinishedActivity) {
+    private func savePendingActivity(_ activity: PendingFinishedActivity, saveRoute: Bool) {
         _ = try? activityStore.save(
             summary: activity.summary,
             photos: activity.photos,
-            lastNudge: coach.lastNudge
+            lastNudge: coach.lastNudge,
+            saveRoute: saveRoute
         )
         clearPending()
+        onClose?()
     }
 
     private func discardPendingActivity() {
         clearPending()
+        onClose?()
     }
 
     private func clearPending() {
@@ -197,7 +217,11 @@ struct RecordView: View {
 
                 if plannedIntent != nil {
                     Button("Change activity") {
-                        plannedIntent = nil
+                        if let onClose {
+                            onClose()
+                        } else {
+                            plannedIntent = nil
+                        }
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)

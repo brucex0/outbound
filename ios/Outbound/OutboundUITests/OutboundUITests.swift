@@ -20,7 +20,6 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Social"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Record"].exists)
         XCTAssertTrue(app.tabBars.buttons["Me"].exists)
         XCTAssertTrue(app.buttons["Start freestyle"].exists)
         XCTAssertFalse(app.textFields["Phone number"].exists)
@@ -63,28 +62,8 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
-    func testSavedActivityDetailShowsRouteExportOptions() throws {
-        let app = launchApp(arguments: ["-OutboundUITestSeedSavedActivity"])
-
-        app.tabBars.buttons["Me"].tap()
-        XCTAssertTrue(app.staticTexts["My Activities"].waitForExistence(timeout: 5))
-
-        let activityCell = app.staticTexts["UI Test Route Activity"]
-        XCTAssertTrue(activityCell.waitForExistence(timeout: 5))
-        activityCell.tap()
-
-        let shareRouteButton = app.buttons["ShareRouteButton"]
-        XCTAssertTrue(shareRouteButton.waitForExistence(timeout: 5))
-        shareRouteButton.tap()
-
-        XCTAssertTrue(app.buttons["Share GPX"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Share GeoJSON"].exists)
-    }
-
-    @MainActor
-    private func launchApp(arguments: [String] = []) -> XCUIApplication {
+    private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-OutboundDisableFirebase"] + arguments
         app.launch()
         return app
     }

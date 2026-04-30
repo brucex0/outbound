@@ -2,20 +2,27 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .today
-    @State private var plannedIntent: SessionIntent?
+    @State private var activeLaunch: RecordLaunch?
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            TodayView { suggestion in
-                plannedIntent = suggestion.intent
-                selectedTab = .record
+            TodayView(
+                onStartSuggestion: { suggestion in
+                    activeLaunch = RecordLaunch(intent: suggestion.intent)
+                },
+                onStartFreestyle: {
+                    activeLaunch = RecordLaunch(intent: .freestyleRun)
+                }
+            )
+            .fullScreenCover(item: $activeLaunch, onDismiss: {
+                activeLaunch = nil
+            }) { launch in
+                RecordView(initialIntent: launch.intent) {
+                    activeLaunch = nil
+                }
             }
             .tabItem { Label("Today", systemImage: "sun.max.fill") }
             .tag(AppTab.today)
-
-            RecordView(plannedIntent: $plannedIntent)
-                .tabItem { Label("Record", systemImage: "record.circle.fill") }
-                .tag(AppTab.record)
 
             ActivityFeedView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }
@@ -31,9 +38,13 @@ struct MainTabView: View {
 
 private enum AppTab {
     case today
-    case record
     case social
     case me
+}
+
+private struct RecordLaunch: Identifiable {
+    let id = UUID()
+    let intent: SessionIntent
 }
 
 enum MotivationPhase {
@@ -77,6 +88,14 @@ struct SessionIntent: Identifiable, Hashable {
     let detail: String
     let coachLine: String
     let startLabel: String
+
+    static let freestyleRun = SessionIntent(
+        id: "freestyle-run",
+        title: "Freestyle run",
+        detail: "Run • no preset target",
+        coachLine: "No pressure. Just start where you are.",
+        startLabel: "Start now"
+    )
 }
 
 struct MomentumNote: Identifiable, Hashable {
@@ -104,6 +123,7 @@ struct TodayView: View {
     @EnvironmentObject private var checkInStore: DailyCheckInStore
 
     let onStartSuggestion: (SuggestedSession) -> Void
+    let onStartFreestyle: () -> Void
 
     private let recentPreviewLimit = 3
 
@@ -171,6 +191,21 @@ struct TodayView: View {
                 }
                 .foregroundStyle(.white)
             }
+
+            Button(action: onStartFreestyle) {
+                HStack {
+                    Text("Start freestyle")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "figure.run")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(.white.opacity(0.10), in: Capsule())
+            }
+            .foregroundStyle(.white.opacity(0.92))
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -16,11 +16,11 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, and `ActivityStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
-- `App/MainTabView.swift`: four tabs: Today (`TodayView`), Record (`RecordView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` also holds the pending suggested-session intent used to jump from Today into Record.
+- `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` now owns modal launch into `RecordView` for both suggested sessions and freestyle starts.
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the Record tab state. Creates `LocationManager` and `ActivityRecorder`, shows either the default ready screen or a suggested-session confirmation state, opens the live camera/map recorder after Start, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. Saving an activity also persists the route needed for map display and later export.
+- `Activity/RecordView.swift`: owns the shared recording flow presented from Today. It shows the confirmation state for a suggested session or freestyle run, opens the live camera/map recorder after Start, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. The post-run save flow always saves the activity and offers a separate private `Save Route` toggle.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Supports pause/resume by stopping both the session timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, supports background location updates, and can temporarily stop/resume GPS updates during a paused activity.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the coach.
@@ -35,7 +35,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Local Persistence
 
 - `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`.
-- `activities.json`: manifest containing `SavedActivity` entries, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` still load through a backward-compatibility path.
+- `activities.json`: manifest containing `SavedActivity` entries, optional compact canonical route data for activities where `Save Route` was enabled, and saved photo metadata. Older manifests with raw `trackPoints` still load through a backward-compatibility path.
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
 
@@ -59,4 +59,4 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: selected coach card, profile highlights, `My Activities` section, and sign-out control. Sign-out is a no-op while login is skipped.
+- `App/ProfileView.swift`: selected coach card, profile highlights, separate `Saved Routes` and `My Activities` sections, and sign-out control. Sign-out is a no-op while login is skipped.
