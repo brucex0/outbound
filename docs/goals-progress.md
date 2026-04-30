@@ -49,6 +49,23 @@ Defer:
 - backend sync as a requirement
 - open-ended natural-language parsing
 
+## Current Implementation
+
+Implemented in the app:
+
+- one active weekly focus at a time
+- `weeklySessions` and `weeklyMinutes`
+- coach-led setup in Today with reply-chip cards
+- progress card and progress chip on Today
+- post-run reflection note that references goal progress
+
+Still deferred:
+
+- race-date goals
+- multiple simultaneous goals
+- backend sync
+- natural-language goal entry
+
 ## Recommended Goal Types
 
 Start with only a few structured goal types:

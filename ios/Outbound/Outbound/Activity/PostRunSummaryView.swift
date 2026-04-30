@@ -91,6 +91,12 @@ struct PostRunSummaryView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let progressNote = reflection.progressNote {
+                Text(progressNote)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text(reflection.highlight)
                 .font(.subheadline.bold())
                 .foregroundStyle(.orange)
