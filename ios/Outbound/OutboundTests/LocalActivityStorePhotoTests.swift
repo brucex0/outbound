@@ -17,7 +17,8 @@ struct LocalActivityStorePhotoTests {
             paceAtShot: 315,
             hrAtShot: 142,
             distAtShot: 1200,
-            coordinate: coordinate
+            coordinate: coordinate,
+            captureContext: .active
         )
         let summary = ActivitySummary(
             startedAt: startedAt,
@@ -35,7 +36,8 @@ struct LocalActivityStorePhotoTests {
             summary: summary,
             photos: [(makeTestImage(), metadata)],
             title: "Photo Persistence Test",
-            coachNudge: "Keep the cadence steady."
+            coachNudge: "Keep the cadence steady.",
+            saveRoute: false
         )
         defer { try? LocalActivityStore.delete(savedActivity) }
 

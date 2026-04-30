@@ -30,11 +30,12 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 Run tests only when the user asks.
 
 ```sh
-xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'id=90811627-0921-4CE9-A934-5B8E6614EF6D' -parallel-testing-enabled NO test
+xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'id=90D55095-943A-416B-B91F-01EA17807713' -parallel-testing-enabled NO test
+xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'id=90D55095-943A-416B-B91F-01EA17807713' -parallel-testing-enabled NO -only-testing:OutboundUITests test
 swift test
 ```
 
-The simulator ID above is the available `iPhone 17` simulator used for stable UI test runs. The user's earlier Xcode simulator destination was `iPhone 17 Pro` with ID `C91E235E-94B0-4CA7-B41E-46F170AA4554`.
+The simulator ID above is the current available `iPhone 17` simulator used for stable UI test runs. If that simulator disappears, rerun `xcodebuild` once to inspect the available destination list and refresh this doc.
 
 ## Device Build And Install
 

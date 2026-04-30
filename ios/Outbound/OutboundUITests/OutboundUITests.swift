@@ -17,33 +17,40 @@ final class OutboundUITests: XCTestCase {
     func testLaunchSkipsLoginAndShowsPrimaryTabs() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.staticTexts["Outbound"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Record"].exists)
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Social"].exists)
         XCTAssertTrue(app.tabBars.buttons["Me"].exists)
+        XCTAssertTrue(app.buttons["Start freestyle"].exists)
         XCTAssertFalse(app.textFields["Phone number"].exists)
     }
 
     @MainActor
-    func testRecordStartOpensCameraOverlayAndCanFinish() throws {
+    func testTodayFreestyleStartOpensRecordingFlowAndCanFinish() throws {
         addPermissionMonitor()
         let app = launchApp()
 
-        app.tabBars.buttons["Record"].tap()
-        XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5))
-        app.buttons["Start"].tap()
+        app.buttons["Start freestyle"].tap()
+        XCTAssertTrue(app.staticTexts["Freestyle run"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Start now"].exists)
+        app.buttons["Start now"].tap()
         dismissPermissionAlerts(app)
 
-        XCTAssertTrue(app.otherElements["CameraDataOverlay"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["Time"].exists)
-        XCTAssertTrue(app.staticTexts["Distance"].exists)
+        XCTAssertTrue(app.staticTexts["Distance (km)"].exists)
         XCTAssertTrue(app.staticTexts["Pace"].exists)
-        XCTAssertTrue(app.staticTexts["Heart Rate"].exists)
         XCTAssertTrue(app.buttons["Capture Photo"].exists)
-        XCTAssertTrue(app.buttons["Finish"].exists)
+        XCTAssertTrue(app.buttons["Show Map"].exists)
 
+        app.buttons["Pause"].tap()
+        XCTAssertTrue(app.buttons["Finish"].exists)
         app.buttons["Finish"].tap()
-        XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Save Activity"].waitForExistence(timeout: 5))
+        app.buttons["Discard"].tap()
+
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Start freestyle"].exists)
     }
 
     @MainActor
