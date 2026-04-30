@@ -68,7 +68,7 @@ struct MainTabView: View {
             return
         }
 
-        activeLaunch = RecordLaunch(intent: intent ?? .freestyleRun)
+        activeLaunch = RecordLaunch(intent: intent)
         activitySessionState = .idle
         activityElapsedSeconds = 0
         isActivityVisible = true

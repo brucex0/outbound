@@ -16,6 +16,7 @@ struct RecordView: View {
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
+    @State private var hasAttemptedAutoStart = false
 
     let isVisible: Bool
     private let onCloseRequest: ((Bool) -> Void)?
@@ -91,6 +92,11 @@ struct RecordView: View {
         }
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
+        }
+        .onAppear {
+            guard plannedIntent == nil, !hasAttemptedAutoStart else { return }
+            hasAttemptedAutoStart = true
+            startRecording()
         }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
@@ -185,11 +191,27 @@ struct RecordView: View {
         ScrollView {
             VStack(spacing: 24) {
                 Spacer(minLength: 72)
-                confirmationView(for: plannedIntent ?? .freestyleRun)
+                if let plannedIntent {
+                    confirmationView(for: plannedIntent)
+                } else {
+                    autoStartView
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
+    }
+
+    private var autoStartView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(.orange)
+            Text("Opening activity…")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 240)
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
