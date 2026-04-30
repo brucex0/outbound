@@ -14,7 +14,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, and `ActivityStore`, and shows `MainTabView` when login is skipped or authenticated.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, and `HealthAuthorizationStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
 - `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` now owns modal launch into `RecordView` for both suggested sessions and freestyle starts.
 
@@ -59,4 +59,9 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: selected coach card, profile highlights, `My Activities` section, and sign-out control. Sign-out is a no-op while login is skipped.
+- `App/ProfileView.swift`: selected coach card, Apple Health connection card, profile highlights, `My Activities` section, and sign-out control. Sign-out is a no-op while login is skipped.
+
+## Integrations
+
+- `Integrations/HealthKit/HealthKitService.swift`: lightweight `HealthKit` wrapper that defines the initial workout import/write-back permission set, exposes authorization snapshot state, and safely reports unavailable environments.
+- `Integrations/HealthKit/HealthAuthorizationStore.swift`: UI-facing observable store for refreshing HealthKit permission state and requesting Apple Health access from the Me tab.
