@@ -1,4 +1,5 @@
 import Combine
+import CoreLocation
 import Foundation
 import UIKit
 
@@ -9,18 +10,12 @@ final class ActivityStore: ObservableObject {
     init() { refresh() }
 
     @discardableResult
-    func save(
-        summary: ActivitySummary,
-        photos: [(UIImage, PhotoMetadata)],
-        lastNudge: String,
-        saveRoute: Bool
-    ) throws -> SavedActivity {
+    func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)], lastNudge: String) throws -> SavedActivity {
         let activity = try LocalActivityStore.save(
             summary: summary,
             photos: photos,
             title: autoTitle(for: summary.startedAt),
-            coachNudge: lastNudge,
-            saveRoute: saveRoute
+            coachNudge: lastNudge
         )
         refresh()
         return activity
@@ -43,11 +38,11 @@ final class ActivityStore: ObservableObject {
         try RouteFileExporter.export(activity: self.activity(id: activity.id) ?? activity, format: format)
     }
 
-    var savedRoutes: [SavedActivity] {
-        activities.filter(\.hasRoute)
-    }
-
     private func refresh() {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity") {
+            activities = [Self.uiTestActivityFixture]
+            return
+        }
         activities = (try? LocalActivityStore.load()) ?? []
     }
 
@@ -61,5 +56,28 @@ final class ActivityStore: ObservableObject {
         case 17..<21: return "\(day) Evening Run"
         default:      return "\(day) Night Run"
         }
+    }
+
+    private static var uiTestActivityFixture: SavedActivity {
+        let startedAt = Date(timeIntervalSince1970: 1_714_368_400)
+        let points = [
+            SavedRoutePoint(location: CLLocation(latitude: 37.7749, longitude: -122.4194)),
+            SavedRoutePoint(location: CLLocation(latitude: 37.7758, longitude: -122.4179)),
+            SavedRoutePoint(location: CLLocation(latitude: 37.7767, longitude: -122.4163))
+        ]
+
+        return SavedActivity(
+            id: UUID(uuidString: "11111111-2222-3333-4444-555555555555") ?? UUID(),
+            title: "UI Test Route Activity",
+            coachNudge: "Keep your cadence steady.",
+            createdAt: startedAt,
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(1_845),
+            durationSecs: 1_845,
+            distanceM: 5_420,
+            avgPace: 340,
+            route: SavedRoute(points: points),
+            photos: []
+        )
     }
 }

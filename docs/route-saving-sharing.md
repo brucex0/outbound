@@ -5,9 +5,9 @@ Open this when implementing saved routes, route export, route sharing, or route 
 ## Product Goals
 
 - Save route data as real GPS points, not only as a screenshot or preview image.
-- Let users revisit saved routes inside the app from a saved-routes surface such as Profile.
-- Let users share routes with friends or publicly in a future backend-enabled flow.
-- Keep route storage efficient enough for long workouts such as marathon-length runs.
+- Let users export and share recorded routes from activity detail.
+- Let route storage remain lightweight enough for long workouts such as marathon-length runs.
+- Preserve a future path toward friend/public route sharing if backend support is added later.
 
 ## Route Data Requirements
 
@@ -22,12 +22,8 @@ Open this when implementing saved routes, route export, route sharing, or route 
 ## Saved Route Experience
 
 - The app should save route data together with each saved activity.
-- Users should be able to browse previously saved routes from the Me/Profile area.
-- A saved-routes list should eventually show:
-  - date or title
-  - distance and duration
-  - a small route preview
-- Opening a saved route should show a full map plus route-related activity details.
+- Route-related UX should live on saved activity detail rather than in a separate saved-routes library for V1.
+- Opening an activity with route data should show a full map plus route-related activity details.
 
 ## Sharing Requirements
 
@@ -67,14 +63,14 @@ Open this when implementing saved routes, route export, route sharing, or route 
 ## Recommended V1 Direction
 
 - Persist a simplified but map-accurate ordered route locally with `latitude`, `longitude`, and `timestamp`.
-- Use that stored route as the canonical source for saved-route browsing and sharing.
+- Use that stored route as the canonical source for in-app map rendering and sharing.
 - Export standard share formats only when requested.
-- Build local saved-route UI first, then layer true friend/public sharing on top once backend support exists.
+- Keep route UI attached to activity detail first, then add broader sharing surfaces later if product needs it.
 
 ## Current V1 Implementation
 
-- Saving an activity always saves the activity record itself.
-- The post-run screen exposes a separate `Save Route` toggle; when enabled, the app saves a simplified private route with ordered points.
-- The Me/Profile screen is a dashboard with separate `Saved Routes` and `My Activities` sections.
-- Route detail supports on-demand `GPX` and `GeoJSON` export through the iOS share sheet.
-- Older saved activities that only contain raw `trackPoints` are upgraded at read time into the canonical route model and appear as saved routes.
+- Saving an activity also saves the simplified canonical route needed for in-app route rendering.
+- The post-run save flow does not expose a separate route toggle because saved activity detail depends on persisted route data.
+- Route export lives on saved activity detail and supports on-demand `GPX` and `GeoJSON` export through the iOS share sheet.
+- The Me/Profile screen focuses on `My Activities` rather than a separate saved-routes library.
+- Older saved activities that only contain raw `trackPoints` are upgraded at read time into the canonical route model.

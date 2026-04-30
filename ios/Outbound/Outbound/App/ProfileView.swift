@@ -5,8 +5,6 @@ struct ProfileView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var activityStore: ActivityStore
-    @State private var routeLibrarySelection: SavedActivity?
-    @State private var activityHistorySelection: SavedActivity?
 
     private let sectionPreviewLimit = 3
 
@@ -16,7 +14,6 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
                     coachCard
                     highlightsSection
-                    savedRoutesSection
                     myActivitiesSection
                 }
                 .padding()
@@ -29,14 +26,6 @@ struct ProfileView: View {
                 }
             }
             .navigationDestination(for: SavedActivity.self) { activity in
-                ActivityDetailView(activity: activity)
-                    .environmentObject(activityStore)
-            }
-            .navigationDestination(item: $routeLibrarySelection) { activity in
-                ActivityDetailView(activity: activity)
-                    .environmentObject(activityStore)
-            }
-            .navigationDestination(item: $activityHistorySelection) { activity in
                 ActivityDetailView(activity: activity)
                     .environmentObject(activityStore)
             }
@@ -91,43 +80,15 @@ struct ProfileView: View {
                 systemImage: "figure.run"
             )
             ProfileMetricCard(
-                label: "Saved Routes",
-                value: "\(activityStore.savedRoutes.count)",
-                systemImage: "map"
+                label: "Photos",
+                value: "\(totalPhotoCount)",
+                systemImage: "camera"
             )
             ProfileMetricCard(
                 label: "This Week",
                 value: String(format: "%.1f km", weeklyDistanceKm),
                 systemImage: "calendar"
             )
-        }
-    }
-
-    private var savedRoutesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Saved Routes")
-                    .font(.title3.bold())
-                Spacer()
-                if activityStore.savedRoutes.count > sectionPreviewLimit {
-                    NavigationLink("See All") {
-                        SavedRoutesLibraryView()
-                            .environmentObject(activityStore)
-                    }
-                    .font(.caption.weight(.semibold))
-                }
-            }
-
-            if activityStore.savedRoutes.isEmpty {
-                emptyRoutesPlaceholder
-            } else {
-                ForEach(Array(activityStore.savedRoutes.prefix(sectionPreviewLimit))) { activity in
-                    NavigationLink(value: activity) {
-                        RouteCard(activity: activity, activityStore: activityStore)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
         }
     }
 
@@ -159,22 +120,6 @@ struct ProfileView: View {
         }
     }
 
-    private var emptyRoutesPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "map.circle")
-                .font(.system(size: 44))
-                .foregroundStyle(.orange.opacity(0.6))
-            Text("No saved routes yet.")
-                .font(.subheadline.weight(.semibold))
-            Text("Turn on Save Route after an activity to keep a route here for future sharing.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-    }
-
     private var emptyActivitiesPlaceholder: some View {
         VStack(spacing: 12) {
             Image(systemName: "figure.run.circle")
@@ -195,6 +140,10 @@ struct ProfileView: View {
         return activityStore.activities
             .filter { $0.startedAt >= startOfWeek }
             .reduce(0) { $0 + $1.distanceM } / 1000
+    }
+
+    private var totalPhotoCount: Int {
+        activityStore.activities.reduce(0) { $0 + $1.photos.count }
     }
 }
 
@@ -217,69 +166,6 @@ private struct ProfileMetricCard: View {
         .padding(14)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-private struct RouteCard: View {
-    let activity: SavedActivity
-    let activityStore: ActivityStore
-
-    var body: some View {
-        HStack(spacing: 12) {
-            thumbnail
-            VStack(alignment: .leading, spacing: 5) {
-                Text(activity.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 12) {
-                    Label(String(format: "%.2f km", activity.distanceM / 1000),
-                          systemImage: "figure.run")
-                    Label(activity.durationSecs.formatted(), systemImage: "timer")
-                    if let pace = activity.avgPace {
-                        Label(pace.paceString, systemImage: "speedometer")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-                HStack(spacing: 8) {
-                    Label("Private", systemImage: "lock.fill")
-                    Label("\(activity.routePoints.count) pts", systemImage: "map")
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(12)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    @ViewBuilder
-    private var thumbnail: some View {
-        if let photo = activity.photos.first, let url = activityStore.imageURL(for: photo) {
-            LocalImageView(url: url) {
-                Color.orange.opacity(0.25)
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        } else {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.orange.opacity(0.15))
-                .frame(width: 56, height: 56)
-                .overlay {
-                    Image(systemName: "figure.run").foregroundStyle(.orange)
-                }
-        }
     }
 }
 
@@ -310,11 +196,6 @@ private struct ActivityCard: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 0)
-            if activity.hasRoute {
-                Image(systemName: "map")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -340,24 +221,5 @@ private struct ActivityCard: View {
                     Image(systemName: "figure.run").foregroundStyle(.orange)
                 }
         }
-    }
-}
-
-private struct SavedRoutesLibraryView: View {
-    @EnvironmentObject var activityStore: ActivityStore
-
-    var body: some View {
-        List {
-            ForEach(activityStore.savedRoutes) { activity in
-                NavigationLink(value: activity) {
-                    RouteCard(activity: activity, activityStore: activityStore)
-                }
-                .listRowInsets(.init(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-        }
-        .listStyle(.plain)
-        .navigationTitle("Saved Routes")
     }
 }
