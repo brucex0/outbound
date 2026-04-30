@@ -14,7 +14,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, and `HealthAuthorizationStore`, and shows `MainTabView` when login is skipped or authenticated.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `HealthAuthorizationStore`, and `HealthImportStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
 - `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` now owns modal launch into `RecordView` for both suggested sessions and freestyle starts.
 
@@ -64,4 +64,4 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Integrations
 
 - `Integrations/HealthKit/HealthKitService.swift`: lightweight `HealthKit` wrapper that defines the initial workout import/write-back permission set, exposes authorization snapshot state, and safely reports unavailable environments.
-- `Integrations/HealthKit/HealthAuthorizationStore.swift`: UI-facing observable store for refreshing HealthKit permission state and requesting Apple Health access from the Me tab.
+- `Integrations/HealthKit/HealthAuthorizationStore.swift`: UI-facing observable stores for refreshing HealthKit permission state, requesting Apple Health access from the Me tab, and previewing recent imported workouts with a normalized `ImportedWorkout` model.

@@ -1,5 +1,30 @@
 import Foundation
 
+struct ImportedWorkout: Identifiable, Equatable {
+    let id: String
+    let activityName: String
+    let sourceName: String
+    let startedAt: Date
+    let endedAt: Date
+    let durationSeconds: Int
+    let distanceMeters: Double?
+    let energyBurnedKilocalories: Double?
+
+    var summaryLine: String {
+        var parts = [durationSeconds.formatted()]
+
+        if let distanceMeters {
+            parts.append(String(format: "%.2f km", distanceMeters / 1000))
+        }
+
+        if let energyBurnedKilocalories {
+            parts.append("\(Int(energyBurnedKilocalories.rounded())) kcal")
+        }
+
+        return parts.joined(separator: " • ")
+    }
+}
+
 @MainActor
 final class HealthAuthorizationStore: ObservableObject {
     @Published private(set) var snapshot: HealthAuthorizationSnapshot
@@ -55,5 +80,36 @@ final class HealthAuthorizationStore: ObservableObject {
             return description
         }
         return "Apple Health access could not be updated in this build."
+    }
+}
+
+@MainActor
+final class HealthImportStore: ObservableObject {
+    @Published private(set) var recentWorkouts: [ImportedWorkout] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var lastErrorMessage: String?
+
+    private let service: HealthKitServing
+
+    init(service: HealthKitServing = HealthKitService()) {
+        self.service = service
+    }
+
+    func refreshRecentWorkouts(limit: Int = 3) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            recentWorkouts = try await service.fetchRecentWorkouts(limit: limit)
+            lastErrorMessage = nil
+        } catch {
+            recentWorkouts = []
+            if let localizedError = error as? LocalizedError,
+               let description = localizedError.errorDescription {
+                lastErrorMessage = description
+            } else {
+                lastErrorMessage = "Recent Apple Health workouts could not be loaded."
+            }
+        }
     }
 }

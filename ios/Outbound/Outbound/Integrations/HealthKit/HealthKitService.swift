@@ -93,6 +93,7 @@ protocol HealthKitServing {
     func currentAuthorizationSnapshot() -> HealthAuthorizationSnapshot
     func refreshAuthorizationSnapshot() async -> HealthAuthorizationSnapshot
     func requestAuthorization() async throws -> HealthAuthorizationSnapshot
+    func fetchRecentWorkouts(limit: Int) async throws -> [ImportedWorkout]
 }
 
 enum HealthKitServiceError: LocalizedError {
@@ -146,6 +147,18 @@ struct HealthKitService: HealthKitServing {
         }
 
         return await refreshAuthorizationSnapshot()
+#else
+        throw HealthKitServiceError.unavailable
+#endif
+    }
+
+    func fetchRecentWorkouts(limit: Int) async throws -> [ImportedWorkout] {
+#if canImport(HealthKit)
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitServiceError.unavailable
+        }
+
+        return try await fetchRecentWorkoutsInternal(limit: limit)
 #else
         throw HealthKitServiceError.unavailable
 #endif
@@ -228,6 +241,40 @@ private extension HealthKitService {
         }
     }
 
+    func fetchRecentWorkoutsInternal(limit: Int) async throws -> [ImportedWorkout] {
+        try await withCheckedThrowingContinuation { continuation in
+            let sortDescriptors = [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: nil,
+                limit: limit,
+                sortDescriptors: sortDescriptors
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                let workouts = (samples as? [HKWorkout] ?? []).map { workout in
+                    ImportedWorkout(
+                        id: workout.uuid.uuidString,
+                        activityName: workout.workoutActivityType.displayName,
+                        sourceName: workout.sourceRevision.source.name,
+                        startedAt: workout.startDate,
+                        endedAt: workout.endDate,
+                        durationSeconds: Int(workout.duration.rounded()),
+                        distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
+                        energyBurnedKilocalories: workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+                    )
+                }
+
+                continuation.resume(returning: workouts)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
     func mapRequestStatus(_ status: HKAuthorizationRequestStatus) -> HealthAuthorizationRequestState {
         switch status {
         case .shouldRequest:
@@ -258,5 +305,30 @@ private extension HealthKitService {
 private struct HealthReadableType {
     let title: String
     let objectType: HKObjectType
+}
+
+private extension HKWorkoutActivityType {
+    var displayName: String {
+        switch self {
+        case .running:
+            return "Run"
+        case .walking:
+            return "Walk"
+        case .cycling:
+            return "Ride"
+        case .hiking:
+            return "Hike"
+        case .traditionalStrengthTraining:
+            return "Strength"
+        case .functionalStrengthTraining:
+            return "Functional strength"
+        case .yoga:
+            return "Yoga"
+        case .mixedCardio:
+            return "Cardio"
+        default:
+            return "Workout"
+        }
+    }
 }
 #endif

@@ -6,6 +6,7 @@ struct ProfileView: View {
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject var healthImportStore: HealthImportStore
 
     private let sectionPreviewLimit = 3
 
@@ -135,9 +136,14 @@ struct ProfileView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            recentHealthWorkouts
+
             if healthAuthorizationStore.snapshot.isHealthDataAvailable {
                 Button {
-                    Task { await healthAuthorizationStore.requestAuthorization() }
+                    Task {
+                        await healthAuthorizationStore.requestAuthorization()
+                        await healthImportStore.refreshRecentWorkouts()
+                    }
                 } label: {
                     HStack {
                         Text(healthAuthorizationStore.actionLabel)
@@ -158,6 +164,50 @@ struct ProfileView: View {
         .padding()
         .background(.red.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var recentHealthWorkouts: some View {
+        if healthImportStore.isLoading {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading recent workouts...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let lastErrorMessage = healthImportStore.lastErrorMessage {
+            Text(lastErrorMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if !healthImportStore.recentWorkouts.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recent Health Workouts")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                ForEach(healthImportStore.recentWorkouts) { workout in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(workout.activityName)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(workout.startedAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(workout.summaryLine)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(workout.sourceName)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
     }
 
     private var myActivitiesSection: some View {
