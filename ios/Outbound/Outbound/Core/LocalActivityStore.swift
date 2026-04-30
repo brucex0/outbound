@@ -10,8 +10,7 @@ enum LocalActivityStore {
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
         title: String,
-        coachNudge: String,
-        saveRoute: Bool
+        coachNudge: String
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -36,7 +35,7 @@ enum LocalActivityStore {
             durationSecs: summary.durationSecs,
             distanceM: summary.distanceM,
             avgPace: summary.avgPace,
-            route: saveRoute ? SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)) : nil,
+            route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos
         )
 

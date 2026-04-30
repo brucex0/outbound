@@ -116,6 +116,7 @@ struct ActivityDetailView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
             }
+            .accessibilityIdentifier("ShareRouteButton")
             .disabled(!currentActivity.hasRoute)
         }
         .padding(.horizontal, 16)
