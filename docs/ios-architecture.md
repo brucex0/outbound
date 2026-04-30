@@ -14,13 +14,13 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, and `ActivityStore`, and shows `MainTabView` when login is skipped or authenticated.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, and `DailyCheckInStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
-- `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` now owns modal launch into `RecordView` for both suggested sessions and freestyle starts.
+- `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` owns the floating activity button shown on Today and Social, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the shared recording flow presented from Today. It shows the confirmation state for a suggested session or freestyle run, opens the live camera/map recorder after Start, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. Saving an activity also persists the route needed for map display and later export.
+- `Activity/RecordView.swift`: owns the shared activity page and recording flow. When opened from a Today suggestion it shows that confirmation state; when opened from the floating activity button it shows an activity hub with recommendation plus freestyle. After Start it opens the live camera/map recorder, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the floating activity button reopens it.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Supports pause/resume by stopping both the session timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, computes total distance and recent pace, supports background location updates, and can temporarily stop/resume GPS updates during a paused activity.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the coach.
@@ -54,6 +54,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: now also defines `DailyCheckInStore`, which persists one local readiness selection per day in `UserDefaults`.
 - `App/MainTabView.swift`: now also contains the motivation MVP types and `TodayView`, including spark, check-in, suggested actions, momentum strip, recent activity preview, and the local engine that derives motivation state and finish reflections.
+- `docs/goals-progress.md`: the recommended next-step design for local-first focus and goal tracking. It proposes a `GoalStore`, progress engine, and conversational setup flow on Today rather than a static settings form.
 
 ## Network And Placeholders
 

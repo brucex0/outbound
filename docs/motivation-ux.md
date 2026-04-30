@@ -81,35 +81,43 @@ The Home tab should feel like a "today" space instead of a dashboard.
 
 Decision:
 - remove the dedicated Record tab
-- make Today the only primary launch surface for starting an activity
-- defer a separate floating quick-start affordance unless the Today-only flow feels too heavy in practice
+- keep Today as the motivation surface for recommended actions
+- add a shared floating activity button on Today and Social
+- let the floating button open the activity page directly
+- let the activity page remain dismissible during a live session and reopen from the floating button
 
 Why:
 - the product thesis is coach-led activation, not a neutral recording utility
-- the first screen should answer `what should I do today?` before it asks the user to self-direct
-- suggested actions, comeback framing, and momentum framing work best when start happens from the same surface
-- removing the Record tab prevents the app from having two competing front doors
+- Today should still answer `what should I do today?` before asking the user to self-direct
+- Social also needs a fast path into activity without pushing the user back to Today first
+- a single floating button works better as a global activity anchor than as a freestyle shortcut
+- allowing re-entry into an active session makes the recording flow feel more resilient and premium
 
 Non-goals for this step:
 - do not turn Today into a dense dashboard
 - do not force the user through a long setup flow before every activity
 - do not remove the ability to start something unstructured or freestyle
+- do not make the floating button visually louder than the coach recommendation on Today
 
 Design consequence:
-- Today must support both guided starts and a simple freestyle start path
-- the recording camera/map experience stays intact; only the pre-start entry point changes
+- Today keeps recommended starts inline, but not every start path needs to live there
+- the activity page becomes the shared entry and return surface for starting, resuming, and finishing sessions
+- the recording camera/map experience stays intact; only the pre-start and re-entry model changes
 
 Future fallback:
-- if Today feels too slow or too content-heavy after implementation, add a lightweight quick-start affordance on Today rather than restoring a full Record tab
+- if the floating button feels too dominant, reduce its visual weight before moving start actions back into the hero
 
 ## Start Surface Design
 
-Today should become the full pre-activity surface.
+The product now has two start surfaces with different roles.
+
+### Today
+
+Today remains the recommendation surface.
 
 Recommended start actions:
 - primary guided CTA in the spark card
 - 2-3 suggested action cards
-- one explicit `Start freestyle` action
 - optional recent-repeat action such as `Repeat yesterday's vibe` when history supports it
 
 Principle:
@@ -117,28 +125,50 @@ Principle:
 
 This means the screen should feel like:
 - the coach has a recommendation
-- the user can still ignore the recommendation and move immediately
+- the user can accept that recommendation in one tap
+- freestyle is still easy to reach, but no longer needs to sit inside the hero
 
-### Today-Only Start Flow
+### Floating Activity Button
+
+The floating button appears on:
+- Today
+- Social
+
+The floating button does not mean `start freestyle`.
+
+The floating button means:
+- `open activity`
+
+When idle:
+- tapping the button opens the activity page
+- the activity page shows a recommended option when available, plus quick-start alternatives such as freestyle
+
+When a session is active or paused:
+- tapping the button returns the user to the existing in-progress activity page
+- the button becomes the persistent re-entry anchor for the live session
+
+### Activity Page Flow
 
 1. User opens Today.
-2. User sees spark, readiness, and suggested actions.
-3. User can choose one of two paths:
-4. Guided path: tap a suggested action or the spark CTA.
-5. Freestyle path: tap `Start freestyle`.
-6. App shows a lightweight confirmation state.
-7. User starts recording.
+2. User taps a suggested action on Today, or taps the floating button on Today/Social.
+3. App opens the activity page.
+4. If the entry came from a suggestion, the activity page opens on that suggested confirmation state.
+5. If the entry came from the floating button while idle, the activity page shows:
+   - recommended activity for today
+   - freestyle start
+   - optional alternate quick starts
+6. User starts recording.
 
 ### Freestyle Design
 
-Freestyle should be visible but not visually louder than the guided action.
+Freestyle remains one tap away inside the activity page.
 
 Requirements:
-- one tap away from Today
+- visible inside the activity page without scrolling deep
 - no guilt framing
-- no need to choose a suggestion first
-- can default to run for MVP if we want to keep complexity low
-- if sport selection is needed, use a small start sheet, not a full new page
+- no need to choose a recommendation first
+- can default to run for MVP if needed
+- should not outrank the recommended action visually on Today
 
 ### Confirmation State
 
@@ -163,11 +193,12 @@ Freestyle confirmation should show:
 
 The Today screen should keep this order:
 - one emotionally strong hero
+- one lightweight focus / goals layer when we add it
 - one lightweight readiness interaction
 - a small set of obvious actions
 - supporting momentum / history below
 
-The user should never have to scroll to find a way to start.
+The user should never have to scroll to find a recommended start, and the floating activity button should remain visible as the global fallback.
 
 ### 1. Coach Spark Card
 
@@ -251,9 +282,60 @@ Behavior:
 - suggestions should feel approachable, not like training plans
 
 Current implementation:
-- Today is the only primary launch surface
-- the hero includes a visible `Start freestyle` action
-- both suggested actions and freestyle open the same confirmation/start flow before recording begins
+- Today still owns suggested starts
+- freestyle is reached from the activity page instead of the hero
+- the floating activity button on Today and Social also opens the shared activity page
+
+## Activity Page
+
+The activity page is now the shared surface for:
+- suggested-session confirmation
+- freestyle entry
+- live-session re-entry
+
+When opened from the floating button while idle, it should behave like a lightweight activity hub rather than an empty recorder.
+
+Recommended content:
+- recommended activity card if available
+- visible freestyle start option
+- one or two alternate suggested starts
+
+Future goals work should plug into this page as context, not as a full setup interruption. The coach can reference the active weekly focus here, but initial focus setup should still begin in Today.
+
+## Live Session Dismissal
+
+Users should be able to leave the activity page while an activity is still active.
+
+This should not pause, stop, or finish the session.
+
+### Dismiss Affordance
+
+Use a visible top `chevron.down` button instead of swipe-to-dismiss.
+
+Reason:
+- the activity page already contains gesture-heavy surfaces such as the map and camera
+- swipe-down would compete with map gestures and create ambiguity
+- the down-arrow communicates `hide this page, keep the session alive`
+
+Rules:
+- down arrow hides the activity page
+- pause button pauses the session
+- finish button ends the session
+- the floating activity button reopens the page
+
+### Floating Button Session States
+
+The floating activity button should signal live session state:
+- idle: default start treatment
+- active: live visual treatment
+- paused: paused visual treatment
+
+The clue can be communicated through:
+- icon change
+- color change
+- a small live or paused indicator
+
+The button should not become noisy or oversized.
 
 ### 4. Momentum Strip
 
@@ -270,6 +352,13 @@ Design:
 - compact
 - swipeable or horizontally scrollable
 - emotionally framed rather than number-heavy
+
+Goal-aware progress should land here before it grows into any larger progress page.
+
+Examples:
+- `1 of 3 sessions this week`
+- `15 min left on your weekly focus`
+- `You completed this week's focus`
 
 ### 5. History / Feed
 
@@ -312,6 +401,8 @@ Yesterday:
 Design note:
 - this should feel more intimate and alive than a settings page
 - think conversation, not configuration
+
+This same principle should guide goal setting. If we add weekly goals or focus areas, the coach should introduce them as a short conversation with reply chips, not as a static form.
 
 ## Key User Journeys
 
