@@ -264,7 +264,7 @@ private extension HealthKitService {
                         endedAt: workout.endDate,
                         durationSeconds: Int(workout.duration.rounded()),
                         distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
-                        energyBurnedKilocalories: workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+                        energyBurnedKilocalories: energyBurnedKilocalories(for: workout)
                     )
                 }
 
@@ -298,6 +298,21 @@ private extension HealthKitService {
             return .authorized
         @unknown default:
             return .unknown
+        }
+    }
+
+    func energyBurnedKilocalories(for workout: HKWorkout) -> Double? {
+        if #available(iOS 18.0, *) {
+            guard let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+                return nil
+            }
+
+            return workout
+                .statistics(for: activeEnergyType)?
+                .sumQuantity()?
+                .doubleValue(for: .kilocalorie())
+        } else {
+            return workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         }
     }
 }

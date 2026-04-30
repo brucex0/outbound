@@ -6,6 +6,7 @@ Open this when validating changes, installing on device, editing signing setting
 
 - Bundle ID: `xhstudio.Outbound`.
 - Development team in the project: `JGNGM4YRX5`.
+- Current iOS deployment target in Xcode: `18.0`.
 - Personal-team installs currently require empty entitlements.
 - Do not re-add `aps-environment`, `com.apple.developer.healthkit`, or `com.apple.developer.healthkit.access` unless switching to a paid team that supports Push Notifications and HealthKit.
 

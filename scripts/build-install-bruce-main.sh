@@ -2,7 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-/tmp/outbound-device-derived}"
+if [[ -n "${DERIVED_DATA_PATH:-}" ]]; then
+  DERIVED_DATA_PATH="$DERIVED_DATA_PATH"
+else
+  DERIVED_DATA_PATH="$(mktemp -d /tmp/outbound-device-derived.XXXXXX)"
+fi
 TARGET_DEVICE_NAME="${TARGET_DEVICE_NAME:-Bruce main}"
 CORE_DEVICE_ID="${CORE_DEVICE_ID:-591E461F-4950-5FBD-A797-4777F1E83532}"
 BUNDLE_ID="xhstudio.Outbound"
@@ -22,7 +26,7 @@ Options:
   -h, --help     Show this help.
 
 Environment:
-  DERIVED_DATA_PATH  Defaults to /tmp/outbound-device-derived.
+  DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp.
   TARGET_DEVICE_NAME Defaults to Bruce main.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
 USAGE
