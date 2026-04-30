@@ -17,7 +17,8 @@ struct LocalActivityStorePhotoTests {
             paceAtShot: 315,
             hrAtShot: 142,
             distAtShot: 1200,
-            coordinate: coordinate
+            coordinate: coordinate,
+            captureContext: .active
         )
         let summary = ActivitySummary(
             startedAt: startedAt,

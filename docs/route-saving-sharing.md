@@ -73,8 +73,8 @@ Open this when implementing saved routes, route export, route sharing, or route 
 
 ## Current V1 Implementation
 
-- Saving an activity always saves the activity record itself.
-- The post-run screen exposes a separate `Save Route` toggle; when enabled, the app saves a simplified private route with ordered points.
-- The Me/Profile screen is a dashboard with separate `Saved Routes` and `My Activities` sections.
-- Route detail supports on-demand `GPX` and `GeoJSON` export through the iOS share sheet.
-- Older saved activities that only contain raw `trackPoints` are upgraded at read time into the canonical route model and appear as saved routes.
+- Saving an activity also saves the simplified canonical route needed for in-app route rendering.
+- The post-run save flow no longer exposes a separate route toggle because saved activity detail depends on persisted route data.
+- Route export lives on saved activity detail and supports on-demand `GPX` and `GeoJSON` export through the iOS share sheet.
+- The Me/Profile screen focuses on `My Activities` rather than a separate saved-routes library.
+- Older saved activities that only contain raw `trackPoints` are upgraded at read time into the canonical route model.
