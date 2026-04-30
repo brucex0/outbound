@@ -3,24 +3,17 @@ import SwiftUI
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .today
     @State private var activeLaunch: RecordLaunch?
+    @State private var isActivityVisible = false
+    @State private var activitySessionState: ActivitySessionPortalState = .idle
+    @State private var activityElapsedSeconds = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
             TodayView(
                 onStartSuggestion: { suggestion in
-                    activeLaunch = RecordLaunch(intent: suggestion.intent)
-                },
-                onStartFreestyle: {
-                    activeLaunch = RecordLaunch(intent: .freestyleRun)
+                    presentActivity(intent: suggestion.intent)
                 }
             )
-            .fullScreenCover(item: $activeLaunch, onDismiss: {
-                activeLaunch = nil
-            }) { launch in
-                RecordView(initialIntent: launch.intent) {
-                    activeLaunch = nil
-                }
-            }
             .tabItem { Label("Today", systemImage: "sun.max.fill") }
             .tag(AppTab.today)
 
@@ -33,6 +26,63 @@ struct MainTabView: View {
                 .tag(AppTab.me)
         }
         .tint(.orange)
+        .toolbar(isActivityVisible ? .hidden : .visible, for: .tabBar)
+        .overlay(alignment: .bottomTrailing) {
+            if shouldShowActivityFAB {
+                ActivityPortalButton(
+                    state: activitySessionState,
+                    elapsedSeconds: activityElapsedSeconds,
+                    sport: activeLaunch?.intent?.sport
+                ) {
+                    presentActivity()
+                }
+                .padding(.trailing, 18)
+                .padding(.bottom, 82)
+            }
+        }
+        .overlay {
+            if let launch = activeLaunch {
+                RecordView(
+                    initialIntent: launch.intent,
+                    isVisible: isActivityVisible,
+                    onCloseRequest: handleActivityClose,
+                    onSessionStateChange: { activitySessionState = $0 },
+                    onElapsedTimeChange: { activityElapsedSeconds = $0 }
+                )
+                .offset(y: isActivityVisible ? 0 : 1200)
+                .allowsHitTesting(isActivityVisible)
+                .animation(.spring(response: 0.34, dampingFraction: 0.92), value: isActivityVisible)
+                .zIndex(1)
+            }
+        }
+    }
+
+    private var shouldShowActivityFAB: Bool {
+        !isActivityVisible && (selectedTab == .today || selectedTab == .social)
+    }
+
+    private func presentActivity(intent: SessionIntent? = nil) {
+        if let activeLaunch, activitySessionState != .idle {
+            self.activeLaunch = activeLaunch
+            isActivityVisible = true
+            return
+        }
+
+        activeLaunch = RecordLaunch(intent: intent ?? .freestyleRun)
+        activitySessionState = .idle
+        activityElapsedSeconds = 0
+        isActivityVisible = true
+    }
+
+    private func handleActivityClose(shouldKeepAlive: Bool) {
+        if shouldKeepAlive {
+            isActivityVisible = false
+        } else {
+            activeLaunch = nil
+            activitySessionState = .idle
+            activityElapsedSeconds = 0
+            isActivityVisible = false
+        }
     }
 }
 
@@ -44,7 +94,24 @@ private enum AppTab {
 
 private struct RecordLaunch: Identifiable {
     let id = UUID()
-    let intent: SessionIntent
+    let intent: SessionIntent?
+}
+
+enum ActivitySessionPortalState {
+    case idle
+    case active
+    case paused
+
+    init(recordingState: RecordingState) {
+        switch recordingState {
+        case .idle:
+            self = .idle
+        case .active:
+            self = .active
+        case .paused:
+            self = .paused
+        }
+    }
 }
 
 enum MotivationPhase {
@@ -64,6 +131,7 @@ struct CoachSpark: Equatable {
 
 struct SuggestedSession: Identifiable, Hashable {
     let id: String
+    let sport: SportType
     let title: String
     let durationLabel: String
     let activityLabel: String
@@ -74,6 +142,7 @@ struct SuggestedSession: Identifiable, Hashable {
     var intent: SessionIntent {
         SessionIntent(
             id: id,
+            sport: sport,
             title: title,
             detail: "\(durationLabel) • \(activityLabel)",
             coachLine: coachLine,
@@ -84,13 +153,17 @@ struct SuggestedSession: Identifiable, Hashable {
 
 struct SessionIntent: Identifiable, Hashable {
     let id: String
+    let sport: SportType
     let title: String
     let detail: String
     let coachLine: String
     let startLabel: String
 
+    var systemImage: String { sport.systemImage }
+
     static let freestyleRun = SessionIntent(
         id: "freestyle-run",
+        sport: .run,
         title: "Freestyle run",
         detail: "Run • no preset target",
         coachLine: "No pressure. Just start where you are.",
@@ -123,7 +196,6 @@ struct TodayView: View {
     @EnvironmentObject private var checkInStore: DailyCheckInStore
 
     let onStartSuggestion: (SuggestedSession) -> Void
-    let onStartFreestyle: () -> Void
 
     private let recentPreviewLimit = 3
 
@@ -191,21 +263,6 @@ struct TodayView: View {
                 }
                 .foregroundStyle(.white)
             }
-
-            Button(action: onStartFreestyle) {
-                HStack {
-                    Text("Start freestyle")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Image(systemName: "figure.run")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .padding(.horizontal, 18)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(.white.opacity(0.10), in: Capsule())
-            }
-            .foregroundStyle(.white.opacity(0.92))
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -333,6 +390,79 @@ struct TodayView: View {
                     RecentActivityRow(activity: activity)
                 }
             }
+        }
+    }
+}
+
+private struct ActivityPortalButton: View {
+    let state: ActivitySessionPortalState
+    let elapsedSeconds: Int
+    let sport: SportType?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: iconName)
+                        .font(.headline.weight(.bold))
+
+                    if state != .idle {
+                        Circle()
+                            .fill(state == .paused ? Color.yellow : Color.red)
+                            .frame(width: 10, height: 10)
+                            .offset(x: 2, y: -2)
+                    }
+                }
+
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .frame(height: 56)
+            .background(backgroundStyle, in: Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 18, y: 10)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var title: String {
+        switch state {
+        case .idle:
+            return "Start"
+        case .active:
+            return elapsedSeconds.formatted()
+        case .paused:
+            return elapsedSeconds > 0 ? elapsedSeconds.formatted() : "Paused"
+        }
+    }
+
+    private var iconName: String {
+        sport?.systemImage ?? "figure.run"
+    }
+
+    private var backgroundStyle: LinearGradient {
+        switch state {
+        case .idle:
+            return LinearGradient(colors: [Color.orange, Color(red: 0.93, green: 0.43, blue: 0.12)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .active:
+            return LinearGradient(colors: [Color(red: 1.0, green: 0.39, blue: 0.26), Color(red: 0.89, green: 0.18, blue: 0.23)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .paused:
+            return LinearGradient(colors: [Color(red: 0.98, green: 0.74, blue: 0.20), Color(red: 0.88, green: 0.57, blue: 0.14)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+
+    private var accessibilityLabel: String {
+        switch state {
+        case .idle:
+            return "Open activity"
+        case .active:
+            return "Return to live \(sport?.displayName.lowercased() ?? "activity"), \(elapsedSeconds.formatted()) elapsed"
+        case .paused:
+            return "Return to paused \(sport?.displayName.lowercased() ?? "activity"), \(elapsedSeconds.formatted()) elapsed"
         }
     }
 }
@@ -558,6 +688,7 @@ enum DailyMotivationEngine {
             return [
                 SuggestedSession(
                     id: "recovery-reset",
+                    sport: persona.template.sport,
                     title: "5 min reset",
                     durationLabel: "5 min",
                     activityLabel: "recovery \(sportLabel)",
@@ -567,6 +698,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "fresh-air-loop",
+                    sport: persona.template.sport,
                     title: "Fresh air loop",
                     durationLabel: "10 min",
                     activityLabel: "easy \(sportLabel)",
@@ -579,6 +711,7 @@ enum DailyMotivationEngine {
             return [
                 SuggestedSession(
                     id: "comeback-walk",
+                    sport: .run,
                     title: "Fresh start",
                     durationLabel: "5 min",
                     activityLabel: "walk or jog",
@@ -588,6 +721,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "easy-return",
+                    sport: persona.template.sport,
                     title: "10 min easy session",
                     durationLabel: "10 min",
                     activityLabel: sportLabel,
@@ -597,6 +731,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "photo-shakeout",
+                    sport: persona.template.sport,
                     title: "Shakeout + photo",
                     durationLabel: "12 min",
                     activityLabel: sportLabel,
@@ -609,6 +744,7 @@ enum DailyMotivationEngine {
             return [
                 SuggestedSession(
                     id: "steady-build",
+                    sport: persona.template.sport,
                     title: "15 min easy build",
                     durationLabel: "15 min",
                     activityLabel: sportLabel,
@@ -618,6 +754,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "repeat-vibe",
+                    sport: persona.template.sport,
                     title: "Repeat yesterday's vibe",
                     durationLabel: "12 min",
                     activityLabel: sportLabel,
@@ -627,6 +764,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "confidence-lap",
+                    sport: persona.template.sport,
                     title: "Confidence lap",
                     durationLabel: "8 min",
                     activityLabel: "smooth \(sportLabel)",
@@ -641,6 +779,7 @@ enum DailyMotivationEngine {
             return [
                 SuggestedSession(
                     id: "daily-reset",
+                    sport: persona.template.sport,
                     title: firstTitle,
                     durationLabel: firstDuration,
                     activityLabel: sportLabel,
@@ -650,6 +789,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "fresh-air",
+                    sport: .run,
                     title: "Fresh air walk",
                     durationLabel: "10 min",
                     activityLabel: "walk",
@@ -659,6 +799,7 @@ enum DailyMotivationEngine {
                 ),
                 SuggestedSession(
                     id: "photo-reset",
+                    sport: persona.template.sport,
                     title: "Shakeout + photo",
                     durationLabel: "12 min",
                     activityLabel: sportLabel,

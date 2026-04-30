@@ -83,7 +83,7 @@ Decision:
 - remove the dedicated Record tab
 - keep Today as the motivation surface for recommended actions
 - add a shared floating activity button on Today and Social
-- let the floating button open the activity page directly
+- let the floating button quick-start directly into the shared start page
 - let the activity page remain dismissible during a live session and reopen from the floating button
 
 Why:
@@ -91,6 +91,7 @@ Why:
 - Today should still answer `what should I do today?` before asking the user to self-direct
 - Social also needs a fast path into activity without pushing the user back to Today first
 - a single floating button works better as a global activity anchor than as a freestyle shortcut
+- quick start should feel immediate, so it should not stop on an extra chooser page first
 - allowing re-entry into an active session makes the recording flow feel more resilient and premium
 
 Non-goals for this step:
@@ -101,7 +102,7 @@ Non-goals for this step:
 
 Design consequence:
 - Today keeps recommended starts inline, but not every start path needs to live there
-- the activity page becomes the shared entry and return surface for starting, resuming, and finishing sessions
+- the shared start page becomes the direct quick-start surface for freestyle and suggested sessions
 - the recording camera/map experience stays intact; only the pre-start and re-entry model changes
 
 Future fallback:
@@ -137,11 +138,11 @@ The floating button appears on:
 The floating button does not mean `start freestyle`.
 
 The floating button means:
-- `open activity`
+- `quick start / return to activity`
 
 When idle:
-- tapping the button opens the activity page
-- the activity page shows a recommended option when available, plus quick-start alternatives such as freestyle
+- tapping the button opens the shared start page directly
+- for MVP, this start page defaults to freestyle run confirmation
 
 When a session is active or paused:
 - tapping the button returns the user to the existing in-progress activity page
@@ -151,20 +152,17 @@ When a session is active or paused:
 
 1. User opens Today.
 2. User taps a suggested action on Today, or taps the floating button on Today/Social.
-3. App opens the activity page.
-4. If the entry came from a suggestion, the activity page opens on that suggested confirmation state.
-5. If the entry came from the floating button while idle, the activity page shows:
-   - recommended activity for today
-   - freestyle start
-   - optional alternate quick starts
+3. App opens the shared start page directly.
+4. If the entry came from a suggestion, the start page opens on that suggested confirmation state.
+5. If the entry came from the floating button while idle, the start page opens on freestyle confirmation.
 6. User starts recording.
 
 ### Freestyle Design
 
-Freestyle remains one tap away inside the activity page.
+Freestyle remains one tap away from the floating button.
 
 Requirements:
-- visible inside the activity page without scrolling deep
+- visible immediately with no intermediate chooser page
 - no guilt framing
 - no need to choose a recommendation first
 - can default to run for MVP if needed
@@ -290,15 +288,10 @@ Current implementation:
 
 The activity page is now the shared surface for:
 - suggested-session confirmation
-- freestyle entry
+- freestyle confirmation
 - live-session re-entry
 
-When opened from the floating button while idle, it should behave like a lightweight activity hub rather than an empty recorder.
-
-Recommended content:
-- recommended activity card if available
-- visible freestyle start option
-- one or two alternate suggested starts
+When opened from the floating button while idle, it should skip an intermediate chooser and go straight to the freestyle start state.
 
 Future goals work should plug into this page as context, not as a full setup interruption. The coach can reference the active weekly focus here, but initial focus setup should still begin in Today.
 

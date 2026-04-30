@@ -16,11 +16,23 @@ struct RecordView: View {
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
 
-    private let onClose: (() -> Void)?
+    let isVisible: Bool
+    private let onCloseRequest: ((Bool) -> Void)?
+    private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
+    private let onElapsedTimeChange: ((Int) -> Void)?
 
-    init(initialIntent: SessionIntent? = nil, onClose: (() -> Void)? = nil) {
+    init(
+        initialIntent: SessionIntent? = nil,
+        isVisible: Bool = true,
+        onCloseRequest: ((Bool) -> Void)? = nil,
+        onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
+        onElapsedTimeChange: ((Int) -> Void)? = nil
+    ) {
         _plannedIntent = State(initialValue: initialIntent)
-        self.onClose = onClose
+        self.isVisible = isVisible
+        self.onCloseRequest = onCloseRequest
+        self.onSessionStateChange = onSessionStateChange
+        self.onElapsedTimeChange = onElapsedTimeChange
         let loc = LocationManager()
         _recorder = StateObject(wrappedValue: ActivityRecorder(locationManager: loc))
     }
@@ -28,56 +40,71 @@ struct RecordView: View {
     var body: some View {
         ZStack {
             if showCamera {
-                TabView(selection: $activePage) {
-                    CameraHUDView(
-                        recorder: recorder,
-                        coach: coach,
-                        capturedPhotoCount: capturedPhotos.count,
-                        lastCapturedPhoto: capturedPhotos.last?.0,
-                        activePage: $activePage,
-                        onStart: startRecording,
-                        onFinish: finishRecording
-                    ) { image, meta in
-                        capturedPhotos.append((image, meta))
-                    }
-                    .tag(SessionPage.camera)
-                    .ignoresSafeArea()
+                if isVisible {
+                    TabView(selection: $activePage) {
+                        CameraHUDView(
+                            recorder: recorder,
+                            coach: coach,
+                            capturedPhotoCount: capturedPhotos.count,
+                            lastCapturedPhoto: capturedPhotos.last?.0,
+                            activePage: $activePage,
+                            onStart: startRecording,
+                            onFinish: finishRecording
+                        ) { image, meta in
+                            capturedPhotos.append((image, meta))
+                        }
+                        .tag(SessionPage.camera)
+                        .ignoresSafeArea()
 
-                    LiveMapView(
-                        recorder: recorder,
-                        locationManager: recorder.locationManager,
-                        coach: coach,
-                        capturedPhotoCount: capturedPhotos.count,
-                        lastCapturedPhoto: capturedPhotos.last?.0,
-                        activePage: $activePage,
-                        onStart: startRecording,
-                        onFinish: finishRecording
-                    )
-                    .tag(SessionPage.map)
+                        LiveMapView(
+                            recorder: recorder,
+                            locationManager: recorder.locationManager,
+                            coach: coach,
+                            capturedPhotoCount: capturedPhotos.count,
+                            lastCapturedPhoto: capturedPhotos.last?.0,
+                            activePage: $activePage,
+                            onStart: startRecording,
+                            onFinish: finishRecording
+                        )
+                        .tag(SessionPage.map)
+                        .ignoresSafeArea()
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                     .ignoresSafeArea()
+                } else {
+                    Color.clear
+                        .ignoresSafeArea()
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .ignoresSafeArea()
             } else {
                 readyView
             }
         }
-        .toolbar(showCamera ? .hidden : .visible, for: .tabBar)
+        .background(Color(.systemBackground))
+        .ignoresSafeArea()
+        .toolbar(showCamera && isVisible ? .hidden : .visible, for: .tabBar)
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
         }
-        .overlay(alignment: .topTrailing) {
-            if !showCamera, let onClose {
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
+        .onReceive(recorder.$state) { state in
+            onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
+        }
+        .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
+            onElapsedTimeChange?(elapsedSeconds)
+        }
+        .overlay(alignment: .topLeading) {
+            if isVisible, let onCloseRequest {
+                Button {
+                    onCloseRequest(recorder.state != .idle || pendingActivity != nil)
+                } label: {
+                    Image(systemName: "chevron.down")
                         .font(.headline.weight(.bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(showCamera ? .white : .primary)
                         .frame(width: 40, height: 40)
                         .background(.ultraThinMaterial, in: Circle())
                 }
-                .padding(.top, 14)
-                .padding(.trailing, 16)
-                .accessibilityLabel("Close")
+                .padding(.top, showCamera ? 18 : 14)
+                .padding(.leading, 16)
+                .accessibilityLabel("Hide activity")
             }
         }
         .fullScreenCover(item: $pendingActivity) { activity in
@@ -133,12 +160,12 @@ struct RecordView: View {
             lastNudge: coach.lastNudge
         )
         clearPending()
-        onClose?()
+        onCloseRequest?(false)
     }
 
     private func discardPendingActivity() {
         clearPending()
-        onClose?()
+        onCloseRequest?(false)
     }
 
     private func clearPending() {
@@ -149,64 +176,43 @@ struct RecordView: View {
     }
 
     private var readyView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer(minLength: 72)
+                confirmationView(for: plannedIntent ?? .freestyleRun)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 40)
+        }
+    }
+
+    private func confirmationView(for intent: SessionIntent) -> some View {
         VStack(spacing: 24) {
-            Spacer()
-
-            if let plannedIntent {
-                VStack(spacing: 20) {
-                    VStack(spacing: 8) {
-                        Text(plannedIntent.title)
-                            .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                            .multilineTextAlignment(.center)
-                        Text(plannedIntent.detail)
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Coach \(coachCatalog.selectedPersona.template.displayName) says:")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text("“\(plannedIntent.coachLine)”")
-                            .font(.title3.weight(.semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                }
-            } else {
-                VStack(spacing: 8) {
-                    Text(recorder.elapsedSeconds.formatted())
-                        .font(.system(size: 72, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-
-                    HStack(spacing: 40) {
-                        StatBlock(
-                            label: "Distance",
-                            value: String(format: "%.2f km", recorder.distanceMeters / 1000)
-                        )
-                        if let pace = recorder.currentPace {
-                            StatBlock(label: "Pace", value: pace.paceString)
-                        }
-                    }
-                }
-
-                if !coach.lastNudge.isEmpty {
-                    Text(coach.lastNudge)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
+            VStack(spacing: 8) {
+                Text(intent.title)
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .multilineTextAlignment(.center)
+                Text(intent.detail)
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Coach \(coachCatalog.selectedPersona.template.displayName) says:")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("“\(intent.coachLine)”")
+                    .font(.title3.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
             VStack(spacing: 12) {
                 Button(action: startRecording) {
-                    Label(plannedIntent?.startLabel ?? "Start Run", systemImage: "record.circle.fill")
+                    Label(intent.startLabel, systemImage: "record.circle.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -214,22 +220,13 @@ struct RecordView: View {
                         .foregroundStyle(.white)
                 }
 
-                if plannedIntent != nil {
-                    Button("Change activity") {
-                        if let onClose {
-                            onClose()
-                        } else {
-                            plannedIntent = nil
-                        }
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                Button("Change activity") {
+                    onCloseRequest?(false)
                 }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 40)
         }
-        .padding()
     }
 }
 

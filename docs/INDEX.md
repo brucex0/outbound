@@ -10,7 +10,7 @@ Primary flow:
 
 1. App launches directly into `MainTabView`.
 2. Today tab is the first tab and shows the local coach motivation loop: spark card, daily readiness check-in, suggested actions, momentum strip, and recent activity.
-3. Today launches suggested sessions directly, while a floating activity button on Today and Social opens the shared activity page for recommendation review, freestyle starts, and returning to live sessions.
+3. Today launches suggested sessions directly, while a floating activity button on Today and Social quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 4. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
 5. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 6. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Today.
