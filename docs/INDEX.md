@@ -10,7 +10,7 @@ Primary flow:
 
 1. App launches directly into `MainTabView`.
 2. Today tab is the first tab and shows the local coach motivation loop: spark card, daily readiness check-in, suggested actions, momentum strip, and recent activity.
-3. Today launches both suggested sessions and a freestyle start into the shared recording confirmation flow, which then requests location/camera permissions, starts `ActivityRecorder`, activates `VirtualCoach`, and opens the live camera.
+3. Today launches suggested sessions directly, while a floating activity button on Today and Social opens the shared activity page for recommendation review, freestyle starts, and returning to live sessions.
 4. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
 5. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 6. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Today.
@@ -24,6 +24,7 @@ Primary flow:
 | --- | --- | --- |
 | App flow, Swift files, recording, camera, persistence, coach analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI coach shape |
 | Product strategy, competitor scan, feature gaps, roadmap priorities | `docs/product-strategy.md` | Category landscape, Outbound strengths/weaknesses, recommended feature set, and phased roadmap |
+| Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Motivation UX, daily coach loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, check-in, suggested actions, momentum states, and post-activity reflection |
 | Saved routes, route export, sharing requirements, storage efficiency | `docs/route-saving-sharing.md` | Product requirements for canonical route data, saved-route UX, sharing modes, and route simplification/storage rules |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
