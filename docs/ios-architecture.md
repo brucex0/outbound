@@ -14,7 +14,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` when login is skipped or authenticated.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` when login is skipped or authenticated.
 - `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
 - `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` owns the floating activity button shown on Today and Social, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 
@@ -53,8 +53,10 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Motivation
 
 - `App/OutboundApp.swift`: now also defines `DailyCheckInStore`, which persists one local readiness selection per day in `UserDefaults`.
-- `App/MainTabView.swift`: now also contains the motivation MVP types and `TodayView`, including spark, check-in, suggested actions, momentum strip, recent activity preview, and the local engine that derives motivation state and finish reflections.
-- `docs/goals-progress.md`: the recommended next-step design for local-first focus and goal tracking. It proposes a `GoalStore`, progress engine, and conversational setup flow on Today rather than a static settings form.
+- `Goals/GoalModels.swift`, `Goals/GoalProgressEngine.swift`, and `Goals/GoalStore.swift`: local-first weekly focus models, progress computation from saved activities, and persisted coach conversation state.
+- `Goals/GoalConversationCard.swift`: Today-card UI for conversational goal setup, active-focus progress, and lightweight adjustment.
+- `App/MainTabView.swift`: now also contains the motivation MVP types and `TodayView`, including spark, focus setup/progress, check-in, suggested actions, momentum strip, recent activity preview, and the local engine that derives motivation state and finish reflections.
+- `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Today, and goal-aware post-run reflection notes.
 
 ## Network And Placeholders
 

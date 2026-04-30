@@ -181,6 +181,7 @@ struct FinishReflection: Equatable {
     let title: String
     let body: String
     let highlight: String
+    let progressNote: String?
 }
 
 struct DailyMotivationSnapshot {
@@ -194,6 +195,7 @@ struct TodayView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
+    @EnvironmentObject private var goalStore: GoalStore
 
     let onStartSuggestion: (SuggestedSession) -> Void
 
@@ -207,11 +209,27 @@ struct TodayView: View {
         )
     }
 
+    private var momentumNotes: [MomentumNote] {
+        var notes: [MomentumNote] = []
+        if let progress = goalStore.progress {
+            notes.append(
+                MomentumNote(
+                    id: "goal-progress",
+                    text: progress.summaryLine,
+                    symbol: progress.isComplete ? "checkmark.seal.fill" : "target"
+                )
+            )
+        }
+        notes.append(contentsOf: snapshot.momentumNotes)
+        return Array(notes.prefix(4))
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     sparkCard
+                    goalSection
                     readinessCard
                     suggestedActionsSection
                     momentumStrip
@@ -224,7 +242,22 @@ struct TodayView: View {
             .navigationTitle("Today")
             .onAppear {
                 checkInStore.refresh()
+                goalStore.refresh(activities: activityStore.activities, phase: snapshot.phase)
             }
+            .onChange(of: activityStore.activities) { _, activities in
+                goalStore.refresh(activities: activities, phase: snapshot.phase)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var goalSection: some View {
+        if goalStore.conversation.step != .idle || goalStore.progress != nil {
+            GoalConversationCard(
+                phase: snapshot.phase,
+                activities: activityStore.activities,
+                accentColor: coachCatalog.selectedPersona.face.accentColor
+            )
         }
     }
 
@@ -349,7 +382,7 @@ struct TodayView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    ForEach(snapshot.momentumNotes) { note in
+                    ForEach(momentumNotes) { note in
                         HStack(spacing: 8) {
                             Image(systemName: note.symbol)
                                 .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
@@ -558,17 +591,20 @@ enum DailyMotivationEngine {
         priorActivities: [SavedActivity],
         readiness: DailyReadiness?,
         intent: SessionIntent?,
+        goalProgress: GoalProgressSnapshot?,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> FinishReflection {
         let weekCount = activitiesThisWeek(activities: priorActivities, now: now, calendar: calendar) + 1
         let highlight = "\(summary.durationSecs.formatted()) completed"
+        let progressNote = goalProgress?.coachLine
 
         if wasComeback(priorActivities: priorActivities, now: now, calendar: calendar) {
             return FinishReflection(
                 title: "Fresh start secured.",
                 body: "You came back without making it dramatic. That is how rhythm returns.",
-                highlight: highlight
+                highlight: highlight,
+                progressNote: progressNote
             )
         }
 
@@ -577,13 +613,15 @@ enum DailyMotivationEngine {
             return FinishReflection(
                 title: "Nice work.",
                 body: "You showed up on a low-energy day. That matters more than making it perfect.",
-                highlight: highlight
+                highlight: highlight,
+                progressNote: progressNote
             )
         case .stressed:
             return FinishReflection(
                 title: "Good reset.",
                 body: "You gave a busy day somewhere to land. That still counts as real work.",
-                highlight: highlight
+                highlight: highlight,
+                progressNote: progressNote
             )
         default:
             break
@@ -593,7 +631,8 @@ enum DailyMotivationEngine {
             return FinishReflection(
                 title: "Promise kept.",
                 body: "You kept the session small and still followed through. Short sessions still count.",
-                highlight: highlight
+                highlight: highlight,
+                progressNote: progressNote
             )
         }
 
@@ -601,15 +640,25 @@ enum DailyMotivationEngine {
             return FinishReflection(
                 title: "Session logged.",
                 body: "That is \(weekCount) activities this week. You are building consistency.",
-                highlight: highlight
+                highlight: highlight,
+                progressNote: progressNote
             )
         }
 
         return FinishReflection(
             title: "Nice work.",
             body: "You showed up and made the day real. Keep that feeling simple.",
-            highlight: highlight
+            highlight: highlight,
+            progressNote: progressNote
         )
+    }
+
+    static func phase(
+        for activities: [SavedActivity],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> MotivationPhase {
+        determinePhase(activities: activities, now: now, calendar: calendar)
     }
 
     private static func determinePhase(

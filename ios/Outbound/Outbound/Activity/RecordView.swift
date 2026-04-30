@@ -7,6 +7,7 @@ struct RecordView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var checkInStore: DailyCheckInStore
+    @EnvironmentObject var goalStore: GoalStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @State private var showCamera = false
@@ -144,7 +145,8 @@ struct RecordView: View {
             summary: summary,
             priorActivities: activityStore.activities,
             readiness: checkInStore.readiness,
-            intent: activeIntent
+            intent: activeIntent,
+            goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities)
         )
         pendingActivity = PendingFinishedActivity(
             summary: summary,
@@ -158,6 +160,10 @@ struct RecordView: View {
             summary: activity.summary,
             photos: activity.photos,
             lastNudge: coach.lastNudge
+        )
+        goalStore.refresh(
+            activities: activityStore.activities,
+            phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
         clearPending()
         onCloseRequest?(false)
