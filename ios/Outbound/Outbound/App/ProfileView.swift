@@ -200,6 +200,22 @@ struct ProfileView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if let musicKitSetupBannerText = musicStore.musicKitSetupBannerText {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                        .foregroundStyle(.orange)
+                        .padding(.top, 1)
+
+                    Text(musicKitSetupBannerText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+            }
+
             if let lastErrorMessage = musicStore.lastErrorMessage {
                 Text(lastErrorMessage)
                     .font(.caption)
@@ -207,17 +223,20 @@ struct ProfileView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if let troubleshootingLine = musicStore.troubleshootingLine {
+                Text(troubleshootingLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Button {
                 Task {
-                    if musicStore.canShowQuickPicks {
-                        await musicStore.loadQuickPicks()
-                    } else {
-                        await musicStore.connectAppleMusic()
-                    }
+                    await musicStore.performPrimaryAction()
                 }
             } label: {
                 HStack {
-                    Text(musicStore.canShowQuickPicks ? "Refresh mixes" : "Connect Apple Music")
+                    Text(musicStore.primaryActionTitle)
                         .font(.subheadline.bold())
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -229,6 +248,7 @@ struct ProfileView: View {
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
+            .disabled(!musicStore.isPrimaryActionEnabled)
         }
         .padding()
         .background(.orange.opacity(0.07))

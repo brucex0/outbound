@@ -3,6 +3,7 @@ import SwiftUI
 enum SessionPage { case camera, map }
 
 struct RecordView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
@@ -102,6 +103,10 @@ struct RecordView: View {
                 Task { await musicStore.handleCoachSpeechEvent(event) }
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active, recorder.state == .active else { return }
+            Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
+        }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
                 Button {
@@ -152,6 +157,7 @@ struct RecordView: View {
     private func finishRecording() {
         let summary = recorder.finish()
         coach.deactivate()
+        musicStore.clearPendingWorkoutPlayback()
         showCamera = false
         activePage = .camera
         let reflection = DailyMotivationEngine.finishReflection(
@@ -274,6 +280,13 @@ struct RecordView: View {
                     .foregroundStyle(.orange)
             }
 
+            if let troubleshootingLine = musicStore.troubleshootingLine {
+                Text(troubleshootingLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
                 VStack(spacing: 10) {
                     ForEach(musicStore.quickPicks) { quickPick in
@@ -306,10 +319,10 @@ struct RecordView: View {
                 }
             } else {
                 Button {
-                    Task { await musicStore.connectAppleMusic() }
+                    Task { await musicStore.performPrimaryAction() }
                 } label: {
                     HStack {
-                        Text("Connect Apple Music")
+                        Text(musicStore.primaryActionTitle)
                             .font(.subheadline.bold())
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -321,7 +334,7 @@ struct RecordView: View {
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-                .disabled(!musicStore.canConnect && !musicStore.canShowQuickPicks)
+                .disabled(!musicStore.isPrimaryActionEnabled)
             }
         }
         .padding(20)

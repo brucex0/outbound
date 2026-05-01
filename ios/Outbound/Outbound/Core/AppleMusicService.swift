@@ -1,8 +1,11 @@
 import Foundation
 import MusicKit
+import OSLog
 
 @MainActor
 final class AppleMusicService: MusicService {
+    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "AppleMusic")
+
     private let player = ApplicationMusicPlayer.shared
     private var currentQuickPick: MusicQuickPick?
     private var queuedSongs: MusicItemCollection<Song>?
@@ -21,12 +24,18 @@ final class AppleMusicService: MusicService {
     func refreshSnapshot() async -> MusicConnectionSnapshot {
         let status = MusicAuthorization.currentStatus
         let canPlayCatalogContent = await fetchCanPlayCatalogContent(status: status)
+        Self.logger.info(
+            "Refresh Apple Music snapshot. authStatus=\(String(describing: status), privacy: .public) canPlayCatalogContent=\(canPlayCatalogContent)"
+        )
         return makeSnapshot(status: status, canPlayCatalogContent: canPlayCatalogContent)
     }
 
     func connect() async throws -> MusicConnectionSnapshot {
         let status = await MusicAuthorization.request()
         let canPlayCatalogContent = await fetchCanPlayCatalogContent(status: status)
+        Self.logger.info(
+            "Apple Music connect completed. authStatus=\(String(describing: status), privacy: .public) canPlayCatalogContent=\(canPlayCatalogContent)"
+        )
         return makeSnapshot(status: status, canPlayCatalogContent: canPlayCatalogContent)
     }
 
@@ -76,6 +85,9 @@ final class AppleMusicService: MusicService {
     }
 
     func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot {
+        Self.logger.info(
+            "Attempt Apple Music playback. quickPickID=\(quickPick.id, privacy: .public) kind=\(quickPick.kind.rawValue, privacy: .public)"
+        )
         switch quickPick.kind {
         case .continueCurrent:
             try await resumeIfPossible()
@@ -87,30 +99,42 @@ final class AppleMusicService: MusicService {
             }
             let songs = try await loadSongs(for: query)
             guard !songs.isEmpty else {
+                Self.logger.error(
+                    "Apple Music search returned no songs. quickPickID=\(quickPick.id, privacy: .public) query=\(query, privacy: .public)"
+                )
                 throw NSError(domain: "OutboundMusic", code: 2, userInfo: [
                     NSLocalizedDescriptionKey: "Apple Music did not return enough songs for this mix."
                 ])
             }
+            Self.logger.info(
+                "Apple Music search returned songs. quickPickID=\(quickPick.id, privacy: .public) songCount=\(songs.count)"
+            )
             queuedSongs = songs
             currentQuickPick = quickPick
             player.queue = ApplicationMusicPlayer.Queue(for: songs)
             try await player.play()
+            Self.logger.info(
+                "Apple Music player started. quickPickID=\(quickPick.id, privacy: .public) playbackStatus=\(String(describing: self.player.state.playbackStatus), privacy: .public)"
+            )
         }
 
         return playbackSnapshot()
     }
 
     func pause() async -> MusicPlaybackSnapshot {
+        Self.logger.info("Pause Apple Music playback.")
         player.pause()
         return playbackSnapshot()
     }
 
     func resume() async throws -> MusicPlaybackSnapshot {
+        Self.logger.info("Resume Apple Music playback.")
         try await resumeIfPossible()
         return playbackSnapshot()
     }
 
     func skipToNext() async throws -> MusicPlaybackSnapshot {
+        Self.logger.info("Skip Apple Music track.")
         try await player.skipToNextEntry()
         return playbackSnapshot()
     }
@@ -120,17 +144,26 @@ final class AppleMusicService: MusicService {
     }
 
     func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot {
+        Self.logger.info("Coach speech event received. event=\(String(describing: event), privacy: .public)")
         _ = event
         return playbackSnapshot()
     }
 
     private func resumeIfPossible() async throws {
         if queuedSongs != nil || currentQuickPick != nil {
+            Self.logger.info("Resume existing Apple Music queue.")
             try await player.play()
             return
         }
 
-        if let fallbackSongs = try? await loadSongs(for: "upbeat pop dance workout"), !fallbackSongs.isEmpty {
+        do {
+            let fallbackSongs = try await loadSongs(for: "upbeat pop dance workout")
+            guard !fallbackSongs.isEmpty else {
+                Self.logger.error("Fallback Apple Music search returned no songs.")
+                throw NSError(domain: "OutboundMusic", code: 3, userInfo: [
+                    NSLocalizedDescriptionKey: "Connect Apple Music and pick a mix before starting playback."
+                ])
+            }
             queuedSongs = fallbackSongs
             currentQuickPick = MusicQuickPick(
                 id: "outbound-upbeat",
@@ -142,7 +175,10 @@ final class AppleMusicService: MusicService {
             )
             player.queue = ApplicationMusicPlayer.Queue(for: fallbackSongs)
             try await player.play()
+            Self.logger.info("Started fallback Apple Music queue.")
             return
+        } catch {
+            Self.logger.error("Fallback Apple Music playback failed. \(self.describe(error), privacy: .public)")
         }
 
         throw NSError(domain: "OutboundMusic", code: 3, userInfo: [
@@ -153,16 +189,25 @@ final class AppleMusicService: MusicService {
     private func loadSongs(for query: String) async throws -> MusicItemCollection<Song> {
         var request = MusicCatalogSearchRequest(term: query, types: [Song.self])
         request.limit = 20
-        let response = try await request.response()
-        return response.songs
+        do {
+            let response = try await request.response()
+            return response.songs
+        } catch {
+            Self.logger.error("Apple Music search failed. query=\(query, privacy: .public) \(self.describe(error), privacy: .public)")
+            throw userFacingError(from: error, fallbackMessage: "Apple Music could not load tracks for this mix.")
+        }
     }
 
     private func fetchCanPlayCatalogContent(status: MusicAuthorization.Status) async -> Bool {
         guard status == .authorized else { return false }
         do {
             let subscription = try await MusicSubscription.current
+            Self.logger.info(
+                "Fetched Apple Music subscription. canPlayCatalogContent=\(subscription.canPlayCatalogContent)"
+            )
             return subscription.canPlayCatalogContent
         } catch {
+            Self.logger.error("Failed to fetch Apple Music subscription. \(self.describe(error), privacy: .public)")
             return false
         }
     }
@@ -179,7 +224,7 @@ final class AppleMusicService: MusicService {
                 statusTitle: canPlayCatalogContent ? "Connected" : "Connected, playback unavailable",
                 statusDetail: canPlayCatalogContent
                     ? "Play Apple Music mixes during workouts and control them inside Outbound."
-                    : "Apple Music access is granted, but this account cannot play catalog content right now.",
+                    : "Apple Music permission is granted, but catalog playback is unavailable. Check that this device has Apple Music playback access and that MusicKit is enabled for Outbound's App ID.",
                 canPlayCatalogContent: canPlayCatalogContent
             )
         case .denied:
@@ -236,5 +281,63 @@ final class AppleMusicService: MusicService {
             )
         }
         return .empty
+    }
+
+    private func describe(_ error: Error) -> String {
+        let nsError = error as NSError
+        var details = [
+            "error=\(nsError.domain)(\(nsError.code))",
+            "localizedDescription=\(nsError.localizedDescription)"
+        ]
+
+        if !nsError.localizedFailureReason.isNilOrEmpty {
+            details.append("failureReason=\(nsError.localizedFailureReason!)")
+        }
+        if !nsError.localizedRecoverySuggestion.isNilOrEmpty {
+            details.append("recoverySuggestion=\(nsError.localizedRecoverySuggestion!)")
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            details.append("underlying=\(underlying.domain)(\(underlying.code)) \(underlying.localizedDescription)")
+        }
+        if !nsError.userInfo.isEmpty {
+            details.append("userInfo=\(String(describing: nsError.userInfo))")
+        }
+
+        return details.joined(separator: " | ")
+    }
+
+    private func userFacingError(from error: Error, fallbackMessage: String) -> NSError {
+        let nsError = error as NSError
+        let normalizedDescription = nsError.localizedDescription.lowercased()
+        let normalizedFailureReason = (nsError.localizedFailureReason ?? "").lowercased()
+        let combined = normalizedDescription + " " + normalizedFailureReason
+
+        if combined.contains("developer token") {
+            return NSError(domain: "OutboundMusic", code: 101, userInfo: [
+                NSLocalizedDescriptionKey: "Apple Music setup is incomplete. Outbound could not get a MusicKit developer token. Enable MusicKit for Outbound's App ID in the Apple Developer portal, then reinstall or relaunch the app."
+            ])
+        }
+
+        if combined.contains("subscription") || combined.contains("can play catalog content") {
+            return NSError(domain: "OutboundMusic", code: 102, userInfo: [
+                NSLocalizedDescriptionKey: "Apple Music playback is unavailable for this account. Confirm the device is signed into an active Apple Music subscription."
+            ])
+        }
+
+        return NSError(domain: "OutboundMusic", code: 100, userInfo: [
+            NSLocalizedDescriptionKey: fallbackMessage,
+            NSUnderlyingErrorKey: nsError
+        ])
+    }
+}
+
+private extension Optional where Wrapped == String {
+    var isNilOrEmpty: Bool {
+        switch self {
+        case .none:
+            return true
+        case .some(let value):
+            return value.isEmpty
+        }
     }
 }

@@ -67,6 +67,7 @@ struct CameraHUDView: View {
                         paceText: sessionPaceText,
                         distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
                         musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+                        musicErrorMessage: musicStore.lastErrorMessage,
                         onTogglePlayback: {
                             Task { await musicStore.togglePlayback() }
                         },
@@ -431,6 +432,7 @@ struct SessionStatusCard: View {
     let paceText: String
     let distanceText: String
     let musicPlayback: MusicPlaybackSnapshot?
+    let musicErrorMessage: String?
     let onTogglePlayback: () -> Void
     let onSkipTrack: () -> Void
     let onStart: () -> Void
@@ -456,6 +458,8 @@ struct SessionStatusCard: View {
 
                 if let musicPlayback {
                     musicRow(for: musicPlayback)
+                } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
+                    musicErrorRow(message: musicErrorMessage)
                 }
 
                 controls
@@ -472,8 +476,12 @@ struct SessionStatusCard: View {
 
     private func musicRow(for playback: MusicPlaybackSnapshot) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "music.note")
-                .foregroundStyle(.orange)
+            HStack(spacing: 8) {
+                Image(systemName: "music.note")
+                    .foregroundStyle(.orange)
+
+                MusicWaveView(isAnimating: playback.isPlaying)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(playback.title)
@@ -508,6 +516,52 @@ struct SessionStatusCard: View {
         .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("MusicPlaybackRow")
+    }
+
+    private func musicErrorRow(message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private struct MusicWaveView: View {
+        let isAnimating: Bool
+
+        private let barCount = 4
+
+        var body: some View {
+            TimelineView(.animation(minimumInterval: 0.18, paused: !isAnimating)) { context in
+                HStack(alignment: .center, spacing: 3) {
+                    ForEach(0..<barCount, id: \.self) { index in
+                        Capsule(style: .continuous)
+                            .fill(isAnimating ? Color.orange : Color.secondary.opacity(0.45))
+                            .frame(width: 3, height: barHeight(for: index, date: context.date))
+                    }
+                }
+                .frame(width: 24, height: 16, alignment: .center)
+            }
+            .accessibilityHidden(true)
+        }
+
+        private func barHeight(for index: Int, date: Date) -> CGFloat {
+            guard isAnimating else { return [6, 10, 8, 5][index] }
+
+            let time = date.timeIntervalSinceReferenceDate
+            let phase = time * 5.4 + Double(index) * 0.8
+            let normalized = (sin(phase) + 1) / 2
+            return 5 + CGFloat(normalized) * 11
+        }
     }
 
     @ViewBuilder

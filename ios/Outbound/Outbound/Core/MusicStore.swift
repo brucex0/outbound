@@ -1,8 +1,11 @@
 import Combine
 import Foundation
+import OSLog
 
 @MainActor
 final class MusicStore: ObservableObject {
+    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "MusicStore")
+
     @Published private(set) var snapshot: MusicConnectionSnapshot
     @Published private(set) var quickPicks: [MusicQuickPick] = []
     @Published private(set) var playback: MusicPlaybackSnapshot
@@ -15,6 +18,7 @@ final class MusicStore: ObservableObject {
     private let service: any MusicService
     private let defaults: UserDefaults
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
+    private var pendingWorkoutPlayback = false
 
     init(
         service: (any MusicService)? = nil,
@@ -36,7 +40,11 @@ final class MusicStore: ObservableObject {
     }
 
     var canShowQuickPicks: Bool {
-        isConnected && snapshot.canPlayCatalogContent
+        isConnected
+    }
+
+    var needsPlaybackSetup: Bool {
+        isConnected && !snapshot.canPlayCatalogContent
     }
 
     var selectedQuickPick: MusicQuickPick? {
@@ -51,18 +59,50 @@ final class MusicStore: ObservableObject {
             return "Queued: \(selectedQuickPick.title)"
         }
         if isConnected {
+            if needsPlaybackSetup {
+                return "Pick a mix now. Playback may still fail until Apple Music playback access is fully available."
+            }
             return "Pick a mix for this run."
         }
         return snapshot.statusDetail
     }
 
+    var troubleshootingLine: String? {
+        guard needsPlaybackSetup else { return nil }
+        return "If you're testing on a real device, make sure the device is signed into an active Apple Music subscription and that MusicKit is enabled for Outbound's App ID in the Apple Developer portal."
+    }
+
+    var musicKitSetupBannerText: String? {
+        guard let lastErrorMessage else { return nil }
+        let normalized = lastErrorMessage.lowercased()
+        guard normalized.contains("musickit developer token") || normalized.contains("setup is incomplete") else {
+            return nil
+        }
+        return "MusicKit is not fully enabled for this app. In Apple Developer, enable MusicKit for the explicit App ID `xhstudio.Outbound`, then reinstall or relaunch Outbound on your device."
+    }
+
+    var primaryActionTitle: String {
+        if isRefreshing || isLoadingQuickPicks || isStartingPlayback {
+            return "Working..."
+        }
+        if canShowQuickPicks {
+            return quickPicks.isEmpty ? "Load workout mixes" : "Refresh mixes"
+        }
+        return "Connect Apple Music"
+    }
+
+    var isPrimaryActionEnabled: Bool {
+        !(isRefreshing || isLoadingQuickPicks || isStartingPlayback || snapshot.connectionState == .connecting)
+    }
+
     func refresh() async {
+        Self.logger.info("Refresh music store state.")
         isRefreshing = true
         defer { isRefreshing = false }
 
         snapshot = await service.refreshSnapshot()
         playback = await service.refreshPlayback()
-        if canShowQuickPicks {
+        if isConnected {
             await loadQuickPicks()
         } else {
             quickPicks = []
@@ -70,22 +110,25 @@ final class MusicStore: ObservableObject {
     }
 
     func connectAppleMusic() async {
+        Self.logger.info("Connect Apple Music requested from UI.")
         lastErrorMessage = nil
         snapshot = snapshot.with(connectionState: .connecting)
         do {
             snapshot = try await service.connect()
             playback = await service.refreshPlayback()
-            if canShowQuickPicks {
+            if isConnected {
                 await loadQuickPicks()
             }
         } catch {
+            Self.logger.error("Connect Apple Music failed. \(self.describe(error), privacy: .public)")
             snapshot = await service.refreshSnapshot()
             lastErrorMessage = error.localizedDescription
         }
     }
 
     func loadQuickPicks() async {
-        guard canShowQuickPicks else { return }
+        guard isConnected else { return }
+        Self.logger.info("Load Apple Music quick picks.")
         isLoadingQuickPicks = true
         defer { isLoadingQuickPicks = false }
 
@@ -96,31 +139,38 @@ final class MusicStore: ObservableObject {
             }
             persistSelectedQuickPick()
         } catch {
+            Self.logger.error("Load Apple Music quick picks failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
             quickPicks = []
         }
     }
 
     func selectQuickPick(_ quickPick: MusicQuickPick) {
+        Self.logger.info("Selected music quick pick. quickPickID=\(quickPick.id, privacy: .public)")
         selectedQuickPickID = quickPick.id
         persistSelectedQuickPick()
     }
 
     func beginWorkoutPlaybackIfNeeded() async {
-        guard canShowQuickPicks, let selectedQuickPick else { return }
+        guard isConnected, let selectedQuickPick else { return }
+        Self.logger.info("Begin workout playback. quickPickID=\(selectedQuickPick.id, privacy: .public)")
+        pendingWorkoutPlayback = true
         isStartingPlayback = true
         defer { isStartingPlayback = false }
         lastErrorMessage = nil
 
         do {
             playback = try await service.play(quickPick: selectedQuickPick)
+            pendingWorkoutPlayback = !playback.hasActiveQueue
         } catch {
+            Self.logger.error("Begin workout playback failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
             playback = await service.refreshPlayback()
         }
     }
 
     func togglePlayback() async {
+        Self.logger.info("Toggle music playback. currentlyPlaying=\(self.playback.isPlaying)")
         lastErrorMessage = nil
         do {
             if playback.isPlaying {
@@ -129,27 +179,75 @@ final class MusicStore: ObservableObject {
                 playback = try await service.resume()
             }
         } catch {
+            Self.logger.error("Toggle music playback failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
             playback = await service.refreshPlayback()
         }
     }
 
     func skipToNext() async {
+        Self.logger.info("Skip to next music track.")
         lastErrorMessage = nil
         do {
             playback = try await service.skipToNext()
         } catch {
+            Self.logger.error("Skip music track failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
             playback = await service.refreshPlayback()
         }
     }
 
     func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async {
+        Self.logger.info("Handle coach speech event. event=\(String(describing: event), privacy: .public)")
         playback = await service.handleCoachSpeechEvent(event)
+    }
+
+    func retryPendingWorkoutPlaybackIfNeeded() async {
+        guard pendingWorkoutPlayback, !isStartingPlayback else { return }
+        Self.logger.info("Retry pending workout playback.")
+        await beginWorkoutPlaybackIfNeeded()
+    }
+
+    func clearPendingWorkoutPlayback() {
+        pendingWorkoutPlayback = false
+    }
+
+    func performPrimaryAction() async {
+        Self.logger.info(
+            "Perform music primary action. isConnected=\(self.isConnected) canShowQuickPicks=\(self.canShowQuickPicks) needsPlaybackSetup=\(self.needsPlaybackSetup) action=\(self.primaryActionTitle, privacy: .public)"
+        )
+        if isConnected {
+            await loadQuickPicks()
+        } else {
+            await connectAppleMusic()
+        }
     }
 
     private func persistSelectedQuickPick() {
         defaults.set(selectedQuickPickID, forKey: selectedQuickPickKey)
+    }
+
+    private func describe(_ error: Error) -> String {
+        let nsError = error as NSError
+        var details = [
+            "error=\(nsError.domain)(\(nsError.code))",
+            "localizedDescription=\(nsError.localizedDescription)"
+        ]
+
+        if let failureReason = nsError.localizedFailureReason, !failureReason.isEmpty {
+            details.append("failureReason=\(failureReason)")
+        }
+        if let recoverySuggestion = nsError.localizedRecoverySuggestion, !recoverySuggestion.isEmpty {
+            details.append("recoverySuggestion=\(recoverySuggestion)")
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            details.append("underlying=\(underlying.domain)(\(underlying.code)) \(underlying.localizedDescription)")
+        }
+        if !nsError.userInfo.isEmpty {
+            details.append("userInfo=\(String(describing: nsError.userInfo))")
+        }
+
+        return details.joined(separator: " | ")
     }
 }
 

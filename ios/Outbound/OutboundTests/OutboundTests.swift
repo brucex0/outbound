@@ -41,4 +41,70 @@ struct OutboundTests {
         #expect(!usageDescription.isEmpty)
     }
 
+    @MainActor
+    @Test func musicStoreShowsRefreshActionWhenAuthorizedButPlaybackUnavailable() async throws {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+
+        let store = MusicStore(
+            service: StubMusicService(
+                snapshot: MusicConnectionSnapshot(
+                    providerName: "Apple Music",
+                    connectionState: .connected,
+                    statusTitle: "Connected, playback unavailable",
+                    statusDetail: "Apple Music permission is granted, but catalog playback is unavailable.",
+                    canPlayCatalogContent: false
+                )
+            ),
+            defaults: defaults
+        )
+
+        #expect(store.needsPlaybackSetup)
+        #expect(store.primaryActionTitle == "Refresh Apple Music access")
+        #expect(store.musicSummaryLine == "Apple Music permission is granted, but catalog playback is unavailable.")
+        #expect(store.troubleshootingLine != nil)
+    }
+
+    @MainActor
+    @Test func musicStoreShowsLoadMixesActionWhenConnectedAndPlayable() async throws {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+
+        let store = MusicStore(
+            service: StubMusicService(
+                snapshot: MusicConnectionSnapshot(
+                    providerName: "Apple Music",
+                    connectionState: .connected,
+                    statusTitle: "Connected",
+                    statusDetail: "Ready",
+                    canPlayCatalogContent: true
+                )
+            ),
+            defaults: defaults
+        )
+
+        #expect(store.primaryActionTitle == "Load workout mixes")
+        #expect(store.troubleshootingLine == nil)
+    }
+
+}
+
+@MainActor
+private final class StubMusicService: MusicService {
+    var currentSnapshot: MusicConnectionSnapshot
+    var currentPlayback: MusicPlaybackSnapshot = .empty
+
+    init(snapshot: MusicConnectionSnapshot) {
+        currentSnapshot = snapshot
+    }
+
+    func refreshSnapshot() async -> MusicConnectionSnapshot { currentSnapshot }
+    func connect() async throws -> MusicConnectionSnapshot { currentSnapshot }
+    func loadQuickPicks() async throws -> [MusicQuickPick] { [] }
+    func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot { currentPlayback }
+    func pause() async -> MusicPlaybackSnapshot { currentPlayback }
+    func resume() async throws -> MusicPlaybackSnapshot { currentPlayback }
+    func skipToNext() async throws -> MusicPlaybackSnapshot { currentPlayback }
+    func refreshPlayback() async -> MusicPlaybackSnapshot { currentPlayback }
+    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot { currentPlayback }
 }

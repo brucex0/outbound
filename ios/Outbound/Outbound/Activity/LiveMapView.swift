@@ -73,6 +73,7 @@ struct LiveMapView: View {
                     paceText: sessionPaceText,
                     distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
                     musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+                    musicErrorMessage: musicStore.lastErrorMessage,
                     onTogglePlayback: {
                         Task { await musicStore.togglePlayback() }
                     },

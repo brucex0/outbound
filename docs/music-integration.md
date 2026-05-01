@@ -258,6 +258,23 @@ In Apple Developer account:
 
 No new entitlement file entry is expected for the MusicKit app service itself; the service associates to the bundle ID at runtime once enabled in the developer portal.
 
+### MusicKit Setup Checklist
+
+If the app shows `Failed to request developer token` or the more specific Outbound message about an incomplete MusicKit setup, fix the Apple-side configuration in this order:
+
+1. Open the Apple Developer portal and select the explicit App ID for `xhstudio.Outbound`.
+2. Enable the `MusicKit` app service for that App ID.
+3. Confirm the installed app build still uses the same bundle identifier: `xhstudio.Outbound`.
+4. Rebuild and reinstall Outbound on the device after enabling the service.
+5. Relaunch the app and reconnect Apple Music.
+6. Make sure the device is signed into an Apple ID with Apple Music playback access.
+
+Expected behavior after the fix:
+
+- quick picks load on the start screen and in Me
+- starting a run can search Apple Music catalog content
+- the live session row can begin playback instead of failing during token request
+
 ### Likely Required For Spotify
 
 In `Info.plist`:
