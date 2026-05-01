@@ -5,7 +5,7 @@ import Combine
 // On-device real-time coach that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
-final class VirtualCoach: ObservableObject {
+final class VirtualCoach: NSObject, ObservableObject {
     @Published var lastNudge: String = ""
     @Published var latestAnalysis: SessionAnalysisResult?
     @Published var isAnalyzing = false
@@ -24,11 +24,14 @@ final class VirtualCoach: ObservableObject {
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
+    var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
         self.provider = selectedProvider
         providerName = selectedProvider.displayName
+        super.init()
+        synthesizer.delegate = self
     }
 
     func activate(
@@ -150,5 +153,25 @@ final class VirtualCoach: ObservableObject {
 
     private var currentAnalysisIntervalSeconds: Int {
         persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
+    }
+}
+
+extension VirtualCoach: AVSpeechSynthesizerDelegate {
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        Task { @MainActor [weak self] in
+            self?.speechEventHandler?(.didStart)
+        }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor [weak self] in
+            self?.speechEventHandler?(.didFinish)
+        }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        Task { @MainActor [weak self] in
+            self?.speechEventHandler?(.didFinish)
+        }
     }
 }

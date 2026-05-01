@@ -491,7 +491,7 @@ private struct ActivityPortalButton: View {
     private var accessibilityLabel: String {
         switch state {
         case .idle:
-            return "Open activity"
+            return "Start freestyle"
         case .active:
             return "Return to live \(sport?.displayName.lowercased() ?? "activity"), \(elapsedSeconds.formatted()) elapsed"
         case .paused:

@@ -34,4 +34,11 @@ struct OutboundTests {
         #expect(config["BUNDLE_ID"] as? String == "xhstudio.Outbound")
     }
 
+    @Test func appBundleDeclaresAppleMusicUsageDescription() throws {
+        let infoDictionary = try #require(Bundle.main.infoDictionary)
+        let usageDescription = try #require(infoDictionary["NSAppleMusicUsageDescription"] as? String)
+
+        #expect(!usageDescription.isEmpty)
+    }
+
 }
