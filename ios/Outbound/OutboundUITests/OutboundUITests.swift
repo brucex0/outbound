@@ -26,12 +26,34 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testAppleMusicCanConnectFromProfileAndShowMusicSetupBeforeRun() throws {
+        let app = launchApp()
+
+        app.tabBars.buttons["Me"].tap()
+        XCTAssertTrue(app.staticTexts["Apple Music"].waitForExistence(timeout: 5))
+        app.buttons["Connect Apple Music"].tap()
+        XCTAssertTrue(app.staticTexts["Connected"].waitForExistence(timeout: 5))
+
+        app.tabBars.buttons["Today"].tap()
+        app.buttons["Start freestyle"].tap()
+        XCTAssertTrue(app.staticTexts["Music"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].exists)
+        app.buttons["Select Mock upbeat run mix"].tap()
+        XCTAssertTrue(app.buttons["Start now"].exists)
+    }
+
+    @MainActor
     func testTodayFreestyleStartOpensRecordingFlowAndCanFinish() throws {
         addPermissionMonitor()
         let app = launchApp()
 
         app.buttons["Start freestyle"].tap()
         XCTAssertTrue(app.staticTexts["Freestyle run"].waitForExistence(timeout: 5))
+        if app.buttons["Connect Apple Music"].exists {
+            app.buttons["Connect Apple Music"].tap()
+            XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].waitForExistence(timeout: 5))
+            app.buttons["Select Mock upbeat run mix"].tap()
+        }
         XCTAssertTrue(app.buttons["Start now"].exists)
         app.buttons["Start now"].tap()
         dismissPermissionAlerts(app)
@@ -42,6 +64,9 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Pace"].exists)
         XCTAssertTrue(app.buttons["Capture Photo"].exists)
         XCTAssertTrue(app.buttons["Show Map"].exists)
+        XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Pause music"].exists)
+        XCTAssertTrue(app.buttons["Skip track"].exists)
 
         app.buttons["Pause"].tap()
         XCTAssertTrue(app.buttons["Finish"].exists)
@@ -64,6 +89,7 @@ final class OutboundUITests: XCTestCase {
     @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase"]
         app.launch()
         return app
     }

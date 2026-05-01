@@ -7,6 +7,7 @@ struct ProfileView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
+    @EnvironmentObject var musicStore: MusicStore
 
     private let sectionPreviewLimit = 3
 
@@ -16,6 +17,7 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
                     coachCard
                     appleHealthCard
+                    musicCard
                     highlightsSection
                     myActivitiesSection
                 }
@@ -163,6 +165,73 @@ struct ProfileView: View {
         }
         .padding()
         .background(.red.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var musicCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Apple Music")
+                        .font(.title3.bold())
+                    Text(musicStore.snapshot.statusTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer()
+
+                if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
+                    ProgressView()
+                } else {
+                    Image(systemName: "music.note.house.fill")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            Text(musicStore.snapshot.statusDetail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(musicStore.musicSummaryLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let lastErrorMessage = musicStore.lastErrorMessage {
+                Text(lastErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button {
+                Task {
+                    if musicStore.canShowQuickPicks {
+                        await musicStore.loadQuickPicks()
+                    } else {
+                        await musicStore.connectAppleMusic()
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(musicStore.canShowQuickPicks ? "Refresh mixes" : "Connect Apple Music")
+                        .font(.subheadline.bold())
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                }
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .background(.orange.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

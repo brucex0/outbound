@@ -8,6 +8,7 @@ struct RecordView: View {
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var checkInStore: DailyCheckInStore
     @EnvironmentObject var goalStore: GoalStore
+    @EnvironmentObject var musicStore: MusicStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @State private var showCamera = false
@@ -16,7 +17,6 @@ struct RecordView: View {
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
-    @State private var hasAttemptedAutoStart = false
 
     let isVisible: Bool
     private let onCloseRequest: ((Bool) -> Void)?
@@ -30,7 +30,7 @@ struct RecordView: View {
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
     ) {
-        _plannedIntent = State(initialValue: initialIntent)
+        _plannedIntent = State(initialValue: initialIntent ?? .freestyleRun)
         self.isVisible = isVisible
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
@@ -47,6 +47,7 @@ struct RecordView: View {
                         CameraHUDView(
                             recorder: recorder,
                             coach: coach,
+                            musicStore: musicStore,
                             capturedPhotoCount: capturedPhotos.count,
                             lastCapturedPhoto: capturedPhotos.last?.0,
                             activePage: $activePage,
@@ -62,6 +63,7 @@ struct RecordView: View {
                             recorder: recorder,
                             locationManager: recorder.locationManager,
                             coach: coach,
+                            musicStore: musicStore,
                             capturedPhotoCount: capturedPhotos.count,
                             lastCapturedPhoto: capturedPhotos.last?.0,
                             activePage: $activePage,
@@ -93,10 +95,12 @@ struct RecordView: View {
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
         }
-        .onAppear {
-            guard plannedIntent == nil, !hasAttemptedAutoStart else { return }
-            hasAttemptedAutoStart = true
-            startRecording()
+        .task {
+            await musicStore.refresh()
+            await musicStore.loadQuickPicks()
+            coach.speechEventHandler = { event in
+                Task { await musicStore.handleCoachSpeechEvent(event) }
+            }
         }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
@@ -139,6 +143,9 @@ struct RecordView: View {
             sessionIntent: activeIntent
         )
         recorder.start()
+        Task {
+            await musicStore.beginWorkoutPlaybackIfNeeded()
+        }
         showCamera = true
     }
 
@@ -191,27 +198,11 @@ struct RecordView: View {
         ScrollView {
             VStack(spacing: 24) {
                 Spacer(minLength: 72)
-                if let plannedIntent {
-                    confirmationView(for: plannedIntent)
-                } else {
-                    autoStartView
-                }
+                confirmationView(for: plannedIntent ?? .freestyleRun)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 40)
         }
-    }
-
-    private var autoStartView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(.orange)
-            Text("Opening activity…")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 240)
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -238,6 +229,8 @@ struct RecordView: View {
             .background(Color.orange.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
+            musicSetupCard
+
             VStack(spacing: 12) {
                 Button(action: startRecording) {
                     Label(intent.startLabel, systemImage: "record.circle.fill")
@@ -255,6 +248,86 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
         }
+    }
+
+    @ViewBuilder
+    private var musicSetupCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Music", systemImage: "music.note.list")
+                    .font(.headline)
+                Spacer()
+                if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            Text(musicStore.musicSummaryLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let lastErrorMessage = musicStore.lastErrorMessage {
+                Text(lastErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(musicStore.quickPicks) { quickPick in
+                        Button {
+                            musicStore.selectQuickPick(quickPick)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: quickPick.symbolName)
+                                    .foregroundStyle(.orange)
+                                    .frame(width: 22)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(quickPick.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(quickPick.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: musicStore.selectedQuickPickID == quickPick.id ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(musicStore.selectedQuickPickID == quickPick.id ? Color.orange : Color.secondary)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Select \(quickPick.title)")
+                    }
+                }
+            } else {
+                Button {
+                    Task { await musicStore.connectAppleMusic() }
+                } label: {
+                    HStack {
+                        Text("Connect Apple Music")
+                            .font(.subheadline.bold())
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(!musicStore.canConnect && !musicStore.canShowQuickPicks)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 

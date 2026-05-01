@@ -8,6 +8,7 @@ import CoreLocation
 struct CameraHUDView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
+    @ObservedObject var musicStore: MusicStore
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -65,6 +66,13 @@ struct CameraHUDView: View {
                         paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                         paceText: sessionPaceText,
                         distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                        musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+                        onTogglePlayback: {
+                            Task { await musicStore.togglePlayback() }
+                        },
+                        onSkipTrack: {
+                            Task { await musicStore.skipToNext() }
+                        },
                         onStart: onStart,
                         onPause: pauseActivity,
                         onResume: resumeActivity,
@@ -422,6 +430,9 @@ struct SessionStatusCard: View {
     let paceLabel: String
     let paceText: String
     let distanceText: String
+    let musicPlayback: MusicPlaybackSnapshot?
+    let onTogglePlayback: () -> Void
+    let onSkipTrack: () -> Void
     let onStart: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
@@ -443,6 +454,10 @@ struct SessionStatusCard: View {
                     SessionMetricColumn(value: distanceText, label: "Distance (km)")
                 }
 
+                if let musicPlayback {
+                    musicRow(for: musicPlayback)
+                }
+
                 controls
             }
             .padding(.horizontal, 18)
@@ -452,6 +467,47 @@ struct SessionStatusCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+        .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private func musicRow(for playback: MusicPlaybackSnapshot) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "music.note")
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(playback.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(playback.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button(action: onTogglePlayback) {
+                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                    .frame(width: 34, height: 34)
+                    .background(Color(.secondarySystemBackground), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(playback.isPlaying ? "Pause music" : "Play music")
+
+            Button(action: onSkipTrack) {
+                Image(systemName: "forward.fill")
+                    .frame(width: 34, height: 34)
+                    .background(Color(.secondarySystemBackground), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Skip track")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("MusicPlaybackRow")
     }
 
     @ViewBuilder

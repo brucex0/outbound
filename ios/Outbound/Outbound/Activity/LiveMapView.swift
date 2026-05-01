@@ -6,6 +6,7 @@ struct LiveMapView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var coach: VirtualCoach
+    @ObservedObject var musicStore: MusicStore
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -71,6 +72,13 @@ struct LiveMapView: View {
                     paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                     paceText: sessionPaceText,
                     distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                    musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+                    onTogglePlayback: {
+                        Task { await musicStore.togglePlayback() }
+                    },
+                    onSkipTrack: {
+                        Task { await musicStore.skipToNext() }
+                    },
                     onStart: onStart,
                     onPause: pauseActivity,
                     onResume: resumeActivity,
