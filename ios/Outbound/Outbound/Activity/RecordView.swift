@@ -11,6 +11,7 @@ struct RecordView: View {
     @EnvironmentObject var musicStore: MusicStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
+    @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @State private var showCamera = false
     @State private var activePage: SessionPage = .camera
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -88,6 +89,11 @@ struct RecordView: View {
         .toolbar(showCamera && isVisible ? .hidden : .visible, for: .tabBar)
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
+            liveActivityManager.update(
+                snapshot: snapshot,
+                state: recorder.state,
+                intent: activeIntent ?? plannedIntent
+            )
         }
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
@@ -143,6 +149,11 @@ struct RecordView: View {
             sessionIntent: activeIntent
         )
         recorder.start()
+        liveActivityManager.update(
+            snapshot: recorder.liveSnapshot,
+            state: recorder.state,
+            intent: activeIntent
+        )
         Task {
             await musicStore.beginWorkoutPlaybackIfNeeded()
         }
@@ -151,6 +162,7 @@ struct RecordView: View {
 
     private func finishRecording() {
         let summary = recorder.finish()
+        liveActivityManager.end(using: recorder.liveSnapshot)
         coach.deactivate()
         showCamera = false
         activePage = .camera
@@ -183,6 +195,7 @@ struct RecordView: View {
     }
 
     private func discardPendingActivity() {
+        liveActivityManager.end()
         clearPending()
         onCloseRequest?(false)
     }
