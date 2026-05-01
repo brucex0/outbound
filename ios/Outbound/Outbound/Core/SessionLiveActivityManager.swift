@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 final class SessionLiveActivityManager: ObservableObject {
     private var activity: Activity<OutboundLiveActivityAttributes>?
+    private var lastContentState: OutboundLiveActivityAttributes.ContentState?
 
     func update(
         snapshot: ActiveSessionSnapshot,
@@ -23,6 +24,7 @@ final class SessionLiveActivityManager: ObservableObject {
             state: makeContentState(snapshot: snapshot, state: state),
             staleDate: nil
         )
+        lastContentState = content.state
 
         if let activity {
             Task {
@@ -48,19 +50,21 @@ final class SessionLiveActivityManager: ObservableObject {
         guard let activity else { return }
         self.activity = nil
 
-        let finalContent = snapshot.map {
-            ActivityContent(
-                state: makeContentState(snapshot: $0, state: .paused),
-                staleDate: nil
-            )
-        }
+        let finalState = snapshot.map {
+            makeContentState(snapshot: $0, state: .paused)
+        } ?? lastContentState ?? OutboundLiveActivityAttributes.ContentState(
+            elapsedSeconds: 0,
+            elapsedReferenceDate: nil,
+            distanceText: "0.00 km",
+            paceText: "--",
+            statusText: "Finished",
+            isPaused: true
+        )
+        lastContentState = nil
+        let finalContent = ActivityContent(state: finalState, staleDate: nil)
 
         Task {
-            if let finalContent {
-                await activity.end(finalContent, dismissalPolicy: .immediate)
-            } else {
-                await activity.end(dismissalPolicy: .immediate)
-            }
+            await activity.end(finalContent, dismissalPolicy: .immediate)
         }
     }
 
