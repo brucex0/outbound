@@ -73,6 +73,9 @@
     <key>NSHealthUpdateUsageDescription</key>
     <string>Outbound saves your workouts to Apple Health.</string>
 
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+
     <key>UIBackgroundModes</key>
     <array>
         <string>location</string>
