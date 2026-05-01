@@ -6,7 +6,6 @@ final class AppleMusicService: MusicService {
     private let player = ApplicationMusicPlayer.shared
     private var currentQuickPick: MusicQuickPick?
     private var queuedSongs: MusicItemCollection<Song>?
-    private var shouldResumeAfterCoachSpeech = false
 
     var currentSnapshot: MusicConnectionSnapshot {
         makeSnapshot(
@@ -121,18 +120,7 @@ final class AppleMusicService: MusicService {
     }
 
     func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot {
-        switch event {
-        case .didStart:
-            shouldResumeAfterCoachSpeech = player.state.playbackStatus == .playing
-            if shouldResumeAfterCoachSpeech {
-                player.pause()
-            }
-        case .didFinish:
-            if shouldResumeAfterCoachSpeech {
-                try? await player.play()
-                shouldResumeAfterCoachSpeech = false
-            }
-        }
+        _ = event
         return playbackSnapshot()
     }
 

@@ -6,7 +6,6 @@ final class MockMusicService: MusicService {
     private var currentIndex = 0
     private var currentQuickPick: MusicQuickPick?
     private var isPlaying = false
-    private var shouldResumeAfterCoachSpeech = false
 
     private let quickPickFixtures: [MusicQuickPick] = [
         MusicQuickPick(
@@ -112,18 +111,7 @@ final class MockMusicService: MusicService {
     }
 
     func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot {
-        switch event {
-        case .didStart:
-            shouldResumeAfterCoachSpeech = isPlaying
-            if shouldResumeAfterCoachSpeech {
-                isPlaying = false
-            }
-        case .didFinish:
-            if shouldResumeAfterCoachSpeech {
-                isPlaying = true
-                shouldResumeAfterCoachSpeech = false
-            }
-        }
+        _ = event
         return playback()
     }
 
