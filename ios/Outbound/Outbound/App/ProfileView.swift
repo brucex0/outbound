@@ -23,8 +23,6 @@ struct ProfileView: View {
                     )
                     accountCard
                     coachCard
-                    appleHealthCard
-                    musicCard
                     highlightsSection
                     myActivitiesSection
                 }
@@ -36,6 +34,9 @@ struct ProfileView: View {
                     NavigationLink {
                         SettingsView()
                             .environmentObject(authStore)
+                            .environmentObject(healthAuthorizationStore)
+                            .environmentObject(healthImportStore)
+                            .environmentObject(musicStore)
                     } label: {
                         Image(systemName: "gearshape.fill")
                     }
@@ -144,7 +145,112 @@ struct ProfileView: View {
         }
     }
 
-    private var appleHealthCard: some View {
+    private var myActivitiesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("My Activities")
+                    .font(.title3.bold())
+                Spacer()
+                if activityStore.activities.count > sectionPreviewLimit {
+                    NavigationLink("See All") {
+                        ActivityHistoryView()
+                            .environmentObject(activityStore)
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+            }
+
+            if activityStore.activities.isEmpty {
+                emptyActivitiesPlaceholder
+            } else {
+                ForEach(Array(activityStore.activities.prefix(sectionPreviewLimit))) { activity in
+                    NavigationLink(value: activity) {
+                        ActivityCard(activity: activity, activityStore: activityStore)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var emptyActivitiesPlaceholder: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "figure.run.circle")
+                .font(.system(size: 44))
+                .foregroundStyle(.orange.opacity(0.6))
+            Text("No activities yet.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    private var weeklyDistanceKm: Double {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
+        return activityStore.activities
+            .filter { $0.startedAt >= startOfWeek }
+            .reduce(0) { $0 + $1.distanceM } / 1000
+    }
+
+    private var totalPhotoCount: Int {
+        activityStore.activities.reduce(0) { $0 + $1.photos.count }
+    }
+}
+
+private struct SettingsView: View {
+    @EnvironmentObject var authStore: AuthStore
+    @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject var healthImportStore: HealthImportStore
+    @EnvironmentObject var musicStore: MusicStore
+
+    var body: some View {
+        List {
+            Section("Account") {
+                if let label = authStore.currentLoginLabel {
+                    LabeledContent("Signed in as", value: label)
+                } else {
+                    LabeledContent("Account", value: "Signed in")
+                }
+
+                Text(authStore.backendDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Integrations") {
+                AppleHealthSettingsCard()
+                    .environmentObject(healthAuthorizationStore)
+                    .environmentObject(healthImportStore)
+                    .listRowInsets(EdgeInsets())
+
+                AppleMusicSettingsCard()
+                    .environmentObject(musicStore)
+                    .listRowInsets(EdgeInsets())
+            }
+
+            Section("App") {
+                LabeledContent("Version", value: "Prototype")
+            }
+
+            Section {
+                Button("Sign Out", role: .destructive) {
+                    authStore.signOut()
+                }
+            }
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct AppleHealthSettingsCard: View {
+    @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject var healthImportStore: HealthImportStore
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -215,7 +321,55 @@ struct ProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    private var musicCard: some View {
+    @ViewBuilder
+    private var recentHealthWorkouts: some View {
+        if healthImportStore.isLoading {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading recent workouts...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let lastErrorMessage = healthImportStore.lastErrorMessage {
+            Text(lastErrorMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if !healthImportStore.recentWorkouts.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recent Health Workouts")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                ForEach(healthImportStore.recentWorkouts) { workout in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(workout.activityName)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(workout.startedAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(workout.summaryLine)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(workout.sourceName)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+}
+
+private struct AppleMusicSettingsCard: View {
+    @EnvironmentObject var musicStore: MusicStore
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -230,16 +384,14 @@ struct ProfileView: View {
 
                 if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
                     ProgressView()
+                } else if musicStore.hasDeveloperTokenError {
+                    Image(systemName: "music.note.slash")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
                 } else {
-                    if musicStore.hasDeveloperTokenError {
-                        Image(systemName: "music.note.slash")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Image(systemName: "music.note.house.fill")
-                            .font(.title2)
-                            .foregroundStyle(.orange)
-                    }
+                    Image(systemName: "music.note.house.fill")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
                 }
             }
 
@@ -290,136 +442,6 @@ struct ProfileView: View {
         .padding()
         .background(.orange.opacity(0.07))
         .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    @ViewBuilder
-    private var recentHealthWorkouts: some View {
-        if healthImportStore.isLoading {
-            HStack(spacing: 10) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Loading recent workouts...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else if let lastErrorMessage = healthImportStore.lastErrorMessage {
-            Text(lastErrorMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        } else if !healthImportStore.recentWorkouts.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Recent Health Workouts")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                ForEach(healthImportStore.recentWorkouts) { workout in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(workout.activityName)
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text(workout.startedAt.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(workout.summaryLine)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(workout.sourceName)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-    }
-
-    private var myActivitiesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("My Activities")
-                    .font(.title3.bold())
-                Spacer()
-                if activityStore.activities.count > sectionPreviewLimit {
-                    NavigationLink("See All") {
-                        ActivityHistoryView()
-                            .environmentObject(activityStore)
-                    }
-                    .font(.caption.weight(.semibold))
-                }
-            }
-
-            if activityStore.activities.isEmpty {
-                emptyActivitiesPlaceholder
-            } else {
-                ForEach(Array(activityStore.activities.prefix(sectionPreviewLimit))) { activity in
-                    NavigationLink(value: activity) {
-                        ActivityCard(activity: activity, activityStore: activityStore)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private var emptyActivitiesPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "figure.run.circle")
-                .font(.system(size: 44))
-                .foregroundStyle(.orange.opacity(0.6))
-            Text("No activities yet.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-    }
-
-    private var weeklyDistanceKm: Double {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
-        return activityStore.activities
-            .filter { $0.startedAt >= startOfWeek }
-            .reduce(0) { $0 + $1.distanceM } / 1000
-    }
-
-    private var totalPhotoCount: Int {
-        activityStore.activities.reduce(0) { $0 + $1.photos.count }
-    }
-}
-
-private struct SettingsView: View {
-    @EnvironmentObject var authStore: AuthStore
-
-    var body: some View {
-        List {
-            Section("Account") {
-                if let label = authStore.currentLoginLabel {
-                    LabeledContent("Signed in as", value: label)
-                } else {
-                    LabeledContent("Account", value: "Signed in")
-                }
-
-                Text(authStore.backendDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("App") {
-                LabeledContent("Version", value: "Prototype")
-            }
-
-            Section {
-                Button("Sign Out", role: .destructive) {
-                    authStore.signOut()
-                }
-            }
-        }
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

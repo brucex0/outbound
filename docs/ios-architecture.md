@@ -67,7 +67,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the motivation dashboard above the selected coach card, Apple Health connection card, profile highlights, and `My Activities` section, and adds a top-right Settings entry point with sign-out.
+- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the motivation dashboard above the selected coach card, profile highlights, and `My Activities` section, and adds a top-right Settings entry point that now owns Apple Health, Apple Music, and sign-out.
 
 ## Integrations
 
