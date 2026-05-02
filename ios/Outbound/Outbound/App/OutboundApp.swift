@@ -9,6 +9,7 @@ struct OutboundApp: App {
     @StateObject private var activityStore = ActivityStore()
     @StateObject private var goalStore = GoalStore()
     @StateObject private var assistantStore = AssistantStore()
+    @StateObject private var appNavigationStore = AppNavigationStore()
     @StateObject private var healthAuthorizationStore = HealthAuthorizationStore()
     @StateObject private var healthImportStore = HealthImportStore()
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
@@ -28,6 +29,7 @@ struct OutboundApp: App {
                     .environmentObject(activityStore)
                     .environmentObject(goalStore)
                     .environmentObject(assistantStore)
+                    .environmentObject(appNavigationStore)
                     .environmentObject(healthAuthorizationStore)
                     .environmentObject(healthImportStore)
                     .environmentObject(dailyCheckInStore)
@@ -178,6 +180,15 @@ struct AssistantSuggestion: Identifiable, Hashable {
     let prompt: String
 }
 
+enum AssistantNavigationTarget: String, Codable, Hashable, Identifiable {
+    case settingsAppleMusic
+    case settingsAppleHealth
+    case coachSettings
+    case activityHistory
+
+    var id: String { rawValue }
+}
+
 enum AssistantAuthor: String, Codable {
     case assistant
     case user
@@ -189,19 +200,22 @@ struct AssistantMessage: Identifiable, Codable, Equatable {
     let text: String
     let createdAt: Date
     let capability: AssistantCapability?
+    let navigationTarget: AssistantNavigationTarget?
 
     init(
         id: UUID = UUID(),
         author: AssistantAuthor,
         text: String,
         createdAt: Date = Date(),
-        capability: AssistantCapability? = nil
+        capability: AssistantCapability? = nil,
+        navigationTarget: AssistantNavigationTarget? = nil
     ) {
         self.id = id
         self.author = author
         self.text = text
         self.createdAt = createdAt
         self.capability = capability
+        self.navigationTarget = navigationTarget
     }
 }
 
@@ -212,6 +226,19 @@ struct AssistantContext {
     let currentGoalSummary: String?
     let currentScreen: String?
     let isRecordingActive: Bool
+}
+
+@MainActor
+final class AppNavigationStore: ObservableObject {
+    @Published var pendingAssistantTarget: AssistantNavigationTarget?
+
+    func open(_ target: AssistantNavigationTarget) {
+        pendingAssistantTarget = target
+    }
+
+    func consume() {
+        pendingAssistantTarget = nil
+    }
 }
 
 @MainActor
@@ -277,14 +304,14 @@ final class AssistantStore: ObservableObject {
         persistMessages()
     }
 
-    func sendCurrentDraft(context: AssistantContext) async {
+    func sendCurrentDraft(context: AssistantContext) async -> AssistantNavigationTarget? {
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         draft = ""
-        await send(trimmed, capability: nil, context: context)
+        return await send(trimmed, capability: nil, context: context)
     }
 
-    func sendSuggestion(_ suggestion: AssistantSuggestion, context: AssistantContext) async {
+    func sendSuggestion(_ suggestion: AssistantSuggestion, context: AssistantContext) async -> AssistantNavigationTarget? {
         await send(suggestion.prompt, capability: suggestion.capability, context: context)
     }
 
@@ -298,9 +325,10 @@ final class AssistantStore: ObservableObject {
         _ prompt: String,
         capability: AssistantCapability?,
         context: AssistantContext
-    ) async {
+    ) async -> AssistantNavigationTarget? {
         ensureSeedMessage(context: context)
         let inferredCapability = capability ?? Self.inferCapability(from: prompt)
+        let navigationTarget = Self.inferNavigationTarget(from: prompt)
         messages.append(
             AssistantMessage(
                 author: .user,
@@ -310,22 +338,29 @@ final class AssistantStore: ObservableObject {
         )
         persistMessages()
 
-        isResponding = true
-        let replyText = await makeReply(
-            for: prompt,
-            capability: inferredCapability,
-            context: context
-        )
-        isResponding = false
+        let replyText: String
+        if let navigationTarget {
+            replyText = Self.navigationReply(for: navigationTarget)
+        } else {
+            isResponding = true
+            replyText = await makeReply(
+                for: prompt,
+                capability: inferredCapability,
+                context: context
+            )
+            isResponding = false
+        }
 
         messages.append(
             AssistantMessage(
                 author: .assistant,
                 text: replyText,
-                capability: inferredCapability
+                capability: inferredCapability,
+                navigationTarget: navigationTarget
             )
         )
         persistMessages()
+        return navigationTarget
     }
 
     private func makeReply(
@@ -418,6 +453,43 @@ final class AssistantStore: ObservableObject {
     private func persistMessages() {
         guard let data = try? JSONEncoder().encode(messages) else { return }
         defaults.set(data, forKey: messagesKey)
+    }
+
+    private static func inferNavigationTarget(from prompt: String) -> AssistantNavigationTarget? {
+        let lowercased = prompt.lowercased()
+
+        if (lowercased.contains("music") || lowercased.contains("apple music")) &&
+            (lowercased.contains("setting") || lowercased.contains("connect") || lowercased.contains("permission") || lowercased.contains("show me")) {
+            return .settingsAppleMusic
+        }
+
+        if (lowercased.contains("health") || lowercased.contains("apple health")) &&
+            (lowercased.contains("setting") || lowercased.contains("permission") || lowercased.contains("show me")) {
+            return .settingsAppleHealth
+        }
+
+        if lowercased.contains("coach") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick")) {
+            return .coachSettings
+        }
+
+        if lowercased.contains("activity history") || lowercased.contains("my activities") || lowercased.contains("past activities") {
+            return .activityHistory
+        }
+
+        return nil
+    }
+
+    private static func navigationReply(for target: AssistantNavigationTarget) -> String {
+        switch target {
+        case .settingsAppleMusic:
+            return "Opening Apple Music settings."
+        case .settingsAppleHealth:
+            return "Opening Apple Health settings."
+        case .coachSettings:
+            return "Opening coach settings."
+        case .activityHistory:
+            return "Opening your activity history."
+        }
     }
 
     private func recentMessagesForAPI() -> [AssistantChatAPIPriorMessage] {

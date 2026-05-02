@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var appNavigationStore: AppNavigationStore
     @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
@@ -13,9 +14,10 @@ struct ProfileView: View {
     let onStartSuggestion: (SuggestedSession) -> Void
 
     private let sectionPreviewLimit = 3
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(spacing: 20) {
                     MotivationDashboardView(
@@ -33,7 +35,7 @@ struct ProfileView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        SettingsView()
+                        SettingsView(initialFocusSection: nil)
                             .environmentObject(authStore)
                             .environmentObject(healthAuthorizationStore)
                             .environmentObject(healthImportStore)
@@ -47,6 +49,14 @@ struct ProfileView: View {
             .navigationDestination(for: SavedActivity.self) { activity in
                 ActivityDetailView(activity: activity)
                     .environmentObject(activityStore)
+            }
+            .navigationDestination(for: AssistantNavigationTarget.self) { target in
+                assistantDestinationView(for: target)
+            }
+            .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
+                guard let target else { return }
+                navigationPath.append(target)
+                appNavigationStore.consume()
             }
         }
     }
@@ -199,6 +209,30 @@ struct ProfileView: View {
     private var totalPhotoCount: Int {
         activityStore.activities.reduce(0) { $0 + $1.photos.count }
     }
+
+    @ViewBuilder
+    private func assistantDestinationView(for target: AssistantNavigationTarget) -> some View {
+        switch target {
+        case .settingsAppleMusic:
+            SettingsView(initialFocusSection: .appleMusic)
+                .environmentObject(authStore)
+                .environmentObject(healthAuthorizationStore)
+                .environmentObject(healthImportStore)
+                .environmentObject(musicStore)
+        case .settingsAppleHealth:
+            SettingsView(initialFocusSection: .appleHealth)
+                .environmentObject(authStore)
+                .environmentObject(healthAuthorizationStore)
+                .environmentObject(healthImportStore)
+                .environmentObject(musicStore)
+        case .coachSettings:
+            CoachSelectionView()
+                .environmentObject(coachCatalog)
+        case .activityHistory:
+            ActivityHistoryView()
+                .environmentObject(activityStore)
+        }
+    }
 }
 
 private struct SettingsView: View {
@@ -207,47 +241,67 @@ private struct SettingsView: View {
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
 
+    let initialFocusSection: SettingsFocusSection?
+
     var body: some View {
-        List {
-            Section("Account") {
-                if let label = authStore.currentLoginLabel {
-                    LabeledContent("Signed in as", value: label)
-                } else {
-                    LabeledContent("Account", value: "Signed in")
+        ScrollViewReader { proxy in
+            List {
+                Section("Account") {
+                    if let label = authStore.currentLoginLabel {
+                        LabeledContent("Signed in as", value: label)
+                    } else {
+                        LabeledContent("Account", value: "Signed in")
+                    }
+
+                    Text(authStore.backendDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                Text(authStore.backendDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+                Section("Integrations") {
+                    AppleHealthSettingsCard()
+                        .environmentObject(healthAuthorizationStore)
+                        .environmentObject(healthImportStore)
+                        .listRowInsets(EdgeInsets())
+                        .id(SettingsFocusSection.appleHealth)
 
-            Section("Integrations") {
-                AppleHealthSettingsCard()
-                    .environmentObject(healthAuthorizationStore)
-                    .environmentObject(healthImportStore)
-                    .listRowInsets(EdgeInsets())
+                    AppleMusicSettingsCard()
+                        .environmentObject(musicStore)
+                        .listRowInsets(EdgeInsets())
+                        .id(SettingsFocusSection.appleMusic)
+                }
 
-                AppleMusicSettingsCard()
-                    .environmentObject(musicStore)
-                    .listRowInsets(EdgeInsets())
-            }
+                Section("App") {
+                    LabeledContent("Version", value: "Prototype")
+                }
 
-            Section("App") {
-                LabeledContent("Version", value: "Prototype")
-            }
-
-            Section {
-                Button("Sign Out", role: .destructive) {
-                    authStore.signOut()
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        authStore.signOut()
+                    }
                 }
             }
+            .task(id: initialFocusSection) {
+                guard let initialFocusSection else { return }
+                try? await Task.sleep(for: .milliseconds(150))
+                withAnimation(.easeOut(duration: 0.22)) {
+                    proxy.scrollTo(initialFocusSection, anchor: .top)
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
+private enum SettingsFocusSection: Hashable {
+    case appleHealth
+    case appleMusic
+}
+
 struct AssistantView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
@@ -257,30 +311,32 @@ struct AssistantView: View {
     let isRecordingActive: Bool
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    contextHeader
-                    suggestionsSection
-                    conversationSection
+        NavigationStack {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        contextHeader
+                        suggestionsSection
+                        conversationSection
+                    }
+                    .padding()
                 }
-                .padding()
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Assistant")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarContent }
-            .safeAreaInset(edge: .bottom) {
-                composer
-                    .background(.thinMaterial)
-            }
-            .task {
-                assistantStore.ensureSeedMessage(context: assistantContext)
-            }
-            .onChange(of: assistantStore.messages.count) { _, _ in
-                guard let lastID = assistantStore.messages.last?.id else { return }
-                withAnimation(.easeOut(duration: 0.22)) {
-                    proxy.scrollTo(lastID, anchor: .bottom)
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Assistant")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { toolbarContent }
+                .safeAreaInset(edge: .bottom) {
+                    composer
+                        .background(.thinMaterial)
+                }
+                .task {
+                    assistantStore.ensureSeedMessage(context: assistantContext)
+                }
+                .onChange(of: assistantStore.messages.count) { _, _ in
+                    guard let lastID = assistantStore.messages.last?.id else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        proxy.scrollTo(lastID, anchor: .bottom)
+                    }
                 }
             }
         }
@@ -326,7 +382,9 @@ struct AssistantView: View {
             ForEach(compactSuggestions) { suggestion in
                 Button {
                     Task {
-                        await assistantStore.sendSuggestion(suggestion, context: assistantContext)
+                        if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {
+                            routeThroughApp(target)
+                        }
                     }
                 } label: {
                     HStack(spacing: 10) {
@@ -379,7 +437,9 @@ struct AssistantView: View {
 
             Button {
                 Task {
-                    await assistantStore.sendCurrentDraft(context: assistantContext)
+                    if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
+                        routeThroughApp(target)
+                    }
                 }
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
@@ -401,6 +461,11 @@ struct AssistantView: View {
             currentScreen: screenName,
             isRecordingActive: isRecordingActive
         )
+    }
+
+    private func routeThroughApp(_ target: AssistantNavigationTarget) {
+        appNavigationStore.open(target)
+        dismiss()
     }
 
     private var compactSuggestions: [AssistantSuggestion] {

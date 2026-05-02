@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var assistantStore: AssistantStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
@@ -68,14 +69,19 @@ struct MainTabView: View {
             }
         }
         .sheet(isPresented: $isAssistantPresented) {
-            NavigationStack {
-                AssistantView(
-                    screenName: selectedTab == .me ? "Me" : "Social",
-                    isRecordingActive: false
-                )
-            }
+            AssistantView(
+                screenName: selectedTab == .me ? "Me" : "Social",
+                isRecordingActive: false
+            )
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
+        }
+        .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
+            guard target != nil else { return }
+            selectedTab = .me
+            if isActivityVisible {
+                isActivityVisible = false
+            }
         }
     }
 
