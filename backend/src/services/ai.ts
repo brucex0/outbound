@@ -39,7 +39,6 @@ export async function analyzeActivity(
       {
         type: "text",
         text: COACH_SYSTEM_CACHE_PREFIX,
-        cache_control: { type: "ephemeral" },
       },
     ],
     messages: [
@@ -63,7 +62,6 @@ export async function buildCoachSystemPrompt(
       {
         type: "text",
         text: COACH_SYSTEM_CACHE_PREFIX,
-        cache_control: { type: "ephemeral" },
       },
     ],
     messages: [
@@ -93,7 +91,6 @@ export async function generateWeeklyReview(
       {
         type: "text",
         text: COACH_SYSTEM_CACHE_PREFIX,
-        cache_control: { type: "ephemeral" },
       },
     ],
     messages: [

@@ -1,12 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { buildCoachSystemPrompt } from "./ai.js";
-import type { CoachProfilePayload, MemorySnapshot, PersonalRecords } from "../types/coach.js";
-
-const prisma = new PrismaClient();
+import { getPrismaClient } from "./prisma.js";
+import type { CoachProfilePayload, GoalItem, MemorySnapshot, PersonalRecords } from "../types/coach.js";
 
 // Rebuild and persist the coach profile after each activity or on demand.
 // Called by the activity completion webhook and the /coach/rebuild endpoint.
 export async function rebuildCoachProfile(userId: string): Promise<CoachProfilePayload> {
+  const prisma = getPrismaClient();
   const [user, activities] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
@@ -78,7 +78,7 @@ export async function rebuildCoachProfile(userId: string): Promise<CoachProfileP
   const coachName = existing?.coachName ?? "Coach";
   const personality = (existing?.personality ?? "encouraging") as CoachProfilePayload["personality"];
   const voiceId = existing?.voiceId ?? "default";
-  const goals = (existing?.goals ?? []) as CoachProfilePayload["goals"];
+  const goals = ((existing?.goals ?? []) as unknown) as GoalItem[];
   const version = (existing?.version ?? 0) + 1;
 
   await prisma.coachProfile.upsert({
@@ -92,17 +92,17 @@ export async function rebuildCoachProfile(userId: string): Promise<CoachProfileP
       weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
       strengths: [],
       weaknesses: [],
-      goals,
-      records,
-      memorySnapshot,
+      goals: goals as unknown as Prisma.InputJsonValue,
+      records: records as Prisma.InputJsonValue,
+      memorySnapshot: memorySnapshot as unknown as Prisma.InputJsonValue,
       lastBuiltAt: new Date(),
       version,
     },
     update: {
       fitnessLevel,
       weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
-      records,
-      memorySnapshot,
+      records: records as Prisma.InputJsonValue,
+      memorySnapshot: memorySnapshot as unknown as Prisma.InputJsonValue,
       lastBuiltAt: new Date(),
       version,
     },

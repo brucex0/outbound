@@ -1,14 +1,18 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client";
 import { rebuildCoachProfile } from "../services/coachProfile.js";
 import { analyzeActivity } from "../services/ai.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { requireDatabase } from "../services/database.js";
+import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono();
-const prisma = new PrismaClient();
 
 router.get("/user/:userId", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   const { userId } = c.req.param();
   const limit = Number(c.req.query("limit") ?? 20);
   const offset = Number(c.req.query("offset") ?? 0);
@@ -23,6 +27,10 @@ router.get("/user/:userId", async (c) => {
 });
 
 router.get("/:id", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   const activity = await prisma.activity.findUnique({
     where: { id: c.req.param("id") },
     include: { photos: true, posts: true },
@@ -48,6 +56,10 @@ const createSchema = z.object({
 });
 
 router.post("/", zValidator("json", createSchema), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   const body = c.req.valid("json");
   const activity = await prisma.activity.create({
     data: {

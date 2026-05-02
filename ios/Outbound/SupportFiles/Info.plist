@@ -76,6 +76,9 @@
     <key>NSSupportsLiveActivities</key>
     <true/>
 
+    <key>OutboundAPIBaseURL</key>
+    <string>https://outbound-api-186140050970.us-central1.run.app/v1</string>
+
     <key>UIBackgroundModes</key>
     <array>
         <string>location</string>

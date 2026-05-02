@@ -2,8 +2,20 @@ import Foundation
 
 final class APIClient {
     static let shared = APIClient()
-    private let base = URL(string: "https://api.outbound.run/v1")!
+    private let base: URL
     private var authToken: String?
+
+    private init() {
+        let configuredBaseURL =
+            Bundle.main.object(forInfoDictionaryKey: "OutboundAPIBaseURL") as? String
+        let baseURLString = configuredBaseURL?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedBaseURL = (baseURLString?.isEmpty == false ? baseURLString : nil)
+            ?? "https://api.outbound.run/v1"
+        guard let url = URL(string: resolvedBaseURL) else {
+            fatalError("Invalid OutboundAPIBaseURL: \(resolvedBaseURL)")
+        }
+        self.base = url
+    }
 
     func setToken(_ token: String?) { authToken = token }
 

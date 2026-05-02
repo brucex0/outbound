@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { requireDatabase } from "../services/database.js";
+import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono();
-const prisma = new PrismaClient();
 
 // Called after Firebase Auth sign-up to create the user record
 router.post(
@@ -18,6 +18,10 @@ router.post(
     })
   ),
   async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+
+    const prisma = getPrismaClient();
     const body = c.req.valid("json");
     const existing = await prisma.user.findUnique({
       where: { firebaseUid: body.firebaseUid },
@@ -29,6 +33,10 @@ router.post(
 );
 
 router.get("/me/:firebaseUid", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   const user = await prisma.user.findUnique({
     where: { firebaseUid: c.req.param("firebaseUid") },
     include: { coachProfile: true },

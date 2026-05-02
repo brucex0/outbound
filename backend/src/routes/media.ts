@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { requireDatabase } from "../services/database.js";
+import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono();
-const prisma = new PrismaClient();
 
 // Returns a signed GCS upload URL — client uploads directly, then calls /confirm
 router.post(
@@ -18,6 +18,10 @@ router.post(
     })
   ),
   async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+
+    const prisma = getPrismaClient();
     const { activityId, filename, contentType } = c.req.valid("json");
     const key = `activities/${activityId}/${Date.now()}-${filename}`;
     // TODO: generate signed GCS URL
@@ -45,6 +49,10 @@ router.post(
     })
   ),
   async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+
+    const prisma = getPrismaClient();
     const body = c.req.valid("json");
     const url = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME}/${body.key}`;
     const photo = await prisma.photo.create({

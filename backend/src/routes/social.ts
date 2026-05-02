@@ -1,13 +1,17 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { requireDatabase } from "../services/database.js";
+import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono();
-const prisma = new PrismaClient();
 
 // Feed: posts from users you follow
 router.get("/feed/:userId", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   const { userId } = c.req.param();
   const limit = Number(c.req.query("limit") ?? 20);
   const following = await prisma.follow.findMany({ where: { followerId: userId } });
@@ -25,6 +29,10 @@ router.post(
   "/follow",
   zValidator("json", z.object({ followerId: z.string(), followingId: z.string() })),
   async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+
+    const prisma = getPrismaClient();
     const body = c.req.valid("json");
     await prisma.follow.upsert({
       where: { followerId_followingId: body },
@@ -36,6 +44,10 @@ router.post(
 );
 
 router.delete("/follow/:followerId/:followingId", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const prisma = getPrismaClient();
   await prisma.follow.delete({
     where: {
       followerId_followingId: {
@@ -58,6 +70,10 @@ router.post(
     })
   ),
   async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+
+    const prisma = getPrismaClient();
     const body = c.req.valid("json");
     await prisma.reaction.upsert({
       where: { userId_postId: { userId: body.userId, postId: body.postId } },
