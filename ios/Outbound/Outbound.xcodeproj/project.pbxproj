@@ -231,8 +231,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				E10000000000000000000003 /* OutboundLiveActivityExtension */,
 				E10000000000000000000002 /* Shared */,
+				E10000000000000000000003 /* OutboundLiveActivityExtension */,
 			);
 			name = OutboundLiveActivityExtension;
 			packageProductDependencies = (
@@ -655,7 +655,7 @@
 				DEVELOPMENT_TEAM = JGNGM4YRX5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SupportFiles/OutboundLiveActivityExtension-Info.plist;
+				INFOPLIST_FILE = "SupportFiles/OutboundLiveActivityExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -685,7 +685,7 @@
 				DEVELOPMENT_TEAM = JGNGM4YRX5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SupportFiles/OutboundLiveActivityExtension-Info.plist;
+				INFOPLIST_FILE = "SupportFiles/OutboundLiveActivityExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

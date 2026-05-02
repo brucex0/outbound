@@ -14,6 +14,7 @@ struct OutboundApp: App {
     @StateObject private var healthImportStore = HealthImportStore()
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
     @StateObject private var musicStore = MusicStore()
+    @StateObject private var recognitionStore = RecognitionStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -34,6 +35,7 @@ struct OutboundApp: App {
                     .environmentObject(healthImportStore)
                     .environmentObject(dailyCheckInStore)
                     .environmentObject(musicStore)
+                    .environmentObject(recognitionStore)
                     .task {
                         await coachStore.syncIfNeeded()
                         await healthAuthorizationStore.refresh()

@@ -2,10 +2,9 @@ import SwiftUI
 
 struct ActivityFeedView: View {
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     @State private var selectedScope: SocialFeedScope = .squad
     @State private var cheeredPostIDs: Set<String> = ["maya-waterfront"]
-    @State private var joinedClubIDs: Set<String> = ["sf-dawn"]
-    @State private var sharedActivityIDs: Set<UUID> = []
     @State private var showingRelayComposer = false
 
     var body: some View {
@@ -13,6 +12,9 @@ struct ActivityFeedView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     socialCommandBar
+                    if let socialHighlight = recognitionStore.socialHighlight {
+                        SocialRecognitionCard(preview: socialHighlight)
+                    }
                     crewPulseStrip
                     scopePicker
 
@@ -20,7 +22,7 @@ struct ActivityFeedView: View {
                         ShareLatestRunCard(
                             activity: latestActivity,
                             activityStore: activityStore,
-                            isShared: sharedActivityIDs.contains(latestActivity.id)
+                            isShared: recognitionStore.sharedActivityIDs.contains(latestActivity.id)
                         ) {
                             toggleShared(latestActivity)
                         }
@@ -132,7 +134,7 @@ struct ActivityFeedView: View {
             ForEach(SocialSeed.clubs) { club in
                 SocialClubCard(
                     club: club,
-                    isJoined: joinedClubIDs.contains(club.id)
+                    isJoined: recognitionStore.joinedClubIDs.contains(club.id)
                 ) {
                     toggleClub(club)
                 }
@@ -146,7 +148,9 @@ struct ActivityFeedView: View {
 
     private var rivalBoard: some View {
         LazyVStack(spacing: 12) {
-            RivalryHeaderCard()
+            RivalryHeaderCard(hasClaimedEdge: recognitionStore.claimedRivalEdge) {
+                _ = recognitionStore.claimRivalEdge()
+            }
 
             ForEach(SocialSeed.rivals) { rival in
                 RivalRow(rival: rival)
@@ -159,23 +163,16 @@ struct ActivityFeedView: View {
             cheeredPostIDs.remove(post.id)
         } else {
             cheeredPostIDs.insert(post.id)
+            _ = recognitionStore.registerCheer(for: post.id)
         }
     }
 
     private func toggleClub(_ club: SocialClub) {
-        if joinedClubIDs.contains(club.id) {
-            joinedClubIDs.remove(club.id)
-        } else {
-            joinedClubIDs.insert(club.id)
-        }
+        _ = recognitionStore.toggleClubMembership(clubID: club.id)
     }
 
     private func toggleShared(_ activity: SavedActivity) {
-        if sharedActivityIDs.contains(activity.id) {
-            sharedActivityIDs.remove(activity.id)
-        } else {
-            sharedActivityIDs.insert(activity.id)
-        }
+        _ = recognitionStore.toggleShare(for: activity)
     }
 }
 
@@ -505,6 +502,9 @@ private struct SocialChallengeCard: View {
 }
 
 private struct RivalryHeaderCard: View {
+    let hasClaimedEdge: Bool
+    let onClaimEdge: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -525,8 +525,44 @@ private struct RivalryHeaderCard: View {
 
             ProgressView(value: 0.78)
                 .tint(.blue)
+
+            Button(hasClaimedEdge ? "Edge logged" : "Log this week's edge") {
+                onClaimEdge()
+            }
+            .font(.caption.bold())
+            .buttonStyle(.bordered)
+            .tint(hasClaimedEdge ? .green : .blue)
+            .disabled(hasClaimedEdge)
         }
         .padding(14)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SocialRecognitionCard: View {
+    let preview: RecognitionPreview
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: preview.symbolName)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.orange)
+                .frame(width: 38, height: 38)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(preview.title)
+                    .font(.subheadline.bold())
+                Text(preview.coachLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(12)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }

@@ -10,6 +10,7 @@ struct ProfileView: View {
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
+    @EnvironmentObject var recognitionStore: RecognitionStore
 
     let onStartSuggestion: (SuggestedSession) -> Void
 
@@ -27,6 +28,7 @@ struct ProfileView: View {
                     accountCard
                     coachCard
                     highlightsSection
+                    recognitionSection
                     myActivitiesSection
                 }
                 .padding()
@@ -179,6 +181,42 @@ struct ProfileView: View {
                         ActivityCard(activity: activity, activityStore: activityStore)
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var recognitionSection: some View {
+        let recentAwards = recognitionStore.recentAwards(limit: 3)
+
+        if !recentAwards.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Recognition")
+                    .font(.title3.bold())
+
+                ForEach(recentAwards) { award in
+                    HStack(spacing: 12) {
+                        Image(systemName: award.symbolName)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.orange)
+                            .frame(width: 42, height: 42)
+                            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(award.title)
+                                .font(.subheadline.weight(.semibold))
+                            Text(award.coachLine)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(14)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
         }

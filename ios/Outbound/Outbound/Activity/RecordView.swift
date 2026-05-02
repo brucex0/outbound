@@ -11,6 +11,7 @@ struct RecordView: View {
     @EnvironmentObject var checkInStore: DailyCheckInStore
     @EnvironmentObject var goalStore: GoalStore
     @EnvironmentObject var musicStore: MusicStore
+    @EnvironmentObject var recognitionStore: RecognitionStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -154,17 +155,16 @@ struct RecordView: View {
                 photos: activity.photos,
                 lastNudge: coach.lastNudge,
                 reflection: activity.reflection,
+                recognitionPreviews: activity.recognitionPreviews,
                 onSave: { savePendingActivity(activity) },
                 onDiscard: discardPendingActivity
             )
         }
         .sheet(isPresented: $isAssistantPresented) {
-            NavigationStack {
-                AssistantView(
-                    screenName: showCamera ? "Live Recording" : "Record Setup",
-                    isRecordingActive: recorder.state == .active || recorder.state == .paused
-                )
-            }
+            AssistantView(
+                screenName: showCamera ? "Live Recording" : "Record Setup",
+                isRecordingActive: recorder.state == .active || recorder.state == .paused
+            )
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
@@ -208,18 +208,40 @@ struct RecordView: View {
             intent: activeIntent,
             goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities)
         )
+        let recognitionPreviews = recognitionStore.previewPostRunRecognition(
+            summary: summary,
+            priorActivities: activityStore.activities,
+            readiness: checkInStore.readiness,
+            intent: activeIntent,
+            goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities),
+            photoCount: capturedPhotos.count
+        )
         pendingActivity = PendingFinishedActivity(
             summary: summary,
             photos: capturedPhotos,
-            reflection: reflection
+            reflection: reflection,
+            recognitionPreviews: recognitionPreviews
         )
     }
 
     private func savePendingActivity(_ activity: PendingFinishedActivity) {
-        _ = try? activityStore.save(
+        let priorActivities = activityStore.activities
+        let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
+
+        guard let savedActivity = try? activityStore.save(
             summary: activity.summary,
             photos: activity.photos,
             lastNudge: coach.lastNudge
+        ) else {
+            return
+        }
+
+        _ = recognitionStore.recordSavedActivity(
+            savedActivity,
+            priorActivities: priorActivities,
+            readiness: checkInStore.readiness,
+            intent: activeIntent,
+            goalProgress: previewProgress
         )
         goalStore.refresh(
             activities: activityStore.activities,
@@ -403,6 +425,7 @@ private struct PendingFinishedActivity: Identifiable {
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
+    let recognitionPreviews: [RecognitionPreview]
 }
 
 struct StatBlock: View {

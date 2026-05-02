@@ -292,6 +292,7 @@ struct MotivationDashboardView: View {
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
     @EnvironmentObject private var goalStore: GoalStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
 
     let showRecentActivity: Bool
     let onStartSuggestion: (SuggestedSession) -> Void
@@ -366,6 +367,19 @@ struct MotivationDashboardView: View {
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.82))
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if let highlight = recognitionStore.todayHighlight {
+                        HStack(spacing: 8) {
+                            Image(systemName: highlight.symbolName)
+                                .font(.caption.weight(.bold))
+                            Text("Coach noticed: \(highlight.title)")
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(2)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.white.opacity(0.16), in: Capsule())
+                    }
                 }
             }
 
