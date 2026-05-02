@@ -7,10 +7,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        if Auth.auth().canHandle(url) {
-            return true
-        }
-
-        return false
+        let handled = Auth.auth().canHandle(url)
+        print("[Outbound][AppDelegate] openURL handled=\(handled) url=\(url.absoluteString)")
+        return handled
     }
 }

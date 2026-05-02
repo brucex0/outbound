@@ -36,9 +36,15 @@ struct OutboundApp: App {
                         await healthImportStore.refreshRecentWorkouts()
                         await musicStore.refresh()
                     }
+                    .onOpenURL { url in
+                        _ = authStore.handleOpenURL(url)
+                    }
             } else {
                 AuthView()
                     .environmentObject(authStore)
+                    .onOpenURL { url in
+                        _ = authStore.handleOpenURL(url)
+                    }
             }
         }
     }

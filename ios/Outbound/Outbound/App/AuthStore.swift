@@ -173,19 +173,29 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             backend = .firebase
+            print("[Outbound][Auth] Starting Google sign-in flow.")
             let provider = OAuthProvider.provider(providerID: .google)
             provider.scopes = ["email"]
             provider.customParameters = ["prompt": "select_account"]
 
             let result = try await Auth.auth().signIn(with: provider, uiDelegate: nil)
+            print("[Outbound][Auth] Google sign-in completed for user: \(result.user.uid)")
             user = result.user
             isAuthenticated = true
             localSessionLabel = nil
             let token = try? await result.user.getIDToken()
             APIClient.shared.setToken(token)
         } catch {
+            print("[Outbound][Auth] Google sign-in failed: \(error.localizedDescription)")
             authError = Self.userFacingMessage(for: error)
         }
+    }
+
+    func handleOpenURL(_ url: URL) -> Bool {
+        guard isFirebaseConfigured else { return false }
+        let handled = Auth.auth().canHandle(url)
+        print("[Outbound][Auth] handleOpenURL handled=\(handled) url=\(url.absoluteString)")
+        return handled
     }
 
     func createAccount(identifier rawIdentifier: String, password: String, confirmPassword: String) async {
