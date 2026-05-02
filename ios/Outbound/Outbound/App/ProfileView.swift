@@ -67,10 +67,6 @@ struct ProfileView: View {
     }
 
     private var accountDetail: String {
-        if authStore.user == nil, authStore.currentLoginLabel == "Local session" {
-            return "This build is running in a no-account local session."
-        }
-
         if authStore.user == nil {
             return "This account is stored locally on this device until Firebase-backed login is configured."
         }

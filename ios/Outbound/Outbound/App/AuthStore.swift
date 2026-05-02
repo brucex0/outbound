@@ -171,6 +171,33 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    func signInWithGoogle() async {
+        guard isFirebaseConfigured else {
+            authError = "Google sign-in is only available when Firebase is configured for this build."
+            return
+        }
+
+        do {
+            isBusy = true
+            authError = nil
+            defer { isBusy = false }
+
+            backend = .firebase
+            let provider = OAuthProvider.provider(providerID: .google)
+            provider.scopes = ["email"]
+            provider.customParameters = ["prompt": "select_account"]
+
+            let result = try await Auth.auth().signIn(with: provider, uiDelegate: nil)
+            user = result.user
+            isAuthenticated = true
+            localSessionLabel = nil
+            let token = try? await result.user.getIDToken()
+            APIClient.shared.setToken(token)
+        } catch {
+            authError = Self.userFacingMessage(for: error)
+        }
+    }
+
     func createAccount(identifier rawIdentifier: String, password: String, confirmPassword: String) async {
         do {
             let identifier = try Self.parseIdentifier(rawIdentifier)
@@ -287,6 +314,14 @@ final class AuthStore: ObservableObject {
                 return "Choose a stronger password with at least 6 characters."
             case .networkError:
                 return "Network error. Check your connection and try again."
+            case .webContextCancelled:
+                return "Google sign-in was canceled."
+            case .webNetworkRequestFailed:
+                return "Google sign-in could not reach the network. Check your connection and try again."
+            case .webInternalError, .webSignInUserInteractionFailure:
+                return "Google sign-in could not be completed. Try again in a moment."
+            case .accountExistsWithDifferentCredential:
+                return "An account already exists for that email with a different sign-in method."
             default:
                 break
             }

@@ -26,7 +26,7 @@ struct AuthView: View {
                             .foregroundStyle(.orange)
                         Text("Outbound")
                             .font(.largeTitle.bold())
-                        Text("Sign in with email or phone number and a password.")
+                        Text("Sign in with Google, email, or phone number.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -83,6 +83,30 @@ struct AuthView: View {
                             password.isEmpty
                         )
 
+                        if authStore.isFirebaseConfigured {
+                            HStack {
+                                Rectangle()
+                                    .fill(Color.secondary.opacity(0.25))
+                                    .frame(height: 1)
+                                Text("or")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Rectangle()
+                                    .fill(Color.secondary.opacity(0.25))
+                                    .frame(height: 1)
+                            }
+
+                            Button {
+                                Task { await authStore.signInWithGoogle() }
+                            } label: {
+                                Label("Continue with Google", systemImage: "globe")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.orange)
+                            .disabled(authStore.isBusy)
+                        }
+
                         Text(helperText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -96,12 +120,6 @@ struct AuthView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-
-                        if !authStore.isFirebaseConfigured {
-                            Button("Continue Without Account") { authStore.startLocalSession() }
-                                .buttonStyle(.bordered)
-                                .tint(.orange)
-                        }
                     }
 
                     if authStore.isBusy {
@@ -130,11 +148,13 @@ struct AuthView: View {
 
     private var helperText: String {
         if authStore.isFirebaseConfigured {
-            if mode == .signIn {
-                return "Phone logins use the same password system as email accounts, without SMS verification."
+            if mode == .createAccount {
+                return "Google sign-in creates the account automatically on first use. Email and phone accounts still use the password flow below."
             }
 
-            return "Creating an account with a phone number stores it behind the same Firebase email/password provider, so users can sign in later with that same phone number and password."
+            if mode == .signIn {
+                return "Google sign-in uses Firebase's hosted OAuth flow. Phone logins still use the same password system as email accounts, without SMS verification."
+            }
         }
 
         if mode == .signIn {
@@ -146,7 +166,7 @@ struct AuthView: View {
 
     private var authBackendMessage: String {
         if authStore.isFirebaseConfigured {
-            return "Firebase is configured, so this build uses cloud-backed accounts."
+            return "Firebase is configured, so this build uses cloud-backed accounts and Google sign-in."
         }
 
         return "Firebase is missing on this build, so accounts created here are stored only on this device."
