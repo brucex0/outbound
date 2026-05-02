@@ -94,12 +94,8 @@ private struct LockScreenSessionView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(context.attributes.sportName, systemImage: context.attributes.sportSystemImageName)
+                    Label(context.attributes.activityName, systemImage: context.attributes.sportSystemImageName)
                         .font(.headline)
-                    Text(context.attributes.activityName)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.76))
-                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -119,6 +115,7 @@ private struct LockScreenSessionView: View {
             }
         }
         .foregroundStyle(.white)
+        .padding(.horizontal, 14)
         .padding(.vertical, 6)
     }
 
