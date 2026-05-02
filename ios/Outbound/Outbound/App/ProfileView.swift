@@ -184,9 +184,15 @@ struct ProfileView: View {
                 if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
                     ProgressView()
                 } else {
-                    Image(systemName: "music.note.house.fill")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
+                    if musicStore.hasDeveloperTokenError {
+                        Image(systemName: "music.note.slash")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Image(systemName: "music.note.house.fill")
+                            .font(.title2)
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
 
@@ -200,23 +206,7 @@ struct ProfileView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let musicKitSetupBannerText = musicStore.musicKitSetupBannerText {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "wrench.and.screwdriver.fill")
-                        .foregroundStyle(.orange)
-                        .padding(.top, 1)
-
-                    Text(musicKitSetupBannerText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-            }
-
-            if let lastErrorMessage = musicStore.lastErrorMessage {
+            if let lastErrorMessage = musicStore.lastErrorMessage, !musicStore.hasDeveloperTokenError {
                 Text(lastErrorMessage)
                     .font(.caption)
                     .foregroundStyle(.orange)

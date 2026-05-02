@@ -19,7 +19,6 @@ struct LiveMapView: View {
     var body: some View {
         ZStack {
             Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
-                UserAnnotation()
                 if let startCoordinate {
                     Annotation("Trail Start", coordinate: startCoordinate) {
                         Circle()
@@ -61,19 +60,16 @@ struct LiveMapView: View {
             VStack(spacing: 12) {
                 Spacer()
 
-                if shouldShowCoachNudge {
-                    coachNudgeBubble
-                        .padding(.horizontal, 16)
-                }
-
                 SessionStatusCard(
                     state: recorder.state,
                     elapsedText: recorder.elapsedSeconds.formatted(),
                     paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                     paceText: sessionPaceText,
                     distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                    coachMessage: coachMessage,
                     musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
-                    musicErrorMessage: musicStore.lastErrorMessage,
+                    showsMusicDisabledState: musicStore.hasDeveloperTokenError,
+                    musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
                     onTogglePlayback: {
                         Task { await musicStore.togglePlayback() }
                     },
@@ -107,8 +103,9 @@ struct LiveMapView: View {
         }
     }
 
-    private var shouldShowCoachNudge: Bool {
-        recorder.state != .idle && !coach.lastNudge.isEmpty
+    private var coachMessage: String? {
+        guard recorder.state != .idle, !coach.lastNudge.isEmpty else { return nil }
+        return coach.lastNudge
     }
 
     private var trailCoordinates: [CLLocationCoordinate2D] {
@@ -121,17 +118,6 @@ struct LiveMapView: View {
 
     private var currentCoordinate: CLLocationCoordinate2D? {
         trailCoordinates.last
-    }
-
-    private var coachNudgeBubble: some View {
-        Text(coach.lastNudge)
-            .font(.caption)
-            .foregroundStyle(.white)
-            .lineLimit(3)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var rightControlRail: some View {

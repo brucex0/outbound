@@ -51,9 +51,18 @@ final class MusicStore: ObservableObject {
         quickPicks.first(where: { $0.id == selectedQuickPickID })
     }
 
+    var hasDeveloperTokenError: Bool {
+        guard let lastErrorMessage else { return false }
+        let normalized = lastErrorMessage.lowercased()
+        return normalized.contains("musickit developer token") || normalized.contains("setup is incomplete")
+    }
+
     var musicSummaryLine: String {
         if playback.isPlaying {
             return "\(playback.title) • \(playback.subtitle)"
+        }
+        if hasDeveloperTokenError {
+            return "Music is unavailable in this build right now."
         }
         if let selectedQuickPick {
             return "Queued: \(selectedQuickPick.title)"
@@ -68,17 +77,13 @@ final class MusicStore: ObservableObject {
     }
 
     var troubleshootingLine: String? {
+        guard !hasDeveloperTokenError else { return nil }
         guard needsPlaybackSetup else { return nil }
         return "If you're testing on a real device, make sure the device is signed into an active Apple Music subscription and that MusicKit is enabled for Outbound's App ID in the Apple Developer portal."
     }
 
     var musicKitSetupBannerText: String? {
-        guard let lastErrorMessage else { return nil }
-        let normalized = lastErrorMessage.lowercased()
-        guard normalized.contains("musickit developer token") || normalized.contains("setup is incomplete") else {
-            return nil
-        }
-        return "MusicKit is not fully enabled for this app. In Apple Developer, enable MusicKit for the explicit App ID `xhstudio.Outbound`, then reinstall or relaunch Outbound on your device."
+        nil
     }
 
     var primaryActionTitle: String {

@@ -3,8 +3,8 @@ import AVFoundation
 import CoreLocation
 
 // Full-screen camera with an always-available shutter, a right-edge utility
-// rail, and a bottom session card that swaps between Ready, Recording, and
-// Paused states.
+// rail, and a bottom session card that carries live workout status plus coach
+// motivation while the session is active.
 struct CameraHUDView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
@@ -55,19 +55,16 @@ struct CameraHUDView: View {
                 VStack(spacing: 12) {
                     Spacer()
 
-                    if shouldShowCoachNudge {
-                        coachNudgeBubble
-                            .padding(.horizontal, 16)
-                    }
-
                     SessionStatusCard(
                         state: recorder.state,
                         elapsedText: recorder.elapsedSeconds.formatted(),
                         paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                         paceText: sessionPaceText,
                         distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                        coachMessage: coachMessage,
                         musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
-                        musicErrorMessage: musicStore.lastErrorMessage,
+                        showsMusicDisabledState: musicStore.hasDeveloperTokenError,
+                        musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
                         onTogglePlayback: {
                             Task { await musicStore.togglePlayback() }
                         },
@@ -113,19 +110,9 @@ struct CameraHUDView: View {
         .onDisappear { camera.stop() }
     }
 
-    private var shouldShowCoachNudge: Bool {
-        recorder.state != .idle && !coach.lastNudge.isEmpty
-    }
-
-    private var coachNudgeBubble: some View {
-        Text(coach.lastNudge)
-            .font(.caption)
-            .foregroundStyle(.white)
-            .lineLimit(3)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    private var coachMessage: String? {
+        guard recorder.state != .idle, !coach.lastNudge.isEmpty else { return nil }
+        return coach.lastNudge
     }
 
     private var rightControlRail: some View {
@@ -431,7 +418,9 @@ struct SessionStatusCard: View {
     let paceLabel: String
     let paceText: String
     let distanceText: String
+    let coachMessage: String?
     let musicPlayback: MusicPlaybackSnapshot?
+    let showsMusicDisabledState: Bool
     let musicErrorMessage: String?
     let onTogglePlayback: () -> Void
     let onSkipTrack: () -> Void
@@ -442,9 +431,12 @@ struct SessionStatusCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(statusTitle)
-                .font(.headline.weight(.semibold))
-                .frame(maxWidth: .infinity)
+            Text(headerText)
+                .font(headerFont)
+                .multilineTextAlignment(headerAlignment)
+                .lineLimit(state == .idle ? 1 : 3)
+                .frame(maxWidth: .infinity, alignment: headerFrameAlignment)
+                .padding(.horizontal, 18)
                 .padding(.vertical, 14)
                 .background(statusColor)
                 .foregroundStyle(statusTextColor)
@@ -458,6 +450,8 @@ struct SessionStatusCard: View {
 
                 if let musicPlayback {
                     musicRow(for: musicPlayback)
+                } else if showsMusicDisabledState {
+                    disabledMusicRow
                 } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
                     musicErrorRow(message: musicErrorMessage)
                 }
@@ -516,6 +510,22 @@ struct SessionStatusCard: View {
         .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("MusicPlaybackRow")
+    }
+
+    private var disabledMusicRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "music.note.slash")
+                .foregroundStyle(.secondary)
+            Text("Music unavailable")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Music unavailable")
     }
 
     private func musicErrorRow(message: String) -> some View {
@@ -596,12 +606,31 @@ struct SessionStatusCard: View {
         }
     }
 
-    private var statusTitle: String {
-        switch state {
-        case .idle: return "Ready"
-        case .active: return "Recording"
-        case .paused: return "Paused"
+    private var headerText: String {
+        if let coachMessage, state != .idle {
+            return coachMessage
         }
+
+        switch state {
+        case .idle:
+            return "Ready"
+        case .active:
+            return "In progress"
+        case .paused:
+            return "Paused"
+        }
+    }
+
+    private var headerFont: Font {
+        state == .idle ? .headline.weight(.semibold) : .subheadline.weight(.semibold)
+    }
+
+    private var headerAlignment: TextAlignment {
+        state == .idle ? .center : .leading
+    }
+
+    private var headerFrameAlignment: Alignment {
+        state == .idle ? .center : .leading
     }
 
     private var statusColor: Color {

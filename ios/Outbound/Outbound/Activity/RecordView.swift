@@ -287,7 +287,19 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let lastErrorMessage = musicStore.lastErrorMessage {
+            if musicStore.hasDeveloperTokenError {
+                HStack(spacing: 10) {
+                    Image(systemName: "music.note.slash")
+                        .foregroundStyle(.secondary)
+                    Text("Music unavailable")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+            } else if let lastErrorMessage = musicStore.lastErrorMessage {
                 Text(lastErrorMessage)
                     .font(.caption)
                     .foregroundStyle(.orange)

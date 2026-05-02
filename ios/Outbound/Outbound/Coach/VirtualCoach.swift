@@ -18,13 +18,13 @@ private final class AudioSessionCoordinator {
         do {
             try session.setCategory(
                 .playback,
-                mode: .spokenAudio,
+                mode: .voicePrompt,
                 options: [
                     .allowAirPlay,
                     .allowBluetooth,
                     .allowBluetoothA2DP,
-                    .duckOthers,
-                    .interruptSpokenAudioAndMixWithOthers
+                    .mixWithOthers,
+                    .duckOthers
                 ]
             )
             try session.setActive(true)

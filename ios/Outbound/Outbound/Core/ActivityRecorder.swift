@@ -17,16 +17,25 @@ final class ActivityRecorder: ObservableObject {
 
     let locationManager: LocationManager
     private var timer: AnyCancellable?
+    private var locationCancellable: AnyCancellable?
     private var startDate: Date?
+    private var currentSegmentStartDate: Date?
+    private var accumulatedActiveDuration: TimeInterval = 0
 
     init(locationManager: LocationManager) {
         self.locationManager = locationManager
+        locationCancellable = locationManager.$location.sink { [weak self] _ in
+            self?.handleLocationUpdate()
+        }
     }
 
     func start() {
         timer?.cancel()
+        let now = Date()
         state = .active
-        startDate = Date()
+        startDate = now
+        currentSegmentStartDate = now
+        accumulatedActiveDuration = 0
         elapsedSeconds = 0
         distanceMeters = 0
         currentPace = nil
@@ -40,7 +49,10 @@ final class ActivityRecorder: ObservableObject {
 
     func pause() {
         guard state == .active else { return }
+        updateSessionMetrics(now: Date())
         state = .paused
+        accumulatedActiveDuration = TimeInterval(elapsedSeconds)
+        currentSegmentStartDate = nil
         timer?.cancel()
         locationManager.pauseTracking()
         liveSnapshot = makeSnapshot()
@@ -49,6 +61,7 @@ final class ActivityRecorder: ObservableObject {
     func resume() {
         guard state == .paused else { return }
         state = .active
+        currentSegmentStartDate = Date()
         locationManager.resumeTracking()
         liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
@@ -57,6 +70,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     func finish() -> ActivitySummary {
+        updateSessionMetrics(now: Date())
         state = .idle
         timer?.cancel()
         let track = locationManager.stopTracking()
@@ -70,15 +84,38 @@ final class ActivityRecorder: ObservableObject {
         )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
+        currentSegmentStartDate = nil
+        accumulatedActiveDuration = 0
         return summary
     }
 
     private func tick() {
         guard state == .active else { return }
-        elapsedSeconds += 1
+        updateSessionMetrics(now: Date())
+    }
+
+    private func handleLocationUpdate() {
+        guard state == .active else { return }
+        updateSessionMetrics(now: Date())
+    }
+
+    private func updateSessionMetrics(now: Date) {
+        elapsedSeconds = currentElapsedSeconds(at: now)
         distanceMeters = locationManager.totalDistanceMeters
         currentPace = locationManager.currentPaceSecsPerKm
         liveSnapshot = makeSnapshot()
+    }
+
+    private func currentElapsedSeconds(at now: Date) -> Int {
+        switch state {
+        case .idle:
+            return 0
+        case .paused:
+            return Int(accumulatedActiveDuration.rounded(.down))
+        case .active:
+            let segmentDuration = currentSegmentStartDate.map { now.timeIntervalSince($0) } ?? 0
+            return Int((accumulatedActiveDuration + segmentDuration).rounded(.down))
+        }
     }
 
     private func makeSnapshot(isActive: Bool? = nil) -> ActiveSessionSnapshot {
