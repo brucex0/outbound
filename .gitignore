@@ -6,6 +6,10 @@ node_modules/
 .env
 .env.local
 
+# Local credentials
+config/google-oauth-web-client.json
+config/google-oauth-web-client.local.json
+
 # Agent metadata
 .claude/
 .codex/
@@ -28,7 +32,6 @@ ios/**/*.ipa
 ios/**/*.dSYM.zip
 ios/**/*.dSYM
 ios/**/Pods/
-ios/**/GoogleService-Info.plist
 
 # macOS
 .DS_Store

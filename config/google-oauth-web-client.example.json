@@ -1,0 +1,9 @@
+{
+  "web": {
+    "client_id": "replace-with-google-web-oauth-client-id",
+    "client_secret": "replace-with-google-web-oauth-client-secret",
+    "redirect_uris": [
+      "https://your-project.firebaseapp.com/__/auth/handler"
+    ]
+  }
+}

@@ -12,7 +12,7 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - Firebase iOS bundle ID: `xhstudio.Outbound`.
 - Firebase Email/Password auth must be enabled for app login.
 - Firebase Phone Auth provider is enabled, but the app no longer depends on SMS verification for sign-in.
-- Firebase Google auth is enabled through the Identity Platform `google.com` provider.
+- Firebase Google auth is enabled through the Identity Platform `google.com` provider with a standard Google web OAuth client.
 - Phone Auth callback URL scheme in `Info.plist`: `app-1-186140050970-ios-e8305464ba7fbb30a033a3`.
 
 ## Local Config
@@ -28,17 +28,16 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - When Firebase is configured, both routes authenticate through Firebase Email/Password.
 - Google sign-in uses Firebase Auth's hosted OAuth flow for `google.com`, so the app can use the existing Firebase callback scheme instead of a separate native Google Sign-In SDK callback.
 - When a user signs up with a phone number, the app normalizes the digits and stores them as an internal alias email of the form `phone.<digits>@users.outbound.local`.
-- When Firebase is not configured, the same identifier/password UX is backed by local on-device storage instead: account metadata in `UserDefaults` and passwords in Keychain.
-- This keeps sign-in compatible with Firebase Auth on a personal Apple developer setup, without requiring Apple Sign In or SMS-based phone verification, while still letting the app work before cloud auth is set up.
+- When Firebase is not configured, the auth screen now blocks account creation and sign-in instead of silently falling back to local-only accounts.
+- This keeps sign-in compatible with Firebase Auth on a personal Apple developer setup, without requiring Apple Sign In or SMS-based phone verification.
 
 ## Google Provider Setup
 
 - Firebase Identity Platform provider resource: `projects/186140050970/defaultSupportedIdpConfigs/google.com`.
-- Provider is enabled with a project OAuth client and secret created through `gcloud iam oauth-clients`.
-- OAuth client: `projects/outbound-494602/locations/global/oauthClients/outbound-firebase-google`.
-- OAuth client credential: `projects/outbound-494602/locations/global/oauthClients/outbound-firebase-google/credentials/ofgcred`.
 - Allowed redirect URI: `https://outbound-494602.firebaseapp.com/__/auth/handler`.
-- The Firebase app config currently does not expose `CLIENT_ID` or `REVERSED_CLIENT_ID`, so prefer Firebase's hosted OAuth flow unless you intentionally switch to the native Google Sign-In SDK later.
+- Keep the real Google web OAuth credential in a local-only file such as `config/google-oauth-web-client.local.json`.
+- The checked-in example template is `config/google-oauth-web-client.example.json`.
+- The Firebase app config currently does not expose `CLIENT_ID` or `REVERSED_CLIENT_ID`, so the app uses Firebase Auth's hosted OAuth flow instead of the native Google Sign-In SDK.
 
 ## REST Inspection Pattern
 

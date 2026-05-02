@@ -78,6 +78,7 @@ struct AuthView: View {
                         .buttonStyle(.borderedProminent)
                         .tint(.orange)
                         .disabled(
+                            !authStore.isFirebaseConfigured ||
                             authStore.isBusy ||
                             identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                             password.isEmpty
@@ -158,10 +159,10 @@ struct AuthView: View {
         }
 
         if mode == .signIn {
-            return "Without Firebase, password accounts are stored only on this device in local secure storage."
+            return "This build needs GoogleService-Info.plist before Firebase sign-in can work."
         }
 
-        return "Creating an account right now stores the login only on this device, so it will not sync to other phones."
+        return "This build needs GoogleService-Info.plist before Firebase account creation can work."
     }
 
     private var authBackendMessage: String {
@@ -169,7 +170,7 @@ struct AuthView: View {
             return "Firebase is configured, so this build uses cloud-backed accounts and Google sign-in."
         }
 
-        return "Firebase is missing on this build, so accounts created here are stored only on this device."
+        return "Firebase is not configured in this checkout yet. Place GoogleService-Info.plist under ios/Outbound/Outbound to enable real sign-in."
     }
 
     private func submit() async {

@@ -55,10 +55,8 @@ final class AuthStore: ObservableObject {
         backend = isFirebaseConfigured ? .firebase : .local
 
         if !isFirebaseConfigured {
-            if let account = try? localCredentialStore.activeAccount() {
-                isAuthenticated = true
-                localSessionLabel = account.displayIdentifier
-            }
+            isAuthenticated = false
+            localSessionLabel = nil
             return
         }
 
@@ -134,6 +132,11 @@ final class AuthStore: ObservableObject {
     }
 
     func signIn(identifier rawIdentifier: String, password: String) async {
+        guard isFirebaseConfigured else {
+            authError = "Firebase configuration is missing. Add GoogleService-Info.plist to use real sign-in."
+            return
+        }
+
         do {
             let identifier = try Self.parseIdentifier(rawIdentifier)
             let password = try Self.validatePassword(password)
@@ -142,30 +145,17 @@ final class AuthStore: ObservableObject {
             authError = nil
             defer { isBusy = false }
 
-            if isFirebaseConfigured {
-                backend = .firebase
-                let result = try await Auth.auth().signIn(
-                    withEmail: identifier.normalizedCredentialEmail,
-                    password: password
-                )
+            backend = .firebase
+            let result = try await Auth.auth().signIn(
+                withEmail: identifier.normalizedCredentialEmail,
+                password: password
+            )
 
-                user = result.user
-                isAuthenticated = true
-                localSessionLabel = nil
-                let token = try? await result.user.getIDToken()
-                APIClient.shared.setToken(token)
-            } else {
-                backend = .local
-                let localAccount = try localCredentialStore.signIn(
-                    identifierKey: identifier.normalizedCredentialEmail,
-                    password: password
-                )
-
-                user = nil
-                isAuthenticated = true
-                localSessionLabel = localAccount.displayIdentifier
-                APIClient.shared.setToken(nil)
-            }
+            user = result.user
+            isAuthenticated = true
+            localSessionLabel = nil
+            let token = try? await result.user.getIDToken()
+            APIClient.shared.setToken(token)
         } catch {
             authError = Self.userFacingMessage(for: error)
         }
@@ -199,6 +189,11 @@ final class AuthStore: ObservableObject {
     }
 
     func createAccount(identifier rawIdentifier: String, password: String, confirmPassword: String) async {
+        guard isFirebaseConfigured else {
+            authError = "Firebase configuration is missing. Add GoogleService-Info.plist to create a real account."
+            return
+        }
+
         do {
             let identifier = try Self.parseIdentifier(rawIdentifier)
             let password = try Self.validatePassword(password)
@@ -210,31 +205,17 @@ final class AuthStore: ObservableObject {
             authError = nil
             defer { isBusy = false }
 
-            if isFirebaseConfigured {
-                backend = .firebase
-                let result = try await Auth.auth().createUser(
-                    withEmail: identifier.normalizedCredentialEmail,
-                    password: password
-                )
+            backend = .firebase
+            let result = try await Auth.auth().createUser(
+                withEmail: identifier.normalizedCredentialEmail,
+                password: password
+            )
 
-                user = result.user
-                isAuthenticated = true
-                localSessionLabel = nil
-                let token = try? await result.user.getIDToken()
-                APIClient.shared.setToken(token)
-            } else {
-                backend = .local
-                let localAccount = try localCredentialStore.createAccount(
-                    identifierKey: identifier.normalizedCredentialEmail,
-                    displayIdentifier: identifier.displayValue,
-                    password: password
-                )
-
-                user = nil
-                isAuthenticated = true
-                localSessionLabel = localAccount.displayIdentifier
-                APIClient.shared.setToken(nil)
-            }
+            user = result.user
+            isAuthenticated = true
+            localSessionLabel = nil
+            let token = try? await result.user.getIDToken()
+            APIClient.shared.setToken(token)
         } catch {
             authError = Self.userFacingMessage(for: error)
         }

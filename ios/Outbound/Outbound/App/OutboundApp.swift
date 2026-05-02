@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct OutboundApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var authStore = AuthStore()
     @StateObject private var coachStore = CoachStore()
     @StateObject private var coachCatalogStore = CoachCatalogStore()

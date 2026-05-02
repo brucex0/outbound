@@ -14,10 +14,10 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after authentication or local fallback sign-in.
-- `App/AuthStore.swift`: auth wrapper that prefers Firebase when configured, including email/password plus hosted Google OAuth, and falls back to a local on-device credential store otherwise. Phone logins are normalized into an internal email alias so the app can support `phone + password` without SMS verification or Apple Sign In.
-- `App/LocalCredentialStore.swift`: local auth persistence for no-backend builds. Stores account metadata in `UserDefaults`, active-session state locally, and passwords in Keychain.
-- `App/AuthView.swift`: login UI for Google sign-in plus email/phone password auth, with a local-session escape hatch when Firebase config is missing.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after Firebase authentication.
+- `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after Google sign-in.
+- `App/AuthStore.swift`: Firebase auth wrapper for hosted Google OAuth plus email/password and phone-number-as-identifier password login. Phone logins are normalized into an internal email alias so the app can support `phone + password` without SMS verification or Apple Sign In.
+- `App/AuthView.swift`: login UI for Google sign-in plus email/phone password auth. When `GoogleService-Info.plist` is missing, the screen blocks real auth and explains how to finish Firebase setup.
 - `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` owns the floating activity button shown on Today and Social, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
