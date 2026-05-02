@@ -81,27 +81,27 @@ The Home tab should feel like a "today" space instead of a dashboard.
 
 Decision:
 - remove the dedicated Record tab
-- keep Today as the motivation surface for recommended actions
-- add a shared floating activity button on Today and Social
+- keep Me as the motivation surface for recommended actions
+- add a shared floating activity button on Me and Social
 - let the floating button quick-start directly into the shared start page
 - let the activity page remain dismissible during a live session and reopen from the floating button
 
 Why:
 - the product thesis is coach-led activation, not a neutral recording utility
-- Today should still answer `what should I do today?` before asking the user to self-direct
-- Social also needs a fast path into activity without pushing the user back to Today first
+- Me should still answer `what should I do today?` before asking the user to self-direct
+- Social also needs a fast path into activity without pushing the user back to Me first
 - a single floating button works better as a global activity anchor than as a freestyle shortcut
 - quick start should feel immediate, so it should not stop on an extra chooser page first
 - allowing re-entry into an active session makes the recording flow feel more resilient and premium
 
 Non-goals for this step:
-- do not turn Today into a dense dashboard
+- do not turn Me into a dense dashboard
 - do not force the user through a long setup flow before every activity
 - do not remove the ability to start something unstructured or freestyle
-- do not make the floating button visually louder than the coach recommendation on Today
+- do not make the floating button visually louder than the coach recommendation on Me
 
 Design consequence:
-- Today keeps recommended starts inline, but not every start path needs to live there
+- Me keeps recommended starts inline, but not every start path needs to live there
 - the shared start page becomes the direct quick-start surface for freestyle and suggested sessions
 - the recording camera/map experience stays intact; only the pre-start and re-entry model changes
 
@@ -112,9 +112,9 @@ Future fallback:
 
 The product now has two start surfaces with different roles.
 
-### Today
+### Me
 
-Today remains the recommendation surface.
+Me remains the recommendation surface.
 
 Recommended start actions:
 - primary guided CTA in the spark card
@@ -132,7 +132,7 @@ This means the screen should feel like:
 ### Floating Activity Button
 
 The floating button appears on:
-- Today
+- Me
 - Social
 
 The floating button does not mean `start freestyle`.
@@ -150,8 +150,8 @@ When a session is active or paused:
 
 ### Activity Page Flow
 
-1. User opens Today.
-2. User taps a suggested action on Today, or taps the floating button on Today/Social.
+1. User opens Me.
+2. User taps a suggested action on Me, or taps the floating button on Me/Social.
 3. App opens the shared start page directly.
 4. If the entry came from a suggestion, the start page opens on that suggested confirmation state.
 5. If the entry came from the floating button while idle, the start page opens on freestyle confirmation.
@@ -166,7 +166,7 @@ Requirements:
 - no guilt framing
 - no need to choose a recommendation first
 - can default to run for MVP if needed
-- should not outrank the recommended action visually on Today
+- should not outrank the recommended action visually on Me
 
 ### Confirmation State
 
@@ -189,7 +189,7 @@ Freestyle confirmation should show:
 
 ### Information Hierarchy
 
-The Today screen should keep this order:
+The Me motivation surface should keep this order:
 - one emotionally strong hero
 - one lightweight focus / goals layer when we add it
 - one lightweight readiness interaction
@@ -280,9 +280,9 @@ Behavior:
 - suggestions should feel approachable, not like training plans
 
 Current implementation:
-- Today still owns suggested starts
+- Me still owns suggested starts
 - freestyle is reached from the activity page instead of the hero
-- the floating activity button on Today and Social also opens the shared activity page
+- the floating activity button on Me and Social also opens the shared activity page
 
 ## Activity Page
 
@@ -293,7 +293,7 @@ The activity page is now the shared surface for:
 
 When opened from the floating button while idle, it should skip an intermediate chooser and go straight to the freestyle start state.
 
-Future goals work should plug into this page as context, not as a full setup interruption. The coach can reference the active weekly focus here, but initial focus setup should still begin in Today.
+Future goals work should plug into this page as context, not as a full setup interruption. The coach can reference the active weekly focus here, but initial focus setup should still begin in Me.
 
 ## Live Session Dismissal
 

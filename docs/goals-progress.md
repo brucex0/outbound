@@ -29,17 +29,17 @@ Example mapping:
 - Bias toward realistic weekly commitments over ambitious targets.
 - Short sessions count.
 - Missed days should lead to re-entry, not failure language.
-- Progress should appear inside the Today loop before it grows into a separate progress surface.
+- Progress should appear inside the Me motivation loop before it grows into a separate progress surface.
 - Adjusting a goal should feel easy and stigma-free.
 
 ## V1 Scope
 
 Ship:
 - one active weekly goal at a time
-- coach-led setup inside Today
+- coach-led setup inside Me
 - local-first persistence
 - progress derived from saved activities
-- goal-aware Today copy and post-run reflection
+- goal-aware Me-surface copy and post-run reflection
 
 Defer:
 - race-date plans
@@ -55,8 +55,8 @@ Implemented in the app:
 
 - one active weekly focus at a time
 - `weeklySessions` and `weeklyMinutes`
-- coach-led setup in Today with reply-chip cards
-- progress card and progress chip on Today
+- coach-led setup in Me with reply-chip cards
+- progress card and progress chip on Me
 - post-run reflection note that references goal progress
 
 Still deferred:
@@ -91,7 +91,7 @@ Suggested flow:
 2. User picks a direction from chips.
 3. Coach proposes a realistic target.
 4. User confirms, eases, or changes it.
-5. Today immediately starts reflecting the new goal.
+5. Me immediately starts reflecting the new goal.
 
 Example:
 
@@ -128,9 +128,9 @@ Avoid interrupting the user with setup during a live activity.
 ## Surface Placement
 
 Primary surface:
-- Today, between the spark and suggestion layers
+- Me, between the spark and suggestion layers
 
-Recommended Today order:
+Recommended Me order:
 1. spark
 2. focus / goal conversation card
 3. readiness
@@ -149,7 +149,7 @@ Do not start with a standalone progress dashboard.
 Progress should show up as lightweight, emotionally framed context:
 
 - spark copy: `Two sessions this week would get you back into rhythm`
-- Today focus card: `1 of 3 sessions this week`
+- Me focus card: `1 of 3 sessions this week`
 - momentum chip: `15 min left on your weekly focus`
 - post-run reflection: `That moved you to 2 of 3 this week`
 
@@ -172,13 +172,13 @@ Recommended store responsibilities:
 - persist one active goal locally
 - persist lightweight conversation state locally
 - compute progress from `ActivityStore.activities`
-- expose goal-aware Today state
+- expose goal-aware Me motivation state
 
 Recommended app integration:
 
 - create `GoalStore` in `App/OutboundApp.swift`
 - inject it into `MainTabView`
-- refresh progress when Today appears and after activities save
+- refresh progress when Me appears and after activities save
 
 ## Suggested Models
 

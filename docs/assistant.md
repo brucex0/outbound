@@ -33,7 +33,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ### Main surfaces
 
-- Today / Me:
+- Me:
   - default hint examples: `Want a simple plan for today?`, `Help me decide what to do`
   - primary jobs: planning, discovery, goal setup, progress explanation
 - Social:

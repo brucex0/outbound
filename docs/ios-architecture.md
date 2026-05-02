@@ -61,7 +61,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Goals/GoalModels.swift`, `Goals/GoalProgressEngine.swift`, and `Goals/GoalStore.swift`: local-first weekly focus models, progress computation from saved activities, and persisted coach conversation state.
 - `Goals/GoalConversationCard.swift`: motivation-card UI for conversational goal setup, active-focus progress, and lightweight adjustment.
 - `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, including spark, focus setup/progress, check-in, suggested actions, momentum strip, and the local engine that derives motivation state and finish reflections.
-- `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Today, and goal-aware post-run reflection notes.
+- `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Me's motivation surface, and goal-aware post-run reflection notes.
 
 ## Assistant
 

@@ -244,7 +244,7 @@ Recommended entry points:
 
 - onboarding card: connect Apple Health
 - Me tab: manage connected sources
-- Today tab: optional "imported yesterday" or readiness context
+- Me motivation surface: optional "imported yesterday" or readiness context
 - activity detail: show source badge such as `Apple Health` or `Garmin via Health`
 
 Permission copy should explain the user benefit clearly:
