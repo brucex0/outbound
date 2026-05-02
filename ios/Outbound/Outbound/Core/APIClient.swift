@@ -20,6 +20,10 @@ final class APIClient {
         return try await postRaw("/activities", body: data)
     }
 
+    func chatWithAssistant(_ request: AssistantChatRequest) async throws -> AssistantChatResponse {
+        try await post("/assistant/chat", body: request)
+    }
+
     // MARK: - Helpers
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
@@ -56,4 +60,31 @@ final class APIClient {
     }()
 
     private struct EmptyBody: Encodable {}
+}
+
+struct AssistantChatRequest: Encodable {
+    let prompt: String
+    let capability: String
+    let context: AssistantChatAPIContext
+    let messages: [AssistantChatAPIPriorMessage]
+    let firebaseUid: String?
+}
+
+struct AssistantChatAPIContext: Encodable {
+    let coachName: String
+    let activityCount: Int
+    let weeklyDistanceKilometers: Double
+    let currentGoalSummary: String?
+    let currentScreen: String?
+    let isRecordingActive: Bool
+}
+
+struct AssistantChatAPIPriorMessage: Encodable {
+    let role: String
+    let text: String
+    let capability: String?
+}
+
+struct AssistantChatResponse: Decodable {
+    let message: String
 }

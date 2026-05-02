@@ -253,6 +253,9 @@ struct AssistantView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var goalStore: GoalStore
 
+    let screenName: String
+    let isRecordingActive: Bool
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -394,7 +397,9 @@ struct AssistantView: View {
             coachName: coachCatalog.selectedPersona.template.displayName,
             activityCount: activityStore.activities.count,
             weeklyDistanceKilometers: weeklyDistanceKilometers,
-            currentGoalSummary: goalStore.progress?.summaryLine
+            currentGoalSummary: goalStore.progress?.summaryLine,
+            currentScreen: screenName,
+            isRecordingActive: isRecordingActive
         )
     }
 

@@ -66,9 +66,11 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Assistant
 
 - `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, and the optional Apple Foundation Models responder.
+- `Core/APIClient.swift`: assistant chat transport to the backend, plus existing coach/activity endpoints.
 - `App/MainTabView.swift`: persistent bottom assistant shell for the main tabs, collapsed contextual hints, and expanded assistant presentation.
 - `Activity/RecordView.swift`: compact live-session assistant entry so the assistant stays reachable without overwhelming the camera/map experience.
 - `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, and planning.
+- `backend/src/routes/assistant.ts`: backend assistant chat route that currently uses a BoatShare-style DeepSeek integration.
 - `docs/assistant.md`: focused product and implementation notes for the assistant surface.
 
 ## Network And Placeholders

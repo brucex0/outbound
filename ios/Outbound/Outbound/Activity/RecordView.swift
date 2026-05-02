@@ -160,7 +160,10 @@ struct RecordView: View {
         }
         .sheet(isPresented: $isAssistantPresented) {
             NavigationStack {
-                AssistantView()
+                AssistantView(
+                    screenName: showCamera ? "Live Recording" : "Record Setup",
+                    isRecordingActive: recorder.state == .active || recorder.state == .paused
+                )
             }
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)

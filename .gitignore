@@ -5,6 +5,8 @@ node_modules/
 # Environment
 .env
 .env.local
+backend/.env
+backend/.env.local
 
 # Local credentials
 config/google-oauth-web-client.json

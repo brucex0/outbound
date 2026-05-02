@@ -210,6 +210,8 @@ struct AssistantContext {
     let activityCount: Int
     let weeklyDistanceKilometers: Double
     let currentGoalSummary: String?
+    let currentScreen: String?
+    let isRecordingActive: Bool
 }
 
 @MainActor
@@ -331,6 +333,23 @@ final class AssistantStore: ObservableObject {
         capability: AssistantCapability,
         context: AssistantContext
     ) async -> String {
+        if let remote = try? await APIClient.shared.chatWithAssistant(AssistantChatRequest(
+            prompt: prompt,
+            capability: capability.rawValue,
+            context: AssistantChatAPIContext(
+                coachName: context.coachName,
+                activityCount: context.activityCount,
+                weeklyDistanceKilometers: context.weeklyDistanceKilometers,
+                currentGoalSummary: context.currentGoalSummary,
+                currentScreen: context.currentScreen,
+                isRecordingActive: context.isRecordingActive
+            ),
+            messages: recentMessagesForAPI(),
+            firebaseUid: AuthStore.currentUserId
+        )), !remote.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return remote.message
+        }
+
         if let generated = await AssistantFoundationModelResponder.generateReply(
             prompt: prompt,
             capability: capability,
@@ -399,6 +418,16 @@ final class AssistantStore: ObservableObject {
     private func persistMessages() {
         guard let data = try? JSONEncoder().encode(messages) else { return }
         defaults.set(data, forKey: messagesKey)
+    }
+
+    private func recentMessagesForAPI() -> [AssistantChatAPIPriorMessage] {
+        messages.suffix(10).map {
+            AssistantChatAPIPriorMessage(
+                role: $0.author == .user ? "user" : "assistant",
+                text: $0.text,
+                capability: $0.capability?.rawValue
+            )
+        }
     }
 
     private static func inferCapability(from prompt: String) -> AssistantCapability {

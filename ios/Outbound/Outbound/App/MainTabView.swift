@@ -69,7 +69,10 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $isAssistantPresented) {
             NavigationStack {
-                AssistantView()
+                AssistantView(
+                    screenName: selectedTab == .me ? "Me" : "Social",
+                    isRecordingActive: false
+                )
             }
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)

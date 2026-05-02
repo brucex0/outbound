@@ -87,15 +87,22 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - saved activity count
   - current week distance
   - current goal summary line, when present
-- If Apple Foundation Models is available on device, `AssistantFoundationModelResponder` generates the reply.
-- Otherwise the store falls back to deterministic copy for each capability so the UI still works everywhere.
+- The response stack is:
+  - try the backend assistant chat endpoint first
+  - fall back to Apple Foundation Models when available on device
+  - fall back again to deterministic local copy so the UI still works everywhere
+- Backend chat keeps provider keys on the server rather than in the iOS app.
+- The current assistant backend path follows the BoatShare pattern: OpenAI-compatible server-side calls to DeepSeek with JSON-shaped responses for predictable parsing.
 
 ## File Map
 
 - `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and optional Apple Foundation Models responder.
+- `ios/Outbound/Outbound/Core/APIClient.swift`: assistant chat request/response transport to the backend.
 - `ios/Outbound/Outbound/App/MainTabView.swift`: persistent assistant shell, collapsed hints, and expanded assistant presentation from the main app tabs.
 - `ios/Outbound/Outbound/Activity/RecordView.swift`: compact live-session assistant entry.
 - `ios/Outbound/Outbound/App/ProfileView.swift`: assistant screen, quick starts, message bubbles, and composer.
+- `backend/src/routes/assistant.ts`: assistant chat endpoint.
+- `backend/src/services/ai.ts`: Anthropic-backed assistant reply generation.
 
 ## Extension Ideas
 
