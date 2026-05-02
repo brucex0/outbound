@@ -53,7 +53,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             generating: AppleSessionAnalysisOutput.self,
             options: GenerationOptions(
                 sampling: .greedy,
-                temperature: 0.2,
+                temperature: 0.65,
                 maximumResponseTokens: 120
             )
         )
@@ -79,6 +79,9 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             "You are Outbound's on-device live session analyst.",
             "Analyze only the active workout data supplied in each prompt.",
             "Return concise, actionable coaching for the athlete during the session.",
+            "Sound like a real coach speaking naturally, not a dashboard reading stats.",
+            "Do not repeat the same phrasing across nudges.",
+            "Avoid always recapping elapsed time, distance, or pace unless it materially helps the cue.",
             "Do not claim medical certainty. If heart-rate data looks concerning, suggest easing effort and checking how they feel.",
             "Keep spoken messages under 24 words."
         ]

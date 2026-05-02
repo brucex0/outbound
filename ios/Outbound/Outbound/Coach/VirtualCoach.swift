@@ -66,9 +66,11 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
     private var isActive = false
+    private var recentSpokenFingerprints: [String] = []
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
+    private let maxRecentSpokenFingerprints = 4
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil) {
@@ -90,6 +92,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
+        recentSpokenFingerprints = []
         lastNudge = sessionIntent?.coachLine ?? ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
@@ -172,34 +175,116 @@ final class VirtualCoach: NSObject, ObservableObject {
         guard !analysis.message.isEmpty else { return }
 
         lastNudge = analysis.message
-        if analysis.shouldSpeak {
-            speak(analysis.message)
+        guard analysis.shouldSpeak else { return }
+
+        let fingerprint = normalizedFingerprint(for: analysis.message)
+        guard !recentSpokenFingerprints.contains(fingerprint) else { return }
+
+        recentSpokenFingerprints.append(fingerprint)
+        if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
+            recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
         }
+
+        speak(analysis)
     }
 
-    private func speak(_ text: String) {
+    private func speak(_ analysis: SessionAnalysisResult) {
         audioSessionCoordinator.beginCoachSpeech()
-        let utterance = AVSpeechUtterance(string: text)
+        let utterance = AVSpeechUtterance(string: spokenText(for: analysis.message))
         if let voice = persona?.voice {
-            if let identifier = voice.avFoundationIdentifier,
-               let selectedVoice = AVSpeechSynthesisVoice(identifier: identifier) {
-                utterance.voice = selectedVoice
-            } else {
-                utterance.voice = AVSpeechSynthesisVoice(language: voice.locale)
-            }
-            utterance.rate = voice.rate
-            utterance.pitchMultiplier = voice.pitch
+            utterance.voice = selectedSpeechVoice(for: voice)
+            utterance.rate = adjustedRate(for: voice, urgency: analysis.urgency)
+            utterance.pitchMultiplier = adjustedPitch(for: voice, urgency: analysis.urgency)
             utterance.volume = voice.volume
         } else {
-            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-            utterance.rate = 0.5
+            utterance.voice = preferredVoice(for: "en-US")
+            utterance.rate = 0.47
             utterance.volume = 0.9
         }
+        utterance.preUtteranceDelay = 0.06
+        utterance.postUtteranceDelay = 0.12
         synthesizer.speak(utterance)
     }
 
     private var currentAnalysisIntervalSeconds: Int {
         persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
+    }
+
+    private func spokenText(for message: String) -> String {
+        message
+            .replacingOccurrences(of: ";", with: ", ")
+            .replacingOccurrences(of: "—", with: ", ")
+    }
+
+    private func selectedSpeechVoice(for voice: CoachVoice) -> AVSpeechSynthesisVoice? {
+        if let identifier = voice.avFoundationIdentifier,
+           let selectedVoice = AVSpeechSynthesisVoice(identifier: identifier) {
+            return selectedVoice
+        }
+
+        return preferredVoice(for: voice.locale) ?? AVSpeechSynthesisVoice(language: voice.locale)
+    }
+
+    private func preferredVoice(for locale: String) -> AVSpeechSynthesisVoice? {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { candidate in
+                candidate.language == locale || candidate.language.hasPrefix(locale.replacingOccurrences(of: "_", with: "-"))
+            }
+            .sorted { lhs, rhs in
+                voiceScore(lhs) > voiceScore(rhs)
+            }
+            .first
+    }
+
+    private func voiceScore(_ voice: AVSpeechSynthesisVoice) -> Int {
+        let qualityScore: Int
+        switch voice.quality {
+        case .premium:
+            qualityScore = 30
+        case .enhanced:
+            qualityScore = 20
+        default:
+            qualityScore = 10
+        }
+
+        let siriBonus = voice.name.localizedCaseInsensitiveContains("Siri") ? 5 : 0
+        return qualityScore + siriBonus
+    }
+
+    private func adjustedRate(for voice: CoachVoice, urgency: SessionAnalysisUrgency) -> Float {
+        let delta: Float
+        switch urgency {
+        case .steady:
+            delta = -0.03
+        case .opportunity:
+            delta = 0.0
+        case .caution:
+            delta = -0.05
+        }
+
+        return max(0.42, min(0.56, voice.rate + delta))
+    }
+
+    private func adjustedPitch(for voice: CoachVoice, urgency: SessionAnalysisUrgency) -> Float {
+        let delta: Float
+        switch urgency {
+        case .steady:
+            delta = 0.0
+        case .opportunity:
+            delta = 0.02
+        case .caution:
+            delta = -0.02
+        }
+
+        return max(0.9, min(1.2, voice.pitch + delta))
+    }
+
+    private func normalizedFingerprint(for message: String) -> String {
+        message
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9 ]", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
