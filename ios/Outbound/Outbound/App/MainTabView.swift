@@ -150,38 +150,32 @@ private struct AssistantCollapsedBar: View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 Image(systemName: "sparkles")
-                    .font(.subheadline.weight(.bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(accentColor)
-                    .frame(width: 30, height: 30)
-                    .background(accentColor.opacity(0.12), in: Circle())
+                    .frame(width: 24, height: 24)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Assistant")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(hint)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
+                Text(hint)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
 
                 Spacer(minLength: 12)
 
                 Image(systemName: "chevron.up")
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(accentColor.opacity(0.16), lineWidth: 1)
+                Capsule()
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
             }
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
     }
 }
 
