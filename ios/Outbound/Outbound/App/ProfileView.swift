@@ -5,6 +5,7 @@ struct ProfileView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var activityStore: ActivityStore
+    @EnvironmentObject var goalStore: GoalStore
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
@@ -243,6 +244,253 @@ private struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct AssistantView: View {
+    @EnvironmentObject private var assistantStore: AssistantStore
+    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var goalStore: GoalStore
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    heroCard
+                    suggestionsSection
+                    conversationSection
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Assistant")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Reset") {
+                        assistantStore.reset(context: assistantContext)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                composer
+                    .background(.thinMaterial)
+            }
+            .task {
+                assistantStore.ensureSeedMessage(context: assistantContext)
+            }
+            .onChange(of: assistantStore.messages.count) { _, _ in
+                guard let lastID = assistantStore.messages.last?.id else { return }
+                withAnimation(.easeOut(duration: 0.22)) {
+                    proxy.scrollTo(lastID, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Your AI sidekick for discovery and planning")
+                        .font(.title3.weight(.bold))
+                    Text("Ask for a quick tour, where to find something, setup help, feature ideas, or a simple weekly plan.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: coachCatalog.selectedPersona.face.symbolName)
+                    .font(.title2)
+                    .foregroundStyle(personaAccentColor)
+            }
+
+            HStack(spacing: 10) {
+                ForEach(AssistantCapability.allCases) { capability in
+                    Label(capability.title, systemImage: capability.symbolName)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(capabilityBackground(for: capability))
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .padding()
+        .background(
+            LinearGradient(
+                colors: [
+                    personaAccentColor.opacity(0.18),
+                    Color.orange.opacity(0.12),
+                    Color.white
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var suggestionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Quick starts")
+                .font(.headline)
+
+            ForEach(assistantStore.suggestions) { suggestion in
+                Button {
+                    Task {
+                        await assistantStore.sendSuggestion(suggestion, context: assistantContext)
+                    }
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: suggestion.capability.symbolName)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(personaAccentColor)
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(suggestion.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(suggestion.prompt)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var conversationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Conversation")
+                .font(.headline)
+
+            ForEach(assistantStore.messages) { message in
+                AssistantBubble(
+                    message: message,
+                    accentColor: personaAccentColor
+                )
+                .id(message.id)
+            }
+
+            if assistantStore.isResponding {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Thinking through a useful next step...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private var composer: some View {
+        HStack(alignment: .bottom, spacing: 12) {
+            TextField("Ask about discovery, support, or planning", text: $assistantStore.draft, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...4)
+
+            Button {
+                Task {
+                    await assistantStore.sendCurrentDraft(context: assistantContext)
+                }
+            } label: {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 30))
+            }
+            .disabled(assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistantStore.isResponding)
+        }
+        .padding(.horizontal)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+    }
+
+    private var assistantContext: AssistantContext {
+        AssistantContext(
+            coachName: coachCatalog.selectedPersona.template.displayName,
+            activityCount: activityStore.activities.count,
+            weeklyDistanceKilometers: weeklyDistanceKilometers,
+            currentGoalSummary: goalStore.progress?.summaryLine
+        )
+    }
+
+    private var weeklyDistanceKilometers: Double {
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
+        return activityStore.activities
+            .filter { $0.startedAt >= startOfWeek }
+            .reduce(0) { $0 + $1.distanceM } / 1000
+    }
+
+    private var personaAccentColor: Color {
+        switch coachCatalog.selectedPersona.face.colorName {
+        case "orange": .orange
+        case "pink": .pink
+        case "green": .green
+        case "blue": .blue
+        case "cyan": .cyan
+        case "yellow": .yellow
+        case "red": .red
+        case "gray": .gray
+        default: .orange
+        }
+    }
+
+    private func capabilityBackground(for capability: AssistantCapability) -> Color {
+        switch capability {
+        case .discover:
+            return Color.orange.opacity(0.16)
+        case .navigate:
+            return Color.blue.opacity(0.16)
+        case .support:
+            return Color.green.opacity(0.16)
+        case .brainstorm:
+            return Color.yellow.opacity(0.18)
+        case .plan:
+            return Color.teal.opacity(0.16)
+        }
+    }
+}
+
+private struct AssistantBubble: View {
+    let message: AssistantMessage
+    let accentColor: Color
+
+    var body: some View {
+        HStack {
+            if message.author == .assistant {
+                bubble
+                Spacer(minLength: 42)
+            } else {
+                Spacer(minLength: 42)
+                bubble
+            }
+        }
+    }
+
+    private var bubble: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let capability = message.capability, message.author == .assistant {
+                Label(capability.title, systemImage: capability.symbolName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accentColor)
+            }
+
+            Text(message.text)
+                .font(.subheadline)
+                .foregroundStyle(message.author == .assistant ? Color.primary : Color.white)
+        }
+        .padding(14)
+        .background(message.author == .assistant ? Color(.secondarySystemBackground) : accentColor)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 

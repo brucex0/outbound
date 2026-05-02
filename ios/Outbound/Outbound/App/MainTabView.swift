@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @EnvironmentObject private var assistantStore: AssistantStore
+    @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
+    @State private var isAssistantPresented = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -33,7 +36,20 @@ struct MainTabView: View {
                     presentActivity()
                 }
                 .padding(.trailing, 18)
-                .padding(.bottom, 82)
+                .padding(.bottom, shouldShowAssistantBar ? 154 : 82)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if shouldShowAssistantBar {
+                AssistantCollapsedBar(
+                    hint: assistantHint,
+                    accentColor: assistantAccentColor
+                ) {
+                    isAssistantPresented = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 92)
+                .zIndex(2)
             }
         }
         .overlay {
@@ -51,10 +67,48 @@ struct MainTabView: View {
                 .zIndex(1)
             }
         }
+        .sheet(isPresented: $isAssistantPresented) {
+            NavigationStack {
+                AssistantView()
+            }
+            .presentationDetents([.fraction(0.58), .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private var shouldShowActivityFAB: Bool {
         !isActivityVisible && (selectedTab == .me || selectedTab == .social)
+    }
+
+    private var shouldShowAssistantBar: Bool {
+        !isActivityVisible
+    }
+
+    private var assistantHint: String {
+        if activitySessionState != .idle {
+            return "Your session is still live. Need help deciding what to do next?"
+        }
+
+        switch selectedTab {
+        case .me:
+            return "Want a simple plan for today?"
+        case .social:
+            return "Find the right social loop."
+        }
+    }
+
+    private var assistantAccentColor: Color {
+        switch coachCatalog.selectedPersona.face.colorName {
+        case "orange": .orange
+        case "pink": .pink
+        case "green": .green
+        case "blue": .blue
+        case "cyan": .cyan
+        case "yellow": .yellow
+        case "red": .red
+        case "gray": .gray
+        default: .orange
+        }
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {
@@ -85,6 +139,50 @@ struct MainTabView: View {
 private enum AppTab {
     case me
     case social
+}
+
+private struct AssistantCollapsedBar: View {
+    let hint: String
+    let accentColor: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(accentColor)
+                    .frame(width: 30, height: 30)
+                    .background(accentColor.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Assistant")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(hint)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 12)
+
+                Image(systemName: "chevron.up")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(accentColor.opacity(0.16), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
+    }
 }
 
 private struct RecordLaunch: Identifiable {

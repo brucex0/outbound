@@ -63,6 +63,14 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, including spark, focus setup/progress, check-in, suggested actions, momentum strip, and the local engine that derives motivation state and finish reflections.
 - `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Today, and goal-aware post-run reflection notes.
 
+## Assistant
+
+- `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, and the optional Apple Foundation Models responder.
+- `App/MainTabView.swift`: persistent bottom assistant shell for the main tabs, collapsed contextual hints, and expanded assistant presentation.
+- `Activity/RecordView.swift`: compact live-session assistant entry so the assistant stays reachable without overwhelming the camera/map experience.
+- `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, and planning.
+- `docs/assistant.md`: focused product and implementation notes for the assistant surface.
+
 ## Network And Placeholders
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.

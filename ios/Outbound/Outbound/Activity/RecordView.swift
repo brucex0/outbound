@@ -7,6 +7,7 @@ struct RecordView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
+    @EnvironmentObject var assistantStore: AssistantStore
     @EnvironmentObject var checkInStore: DailyCheckInStore
     @EnvironmentObject var goalStore: GoalStore
     @EnvironmentObject var musicStore: MusicStore
@@ -19,6 +20,7 @@ struct RecordView: View {
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
+    @State private var isAssistantPresented = false
 
     let isVisible: Bool
     private let onCloseRequest: ((Bool) -> Void)?
@@ -129,6 +131,23 @@ struct RecordView: View {
                 .accessibilityLabel("Hide activity")
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if isVisible {
+                Button {
+                    isAssistantPresented = true
+                } label: {
+                    Label("Assistant", systemImage: "sparkles")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(showCamera ? .white : .primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+                .padding(.top, showCamera ? 18 : 14)
+                .padding(.trailing, 16)
+                .accessibilityLabel("Open assistant")
+            }
+        }
         .fullScreenCover(item: $pendingActivity) { activity in
             PostRunSummaryView(
                 summary: activity.summary,
@@ -138,6 +157,13 @@ struct RecordView: View {
                 onSave: { savePendingActivity(activity) },
                 onDiscard: discardPendingActivity
             )
+        }
+        .sheet(isPresented: $isAssistantPresented) {
+            NavigationStack {
+                AssistantView()
+            }
+            .presentationDetents([.fraction(0.58), .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
