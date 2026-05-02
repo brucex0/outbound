@@ -4,7 +4,7 @@ Read this after `CLAUDE.md`. Open only the detail docs needed for the current ta
 
 ## Current Product Shape
 
-Outbound is an iOS fitness recording app. Login is currently bypassed so feature work can continue without Firebase Auth blocking the app.
+Outbound is an iOS fitness recording app. Login uses email or phone number plus password, backed by Firebase when configured and local on-device credential storage otherwise.
 
 Primary flow:
 

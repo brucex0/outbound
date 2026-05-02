@@ -5,7 +5,7 @@ final class APIClient {
     private let base = URL(string: "https://api.outbound.run/v1")!
     private var authToken: String?
 
-    func setToken(_ token: String) { authToken = token }
+    func setToken(_ token: String?) { authToken = token }
 
     func fetchCoachProfile(userId: String) async throws -> CoachProfile {
         try await get("/coach/\(userId)/profile")

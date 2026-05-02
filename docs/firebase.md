@@ -10,7 +10,8 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - GCP project number: `186140050970`.
 - Firebase iOS app ID: `1:186140050970:ios:e8305464ba7fbb30a033a3`.
 - Firebase iOS bundle ID: `xhstudio.Outbound`.
-- Firebase Phone Auth provider is enabled.
+- Firebase Email/Password auth must be enabled for app login.
+- Firebase Phone Auth provider is enabled, but the app no longer depends on SMS verification for sign-in.
 - Phone Auth callback URL scheme in `Info.plist`: `app-1-186140050970-ios-e8305464ba7fbb30a033a3`.
 
 ## Local Config
@@ -19,6 +20,14 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - Xcode's file-system-synchronized app target copies the plist into `Outbound.app` when present.
 - `firebase` CLI is not installed here. Use `gcloud` and Firebase/Identity Toolkit REST APIs if project setup needs inspection or changes.
 - `zxia@snapchat.com` gcloud auth is blocked by Context Aware Access. Use `--account=bruce.xia74@gmail.com`.
+
+## Auth Provider Notes
+
+- App login supports two user-facing identifiers: email address and phone number.
+- When Firebase is configured, both routes authenticate through Firebase Email/Password.
+- When a user signs up with a phone number, the app normalizes the digits and stores them as an internal alias email of the form `phone.<digits>@users.outbound.local`.
+- When Firebase is not configured, the same identifier/password UX is backed by local on-device storage instead: account metadata in `UserDefaults` and passwords in Keychain.
+- This keeps sign-in compatible with Firebase Auth on a personal Apple developer setup, without requiring Apple Sign In or SMS-based phone verification, while still letting the app work before cloud auth is set up.
 
 ## REST Inspection Pattern
 

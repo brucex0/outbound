@@ -14,8 +14,9 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` when login is skipped or authenticated.
-- `App/AuthStore.swift`: Firebase phone auth wrapper plus login bypass. `AuthStore.isLoginSkipped = true` is the current feature-development switch.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after authentication or local fallback sign-in.
+- `App/AuthStore.swift`: auth wrapper that prefers Firebase email/password when configured, and falls back to a local on-device credential store otherwise. Phone logins are normalized into an internal email alias so the app can support `phone + password` without SMS verification or Apple Sign In.
+- `App/LocalCredentialStore.swift`: local auth persistence for no-backend builds. Stores account metadata in `UserDefaults`, active-session state locally, and passwords in Keychain.
 - `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` owns the floating activity button shown on Today and Social, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
@@ -51,7 +52,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation. `SessionAnalysisRequest` carries both the personalized `CoachProfile` and selected `CoachPersona`.
 - `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. Instructions include selected coach persona, style, intensity, and prompt seed.
 - `Coach/CoachProfile.swift`: athlete/coach profile model used to contextualize analysis.
-- `Coach/CoachStore.swift`: loads/syncs coach profile through `APIClient`; with login skipped it generally has no remote user ID.
+- `Coach/CoachStore.swift`: loads/syncs coach profile through `APIClient`; remote sync depends on a Firebase-authenticated user ID, while local-account and local-session auth keep coach data local-only.
 
 ## Motivation
 

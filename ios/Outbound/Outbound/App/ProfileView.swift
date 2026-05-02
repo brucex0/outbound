@@ -15,6 +15,7 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    accountCard
                     coachCard
                     appleHealthCard
                     musicCard
@@ -37,8 +38,47 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Coach card
+    private var accountCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Account")
+                    .font(.title3.bold())
+                Spacer()
+                Image(systemName: authStore.user == nil ? "person.crop.circle.badge.exclamationmark" : "checkmark.shield.fill")
+                    .font(.title2)
+                    .foregroundStyle(authStore.user == nil ? .orange : .green)
+            }
 
+            Text(authStore.currentLoginLabel ?? "Signed in")
+                .font(.headline)
+
+            Text(accountDetail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(authStore.backendDescription)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(.blue.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var accountDetail: String {
+        if authStore.user == nil, authStore.currentLoginLabel == "Local session" {
+            return "This build is running in a no-account local session."
+        }
+
+        if authStore.user == nil {
+            return "This account is stored locally on this device until Firebase-backed login is configured."
+        }
+
+        return "Your activity and coach data can now be associated with this authenticated account."
+    }
+
+    // MARK: - Coach card
     private var coachCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {

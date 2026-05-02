@@ -18,7 +18,7 @@ struct OutboundApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if AuthStore.isLoginSkipped || authStore.isAuthenticated {
+            if authStore.isAuthenticated {
                 MainTabView()
                     .environmentObject(authStore)
                     .environmentObject(coachStore)
