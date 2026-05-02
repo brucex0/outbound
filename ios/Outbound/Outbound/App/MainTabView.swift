@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab: AppTab = .today
+    @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -9,21 +9,17 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            TodayView(
+            ProfileView(
                 onStartSuggestion: { suggestion in
                     presentActivity(intent: suggestion.intent)
                 }
             )
-            .tabItem { Label("Today", systemImage: "sun.max.fill") }
-            .tag(AppTab.today)
+            .tabItem { Label("Me", systemImage: "person.fill") }
+            .tag(AppTab.me)
 
             ActivityFeedView()
                 .tabItem { Label("Social", systemImage: "person.2.fill") }
                 .tag(AppTab.social)
-
-            ProfileView()
-                .tabItem { Label("Me", systemImage: "person.fill") }
-                .tag(AppTab.me)
         }
         .tint(.orange)
         .toolbar(isActivityVisible ? .hidden : .visible, for: .tabBar)
@@ -58,7 +54,7 @@ struct MainTabView: View {
     }
 
     private var shouldShowActivityFAB: Bool {
-        !isActivityVisible && (selectedTab == .today || selectedTab == .social)
+        !isActivityVisible && (selectedTab == .me || selectedTab == .social)
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {
@@ -87,9 +83,8 @@ struct MainTabView: View {
 }
 
 private enum AppTab {
-    case today
-    case social
     case me
+    case social
 }
 
 private struct RecordLaunch: Identifiable {
@@ -191,12 +186,13 @@ struct DailyMotivationSnapshot {
     let momentumNotes: [MomentumNote]
 }
 
-struct TodayView: View {
+struct MotivationDashboardView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
     @EnvironmentObject private var goalStore: GoalStore
 
+    let showRecentActivity: Bool
     let onStartSuggestion: (SuggestedSession) -> Void
 
     private let recentPreviewLimit = 3
@@ -225,28 +221,22 @@ struct TodayView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    sparkCard
-                    goalSection
-                    readinessCard
-                    suggestedActionsSection
-                    momentumStrip
-                    recentActivitySection
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+        VStack(alignment: .leading, spacing: 18) {
+            sparkCard
+            goalSection
+            readinessCard
+            suggestedActionsSection
+            momentumStrip
+            if showRecentActivity {
+                recentActivitySection
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Today")
-            .onAppear {
-                checkInStore.refresh()
-                goalStore.refresh(activities: activityStore.activities, phase: snapshot.phase)
-            }
-            .onChange(of: activityStore.activities) { _, activities in
-                goalStore.refresh(activities: activities, phase: snapshot.phase)
-            }
+        }
+        .onAppear {
+            checkInStore.refresh()
+            goalStore.refresh(activities: activityStore.activities, phase: snapshot.phase)
+        }
+        .onChange(of: activityStore.activities) { _, activities in
+            goalStore.refresh(activities: activities, phase: snapshot.phase)
         }
     }
 

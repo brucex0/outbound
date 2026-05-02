@@ -9,12 +9,18 @@ struct ProfileView: View {
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
 
+    let onStartSuggestion: (SuggestedSession) -> Void
+
     private let sectionPreviewLimit = 3
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    MotivationDashboardView(
+                        showRecentActivity: false,
+                        onStartSuggestion: onStartSuggestion
+                    )
                     accountCard
                     coachCard
                     appleHealthCard
@@ -27,8 +33,13 @@ struct ProfileView: View {
             .navigationTitle("Me")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out") { authStore.signOut() }
-                        .foregroundStyle(.red)
+                    NavigationLink {
+                        SettingsView()
+                            .environmentObject(authStore)
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
+                    .accessibilityLabel("Settings")
                 }
             }
             .navigationDestination(for: SavedActivity.self) { activity in
@@ -377,6 +388,38 @@ struct ProfileView: View {
 
     private var totalPhotoCount: Int {
         activityStore.activities.reduce(0) { $0 + $1.photos.count }
+    }
+}
+
+private struct SettingsView: View {
+    @EnvironmentObject var authStore: AuthStore
+
+    var body: some View {
+        List {
+            Section("Account") {
+                if let label = authStore.currentLoginLabel {
+                    LabeledContent("Signed in as", value: label)
+                } else {
+                    LabeledContent("Account", value: "Signed in")
+                }
+
+                Text(authStore.backendDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("App") {
+                LabeledContent("Version", value: "Prototype")
+            }
+
+            Section {
+                Button("Sign Out", role: .destructive) {
+                    authStore.signOut()
+                }
+            }
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

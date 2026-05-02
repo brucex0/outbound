@@ -18,12 +18,12 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after Google sign-in.
 - `App/AuthStore.swift`: Firebase auth wrapper for hosted Google OAuth plus email/password and phone-number-as-identifier password login. Phone logins are normalized into an internal email alias so the app can support `phone + password` without SMS verification or Apple Sign In.
 - `App/AuthView.swift`: login UI for Google sign-in plus email/phone password auth. When `GoogleService-Info.plist` is missing, the screen blocks real auth and explains how to finish Firebase setup.
-- `App/MainTabView.swift`: three tabs: Today (`TodayView`), Social (`ActivityFeedView`), and Me (`ProfileView`). `MainTabView` owns the floating activity button shown on Today and Social, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
+- `App/MainTabView.swift`: two tabs: Me (`ProfileView`) and Social (`ActivityFeedView`). `MainTabView` owns the floating activity button shown on both tabs, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Today suggestion it shows that confirmation state; when opened from the floating activity button it jumps straight to freestyle confirmation. After Start it opens the live camera/map recorder, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the floating activity button reopens it.
+- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Me-tab suggestion it shows that confirmation state; when opened from the floating activity button it jumps straight to freestyle confirmation. After Start it opens the live camera/map recorder, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the floating activity button reopens it.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Elapsed time is derived from active wall-clock segments rather than only a foreground timer, and location updates also refresh the live snapshot so coaching continues while the app is backgrounded during a run. Supports pause/resume by stopping both the UI timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/SessionLiveActivityManager.swift`: ActivityKit bridge that starts, updates, and ends the active session Live Activity using recorder snapshots.
 - `Shared/OutboundLiveActivityAttributes.swift`: shared ActivityKit attributes/content-state model compiled into both the app target and the widget extension.
@@ -59,15 +59,15 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: now also defines `DailyCheckInStore`, which persists one local readiness selection per day in `UserDefaults`.
 - `Goals/GoalModels.swift`, `Goals/GoalProgressEngine.swift`, and `Goals/GoalStore.swift`: local-first weekly focus models, progress computation from saved activities, and persisted coach conversation state.
-- `Goals/GoalConversationCard.swift`: Today-card UI for conversational goal setup, active-focus progress, and lightweight adjustment.
-- `App/MainTabView.swift`: now also contains the motivation MVP types and `TodayView`, including spark, focus setup/progress, check-in, suggested actions, momentum strip, recent activity preview, and the local engine that derives motivation state and finish reflections.
+- `Goals/GoalConversationCard.swift`: motivation-card UI for conversational goal setup, active-focus progress, and lightweight adjustment.
+- `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, including spark, focus setup/progress, check-in, suggested actions, momentum strip, and the local engine that derives motivation state and finish reflections.
 - `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Today, and goal-aware post-run reflection notes.
 
 ## Network And Placeholders
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: selected coach card, Apple Health connection card, profile highlights, `My Activities` section, and sign-out control. Sign-out is a no-op while login is skipped.
+- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the motivation dashboard above the selected coach card, Apple Health connection card, profile highlights, and `My Activities` section, and adds a top-right Settings entry point with sign-out.
 
 ## Integrations
 
