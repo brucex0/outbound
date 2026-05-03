@@ -28,9 +28,7 @@ run_with_prefix() {
   local prefix="$1"
   shift
 
-  "$@" 2>&1 | while IFS= read -r line; do
-    printf '[%s] %s %s\n' "$(timestamp)" "${prefix}" "${line}"
-  done
+  "$@" 2>&1 | sed -u "s/^/${prefix} /"
 }
 
 usage() {
