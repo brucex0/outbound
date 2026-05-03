@@ -6,9 +6,37 @@ import { z } from "zod";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
+import {
+  buildTrainingPlanState,
+  makeActivePlanData,
+} from "../services/trainingPlans.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
+
+const planSelectionSchema = z.object({
+  candidateID: z.string().min(1).optional(),
+  templateID: z.string().min(1).optional(),
+  durationWeeks: z.number().int().positive().optional(),
+  sessionsPerWeek: z.number().int().positive().optional(),
+  targetWeeklyMinutes: z.number().int().positive().optional(),
+  longSessionMinutes: z.number().int().positive().optional(),
+  readiness: z.string().optional(),
+});
+
+async function getPlanActivities(userId: string) {
+  const prisma = getPrismaClient();
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  return prisma.activity.findMany({
+    where: { userId, startedAt: { gte: ninetyDaysAgo } },
+    orderBy: { startedAt: "desc" },
+    select: {
+      startedAt: true,
+      durationSecs: true,
+      distanceM: true,
+    },
+  });
+}
 
 router.get("/profile", async (c) => {
   const unavailable = requireDatabase(c);
@@ -36,6 +64,187 @@ router.post("/rebuild", async (c) => {
 
   const payload = await rebuildCoachProfile(appUser.id);
   return c.json(payload);
+});
+
+router.get("/plans/state", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const [activePlan, activities] = await Promise.all([
+    prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
+    getPlanActivities(appUser.id),
+  ]);
+
+  return c.json(
+    buildTrainingPlanState({
+      activePlan,
+      activities,
+      readiness: c.req.query("readiness"),
+    })
+  );
+});
+
+router.post("/plans/recommendation", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const activities = await getPlanActivities(appUser.id);
+  return c.json({
+    recommendations: buildTrainingPlanState({
+      activePlan: null,
+      activities,
+      readiness: c.req.query("readiness"),
+    }).recommendations,
+  });
+});
+
+router.post("/plans", zValidator("json", planSelectionSchema), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const body = c.req.valid("json");
+  const activities = await getPlanActivities(appUser.id);
+
+  let planData;
+  try {
+    planData = makeActivePlanData({
+      selection: body,
+      activities,
+    });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Invalid training plan selection." }, 400);
+  }
+
+  const activePlan = await prisma.activeTrainingPlan.upsert({
+    where: { userId: appUser.id },
+    update: planData,
+    create: {
+      userId: appUser.id,
+      ...planData,
+    },
+  });
+
+  return c.json(
+    buildTrainingPlanState({
+      activePlan,
+      activities,
+      readiness: body.readiness,
+      now: planData.startedAt,
+    }),
+    201
+  );
+});
+
+router.get("/plans/active", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const [activePlan, activities] = await Promise.all([
+    prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
+    getPlanActivities(appUser.id),
+  ]);
+  if (!activePlan) return c.json({ error: "No active training plan." }, 404);
+
+  return c.json(
+    buildTrainingPlanState({
+      activePlan,
+      activities,
+      readiness: c.req.query("readiness"),
+    })
+  );
+});
+
+router.get("/plans/active/week", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const [activePlan, activities] = await Promise.all([
+    prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
+    getPlanActivities(appUser.id),
+  ]);
+  if (!activePlan) return c.json({ error: "No active training plan." }, 404);
+
+  const state = buildTrainingPlanState({
+    activePlan,
+    activities,
+    readiness: c.req.query("readiness"),
+  });
+  return c.json({ week: state.currentWeek });
+});
+
+router.delete("/plans/active", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  await prisma.activeTrainingPlan.deleteMany({ where: { userId: appUser.id } });
+  const activities = await getPlanActivities(appUser.id);
+
+  return c.json(
+    buildTrainingPlanState({
+      activePlan: null,
+      activities,
+      readiness: c.req.query("readiness"),
+    })
+  );
+});
+
+router.get("/today", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const [activePlan, activities] = await Promise.all([
+    prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
+    getPlanActivities(appUser.id),
+  ]);
+  if (!activePlan) return c.json({ error: "No active training plan." }, 404);
+
+  const state = buildTrainingPlanState({
+    activePlan,
+    activities,
+    readiness: c.req.query("readiness"),
+  });
+  return c.json({ today: state.todaySuggestion });
 });
 
 // GET /v1/coach/:userId/profile

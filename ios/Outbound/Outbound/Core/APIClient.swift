@@ -36,10 +36,45 @@ final class APIClient {
         try await post("/assistant/chat", body: request)
     }
 
+    func fetchTrainingPlanState(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        try await get(
+            "/coach/plans/state",
+            queryItems: readiness.map { [URLQueryItem(name: "readiness", value: $0.rawValue)] } ?? []
+        )
+    }
+
+    func createTrainingPlan(
+        from recommendation: TrainingPlanRecommendation,
+        readiness: DailyReadiness?
+    ) async throws -> TrainingPlanStateResponse {
+        try await post(
+            "/coach/plans",
+            body: TrainingPlanSelectionRequest(
+                candidateID: recommendation.id,
+                templateID: recommendation.template.id,
+                durationWeeks: recommendation.durationWeeks,
+                sessionsPerWeek: recommendation.sessionsPerWeek,
+                targetWeeklyMinutes: recommendation.targetWeeklyMinutes,
+                longSessionMinutes: recommendation.longSessionMinutes,
+                readiness: readiness?.rawValue
+            )
+        )
+    }
+
+    func clearActiveTrainingPlan(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        try await delete(
+            "/coach/plans/active",
+            queryItems: readiness.map { [URLQueryItem(name: "readiness", value: $0.rawValue)] } ?? []
+        )
+    }
+
     // MARK: - Helpers
 
-    private func get<T: Decodable>(_ path: String) async throws -> T {
-        var req = URLRequest(url: base.appendingPathComponent(path))
+    private func get<T: Decodable>(
+        _ path: String,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> T {
+        var req = URLRequest(url: url(for: path, queryItems: queryItems))
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -49,7 +84,7 @@ final class APIClient {
     }
 
     private func post<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var req = URLRequest(url: base.appendingPathComponent(path))
+        var req = URLRequest(url: url(for: path))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
@@ -59,6 +94,34 @@ final class APIClient {
         let (data, response) = try await URLSession.shared.data(for: req)
         try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
+    }
+
+    private func delete<T: Decodable>(
+        _ path: String,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> T {
+        var req = URLRequest(url: url(for: path, queryItems: queryItems))
+        req.httpMethod = "DELETE"
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func url(for path: String, queryItems: [URLQueryItem] = []) -> URL {
+        let trimmedPath = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var url = base
+        for component in trimmedPath.split(separator: "/") {
+            url.appendPathComponent(String(component))
+        }
+
+        guard !queryItems.isEmpty else { return url }
+
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.queryItems = queryItems
+        return components?.url ?? url
     }
 
     private func resolvedAuthToken() async throws -> String? {
@@ -140,6 +203,23 @@ struct AssistantChatAPIPriorMessage: Encodable {
 
 struct AssistantChatResponse: Decodable {
     let message: String
+}
+
+struct TrainingPlanStateResponse: Codable {
+    let activePlan: ActiveTrainingPlan?
+    let recommendations: [TrainingPlanRecommendation]
+    let currentWeek: TrainingPlanWeekSnapshot?
+    let todaySuggestion: TodayTrainingSuggestion?
+}
+
+private struct TrainingPlanSelectionRequest: Encodable {
+    let candidateID: String
+    let templateID: String
+    let durationWeeks: Int
+    let sessionsPerWeek: Int
+    let targetWeeklyMinutes: Int
+    let longSessionMinutes: Int
+    let readiness: String?
 }
 
 struct ActivityUploadRequest: Encodable {

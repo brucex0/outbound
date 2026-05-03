@@ -20,6 +20,7 @@ model User {
 
   activities    Activity[]
   coachProfile  CoachProfile?
+  activeTrainingPlan ActiveTrainingPlan?
   posts         Post[]
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
@@ -89,6 +90,26 @@ model Activity {
   createdAt     DateTime  @default(now())
 
   @@unique([userId, clientActivityId])
+}
+
+model ActiveTrainingPlan {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id])
+
+  templateId          String
+  focus               String
+  sport               String
+  title               String
+  subtitle            String
+  durationWeeks       Int
+  sessionsPerWeek     Int
+  targetWeeklyMinutes Int
+  longSessionMinutes  Int
+  startedAt           DateTime  @default(now())
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model Photo {

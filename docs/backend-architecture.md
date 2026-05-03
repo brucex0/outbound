@@ -26,7 +26,7 @@ Current gaps:
 - activity sync retries and media sync are still lightweight, even though base ingest is now idempotent
 - media upload flow is placeholder-level
 - async work is done with in-request fire-and-forget logic
-- plans, readiness, and adaptation are not modeled yet
+- readiness history and deeper plan adaptation are still lightweight, although active training plan state and deterministic plan recommendation/today logic now live on the backend
 - social routes are still prototype-grade and not aligned with the current iOS local-first Social tab
 
 ## Architecture Principles
@@ -169,9 +169,11 @@ Recommended evolution:
 
 Responsibilities:
 
-- store goals, active plan state, readiness check-ins, completed session linkage, and plan adaptations
-- compute `today` recommendations and future week structure
-- explain why a recommendation changed
+- store one active training plan per authenticated user
+- serve the structured plan template catalog and recommendation candidates
+- compute current-week progress from synced activities
+- compute the `today` recommendation, including readiness-based softening
+- explain why a recommendation fits and what tradeoff it carries
 
 Rules:
 
@@ -179,12 +181,21 @@ Rules:
 - AI explains plan logic but does not invent progression from scratch
 - plan state must be cacheable on-device for offline rendering
 
-Recommended API shape:
+Current API shape:
 
-- `GET /v1/plans/active`
-- `POST /v1/plans/recommend`
-- `POST /v1/readiness`
-- `POST /v1/plans/:id/complete-session`
+- `GET /v1/coach/plans/state`
+- `POST /v1/coach/plans/recommendation`
+- `POST /v1/coach/plans`
+- `GET /v1/coach/plans/active`
+- `GET /v1/coach/plans/active/week`
+- `DELETE /v1/coach/plans/active`
+- `GET /v1/coach/today`
+
+Next plan work:
+
+- persist readiness check-ins instead of accepting readiness only as request context
+- link planned sessions to completed activities for adherence analytics
+- add explicit adaptation records when weekly shape changes
 
 ### Social
 
@@ -237,6 +248,7 @@ Keep the current tables as a starting point:
 - `Follow`
 - `Reaction`
 - `Comment`
+- `ActiveTrainingPlan`
 
 Add first:
 
@@ -245,10 +257,9 @@ Add first:
 - `syncSource` on `Activity`
 - `uploadStatus` on `Photo` or separate media fielding if needed
 
-Add when plans begin:
+Add after the first server-owned plan pass:
 
 - `Goal`
-- `ActivePlan`
 - `PlanWeek`
 - `PlannedSession`
 - `ReadinessCheckIn`

@@ -181,7 +181,8 @@ Current iOS MVP note:
 - the local `consistency`, `comeback`, `10K`, `10 mile`, and `half marathon` plans are authored in-app but use open-source MIT workout taxonomy cues from [`danielcoats/training-planner`](https://github.com/danielcoats/training-planner) for realistic workout types such as `intervals`, `fartlek`, `long run`, `cross-train`, and `time trial`
 - the library now also imports larger week-by-week plans from MIT-licensed [`hoovercj/time-to-run`](https://github.com/hoovercj/time-to-run), including a `base 30 mpw` phase plus `half marathon beginner` and `half marathon advanced` variants
 - imported plain-text plans are normalized into Outbound workout kinds and step lists so the same detail UI and Today adaptation logic can still work across authored and imported plans
-- recommendation and Today adaptation are still local-first; backend ownership remains the target architecture
+- the same catalog has been exported into `backend/src/data/trainingPlanTemplates.ts`; the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
+- iOS still keeps `TrainingPlanLibrary.swift` as an offline fallback and compatibility cache, but the normal authenticated flow calls the plan API through `APIClient`
 
 ## Personalization Parameters
 
@@ -276,25 +277,36 @@ The client should not need to recreate plan logic locally.
 
 Recommended endpoints:
 
+- `GET /coach/plans/state`
 - `POST /coach/plans/recommendation`
 - `POST /coach/plans`
 - `GET /coach/plans/active`
 - `GET /coach/plans/active/week`
 - `GET /coach/today`
+- `DELETE /coach/plans/active`
 - `POST /coach/checkins/readiness`
 - `POST /coach/sessions`
 - `POST /coach/plans/active/adapt`
 
 Suggested responsibilities:
 
+- `GET /coach/plans/state`: return the app-shaped training plan state for the current authenticated user, including either active plan/week/today or recommendation candidates
 - `POST /coach/plans/recommendation`: return one or more recommended plan candidates with rationale
 - `POST /coach/plans`: accept a candidate or create a personalized active plan
 - `GET /coach/plans/active`: fetch the active plan summary and metadata
 - `GET /coach/plans/active/week`: fetch the current or requested week structure
 - `GET /coach/today`: fetch today's best recommendation and explanation
+- `DELETE /coach/plans/active`: clear the current user's active plan and return fresh recommendation state
 - `POST /coach/checkins/readiness`: record readiness and optionally trigger recomputation
 - `POST /coach/sessions`: ingest a completed session summary and trigger plan updates
 - `POST /coach/plans/active/adapt`: force a re-plan when preferences or constraints change
+
+Current implementation notes:
+
+- `ActiveTrainingPlan` in Prisma stores one active plan per user with template id, tuned weekly targets, and start date.
+- Recommendation and Today logic lives in `backend/src/services/trainingPlans.ts` and derives recent training stats from synced `Activity` rows.
+- Readiness is currently passed as request context from the iOS daily check-in and is not yet persisted as a `ReadinessCheckIn` row.
+- iOS caches the last active plan/week/today response for offline rendering, then falls back to local deterministic rules if the API is unavailable.
 
 ## Suggested Response Shapes
 

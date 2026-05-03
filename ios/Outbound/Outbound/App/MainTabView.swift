@@ -324,7 +324,7 @@ struct CoachSpark: Equatable {
     let secondaryCTA: String?
 }
 
-struct SuggestedSession: Identifiable, Hashable {
+struct SuggestedSession: Identifiable, Codable, Hashable {
     let id: String
     let sport: SportType
     let title: String

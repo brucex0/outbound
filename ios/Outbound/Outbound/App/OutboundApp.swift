@@ -310,7 +310,7 @@ struct TrainingPlanWeek: Identifiable, Codable, Hashable {
     }
 }
 
-struct TrainingPlanTemplate: Identifiable, Hashable {
+struct TrainingPlanTemplate: Identifiable, Codable, Hashable {
     let id: String
     let focus: TrainingPlanFocus
     let sport: TrainingPlanSport
@@ -327,7 +327,7 @@ struct TrainingPlanTemplate: Identifiable, Hashable {
     let weeks: [TrainingPlanWeek]
 }
 
-struct TrainingPlanRecommendation: Identifiable, Hashable {
+struct TrainingPlanRecommendation: Identifiable, Codable, Hashable {
     let id: String
     let template: TrainingPlanTemplate
     let durationWeeks: Int
@@ -339,7 +339,7 @@ struct TrainingPlanRecommendation: Identifiable, Hashable {
 }
 
 struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
-    let id: UUID
+    let id: String
     let templateID: String
     let focus: TrainingPlanFocus
     let sport: TrainingPlanSport
@@ -352,7 +352,7 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     let createdAt: Date
 }
 
-struct TrainingPlanWeekSnapshot: Equatable {
+struct TrainingPlanWeekSnapshot: Codable, Equatable {
     let currentWeekIndex: Int
     let totalWeeks: Int
     let completedSessions: Int
@@ -368,7 +368,7 @@ struct TrainingPlanWeekSnapshot: Equatable {
     let notes: [String]
 }
 
-struct TodayTrainingSuggestion: Equatable {
+struct TodayTrainingSuggestion: Codable, Equatable {
     let title: String
     let detail: String
     let coachLine: String
@@ -387,18 +387,34 @@ final class TrainingPlanStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let calendar: Calendar
+    private let api: APIClient
     private let activePlanKey = "training_plan_store_active_plan_v1"
+    private let stateCacheKey = "training_plan_store_state_v2"
     private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
     private var dismissedRecommendationWeekStart: Date?
     private var lastActivities: [SavedActivity] = []
     private var lastReadiness: DailyReadiness?
     private var lastPhase: MotivationPhase = .firstSession
+    private var refreshTask: Task<Void, Never>?
 
-    init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
+    init(
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current,
+        api: APIClient = .shared
+    ) {
         self.defaults = defaults
         self.calendar = calendar
-        self.activePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
+        self.api = api
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
+
+        if let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+            activePlan = cachedState.activePlan
+            recommendations = cachedState.recommendations
+            currentWeek = cachedState.currentWeek
+            todaySuggestion = cachedState.todaySuggestion
+        } else {
+            activePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
+        }
     }
 
     var shouldShowRecommendations: Bool {
@@ -415,41 +431,26 @@ final class TrainingPlanStore: ObservableObject {
         lastReadiness = readiness
         lastPhase = phase
 
-        let weekStart = startOfWeek(for: now)
-        if let dismissedRecommendationWeekStart, dismissedRecommendationWeekStart != weekStart {
-            self.dismissedRecommendationWeekStart = nil
-            persistDismissedWeek()
-        }
+        resetDismissedRecommendationIfNeeded(now: now)
 
-        recommendations = Self.makeRecommendations(
-            activities: activities,
-            phase: phase,
-            calendar: calendar,
-            now: now
-        )
-        if activePlan == nil, dismissedRecommendationWeekStart == weekStart {
-            recommendations = []
+        refreshTask?.cancel()
+        refreshTask = Task {
+            do {
+                let state = try await api.fetchTrainingPlanState(readiness: readiness)
+                guard !Task.isCancelled else { return }
+                applyServerState(state, now: now)
+            } catch {
+                guard !Task.isCancelled else { return }
+                print("[TrainingPlanStore] server refresh failed: \(error.localizedDescription)")
+                applyLocalFallback(activities: activities, readiness: readiness, phase: phase, now: now)
+            }
         }
-
-        guard let activePlan else {
-            currentWeek = nil
-            todaySuggestion = nil
-            return
-        }
-
-        currentWeek = Self.makeWeekSnapshot(plan: activePlan, activities: activities, calendar: calendar, now: now)
-        todaySuggestion = Self.makeTodaySuggestion(
-            plan: activePlan,
-            week: currentWeek,
-            readiness: readiness,
-            calendar: calendar,
-            now: now
-        )
     }
 
     func acceptRecommendation(_ recommendation: TrainingPlanRecommendation, now: Date = Date()) {
+        refreshTask?.cancel()
         activePlan = ActiveTrainingPlan(
-            id: UUID(),
+            id: UUID().uuidString,
             templateID: recommendation.template.id,
             focus: recommendation.template.focus,
             sport: recommendation.template.sport,
@@ -461,29 +462,121 @@ final class TrainingPlanStore: ObservableObject {
             longSessionMinutes: recommendation.longSessionMinutes,
             createdAt: now
         )
-        persistActivePlan()
-        refresh(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
+        applyLocalFallback(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
+
+        refreshTask = Task {
+            do {
+                let state = try await api.createTrainingPlan(from: recommendation, readiness: lastReadiness)
+                guard !Task.isCancelled else { return }
+                applyServerState(state, now: now)
+            } catch {
+                guard !Task.isCancelled else { return }
+                print("[TrainingPlanStore] active plan sync failed: \(error.localizedDescription)")
+                persistState()
+            }
+        }
     }
 
     func clearActivePlan(now: Date = Date()) {
+        refreshTask?.cancel()
         activePlan = nil
         currentWeek = nil
         todaySuggestion = nil
-        persistActivePlan()
-        refresh(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
+        applyLocalFallback(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
+
+        refreshTask = Task {
+            do {
+                let state = try await api.clearActiveTrainingPlan(readiness: lastReadiness)
+                guard !Task.isCancelled else { return }
+                applyServerState(state, now: now)
+            } catch {
+                guard !Task.isCancelled else { return }
+                print("[TrainingPlanStore] clear active plan sync failed: \(error.localizedDescription)")
+                persistState()
+            }
+        }
     }
 
     func dismissRecommendations(now: Date = Date()) {
         dismissedRecommendationWeekStart = startOfWeek(for: now)
         recommendations = []
         persistDismissedWeek()
+        persistState()
     }
 
     private func startOfWeek(for date: Date) -> Date {
         calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
     }
 
-    private func persistActivePlan() {
+    private func resetDismissedRecommendationIfNeeded(now: Date) {
+        let weekStart = startOfWeek(for: now)
+        if let dismissedRecommendationWeekStart, dismissedRecommendationWeekStart != weekStart {
+            self.dismissedRecommendationWeekStart = nil
+            persistDismissedWeek()
+        }
+    }
+
+    private func applyServerState(_ state: TrainingPlanStateResponse, now: Date) {
+        resetDismissedRecommendationIfNeeded(now: now)
+
+        activePlan = state.activePlan
+        recommendations = state.recommendations
+        if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
+            recommendations = []
+        }
+        currentWeek = state.currentWeek
+        todaySuggestion = state.todaySuggestion
+        persistState()
+    }
+
+    private func applyLocalFallback(
+        activities: [SavedActivity],
+        readiness: DailyReadiness?,
+        phase: MotivationPhase,
+        now: Date
+    ) {
+        resetDismissedRecommendationIfNeeded(now: now)
+
+        recommendations = Self.makeRecommendations(
+            activities: activities,
+            phase: phase,
+            calendar: calendar,
+            now: now
+        )
+        if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
+            recommendations = []
+        }
+
+        guard let activePlan else {
+            currentWeek = nil
+            todaySuggestion = nil
+            persistState()
+            return
+        }
+
+        currentWeek = Self.makeWeekSnapshot(plan: activePlan, activities: activities, calendar: calendar, now: now)
+        todaySuggestion = Self.makeTodaySuggestion(
+            plan: activePlan,
+            week: currentWeek,
+            readiness: readiness,
+            calendar: calendar,
+            now: now
+        )
+        persistState()
+    }
+
+    private func persistState() {
+        let state = TrainingPlanStateResponse(
+            activePlan: activePlan,
+            recommendations: activePlan == nil ? [] : recommendations,
+            currentWeek: currentWeek,
+            todaySuggestion: todaySuggestion
+        )
+
+        if let data = try? JSONEncoder().encode(state) {
+            defaults.set(data, forKey: stateCacheKey)
+        }
+
         if let activePlan, let data = try? JSONEncoder().encode(activePlan) {
             defaults.set(data, forKey: activePlanKey)
         } else {
