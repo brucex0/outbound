@@ -1,6 +1,9 @@
 import SwiftUI
 
-enum SessionPage { case camera, map }
+enum SessionPage: String {
+    case camera
+    case map
+}
 
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -12,9 +15,11 @@ struct RecordView: View {
     @EnvironmentObject var goalStore: GoalStore
     @EnvironmentObject var musicStore: MusicStore
     @EnvironmentObject var recognitionStore: RecognitionStore
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
+    @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.camera.rawValue
     @State private var showCamera = false
     @State private var activePage: SessionPage = .camera
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -96,7 +101,8 @@ struct RecordView: View {
             liveActivityManager.update(
                 snapshot: snapshot,
                 state: recorder.state,
-                intent: activeIntent ?? plannedIntent
+                intent: activeIntent ?? plannedIntent,
+                unitSystem: measurementPreferences.unitSystem
             )
         }
         .onReceive(recorder.$state) { state in
@@ -115,6 +121,10 @@ struct RecordView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
+        }
+        .onChange(of: activePage) { _, newPage in
+            guard showCamera else { return }
+            preferredSessionPageRawValue = newPage.rawValue
         }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
@@ -174,7 +184,7 @@ struct RecordView: View {
         guard recorder.state == .idle else { return }
         capturedPhotos = []
         pendingActivity = nil
-        activePage = .camera
+        activePage = preferredSessionPage
         activeIntent = plannedIntent
         recorder.locationManager.requestPermission()
         coach.activate(
@@ -186,7 +196,8 @@ struct RecordView: View {
         liveActivityManager.update(
             snapshot: recorder.liveSnapshot,
             state: recorder.state,
-            intent: activeIntent
+            intent: activeIntent,
+            unitSystem: measurementPreferences.unitSystem
         )
         Task {
             await musicStore.beginWorkoutPlaybackIfNeeded()
@@ -196,11 +207,10 @@ struct RecordView: View {
 
     private func finishRecording() {
         let summary = recorder.finish()
-        liveActivityManager.end(using: recorder.liveSnapshot)
+        liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         coach.deactivate()
         musicStore.clearPendingWorkoutPlayback()
         showCamera = false
-        activePage = .camera
         let reflection = DailyMotivationEngine.finishReflection(
             summary: summary,
             priorActivities: activityStore.activities,
@@ -262,6 +272,10 @@ struct RecordView: View {
         capturedPhotos = []
         activeIntent = nil
         plannedIntent = nil
+    }
+
+    private var preferredSessionPage: SessionPage {
+        SessionPage(rawValue: preferredSessionPageRawValue) ?? .camera
     }
 
     private var readyView: some View {

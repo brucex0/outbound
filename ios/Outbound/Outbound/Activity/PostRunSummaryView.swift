@@ -2,6 +2,7 @@ import MapKit
 import SwiftUI
 
 struct PostRunSummaryView: View {
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
     let lastNudge: String
@@ -62,8 +63,8 @@ struct PostRunSummaryView: View {
             HStack(spacing: 0) {
                 SummaryStatColumn(
                     label: "Distance",
-                    value: String(format: "%.2f", summary.distanceM / 1000),
-                    unit: "km"
+                    value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
+                    unit: measurementPreferences.unitSystem.distanceUnit
                 )
                 Divider().frame(height: 48)
                 SummaryStatColumn(
@@ -73,7 +74,7 @@ struct PostRunSummaryView: View {
                 )
                 if let pace = summary.avgPace {
                     Divider().frame(height: 48)
-                    SummaryStatColumn(label: "Avg Pace", value: pace.paceString, unit: "")
+                    SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
                 }
             }
             .frame(maxWidth: .infinity)

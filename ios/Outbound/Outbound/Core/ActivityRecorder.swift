@@ -11,6 +11,7 @@ final class ActivityRecorder: ObservableObject {
     @Published var state: RecordingState = .idle
     @Published var elapsedSeconds: Int = 0
     @Published var distanceMeters: Double = 0
+    @Published var elevationGainMeters: Double = 0
     @Published var currentPace: Double?   // secs/km
     @Published var heartRate: Int?
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
@@ -38,6 +39,7 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = 0
         elapsedSeconds = 0
         distanceMeters = 0
+        elevationGainMeters = 0
         currentPace = nil
         heartRate = nil
         locationManager.startTracking()
@@ -102,6 +104,7 @@ final class ActivityRecorder: ObservableObject {
     private func updateSessionMetrics(now: Date) {
         elapsedSeconds = currentElapsedSeconds(at: now)
         distanceMeters = locationManager.totalDistanceMeters
+        elevationGainMeters = locationManager.elevationGainMeters
         currentPace = locationManager.currentPaceSecsPerKm
         liveSnapshot = makeSnapshot()
     }

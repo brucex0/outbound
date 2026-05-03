@@ -5,6 +5,7 @@ import UIKit
 struct ActivityDetailView: View {
     let activity: SavedActivity
     @EnvironmentObject var activityStore: ActivityStore
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @State private var shareURL: URL?
     @State private var shareError: ShareRouteError?
 
@@ -125,13 +126,13 @@ struct ActivityDetailView: View {
     private var statsStrip: some View {
         HStack(spacing: 0) {
             DetailStatCell(label: "Distance",
-                           value: String(format: "%.2f km", currentActivity.distanceM / 1000))
+                           value: measurementPreferences.unitSystem.distanceString(meters: currentActivity.distanceM))
             Divider().frame(height: 40)
             DetailStatCell(label: "Time",
                            value: currentActivity.durationSecs.formatted())
             if let pace = currentActivity.avgPace {
                 Divider().frame(height: 40)
-                DetailStatCell(label: "Avg Pace", value: pace.paceString)
+                DetailStatCell(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem))
             }
         }
         .frame(maxWidth: .infinity)

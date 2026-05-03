@@ -16,6 +16,7 @@ struct OutboundApp: App {
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
     @StateObject private var musicStore = MusicStore()
     @StateObject private var recognitionStore = RecognitionStore()
+    @StateObject private var measurementPreferences = MeasurementPreferences()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -38,6 +39,7 @@ struct OutboundApp: App {
                     .environmentObject(dailyCheckInStore)
                     .environmentObject(musicStore)
                     .environmentObject(recognitionStore)
+                    .environmentObject(measurementPreferences)
                     .task {
                         await coachStore.syncIfNeeded()
                         await activityStore.syncPendingActivitiesIfNeeded()
@@ -56,6 +58,24 @@ struct OutboundApp: App {
                     }
             }
         }
+    }
+}
+
+@MainActor
+final class MeasurementPreferences: ObservableObject {
+    @Published var unitSystem: MeasurementUnitSystem {
+        didSet {
+            defaults.set(unitSystem.rawValue, forKey: unitSystemKey)
+        }
+    }
+
+    private let defaults: UserDefaults
+    private let unitSystemKey = "measurement_unit_system_v1"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let storedValue = defaults.string(forKey: unitSystemKey)
+        unitSystem = storedValue.flatMap(MeasurementUnitSystem.init(rawValue:)) ?? .metric
     }
 }
 

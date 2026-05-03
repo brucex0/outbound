@@ -6,6 +6,7 @@ import CoreLocation
 // rail, and a bottom session card that carries live workout status plus coach
 // motivation while the session is active.
 struct CameraHUDView: View {
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     @ObservedObject var musicStore: MusicStore
@@ -60,7 +61,11 @@ struct CameraHUDView: View {
                         elapsedText: recorder.elapsedSeconds.formatted(),
                         paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                         paceText: sessionPaceText,
-                        distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                        distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+                        distanceLabel: measurementPreferences.unitSystem.distanceLabel,
+                        elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
+                        elevationLabel: measurementPreferences.unitSystem.elevationLabel,
+                        heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
                         coachMessage: coachMessage,
                         musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
                         showsMusicDisabledState: musicStore.hasDeveloperTokenError,
@@ -141,7 +146,7 @@ struct CameraHUDView: View {
     }
 
     private var railBottomPadding: CGFloat {
-        recorder.state == .paused ? 230 : 184
+        recorder.state == .paused ? 222 : 190
     }
 
     private var sessionPaceText: String {
@@ -149,10 +154,10 @@ struct CameraHUDView: View {
         case .idle:
             return "--"
         case .active:
-            return recorder.currentPace?.paceString ?? "--"
+            return recorder.currentPace?.paceString(for: measurementPreferences.unitSystem) ?? "--"
         case .paused:
             guard recorder.distanceMeters > 0 else { return "--" }
-            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString
+            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString(for: measurementPreferences.unitSystem)
         }
     }
 
@@ -418,6 +423,10 @@ struct SessionStatusCard: View {
     let paceLabel: String
     let paceText: String
     let distanceText: String
+    let distanceLabel: String
+    let elevationText: String
+    let elevationLabel: String
+    let heartRateText: String
     let coachMessage: String?
     let musicPlayback: MusicPlaybackSnapshot?
     let showsMusicDisabledState: Bool
@@ -441,108 +450,138 @@ struct SessionStatusCard: View {
                 .background(statusColor)
                 .foregroundStyle(statusTextColor)
 
-            VStack(spacing: 18) {
-                HStack(spacing: 14) {
-                    SessionMetricColumn(value: elapsedText, label: "Time")
-                    SessionMetricColumn(value: paceText, label: paceLabel)
-                    SessionMetricColumn(value: distanceText, label: "Distance (km)")
-                }
-
-                if let musicPlayback {
-                    musicRow(for: musicPlayback)
-                } else if showsMusicDisabledState {
-                    disabledMusicRow
-                } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
-                    musicErrorRow(message: musicErrorMessage)
-                }
-
-                controls
+            VStack(spacing: 14) {
+                metricsView
+                utilityRow
             }
             .padding(.horizontal, 18)
-            .padding(.top, 16)
-            .padding(.bottom, 18)
+            .padding(.top, 14)
+            .padding(.bottom, 16)
             .background(.white)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.22), radius: 22, y: 10)
         .accessibilityIdentifier("CameraDataOverlay")
     }
 
-    private func musicRow(for playback: MusicPlaybackSnapshot) -> some View {
-        HStack(spacing: 12) {
+    private var metrics: [SessionMetricItem] {
+        [
+            SessionMetricItem(value: elapsedText, label: "Time"),
+            SessionMetricItem(value: distanceText, label: distanceLabel),
+            SessionMetricItem(value: paceText, label: paceLabel),
+            SessionMetricItem(value: elevationText, label: elevationLabel),
+            SessionMetricItem(value: heartRateText, label: "HR")
+        ]
+    }
+
+    private var metricsView: some View {
+        ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
-                Image(systemName: "music.note")
-                    .foregroundStyle(.orange)
-
-                MusicWaveView(isAnimating: playback.isPlaying)
+                ForEach(metrics) { metric in
+                    SessionMetricColumn(value: metric.value, label: metric.label)
+                }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(playback.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Text(playback.subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 12) {
+                ForEach(metrics) { metric in
+                    SessionMetricColumn(value: metric.value, label: metric.label)
+                }
             }
-
-            Spacer()
-
-            Button(action: onTogglePlayback) {
-                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                    .frame(width: 34, height: 34)
-                    .background(Color(.secondarySystemBackground), in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(playback.isPlaying ? "Pause music" : "Play music")
-
-            Button(action: onSkipTrack) {
-                Image(systemName: "forward.fill")
-                    .frame(width: 34, height: 34)
-                    .background(Color(.secondarySystemBackground), in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Skip track")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("MusicPlaybackRow")
     }
 
-    private var disabledMusicRow: some View {
-        HStack(spacing: 10) {
+    private var utilityRow: some View {
+        Group {
+            if state == .idle {
+                controls
+            } else {
+                HStack(spacing: 10) {
+                    musicControls
+                    Spacer(minLength: 8)
+                    controls
+                }
+            }
+        }
+    }
+
+    private var pausedControls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                resumeButton
+                finishButton
+            }
+
+            HStack(spacing: 10) {
+                Button(action: onResume) {
+                    Image(systemName: "play.fill")
+                        .font(.subheadline.weight(.bold))
+                }
+                .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 44))
+                .accessibilityLabel("Resume activity")
+
+                Button(action: onFinish) {
+                    Image(systemName: "flag.checkered")
+                        .font(.subheadline.weight(.bold))
+                }
+                .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 44))
+                .accessibilityLabel("Finish activity")
+            }
+        }
+    }
+
+    private var resumeButton: some View {
+        Button(action: onResume) {
+            Label("Resume", systemImage: "play.fill")
+        }
+        .buttonStyle(SessionCompactButtonStyle(background: .orange, foreground: .white))
+    }
+
+    private var finishButton: some View {
+        Button(action: onFinish) {
+            Label("Finish", systemImage: "flag.checkered")
+        }
+        .buttonStyle(SessionCompactButtonStyle(background: .black, foreground: .white))
+    }
+
+    @ViewBuilder
+    private var musicControls: some View {
+        if let musicPlayback {
+            HStack(spacing: 8) {
+                Button(action: onTogglePlayback) {
+                    if musicPlayback.isPlaying {
+                        MusicWaveView(isAnimating: true)
+                    } else {
+                        Image(systemName: "music.note")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(SessionIconButtonStyle(background: Color(.systemGroupedBackground), foreground: .orange, size: 42))
+                .accessibilityLabel(musicPlayback.isPlaying ? "Pause music, \(musicPlayback.title)" : "Play music, \(musicPlayback.title)")
+
+                Button(action: onSkipTrack) {
+                    Image(systemName: "forward.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(SessionIconButtonStyle(background: Color(.systemGroupedBackground), foreground: .black, size: 42))
+                .accessibilityLabel("Skip track")
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("MusicPlaybackRow")
+        } else if showsMusicDisabledState {
             Image(systemName: "music.note.slash")
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("Music unavailable")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Music unavailable")
-    }
-
-    private func musicErrorRow(message: String) -> some View {
-        HStack(spacing: 10) {
+                .frame(width: 42, height: 42)
+                .background(Color(.systemGroupedBackground), in: Circle())
+                .accessibilityLabel("Music unavailable")
+        } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
             Image(systemName: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
-
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
+                .frame(width: 42, height: 42)
+                .background(Color(.systemGroupedBackground), in: Circle())
+                .accessibilityLabel(musicErrorMessage)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(.systemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private struct MusicWaveView: View {
@@ -585,24 +624,13 @@ struct SessionStatusCard: View {
             .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
         case .active:
             Button(action: onPause) {
-                Text("Pause")
-                    .frame(maxWidth: .infinity)
+                Image(systemName: "pause.fill")
+                    .font(.headline.weight(.bold))
             }
-            .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 48))
+            .accessibilityLabel("Pause activity")
         case .paused:
-            HStack(spacing: 12) {
-                Button(action: onResume) {
-                    Label("Resume", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
-
-                Button(action: onFinish) {
-                    Label("Finish", systemImage: "flag.checkered")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SessionPrimaryButtonStyle(background: .black, foreground: .white))
-            }
+            pausedControls
         }
     }
 
@@ -650,6 +678,13 @@ struct SessionStatusCard: View {
     }
 }
 
+private struct SessionMetricItem: Identifiable {
+    let value: String
+    let label: String
+
+    var id: String { label }
+}
+
 private struct SessionMetricColumn: View {
     let value: String
     let label: String
@@ -661,13 +696,48 @@ private struct SessionMetricColumn: View {
                 .monospacedDigit()
                 .foregroundStyle(.black)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.65)
             Text(label)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity)
+        .frame(minWidth: 54, maxWidth: .infinity)
+    }
+}
+
+private struct SessionIconButtonStyle: ButtonStyle {
+    let background: Color
+    let foreground: Color
+    let size: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: size, height: size)
+            .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Circle())
+            .foregroundStyle(foreground)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+private struct SessionCompactButtonStyle: ButtonStyle {
+    let background: Color
+    let foreground: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+            .padding(.horizontal, 14)
+            .frame(height: 44)
+            .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
+            .foregroundStyle(foreground)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

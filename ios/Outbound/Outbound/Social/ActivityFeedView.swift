@@ -241,6 +241,7 @@ private struct CrewPulseAvatar: View {
 }
 
 private struct ShareLatestRunCard: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
     let activityStore: ActivityStore
     let isShared: Bool
@@ -265,10 +266,10 @@ private struct ShareLatestRunCard: View {
                     .lineLimit(1)
 
                 HStack(spacing: 10) {
-                    SocialStat(symbol: "figure.run", value: String(format: "%.2f km", activity.distanceM / 1000))
+                    SocialStat(symbol: "figure.run", value: measurementPreferences.unitSystem.distanceString(meters: activity.distanceM))
                     SocialStat(symbol: "timer", value: activity.durationSecs.formatted())
                     if let pace = activity.avgPace {
-                        SocialStat(symbol: "speedometer", value: pace.paceString)
+                        SocialStat(symbol: "speedometer", value: pace.paceString(for: measurementPreferences.unitSystem))
                     }
                 }
             }
@@ -370,6 +371,7 @@ private struct SocialFeedPostCard: View {
 }
 
 private struct RoutePreviewCard: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let post: SocialFeedPost
 
     var body: some View {
@@ -385,9 +387,9 @@ private struct RoutePreviewCard: View {
                 .padding(18)
 
             HStack(spacing: 10) {
-                SocialStat(symbol: "figure.run", value: String(format: "%.1f km", post.activity.distanceKm))
+                SocialStat(symbol: "figure.run", value: post.activity.distanceText(unitSystem: measurementPreferences.unitSystem))
                 SocialStat(symbol: "timer", value: post.activity.duration)
-                SocialStat(symbol: "speedometer", value: post.activity.pace)
+                SocialStat(symbol: "speedometer", value: post.activity.paceText(unitSystem: measurementPreferences.unitSystem))
             }
             .padding(10)
             .background(.ultraThinMaterial)
@@ -502,6 +504,7 @@ private struct SocialChallengeCard: View {
 }
 
 private struct RivalryHeaderCard: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let hasClaimedEdge: Bool
     let onClaimEdge: () -> Void
 
@@ -511,7 +514,7 @@ private struct RivalryHeaderCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Weekly Loop")
                         .font(.headline)
-                    Text("You are 1.8 km behind Maya")
+                    Text("You are \(measurementPreferences.unitSystem.distanceString(meters: 1800, fractionDigits: 1)) behind Maya")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -569,6 +572,7 @@ private struct SocialRecognitionCard: View {
 }
 
 private struct RivalRow: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let rival: SocialRival
 
     var body: some View {
@@ -591,9 +595,9 @@ private struct RivalRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text(String(format: "%.1f km", rival.weeklyKm))
+                Text(rival.weeklyDistanceText(unitSystem: measurementPreferences.unitSystem))
                     .font(.subheadline.bold())
-                Text(rival.delta)
+                Text(rival.deltaText(unitSystem: measurementPreferences.unitSystem))
                     .font(.caption)
                     .foregroundStyle(rival.delta.hasPrefix("+") ? .green : .secondary)
             }
@@ -807,6 +811,26 @@ private struct SocialActivitySummary {
     let distanceKm: Double
     let duration: String
     let pace: String
+
+    func distanceText(unitSystem: MeasurementUnitSystem) -> String {
+        unitSystem.distanceString(meters: distanceKm * 1000, fractionDigits: 1)
+    }
+
+    func paceText(unitSystem: MeasurementUnitSystem) -> String {
+        guard let secondsPerKilometer else { return pace }
+        return secondsPerKilometer.paceString(for: unitSystem)
+    }
+
+    private var secondsPerKilometer: Double? {
+        let timePart = pace.split(separator: " ").first ?? Substring(pace)
+        let pieces = timePart.split(separator: ":")
+        guard pieces.count == 2,
+              let minutes = Double(String(pieces[0])),
+              let seconds = Double(String(pieces[1])) else {
+            return nil
+        }
+        return minutes * 60 + seconds
+    }
 }
 
 private enum SocialPostKind {
@@ -858,6 +882,21 @@ private struct SocialRival: Identifiable {
     let weeklyKm: Double
     let delta: String
     let note: String
+
+    func weeklyDistanceText(unitSystem: MeasurementUnitSystem) -> String {
+        unitSystem.distanceString(meters: weeklyKm * 1000, fractionDigits: 1)
+    }
+
+    func deltaText(unitSystem: MeasurementUnitSystem) -> String {
+        guard delta != "You" else { return delta }
+        let sign = delta.hasPrefix("+") ? "+" : delta.hasPrefix("-") ? "-" : ""
+        let unsignedDelta = delta
+            .replacingOccurrences(of: "+", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: " km", with: "")
+        guard let kilometers = Double(unsignedDelta) else { return delta }
+        return "\(sign)\(unitSystem.distanceString(meters: kilometers * 1000, fractionDigits: 1))"
+    }
 }
 
 private enum SocialSeed {

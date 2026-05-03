@@ -57,6 +57,7 @@ struct ActivityHistoryView: View {
 
 private struct ActivityRowCard: View {
     @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
     let activityStore: ActivityStore
 
@@ -76,10 +77,10 @@ private struct ActivityRowCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack(spacing: 14) {
-                        Label(String(format: "%.2f km", activity.distanceM / 1000), systemImage: "figure.run")
+                        Label(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM), systemImage: "figure.run")
                         Label(activity.durationSecs.formatted(), systemImage: "timer")
                         if let pace = activity.avgPace {
-                            Label(pace.paceString, systemImage: "speedometer")
+                            Label(pace.paceString(for: measurementPreferences.unitSystem), systemImage: "speedometer")
                         }
                     }
                     .font(.caption)

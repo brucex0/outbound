@@ -10,7 +10,8 @@ final class SessionLiveActivityManager: ObservableObject {
     func update(
         snapshot: ActiveSessionSnapshot,
         state: RecordingState,
-        intent: SessionIntent?
+        intent: SessionIntent?,
+        unitSystem: MeasurementUnitSystem
     ) {
         guard state != .idle else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
@@ -21,7 +22,7 @@ final class SessionLiveActivityManager: ObservableObject {
             sportSystemImageName: intent?.sport.systemImage ?? "figure.run"
         )
         let content = ActivityContent(
-            state: makeContentState(snapshot: snapshot, state: state),
+            state: makeContentState(snapshot: snapshot, state: state, unitSystem: unitSystem),
             staleDate: nil
         )
         lastContentState = content.state
@@ -46,16 +47,16 @@ final class SessionLiveActivityManager: ObservableObject {
         }
     }
 
-    func end(using snapshot: ActiveSessionSnapshot? = nil) {
+    func end(using snapshot: ActiveSessionSnapshot? = nil, unitSystem: MeasurementUnitSystem = .metric) {
         guard let activity else { return }
         self.activity = nil
 
         let finalState = snapshot.map {
-            makeContentState(snapshot: $0, state: .paused)
+            makeContentState(snapshot: $0, state: .paused, unitSystem: unitSystem)
         } ?? lastContentState ?? OutboundLiveActivityAttributes.ContentState(
             elapsedSeconds: 0,
             elapsedReferenceDate: nil,
-            distanceText: "0.00 km",
+            distanceText: unitSystem.distanceString(meters: 0),
             paceText: "--",
             statusText: "Finished",
             isPaused: true
@@ -70,17 +71,18 @@ final class SessionLiveActivityManager: ObservableObject {
 
     private func makeContentState(
         snapshot: ActiveSessionSnapshot,
-        state: RecordingState
+        state: RecordingState,
+        unitSystem: MeasurementUnitSystem
     ) -> OutboundLiveActivityAttributes.ContentState {
         let paceText: String
         if state == .paused {
             if snapshot.distanceMeters > 0 {
-                paceText = (Double(snapshot.elapsedSeconds) / (snapshot.distanceMeters / 1000)).paceString
+                paceText = (Double(snapshot.elapsedSeconds) / (snapshot.distanceMeters / 1000)).paceString(for: unitSystem)
             } else {
                 paceText = "--"
             }
         } else {
-            paceText = snapshot.currentPaceSecsPerKm?.paceString ?? "--"
+            paceText = snapshot.currentPaceSecsPerKm?.paceString(for: unitSystem) ?? "--"
         }
 
         return OutboundLiveActivityAttributes.ContentState(
@@ -88,7 +90,7 @@ final class SessionLiveActivityManager: ObservableObject {
             elapsedReferenceDate: state == .active
                 ? Date().addingTimeInterval(-TimeInterval(snapshot.elapsedSeconds))
                 : nil,
-            distanceText: String(format: "%.2f km", snapshot.distanceMeters / 1000),
+            distanceText: unitSystem.distanceString(meters: snapshot.distanceMeters),
             paceText: paceText,
             statusText: state == .paused ? "Paused" : "Active",
             isPaused: state == .paused

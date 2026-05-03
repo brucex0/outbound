@@ -864,6 +864,7 @@ private struct SuggestedActionCard: View {
 }
 
 private struct RecentActivityRow: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
 
     var body: some View {
@@ -884,7 +885,7 @@ private struct RecentActivityRow: View {
                 Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("\(String(format: "%.2f km", activity.distanceM / 1000)) • \(activity.durationSecs.formatted())")
+                Text("\(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM)) • \(activity.durationSecs.formatted())")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

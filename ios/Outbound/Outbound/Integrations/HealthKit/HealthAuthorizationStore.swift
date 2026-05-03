@@ -11,10 +11,14 @@ struct ImportedWorkout: Identifiable, Equatable {
     let energyBurnedKilocalories: Double?
 
     var summaryLine: String {
+        summaryLine(unitSystem: .metric)
+    }
+
+    func summaryLine(unitSystem: MeasurementUnitSystem) -> String {
         var parts = [durationSeconds.formatted()]
 
         if let distanceMeters {
-            parts.append(String(format: "%.2f km", distanceMeters / 1000))
+            parts.append(unitSystem.distanceString(meters: distanceMeters))
         }
 
         if let energyBurnedKilocalories {

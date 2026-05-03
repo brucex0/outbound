@@ -66,6 +66,21 @@ final class LocationManager: NSObject, ObservableObject {
             .reduce(0) { $0 + $1.0.distance(from: $1.1) }
     }
 
+    var elevationGainMeters: Double {
+        guard trackPoints.count > 1 else { return 0 }
+        return zip(trackPoints, trackPoints.dropFirst()).reduce(0) { total, pair in
+            let previous = pair.0
+            let current = pair.1
+            guard previous.verticalAccuracy >= 0, current.verticalAccuracy >= 0 else {
+                return total
+            }
+
+            let gain = current.altitude - previous.altitude
+            guard gain > 1 else { return total }
+            return total + gain
+        }
+    }
+
     var currentPaceSecsPerKm: Double? {
         guard trackPoints.count > 5 else { return nil }
         let recent = Array(trackPoints.suffix(10))

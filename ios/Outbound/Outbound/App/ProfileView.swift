@@ -131,6 +131,7 @@ private struct SettingsView: View {
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
 
     let initialFocusSection: SettingsFocusSection?
 
@@ -178,6 +179,13 @@ private struct SettingsView: View {
                 }
 
                 Section("App") {
+                    Picker("Measurement Units", selection: $measurementPreferences.unitSystem) {
+                        ForEach(MeasurementUnitSystem.allCases) { unitSystem in
+                            Text(unitSystem.title).tag(unitSystem)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
                     LabeledContent("Version", value: "Prototype")
                 }
 
@@ -201,6 +209,7 @@ private struct SettingsView: View {
 }
 
 private struct RecentActivitySummaryCard: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
 
     var body: some View {
@@ -220,7 +229,7 @@ private struct RecentActivitySummaryCard: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
-                    Text("\(String(format: "%.2f km", activity.distanceM / 1000)) • \(activity.durationSecs.formatted())")
+                    Text("\(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM)) • \(activity.durationSecs.formatted())")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -500,6 +509,7 @@ private struct AssistantBubble: View {
 private struct AppleHealthSettingsCard: View {
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -603,7 +613,7 @@ private struct AppleHealthSettingsCard: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        Text(workout.summaryLine)
+                        Text(workout.summaryLine(unitSystem: measurementPreferences.unitSystem))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(workout.sourceName)
@@ -720,6 +730,7 @@ private struct ProfileMetricCard: View {
 
 private struct ActivityCard: View {
     @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
     let activityStore: ActivityStore
 
@@ -739,11 +750,11 @@ private struct ActivityCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack(spacing: 12) {
-                        Label(String(format: "%.2f km", activity.distanceM / 1000),
+                        Label(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM),
                               systemImage: "figure.run")
                         Label(activity.durationSecs.formatted(), systemImage: "timer")
                         if let pace = activity.avgPace {
-                            Label(pace.paceString, systemImage: "speedometer")
+                            Label(pace.paceString(for: measurementPreferences.unitSystem), systemImage: "speedometer")
                         }
                     }
                     .font(.caption)

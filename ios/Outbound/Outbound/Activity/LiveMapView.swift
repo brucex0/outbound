@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct LiveMapView: View {
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var coach: VirtualCoach
@@ -65,7 +66,11 @@ struct LiveMapView: View {
                     elapsedText: recorder.elapsedSeconds.formatted(),
                     paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                     paceText: sessionPaceText,
-                    distanceText: String(format: "%.2f", recorder.distanceMeters / 1000),
+                    distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+                    distanceLabel: measurementPreferences.unitSystem.distanceLabel,
+                    elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
+                    elevationLabel: measurementPreferences.unitSystem.elevationLabel,
+                    heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
                     coachMessage: coachMessage,
                     musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
                     showsMusicDisabledState: musicStore.hasDeveloperTokenError,
@@ -154,7 +159,7 @@ struct LiveMapView: View {
     }
 
     private var railBottomPadding: CGFloat {
-        recorder.state == .paused ? 230 : 184
+        recorder.state == .paused ? 222 : 190
     }
 
     private var sessionPaceText: String {
@@ -162,10 +167,10 @@ struct LiveMapView: View {
         case .idle:
             return "--"
         case .active:
-            return recorder.currentPace?.paceString ?? "--"
+            return recorder.currentPace?.paceString(for: measurementPreferences.unitSystem) ?? "--"
         case .paused:
             guard recorder.distanceMeters > 0 else { return "--" }
-            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString
+            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString(for: measurementPreferences.unitSystem)
         }
     }
 
