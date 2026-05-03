@@ -47,7 +47,7 @@ struct MainTabView: View {
                     isAssistantPresented = true
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 92)
+                .padding(.bottom, 52)
                 .zIndex(2)
             }
         }
@@ -619,27 +619,26 @@ struct MotivationDashboardView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(coachCatalog.selectedPersona.face.accentColor)
 
-                Button("Details") {
-                    isPlanDetailsPresented = true
-                }
-                .buttonStyle(.bordered)
-                .tint(coachCatalog.selectedPersona.face.accentColor)
-            }
-            .font(.subheadline.weight(.semibold))
-
-            HStack(spacing: 10) {
-                if !trainingPlanStore.recommendations.isEmpty {
-                    Button("Change") {
-                        isPlanPickerPresented = true
+                Menu {
+                    Button("Details") {
+                        isPlanDetailsPresented = true
                     }
-                    .buttonStyle(.bordered)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
-                }
 
-                Button("End", role: .destructive) {
-                    trainingPlanStore.clearActivePlan()
+                    if !trainingPlanStore.recommendations.isEmpty {
+                        Button("Change") {
+                            isPlanPickerPresented = true
+                        }
+                    }
+
+                    Button("End", role: .destructive) {
+                        trainingPlanStore.clearActivePlan()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.bordered)
+                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
             }
             .font(.subheadline.weight(.semibold))
         }

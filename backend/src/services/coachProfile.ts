@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client/index.js";
 import { buildCoachSystemPrompt } from "./ai.js";
 import { getPrismaClient } from "./prisma.js";
 import type { CoachProfilePayload, GoalItem, MemorySnapshot, PersonalRecords } from "../types/coach.js";

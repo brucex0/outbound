@@ -15,7 +15,7 @@ router.get("/feed/:userId", async (c) => {
   const { userId } = c.req.param();
   const limit = Number(c.req.query("limit") ?? 20);
   const following = await prisma.follow.findMany({ where: { followerId: userId } });
-  const followingIds = following.map((f) => f.followingId);
+  const followingIds = following.map((follow) => follow.followingId);
   const posts = await prisma.post.findMany({
     where: { userId: { in: [...followingIds, userId] } },
     orderBy: { createdAt: "desc" },

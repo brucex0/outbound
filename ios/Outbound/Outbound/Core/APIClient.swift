@@ -27,9 +27,8 @@ final class APIClient {
         try await post("/coach/\(userId)/rebuild", body: EmptyBody())
     }
 
-    func uploadActivity(_ payload: [String: Any]) async throws -> [String: Any] {
-        let data = try JSONSerialization.data(withJSONObject: payload)
-        return try await postRaw("/activities", body: data)
+    func uploadActivity(_ request: ActivityUploadRequest) async throws -> ActivityUploadResponse {
+        try await post("/activities", body: request)
     }
 
     func chatWithAssistant(_ request: AssistantChatRequest) async throws -> AssistantChatResponse {
@@ -53,16 +52,6 @@ final class APIClient {
         req.httpBody = try JSONEncoder().encode(body)
         let (data, _) = try await URLSession.shared.data(for: req)
         return try decoder.decode(T.self, from: data)
-    }
-
-    private func postRaw(_ path: String, body: Data) async throws -> [String: Any] {
-        var req = URLRequest(url: base.appendingPathComponent(path))
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(authToken ?? "")", forHTTPHeaderField: "Authorization")
-        req.httpBody = body
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 
     private let decoder: JSONDecoder = {
@@ -99,4 +88,24 @@ struct AssistantChatAPIPriorMessage: Encodable {
 
 struct AssistantChatResponse: Decodable {
     let message: String
+}
+
+struct ActivityUploadRequest: Encodable {
+    let clientActivityId: String
+    let syncSource: String
+    let type: String
+    let title: String
+    let startedAt: Date
+    let endedAt: Date
+    let durationSecs: Int
+    let distanceM: Double
+    let avgPace: Double?
+    let route: SavedRoute?
+}
+
+struct ActivityUploadResponse: Decodable {
+    let id: String
+    let clientActivityId: String?
+    let status: String
+    let uploadedAt: Date
 }

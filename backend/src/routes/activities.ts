@@ -43,6 +43,8 @@ router.get("/:id", async (c) => {
 
 const createSchema = z.object({
   userId: z.string().optional(),
+  clientActivityId: z.string().min(1).max(128).optional(),
+  syncSource: z.string().min(1).max(64).optional(),
   type: z.string().default("running"),
   title: z.string().optional(),
   startedAt: z.string(),
@@ -70,31 +72,81 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     return c.json({ error: "Authentication or legacy userId is required." }, 401);
   }
 
-  const activity = await prisma.activity.create({
-    data: {
-      ...body,
-      userId: resolvedUserId,
-      startedAt: new Date(body.startedAt),
-      endedAt: body.endedAt ? new Date(body.endedAt) : undefined,
-    },
-  });
+  const activityData = {
+    clientActivityId: body.clientActivityId,
+    syncSource: body.syncSource,
+    type: body.type,
+    title: body.title,
+    startedAt: new Date(body.startedAt),
+    endedAt: body.endedAt ? new Date(body.endedAt) : undefined,
+    durationSecs: body.durationSecs,
+    distanceM: body.distanceM,
+    elevationM: body.elevationM,
+    avgPace: body.avgPace,
+    avgHeartRate: body.avgHeartRate,
+    calories: body.calories,
+    route: body.route,
+    splits: body.splits,
+    userId: resolvedUserId,
+  };
+
+  let activity;
+  let wasCreated = false;
+
+  if (body.clientActivityId) {
+    const existing = await prisma.activity.findUnique({
+      where: {
+        userId_clientActivityId: {
+          userId: resolvedUserId,
+          clientActivityId: body.clientActivityId,
+        },
+      },
+    });
+
+    if (existing) {
+      activity = await prisma.activity.update({
+        where: { id: existing.id },
+        data: activityData,
+      });
+    } else {
+      wasCreated = true;
+      activity = await prisma.activity.create({
+        data: activityData,
+      });
+    }
+  } else {
+    wasCreated = true;
+    activity = await prisma.activity.create({
+      data: activityData,
+    });
+  }
 
   // Fire-and-forget: analyze activity + rebuild coach profile
-  (async () => {
-    const coachProfile = await prisma.coachProfile.findUnique({
-      where: { userId: resolvedUserId },
-    });
-    const analysis = await analyzeActivity(activity, coachProfile ?? {});
-    await Promise.all([
-      prisma.activity.update({
-        where: { id: activity.id },
-        data: { coachAnalysis: analysis },
-      }),
-      rebuildCoachProfile(resolvedUserId),
-    ]);
-  })().catch(console.error);
+  if (wasCreated) {
+    (async () => {
+      const coachProfile = await prisma.coachProfile.findUnique({
+        where: { userId: resolvedUserId },
+      });
+      const analysis = await analyzeActivity(activity, coachProfile ?? {});
+      await Promise.all([
+        prisma.activity.update({
+          where: { id: activity.id },
+          data: { coachAnalysis: analysis },
+        }),
+        rebuildCoachProfile(resolvedUserId),
+      ]);
+    })().catch(console.error);
+  }
 
-  return c.json(activity, 201);
+  return c.json(
+    {
+      id: activity.id,
+      clientActivityId: activity.clientActivityId,
+      status: wasCreated ? "created" : "updated",
+      uploadedAt: activity.createdAt,
+    },
+    wasCreated ? 201 : 200
+  );
 });
 
 export default router;

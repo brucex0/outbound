@@ -36,7 +36,14 @@ enum LocalActivityStore {
             distanceM: summary.distanceM,
             avgPace: summary.avgPace,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
-            photos: savedPhotos
+            photos: savedPhotos,
+            sync: SavedActivitySyncState(
+                clientActivityId: activityId.uuidString,
+                serverActivityId: nil,
+                lastAttemptAt: nil,
+                syncedAt: nil,
+                lastError: nil
+            )
         )
 
         var activities = try load()
@@ -58,6 +65,13 @@ enum LocalActivityStore {
         try saveManifest(activities)
         let photoDir = try activitiesDirectory().appendingPathComponent(activity.id.uuidString)
         try? FileManager.default.removeItem(at: photoDir)
+    }
+
+    static func replace(_ activity: SavedActivity) throws {
+        var activities = try load()
+        guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
+        activities[index] = activity
+        try saveManifest(activities)
     }
 
     static func imageURL(for photo: SavedPhoto) throws -> URL {
@@ -119,6 +133,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     let avgPace: Double?
     let route: SavedRoute?
     let photos: [SavedPhoto]
+    let sync: SavedActivitySyncState?
 
     var routePoints: [SavedRoutePoint] { route?.points ?? [] }
     var routeCoordinates: [CLLocationCoordinate2D] { routePoints.map(\.coordinate) }
@@ -141,6 +156,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
             route = legacyTrackPoints.isEmpty ? nil : SavedRoute(points: legacyTrackPoints.map(SavedRoutePoint.init))
         }
         photos = try c.decode([SavedPhoto].self, forKey: .photos)
+        sync = try c.decodeIfPresent(SavedActivitySyncState.self, forKey: .sync)
         coachNudge = (try? c.decodeIfPresent(String.self, forKey: .coachNudge)) ?? ""
         let day = startedAt.formatted(.dateTime.weekday(.wide))
         title = ((try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil) ?? "\(day) Run"
@@ -148,11 +164,11 @@ struct SavedActivity: Codable, Identifiable, Hashable {
 
     init(id: UUID, title: String, coachNudge: String, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
-         avgPace: Double?, route: SavedRoute?, photos: [SavedPhoto]) {
+         avgPace: Double?, route: SavedRoute?, photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
-        self.route = route; self.photos = photos
+        self.route = route; self.photos = photos; self.sync = sync
     }
 
     enum CodingKeys: String, CodingKey {
@@ -168,6 +184,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         case route
         case trackPoints
         case photos
+        case sync
     }
 
     func encode(to encoder: Encoder) throws {
@@ -183,7 +200,18 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(avgPace, forKey: .avgPace)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
+        try c.encodeIfPresent(sync, forKey: .sync)
     }
+}
+
+struct SavedActivitySyncState: Codable, Hashable {
+    let clientActivityId: String
+    let serverActivityId: String?
+    let lastAttemptAt: Date?
+    let syncedAt: Date?
+    let lastError: String?
+
+    var isSynced: Bool { syncedAt != nil }
 }
 
 struct SavedRoute: Codable, Hashable {

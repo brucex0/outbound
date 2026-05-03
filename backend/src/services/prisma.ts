@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client/index.js";
 
 let prisma: PrismaClient | null = null;
 

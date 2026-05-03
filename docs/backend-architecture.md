@@ -17,12 +17,13 @@ Current strengths:
 - database-backed routes are grouped by domain instead of one large file
 - iOS already sends a Firebase bearer token to `APIClient`
 - coach profile rebuild logic exists and can evolve instead of being rewritten
+- authenticated activity ingest now has an initial idempotent path using client-generated activity IDs
 
 Current gaps:
 
 - authenticated identity is not enforced on the server yet
 - routes trust client-supplied `userId` and `firebaseUid`
-- activity sync is not idempotent
+- activity sync retries and media sync are still lightweight, even though base ingest is now idempotent
 - media upload flow is placeholder-level
 - async work is done with in-request fire-and-forget logic
 - plans, readiness, and adaptation are not modeled yet

@@ -6,6 +6,7 @@ import UIKit
 @MainActor
 final class ActivityStore: ObservableObject {
     @Published private(set) var activities: [SavedActivity] = []
+    private let api = APIClient.shared
 
     init() { refresh() }
 
@@ -18,6 +19,9 @@ final class ActivityStore: ObservableObject {
             coachNudge: lastNudge
         )
         refresh()
+        Task {
+            await syncActivityIfPossible(id: activity.id)
+        }
         return activity
     }
 
@@ -38,12 +42,101 @@ final class ActivityStore: ObservableObject {
         try RouteFileExporter.export(activity: self.activity(id: activity.id) ?? activity, format: format)
     }
 
+    func syncPendingActivitiesIfNeeded() async {
+        guard AuthStore.currentUserId != nil else { return }
+        let pendingIDs = activities
+            .filter { !($0.sync?.isSynced ?? false) }
+            .map(\.id)
+
+        for activityID in pendingIDs {
+            await syncActivityIfPossible(id: activityID)
+        }
+    }
+
     private func refresh() {
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity") {
             activities = [Self.uiTestActivityFixture]
             return
         }
         activities = (try? LocalActivityStore.load()) ?? []
+    }
+
+    private func syncActivityIfPossible(id: UUID) async {
+        guard AuthStore.currentUserId != nil else { return }
+        guard let activity = activity(id: id) else { return }
+
+        let priorState = activity.sync ?? SavedActivitySyncState(
+            clientActivityId: activity.id.uuidString,
+            serverActivityId: nil,
+            lastAttemptAt: nil,
+            syncedAt: nil,
+            lastError: nil
+        )
+
+        let attemptState = SavedActivitySyncState(
+            clientActivityId: priorState.clientActivityId,
+            serverActivityId: priorState.serverActivityId,
+            lastAttemptAt: Date(),
+            syncedAt: priorState.syncedAt,
+            lastError: nil
+        )
+        persistSyncState(attemptState, for: activity.id)
+
+        do {
+            let response = try await api.uploadActivity(
+                ActivityUploadRequest(
+                    clientActivityId: priorState.clientActivityId,
+                    syncSource: "ios-local-store",
+                    type: "running",
+                    title: activity.title,
+                    startedAt: activity.startedAt,
+                    endedAt: activity.endedAt,
+                    durationSecs: activity.durationSecs,
+                    distanceM: activity.distanceM,
+                    avgPace: activity.avgPace,
+                    route: activity.route
+                )
+            )
+
+            let syncedState = SavedActivitySyncState(
+                clientActivityId: priorState.clientActivityId,
+                serverActivityId: response.id,
+                lastAttemptAt: attemptState.lastAttemptAt,
+                syncedAt: response.uploadedAt,
+                lastError: nil
+            )
+            persistSyncState(syncedState, for: activity.id)
+        } catch {
+            let failedState = SavedActivitySyncState(
+                clientActivityId: priorState.clientActivityId,
+                serverActivityId: priorState.serverActivityId,
+                lastAttemptAt: attemptState.lastAttemptAt,
+                syncedAt: priorState.syncedAt,
+                lastError: error.localizedDescription
+            )
+            persistSyncState(failedState, for: activity.id)
+            print("[ActivityStore] activity sync failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID) {
+        guard let current = activity(id: activityID) else { return }
+        let updated = SavedActivity(
+            id: current.id,
+            title: current.title,
+            coachNudge: current.coachNudge,
+            createdAt: current.createdAt,
+            startedAt: current.startedAt,
+            endedAt: current.endedAt,
+            durationSecs: current.durationSecs,
+            distanceM: current.distanceM,
+            avgPace: current.avgPace,
+            route: current.route,
+            photos: current.photos,
+            sync: syncState
+        )
+        try? LocalActivityStore.replace(updated)
+        refresh()
     }
 
     private func autoTitle(for date: Date) -> String {
@@ -77,7 +170,8 @@ final class ActivityStore: ObservableObject {
             distanceM: 5_420,
             avgPace: 340,
             route: SavedRoute(points: points),
-            photos: []
+            photos: [],
+            sync: nil
         )
     }
 }

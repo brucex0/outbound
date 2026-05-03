@@ -40,6 +40,7 @@ struct OutboundApp: App {
                     .environmentObject(recognitionStore)
                     .task {
                         await coachStore.syncIfNeeded()
+                        await activityStore.syncPendingActivitiesIfNeeded()
                         await healthAuthorizationStore.refresh()
                         await healthImportStore.refreshRecentWorkouts()
                         await musicStore.refresh()
