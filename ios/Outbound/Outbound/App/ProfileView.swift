@@ -14,7 +14,6 @@ struct ProfileView: View {
 
     let onStartSuggestion: (SuggestedSession) -> Void
 
-    private let sectionPreviewLimit = 3
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -22,14 +21,9 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     MotivationDashboardView(
-                        showRecentActivity: false,
                         onStartSuggestion: onStartSuggestion
                     )
-                    accountCard
-                    coachCard
-                    highlightsSection
-                    recognitionSection
-                    myActivitiesSection
+                    recentActivitySection
                 }
                 .padding()
             }
@@ -39,6 +33,7 @@ struct ProfileView: View {
                     NavigationLink {
                         SettingsView(initialFocusSection: nil)
                             .environmentObject(authStore)
+                            .environmentObject(coachCatalog)
                             .environmentObject(healthAuthorizationStore)
                             .environmentObject(healthImportStore)
                             .environmentObject(musicStore)
@@ -63,118 +58,13 @@ struct ProfileView: View {
         }
     }
 
-    private var accountCard: some View {
+    private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Account")
+                Text("Recent activity")
                     .font(.title3.bold())
                 Spacer()
-                Image(systemName: authStore.user == nil ? "person.crop.circle.badge.exclamationmark" : "checkmark.shield.fill")
-                    .font(.title2)
-                    .foregroundStyle(authStore.user == nil ? .orange : .green)
-            }
-
-            Text(authStore.currentLoginLabel ?? "Signed in")
-                .font(.headline)
-
-            Text(accountDetail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(authStore.backendDescription)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .background(.blue.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var accountDetail: String {
-        if authStore.user == nil {
-            return "This account is stored locally on this device until Firebase-backed login is configured."
-        }
-
-        return "Your activity and coach data can now be associated with this authenticated account."
-    }
-
-    // MARK: - Coach card
-    private var coachCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Coach")
-                    .font(.title3.bold())
-                Spacer()
-                if coachStore.isSyncing {
-                    ProgressView()
-                } else {
-                    NavigationLink {
-                        CoachSelectionView()
-                            .environmentObject(coachCatalog)
-                    } label: {
-                        Label("Change", systemImage: "slider.horizontal.3")
-                            .font(.subheadline.bold())
-                    }
-                }
-            }
-
-            CoachTemplateSummaryView(persona: coachCatalog.selectedPersona)
-
-            if let profile = coachStore.profile {
-                HStack(spacing: 20) {
-                    StatBlock(label: "Weekly",
-                              value: "\(String(format: "%.0f", profile.athlete.weeklyVolumeKm)) km")
-                    StatBlock(label: "Level",
-                              value: profile.athlete.fitnessLevel.capitalized)
-                    StatBlock(label: "Consistency",
-                              value: "\(Int(profile.memorySnapshot.consistencyScore * 100))%")
-                }
-                .padding(.top, 4)
-            }
-
-            if let milestone = recognitionStore.importantMilestoneHighlight {
-                HStack(spacing: 10) {
-                    RecognitionOrb(preview: milestone, size: 24)
-                    Text("Latest milestone: \(milestone.title)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .padding()
-        .background(.orange.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    private var highlightsSection: some View {
-        HStack(spacing: 12) {
-            ProfileMetricCard(
-                label: "Activities",
-                value: "\(activityStore.activities.count)",
-                systemImage: "figure.run"
-            )
-            ProfileMetricCard(
-                label: "Photos",
-                value: "\(totalPhotoCount)",
-                systemImage: "camera"
-            )
-            ProfileMetricCard(
-                label: "This Week",
-                value: String(format: "%.1f km", weeklyDistanceKm),
-                systemImage: "calendar"
-            )
-        }
-    }
-
-    private var myActivitiesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("My Activities")
-                    .font(.title3.bold())
-                Spacer()
-                if activityStore.activities.count > sectionPreviewLimit {
+                if !activityStore.activities.isEmpty {
                     NavigationLink("See All") {
                         ActivityHistoryView()
                             .environmentObject(activityStore)
@@ -183,51 +73,13 @@ struct ProfileView: View {
                 }
             }
 
-            if activityStore.activities.isEmpty {
-                emptyActivitiesPlaceholder
+            if let activity = activityStore.activities.first {
+                NavigationLink(value: activity) {
+                    RecentActivitySummaryCard(activity: activity)
+                }
+                .buttonStyle(.plain)
             } else {
-                ForEach(Array(activityStore.activities.prefix(sectionPreviewLimit))) { activity in
-                    NavigationLink(value: activity) {
-                        ActivityCard(activity: activity, activityStore: activityStore)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var recognitionSection: some View {
-        let recentAwards = recognitionStore.recentAwards(limit: 3)
-
-        if !recentAwards.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Recognition")
-                    .font(.title3.bold())
-
-                ForEach(recentAwards) { award in
-                    HStack(spacing: 12) {
-                        Image(systemName: award.symbolName)
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.orange)
-                            .frame(width: 42, height: 42)
-                            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(award.title)
-                                .font(.subheadline.weight(.semibold))
-                            Text(award.coachLine)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(14)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
+                emptyActivitiesPlaceholder
             }
         }
     }
@@ -246,30 +98,20 @@ struct ProfileView: View {
         .padding(.vertical, 24)
     }
 
-    private var weeklyDistanceKm: Double {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
-        return activityStore.activities
-            .filter { $0.startedAt >= startOfWeek }
-            .reduce(0) { $0 + $1.distanceM } / 1000
-    }
-
-    private var totalPhotoCount: Int {
-        activityStore.activities.reduce(0) { $0 + $1.photos.count }
-    }
-
     @ViewBuilder
     private func assistantDestinationView(for target: AssistantNavigationTarget) -> some View {
         switch target {
         case .settingsAppleMusic:
             SettingsView(initialFocusSection: .appleMusic)
                 .environmentObject(authStore)
+                .environmentObject(coachCatalog)
                 .environmentObject(healthAuthorizationStore)
                 .environmentObject(healthImportStore)
                 .environmentObject(musicStore)
         case .settingsAppleHealth:
             SettingsView(initialFocusSection: .appleHealth)
                 .environmentObject(authStore)
+                .environmentObject(coachCatalog)
                 .environmentObject(healthAuthorizationStore)
                 .environmentObject(healthImportStore)
                 .environmentObject(musicStore)
@@ -285,6 +127,7 @@ struct ProfileView: View {
 
 private struct SettingsView: View {
     @EnvironmentObject var authStore: AuthStore
+    @EnvironmentObject var coachCatalog: CoachCatalogStore
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
@@ -304,6 +147,21 @@ private struct SettingsView: View {
                     Text(authStore.backendDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                Section("Coach") {
+                    NavigationLink {
+                        CoachSelectionView()
+                            .environmentObject(coachCatalog)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(coachCatalog.selectedPersona.template.displayName)
+                                .font(.subheadline.weight(.semibold))
+                            Text("Voice, style, and coach tuning")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section("Integrations") {
@@ -339,6 +197,52 @@ private struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+private struct RecentActivitySummaryCard: View {
+    let activity: SavedActivity
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "figure.run.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(activity.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text(activity.startedAt.formatted(.relative(presentation: .named)))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("\(String(format: "%.2f km", activity.distanceM / 1000)) • \(activity.durationSecs.formatted())")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.tertiary)
+            }
+
+            if !activity.coachNudge.isEmpty {
+                Text(activity.coachNudge)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
 

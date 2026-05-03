@@ -291,14 +291,11 @@ struct MotivationDashboardView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
-    @EnvironmentObject private var goalStore: GoalStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
 
-    let showRecentActivity: Bool
     let onStartSuggestion: (SuggestedSession) -> Void
-
-    private let recentPreviewLimit = 3
+    @State private var isPlanDetailsPresented = false
 
     private var snapshot: DailyMotivationSnapshot {
         DailyMotivationEngine.makeSnapshot(
@@ -310,15 +307,6 @@ struct MotivationDashboardView: View {
 
     private var momentumNotes: [MomentumNote] {
         var notes: [MomentumNote] = []
-        if let progress = goalStore.progress {
-            notes.append(
-                MomentumNote(
-                    id: "goal-progress",
-                    text: progress.summaryLine,
-                    symbol: progress.isComplete ? "checkmark.seal.fill" : "target"
-                )
-            )
-        }
         if let week = trainingPlanStore.currentWeek {
             notes.append(
                 MomentumNote(
@@ -335,18 +323,13 @@ struct MotivationDashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             sparkCard
-            goalSection
-            trainingPlanSection
-            readinessCard
-            suggestedActionsSection
-            momentumStrip
-            if showRecentActivity {
-                recentActivitySection
+            nowCard
+            if !momentumNotes.isEmpty {
+                momentumStrip
             }
         }
         .onAppear {
             checkInStore.refresh()
-            goalStore.refresh(activities: activityStore.activities, phase: snapshot.phase)
             trainingPlanStore.refresh(
                 activities: activityStore.activities,
                 readiness: checkInStore.readiness,
@@ -354,7 +337,6 @@ struct MotivationDashboardView: View {
             )
         }
         .onChange(of: activityStore.activities) { _, activities in
-            goalStore.refresh(activities: activities, phase: snapshot.phase)
             trainingPlanStore.refresh(
                 activities: activities,
                 readiness: checkInStore.readiness,
@@ -368,26 +350,19 @@ struct MotivationDashboardView: View {
                 phase: snapshot.phase
             )
         }
-    }
-
-    @ViewBuilder
-    private var goalSection: some View {
-        if goalStore.conversation.step != .idle || goalStore.progress != nil {
-            GoalConversationCard(
-                phase: snapshot.phase,
-                activities: activityStore.activities,
-                accentColor: coachCatalog.selectedPersona.face.accentColor
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var trainingPlanSection: some View {
-        if trainingPlanStore.activePlan != nil || trainingPlanStore.shouldShowRecommendations {
-            TrainingPlanCard(
-                accentColor: coachCatalog.selectedPersona.face.accentColor,
-                onStartSuggestion: onStartSuggestion
-            )
+        .sheet(isPresented: $isPlanDetailsPresented) {
+            if let activePlan = trainingPlanStore.activePlan,
+               let week = trainingPlanStore.currentWeek,
+               let todaySuggestion = trainingPlanStore.todaySuggestion {
+                NavigationStack {
+                    ActiveTrainingPlanDetailView(
+                        activePlan: activePlan,
+                        week: week,
+                        todaySuggestion: todaySuggestion,
+                        accentColor: coachCatalog.selectedPersona.face.accentColor
+                    )
+                }
+            }
         }
     }
 
@@ -421,24 +396,6 @@ struct MotivationDashboardView: View {
                 }
             }
 
-            if let primarySuggestion = snapshot.suggestions.first {
-                Button {
-                    onStartSuggestion(primarySuggestion)
-                } label: {
-                    HStack {
-                        Text(snapshot.spark.primaryCTA)
-                            .font(.headline)
-                        Spacer()
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.title3)
-                    }
-                    .padding(.horizontal, 18)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(.white.opacity(0.18), in: Capsule())
-                }
-                .foregroundStyle(.white)
-            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -453,6 +410,17 @@ struct MotivationDashboardView: View {
             )
         )
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var nowCard: some View {
+        if let activePlan = trainingPlanStore.activePlan,
+           let week = trainingPlanStore.currentWeek,
+           let todaySuggestion = trainingPlanStore.todaySuggestion {
+            activePlanNowCard(activePlan: activePlan, week: week, todaySuggestion: todaySuggestion)
+        } else if let primarySuggestion = snapshot.suggestions.first {
+            coachNowCard(primarySuggestion: primarySuggestion)
+        }
     }
 
     private var coachBadge: some View {
@@ -472,35 +440,65 @@ struct MotivationDashboardView: View {
         }
     }
 
-    private var readinessCard: some View {
+    private func activePlanNowCard(
+        activePlan: ActiveTrainingPlan,
+        week: TrainingPlanWeekSnapshot,
+        todaySuggestion: TodayTrainingSuggestion
+    ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("How are you feeling today?")
-                .font(.headline)
-
-            if let entry = checkInStore.todayEntry {
-                Label(entry.readiness.summaryLabel, systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Color(.secondarySystemBackground), in: Capsule())
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-                    ForEach(DailyReadiness.allCases) { readiness in
-                        Button {
-                            checkInStore.select(readiness)
-                        } label: {
-                            Text(readiness.rawValue)
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                    }
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Now")
+                        .font(.headline)
+                    Text(todaySuggestion.title)
+                        .font(.title3.weight(.bold))
+                    Text(activePlan.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                 }
+
+                Spacer()
+
+                Text("Week \(week.currentWeekIndex)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(.systemBackground), in: Capsule())
             }
+
+            Text(todaySuggestion.detail)
+                .font(.subheadline.weight(.semibold))
+
+            Text(todaySuggestion.coachLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let adjustmentLine = todaySuggestion.adjustmentLine {
+                Label(adjustmentLine, systemImage: "heart.text.square.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+            } else if let entry = checkInStore.todayEntry {
+                Label(entry.readiness.summaryLabel, systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+            }
+
+            HStack(spacing: 10) {
+                Button("Start now") {
+                    onStartSuggestion(todaySuggestion.suggestedSession)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(coachCatalog.selectedPersona.face.accentColor)
+
+                Button("Plan details") {
+                    isPlanDetailsPresented = true
+                }
+                .buttonStyle(.bordered)
+                .tint(coachCatalog.selectedPersona.face.accentColor)
+            }
+            .font(.subheadline.weight(.semibold))
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -508,20 +506,85 @@ struct MotivationDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    private var suggestedActionsSection: some View {
+    private func coachNowCard(primarySuggestion: SuggestedSession) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Suggested actions")
+            Text("Now")
                 .font(.headline)
 
-            ForEach(snapshot.suggestions) { suggestion in
-                Button {
-                    onStartSuggestion(suggestion)
-                } label: {
-                    SuggestedActionCard(suggestion: suggestion)
+            Text(primarySuggestion.title)
+                .font(.title3.weight(.bold))
+
+            Text(nowReason(for: primarySuggestion))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+
+            Text(primarySuggestion.coachLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            readinessRow
+
+            HStack(spacing: 10) {
+                Button(primarySuggestion.startLabel) {
+                    onStartSuggestion(primarySuggestion)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderedProminent)
+                .tint(coachCatalog.selectedPersona.face.accentColor)
+
+                if let alternateSuggestion = snapshot.suggestions.dropFirst().first {
+                    Button(alternateSuggestion.title) {
+                        onStartSuggestion(alternateSuggestion)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                } else if let recommendation = trainingPlanStore.recommendations.first {
+                    Button("Build a plan") {
+                        trainingPlanStore.acceptRecommendation(recommendation)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var readinessRow: some View {
+        if let entry = checkInStore.todayEntry {
+            Label(entry.readiness.summaryLabel, systemImage: "checkmark.circle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                ForEach(DailyReadiness.allCases) { readiness in
+                    Button {
+                        checkInStore.select(readiness)
+                    } label: {
+                        Text(readiness.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
+                }
             }
         }
+    }
+
+    private func nowReason(for suggestion: SuggestedSession) -> String {
+        if let entry = checkInStore.todayEntry {
+            return "\(suggestion.durationLabel) • tuned for \(entry.readiness.summaryLabel.lowercased())"
+        }
+
+        return "\(suggestion.durationLabel) • \(suggestion.activityLabel)"
     }
 
     private var momentumStrip: some View {
@@ -546,31 +609,6 @@ struct MotivationDashboardView: View {
                     }
                 }
                 .padding(.vertical, 2)
-            }
-        }
-    }
-
-    private var recentActivitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recent activity")
-                .font(.headline)
-
-            if activityStore.activities.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("No activity yet.")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Your coach will start reflecting on momentum here once you log a session.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            } else {
-                ForEach(Array(activityStore.activities.prefix(recentPreviewLimit))) { activity in
-                    RecentActivityRow(activity: activity)
-                }
             }
         }
     }

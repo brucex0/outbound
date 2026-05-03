@@ -17,8 +17,8 @@ The coach should feel present across the whole product:
 Core loop:
 
 1. Daily spark
-2. Light readiness check-in
-3. Small suggested action
+2. One clear `Now` recommendation
+3. Light readiness tuning when helpful
 4. Activity recording
 5. Post-activity emotional reward
 6. Momentum reflection
@@ -118,8 +118,8 @@ Me remains the recommendation surface.
 
 Recommended start actions:
 - primary guided CTA in the spark card
-- 2-3 suggested action cards
-- optional recent-repeat action such as `Repeat yesterday's vibe` when history supports it
+- one compact `Now` card with the main action for today
+- optional secondary action inside the same card
 
 Principle:
 - guided, not gatekeeping
@@ -191,12 +191,11 @@ Freestyle confirmation should show:
 
 The Me motivation surface should keep this order:
 - one emotionally strong hero
-- one lightweight focus / goals layer when we add it
-- one lightweight readiness interaction
-- a small set of obvious actions
-- supporting momentum / history below
+- one compact `Now` card
+- one compact recent-activity card
+- optional momentum below
 
-The user should never have to scroll to find a recommended start, and the floating activity button should remain visible as the global fallback.
+The user should never have to scroll to find the recommended start, and the floating activity button should remain visible as the global fallback.
 
 ### 1. Coach Spark Card
 
