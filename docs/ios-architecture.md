@@ -18,7 +18,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after Google sign-in.
 - `App/AuthStore.swift`: Firebase auth wrapper for hosted Google OAuth plus email/password and phone-number-as-identifier password login. Phone logins are normalized into an internal email alias so the app can support `phone + password` without SMS verification or Apple Sign In.
 - `App/AuthView.swift`: login UI for Google sign-in plus email/phone password auth. When `GoogleService-Info.plist` is missing, the screen blocks real auth and explains how to finish Firebase setup.
-- `App/MainTabView.swift`: two tabs: Me (`ProfileView`) and Social (`ActivityFeedView`). `MainTabView` owns the floating activity button shown on both tabs, plus the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
+- `App/MainTabView.swift`: top-level shell with a lightweight floating `Me` / `Social` pill switcher, the floating activity button shown on both sections, the compact assistant bar, and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
 ## Recording

@@ -19,7 +19,7 @@ timestamp() {
 }
 
 log() {
-  echo "[$(timestamp)] $*"
+  printf '[%s] %s\n' "$(timestamp)" "$*"
 }
 
 trap 'log "Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -29,7 +29,7 @@ run_with_prefix() {
   shift
 
   "$@" 2>&1 | while IFS= read -r line; do
-    echo "[$(timestamp)] ${prefix} ${line}"
+    printf '[%s] %s %s\n' "$(timestamp)" "${prefix}" "${line}"
   done
 }
 

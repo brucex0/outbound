@@ -12,21 +12,10 @@ struct MainTabView: View {
     @State private var isAssistantPresented = false
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ProfileView(
-                onStartSuggestion: { suggestion in
-                    presentActivity(intent: suggestion.intent)
-                }
-            )
-            .tabItem { Label("Me", systemImage: "person.fill") }
-            .tag(AppTab.me)
-
-            ActivityFeedView()
-                .tabItem { Label("Social", systemImage: "person.2.fill") }
-                .tag(AppTab.social)
+        ZStack(alignment: .bottomTrailing) {
+            currentContent
         }
-        .tint(.orange)
-        .toolbar(isActivityVisible ? .hidden : .visible, for: .tabBar)
+        .background(Color(.systemGroupedBackground))
         .overlay(alignment: .bottomTrailing) {
             if shouldShowActivityFAB {
                 ActivityPortalButton(
@@ -38,6 +27,15 @@ struct MainTabView: View {
                 }
                 .padding(.trailing, 18)
                 .padding(.bottom, shouldShowAssistantBar ? 154 : 82)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if !isActivityVisible {
+                CompactTabSwitcher(
+                    selectedTab: $selectedTab,
+                    accentColor: assistantAccentColor
+                )
+                .offset(y: 10)
             }
         }
         .overlay(alignment: .bottom) {
@@ -85,8 +83,39 @@ struct MainTabView: View {
         }
     }
 
+    @ViewBuilder
+    private var currentContent: some View {
+        Group {
+            switch selectedTab {
+            case .me:
+                ProfileView(
+                    onStartSuggestion: { suggestion in
+                        presentActivity(intent: suggestion.intent)
+                    }
+                )
+            case .social:
+                ActivityFeedView()
+            }
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height),
+                          abs(value.translation.width) > 60 else { return }
+
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        if value.translation.width < 0 {
+                            selectedTab = selectedTab.next
+                        } else {
+                            selectedTab = selectedTab.previous
+                        }
+                    }
+                }
+        )
+    }
+
     private var shouldShowActivityFAB: Bool {
-        !isActivityVisible && (selectedTab == .me || selectedTab == .social)
+        !isActivityVisible
     }
 
     private var shouldShowAssistantBar: Bool {
@@ -148,6 +177,34 @@ struct MainTabView: View {
 private enum AppTab {
     case me
     case social
+
+    var title: String {
+        switch self {
+        case .me: return "Me"
+        case .social: return "Social"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .me: return "person.fill"
+        case .social: return "person.2.fill"
+        }
+    }
+
+    var next: AppTab {
+        switch self {
+        case .me: return .social
+        case .social: return .social
+        }
+    }
+
+    var previous: AppTab {
+        switch self {
+        case .me: return .me
+        case .social: return .me
+        }
+    }
 }
 
 private struct AssistantCollapsedBar: View {
@@ -185,6 +242,48 @@ private struct AssistantCollapsedBar: View {
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+    }
+}
+
+private struct CompactTabSwitcher: View {
+    @Binding var selectedTab: AppTab
+    let accentColor: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            tabButton(.me)
+            tabButton(.social)
+        }
+        .padding(6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+    }
+
+    private func tabButton(_ tab: AppTab) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.18)) {
+                selectedTab = tab
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tab.systemImage)
+                    .font(.caption.weight(.semibold))
+                Text(tab.title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(selectedTab == tab ? Color.white : Color.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background {
+                Capsule()
+                    .fill(selectedTab == tab ? AnyShapeStyle(accentColor) : AnyShapeStyle(Color.clear))
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -296,6 +395,8 @@ struct MotivationDashboardView: View {
 
     let onStartSuggestion: (SuggestedSession) -> Void
     @State private var isPlanDetailsPresented = false
+    @State private var isPlanPickerPresented = false
+    @State private var selectedRecommendation: TrainingPlanRecommendation?
 
     private var snapshot: DailyMotivationSnapshot {
         DailyMotivationEngine.makeSnapshot(
@@ -362,6 +463,32 @@ struct MotivationDashboardView: View {
                         accentColor: coachCatalog.selectedPersona.face.accentColor
                     )
                 }
+            }
+        }
+        .sheet(item: $selectedRecommendation) { recommendation in
+            NavigationStack {
+                TrainingPlanRecommendationDetailView(
+                    recommendation: recommendation,
+                    accentColor: coachCatalog.selectedPersona.face.accentColor
+                ) {
+                    trainingPlanStore.acceptRecommendation(recommendation)
+                    selectedRecommendation = nil
+                }
+            }
+        }
+        .sheet(isPresented: $isPlanPickerPresented) {
+            NavigationStack {
+                TrainingPlanPickerView(
+                    recommendations: trainingPlanStore.recommendations,
+                    accentColor: coachCatalog.selectedPersona.face.accentColor,
+                    onSelectPlan: { recommendation in
+                        selectedRecommendation = recommendation
+                    },
+                    onUsePlan: { recommendation in
+                        trainingPlanStore.acceptRecommendation(recommendation)
+                        isPlanPickerPresented = false
+                    }
+                )
             }
         }
     }
@@ -492,11 +619,27 @@ struct MotivationDashboardView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(coachCatalog.selectedPersona.face.accentColor)
 
-                Button("Plan details") {
+                Button("Details") {
                     isPlanDetailsPresented = true
                 }
                 .buttonStyle(.bordered)
                 .tint(coachCatalog.selectedPersona.face.accentColor)
+            }
+            .font(.subheadline.weight(.semibold))
+
+            HStack(spacing: 10) {
+                if !trainingPlanStore.recommendations.isEmpty {
+                    Button("Change") {
+                        isPlanPickerPresented = true
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                }
+
+                Button("End", role: .destructive) {
+                    trainingPlanStore.clearActivePlan()
+                }
+                .buttonStyle(.bordered)
             }
             .font(.subheadline.weight(.semibold))
         }
