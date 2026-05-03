@@ -16,6 +16,7 @@ struct LiveMapView: View {
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
+    @State private var statusCardHeight: CGFloat = 132
 
     var body: some View {
         ZStack {
@@ -86,6 +87,14 @@ struct LiveMapView: View {
                     onResume: resumeActivity,
                     onFinish: onFinish
                 )
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(
+                            key: SessionStatusCardHeightPreferenceKey.self,
+                            value: proxy.size.height
+                        )
+                    }
+                }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 18)
             }
@@ -105,6 +114,9 @@ struct LiveMapView: View {
         .onReceive(locationManager.$location) { loc in
             guard let loc, isFollowingUser else { return }
             updateMapCamera(for: loc, animated: true)
+        }
+        .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
+            statusCardHeight = height
         }
     }
 
@@ -159,7 +171,7 @@ struct LiveMapView: View {
     }
 
     private var railBottomPadding: CGFloat {
-        recorder.state == .paused ? 222 : 190
+        max(statusCardHeight + 38, 150)
     }
 
     private var sessionPaceText: String {

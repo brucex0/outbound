@@ -27,6 +27,7 @@ struct CameraHUDView: View {
     @State private var captureFlightID = 0
     @State private var shutterFrame: CGRect = .zero
     @State private var photoStackFrame: CGRect = .zero
+    @State private var statusCardHeight: CGFloat = 132
 
     private let coordinateSpaceName = "CameraHUDCoordinateSpace"
 
@@ -81,6 +82,14 @@ struct CameraHUDView: View {
                         onResume: resumeActivity,
                         onFinish: onFinish
                     )
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: SessionStatusCardHeightPreferenceKey.self,
+                                value: proxy.size.height
+                            )
+                        }
+                    }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 18)
                 }
@@ -111,6 +120,9 @@ struct CameraHUDView: View {
         }
         .onPreferenceChange(ShutterFramePreferenceKey.self) { shutterFrame = $0 }
         .onPreferenceChange(PhotoStackFramePreferenceKey.self) { photoStackFrame = $0 }
+        .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
+            statusCardHeight = height
+        }
         .onAppear { camera.start() }
         .onDisappear { camera.stop() }
     }
@@ -146,7 +158,7 @@ struct CameraHUDView: View {
     }
 
     private var railBottomPadding: CGFloat {
-        recorder.state == .paused ? 222 : 190
+        max(statusCardHeight + 38, 150)
     }
 
     private var sessionPaceText: String {
@@ -270,6 +282,14 @@ private struct PhotoStackFramePreferenceKey: PreferenceKey {
 
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
         value = nextValue()
+    }
+}
+
+struct SessionStatusCardHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
@@ -439,149 +459,150 @@ struct SessionStatusCard: View {
     let onFinish: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text(headerText)
-                .font(headerFont)
-                .multilineTextAlignment(headerAlignment)
-                .lineLimit(state == .idle ? 1 : 3)
-                .frame(maxWidth: .infinity, alignment: headerFrameAlignment)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .background(statusColor)
-                .foregroundStyle(statusTextColor)
-
-            VStack(spacing: 14) {
-                metricsView
-                utilityRow
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 14)
-            .padding(.bottom, 16)
-            .background(.white)
+        VStack(spacing: 10) {
+            topRow
+            controlMetricsLayout
         }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 22, y: 10)
+        .padding(12)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.06), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 18, y: 8)
         .accessibilityIdentifier("CameraDataOverlay")
     }
 
-    private var metrics: [SessionMetricItem] {
-        [
-            SessionMetricItem(value: elapsedText, label: "Time"),
-            SessionMetricItem(value: distanceText, label: distanceLabel),
-            SessionMetricItem(value: paceText, label: paceLabel),
-            SessionMetricItem(value: elevationText, label: elevationLabel),
-            SessionMetricItem(value: heartRateText, label: "HR")
-        ]
-    }
+    private var topRow: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
 
-    private var metricsView: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                ForEach(metrics) { metric in
-                    SessionMetricColumn(value: metric.value, label: metric.label)
-                }
-            }
+            Text(headerText)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(headerText)
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 8)], spacing: 12) {
-                ForEach(metrics) { metric in
-                    SessionMetricColumn(value: metric.value, label: metric.label)
-                }
-            }
-        }
-    }
-
-    private var utilityRow: some View {
-        Group {
-            if state == .idle {
-                controls
-            } else {
-                HStack(spacing: 10) {
-                    musicControls
-                    Spacer(minLength: 8)
-                    controls
-                }
-            }
-        }
-    }
-
-    private var pausedControls: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 10) {
-                resumeButton
-                finishButton
-            }
-
-            HStack(spacing: 10) {
-                Button(action: onResume) {
-                    Image(systemName: "play.fill")
-                        .font(.subheadline.weight(.bold))
-                }
-                .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 44))
-                .accessibilityLabel("Resume activity")
-
+            if state == .paused {
                 Button(action: onFinish) {
-                    Image(systemName: "flag.checkered")
-                        .font(.subheadline.weight(.bold))
+                    Label("Finish", systemImage: "flag.checkered")
                 }
-                .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 44))
-                .accessibilityLabel("Finish activity")
+                .buttonStyle(SessionMiniCapsuleButtonStyle(background: .black, foreground: .white))
+            }
+
+            musicMenu
+        }
+        .frame(height: 30)
+    }
+
+    private var controlMetricsLayout: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(spacing: 8) {
+                    SessionMetricColumn(value: elapsedText, label: "Time")
+                    SessionMetricColumn(value: distanceText, label: distanceLabel)
+                }
+                .frame(maxWidth: .infinity)
+
+                primaryControl
+                    .fixedSize()
+
+                VStack(spacing: 8) {
+                    SessionMetricColumn(value: paceText, label: paceLabel)
+                    HStack(spacing: 8) {
+                        SessionMetricColumn(value: elevationText, label: elevationLabel)
+                        SessionMetricColumn(value: heartRateText, label: "HR")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            VStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    SessionMetricColumn(value: elapsedText, label: "Time")
+                    SessionMetricColumn(value: distanceText, label: distanceLabel)
+                    SessionMetricColumn(value: paceText, label: paceLabel)
+                }
+
+                HStack(spacing: 10) {
+                    SessionMetricColumn(value: elevationText, label: elevationLabel)
+                    primaryControl
+                    SessionMetricColumn(value: heartRateText, label: "HR")
+                }
             }
         }
-    }
-
-    private var resumeButton: some View {
-        Button(action: onResume) {
-            Label("Resume", systemImage: "play.fill")
-        }
-        .buttonStyle(SessionCompactButtonStyle(background: .orange, foreground: .white))
-    }
-
-    private var finishButton: some View {
-        Button(action: onFinish) {
-            Label("Finish", systemImage: "flag.checkered")
-        }
-        .buttonStyle(SessionCompactButtonStyle(background: .black, foreground: .white))
     }
 
     @ViewBuilder
-    private var musicControls: some View {
-        if let musicPlayback {
-            HStack(spacing: 8) {
-                Button(action: onTogglePlayback) {
-                    if musicPlayback.isPlaying {
-                        MusicWaveView(isAnimating: true)
-                    } else {
-                        Image(systemName: "music.note")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-                .buttonStyle(SessionIconButtonStyle(background: Color(.systemGroupedBackground), foreground: .orange, size: 42))
-                .accessibilityLabel(musicPlayback.isPlaying ? "Pause music, \(musicPlayback.title)" : "Play music, \(musicPlayback.title)")
-
-                Button(action: onSkipTrack) {
-                    Image(systemName: "forward.fill")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .buttonStyle(SessionIconButtonStyle(background: Color(.systemGroupedBackground), foreground: .black, size: 42))
-                .accessibilityLabel("Skip track")
+    private var primaryControl: some View {
+        switch state {
+        case .idle:
+            Button(action: onStart) {
+                Image(systemName: "record.circle.fill")
+                    .font(.title3.weight(.bold))
             }
-            .accessibilityElement(children: .contain)
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .accessibilityLabel("Start activity")
+        case .active:
+            Button(action: onPause) {
+                Image(systemName: "pause.fill")
+                    .font(.title3.weight(.bold))
+            }
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .accessibilityLabel("Pause activity")
+        case .paused:
+            Button(action: onResume) {
+                Image(systemName: "play.fill")
+                    .font(.title3.weight(.bold))
+            }
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .accessibilityLabel("Resume activity")
+        }
+    }
+
+    @ViewBuilder
+    private var musicMenu: some View {
+        if let musicPlayback {
+            Menu {
+                Button(action: onTogglePlayback) {
+                    Label(musicPlayback.isPlaying ? "Pause music" : "Play music",
+                          systemImage: musicPlayback.isPlaying ? "pause.fill" : "play.fill")
+                }
+                Button(action: onSkipTrack) {
+                    Label("Skip track", systemImage: "forward.fill")
+                }
+            } label: {
+                musicIcon(isPlaying: musicPlayback.isPlaying, symbolName: "music.note")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Music controls, \(musicPlayback.title)")
             .accessibilityIdentifier("MusicPlaybackRow")
         } else if showsMusicDisabledState {
-            Image(systemName: "music.note.slash")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 42, height: 42)
-                .background(Color(.systemGroupedBackground), in: Circle())
+            musicIcon(isPlaying: false, symbolName: "music.note.slash")
                 .accessibilityLabel("Music unavailable")
         } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
-                .frame(width: 42, height: 42)
-                .background(Color(.systemGroupedBackground), in: Circle())
+            musicIcon(isPlaying: false, symbolName: "exclamationmark.triangle.fill")
                 .accessibilityLabel(musicErrorMessage)
         }
+    }
+
+    private func musicIcon(isPlaying: Bool, symbolName: String) -> some View {
+        ZStack {
+            if isPlaying {
+                MusicWaveView(isAnimating: true)
+            } else {
+                Image(systemName: symbolName)
+                    .font(.caption.weight(.bold))
+            }
+        }
+        .foregroundStyle(symbolName == "exclamationmark.triangle.fill" ? Color.orange : Color.secondary)
+        .frame(width: 34, height: 34)
+        .background(Color(.systemGroupedBackground), in: Circle())
     }
 
     private struct MusicWaveView: View {
@@ -613,27 +634,6 @@ struct SessionStatusCard: View {
         }
     }
 
-    @ViewBuilder
-    private var controls: some View {
-        switch state {
-        case .idle:
-            Button(action: onStart) {
-                Text("Start")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(SessionPrimaryButtonStyle(background: .orange, foreground: .white))
-        case .active:
-            Button(action: onPause) {
-                Image(systemName: "pause.fill")
-                    .font(.headline.weight(.bold))
-            }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 48))
-            .accessibilityLabel("Pause activity")
-        case .paused:
-            pausedControls
-        }
-    }
-
     private var headerText: String {
         if let coachMessage, state != .idle {
             return coachMessage
@@ -649,40 +649,13 @@ struct SessionStatusCard: View {
         }
     }
 
-    private var headerFont: Font {
-        state == .idle ? .headline.weight(.semibold) : .subheadline.weight(.semibold)
-    }
-
-    private var headerAlignment: TextAlignment {
-        state == .idle ? .center : .leading
-    }
-
-    private var headerFrameAlignment: Alignment {
-        state == .idle ? .center : .leading
-    }
-
     private var statusColor: Color {
         switch state {
-        case .idle: return Color.white.opacity(0.92)
+        case .idle: return .orange
         case .active: return .orange
         case .paused: return Color(red: 0.95, green: 0.78, blue: 0.26)
         }
     }
-
-    private var statusTextColor: Color {
-        switch state {
-        case .idle: return .black
-        case .active: return .white
-        case .paused: return .black
-        }
-    }
-}
-
-private struct SessionMetricItem: Identifiable {
-    let value: String
-    let label: String
-
-    var id: String { label }
 }
 
 private struct SessionMetricColumn: View {
@@ -723,35 +696,20 @@ private struct SessionIconButtonStyle: ButtonStyle {
     }
 }
 
-private struct SessionCompactButtonStyle: ButtonStyle {
+private struct SessionMiniCapsuleButtonStyle: ButtonStyle {
     let background: Color
     let foreground: Color
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.semibold))
+            .font(.caption.weight(.bold))
             .lineLimit(1)
             .minimumScaleFactor(0.78)
-            .padding(.horizontal, 14)
-            .frame(height: 44)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
             .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
             .foregroundStyle(foreground)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-private struct SessionPrimaryButtonStyle: ButtonStyle {
-    let background: Color
-    let foreground: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline.weight(.semibold))
-            .padding(.vertical, 16)
-            .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
-            .foregroundStyle(foreground)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
