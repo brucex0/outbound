@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 
 final class APIClient {
     static let shared = APIClient()
@@ -39,8 +40,11 @@ final class APIClient {
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
         var req = URLRequest(url: base.appendingPathComponent(path))
-        req.setValue("Bearer \(authToken ?? "")", forHTTPHeaderField: "Authorization")
-        let (data, _) = try await URLSession.shared.data(for: req)
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
     }
 
@@ -48,10 +52,37 @@ final class APIClient {
         var req = URLRequest(url: base.appendingPathComponent(path))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(authToken ?? "")", forHTTPHeaderField: "Authorization")
-        req.httpBody = try JSONEncoder().encode(body)
-        let (data, _) = try await URLSession.shared.data(for: req)
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try encoder.encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
+    }
+
+    private func resolvedAuthToken() async throws -> String? {
+        if FirebaseBootstrap.isConfigured, let user = Auth.auth().currentUser {
+            let refreshedToken = try await user.getIDToken()
+            authToken = refreshedToken
+            return refreshedToken
+        }
+
+        return authToken
+    }
+
+    private func validate(response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let message = decodeErrorMessage(from: data) ?? "Request failed."
+            throw APIError.http(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1, message: message)
+        }
+    }
+
+    private func decodeErrorMessage(from data: Data) -> String? {
+        guard !data.isEmpty else { return nil }
+        return (try? decoder.decode(APIErrorPayload.self, from: data).error)
+            ?? String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private let decoder: JSONDecoder = {
@@ -60,7 +91,28 @@ final class APIClient {
         return d
     }()
 
+    private let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+
     private struct EmptyBody: Encodable {}
+}
+
+enum APIError: LocalizedError {
+    case http(statusCode: Int, message: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .http(statusCode, message):
+            return "HTTP \(statusCode): \(message)"
+        }
+    }
+}
+
+private struct APIErrorPayload: Decodable {
+    let error: String
 }
 
 struct AssistantChatRequest: Encodable {
