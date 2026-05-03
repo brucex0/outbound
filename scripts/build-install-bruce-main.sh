@@ -14,6 +14,25 @@ BUNDLE_ID="xhstudio.Outbound"
 build_only=false
 launch_after_install=false
 
+timestamp() {
+  date '+%H:%M:%S'
+}
+
+log() {
+  echo "[$(timestamp)] $*"
+}
+
+trap 'log "Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+
+run_with_prefix() {
+  local prefix="$1"
+  shift
+
+  "$@" 2>&1 | while IFS= read -r line; do
+    echo "[$(timestamp)] ${prefix} ${line}"
+  done
+}
+
 usage() {
   cat <<USAGE
 Usage: $0 [--build-only] [--launch]
@@ -55,21 +74,38 @@ done
 
 cd "$ROOT_DIR"
 
-echo "Building Outbound for Bruce main..."
-xcodebuild -quiet -allowProvisioningUpdates \
+log "Starting build helper for ${TARGET_DEVICE_NAME}"
+log "DerivedData: ${DERIVED_DATA_PATH}"
+log "CoreDevice ID: ${CORE_DEVICE_ID}"
+if [[ "$build_only" == true ]]; then
+  log "Mode: build only"
+else
+  mode_description="build and install"
+  if [[ "$launch_after_install" == true ]]; then
+    mode_description="${mode_description}, then launch"
+  fi
+  log "Mode: ${mode_description}"
+fi
+
+log "Building Outbound for ${TARGET_DEVICE_NAME}..."
+run_with_prefix "[build]" xcodebuild -allowProvisioningUpdates \
   -project ios/Outbound/Outbound.xcodeproj \
   -scheme Outbound \
   -destination 'generic/platform=iOS' \
   -derivedDataPath "$DERIVED_DATA_PATH" \
+  -showBuildTimingSummary \
   build
 
 APP_PATH="${DERIVED_DATA_PATH}/Build/Products/Debug-iphoneos/Outbound.app"
+log "Build finished"
+log "App path: ${APP_PATH}"
 
 if [[ "$build_only" == true ]]; then
-  echo "Build complete: ${APP_PATH}"
+  log "Build complete"
   exit 0
 fi
 
+log "Checking device availability..."
 if ! xcrun devicectl list devices --hide-headers | grep -Fq "$CORE_DEVICE_ID"; then
   echo "Configured CoreDevice ID not currently available: ${CORE_DEVICE_ID}" >&2
   echo "Set CORE_DEVICE_ID to the current identifier for ${TARGET_DEVICE_NAME} from:" >&2
@@ -77,16 +113,16 @@ if ! xcrun devicectl list devices --hide-headers | grep -Fq "$CORE_DEVICE_ID"; t
   exit 1
 fi
 
-echo "Installing Outbound on Bruce main..."
-xcrun devicectl device install app \
+log "Installing Outbound on ${TARGET_DEVICE_NAME}..."
+run_with_prefix "[install]" xcrun devicectl device install app \
   --device "$CORE_DEVICE_ID" \
   "$APP_PATH"
 
 if [[ "$launch_after_install" == true ]]; then
-  echo "Launching Outbound on Bruce main..."
-  xcrun devicectl device process launch \
+  log "Launching Outbound on ${TARGET_DEVICE_NAME}..."
+  run_with_prefix "[launch]" xcrun devicectl device process launch \
     --device "$CORE_DEVICE_ID" \
     "$BUNDLE_ID"
 fi
 
-echo "Done."
+log "Done."

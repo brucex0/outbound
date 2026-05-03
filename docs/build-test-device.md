@@ -46,6 +46,21 @@ Preferred shortcut:
 ./scripts/build-install-bruce-main.sh
 ```
 
+The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
+
+If Xcode itself shows stale package errors for dependencies that are no longer in the project, clear only Outbound's local DerivedData entries and reopen the project:
+
+```sh
+backup_dir=/tmp/outbound-xcode-derived-backup-$(date +%Y%m%d-%H%M%S)
+mkdir -p "$backup_dir"
+for dir in ~/Library/Developer/Xcode/DerivedData/Outbound-*; do
+  [ -e "$dir" ] || continue
+  mv "$dir" "$backup_dir"/
+done
+```
+
+This project previously hit an Xcode state where old `Blueprint.xcscmblueprint` metadata still referenced removed packages such as `piper-objc`, which caused indexing and package resolution to hang.
+
 Build without installing:
 
 ```sh
@@ -61,11 +76,13 @@ Build, install, and launch:
 Underlying commands:
 
 ```sh
-xcodebuild -quiet -allowProvisioningUpdates \
+xcodebuild -allowProvisioningUpdates \
   -project ios/Outbound/Outbound.xcodeproj \
   -scheme Outbound \
   -destination 'generic/platform=iOS' \
-  -derivedDataPath /tmp/outbound-device-derived build
+  -derivedDataPath /tmp/outbound-device-derived \
+  -showBuildTimingSummary \
+  build
 
 xcrun devicectl device install app \
   --device 591E461F-4950-5FBD-A797-4777F1E83532 \
