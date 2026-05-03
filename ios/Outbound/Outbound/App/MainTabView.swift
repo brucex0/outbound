@@ -292,6 +292,7 @@ struct MotivationDashboardView: View {
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
     @EnvironmentObject private var goalStore: GoalStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
 
     let showRecentActivity: Bool
@@ -318,6 +319,15 @@ struct MotivationDashboardView: View {
                 )
             )
         }
+        if let week = trainingPlanStore.currentWeek {
+            notes.append(
+                MomentumNote(
+                    id: "plan-week-progress",
+                    text: week.summaryLine,
+                    symbol: "calendar.badge.clock"
+                )
+            )
+        }
         notes.append(contentsOf: snapshot.momentumNotes)
         return Array(notes.prefix(4))
     }
@@ -326,6 +336,7 @@ struct MotivationDashboardView: View {
         VStack(alignment: .leading, spacing: 18) {
             sparkCard
             goalSection
+            trainingPlanSection
             readinessCard
             suggestedActionsSection
             momentumStrip
@@ -336,9 +347,26 @@ struct MotivationDashboardView: View {
         .onAppear {
             checkInStore.refresh()
             goalStore.refresh(activities: activityStore.activities, phase: snapshot.phase)
+            trainingPlanStore.refresh(
+                activities: activityStore.activities,
+                readiness: checkInStore.readiness,
+                phase: snapshot.phase
+            )
         }
         .onChange(of: activityStore.activities) { _, activities in
             goalStore.refresh(activities: activities, phase: snapshot.phase)
+            trainingPlanStore.refresh(
+                activities: activities,
+                readiness: checkInStore.readiness,
+                phase: snapshot.phase
+            )
+        }
+        .onChange(of: checkInStore.readiness) { _, readiness in
+            trainingPlanStore.refresh(
+                activities: activityStore.activities,
+                readiness: readiness,
+                phase: snapshot.phase
+            )
         }
     }
 
@@ -349,6 +377,16 @@ struct MotivationDashboardView: View {
                 phase: snapshot.phase,
                 activities: activityStore.activities,
                 accentColor: coachCatalog.selectedPersona.face.accentColor
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var trainingPlanSection: some View {
+        if trainingPlanStore.activePlan != nil || trainingPlanStore.shouldShowRecommendations {
+            TrainingPlanCard(
+                accentColor: coachCatalog.selectedPersona.face.accentColor,
+                onStartSuggestion: onStartSuggestion
             )
         }
     }
@@ -425,6 +463,12 @@ struct MotivationDashboardView: View {
             Image(systemName: coachCatalog.selectedPersona.face.symbolName)
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(.white)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let milestone = recognitionStore.importantMilestoneHighlight {
+                RecognitionOrb(preview: milestone, size: 24)
+                    .offset(x: 4, y: 4)
+            }
         }
     }
 
@@ -1076,5 +1120,641 @@ private extension CoachFace {
         case "gray": .gray
         default: .orange
         }
+    }
+}
+
+struct TrainingPlanCard: View {
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @State private var selectedRecommendation: TrainingPlanRecommendation?
+    @State private var isMorePlansPresented = false
+    @State private var isActivePlanDetailsPresented = false
+
+    let accentColor: Color
+    let onStartSuggestion: (SuggestedSession) -> Void
+
+    var body: some View {
+        Group {
+            if let activePlan = trainingPlanStore.activePlan,
+               let week = trainingPlanStore.currentWeek,
+               let todaySuggestion = trainingPlanStore.todaySuggestion {
+                activePlanCard(activePlan: activePlan, week: week, todaySuggestion: todaySuggestion)
+            } else if trainingPlanStore.shouldShowRecommendations {
+                recommendationCard
+            }
+        }
+        .sheet(item: $selectedRecommendation) { recommendation in
+            NavigationStack {
+                TrainingPlanRecommendationDetailView(
+                    recommendation: recommendation,
+                    accentColor: accentColor
+                ) {
+                    trainingPlanStore.acceptRecommendation(recommendation)
+                    selectedRecommendation = nil
+                }
+            }
+        }
+        .sheet(isPresented: $isMorePlansPresented) {
+            NavigationStack {
+                TrainingPlanPickerView(
+                    recommendations: trainingPlanStore.recommendations,
+                    accentColor: accentColor,
+                    onSelectPlan: { recommendation in
+                        selectedRecommendation = recommendation
+                    },
+                    onUsePlan: { recommendation in
+                        trainingPlanStore.acceptRecommendation(recommendation)
+                        isMorePlansPresented = false
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $isActivePlanDetailsPresented) {
+            if let activePlan = trainingPlanStore.activePlan,
+               let week = trainingPlanStore.currentWeek,
+               let todaySuggestion = trainingPlanStore.todaySuggestion {
+                NavigationStack {
+                    ActiveTrainingPlanDetailView(
+                        activePlan: activePlan,
+                        week: week,
+                        todaySuggestion: todaySuggestion,
+                        accentColor: accentColor
+                    )
+                }
+            }
+        }
+    }
+
+    private func activePlanCard(
+        activePlan: ActiveTrainingPlan,
+        week: TrainingPlanWeekSnapshot,
+        todaySuggestion: TodayTrainingSuggestion
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Active plan")
+                        .font(.headline)
+                    Text(activePlan.title)
+                        .font(.title3.weight(.bold))
+                    Text("Week \(week.currentWeekIndex) of \(week.totalWeeks)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                }
+
+                Spacer()
+
+                Image(systemName: activePlan.sport.systemImage)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(accentColor)
+            }
+
+            Text(activePlan.subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(week.focus)
+                    .font(.headline)
+                Text(week.summaryLine)
+                    .font(.subheadline.weight(.semibold))
+                Text(week.weekSummary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
+                Text(week.coachLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Today's plan")
+                    .font(.subheadline.weight(.semibold))
+                Text(todaySuggestion.title)
+                    .font(.headline)
+                Text(todaySuggestion.detail)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accentColor)
+                Text(todaySuggestion.coachLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let adjustmentLine = todaySuggestion.adjustmentLine {
+                    Label(adjustmentLine, systemImage: "heart.text.square.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                }
+
+                if let firstStep = todaySuggestion.stepSummary.first {
+                    Text(firstStep)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button("Start today's session") {
+                    onStartSuggestion(todaySuggestion.suggestedSession)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(accentColor)
+
+                Button("Details") {
+                    isActivePlanDetailsPresented = true
+                }
+                .buttonStyle(.bordered)
+                .tint(accentColor)
+
+                Button("End plan") {
+                    trainingPlanStore.clearActivePlan()
+                }
+                .buttonStyle(.bordered)
+                .tint(accentColor)
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var recommendationCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Coach plan picks")
+                .font(.headline)
+
+            if let lead = trainingPlanStore.recommendations.first {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(lead.template.title)
+                        .font(.title3.weight(.bold))
+                    Text(lead.template.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 8) {
+                        planPill("\(lead.durationWeeks) weeks")
+                        planPill("\(lead.sessionsPerWeek)x / week")
+                        planPill("\(lead.targetWeeklyMinutes) min")
+                    }
+
+                    if let source = lead.template.source {
+                        Text("Imported cues: \(source.name)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(accentColor)
+                    }
+
+                    Text(lead.rationale)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let openingWeek = lead.template.weeks.first {
+                        Text("Starts with: \(openingWeek.summary)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Text(lead.tradeoff)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 10) {
+                    Button("Use this plan") {
+                        trainingPlanStore.acceptRecommendation(lead)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(accentColor)
+
+                    Button("More plans") {
+                        isMorePlansPresented = true
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(accentColor)
+                }
+                .font(.subheadline.weight(.semibold))
+
+                HStack(spacing: 10) {
+                    Button("See details") {
+                        selectedRecommendation = lead
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(accentColor)
+
+                    Spacer()
+
+                    Button("Not now") {
+                        trainingPlanStore.dismissRecommendations()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func planPill(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground), in: Capsule())
+    }
+}
+
+private struct TrainingPlanPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let recommendations: [TrainingPlanRecommendation]
+    let accentColor: Color
+    let onSelectPlan: (TrainingPlanRecommendation) -> Void
+    let onUsePlan: (TrainingPlanRecommendation) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(recommendations) { recommendation in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(recommendation.template.title)
+                            .font(.headline)
+
+                        Text(recommendation.template.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: 8) {
+                            pill("\(recommendation.durationWeeks) weeks")
+                            pill("\(recommendation.sessionsPerWeek)x / week")
+                            pill("\(recommendation.targetWeeklyMinutes) min")
+                        }
+
+                        if let openingWeek = recommendation.template.weeks.first {
+                            Text(openingWeek.summary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Text(recommendation.rationale)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: 10) {
+                            Button("Details") {
+                                onSelectPlan(recommendation)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(accentColor)
+
+                            Button("Use plan") {
+                                onUsePlan(recommendation)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(accentColor)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("More Plans")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func pill(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground), in: Capsule())
+    }
+}
+
+private struct TrainingPlanRecommendationDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let recommendation: TrainingPlanRecommendation
+    let accentColor: Color
+    let onUsePlan: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                statGrid
+                if let source = recommendation.template.source {
+                    section("Imported source", text: "\(source.attribution) • \(source.license)")
+                    section("Import notes", text: source.importNotes)
+                }
+                section("Why this fits", text: recommendation.rationale)
+                section("What to expect", text: recommendation.template.summary)
+                section("Tradeoff", text: recommendation.tradeoff)
+                highlightsSection
+                weekPreviewSection
+            }
+            .padding()
+        }
+        .navigationTitle("Plan Details")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button("Use this plan") {
+                onUsePlan()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(accentColor)
+            .font(.headline)
+            .padding(.horizontal)
+            .padding(.top, 10)
+            .padding(.bottom, 18)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(recommendation.template.title)
+                .font(.system(.title2, design: .rounded).weight(.bold))
+            Text(recommendation.template.subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var statGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            detailStat("Length", value: "\(recommendation.durationWeeks) weeks")
+            detailStat("Weekly rhythm", value: "\(recommendation.sessionsPerWeek)x sessions")
+            detailStat("Target time", value: "\(recommendation.targetWeeklyMinutes) min")
+            detailStat("Long day", value: "\(recommendation.longSessionMinutes) min")
+        }
+    }
+
+    private func detailStat(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func section(_ title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var highlightsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Plan shape")
+                .font(.headline)
+            ForEach(recommendation.template.highlights, id: \.self) { highlight in
+                Label(highlight, systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var weekPreviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Week Preview")
+                .font(.headline)
+            ForEach(recommendation.template.weeks.prefix(2)) { week in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Week \(week.index): \(week.focus)")
+                        .font(.subheadline.weight(.semibold))
+                    Text(week.summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach(week.workouts.prefix(3)) { workout in
+                        workoutPreviewRow(workout)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+        }
+    }
+
+    private func workoutPreviewRow(_ workout: TrainingPlanWorkout) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(workout.dayLabel)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(accentColor)
+                .frame(width: 32, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(workout.title)
+                    .font(.subheadline.weight(.semibold))
+                Text("\(workout.durationLabel) • \(workout.effortLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct ActiveTrainingPlanDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let activePlan: ActiveTrainingPlan
+    let week: TrainingPlanWeekSnapshot
+    let todaySuggestion: TodayTrainingSuggestion
+    let accentColor: Color
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(activePlan.title)
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                    Text(activePlan.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    activeStat("Plan length", value: "\(activePlan.durationWeeks) weeks")
+                    activeStat("Current week", value: "\(week.currentWeekIndex) of \(week.totalWeeks)")
+                    activeStat("Weekly rhythm", value: "\(activePlan.sessionsPerWeek)x sessions")
+                    activeStat("Target time", value: "\(activePlan.targetWeeklyMinutes) min")
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("This week")
+                        .font(.headline)
+                    Text(week.focus)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                    Text(week.summaryLine)
+                        .font(.subheadline.weight(.semibold))
+                    Text(week.weekSummary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
+                    Text(week.coachLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(18)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Today's recommendation")
+                        .font(.headline)
+                    Text(todaySuggestion.title)
+                        .font(.title3.weight(.bold))
+                    Text(todaySuggestion.detail)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                    Text(todaySuggestion.coachLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let adjustmentLine = todaySuggestion.adjustmentLine {
+                        Label(adjustmentLine, systemImage: "heart.text.square.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(accentColor)
+                    }
+
+                    ForEach(todaySuggestion.stepSummary.prefix(4), id: \.self) { step in
+                        Text(step)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(18)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Week schedule")
+                        .font(.headline)
+                    ForEach(week.scheduledWorkouts) { workout in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("\(workout.dayLabel) • \(workout.title)")
+                                    .font(.subheadline.weight(.semibold))
+                                if workout.isOptional {
+                                    Spacer()
+                                    Text("Optional")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Text("\(workout.durationLabel) • \(workout.effortLabel)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(accentColor)
+                            Text(workout.summary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    ForEach(week.notes, id: \.self) { note in
+                        Label(note, systemImage: "info.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(18)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .padding()
+        }
+        .navigationTitle("Plan Details")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func activeStat(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct TrainingPlanProgressBar: View {
+    let progress: Double
+    let accentColor: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color(.systemBackground))
+                Capsule()
+                    .fill(accentColor)
+                    .frame(width: geometry.size.width * progress)
+            }
+        }
+        .frame(height: 10)
     }
 }
