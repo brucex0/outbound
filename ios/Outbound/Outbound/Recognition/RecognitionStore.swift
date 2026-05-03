@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum RecognitionFamily: String, Codable, CaseIterable {
     case showedUp
@@ -105,8 +106,26 @@ final class RecognitionStore: ObservableObject {
         return preview(for: latestAward.badgeID)
     }
 
+    var importantMilestoneHighlight: RecognitionPreview? {
+        guard let award = awards.first(where: { isImportantMilestone($0.badgeID) && isHighlightStillFresh($0.earnedAt) }) else {
+            return nil
+        }
+        return preview(for: award.badgeID)
+    }
+
     func recentAwards(limit: Int) -> [RecognitionPreview] {
         Array(awards.prefix(limit)).map { preview(for: $0.badgeID) }
+    }
+
+    func recognitions(for activityID: UUID) -> [RecognitionPreview] {
+        awards
+            .filter { $0.sourceActivityID == activityID }
+            .sorted { Self.definition(for: $0.badgeID).priority > Self.definition(for: $1.badgeID).priority }
+            .map { preview(for: $0.badgeID) }
+    }
+
+    func topRecognition(for activityID: UUID) -> RecognitionPreview? {
+        recognitions(for: activityID).first
     }
 
     func previewPostRunRecognition(
@@ -375,6 +394,11 @@ final class RecognitionStore: ObservableObject {
         return date >= cutoff
     }
 
+    private func isImportantMilestone(_ badgeID: RecognitionBadgeID) -> Bool {
+        let definition = Self.definition(for: badgeID)
+        return definition.priority >= 78 || definition.shareEligible
+    }
+
     private func persistAwards() {
         guard let data = try? JSONEncoder().encode(awards) else { return }
         defaults.set(data, forKey: awardsKey)
@@ -464,4 +488,115 @@ private struct ActivityCandidate {
     let startedAt: Date
     let durationSecs: Int
     let photoCount: Int
+}
+
+struct RecognitionPill: View {
+    let preview: RecognitionPreview
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: compact ? 6 : 8) {
+            Image(systemName: preview.symbolName)
+                .font((compact ? Font.caption : .subheadline).weight(.bold))
+            Text(preview.title)
+                .font((compact ? Font.caption : .subheadline).weight(.semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(.orange)
+        .padding(.horizontal, compact ? 10 : 12)
+        .padding(.vertical, compact ? 6 : 8)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.orange.opacity(0.18),
+                    Color.yellow.opacity(0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: Capsule()
+        )
+        .overlay {
+            Capsule()
+                .strokeBorder(Color.orange.opacity(0.2), lineWidth: 0.8)
+        }
+    }
+}
+
+struct RecognitionOrb: View {
+    let preview: RecognitionPreview
+    var size: CGFloat = 28
+
+    var body: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [Color.orange, Color.yellow.opacity(0.9)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .overlay {
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.95), lineWidth: 2)
+            }
+            .overlay {
+                Image(systemName: preview.symbolName)
+                    .font(.system(size: size * 0.42, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            .shadow(color: .orange.opacity(0.28), radius: 8, y: 3)
+    }
+}
+
+struct RecognitionHeroBadge: View {
+    let preview: RecognitionPreview
+    let secondaryCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                RecognitionOrb(preview: preview, size: 54)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(preview.title)
+                        .font(.headline)
+                    Text("Coach noticed this")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.orange)
+                }
+
+                Spacer()
+            }
+
+            Text(preview.coachLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if secondaryCount > 0 {
+                Text("+\(secondaryCount) more recognition\(secondaryCount == 1 ? "" : "s") ready when you save.")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.orange.opacity(0.14),
+                    Color.yellow.opacity(0.08)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.18), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
 }

@@ -58,6 +58,8 @@ Recognition should appear in four places:
 3. Social share cards for selected rewards
 4. a lightweight profile/history surface later
 
+Badge visuals can also appear as compact overlays on activity thumbnails and selected avatar surfaces for important milestones.
+
 This lets rewards influence behavior immediately instead of becoming a dead archive.
 
 ## V1 Scope
@@ -238,6 +240,10 @@ When added, it should:
 - group by family
 - show coach copy and earn date
 - avoid making unearned badges feel like a wall of failure
+
+Activity cards in Profile and History can show a compact badge pill and thumbnail overlay when that saved activity earned a recognition.
+
+Important milestones such as comeback or weekly-focus completion can also appear as a small orb on the main coach/avatar surface to make the achievement feel alive outside the badge list.
 
 ## Relationship To Goals
 

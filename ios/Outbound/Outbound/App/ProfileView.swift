@@ -132,6 +132,16 @@ struct ProfileView: View {
                 }
                 .padding(.top, 4)
             }
+
+            if let milestone = recognitionStore.importantMilestoneHighlight {
+                HStack(spacing: 10) {
+                    RecognitionOrb(preview: milestone, size: 24)
+                    Text("Latest milestone: \(milestone.title)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
         .padding()
         .background(.orange.opacity(0.08))
@@ -805,35 +815,47 @@ private struct ProfileMetricCard: View {
 }
 
 private struct ActivityCard: View {
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     let activity: SavedActivity
     let activityStore: ActivityStore
 
+    private var recognitionPreview: RecognitionPreview? {
+        recognitionStore.topRecognition(for: activity.id)
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            thumbnail
-            VStack(alignment: .leading, spacing: 5) {
-                Text(activity.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                thumbnail
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(activity.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        Label(String(format: "%.2f km", activity.distanceM / 1000),
+                              systemImage: "figure.run")
+                        Label(activity.durationSecs.formatted(), systemImage: "timer")
+                        if let pace = activity.avgPace {
+                            Label(pace.paceString, systemImage: "speedometer")
+                        }
+                    }
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                HStack(spacing: 12) {
-                    Label(String(format: "%.2f km", activity.distanceM / 1000),
-                          systemImage: "figure.run")
-                    Label(activity.durationSecs.formatted(), systemImage: "timer")
-                    if let pace = activity.avgPace {
-                        Label(pace.paceString, systemImage: "speedometer")
-                    }
+                    .lineLimit(1)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+
+            if let recognitionPreview {
+                RecognitionPill(preview: recognitionPreview)
+            }
         }
         .padding(12)
         .background(Color(.secondarySystemBackground))
@@ -848,12 +870,24 @@ private struct ActivityCard: View {
             }
             .frame(width: 56, height: 56)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .topTrailing) {
+                if let recognitionPreview {
+                    RecognitionOrb(preview: recognitionPreview, size: 22)
+                        .offset(x: 6, y: -6)
+                }
+            }
         } else {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.orange.opacity(0.15))
                 .frame(width: 56, height: 56)
                 .overlay {
                     Image(systemName: "figure.run").foregroundStyle(.orange)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if let recognitionPreview {
+                        RecognitionOrb(preview: recognitionPreview, size: 22)
+                            .offset(x: 6, y: -6)
+                    }
                 }
         }
     }

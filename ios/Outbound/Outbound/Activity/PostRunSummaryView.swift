@@ -115,40 +115,7 @@ struct PostRunSummaryView: View {
     }
 
     private func recognitionSection(_ preview: RecognitionPreview) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: preview.symbolName)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.orange)
-                    .frame(width: 40, height: 40)
-                    .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(preview.title)
-                        .font(.headline)
-                    Text("Coach noticed this")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
-                }
-
-                Spacer()
-            }
-
-            Text(preview.coachLine)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if recognitionPreviews.count > 1 {
-                Text("+\(recognitionPreviews.count - 1) more recognition\(recognitionPreviews.count == 2 ? "" : "s") waiting when you save.")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        RecognitionHeroBadge(preview: preview, secondaryCount: recognitionPreviews.count - 1)
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
     }
