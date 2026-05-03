@@ -2,8 +2,10 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { generateAssistantReply } from "../services/ai.js";
+import { getAuthenticatedIdentity } from "../services/currentUser.js";
+import type { AppEnv } from "../types/hono.js";
 
-const router = new Hono();
+const router = new Hono<AppEnv>();
 
 const assistantCapabilitySchema = z.enum([
   "discover",
@@ -42,12 +44,13 @@ router.post(
   ),
   async (c) => {
     const body = c.req.valid("json");
+    const auth = getAuthenticatedIdentity(c);
     const reply = await generateAssistantReply({
       prompt: body.prompt,
       capability: body.capability,
       context: body.context,
       messages: body.messages,
-      firebaseUid: body.firebaseUid,
+      firebaseUid: auth?.firebaseUid ?? body.firebaseUid,
     });
     return c.json({ message: reply });
   }

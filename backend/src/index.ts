@@ -2,17 +2,20 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { authMiddleware } from "./middleware/auth.js";
 import activities from "./routes/activities.js";
 import assistant from "./routes/assistant.js";
 import coach from "./routes/coach.js";
 import social from "./routes/social.js";
 import media from "./routes/media.js";
 import auth from "./routes/auth.js";
+import type { AppEnv } from "./types/hono.js";
 
-const app = new Hono();
+const app = new Hono<AppEnv>();
 
 app.use("*", logger());
 app.use("*", cors({ origin: "*" }));
+app.use("/v1/*", authMiddleware);
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
 

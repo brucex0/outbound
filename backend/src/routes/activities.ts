@@ -5,8 +5,10 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
+import { getAuthenticatedAppUser } from "../services/currentUser.js";
+import type { AppEnv } from "../types/hono.js";
 
-const router = new Hono();
+const router = new Hono<AppEnv>();
 
 router.get("/user/:userId", async (c) => {
   const unavailable = requireDatabase(c);
@@ -40,7 +42,7 @@ router.get("/:id", async (c) => {
 });
 
 const createSchema = z.object({
-  userId: z.string(),
+  userId: z.string().optional(),
   type: z.string().default("running"),
   title: z.string().optional(),
   startedAt: z.string(),
@@ -61,9 +63,17 @@ router.post("/", zValidator("json", createSchema), async (c) => {
 
   const prisma = getPrismaClient();
   const body = c.req.valid("json");
+  const authenticatedUser = await getAuthenticatedAppUser(c);
+  const resolvedUserId = authenticatedUser?.id ?? body.userId;
+
+  if (!resolvedUserId) {
+    return c.json({ error: "Authentication or legacy userId is required." }, 401);
+  }
+
   const activity = await prisma.activity.create({
     data: {
       ...body,
+      userId: resolvedUserId,
       startedAt: new Date(body.startedAt),
       endedAt: body.endedAt ? new Date(body.endedAt) : undefined,
     },
@@ -72,7 +82,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   // Fire-and-forget: analyze activity + rebuild coach profile
   (async () => {
     const coachProfile = await prisma.coachProfile.findUnique({
-      where: { userId: body.userId },
+      where: { userId: resolvedUserId },
     });
     const analysis = await analyzeActivity(activity, coachProfile ?? {});
     await Promise.all([
@@ -80,7 +90,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
         where: { id: activity.id },
         data: { coachAnalysis: analysis },
       }),
-      rebuildCoachProfile(body.userId),
+      rebuildCoachProfile(resolvedUserId),
     ]);
   })().catch(console.error);
 

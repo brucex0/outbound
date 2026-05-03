@@ -5,8 +5,38 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
+import { getAuthenticatedAppUser } from "../services/currentUser.js";
+import type { AppEnv } from "../types/hono.js";
 
-const router = new Hono();
+const router = new Hono<AppEnv>();
+
+router.get("/profile", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const profile = await prisma.coachProfile.findUnique({ where: { userId: appUser.id } });
+  if (!profile) return c.json({ error: "No coach profile yet" }, 404);
+  return c.json(profile);
+});
+
+router.post("/rebuild", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const payload = await rebuildCoachProfile(appUser.id);
+  return c.json(payload);
+});
 
 // GET /v1/coach/:userId/profile
 // Returns the downloadable CoachProfilePayload for the device
