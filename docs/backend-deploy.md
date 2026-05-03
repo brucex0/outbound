@@ -9,6 +9,39 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - The backend is now built as a standard Node service from `backend/Dockerfile`.
 - Assistant chat works without a database as long as `APP_AI_KEY` is configured.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
+- Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
+
+## Local Backend Run
+
+Use this when you want the backend plus a local Postgres instance without Docker or Homebrew:
+
+```sh
+cd backend
+npm install
+npm run start:local
+```
+
+What it does:
+
+- builds the backend
+- starts an embedded Postgres instance under `backend/.local/postgres`
+- creates the local `outbound` database if needed
+- runs `prisma db push`
+- starts the API with `DATABASE_URL` pointed at the local embedded database
+
+Default local database URL:
+
+```sh
+postgresql://outbound:outbound@127.0.0.1:54329/outbound?schema=public
+```
+
+Optional overrides:
+
+- `OUTBOUND_PG_PORT`
+- `OUTBOUND_PG_USER`
+- `OUTBOUND_PG_PASSWORD`
+- `OUTBOUND_PG_DATABASE`
+- `DATABASE_URL`
 
 ## Current GCP Project
 

@@ -16,6 +16,7 @@ config/google-oauth-web-client.local.json
 .claude/
 .codex/
 ios/.codex/
+backend/.local/
 
 # Build
 .build/
