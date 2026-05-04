@@ -9,6 +9,7 @@ struct MainTabView: View {
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
+    @State private var assistantChromeState: AssistantChromeState = .normal
     @State private var isAssistantPresented = false
 
     var body: some View {
@@ -26,7 +27,7 @@ struct MainTabView: View {
                     presentActivity()
                 }
                 .padding(.trailing, 18)
-                .padding(.bottom, shouldShowAssistantBar ? 154 : 82)
+                .padding(.bottom, activityButtonBottomPadding)
             }
         }
         .overlay(alignment: .bottom) {
@@ -40,14 +41,29 @@ struct MainTabView: View {
         }
         .overlay(alignment: .bottom) {
             if shouldShowAssistantBar {
-                AssistantCollapsedBar(
+                AssistantBar(
                     hint: assistantHint,
                     accentColor: assistantAccentColor
                 ) {
                     isAssistantPresented = true
+                } onMinimize: {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        assistantChromeState = .minimized
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 52)
+                .zIndex(2)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if shouldShowAssistantButton {
+                AssistantMinimizedButton(accentColor: assistantAccentColor) {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        assistantChromeState = .normal
+                    }
+                }
+                .padding(.bottom, 46)
                 .zIndex(2)
             }
         }
@@ -77,6 +93,7 @@ struct MainTabView: View {
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil else { return }
             selectedTab = .me
+            assistantChromeState = .normal
             if isActivityVisible {
                 isActivityVisible = false
             }
@@ -119,7 +136,17 @@ struct MainTabView: View {
     }
 
     private var shouldShowAssistantBar: Bool {
-        !isActivityVisible
+        !isActivityVisible && assistantChromeState == .normal
+    }
+
+    private var shouldShowAssistantButton: Bool {
+        !isActivityVisible && assistantChromeState == .minimized
+    }
+
+    private var activityButtonBottomPadding: CGFloat {
+        if shouldShowAssistantBar { return 154 }
+        if shouldShowAssistantButton { return 112 }
+        return 82
     }
 
     private var assistantHint: String {
@@ -174,6 +201,11 @@ struct MainTabView: View {
     }
 }
 
+private enum AssistantChromeState {
+    case minimized
+    case normal
+}
+
 private enum AppTab {
     case me
     case social
@@ -207,38 +239,65 @@ private enum AppTab {
     }
 }
 
-private struct AssistantCollapsedBar: View {
+private struct AssistantBar: View {
     let hint: String
+    let accentColor: Color
+    let onExpand: () -> Void
+    let onMinimize: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onExpand) {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(accentColor)
+                        .frame(width: 24, height: 24)
+
+                    Text(hint)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.leading)
+
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onMinimize) {
+                Image(systemName: "minus.circle")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay {
+            Capsule()
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
+        }
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+    }
+}
+
+private struct AssistantMinimizedButton: View {
     let accentColor: Color
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(accentColor)
-                    .frame(width: 24, height: 24)
-
-                Text(hint)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .multilineTextAlignment(.leading)
-
-                Spacer(minLength: 12)
-
-                Image(systemName: "chevron.up")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule()
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
-            }
+            Image(systemName: "sparkles")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(accentColor)
+                .frame(width: 48, height: 48)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
+                }
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
@@ -473,6 +532,9 @@ struct MotivationDashboardView: View {
                 ) {
                     trainingPlanStore.acceptRecommendation(recommendation)
                     selectedRecommendation = nil
+                } onMorePlans: {
+                    selectedRecommendation = nil
+                    isPlanPickerPresented = true
                 }
             }
         }
@@ -689,6 +751,45 @@ struct MotivationDashboardView: View {
                 }
             }
             .font(.subheadline.weight(.semibold))
+
+            if let recommendation = trainingPlanStore.recommendations.first {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Want more structure?")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(recommendation.template.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(recommendation.rationale)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 8) {
+                            Button("View") {
+                                selectedRecommendation = recommendation
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(coachCatalog.selectedPersona.face.accentColor)
+                            .font(.caption.weight(.semibold))
+
+                            Button("More plans") {
+                                isPlanPickerPresented = true
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(coachCatalog.selectedPersona.face.accentColor)
+                            .font(.caption.weight(.semibold))
+                        }
+                    }
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1331,6 +1432,9 @@ struct TrainingPlanCard: View {
                 ) {
                     trainingPlanStore.acceptRecommendation(recommendation)
                     selectedRecommendation = nil
+                } onMorePlans: {
+                    selectedRecommendation = nil
+                    isMorePlansPresented = true
                 }
             }
         }
@@ -1642,6 +1746,7 @@ private struct TrainingPlanRecommendationDetailView: View {
     let recommendation: TrainingPlanRecommendation
     let accentColor: Color
     let onUsePlan: () -> Void
+    let onMorePlans: () -> Void
 
     var body: some View {
         ScrollView {
@@ -1669,11 +1774,20 @@ private struct TrainingPlanRecommendationDetailView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button("Use this plan") {
-                onUsePlan()
+            HStack(spacing: 10) {
+                Button("More plans") {
+                    dismiss()
+                    onMorePlans()
+                }
+                .buttonStyle(.bordered)
+                .tint(accentColor)
+
+                Button("Use this plan") {
+                    onUsePlan()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(accentColor)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(accentColor)
             .font(.headline)
             .padding(.horizontal)
             .padding(.top, 10)
