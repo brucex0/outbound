@@ -10,6 +10,12 @@ Reviewed on 2026-04-29 using:
 - App Store metadata for Strava, Runna, Nike Run Club, Garmin Connect, TrainingPeaks, ASICS Runkeeper, Map My Run, adidas Running, and Peloton
 - official product positioning from Strava, Runna, and TrainingPeaks web properties
 
+Scope update on 2026-05-03:
+
+- reviewed public market signals from Strava, Runna, AllTrails, Zwift, and Grand View Research
+- confirmed the product decision to position Outbound as endurance-first, not as a broad sports super app
+- keep the architecture multi-sport capable through modality adapters, but keep the user-facing promise narrow until running, walking/hiking, and cycling feel deep
+
 ## Outbound Today
 
 Outbound already has four notable ingredients:
@@ -111,6 +117,77 @@ What users buy:
 Takeaway:
 - Peloton proves that motivation plus personality can drive retention when content feels alive and fresh.
 
+## Sports Scope Strategy
+
+### Market signals
+
+The opportunity is large, but the winning products are specialized around a job rather than generic sport coverage.
+
+- Grand View Research estimates the fitness app market at USD 12.12B in 2025 and projects USD 33.58B by 2033 at a 13.40% CAGR.
+- Grand View Research estimated the sports app market at USD 3.66B in 2022 and projected USD 8.03B by 2030 at a 10.9% CAGR.
+- Strava's public app listing says "over 180 million active people," and its subscription positioning centers on training, progress, routes, segments, and exploration.
+- Strava announced the acquisition of Runna in 2025, which is a strong signal that even the leading social fitness graph wants deeper structured coaching.
+- AllTrails positions around trail discovery, navigation, conditions, offline maps, live share, reviews, photos, and 500,000+ trails. It supports hike, bike, run, and walk, but its center of gravity is outdoor discovery.
+- Zwift and Peloton show that motivation can be a business, but only when the experience is purpose-built around a specific environment and habit loop.
+
+The lesson is not "support every sport." The lesson is "own a frequent, emotionally resonant job, then expand from strength."
+
+### Decision
+
+Outbound should be an endurance-first coaching app:
+
+- First-class at launch expansion: run, walk, hike/trail, bike.
+- Supporting modalities: strength, mobility, recovery, and generic "other" activity logging.
+- Deferred as primary sports: swimming, court sports, field/team sports, golf, climbing, skiing, and deep gym lifting.
+
+Do not market Outbound as a sports super app. The phrase is useful only as an internal architecture ambition. User-facing positioning should stay closer to:
+
+- `the AI coach for getting out, building momentum, and making outdoor training feel alive`
+- `the running and riding app that feels like a coach, not a spreadsheet`
+
+### Why this scope
+
+Running, walking/hiking, and cycling share enough foundations to reuse product systems:
+
+- GPS recording, routes, distance, duration, elevation, pace/speed, heart rate, photos, and live sharing
+- coach nudges during an activity
+- training plans built from endurance load, consistency, recovery, and schedule constraints
+- social posts, clubs, challenges, rivals, relays, and outdoor route moments
+- HealthKit and wearable integration paths
+
+They still need sport-specific polish:
+
+- Running needs pace, cadence, race goals, shoes, intervals, and return-to-run care.
+- Walking/hiking needs route difficulty, trail conditions, time-on-feet, navigation confidence, and safety.
+- Cycling needs speed, elevation, power/cadence later, bike gear, route safety, and indoor/outdoor distinctions.
+
+That scope is ambitious enough to grow the product, but not so broad that Outbound becomes a thin tracker with an AI label.
+
+### Architecture rule
+
+Position narrowly, architect broadly.
+
+The planning system should follow `docs/adaptive-planning-engine.md`: plan training stimulus first, then translate that stimulus through modality adapters. This keeps the system open to future sports without forcing the UI, coaching language, analytics, and acquisition story to support everything now.
+
+Practical implications:
+
+- Shared planner concepts: goal, phase, readiness, fatigue, adherence, weekly load, session count, hard/easy balance, and adaptation reason.
+- Sport adapters: run, bike, walk/hike first; strength, mobility, and recovery as support adapters.
+- Shared activity model: allow modality-specific fields without making every feature handle every sport on day one.
+- Product QA standard: a sport becomes "supported" only when recording, summary, coaching, progress, and sharing all feel credible for that sport.
+
+### Sequencing
+
+Recommended sequence:
+
+1. Make running excellent.
+2. Add walk/hike as a close outdoor cousin, with safety and route language.
+3. Add cycling as the second endurance pillar.
+4. Add strength and mobility as plan support, not as standalone gym products.
+5. Reconsider swimming or other sports only after the adaptive planner, social loops, and device integrations are stable.
+
+The near-term wedge remains motivation plus coaching, not sport count.
+
 ## Competitive Read
 
 ### Where Outbound already feels better
@@ -135,7 +212,7 @@ Takeaway:
 
 - Do not become another stats-first dashboard.
 - Do not overbuild coach content libraries before the personalization loop works.
-- Do not chase every sport immediately; the product thesis is strongest in running and walking first.
+- Do not chase every sport immediately; the product thesis is strongest in outdoor endurance first.
 - Do not ship a generic social feed as the main differentiator. Strava already owns that pattern.
 
 ## Feature Framework
@@ -167,7 +244,8 @@ Use three buckets instead of one flat backlog.
 - AI-generated route ideas tied to mood, time available, and neighborhood
 - creator or club-led coach personas
 - async social prompts tied to photos, routes, and live moments
-- recovery and strength plans tightly paired to run intent
+- recovery and strength plans tightly paired to endurance intent
+- bike and walk/hike support once run quality is credible
 - premium coaching tier with adaptive plans plus richer voice/video coach output
 
 ## Recommended Feature List
@@ -297,12 +375,14 @@ Ship:
 Best near-term positioning:
 
 - `the running app that feels like a coach, not a spreadsheet`
+- `the AI coach for outdoor endurance and active-life momentum`
 
 Avoid positioning as:
 
 - a Strava clone
 - a pure training-plan app
 - a generic AI fitness assistant
+- a sports super app
 
 ### Ideal early user
 
@@ -342,7 +422,7 @@ If only five things can happen next, choose these:
 
 Do not prioritize yet:
 
-- broad multi-sport expansion
+- broad multi-sport expansion beyond run, walk/hike, bike, strength, mobility, and recovery support
 - deep coach marketplace
 - advanced pro analytics comparable to TrainingPeaks
 - desktop/web companion products
