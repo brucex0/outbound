@@ -43,6 +43,7 @@ console.log("[local-stack] Starting embedded Postgres...");
 await postgres.start();
 await ensureDatabase(postgres, dbName);
 await runPrisma(["db", "push", "--skip-generate"]);
+await seedTrainingPlanTemplates();
 
 console.log("[local-stack] Starting Outbound API...");
 await import("../dist/index.js");
@@ -83,6 +84,13 @@ async function runPrisma(args) {
     });
     child.on("error", reject);
   });
+}
+
+async function seedTrainingPlanTemplates() {
+  console.log("[local-stack] Seeding training plan templates...");
+  const seedModule = await import("../dist/scripts/seedTrainingPlanTemplates.js");
+  const result = await seedModule.seedTrainingPlanTemplates();
+  console.log(`[local-stack] Seeded ${result.templateCount} training plan templates.`);
 }
 
 function loadEnvFileIfPresent(filePath) {

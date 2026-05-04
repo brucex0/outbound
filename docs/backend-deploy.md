@@ -29,6 +29,7 @@ What it does:
 - starts an embedded Postgres instance under `backend/.local/postgres`
 - creates the local `outbound` database if needed
 - runs `prisma db push`
+- seeds training plan template rows
 - starts the API with `DATABASE_URL` pointed at the local embedded database
 
 Default local database URL:
@@ -157,6 +158,8 @@ $HOME/google-cloud-sdk/bin/gcloud run jobs update outbound-db-push \
   --region=us-central1 \
   --set-secrets=DATABASE_URL=outbound-database-url:latest
 ```
+
+The schema job should run `npm run db:push` followed by `npm run seed:training-plans` so the `TrainingPlanTemplate` catalog tables are populated after schema changes.
 
 After that, remove plaintext secret env vars from the service and job configs if they are still present.
 

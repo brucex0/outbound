@@ -220,22 +220,37 @@ interface RecentTrainingStats {
   longestSessionMinutes: number;
 }
 
-const templates = trainingPlanTemplates as unknown as TrainingPlanTemplate[];
-const templateLookup = new Map(templates.map((template) => [template.id, template]));
+export interface TrainingPlanCatalog {
+  templates: TrainingPlanTemplate[];
+  templateLookup: Map<string, TrainingPlanTemplate>;
+}
+
+export const fallbackTrainingPlanCatalog = makeTrainingPlanCatalog(
+  trainingPlanTemplates as unknown as TrainingPlanTemplate[]
+);
+
+export function makeTrainingPlanCatalog(templates: TrainingPlanTemplate[]): TrainingPlanCatalog {
+  return {
+    templates,
+    templateLookup: new Map(templates.map((template) => [template.id, template])),
+  };
+}
 
 export function buildTrainingPlanState(params: {
   activePlan: StoredActiveTrainingPlan | null;
   activities: ActivityForPlans[];
+  catalog?: TrainingPlanCatalog;
   readiness?: string | null;
   now?: Date;
 }): TrainingPlanState {
   const now = params.now ?? new Date();
+  const catalog = params.catalog ?? fallbackTrainingPlanCatalog;
   const activities = normalizeActivities(params.activities);
   const readiness = normalizeReadiness(params.readiness);
 
   if (params.activePlan) {
-    const activePlan = activePlanFromRecord(params.activePlan);
-    const currentWeek = makeWeekSnapshot(activePlan, activities, now);
+    const activePlan = activePlanFromRecord(params.activePlan, catalog);
+    const currentWeek = makeWeekSnapshot(activePlan, activities, now, catalog);
     const todaySuggestion = makeTodaySuggestion(activePlan, currentWeek, readiness);
 
     return {
@@ -248,7 +263,7 @@ export function buildTrainingPlanState(params: {
 
   return {
     activePlan: null,
-    recommendations: makeRecommendations(activities, determinePhase(activities, now), now),
+    recommendations: makeRecommendations(activities, determinePhase(activities, now), now, catalog),
     currentWeek: null,
     todaySuggestion: null,
   };
@@ -257,18 +272,20 @@ export function buildTrainingPlanState(params: {
 export function makeActivePlanData(params: {
   selection: TrainingPlanSelection;
   activities: ActivityForPlans[];
+  catalog?: TrainingPlanCatalog;
   now?: Date;
 }): ActiveTrainingPlanData {
   const now = params.now ?? new Date();
+  const catalog = params.catalog ?? fallbackTrainingPlanCatalog;
   const activities = normalizeActivities(params.activities);
   const phase = determinePhase(activities, now);
-  const recommendations = makeRecommendations(activities, phase, now);
+  const recommendations = makeRecommendations(activities, phase, now, catalog);
   const selectedRecommendation = params.selection.candidateID
     ? recommendations.find((recommendation) => recommendation.id === params.selection.candidateID)
     : undefined;
   const templateID =
     params.selection.templateID ?? selectedRecommendation?.template.id ?? recommendations[0]?.template.id;
-  const template = templateID ? templateLookup.get(templateID) : undefined;
+  const template = templateID ? catalog.templateLookup.get(templateID) : undefined;
 
   if (!template) {
     throw new Error("Unknown training plan template.");
@@ -313,18 +330,22 @@ export function makeActivePlanData(params: {
 export function makeRecommendations(
   activities: ActivityForPlans[],
   phase: MotivationPhase = "steady",
-  now: Date = new Date()
+  now: Date = new Date(),
+  catalog: TrainingPlanCatalog = fallbackTrainingPlanCatalog
 ): TrainingPlanRecommendation[] {
   const normalized = normalizeActivities(activities);
   const stats = recentTrainingStats(normalized, now);
   return recommendedTemplateIDs(stats, phase).flatMap((templateID) => {
-    const template = templateLookup.get(templateID);
+    const template = catalog.templateLookup.get(templateID);
     return template ? [makeRecommendation(template, stats, phase)] : [];
   });
 }
 
-function activePlanFromRecord(record: StoredActiveTrainingPlan): ActiveTrainingPlan {
-  const template = templateLookup.get(record.templateId);
+function activePlanFromRecord(
+  record: StoredActiveTrainingPlan,
+  catalog: TrainingPlanCatalog
+): ActiveTrainingPlan {
+  const template = catalog.templateLookup.get(record.templateId);
   return {
     id: record.id,
     templateID: record.templateId,
@@ -343,7 +364,8 @@ function activePlanFromRecord(record: StoredActiveTrainingPlan): ActiveTrainingP
 function makeWeekSnapshot(
   plan: ActiveTrainingPlan,
   activities: NormalizedActivity[],
-  now: Date
+  now: Date,
+  catalog: TrainingPlanCatalog
 ): TrainingPlanWeekSnapshot {
   const weekStart = startOfWeek(now);
   const planWeekStart = startOfWeek(plan.createdAt);
@@ -359,7 +381,7 @@ function makeWeekSnapshot(
     1,
     Math.min(plan.durationWeeks, wholeWeeksBetween(planWeekStart, now) + 1)
   );
-  const scheduledWeek = templateLookup.get(plan.templateID)?.weeks[weekIndex - 1];
+  const scheduledWeek = catalog.templateLookup.get(plan.templateID)?.weeks[weekIndex - 1];
   const targetSessions = scheduledWeek?.workouts.filter((workout) => !workout.isOptional).length ?? plan.sessionsPerWeek;
   const targetMinutes = scheduledWeek ? targetMinutesForWeek(scheduledWeek) : plan.targetWeeklyMinutes;
   const progressPercent = Math.min(

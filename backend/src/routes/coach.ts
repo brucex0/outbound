@@ -10,6 +10,7 @@ import {
   buildTrainingPlanState,
   makeActivePlanData,
 } from "../services/trainingPlans.js";
+import { loadTrainingPlanCatalog } from "../services/trainingPlanCatalog.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
@@ -76,18 +77,33 @@ router.get("/plans/state", async (c) => {
   }
 
   const prisma = getPrismaClient();
-  const [activePlan, activities] = await Promise.all([
+  const [activePlan, activities, catalog] = await Promise.all([
     prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
     getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
   ]);
 
   return c.json(
     buildTrainingPlanState({
       activePlan,
       activities,
+      catalog,
       readiness: c.req.query("readiness"),
     })
   );
+});
+
+router.get("/plans/templates", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) {
+    return c.json({ error: "Authentication required or user not registered." }, 401);
+  }
+
+  const catalog = await loadTrainingPlanCatalog();
+  return c.json({ templates: catalog.templates });
 });
 
 router.post("/plans/recommendation", async (c) => {
@@ -99,11 +115,15 @@ router.post("/plans/recommendation", async (c) => {
     return c.json({ error: "Authentication required or user not registered." }, 401);
   }
 
-  const activities = await getPlanActivities(appUser.id);
+  const [activities, catalog] = await Promise.all([
+    getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
+  ]);
   return c.json({
     recommendations: buildTrainingPlanState({
       activePlan: null,
       activities,
+      catalog,
       readiness: c.req.query("readiness"),
     }).recommendations,
   });
@@ -120,13 +140,17 @@ router.post("/plans", zValidator("json", planSelectionSchema), async (c) => {
 
   const prisma = getPrismaClient();
   const body = c.req.valid("json");
-  const activities = await getPlanActivities(appUser.id);
+  const [activities, catalog] = await Promise.all([
+    getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
+  ]);
 
   let planData;
   try {
     planData = makeActivePlanData({
       selection: body,
       activities,
+      catalog,
     });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Invalid training plan selection." }, 400);
@@ -145,6 +169,7 @@ router.post("/plans", zValidator("json", planSelectionSchema), async (c) => {
     buildTrainingPlanState({
       activePlan,
       activities,
+      catalog,
       readiness: body.readiness,
       now: planData.startedAt,
     }),
@@ -162,9 +187,10 @@ router.get("/plans/active", async (c) => {
   }
 
   const prisma = getPrismaClient();
-  const [activePlan, activities] = await Promise.all([
+  const [activePlan, activities, catalog] = await Promise.all([
     prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
     getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
   ]);
   if (!activePlan) return c.json({ error: "No active training plan." }, 404);
 
@@ -172,6 +198,7 @@ router.get("/plans/active", async (c) => {
     buildTrainingPlanState({
       activePlan,
       activities,
+      catalog,
       readiness: c.req.query("readiness"),
     })
   );
@@ -187,15 +214,17 @@ router.get("/plans/active/week", async (c) => {
   }
 
   const prisma = getPrismaClient();
-  const [activePlan, activities] = await Promise.all([
+  const [activePlan, activities, catalog] = await Promise.all([
     prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
     getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
   ]);
   if (!activePlan) return c.json({ error: "No active training plan." }, 404);
 
   const state = buildTrainingPlanState({
     activePlan,
     activities,
+    catalog,
     readiness: c.req.query("readiness"),
   });
   return c.json({ week: state.currentWeek });
@@ -212,12 +241,16 @@ router.delete("/plans/active", async (c) => {
 
   const prisma = getPrismaClient();
   await prisma.activeTrainingPlan.deleteMany({ where: { userId: appUser.id } });
-  const activities = await getPlanActivities(appUser.id);
+  const [activities, catalog] = await Promise.all([
+    getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
+  ]);
 
   return c.json(
     buildTrainingPlanState({
       activePlan: null,
       activities,
+      catalog,
       readiness: c.req.query("readiness"),
     })
   );
@@ -233,15 +266,17 @@ router.get("/today", async (c) => {
   }
 
   const prisma = getPrismaClient();
-  const [activePlan, activities] = await Promise.all([
+  const [activePlan, activities, catalog] = await Promise.all([
     prisma.activeTrainingPlan.findUnique({ where: { userId: appUser.id } }),
     getPlanActivities(appUser.id),
+    loadTrainingPlanCatalog(),
   ]);
   if (!activePlan) return c.json({ error: "No active training plan." }, 404);
 
   const state = buildTrainingPlanState({
     activePlan,
     activities,
+    catalog,
     readiness: c.req.query("readiness"),
   });
   return c.json({ today: state.todaySuggestion });
