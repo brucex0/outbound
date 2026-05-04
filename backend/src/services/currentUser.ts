@@ -41,9 +41,15 @@ export async function resolveAuthenticatedAppUser(
     });
 
     if (identity) {
+      const attachableIdentifiers = await attachableIdentifierData(
+        tx,
+        identity.user,
+        primaryEmail,
+        primaryPhone
+      );
       const user = await tx.user.update({
         where: { id: identity.userId },
-        data: updateDataForExistingUser(identity.user, auth, profile, primaryEmail, primaryPhone),
+        data: updateDataForExistingUser(identity.user, auth, profile, attachableIdentifiers),
       });
       await tx.authIdentity.update({
         where: { firebaseUid: auth.firebaseUid },
@@ -58,9 +64,15 @@ export async function resolveAuthenticatedAppUser(
       (await findUserByNormalizedPhones(tx, normalizedPhones));
 
     if (user) {
+      const attachableIdentifiers = await attachableIdentifierData(
+        tx,
+        user,
+        primaryEmail,
+        primaryPhone
+      );
       const updatedUser = await tx.user.update({
         where: { id: user.id },
-        data: updateDataForExistingUser(user, auth, profile, primaryEmail, primaryPhone),
+        data: updateDataForExistingUser(user, auth, profile, attachableIdentifiers),
       });
       await tx.authIdentity.create({
         data: {
@@ -91,6 +103,29 @@ export async function resolveAuthenticatedAppUser(
     });
     return createdUser;
   });
+}
+
+async function attachableIdentifierData(
+  tx: Prisma.TransactionClient,
+  user: User,
+  normalizedEmail: string | null,
+  normalizedPhone: string | null
+) {
+  const [emailOwner, phoneOwner] = await Promise.all([
+    normalizedEmail
+      ? tx.user.findFirst({ where: { normalizedEmail } })
+      : Promise.resolve(null),
+    normalizedPhone
+      ? tx.user.findFirst({ where: { normalizedPhone } })
+      : Promise.resolve(null),
+  ]);
+
+  return {
+    normalizedEmail:
+      normalizedEmail && (!emailOwner || emailOwner.id === user.id) ? normalizedEmail : null,
+    normalizedPhone:
+      normalizedPhone && (!phoneOwner || phoneOwner.id === user.id) ? normalizedPhone : null,
+  };
 }
 
 async function findUserByNormalizedEmails(
@@ -125,14 +160,20 @@ function updateDataForExistingUser(
   user: User,
   auth: AuthContext,
   profile: RegistrationProfile,
-  normalizedEmail: string | null,
-  normalizedPhone: string | null
+  identifiers: {
+    normalizedEmail: string | null;
+    normalizedPhone: string | null;
+  }
 ) {
   return {
     ...(profile.username ? { username: profile.username } : {}),
     ...(profile.displayName ? { displayName: profile.displayName } : {}),
-    ...(normalizedEmail && !user.normalizedEmail ? { normalizedEmail } : {}),
-    ...(normalizedPhone && !user.normalizedPhone ? { normalizedPhone } : {}),
+    ...(identifiers.normalizedEmail && !user.normalizedEmail
+      ? { normalizedEmail: identifiers.normalizedEmail }
+      : {}),
+    ...(identifiers.normalizedPhone && !user.normalizedPhone
+      ? { normalizedPhone: identifiers.normalizedPhone }
+      : {}),
     ...(auth.picture && !user.avatarUrl ? { avatarUrl: auth.picture } : {}),
   };
 }
