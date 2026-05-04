@@ -26,6 +26,12 @@ struct LocalActivityStorePhotoTests {
             durationSecs: 900,
             distanceM: 3000,
             avgPace: 300,
+            elevationGainM: 42,
+            healthMetrics: ActivityHealthMetrics(
+                averageHeartRateBPM: 145,
+                maxHeartRateBPM: 158,
+                heartRateSampleCount: 6
+            ),
             trackPoints: [
                 CLLocation(latitude: 37.3317, longitude: -122.0301),
                 CLLocation(latitude: 37.3321, longitude: -122.0310)
@@ -54,6 +60,10 @@ struct LocalActivityStorePhotoTests {
         #expect(savedPhoto.distAtShot == 1200)
         #expect(savedPhoto.coordinate?.latitude == coordinate.latitude)
         #expect(savedPhoto.coordinate?.longitude == coordinate.longitude)
+        #expect(reloadedActivity.elevationGainM == 42)
+        #expect(reloadedActivity.healthMetrics?.averageHeartRateBPM == 145)
+        #expect(reloadedActivity.healthMetrics?.maxHeartRateBPM == 158)
+        #expect(reloadedActivity.healthMetrics?.heartRateSampleCount == 6)
         #expect(FileManager.default.fileExists(atPath: photoURL.path(percentEncoded: false)))
         #expect(UIImage(contentsOfFile: photoURL.path(percentEncoded: false)) != nil)
     }

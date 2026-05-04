@@ -60,21 +60,37 @@ struct PostRunSummaryView: View {
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 0) {
-                SummaryStatColumn(
-                    label: "Distance",
-                    value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
-                    unit: measurementPreferences.unitSystem.distanceUnit
-                )
-                Divider().frame(height: 48)
-                SummaryStatColumn(
-                    label: "Time",
-                    value: summary.durationSecs.formatted(),
-                    unit: ""
-                )
-                if let pace = summary.avgPace {
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    SummaryStatColumn(
+                        label: "Distance",
+                        value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
+                        unit: measurementPreferences.unitSystem.distanceUnit
+                    )
                     Divider().frame(height: 48)
-                    SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
+                    SummaryStatColumn(
+                        label: "Time",
+                        value: summary.durationSecs.formatted(),
+                        unit: ""
+                    )
+                    if let pace = summary.avgPace {
+                        Divider().frame(height: 48)
+                        SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
+                    }
+                }
+
+                Divider().padding(.vertical, 12)
+
+                HStack(spacing: 0) {
+                    SummaryStatColumn(
+                        label: "Elev Gain",
+                        value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
+                        unit: measurementPreferences.unitSystem.elevationUnit
+                    )
+                    if let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM {
+                        Divider().frame(height: 48)
+                        SummaryStatColumn(label: "Avg HR", value: "\(averageHeartRate)", unit: "bpm")
+                    }
                 }
             }
             .frame(maxWidth: .infinity)

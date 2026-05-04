@@ -231,7 +231,9 @@ struct ActivityUploadRequest: Encodable {
     let endedAt: Date
     let durationSecs: Int
     let distanceM: Double
+    let elevationM: Double?
     let avgPace: Double?
+    let avgHeartRate: Int?
     let route: SavedRoute?
 }
 

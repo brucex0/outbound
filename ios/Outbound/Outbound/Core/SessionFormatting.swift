@@ -83,6 +83,10 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
         decimalString(elevationValue(meters: meters), fractionDigits: 0)
     }
 
+    func elevationString(meters: Double) -> String {
+        "\(elevationValueString(meters: meters)) \(elevationUnit)"
+    }
+
     private func decimalString(_ value: Double, fractionDigits: Int) -> String {
         let format = "%.\(fractionDigits)f"
         return String(format: format, value)

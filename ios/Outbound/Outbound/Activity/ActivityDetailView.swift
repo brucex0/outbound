@@ -32,6 +32,23 @@ struct ActivityDetailView: View {
         currentActivity.routeCoordinates
     }
 
+    private var activityStats: [DetailActivityStat] {
+        var stats = [
+            DetailActivityStat(label: "Distance", value: measurementPreferences.unitSystem.distanceString(meters: currentActivity.distanceM)),
+            DetailActivityStat(label: "Time", value: currentActivity.durationSecs.formatted())
+        ]
+        if let pace = currentActivity.avgPace {
+            stats.append(DetailActivityStat(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem)))
+        }
+        if let elevationGainM = currentActivity.elevationGainM {
+            stats.append(DetailActivityStat(label: "Elev Gain", value: measurementPreferences.unitSystem.elevationString(meters: elevationGainM)))
+        }
+        if let averageHeartRate = currentActivity.healthMetrics?.averageHeartRateBPM {
+            stats.append(DetailActivityStat(label: "Avg HR", value: "\(averageHeartRate) bpm"))
+        }
+        return stats
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -124,18 +141,20 @@ struct ActivityDetailView: View {
     }
 
     private var statsStrip: some View {
-        HStack(spacing: 0) {
-            DetailStatCell(label: "Distance",
-                           value: measurementPreferences.unitSystem.distanceString(meters: currentActivity.distanceM))
-            Divider().frame(height: 40)
-            DetailStatCell(label: "Time",
-                           value: currentActivity.durationSecs.formatted())
-            if let pace = currentActivity.avgPace {
-                Divider().frame(height: 40)
-                DetailStatCell(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem))
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 0),
+                GridItem(.flexible(), spacing: 0),
+                GridItem(.flexible(), spacing: 0)
+            ],
+            spacing: 14
+        ) {
+            ForEach(activityStats) { stat in
+                DetailStatCell(label: stat.label, value: stat.value)
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
         .padding(.vertical, 16)
         .background(Color(.secondarySystemBackground))
     }
@@ -213,6 +232,13 @@ private struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct DetailActivityStat: Identifiable {
+    let label: String
+    let value: String
+
+    var id: String { label }
 }
 
 private struct DetailStatCell: View {

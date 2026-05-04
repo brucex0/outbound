@@ -35,6 +35,8 @@ enum LocalActivityStore {
             durationSecs: summary.durationSecs,
             distanceM: summary.distanceM,
             avgPace: summary.avgPace,
+            elevationGainM: summary.elevationGainM,
+            healthMetrics: summary.healthMetrics,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -131,6 +133,8 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     let durationSecs: Int
     let distanceM: Double
     let avgPace: Double?
+    let elevationGainM: Double?
+    let healthMetrics: ActivityHealthMetrics?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -149,6 +153,19 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         durationSecs = try c.decode(Int.self, forKey: .durationSecs)
         distanceM = try c.decode(Double.self, forKey: .distanceM)
         avgPace = try c.decodeIfPresent(Double.self, forKey: .avgPace)
+        elevationGainM = try c.decodeIfPresent(Double.self, forKey: .elevationGainM)
+            ?? c.decodeIfPresent(Double.self, forKey: .elevationM)
+        if let decodedHealthMetrics = try c.decodeIfPresent(ActivityHealthMetrics.self, forKey: .healthMetrics) {
+            healthMetrics = decodedHealthMetrics
+        } else if let avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate) {
+            healthMetrics = ActivityHealthMetrics(
+                averageHeartRateBPM: avgHeartRate,
+                maxHeartRateBPM: nil,
+                heartRateSampleCount: 0
+            )
+        } else {
+            healthMetrics = nil
+        }
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -164,10 +181,13 @@ struct SavedActivity: Codable, Identifiable, Hashable {
 
     init(id: UUID, title: String, coachNudge: String, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
-         avgPace: Double?, route: SavedRoute?, photos: [SavedPhoto], sync: SavedActivitySyncState?) {
+         avgPace: Double?, elevationGainM: Double? = nil,
+         healthMetrics: ActivityHealthMetrics? = nil, route: SavedRoute?,
+         photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
+        self.elevationGainM = elevationGainM; self.healthMetrics = healthMetrics
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -181,6 +201,10 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         case durationSecs
         case distanceM
         case avgPace
+        case elevationGainM
+        case elevationM
+        case healthMetrics
+        case avgHeartRate
         case route
         case trackPoints
         case photos
@@ -198,6 +222,8 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encode(durationSecs, forKey: .durationSecs)
         try c.encode(distanceM, forKey: .distanceM)
         try c.encodeIfPresent(avgPace, forKey: .avgPace)
+        try c.encodeIfPresent(elevationGainM, forKey: .elevationGainM)
+        try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)
@@ -397,17 +423,25 @@ enum RouteFileExporter {
     }
 
     private static func geoJSONData(for activity: SavedActivity) throws -> Data {
+        var properties: [String: Any] = [
+            "id": activity.id.uuidString,
+            "title": activity.title,
+            "startedAt": iso8601String(activity.startedAt),
+            "endedAt": iso8601String(activity.endedAt),
+            "distanceM": activity.distanceM,
+            "durationSecs": activity.durationSecs,
+            "visibility": "private"
+        ]
+        if let elevationGainM = activity.elevationGainM {
+            properties["elevationGainM"] = elevationGainM
+        }
+        if let averageHeartRate = activity.healthMetrics?.averageHeartRateBPM {
+            properties["avgHeartRate"] = averageHeartRate
+        }
+
         let payload: [String: Any] = [
             "type": "Feature",
-            "properties": [
-                "id": activity.id.uuidString,
-                "title": activity.title,
-                "startedAt": iso8601String(activity.startedAt),
-                "endedAt": iso8601String(activity.endedAt),
-                "distanceM": activity.distanceM,
-                "durationSecs": activity.durationSecs,
-                "visibility": "private"
-            ],
+            "properties": properties,
             "geometry": [
                 "type": "LineString",
                 "coordinates": activity.routePoints.map { [$0.longitude, $0.latitude] }

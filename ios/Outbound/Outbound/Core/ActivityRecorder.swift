@@ -6,6 +6,21 @@ enum RecordingState {
     case idle, active, paused
 }
 
+struct ActivityHealthMetrics: Codable, Hashable {
+    let averageHeartRateBPM: Int?
+    let maxHeartRateBPM: Int?
+    let heartRateSampleCount: Int
+
+    var hasHeartRateData: Bool {
+        averageHeartRateBPM != nil || maxHeartRateBPM != nil
+    }
+}
+
+private struct HeartRateSample {
+    let recordedAt: Date
+    let beatsPerMinute: Int
+}
+
 @MainActor
 final class ActivityRecorder: ObservableObject {
     @Published var state: RecordingState = .idle
@@ -13,7 +28,11 @@ final class ActivityRecorder: ObservableObject {
     @Published var distanceMeters: Double = 0
     @Published var elevationGainMeters: Double = 0
     @Published var currentPace: Double?   // secs/km
-    @Published var heartRate: Int?
+    @Published var heartRate: Int? {
+        didSet {
+            recordHeartRateSample(heartRate)
+        }
+    }
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
 
     let locationManager: LocationManager
@@ -22,6 +41,7 @@ final class ActivityRecorder: ObservableObject {
     private var startDate: Date?
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
+    private var heartRateSamples: [HeartRateSample] = []
 
     init(locationManager: LocationManager) {
         self.locationManager = locationManager
@@ -42,6 +62,7 @@ final class ActivityRecorder: ObservableObject {
         elevationGainMeters = 0
         currentPace = nil
         heartRate = nil
+        heartRateSamples.removeAll()
         locationManager.startTracking()
         liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
@@ -82,12 +103,15 @@ final class ActivityRecorder: ObservableObject {
             durationSecs: elapsedSeconds,
             distanceM: distanceMeters,
             avgPace: distanceMeters > 0 ? Double(elapsedSeconds) / (distanceMeters / 1000) : nil,
+            elevationGainM: elevationGainMeters,
+            healthMetrics: healthMetricsSummary(),
             trackPoints: track
         )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
         currentSegmentStartDate = nil
         accumulatedActiveDuration = 0
+        heartRateSamples.removeAll()
         return summary
     }
 
@@ -134,6 +158,31 @@ final class ActivityRecorder: ObservableObject {
         )
     }
 
+    private func recordHeartRateSample(_ heartRate: Int?) {
+        guard state != .idle, let heartRate, (30...240).contains(heartRate) else { return }
+
+        let now = Date()
+        if let lastSample = heartRateSamples.last,
+           lastSample.beatsPerMinute == heartRate,
+           now.timeIntervalSince(lastSample.recordedAt) < 15 {
+            return
+        }
+
+        heartRateSamples.append(HeartRateSample(recordedAt: now, beatsPerMinute: heartRate))
+    }
+
+    private func healthMetricsSummary() -> ActivityHealthMetrics? {
+        let values = heartRateSamples.map(\.beatsPerMinute)
+        guard !values.isEmpty else { return nil }
+
+        let average = Int((Double(values.reduce(0, +)) / Double(values.count)).rounded())
+        return ActivityHealthMetrics(
+            averageHeartRateBPM: average,
+            maxHeartRateBPM: values.max(),
+            heartRateSampleCount: values.count
+        )
+    }
+
     var photoCaptureContext: PhotoCaptureContext {
         switch state {
         case .idle:
@@ -152,5 +201,27 @@ struct ActivitySummary {
     let durationSecs: Int
     let distanceM: Double
     let avgPace: Double?
+    let elevationGainM: Double
+    let healthMetrics: ActivityHealthMetrics?
     let trackPoints: [CLLocation]
+
+    init(
+        startedAt: Date,
+        endedAt: Date,
+        durationSecs: Int,
+        distanceM: Double,
+        avgPace: Double?,
+        elevationGainM: Double = 0,
+        healthMetrics: ActivityHealthMetrics? = nil,
+        trackPoints: [CLLocation]
+    ) {
+        self.startedAt = startedAt
+        self.endedAt = endedAt
+        self.durationSecs = durationSecs
+        self.distanceM = distanceM
+        self.avgPace = avgPace
+        self.elevationGainM = elevationGainM
+        self.healthMetrics = healthMetrics
+        self.trackPoints = trackPoints
+    }
 }

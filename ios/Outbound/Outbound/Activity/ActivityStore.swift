@@ -93,7 +93,9 @@ final class ActivityStore: ObservableObject {
                     endedAt: activity.endedAt,
                     durationSecs: activity.durationSecs,
                     distanceM: activity.distanceM,
+                    elevationM: activity.elevationGainM,
                     avgPace: activity.avgPace,
+                    avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
                     route: activity.route
                 )
             )
@@ -131,6 +133,8 @@ final class ActivityStore: ObservableObject {
             durationSecs: current.durationSecs,
             distanceM: current.distanceM,
             avgPace: current.avgPace,
+            elevationGainM: current.elevationGainM,
+            healthMetrics: current.healthMetrics,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -169,6 +173,12 @@ final class ActivityStore: ObservableObject {
             durationSecs: 1_845,
             distanceM: 5_420,
             avgPace: 340,
+            elevationGainM: 74,
+            healthMetrics: ActivityHealthMetrics(
+                averageHeartRateBPM: 146,
+                maxHeartRateBPM: 162,
+                heartRateSampleCount: 12
+            ),
             route: SavedRoute(points: points),
             photos: [],
             sync: nil
