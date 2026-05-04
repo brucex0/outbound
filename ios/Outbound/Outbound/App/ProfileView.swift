@@ -165,6 +165,15 @@ private struct SettingsView: View {
                         .disabled(authStore.isBusy)
                     }
 
+                    if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isAppleLinked {
+                        Button {
+                            Task { await authStore.connectAppleAccount() }
+                        } label: {
+                            Label("Connect Apple", systemImage: "apple.logo")
+                        }
+                        .disabled(authStore.isBusy)
+                    }
+
                     if let error = authStore.authError {
                         Text(error)
                             .font(.caption)

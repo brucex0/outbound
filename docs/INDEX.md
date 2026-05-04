@@ -4,7 +4,7 @@ Read this after `CLAUDE.md`. Open only the detail docs needed for the current ta
 
 ## Current Product Shape
 
-Outbound is an iOS fitness recording app. Login uses Firebase-backed Google, email, or phone-number-plus-password accounts when the app has a local `GoogleService-Info.plist`.
+Outbound is an iOS fitness recording app. Login uses Firebase-backed Apple and Google provider accounts when the app has a local `GoogleService-Info.plist`.
 
 Primary flow:
 

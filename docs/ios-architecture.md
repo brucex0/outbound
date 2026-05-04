@@ -7,7 +7,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `ios/Outbound/Outbound.xcodeproj`: main Xcode project.
 - `ios/Outbound/Outbound`: iOS app source. Xcode uses file-system-synchronized groups, so new Swift files under this folder are picked up automatically.
 - `ios/Outbound/SupportFiles/Info.plist`: app plist. `GENERATE_INFOPLIST_FILE = NO`, so required bundle keys and usage descriptions must stay here.
-- `ios/Outbound/SupportFiles/Outbound.entitlements`: currently an empty entitlement dict for personal-team device installs.
+- `ios/Outbound/SupportFiles/Outbound.entitlements`: app entitlements, including Sign in with Apple.
 - `ios/Outbound/Outbound/GoogleService-Info.plist`: local Firebase config. This file is gitignored but is copied into the app when present.
 - `Tests/OutboundSessionAnalysisTests`: Swift Package tests for the on-device session-analysis module.
 - `Package.swift`: exposes only the session-analysis subset as `OutboundSessionAnalysis` for lightweight package testing outside the full iOS app target.
@@ -15,9 +15,9 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## App Entry
 
 - `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after Firebase authentication.
-- `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after Google sign-in.
-- `App/AuthStore.swift`: Firebase auth wrapper for hosted Google OAuth plus email/password and phone-number-as-identifier password login. Phone logins are normalized into an internal email alias, and Google credentials can be linked into the same Firebase user after the password flow confirms ownership.
-- `App/AuthView.swift`: login UI for Google sign-in plus email/phone password auth. When Google returns an existing-email credential conflict, the view pivots to password sign-in so the pending provider can be connected.
+- `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after hosted Google sign-in.
+- `App/AuthStore.swift`: Firebase auth wrapper for provider-backed Apple and Google sign-in. Apple uses native `AuthenticationServices` with a nonce-backed Firebase credential; Google uses Firebase Auth's hosted OAuth flow. Existing-email provider conflicts keep the pending credential and require the user to prove the already-linked provider before accounts are connected.
+- `App/AuthView.swift`: login UI for Apple and Google provider sign-in only. Email/password and phone/password login are intentionally not user-facing.
 - `App/MainTabView.swift`: top-level shell with a lightweight floating `Me` / `Social` pill switcher, the floating activity button shown on both sections, a three-state assistant shell (`minimized`, `normal`, and expanded sheet), and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 

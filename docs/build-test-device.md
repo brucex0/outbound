@@ -7,7 +7,8 @@ Open this when validating changes, installing on device, editing signing setting
 - Bundle ID: `xhstudio.Outbound`.
 - Development team in the project: `JGNGM4YRX5`.
 - Current iOS deployment target in Xcode: `18.0`.
-- Personal-team installs currently require empty entitlements.
+- The app entitlement file includes Sign in with Apple (`com.apple.developer.applesignin`).
+- Personal-team installs may fail for capabilities the team cannot provision. Use a paid Apple Developer team before validating provider sign-in on device or shipping.
 - Do not re-add `aps-environment`, `com.apple.developer.healthkit`, or `com.apple.developer.healthkit.access` unless switching to a paid team that supports Push Notifications and HealthKit.
 
 ## Device IDs
