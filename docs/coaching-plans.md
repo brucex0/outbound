@@ -68,6 +68,8 @@ Future inputs:
 
 Do not let AI invent the full plan from scratch.
 
+Detailed adaptive-engine design lives in `docs/adaptive-planning-engine.md`. Replanning should be event-triggered: user actions and imports create durable `PlanningEvent` rows, then the planning processor reassesses user state and creates a new plan version only when the next 7-14 days materially need to change.
+
 Recommended layering:
 
 1. A structured plan template library defines the allowed progression patterns.
