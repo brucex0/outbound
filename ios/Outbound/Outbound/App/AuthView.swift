@@ -30,7 +30,7 @@ struct AuthView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.black)
-                        .disabled(!authStore.isFirebaseConfigured || authStore.isBusy)
+                        .disabled(!authStore.isAppleSignInAvailable || authStore.isBusy)
 
                         Button {
                             Task { await authStore.signInWithGoogle() }
@@ -81,6 +81,10 @@ struct AuthView: View {
         if authStore.isFirebaseConfigured {
             if let pendingLink = authStore.pendingFederatedLink {
                 return "\(pendingLink.providerName) matches an existing account for \(pendingLink.email). Continue with the provider already on that account and Outbound will connect both methods."
+            }
+
+            if !authStore.isAppleSignInAvailable {
+                return "Google sign-in is available. Apple sign-in needs a provisioning profile with the Sign in with Apple capability."
             }
 
             return "Apple and Google accounts are linked only after you prove the existing sign-in method."

@@ -46,7 +46,7 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 ## Apple Provider Setup
 
 - Enable the Firebase/Identity Platform `apple.com` provider before shipping provider login.
-- Keep `com.apple.developer.applesignin = Default` in `ios/Outbound/SupportFiles/Outbound.entitlements`.
+- Keep `com.apple.developer.applesignin = Default` in `ios/Outbound/SupportFiles/Outbound.entitlements` for Release builds. Debug device builds intentionally use an empty entitlement file so personal-team installs can keep working.
 - In the Apple Developer account, ensure bundle ID `xhstudio.Outbound` has Sign in with Apple enabled.
 - Apple private relay emails should not be merged with Google-visible emails unless the user links Apple while already signed in.
 

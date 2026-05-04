@@ -165,7 +165,7 @@ private struct SettingsView: View {
                         .disabled(authStore.isBusy)
                     }
 
-                    if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isAppleLinked {
+                    if authStore.isAppleSignInAvailable, authStore.user != nil, !authStore.isAppleLinked {
                         Button {
                             Task { await authStore.connectAppleAccount() }
                         } label: {

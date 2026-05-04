@@ -260,8 +260,9 @@ Current repo state:
 
 - `Info.plist` already includes `NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription`
 - no `HealthKit` integration code is present yet
-- `ios/Outbound/SupportFiles/Outbound.entitlements` currently includes Sign in with Apple
-- `docs/build-test-device.md` notes that provider sign-in/device validation should use a paid Apple Developer team if the personal team cannot provision that entitlement
+- Debug device builds use an empty `ios/Outbound/SupportFiles/OutboundDebug.entitlements`
+- Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`, which includes Sign in with Apple
+- `docs/build-test-device.md` notes that Apple provider sign-in/device validation should use a paid Apple Developer team
 
 Implication:
 

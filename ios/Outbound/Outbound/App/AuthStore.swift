@@ -110,6 +110,10 @@ final class AuthStore: ObservableObject {
         user?.providerData.contains { $0.providerID == "apple.com" } == true
     }
 
+    var isAppleSignInAvailable: Bool {
+        isFirebaseConfigured && Self.hasAppleSignInEntitlement()
+    }
+
     var backendDescription: String {
         switch backend {
         case .firebase:
@@ -187,6 +191,11 @@ final class AuthStore: ObservableObject {
             return
         }
 
+        guard Self.hasAppleSignInEntitlement() else {
+            authError = "Apple sign-in needs a provisioning profile with the Sign in with Apple capability."
+            return
+        }
+
         do {
             isBusy = true
             authError = nil
@@ -245,6 +254,11 @@ final class AuthStore: ObservableObject {
             return
         }
 
+        guard Self.hasAppleSignInEntitlement() else {
+            authError = "Apple sign-in needs a provisioning profile with the Sign in with Apple capability."
+            return
+        }
+
         guard let currentUser = Auth.auth().currentUser else {
             authError = "Sign in before connecting Apple."
             return
@@ -283,6 +297,14 @@ final class AuthStore: ObservableObject {
         provider.scopes = ["email", "profile"]
         provider.customParameters = ["prompt": "select_account"]
         return provider
+    }
+
+    private static func hasAppleSignInEntitlement() -> Bool {
+        #if APPLE_SIGN_IN_ENABLED
+            return true
+        #else
+            return false
+        #endif
     }
 
     private func makeAppleCredential() async throws -> AuthCredential {

@@ -7,7 +7,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `ios/Outbound/Outbound.xcodeproj`: main Xcode project.
 - `ios/Outbound/Outbound`: iOS app source. Xcode uses file-system-synchronized groups, so new Swift files under this folder are picked up automatically.
 - `ios/Outbound/SupportFiles/Info.plist`: app plist. `GENERATE_INFOPLIST_FILE = NO`, so required bundle keys and usage descriptions must stay here.
-- `ios/Outbound/SupportFiles/Outbound.entitlements`: app entitlements, including Sign in with Apple.
+- `ios/Outbound/SupportFiles/OutboundDebug.entitlements`: empty Debug entitlements for personal-team device installs.
+- `ios/Outbound/SupportFiles/Outbound.entitlements`: Release entitlements, including Sign in with Apple.
 - `ios/Outbound/Outbound/GoogleService-Info.plist`: local Firebase config. This file is gitignored but is copied into the app when present.
 - `Tests/OutboundSessionAnalysisTests`: Swift Package tests for the on-device session-analysis module.
 - `Package.swift`: exposes only the session-analysis subset as `OutboundSessionAnalysis` for lightweight package testing outside the full iOS app target.
