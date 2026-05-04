@@ -391,7 +391,9 @@ final class TrainingPlanStore: ObservableObject {
     private let activePlanKey = "training_plan_store_active_plan_v1"
     private let stateCacheKey = "training_plan_store_state_v2"
     private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
+    private let readinessSyncKey = "training_plan_store_readiness_sync_v1"
     private var dismissedRecommendationWeekStart: Date?
+    private var lastSubmittedReadinessSignature: String?
     private var lastActivities: [SavedActivity] = []
     private var lastReadiness: DailyReadiness?
     private var lastPhase: MotivationPhase = .firstSession
@@ -406,6 +408,7 @@ final class TrainingPlanStore: ObservableObject {
         self.calendar = calendar
         self.api = api
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
+        self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 
         if let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
             activePlan = cachedState.activePlan
@@ -436,7 +439,19 @@ final class TrainingPlanStore: ObservableObject {
         refreshTask?.cancel()
         refreshTask = Task {
             do {
-                let state = try await api.fetchTrainingPlanState(readiness: readiness)
+                let readinessSignature = readiness.map {
+                    Self.readinessSignature(for: $0, calendar: calendar, now: now)
+                }
+                let shouldSubmitReadiness = readinessSignature != nil
+                    && readinessSignature != lastSubmittedReadinessSignature
+                let state: TrainingPlanStateResponse
+                if let readiness, shouldSubmitReadiness {
+                    state = try await api.submitTrainingReadiness(readiness)
+                    lastSubmittedReadinessSignature = readinessSignature
+                    persistReadinessSignature()
+                } else {
+                    state = try await api.fetchTrainingPlanState(readiness: readiness)
+                }
                 guard !Task.isCancelled else { return }
                 applyServerState(state, now: now)
             } catch {
@@ -520,7 +535,16 @@ final class TrainingPlanStore: ObservableObject {
         resetDismissedRecommendationIfNeeded(now: now)
 
         activePlan = state.activePlan
-        recommendations = state.recommendations
+        if state.activePlan == nil, state.recommendations.isEmpty {
+            recommendations = Self.makeRecommendations(
+                activities: lastActivities,
+                phase: lastPhase,
+                calendar: calendar,
+                now: now
+            )
+        } else {
+            recommendations = state.recommendations
+        }
         if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
             recommendations = []
         }
@@ -593,9 +617,26 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    private func persistReadinessSignature() {
+        if let lastSubmittedReadinessSignature {
+            defaults.set(lastSubmittedReadinessSignature, forKey: readinessSyncKey)
+        } else {
+            defaults.removeObject(forKey: readinessSyncKey)
+        }
+    }
+
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
         return try? JSONDecoder().decode(type, from: data)
+    }
+
+    private static func readinessSignature(
+        for readiness: DailyReadiness,
+        calendar: Calendar,
+        now: Date
+    ) -> String {
+        let components = calendar.dateComponents([.era, .year, .month, .day], from: now)
+        return "\(components.era ?? 0)-\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)-\(readiness.rawValue)"
     }
 }
 

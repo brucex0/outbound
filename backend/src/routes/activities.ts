@@ -6,6 +6,7 @@ import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
+import { enqueueActivityCompletedEvent } from "../services/planning/planningService.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
@@ -134,6 +135,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
           data: { coachAnalysis: analysis },
         }),
         rebuildCoachProfile(resolvedUserId),
+        enqueueActivityCompletedEvent(resolvedUserId, activity.id),
       ]);
     })().catch(console.error);
   }

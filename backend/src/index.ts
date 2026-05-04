@@ -9,6 +9,7 @@ import coach from "./routes/coach.js";
 import social from "./routes/social.js";
 import media from "./routes/media.js";
 import auth from "./routes/auth.js";
+import planning from "./routes/planning.js";
 import type { AppEnv } from "./types/hono.js";
 
 const app = new Hono<AppEnv>();
@@ -23,6 +24,7 @@ app.route("/v1/auth", auth);
 app.route("/v1/activities", activities);
 app.route("/v1/assistant", assistant);
 app.route("/v1/coach", coach);
+app.route("/v1/planning", planning);
 app.route("/v1/social", social);
 app.route("/v1/media", media);
 
