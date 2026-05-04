@@ -140,6 +140,12 @@ struct AuthView: View {
                 .padding(24)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onChange(of: authStore.pendingFederatedLink) { _, pendingLink in
+                guard let pendingLink else { return }
+                mode = .signIn
+                identifier = pendingLink.email
+                confirmPassword = ""
+            }
         }
     }
 
@@ -149,12 +155,16 @@ struct AuthView: View {
 
     private var helperText: String {
         if authStore.isFirebaseConfigured {
+            if let pendingLink = authStore.pendingFederatedLink {
+                return "\(pendingLink.providerName) matches an existing email account. Sign in once with that password and Outbound will connect both methods."
+            }
+
             if mode == .createAccount {
                 return "Google sign-in creates the account automatically on first use. Email and phone accounts still use the password flow below."
             }
 
             if mode == .signIn {
-                return "Google sign-in uses Firebase's hosted OAuth flow. Phone logins still use the same password system as email accounts, without SMS verification."
+                return "Google, email, and phone sign-ins resolve to the same Outbound account when Firebase reports the same verified identity."
             }
         }
 

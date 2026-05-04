@@ -3,12 +3,15 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
-import { getAuthenticatedIdentity } from "../services/currentUser.js";
+import {
+  getAuthenticatedAppUser,
+  getAuthenticatedIdentity,
+} from "../services/currentUser.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
 
-// Called after Firebase Auth sign-up to create the user record
+// Called after Firebase Auth sign-up to create or attach the app user record.
 router.post(
   "/register",
   zValidator(
@@ -22,23 +25,15 @@ router.post(
     const unavailable = requireDatabase(c);
     if (unavailable) return unavailable;
 
-    const prisma = getPrismaClient();
     const auth = getAuthenticatedIdentity(c);
     if (!auth) {
       return c.json({ error: "Authentication required." }, 401);
     }
 
     const body = c.req.valid("json");
-    const existing = await prisma.user.findUnique({
-      where: { firebaseUid: auth.firebaseUid },
-    });
-    if (existing) return c.json(existing);
-    const user = await prisma.user.create({
-      data: {
-        firebaseUid: auth.firebaseUid,
-        username: body.username,
-        displayName: body.displayName,
-      },
+    const user = await getAuthenticatedAppUser(c, {
+      username: body.username,
+      displayName: body.displayName,
     });
     return c.json(user, 201);
   }
@@ -54,14 +49,19 @@ router.get("/me", async (c) => {
   }
 
   const prisma = getPrismaClient();
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid: auth.firebaseUid },
-    include: { coachProfile: true },
-  });
+  const user = await getAuthenticatedAppUser(c);
   if (!user) {
     return c.json({ error: "Authenticated user has not been registered yet." }, 404);
   }
-  return c.json(user);
+
+  const userWithProfile = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { coachProfile: true },
+  });
+  if (!userWithProfile) {
+    return c.json({ error: "Authenticated user has not been registered yet." }, 404);
+  }
+  return c.json(userWithProfile);
 });
 
 router.get("/me/:firebaseUid", async (c) => {
@@ -69,8 +69,14 @@ router.get("/me/:firebaseUid", async (c) => {
   if (unavailable) return unavailable;
 
   const prisma = getPrismaClient();
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid: c.req.param("firebaseUid") },
+  const firebaseUid = c.req.param("firebaseUid");
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { firebaseUid },
+        { authIdentities: { some: { firebaseUid } } },
+      ],
+    },
     include: { coachProfile: true },
   });
   if (!user) return c.json({ error: "Not found" }, 404);

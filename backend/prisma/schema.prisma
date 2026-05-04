@@ -10,6 +10,8 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   firebaseUid   String    @unique
+  normalizedEmail String?   @unique
+  normalizedPhone String?   @unique
   username      String    @unique
   displayName   String
   avatarUrl     String?
@@ -19,12 +21,37 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   activities    Activity[]
+  authIdentities AuthIdentity[]
   coachProfile  CoachProfile?
   activeTrainingPlan ActiveTrainingPlan?
   posts         Post[]
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
   reactions     Reaction[]
+}
+
+model AuthIdentity {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firebaseUid     String    @unique
+  providerId      String
+  signInProvider  String?
+  providerIds     String[]  @default([])
+
+  email           String?
+  normalizedEmail String?
+  emailVerified   Boolean   @default(false)
+  phoneNumber     String?
+  normalizedPhone String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([normalizedEmail])
+  @@index([normalizedPhone])
 }
 
 model CoachProfile {

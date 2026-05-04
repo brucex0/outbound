@@ -272,7 +272,8 @@ Keep `route` as JSON for the first implementation unless query requirements forc
 Implementation target:
 
 - add auth middleware that verifies Firebase ID tokens with `firebase-admin`
-- attach `firebaseUid` and internal `userId` to request context
+- attach Firebase identity metadata to request context and resolve it to an internal `User`
+- keep `AuthIdentity` rows for each Firebase UID/provider combination, with normalized email and phone indexes for account linking
 - introduce authenticated endpoints that no longer take `userId` in the path for self-service routes
 
 Preferred route style:

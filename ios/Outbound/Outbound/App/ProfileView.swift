@@ -148,6 +148,28 @@ private struct SettingsView: View {
                     Text(authStore.backendDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    if !authStore.connectedProviderLabels.isEmpty {
+                        LabeledContent(
+                            "Sign-in methods",
+                            value: authStore.connectedProviderLabels.joined(separator: ", ")
+                        )
+                    }
+
+                    if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isGoogleLinked {
+                        Button {
+                            Task { await authStore.connectGoogleAccount() }
+                        } label: {
+                            Label("Connect Google", systemImage: "globe")
+                        }
+                        .disabled(authStore.isBusy)
+                    }
+
+                    if let error = authStore.authError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 Section("Coach") {

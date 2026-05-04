@@ -28,6 +28,7 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - When Firebase is configured, both routes authenticate through Firebase Email/Password.
 - Google sign-in uses Firebase Auth's hosted OAuth flow for `google.com`, so the app can use the existing Firebase callback scheme instead of a separate native Google Sign-In SDK callback.
 - When a user signs up with a phone number, the app normalizes the digits and stores them as an internal alias email of the form `phone.<digits>@users.outbound.local`.
+- The backend stores Firebase identities separately from app users. `AuthIdentity` records the Firebase UID, provider IDs, verified email, and normalized phone values so Google, email, and phone-password flows can resolve to the same Outbound user when Firebase reports the same identity.
 - When Firebase is not configured, the auth screen now blocks account creation and sign-in instead of silently falling back to local-only accounts.
 - This keeps sign-in compatible with Firebase Auth on a personal Apple developer setup, without requiring Apple Sign In or SMS-based phone verification.
 

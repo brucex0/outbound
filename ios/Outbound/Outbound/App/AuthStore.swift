@@ -33,16 +33,23 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    struct PendingFederatedLink: Equatable {
+        let email: String
+        let providerName: String
+    }
+
     @Published var isAuthenticated = false
     @Published var isFirebaseConfigured = FirebaseBootstrap.isConfigured
     @Published var isBusy = false
     @Published var authError: String?
     @Published var user: FirebaseAuth.User?
     @Published var localSessionLabel: String?
+    @Published private(set) var pendingFederatedLink: PendingFederatedLink?
     @Published private(set) var backend: Backend = .local
 
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private let localCredentialStore: LocalCredentialStore
+    private var pendingFederatedCredential: AuthCredential?
 
     static var currentUserId: String? {
         guard FirebaseBootstrap.isConfigured else { return nil }
@@ -86,10 +93,38 @@ final class AuthStore: ObservableObject {
                 return Self.displayIdentifier(fromStoredEmail: email)
             }
 
+            if let providerEmail = user.providerData.compactMap(\.email).first {
+                return Self.displayIdentifier(fromStoredEmail: providerEmail)
+            }
+
             return user.phoneNumber
         }
 
         return localSessionLabel
+    }
+
+    var connectedProviderLabels: [String] {
+        guard let user else {
+            return backend == .local ? ["Local"] : []
+        }
+
+        let providerIDs = Set(user.providerData.map(\.providerID))
+        var labels: [String] = []
+        if providerIDs.contains("google.com") {
+            labels.append("Google")
+        }
+        if providerIDs.contains("password") {
+            labels.append(Self.isPhoneAlias(user.email) ? "Phone" : "Email")
+        }
+        if providerIDs.contains("phone") {
+            labels.append("Phone")
+        }
+
+        return labels.isEmpty ? ["Firebase"] : labels
+    }
+
+    var isGoogleLinked: Bool {
+        user?.providerData.contains { $0.providerID == "google.com" } == true
     }
 
     var backendDescription: String {
@@ -107,6 +142,8 @@ final class AuthStore: ObservableObject {
         user = nil
         authError = nil
         localSessionLabel = label
+        pendingFederatedLink = nil
+        pendingFederatedCredential = nil
         APIClient.shared.setToken(nil)
     }
 
@@ -117,6 +154,8 @@ final class AuthStore: ObservableObject {
             user = nil
             localSessionLabel = nil
             authError = nil
+            pendingFederatedLink = nil
+            pendingFederatedCredential = nil
             localCredentialStore.setActiveAccount(nil)
             APIClient.shared.setToken(nil)
             return
@@ -128,6 +167,8 @@ final class AuthStore: ObservableObject {
         user = nil
         localSessionLabel = nil
         authError = nil
+        pendingFederatedLink = nil
+        pendingFederatedCredential = nil
         APIClient.shared.setToken(nil)
     }
 
@@ -146,16 +187,17 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             backend = .firebase
+            let credentialEmail = identifier.normalizedCredentialEmail
             let result = try await Auth.auth().signIn(
-                withEmail: identifier.normalizedCredentialEmail,
+                withEmail: credentialEmail,
                 password: password
             )
+            let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(
+                after: result,
+                signedInEmail: credentialEmail
+            )
 
-            user = result.user
-            isAuthenticated = true
-            localSessionLabel = nil
-            let token = try? await result.user.getIDToken()
-            APIClient.shared.setToken(token)
+            await completeSignIn(with: resolvedResult)
         } catch {
             authError = Self.userFacingMessage(for: error)
         }
@@ -174,19 +216,47 @@ final class AuthStore: ObservableObject {
 
             backend = .firebase
             print("[Outbound][Auth] Starting Google sign-in flow.")
-            let provider = OAuthProvider.provider(providerID: .google)
-            provider.scopes = ["email"]
-            provider.customParameters = ["prompt": "select_account"]
-
+            let provider = Self.makeGoogleProvider()
             let result = try await Auth.auth().signIn(with: provider, uiDelegate: nil)
             print("[Outbound][Auth] Google sign-in completed for user: \(result.user.uid)")
-            user = result.user
-            isAuthenticated = true
-            localSessionLabel = nil
-            let token = try? await result.user.getIDToken()
-            APIClient.shared.setToken(token)
+            pendingFederatedLink = nil
+            pendingFederatedCredential = nil
+            await completeSignIn(with: result)
         } catch {
             print("[Outbound][Auth] Google sign-in failed: \(error.localizedDescription)")
+            if !storePendingFederatedLink(from: error, providerName: "Google") {
+                authError = Self.userFacingMessage(for: error)
+            }
+        }
+    }
+
+    func connectGoogleAccount() async {
+        guard isFirebaseConfigured else {
+            authError = "Google sign-in is only available when Firebase is configured for this build."
+            return
+        }
+
+        guard let currentUser = Auth.auth().currentUser else {
+            authError = "Sign in before connecting Google."
+            return
+        }
+
+        guard !isGoogleLinked else {
+            authError = nil
+            user = currentUser
+            return
+        }
+
+        do {
+            isBusy = true
+            authError = nil
+            defer { isBusy = false }
+
+            let result = try await currentUser.link(with: Self.makeGoogleProvider(), uiDelegate: nil)
+            print("[Outbound][Auth] Google linked for user: \(result.user.uid)")
+            await completeSignIn(with: result, forcingTokenRefresh: true)
+        } catch {
+            print("[Outbound][Auth] Google link failed: \(error.localizedDescription)")
             authError = Self.userFacingMessage(for: error)
         }
     }
@@ -221,14 +291,82 @@ final class AuthStore: ObservableObject {
                 password: password
             )
 
-            user = result.user
-            isAuthenticated = true
-            localSessionLabel = nil
-            let token = try? await result.user.getIDToken()
-            APIClient.shared.setToken(token)
+            await completeSignIn(with: result)
         } catch {
             authError = Self.userFacingMessage(for: error)
         }
+    }
+
+    private static func makeGoogleProvider() -> OAuthProvider {
+        let provider = OAuthProvider.provider(providerID: .google)
+        provider.scopes = ["email", "profile"]
+        provider.customParameters = ["prompt": "select_account"]
+        return provider
+    }
+
+    private func completeSignIn(
+        with result: AuthDataResult,
+        forcingTokenRefresh: Bool = false
+    ) async {
+        user = result.user
+        isAuthenticated = true
+        localSessionLabel = nil
+        pendingFederatedLink = nil
+        pendingFederatedCredential = nil
+        let token = try? await result.user.getIDToken(forcingRefresh: forcingTokenRefresh)
+        APIClient.shared.setToken(token)
+    }
+
+    private func linkPendingFederatedCredentialIfNeeded(
+        after result: AuthDataResult,
+        signedInEmail: String
+    ) async throws -> AuthDataResult {
+        guard let pendingFederatedLink, let pendingFederatedCredential else {
+            return result
+        }
+
+        guard Self.normalizedEmail(pendingFederatedLink.email) == signedInEmail else {
+            throw AuthInputError.pendingLinkEmailMismatch(pendingFederatedLink.email)
+        }
+
+        if result.user.providerData.contains(where: { $0.providerID == pendingFederatedCredential.provider }) {
+            self.pendingFederatedLink = nil
+            self.pendingFederatedCredential = nil
+            return result
+        }
+
+        do {
+            let linkedResult = try await result.user.link(with: pendingFederatedCredential)
+            _ = try? await linkedResult.user.getIDToken(forcingRefresh: true)
+            self.pendingFederatedLink = nil
+            self.pendingFederatedCredential = nil
+            return linkedResult
+        } catch {
+            if Self.authErrorCode(for: error) == .providerAlreadyLinked {
+                self.pendingFederatedLink = nil
+                self.pendingFederatedCredential = nil
+                return result
+            }
+
+            throw error
+        }
+    }
+
+    @discardableResult
+    private func storePendingFederatedLink(from error: Error, providerName: String) -> Bool {
+        guard
+            Self.authErrorCode(for: error) == .accountExistsWithDifferentCredential,
+            let nsError = error as NSError?,
+            let credential = nsError.userInfo[AuthErrorUserInfoUpdatedCredentialKey] as? AuthCredential,
+            let email = nsError.userInfo[AuthErrorUserInfoEmailKey] as? String
+        else {
+            return false
+        }
+
+        pendingFederatedCredential = credential
+        pendingFederatedLink = PendingFederatedLink(email: email, providerName: providerName)
+        self.authError = "Enter the password for \(email) once to connect \(providerName) to the same Outbound account."
+        return true
     }
 
     private static func parseIdentifier(_ rawValue: String) throws -> AuthIdentifier {
@@ -266,6 +404,16 @@ final class AuthStore: ObservableObject {
         let parts = value.split(separator: "@")
         guard parts.count == 2 else { return false }
         return parts[1].contains(".")
+    }
+
+    private static func normalizedEmail(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func isPhoneAlias(_ email: String?) -> Bool {
+        guard let email else { return false }
+        let normalized = normalizedEmail(email)
+        return normalized.hasPrefix("phone.") && normalized.hasSuffix("@users.outbound.local")
     }
 
     private static func displayIdentifier(fromStoredEmail email: String) -> String {
@@ -313,12 +461,24 @@ final class AuthStore: ObservableObject {
                 return "Google sign-in could not be completed. Try again in a moment."
             case .accountExistsWithDifferentCredential:
                 return "An account already exists for that email with a different sign-in method."
+            case .providerAlreadyLinked:
+                return "Google is already connected to this account."
+            case .credentialAlreadyInUse:
+                return "That Google account is already connected to another Outbound sign-in."
             default:
                 break
             }
         }
 
         return error.localizedDescription
+    }
+
+    private static func authErrorCode(for error: Error) -> AuthErrorCode? {
+        guard let authError = error as NSError?, authError.domain == AuthErrorDomain else {
+            return nil
+        }
+
+        return AuthErrorCode(rawValue: authError.code)
     }
 }
 
@@ -328,6 +488,7 @@ private enum AuthInputError: LocalizedError {
     case invalidPhone
     case passwordTooShort
     case passwordsDoNotMatch
+    case pendingLinkEmailMismatch(String)
 
     var errorDescription: String? {
         switch self {
@@ -341,6 +502,8 @@ private enum AuthInputError: LocalizedError {
             return "Password must be at least 6 characters."
         case .passwordsDoNotMatch:
             return "Passwords do not match."
+        case let .pendingLinkEmailMismatch(email):
+            return "Sign in as \(email) to finish connecting this provider."
         }
     }
 }
