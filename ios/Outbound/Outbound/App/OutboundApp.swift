@@ -17,6 +17,7 @@ struct OutboundApp: App {
     @StateObject private var musicStore = MusicStore()
     @StateObject private var recognitionStore = RecognitionStore()
     @StateObject private var measurementPreferences = MeasurementPreferences()
+    @StateObject private var onboardingStore = OnboardingStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -40,6 +41,7 @@ struct OutboundApp: App {
                     .environmentObject(musicStore)
                     .environmentObject(recognitionStore)
                     .environmentObject(measurementPreferences)
+                    .environmentObject(onboardingStore)
                     .task {
                         await coachStore.syncIfNeeded()
                         await activityStore.syncPendingActivitiesIfNeeded()
