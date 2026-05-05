@@ -132,6 +132,7 @@ private struct SettingsView: View {
     @EnvironmentObject var healthImportStore: HealthImportStore
     @EnvironmentObject var musicStore: MusicStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var onboardingStore: OnboardingStore
 
     let initialFocusSection: SettingsFocusSection?
 
@@ -219,6 +220,20 @@ private struct SettingsView: View {
 
                     LabeledContent("Version", value: "Prototype")
                 }
+
+                #if DEBUG
+                Section("Debug") {
+                    Button {
+                        onboardingStore.restartForDebug()
+                    } label: {
+                        Label("Run Onboarding Flow", systemImage: "sparkles")
+                    }
+
+                    Text("Presents the new-user flow again without signing out.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                #endif
 
                 Section {
                     Button("Sign Out", role: .destructive) {

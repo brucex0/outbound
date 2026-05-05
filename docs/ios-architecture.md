@@ -20,6 +20,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/AuthStore.swift`: Firebase auth wrapper for provider-backed Apple and Google sign-in. Apple uses native `AuthenticationServices` with a nonce-backed Firebase credential; Google uses Firebase Auth's hosted OAuth flow. Existing-email provider conflicts keep the pending credential and require the user to prove the already-linked provider before accounts are connected.
 - `App/AuthView.swift`: login UI for Apple and Google provider sign-in only. Email/password and phone/password login are intentionally not user-facing.
 - `App/MainTabView.swift`: top-level shell with a lightweight floating `Me` / `Social` pill switcher, the floating activity button shown on both sections, a three-state assistant shell (`minimized`, `normal`, and expanded sheet), and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
+- `App/OnboardingStore.swift` and `App/OnboardingFlowView.swift`: local-first new-user onboarding. The store tracks account-scoped completion/profile state in `UserDefaults`; the view gathers intent, sport, starting point, first-session length, and weekly rhythm, then can launch the personalized first session through `MainTabView`.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
 ## Recording
@@ -64,6 +65,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/OutboundApp.swift`: now also defines training plan response models and `TrainingPlanStore`, which fetches server-owned plan state through `APIClient`, caches the last active plan/week/today payload for offline rendering, and falls back to local deterministic rules when the API is unavailable.
 - `App/TrainingPlanLibrary.swift`: offline fallback structured plan library. It stores `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` content, including imported MIT Couch-to-5K data, imported MIT `time-to-run` base and half-marathon plans, and authored 10K, 10 mile, half marathon, consistency, and comeback plans. The backend-exported copy is now the source of truth for authenticated recommendation and Today flows.
 - `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, which drives the Me-tab spark card, compact `Now` card for either today's plan or coach recommendation, readiness-aware copy, momentum strip, and the local engine that derives motivation state and finish reflections.
+- `docs/new-user-onboarding.md`: product and implementation notes for first-win onboarding and the DEBUG-only Settings replay trigger.
 - `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Me's motivation surface, and goal-aware post-run reflection notes.
 
 ## Assistant
@@ -80,7 +82,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, Apple Health, Apple Music, and sign-out.
+- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, Apple Health, Apple Music, DEBUG-only onboarding replay, and sign-out.
 
 ## Integrations
 

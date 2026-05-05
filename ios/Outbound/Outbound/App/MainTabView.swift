@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
@@ -90,6 +93,24 @@ struct MainTabView: View {
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
+        .fullScreenCover(isPresented: $onboardingStore.isPresented) {
+            OnboardingFlowView { shouldStartSession in
+                let profile = onboardingStore.complete()
+                applyOnboardingProfile(profile)
+                if shouldStartSession {
+                    presentActivity(intent: profile.suggestedSession.intent)
+                }
+            }
+            .environmentObject(onboardingStore)
+            .environmentObject(coachCatalog)
+            .interactiveDismissDisabled()
+        }
+        .onAppear {
+            prepareOnboarding()
+        }
+        .onChange(of: onboardingIdentity) { _, _ in
+            prepareOnboarding()
+        }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil else { return }
             selectedTab = .me
@@ -98,6 +119,10 @@ struct MainTabView: View {
                 isActivityVisible = false
             }
         }
+    }
+
+    private var onboardingIdentity: String {
+        authStore.user?.uid ?? authStore.localSessionLabel ?? "local"
     }
 
     @ViewBuilder
@@ -198,6 +223,14 @@ struct MainTabView: View {
             activityElapsedSeconds = 0
             isActivityVisible = false
         }
+    }
+
+    private func prepareOnboarding() {
+        onboardingStore.prepareForAuthenticatedUser(identity: onboardingIdentity)
+    }
+
+    private func applyOnboardingProfile(_ profile: OnboardingProfile) {
+        dailyCheckInStore.select(profile.suggestedReadiness)
     }
 }
 
