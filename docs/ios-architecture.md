@@ -19,7 +19,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after hosted Google sign-in.
 - `App/AuthStore.swift`: Firebase auth wrapper for provider-backed Apple and Google sign-in. Apple uses native `AuthenticationServices` with a nonce-backed Firebase credential; Google uses Firebase Auth's hosted OAuth flow. Existing-email provider conflicts keep the pending credential and require the user to prove the already-linked provider before accounts are connected.
 - `App/AuthView.swift`: login UI for Apple and Google provider sign-in only. Email/password and phone/password login are intentionally not user-facing.
-- `App/MainTabView.swift`: top-level shell with a lightweight floating `Me` / `Social` pill switcher, the floating activity button shown on both sections, a three-state assistant shell (`minimized`, `normal`, and expanded sheet), and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
+- `App/MainTabView.swift`: top-level shell with a lightweight floating `Me` / `Social` pill switcher, a separate sparkles assistant launcher to the left of that switcher, the floating activity button shown on both sections, a two-state assistant shell (minimized icon and expanded sheet), and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `App/OnboardingStore.swift` and `App/OnboardingFlowView.swift`: local-first new-user onboarding. The store tracks account-scoped completion/profile state in `UserDefaults`; the view gathers intent, sport, starting point, first-session length, and weekly rhythm, then can launch the personalized first session through `MainTabView`.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
@@ -72,7 +72,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, and the optional Apple Foundation Models responder.
 - `Core/APIClient.swift`: assistant chat transport to the backend, plus existing coach/activity endpoints.
-- `App/MainTabView.swift`: persistent bottom assistant shell for the main tabs, including minimized floating-button, normal hint row, and expanded assistant presentation states.
+- `App/MainTabView.swift`: persistent bottom assistant launcher for the main tabs, including the standalone minimized icon and expanded assistant presentation states.
 - `Activity/RecordView.swift`: compact live-session assistant entry so the assistant stays reachable without overwhelming the camera/map experience.
 - `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, and planning.
 - `backend/src/routes/assistant.ts`: backend assistant chat route that currently uses a BoatShare-style DeepSeek integration.

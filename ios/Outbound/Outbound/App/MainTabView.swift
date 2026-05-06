@@ -12,7 +12,6 @@ struct MainTabView: View {
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
-    @State private var assistantChromeState: AssistantChromeState = .normal
     @State private var isAssistantPresented = false
 
     var body: some View {
@@ -35,38 +34,17 @@ struct MainTabView: View {
         }
         .overlay(alignment: .bottom) {
             if !isActivityVisible {
-                CompactTabSwitcher(
-                    selectedTab: $selectedTab,
-                    accentColor: assistantAccentColor
-                )
+                HStack(spacing: 12) {
+                    AssistantLauncherButton(accentColor: assistantAccentColor) {
+                        isAssistantPresented = true
+                    }
+
+                    CompactTabSwitcher(
+                        selectedTab: $selectedTab,
+                        accentColor: assistantAccentColor
+                    )
+                }
                 .offset(y: 10)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if shouldShowAssistantBar {
-                AssistantBar(
-                    hint: assistantHint,
-                    accentColor: assistantAccentColor
-                ) {
-                    isAssistantPresented = true
-                } onMinimize: {
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        assistantChromeState = .minimized
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 52)
-                .zIndex(2)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if shouldShowAssistantButton {
-                AssistantMinimizedButton(accentColor: assistantAccentColor) {
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        assistantChromeState = .normal
-                    }
-                }
-                .padding(.bottom, 46)
                 .zIndex(2)
             }
         }
@@ -114,7 +92,6 @@ struct MainTabView: View {
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil else { return }
             selectedTab = .me
-            assistantChromeState = .normal
             if isActivityVisible {
                 isActivityVisible = false
             }
@@ -160,31 +137,8 @@ struct MainTabView: View {
         !isActivityVisible
     }
 
-    private var shouldShowAssistantBar: Bool {
-        !isActivityVisible && assistantChromeState == .normal
-    }
-
-    private var shouldShowAssistantButton: Bool {
-        !isActivityVisible && assistantChromeState == .minimized
-    }
-
     private var activityButtonBottomPadding: CGFloat {
-        if shouldShowAssistantBar { return 154 }
-        if shouldShowAssistantButton { return 112 }
-        return 82
-    }
-
-    private var assistantHint: String {
-        if activitySessionState != .idle {
-            return "Your session is still live. Need help deciding what to do next?"
-        }
-
-        switch selectedTab {
-        case .me:
-            return "Want a simple plan for today?"
-        case .social:
-            return "Find the right social loop."
-        }
+        82
     }
 
     private var assistantAccentColor: Color {
@@ -234,11 +188,6 @@ struct MainTabView: View {
     }
 }
 
-private enum AssistantChromeState {
-    case minimized
-    case normal
-}
-
 private enum AppTab {
     case me
     case social
@@ -272,51 +221,7 @@ private enum AppTab {
     }
 }
 
-private struct AssistantBar: View {
-    let hint: String
-    let accentColor: Color
-    let onExpand: () -> Void
-    let onMinimize: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onExpand) {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(accentColor)
-                        .frame(width: 24, height: 24)
-
-                    Text(hint)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .multilineTextAlignment(.leading)
-
-                    Spacer(minLength: 0)
-                }
-            }
-            .buttonStyle(.plain)
-
-            Button(action: onMinimize) {
-                Image(systemName: "minus.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay {
-            Capsule()
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
-        }
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
-    }
-}
-
-private struct AssistantMinimizedButton: View {
+private struct AssistantLauncherButton: View {
     let accentColor: Color
     let onTap: () -> Void
 
@@ -334,6 +239,7 @@ private struct AssistantMinimizedButton: View {
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+        .accessibilityLabel("Open assistant")
     }
 }
 

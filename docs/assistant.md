@@ -12,48 +12,43 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ## UX Principles
 
 - Always reachable: the assistant should be visible everywhere in some form.
-- Context-aware: collapsed hints should change with the current screen or flow.
-- Low-noise: default to passive or contextual presence, not constant interruption.
+- Context-aware: the expanded assistant should use the current screen or flow when suggesting next steps.
+- Low-noise: default to a passive icon, not constant interruption.
 - Coach-adjacent: useful and motivating, but distinct from the live `VirtualCoach`.
 - Typed outcomes over generic chat: prefer navigation, explanation, planning, and suggestions over long free-form responses.
 
 ## Shell Model
 
-- Primary shell is a persistent bottom assistant bar in the main app chrome.
-- The bar stays collapsed by default and expands into a richer assistant surface on demand.
+- Primary shell is a standalone sparkles icon in the main app chrome.
+- The icon sits to the left of the floating tab switcher as a separate control, not inside a shared navigation container.
+- The icon is the minimized state and expands into a richer assistant surface on demand.
 - During live recording, the assistant switches to a compact entry mode so it does not compete with the camera/map workout UI.
 
 ### Presence Levels
 
-- Passive: visible, minimal, waiting.
-- Contextual: visible with one short screen-aware hint.
-- Active: expanded conversation or guided workflow.
+- Minimized: visible as the standalone sparkles icon.
+- Expanded: conversation or guided workflow with screen-aware quick starts.
 
 ## Screen Map
 
 ### Main surfaces
 
 - Me:
-  - default hint examples: `Want a simple plan for today?`, `Help me decide what to do`
   - primary jobs: planning, discovery, goal setup, progress explanation
 - Social:
-  - default hint examples: `Find the right social loop`, `What can I do here?`
   - primary jobs: navigation, feature explanation, brainstorming, social suggestions
 - Settings / integrations:
-  - default hint examples: `Need help setting this up?`, `What does this do?`
   - primary jobs: support, permission explanation, setup troubleshooting
 
 ### Activity-adjacent surfaces
 
 - Record start / pre-activity:
-  - hint examples: `Need help choosing a session?`, `Turn this into a quick plan`
   - primary jobs: suggested-session help, simple planning
 - Live recording:
   - compact-only mode
   - primary jobs: lightweight help only
   - do not introduce a large, distracting chat surface by default
 - Post-run / reflection:
-  - hint examples: `Reflect on this session`, `What should I do next?`
   - primary jobs: summary, progress framing, recovery or next-step suggestions
 
 ## V1 Action Model
@@ -68,7 +63,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Current Implementation Shape
 
-- `MainTabView` owns the persistent assistant shell for the main app tabs.
+- `MainTabView` owns the persistent assistant launcher for the main app tabs.
 - `RecordView` owns the compact live-session assistant entry.
 - `AssistantView` remains the expanded assistant surface with:
   - a short hero summary
@@ -98,7 +93,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 - `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and optional Apple Foundation Models responder.
 - `ios/Outbound/Outbound/Core/APIClient.swift`: assistant chat request/response transport to the backend.
-- `ios/Outbound/Outbound/App/MainTabView.swift`: persistent assistant shell, collapsed hints, and expanded assistant presentation from the main app tabs.
+- `ios/Outbound/Outbound/App/MainTabView.swift`: standalone assistant launcher and expanded assistant presentation from the main app tabs.
 - `ios/Outbound/Outbound/Activity/RecordView.swift`: compact live-session assistant entry.
 - `ios/Outbound/Outbound/App/ProfileView.swift`: assistant screen, quick starts, message bubbles, and composer.
 - `backend/src/routes/assistant.ts`: assistant chat endpoint.
