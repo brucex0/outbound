@@ -56,10 +56,11 @@ struct ProfileView: View {
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestinationView(for: target)
             }
+            .onAppear {
+                handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
+            }
             .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
-                guard let target else { return }
-                navigationPath.append(target)
-                appNavigationStore.consume()
+                handlePendingAssistantTarget(target)
             }
         }
     }
@@ -128,6 +129,12 @@ struct ProfileView: View {
             ActivityHistoryView()
                 .environmentObject(activityStore)
         }
+    }
+
+    private func handlePendingAssistantTarget(_ target: AssistantNavigationTarget?) {
+        guard let target else { return }
+        navigationPath.append(target)
+        appNavigationStore.consume()
     }
 }
 
