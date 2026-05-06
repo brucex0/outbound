@@ -12,6 +12,7 @@ struct ProfileView: View {
     @EnvironmentObject var musicStore: MusicStore
     @EnvironmentObject var recognitionStore: RecognitionStore
 
+    let bottomContentInset: CGFloat
     let onStartSuggestion: (SuggestedSession) -> Void
 
     @State private var navigationPath = NavigationPath()
@@ -26,6 +27,11 @@ struct ProfileView: View {
                     recentActivitySection
                 }
                 .padding()
+            }
+            .safeAreaInset(edge: .bottom) {
+                Color.clear
+                    .frame(height: bottomContentInset)
+                    .allowsHitTesting(false)
             }
             .navigationTitle("Me")
             .toolbar {

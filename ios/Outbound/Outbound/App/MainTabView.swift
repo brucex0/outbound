@@ -108,12 +108,13 @@ struct MainTabView: View {
             switch selectedTab {
             case .me:
                 ProfileView(
+                    bottomContentInset: bottomChromeContentInset,
                     onStartSuggestion: { suggestion in
                         presentActivity(intent: suggestion.intent)
                     }
                 )
             case .social:
-                ActivityFeedView()
+                ActivityFeedView(bottomContentInset: bottomChromeContentInset)
             }
         }
         .simultaneousGesture(
@@ -139,6 +140,10 @@ struct MainTabView: View {
 
     private var activityButtonBottomPadding: CGFloat {
         82
+    }
+
+    private var bottomChromeContentInset: CGFloat {
+        132
     }
 
     private var assistantAccentColor: Color {

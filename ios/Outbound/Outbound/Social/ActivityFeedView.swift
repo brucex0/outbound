@@ -3,6 +3,7 @@ import SwiftUI
 struct ActivityFeedView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
+    let bottomContentInset: CGFloat
     @State private var selectedScope: SocialFeedScope = .squad
     @State private var cheeredPostIDs: Set<String> = ["maya-waterfront"]
     @State private var showingRelayComposer = false
@@ -39,6 +40,11 @@ struct ActivityFeedView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
+            }
+            .safeAreaInset(edge: .bottom) {
+                Color.clear
+                    .frame(height: bottomContentInset)
+                    .allowsHitTesting(false)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Social")
