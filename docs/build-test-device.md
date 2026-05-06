@@ -11,6 +11,9 @@ Open this when validating changes, installing on device, editing signing setting
 - Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`, which includes Sign in with Apple (`com.apple.developer.applesignin`).
 - Use a paid Apple Developer team before validating Apple provider sign-in on device or shipping.
 - Do not re-add `aps-environment`, `com.apple.developer.healthkit`, or `com.apple.developer.healthkit.access` unless switching to a paid team that supports Push Notifications and HealthKit.
+- Device installs still require an Apple Development identity and iOS Development provisioning profiles for both `xhstudio.Outbound` and `xhstudio.Outbound.OutboundLiveActivityExtension`.
+- To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for team `JGNGM4YRX5`, use Manage Certificates to create an Apple Development certificate if needed, then select both the `Outbound` app target and `OutboundLiveActivityExtension` target and keep Automatically manage signing enabled with team `JGNGM4YRX5`.
+- If Xcode offers to register `Bruce main` or create/download provisioning profiles during the next build, allow it.
 
 ## Device IDs
 
@@ -49,6 +52,7 @@ Preferred shortcut:
 ```
 
 The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
+For install builds, it reports missing local signing inputs and still runs `xcodebuild -allowProvisioningUpdates` so Xcode can refresh certificates and provisioning profiles from the signed-in account.
 
 If Xcode itself shows stale package errors for dependencies that are no longer in the project, clear only Outbound's local DerivedData entries and reopen the project:
 
@@ -68,6 +72,8 @@ Build without installing:
 ```sh
 ./scripts/build-install-bruce-main.sh --build-only
 ```
+
+This mode disables code signing with `CODE_SIGNING_ALLOWED=NO`, so it is useful for compile validation even when Xcode is not signed into an Apple Developer account. The output app is not installable on a physical device.
 
 Build, install, and launch:
 
