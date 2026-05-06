@@ -2,50 +2,6 @@ import Foundation
 import AVFoundation
 import Combine
 
-@MainActor
-private final class AudioSessionCoordinator {
-    static let shared = AudioSessionCoordinator()
-
-    private let session = AVAudioSession.sharedInstance()
-    private var activeCoachUtterances = 0
-
-    private init() {}
-
-    func beginCoachSpeech() {
-        activeCoachUtterances += 1
-        guard activeCoachUtterances == 1 else { return }
-
-        do {
-            try session.setCategory(
-                .playback,
-                mode: .voicePrompt,
-                options: [
-                    .allowAirPlay,
-                    .allowBluetooth,
-                    .allowBluetoothA2DP,
-                    .mixWithOthers,
-                    .duckOthers
-                ]
-            )
-            try session.setActive(true)
-        } catch {
-            activeCoachUtterances = 0
-        }
-    }
-
-    func endCoachSpeech() {
-        guard activeCoachUtterances > 0 else { return }
-        activeCoachUtterances -= 1
-        guard activeCoachUtterances == 0 else { return }
-
-        do {
-            try session.setActive(false, options: [.notifyOthersOnDeactivation])
-        } catch {
-            activeCoachUtterances = 0
-        }
-    }
-}
-
 // On-device real-time coach that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
@@ -58,7 +14,6 @@ final class VirtualCoach: NSObject, ObservableObject {
     private let provider: any SessionAnalysisProvider
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = AVSpeechSynthesizer()
-    private let audioSessionCoordinator = AudioSessionCoordinator.shared
     private var profile: CoachProfile?
     private var persona: CoachPersona?
     private var sessionIntent: SessionIntent?
@@ -78,6 +33,9 @@ final class VirtualCoach: NSObject, ObservableObject {
         self.provider = selectedProvider
         providerName = selectedProvider.displayName
         super.init()
+        // Apple documents this path as the synthesizer creating its own short-
+        // lived session and automatically managing ducking and interruptions.
+        synthesizer.usesApplicationAudioSession = false
         synthesizer.delegate = self
     }
 
@@ -109,7 +67,6 @@ final class VirtualCoach: NSObject, ObservableObject {
         provider.endSession()
         fallbackProvider.endSession()
         synthesizer.stopSpeaking(at: .immediate)
-        audioSessionCoordinator.endCoachSpeech()
     }
 
     func ingest(_ snapshot: ActiveSessionSnapshot) {
@@ -189,7 +146,6 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func speak(_ analysis: SessionAnalysisResult) {
-        audioSessionCoordinator.beginCoachSpeech()
         let utterance = AVSpeechUtterance(string: spokenText(for: analysis.message))
         if let voice = persona?.voice {
             utterance.voice = selectedSpeechVoice(for: voice)
@@ -297,14 +253,12 @@ extension VirtualCoach: AVSpeechSynthesizerDelegate {
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         Task { @MainActor [weak self] in
-            self?.audioSessionCoordinator.endCoachSpeech()
             self?.speechEventHandler?(.didFinish)
         }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor [weak self] in
-            self?.audioSessionCoordinator.endCoachSpeech()
             self?.speechEventHandler?(.didFinish)
         }
     }
