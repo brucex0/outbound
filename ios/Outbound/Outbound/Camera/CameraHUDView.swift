@@ -60,6 +60,7 @@ struct CameraHUDView: View {
 
                     SessionStatusCard(
                         state: recorder.state,
+                        isCompact: true,
                         intent: intent,
                         elapsedText: recorder.elapsedSeconds.formatted(),
                         elapsedSeconds: recorder.elapsedSeconds,
@@ -445,6 +446,7 @@ struct SessionStatusCard: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
     let state: RecordingState
+    let isCompact: Bool
     let intent: SessionIntent?
     let elapsedText: String
     let elapsedSeconds: Int
@@ -468,12 +470,20 @@ struct SessionStatusCard: View {
     let onFinish: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            topRow
-            extraCountdownStrip
-            controlMetricsLayout
+        Group {
+            if isCompact {
+                compactRow
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+            } else {
+                VStack(spacing: 10) {
+                    topRow
+                    extraCountdownStrip
+                    controlMetricsLayout
+                }
+                .padding(12)
+            }
         }
-        .padding(12)
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
@@ -482,6 +492,34 @@ struct SessionStatusCard: View {
         }
         .shadow(color: .black.opacity(0.24), radius: 18, y: 8)
         .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private var compactRow: some View {
+        HStack(spacing: 10) {
+            SessionMetricColumn(value: displayedElapsedText, label: nil)
+                .frame(maxWidth: .infinity)
+
+            primaryControl(size: 46)
+                .fixedSize()
+
+            if state == .paused {
+                compactFinishControl
+                    .fixedSize()
+            }
+
+            SessionMetricColumn(value: displayedDistanceText, label: nil)
+                .frame(maxWidth: .infinity)
+        }
+        .frame(height: 50)
+    }
+
+    private var compactFinishControl: some View {
+        Button(action: onFinish) {
+            Image(systemName: "flag.checkered")
+                .font(.callout.weight(.bold))
+        }
+        .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 40))
+        .accessibilityLabel("Finish activity")
     }
 
     private var topRow: some View {
@@ -528,7 +566,7 @@ struct SessionStatusCard: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                primaryControl
+                primaryControl()
                     .fixedSize()
 
                 VStack(spacing: 8) {
@@ -550,7 +588,7 @@ struct SessionStatusCard: View {
 
                 HStack(spacing: 10) {
                     SessionMetricColumn(value: elevationText, label: elevationLabel)
-                    primaryControl
+                    primaryControl()
                     SessionMetricColumn(value: heartRateText, label: "HR")
                 }
             }
@@ -577,28 +615,28 @@ struct SessionStatusCard: View {
     }
 
     @ViewBuilder
-    private var primaryControl: some View {
+    private func primaryControl(size: CGFloat = 58) -> some View {
         switch state {
         case .idle:
             Button(action: onStart) {
                 Image(systemName: "record.circle.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
             .accessibilityLabel("Start activity")
         case .active:
             Button(action: onPause) {
                 Image(systemName: "pause.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
             .accessibilityLabel("Pause activity")
         case .paused:
             Button(action: onResume) {
                 Image(systemName: "play.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: 58))
+            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
             .accessibilityLabel("Resume activity")
         }
     }

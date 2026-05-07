@@ -65,6 +65,7 @@ struct LiveMapView: View {
 
                 SessionStatusCard(
                     state: recorder.state,
+                    isCompact: false,
                     intent: intent,
                     elapsedText: recorder.elapsedSeconds.formatted(),
                     elapsedSeconds: recorder.elapsedSeconds,
