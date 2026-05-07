@@ -264,14 +264,14 @@ Card anatomy:
 Examples:
 
 ```text
-[ 5 min reset ]
-"Just loosen up and move."
+[ 25 min walk-run return ]
+"5 min walk, 6 x 1 min jog / 2 min walk, easy finish."
 
-[ 10 min easy run ]
-"Keep it relaxed. Build rhythm."
+[ 30 min easy run ]
+"Keep it conversational and leave a little in reserve."
 
-[ Fresh air walk ]
-"No pressure. Just get outside."
+[ 20 min brisk walk ]
+"Purposeful but comfortable walking."
 ```
 
 Behavior:
@@ -378,9 +378,9 @@ Example:
 
 [ Low energy ] [ Okay ] [ Ready ] [ Stressed ]
 
-[ 10 min easy run ]
-[ Fresh air walk ]
-[ Shakeout + photo ]
+[ 25 min walk-run return ]
+[ 30 min easy run ]
+[ 20 min brisk walk ]
 
 You're building rhythm.
 
@@ -430,8 +430,8 @@ Fresh start today?
 
 No catching up. Just reconnect.
 
-[ 5 min walk ]
-[ 10 min easy session ]
+[ 25 min walk-run return ]
+[ 20 min recovery walk ]
 ```
 
 Tone:

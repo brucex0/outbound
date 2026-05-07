@@ -295,7 +295,7 @@ Why this: You have recent consistency and readiness is good, so a small neuromus
 
 Avoid vague suggestion names:
 
-- `5 min reset`
+- `Tiny reset`
 - `Fresh vibe`
 - `Confidence lap`
 - `Repeat yesterday's vibe`

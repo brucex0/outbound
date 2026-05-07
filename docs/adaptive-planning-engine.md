@@ -432,7 +432,7 @@ export type TodayPlanningResponse = {
 
 ### Activity Suggestion Engine
 
-The Home `Now` card should be backed by a backend-owned suggestion endpoint, not local poetic labels such as `5 min reset`.
+The Home `Now` card should be backed by a backend-owned suggestion endpoint, not local poetic labels such as vague short resets.
 
 Route:
 

@@ -1222,131 +1222,102 @@ enum DailyMotivationEngine {
         readiness: DailyReadiness?,
         persona: CoachPersona
     ) -> [SuggestedSession] {
-        let sportLabel = persona.template.sport == .bike ? "ride" : "session"
+        let isBike = persona.template.sport == .bike
+        let sportLabel = isBike ? "ride" : "run"
+        let recoveryPrimary = SuggestedSession(
+            id: isBike ? "recovery-spin-25" : "recovery-walk-20",
+            sport: isBike ? .bike : .run,
+            title: isBike ? "25 min recovery spin" : "20 min recovery walk",
+            durationLabel: isBike ? "25 min" : "20 min",
+            activityLabel: isBike ? "recovery ride" : "walk",
+            framing: "Very easy aerobic movement.",
+            coachLine: "Keep this RPE 1-2. If it does not make you feel better, skip it.",
+            startLabel: isBike ? "Start ride" : "Start walk"
+        )
+        let walkRunReturn = SuggestedSession(
+            id: "walk-run-return-25",
+            sport: .run,
+            title: "25 min walk-run return",
+            durationLabel: "25 min",
+            activityLabel: "walk-run",
+            framing: "5 min walk, 6 x 1 min jog / 2 min walk, easy finish.",
+            coachLine: "This is a standard return-to-running dose: enough rhythm, not too much load.",
+            startLabel: "Start walk-run"
+        )
+        let easyAerobic = SuggestedSession(
+            id: isBike ? "easy-ride-35" : "easy-run-30",
+            sport: persona.template.sport,
+            title: isBike ? "35 min easy ride" : "30 min easy run",
+            durationLabel: isBike ? "35 min" : "30 min",
+            activityLabel: "easy \(sportLabel)",
+            framing: "Conversational aerobic work.",
+            coachLine: "Stay smooth and finish feeling like you could do a little more.",
+            startLabel: isBike ? "Start ride" : "Start run"
+        )
 
         switch phase {
         case .completedToday:
             return [
+                recoveryPrimary,
                 SuggestedSession(
-                    id: "recovery-reset",
-                    sport: persona.template.sport,
-                    title: "5 min reset",
-                    durationLabel: "5 min",
-                    activityLabel: "recovery \(sportLabel)",
-                    framing: "Keep it tiny. Stay loose.",
-                    coachLine: "This one is only about easing back into yourself.",
-                    startLabel: "Start reset"
-                ),
-                SuggestedSession(
-                    id: "fresh-air-loop",
-                    sport: persona.template.sport,
-                    title: "Fresh air loop",
-                    durationLabel: "10 min",
-                    activityLabel: "easy \(sportLabel)",
-                    framing: "Move lightly and clear the head.",
-                    coachLine: "No pressure here. Just a clean little reset if you want one.",
-                    startLabel: "Start easy loop"
+                    id: isBike ? "easy-spin-25" : "brisk-walk-20",
+                    sport: isBike ? .bike : .run,
+                    title: isBike ? "25 min easy spin" : "20 min brisk walk",
+                    durationLabel: isBike ? "25 min" : "20 min",
+                    activityLabel: isBike ? "easy ride" : "walk",
+                    framing: "Keep it relaxed after today's logged work.",
+                    coachLine: "The main work is already done. This should feel optional and restorative.",
+                    startLabel: isBike ? "Start ride" : "Start walk"
                 )
             ]
         case .comeback:
             return [
+                walkRunReturn,
+                recoveryPrimary,
                 SuggestedSession(
-                    id: "comeback-walk",
-                    sport: .run,
-                    title: "Fresh start",
-                    durationLabel: "5 min",
-                    activityLabel: "walk or jog",
-                    framing: "No pressure. Just get outside.",
-                    coachLine: "Today is not about catching up. Just reconnect.",
-                    startLabel: "Start fresh"
-                ),
-                SuggestedSession(
-                    id: "easy-return",
+                    id: isBike ? "easy-return-ride-30" : "easy-return-run-30",
                     sport: persona.template.sport,
-                    title: "10 min easy session",
-                    durationLabel: "10 min",
-                    activityLabel: sportLabel,
+                    title: isBike ? "30 min easy ride" : "30 min easy run",
+                    durationLabel: "30 min",
+                    activityLabel: "easy \(sportLabel)",
                     framing: "Keep it friendly from the first minute.",
-                    coachLine: "Keep this one light. Today is about showing up.",
-                    startLabel: "Start easy session"
-                ),
-                SuggestedSession(
-                    id: "photo-shakeout",
-                    sport: persona.template.sport,
-                    title: "Shakeout + photo",
-                    durationLabel: "12 min",
-                    activityLabel: sportLabel,
-                    framing: "Move a little and notice something worth capturing.",
-                    coachLine: "Let the session stay playful. Motion first, photos second.",
-                    startLabel: "Start shakeout"
+                    coachLine: "Today is not about catching up. Keep the effort conversational.",
+                    startLabel: isBike ? "Start ride" : "Start run"
                 )
             ]
         case .momentum:
             return [
+                easyAerobic,
                 SuggestedSession(
-                    id: "steady-build",
+                    id: isBike ? "steady-ride-40" : "easy-run-strides-30",
                     sport: persona.template.sport,
-                    title: "15 min easy build",
-                    durationLabel: "15 min",
-                    activityLabel: sportLabel,
-                    framing: "Stay smooth, then lift a touch late.",
-                    coachLine: "You have rhythm right now. Keep it relaxed and connected.",
-                    startLabel: "Start easy build"
+                    title: isBike ? "40 min steady aerobic ride" : "30 min easy run + strides",
+                    durationLabel: isBike ? "40 min" : "30 min",
+                    activityLabel: isBike ? "steady ride" : "easy run",
+                    framing: isBike
+                        ? "Smooth aerobic riding, no surges."
+                        : "20 min easy, 4 x 20 sec relaxed strides, easy cooldown.",
+                    coachLine: isBike
+                        ? "Keep pressure steady and controlled. This is aerobic rhythm, not a test."
+                        : "Keep the strides relaxed. They should feel smooth, not like intervals.",
+                    startLabel: isBike ? "Start ride" : "Start run"
                 ),
-                SuggestedSession(
-                    id: "repeat-vibe",
-                    sport: persona.template.sport,
-                    title: "Repeat yesterday's vibe",
-                    durationLabel: "12 min",
-                    activityLabel: sportLabel,
-                    framing: "Keep the same low-drama consistency.",
-                    coachLine: "No need to impress yourself today. Just keep the pattern alive.",
-                    startLabel: "Start repeat session"
-                ),
-                SuggestedSession(
-                    id: "confidence-lap",
-                    sport: persona.template.sport,
-                    title: "Confidence lap",
-                    durationLabel: "8 min",
-                    activityLabel: "smooth \(sportLabel)",
-                    framing: "A short win keeps momentum honest.",
-                    coachLine: "This is just enough to remind your body what steady feels like.",
-                    startLabel: "Start confidence lap"
-                )
+                recoveryPrimary
             ]
         case .firstSession, .steady:
-            let firstTitle = readiness == .lowEnergy || readiness == .stressed ? "5 min reset" : "10 min easy session"
-            let firstDuration = readiness == .lowEnergy || readiness == .stressed ? "5 min" : "10 min"
+            let primary = readiness == .lowEnergy || readiness == .stressed ? recoveryPrimary : easyAerobic
             return [
+                primary,
+                walkRunReturn,
                 SuggestedSession(
-                    id: "daily-reset",
-                    sport: persona.template.sport,
-                    title: firstTitle,
-                    durationLabel: firstDuration,
-                    activityLabel: sportLabel,
-                    framing: "Just loosen up and move.",
-                    coachLine: "This only needs to be simple. Begin, then let the session become itself.",
-                    startLabel: "Start now"
-                ),
-                SuggestedSession(
-                    id: "fresh-air",
+                    id: "brisk-walk-20",
                     sport: .run,
-                    title: "Fresh air walk",
-                    durationLabel: "10 min",
+                    title: "20 min brisk walk",
+                    durationLabel: "20 min",
                     activityLabel: "walk",
-                    framing: "Take the pressure off and get outside.",
-                    coachLine: "If today feels crowded, make space with an easy walk first.",
+                    framing: "Purposeful but comfortable walking.",
+                    coachLine: "This is simple aerobic work. Keep it comfortable enough to hold a conversation.",
                     startLabel: "Start walk"
-                ),
-                SuggestedSession(
-                    id: "photo-reset",
-                    sport: persona.template.sport,
-                    title: "Shakeout + photo",
-                    durationLabel: "12 min",
-                    activityLabel: sportLabel,
-                    framing: "Move lightly and catch one good moment.",
-                    coachLine: "Stay easy and curious. Let this one feel alive, not optimized.",
-                    startLabel: "Start shakeout"
                 )
             ]
         }
