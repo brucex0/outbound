@@ -746,55 +746,65 @@ struct MotivationDashboardView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let firstStep = primary?.steps.first {
-                Text(firstStep)
+            if let structure = primary.flatMap(activitySuggestionStructureText(for:)) {
+                Label(structure, systemImage: "list.bullet")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            HStack(spacing: 10) {
+                if let primary {
+                    Button {
+                        onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                    } label: {
+                        Image(systemName: activitySuggestionStartIcon(for: primary))
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(primary.startLabel)
+
+                    if let alternate = response.alternates.first {
+                        Button {
+                            onStartSuggestion(alternate.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                        } label: {
+                            Text(alternate.title)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .padding(.horizontal, 12)
+                                .frame(height: 34)
+                                .background(Color(.systemBackground), in: Capsule())
+                                .overlay {
+                                    Capsule()
+                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Start alternate: \(alternate.title)")
+                    }
+                } else if let recommendation = trainingPlanStore.recommendations.first {
+                    Button("Build a plan") {
+                        trainingPlanStore.acceptRecommendation(recommendation)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                }
+
+                Spacer(minLength: 0)
+
+                if hasPlanContext(response) {
+                    activePlanActionsButton
+                }
+            }
+
             if !hasPlanContext(response) {
                 plansLinkRow
             }
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    if let primary {
-                        Button {
-                            onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
-                        } label: {
-                            Image(systemName: activitySuggestionStartIcon(for: primary))
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
-                                .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(primary.startLabel)
-                    } else if let recommendation = trainingPlanStore.recommendations.first {
-                        Button("Build a plan") {
-                            trainingPlanStore.acceptRecommendation(recommendation)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(coachCatalog.selectedPersona.face.accentColor)
-                    }
-
-                    if hasPlanContext(response) {
-                        activePlanActionsButton
-                    }
-                }
-
-                if let primary {
-                    if let alternate = response.alternates.first {
-                        Button(alternate.title) {
-                            onStartSuggestion(alternate.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(coachCatalog.selectedPersona.face.accentColor)
-                    }
-                }
-            }
-            .font(.subheadline.weight(.semibold))
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -855,6 +865,14 @@ struct MotivationDashboardView: View {
         }
     }
 
+    private func activitySuggestionStructureText(for payload: ActivitySuggestionPayload) -> String? {
+        let steps = payload.steps
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !steps.isEmpty else { return nil }
+        return "Structure: \(steps.joined(separator: "; "))"
+    }
+
     private func presentPlanDetails() {
         trainingPlanStore.refresh(
             activities: activityStore.activities,
@@ -874,30 +892,46 @@ struct MotivationDashboardView: View {
     }
 
     private var plansLinkRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Label {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(trainingPlanStore.recommendations.first?.template.title ?? "Browse training plans")
-                        .font(.caption.weight(.semibold))
-                    Text("Use a plan when you want the next few weeks mapped out.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+        let recommendation = trainingPlanStore.recommendations.first
+
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Explore plans")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .center, spacing: 12) {
+                Label {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(recommendation?.template.title ?? "Browse training plans")
+                            .font(.caption.weight(.semibold))
+                        Text(recommendation?.rationale ?? "Use a plan when you want the next few weeks mapped out.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "calendar.badge.plus")
+                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                 }
-            } icon: {
-                Image(systemName: "calendar.badge.plus")
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            Button {
-                showPlanPicker()
-            } label: {
-                Label("Plans", systemImage: "calendar")
+                HStack(spacing: 8) {
+                    if let recommendation {
+                        Button("Use") {
+                            trainingPlanStore.acceptRecommendation(recommendation)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(coachCatalog.selectedPersona.face.accentColor)
+                    }
+
+                    Button("More") {
+                        showPlanPicker()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                }
+                .font(.caption.weight(.semibold))
             }
-            .buttonStyle(.bordered)
-            .tint(coachCatalog.selectedPersona.face.accentColor)
-            .font(.caption.weight(.semibold))
         }
         .fixedSize(horizontal: false, vertical: true)
     }
