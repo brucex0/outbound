@@ -459,13 +459,23 @@ struct MotivationDashboardView: View {
             )
         }
         .sheet(isPresented: $isPlanDetailsPresented) {
-            if let activePlan = trainingPlanStore.activePlan,
-               let week = trainingPlanStore.currentWeek {
-                NavigationStack {
-                    ActiveTrainingPlanDetailView(
-                        activePlan: activePlan,
-                        week: week,
-                        todaySuggestion: trainingPlanStore.todaySuggestion,
+            NavigationStack {
+                if let activePlan = trainingPlanStore.activePlan {
+                    if let week = trainingPlanStore.currentWeek {
+                        ActiveTrainingPlanDetailView(
+                            activePlan: activePlan,
+                            week: week,
+                            todaySuggestion: trainingPlanStore.todaySuggestion,
+                            accentColor: coachCatalog.selectedPersona.face.accentColor
+                        )
+                    } else {
+                        ActiveTrainingPlanPendingDetailView(
+                            activePlan: activePlan,
+                            accentColor: coachCatalog.selectedPersona.face.accentColor
+                        )
+                    }
+                } else {
+                    ActiveTrainingPlanSyncingDetailView(
                         accentColor: coachCatalog.selectedPersona.face.accentColor
                     )
                 }
@@ -550,10 +560,15 @@ struct MotivationDashboardView: View {
 
     @ViewBuilder
     private var nowCard: some View {
-        if let activePlan = trainingPlanStore.activePlan,
-           let week = trainingPlanStore.currentWeek,
-           let todaySuggestion = trainingPlanStore.todaySuggestion {
-            activePlanNowCard(activePlan: activePlan, week: week, todaySuggestion: todaySuggestion)
+        if let activePlan = trainingPlanStore.activePlan {
+            if let week = trainingPlanStore.currentWeek,
+               let todaySuggestion = trainingPlanStore.todaySuggestion {
+                activePlanNowCard(activePlan: activePlan, week: week, todaySuggestion: todaySuggestion)
+            } else if let activitySuggestion = trainingPlanStore.activitySuggestion {
+                activitySuggestionNowCard(activitySuggestion)
+            } else {
+                activePlanPendingNowCard(activePlan: activePlan, week: trainingPlanStore.currentWeek)
+            }
         } else if let activitySuggestion = trainingPlanStore.activitySuggestion {
             activitySuggestionNowCard(activitySuggestion)
         } else if let primarySuggestion = snapshot.suggestions.first {
@@ -588,11 +603,9 @@ struct MotivationDashboardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Now")
                         .font(.headline)
+                    planTitleButton(activePlan.title)
                     Text(todaySuggestion.title)
                         .font(.title3.weight(.bold))
-                    Text(activePlan.title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                 }
 
                 Spacer()
@@ -630,10 +643,62 @@ struct MotivationDashboardView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(coachCatalog.selectedPersona.face.accentColor)
 
-                activePlanDetailsButton
-                activePlanActionsMenu
+                activePlanActionsButton
             }
             .font(.subheadline.weight(.semibold))
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func activePlanPendingNowCard(
+        activePlan: ActiveTrainingPlan,
+        week: TrainingPlanWeekSnapshot?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Now")
+                        .font(.headline)
+                    planTitleButton(activePlan.title)
+                    Text(week == nil ? "Syncing today's session" : "No session scheduled today")
+                        .font(.title3.weight(.bold))
+                }
+
+                Spacer()
+
+                Text(week.map { "Week \($0.currentWeekIndex)" } ?? "Active plan")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(.systemBackground), in: Capsule())
+            }
+
+            if let week {
+                Text(week.summaryLine)
+                    .font(.subheadline.weight(.semibold))
+
+                if let workout = nextPlanWorkout(from: week) {
+                    Label(
+                        "\(workout.dayLabel): \(workout.title) • \(workout.durationLabel)",
+                        systemImage: "calendar"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                Text(activePlan.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            activePlanActionsButton
+                .font(.subheadline.weight(.semibold))
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -649,6 +714,9 @@ struct MotivationDashboardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Now")
                         .font(.headline)
+                    if let planTitle = planTitle(for: response) {
+                        planTitleButton(planTitle)
+                    }
                     Text(primary?.title ?? activitySuggestionFallbackTitle(for: response))
                         .font(.title3.weight(.bold))
                     Text(activitySuggestionDetail(for: response))
@@ -701,9 +769,8 @@ struct MotivationDashboardView: View {
                         .tint(coachCatalog.selectedPersona.face.accentColor)
                     }
 
-                    if trainingPlanStore.activePlan != nil {
-                        activePlanDetailsButton
-                        activePlanActionsMenu
+                    if hasPlanContext(response) {
+                        activePlanActionsButton
                     }
                 }
 
@@ -725,20 +792,61 @@ struct MotivationDashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    private var activePlanDetailsButton: some View {
+    private var activePlanActionsButton: some View {
+        activePlanActionsMenu
+    }
+
+    private func planTitleButton(_ title: String) -> some View {
         Button {
-            isPlanDetailsPresented = true
+            presentPlanDetails()
         } label: {
-            Label("Plan details", systemImage: "calendar")
+            HStack(spacing: 5) {
+                Image(systemName: "calendar")
+                    .font(.caption.weight(.bold))
+                Text(title)
+                    .lineLimit(1)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
         }
-        .buttonStyle(.bordered)
-        .tint(coachCatalog.selectedPersona.face.accentColor)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open plan details")
+    }
+
+    private func nextPlanWorkout(from week: TrainingPlanWeekSnapshot) -> TrainingPlanWorkout? {
+        guard !week.scheduledWorkouts.isEmpty else { return nil }
+        let index = min(week.completedSessions, week.scheduledWorkouts.count - 1)
+        return week.scheduledWorkouts[index]
+    }
+
+    private func isPlanLinked(_ response: ActivitySuggestionResponse) -> Bool {
+        response.isPlanLinkedToPlan
+    }
+
+    private func hasPlanContext(_ response: ActivitySuggestionResponse) -> Bool {
+        trainingPlanStore.activePlan != nil || isPlanLinked(response)
+    }
+
+    private func planTitle(for response: ActivitySuggestionResponse) -> String? {
+        if let activePlan = trainingPlanStore.activePlan {
+            return activePlan.title
+        }
+        return isPlanLinked(response) ? (response.planContext?.title ?? "Training plan") : nil
+    }
+
+    private func presentPlanDetails() {
+        trainingPlanStore.refresh(
+            activities: activityStore.activities,
+            readiness: checkInStore.readiness,
+            phase: snapshot.phase
+        )
+        isPlanDetailsPresented = true
     }
 
     private var activePlanActionsMenu: some View {
         Menu {
             Button("Details") {
-                isPlanDetailsPresented = true
+                presentPlanDetails()
             }
 
             Button("Change") {
@@ -2114,6 +2222,104 @@ private struct ActiveTrainingPlanDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct ActiveTrainingPlanPendingDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let activePlan: ActiveTrainingPlan
+    let accentColor: Color
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(activePlan.title)
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                    Text(activePlan.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    activeStat("Plan length", value: "\(activePlan.durationWeeks) weeks")
+                    activeStat("Weekly rhythm", value: "\(activePlan.sessionsPerWeek)x sessions")
+                    activeStat("Target time", value: "\(activePlan.targetWeeklyMinutes) min")
+                    activeStat("Long session", value: "\(activePlan.longSessionMinutes) min")
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Plan details are loading")
+                        .font(.headline)
+                    Text("The active plan is set. The week schedule will appear here as soon as the latest plan snapshot finishes syncing.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(18)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .padding()
+        }
+        .navigationTitle("Plan Details")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func activeStat(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline)
+                .foregroundStyle(accentColor)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct ActiveTrainingPlanSyncingDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let accentColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ProgressView()
+                .tint(accentColor)
+
+            Text("Plan details are syncing")
+                .font(.system(.title2, design: .rounded).weight(.bold))
+
+            Text("The activity suggestion is linked to an active plan. The full plan will appear here as soon as the latest plan state finishes loading.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .navigationTitle("Plan Details")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
+        }
     }
 }
 

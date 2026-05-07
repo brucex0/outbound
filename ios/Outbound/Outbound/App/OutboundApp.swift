@@ -429,19 +429,20 @@ final class TrainingPlanStore: ObservableObject {
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
         self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 
+        let persistedActivePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
         if let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
             let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: Date()) == true
                 ? cachedState.activitySuggestion
                 : nil
-            activePlan = cachedState.activePlan
+            activePlan = cachedState.activePlan ?? persistedActivePlan
             recommendations = cachedState.recommendations
             currentWeek = cachedState.currentWeek
-            todaySuggestion = cachedState.activePlan == nil && cachedActivitySuggestion == nil
+            todaySuggestion = activePlan == nil && cachedActivitySuggestion == nil
                 ? nil
                 : cachedState.todaySuggestion
             activitySuggestion = cachedActivitySuggestion
         } else {
-            activePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
+            activePlan = persistedActivePlan
         }
     }
 
@@ -560,8 +561,14 @@ final class TrainingPlanStore: ObservableObject {
     private func applyServerState(_ state: TrainingPlanStateResponse, now: Date) {
         resetDismissedRecommendationIfNeeded(now: now)
 
+        let validActivitySuggestion = state.activitySuggestion?.isValid(now: now) == true
+            ? state.activitySuggestion
+            : nil
+        let previousActivePlan = activePlan
         activePlan = state.activePlan
-        if state.activePlan == nil, state.recommendations.isEmpty {
+            ?? (validActivitySuggestion?.isPlanLinkedToPlan == true ? previousActivePlan : nil)
+
+        if activePlan == nil, state.recommendations.isEmpty {
             recommendations = Self.makeRecommendations(
                 activities: lastActivities,
                 phase: lastPhase,
@@ -576,7 +583,7 @@ final class TrainingPlanStore: ObservableObject {
         }
         currentWeek = state.currentWeek
         todaySuggestion = state.todaySuggestion
-        activitySuggestion = state.activitySuggestion?.isValid(now: now) == true ? state.activitySuggestion : nil
+        activitySuggestion = validActivitySuggestion
         persistState()
     }
 

@@ -670,8 +670,15 @@ struct ActivitySuggestionResponse: Codable, Equatable {
     let validForDate: String
     let validUntil: String
     let planVersionId: String?
+    let planContext: ActivitySuggestionPlanContext?
     let activityWatermark: ActivitySuggestionWatermark
     let decision: ActivitySuggestionDecision
+}
+
+struct ActivitySuggestionPlanContext: Codable, Equatable {
+    let planId: String
+    let planVersionId: String?
+    let title: String?
 }
 
 struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
@@ -702,6 +709,16 @@ struct ActivitySuggestionDecision: Codable, Equatable {
 }
 
 extension ActivitySuggestionResponse {
+    var isPlanLinkedToPlan: Bool {
+        planVersionId != nil
+            || planContext != nil
+            || source == "plan"
+            || ["todayPlannedWorkout", "adjustedFromPlan", "planFallback"].contains(relationship)
+            || decision.reasons.contains("active_plan_present")
+            || primary?.plannedWorkoutId != nil
+            || alternates.contains { $0.plannedWorkoutId != nil }
+    }
+
     var shouldSuppressLocalSuggestion: Bool {
         status == "restRecommended" || status == "noSuggestion" || primary != nil
     }

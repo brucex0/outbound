@@ -28,6 +28,7 @@ type PlannedWorkoutWithBlocks = Prisma.PlannedWorkoutGetPayload<{
 
 type ActivePlanWithWorkouts = Prisma.TrainingPlanGetPayload<{
   include: {
+    goal: true;
     versions: {
       orderBy: { versionNumber: "desc" };
       take: 1;
@@ -59,6 +60,7 @@ export async function buildActivitySuggestion(
       where: { userId, status: "active" },
       orderBy: { createdAt: "desc" },
       include: {
+        goal: true,
         versions: {
           orderBy: { versionNumber: "desc" },
           take: 1,
@@ -120,6 +122,13 @@ export async function buildActivitySuggestion(
     now,
     planningStatus,
     planVersionId: latestVersion?.id ?? null,
+    planContext: plan
+      ? {
+          planId: plan.id,
+          planVersionId: latestVersion?.id ?? null,
+          title: planTitleFromGoal(plan.goal.type),
+        }
+      : null,
     activities: typedActivities,
   });
 
@@ -482,6 +491,7 @@ function baseResponse(params: {
   now: Date;
   planningStatus: PlanningStatus;
   planVersionId: string | null;
+  planContext: ActivitySuggestionResponse["planContext"];
   activities: ActivityForPlanning[];
 }): ActivitySuggestionResponse {
   const latestActivity = params.activities[0];
@@ -498,6 +508,7 @@ function baseResponse(params: {
     validForDate: validFor.toISOString().slice(0, 10),
     validUntil: addDays(validFor, 1).toISOString(),
     planVersionId: params.planVersionId,
+    planContext: params.planContext,
     activityWatermark: {
       lastActivityId: latestActivity?.id ?? null,
       lastActivityStartedAt: latestActivity?.startedAt.toISOString() ?? null,
@@ -508,6 +519,19 @@ function baseResponse(params: {
       safetyFlags: [],
     },
   };
+}
+
+function planTitleFromGoal(type: string): string {
+  switch (type) {
+    case "race":
+      return "Race plan";
+    case "comeback":
+      return "Comeback plan";
+    case "strength":
+      return "Strength plan";
+    default:
+      return "Training plan";
+  }
 }
 
 function shouldSoftenToday(

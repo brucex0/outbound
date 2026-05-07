@@ -265,6 +265,12 @@ export interface ActivitySuggestion {
   optional: boolean;
 }
 
+export interface ActivitySuggestionPlanContext {
+  planId: string;
+  planVersionId?: string | null;
+  title?: string | null;
+}
+
 export interface ActivitySuggestionResponse {
   status: ActivitySuggestionStatus;
   source: ActivitySuggestionSource;
@@ -277,6 +283,7 @@ export interface ActivitySuggestionResponse {
   validForDate: string;
   validUntil: string;
   planVersionId?: string | null;
+  planContext?: ActivitySuggestionPlanContext | null;
   activityWatermark: {
     lastActivityId?: string | null;
     lastActivityStartedAt?: string | null;
