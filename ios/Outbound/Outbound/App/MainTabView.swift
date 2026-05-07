@@ -760,11 +760,17 @@ struct MotivationDashboardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     if let primary {
-                        Button(primary.startLabel) {
+                        Button {
                             onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                        } label: {
+                            Image(systemName: activitySuggestionStartIcon(for: primary))
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(coachCatalog.selectedPersona.face.accentColor)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(primary.startLabel)
                     } else if let recommendation = trainingPlanStore.recommendations.first {
                         Button("Build a plan") {
                             trainingPlanStore.acceptRecommendation(recommendation)
@@ -836,6 +842,17 @@ struct MotivationDashboardView: View {
             return activePlan.title
         }
         return isPlanLinked(response) ? (response.planContext?.title ?? "Training plan") : nil
+    }
+
+    private func activitySuggestionStartIcon(for payload: ActivitySuggestionPayload) -> String {
+        switch payload.modality {
+        case "walk":
+            return "figure.walk"
+        case "bike":
+            return "bicycle"
+        default:
+            return "figure.run"
+        }
     }
 
     private func presentPlanDetails() {
