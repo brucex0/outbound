@@ -538,6 +538,8 @@ struct MotivationDashboardView: View {
            let week = trainingPlanStore.currentWeek,
            let todaySuggestion = trainingPlanStore.todaySuggestion {
             activePlanNowCard(activePlan: activePlan, week: week, todaySuggestion: todaySuggestion)
+        } else if let activitySuggestion = trainingPlanStore.activitySuggestion {
+            activitySuggestionNowCard(activitySuggestion)
         } else if let primarySuggestion = snapshot.suggestions.first {
             coachNowCard(primarySuggestion: primarySuggestion)
         }
@@ -632,6 +634,81 @@ struct MotivationDashboardView: View {
                         .frame(width: 44, height: 44)
                 }
                 .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+            }
+            .font(.subheadline.weight(.semibold))
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func activitySuggestionNowCard(_ response: ActivitySuggestionResponse) -> some View {
+        let primary = response.primary
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Now")
+                        .font(.headline)
+                    Text(primary?.title ?? activitySuggestionFallbackTitle(for: response))
+                        .font(.title3.weight(.bold))
+                    Text(activitySuggestionDetail(for: response))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                }
+
+                Spacer()
+
+                Text(activitySuggestionRelationshipLabel(response.relationship))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(.systemBackground), in: Capsule())
+            }
+
+            Text(response.coachLine)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let why = primary?.why {
+                Label(why, systemImage: "lightbulb.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let firstStep = primary?.steps.first {
+                Text(firstStep)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 10) {
+                if let primary {
+                    Button(primary.startLabel) {
+                        onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+
+                    if let alternate = response.alternates.first {
+                        Button(alternate.title) {
+                            onStartSuggestion(alternate.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(coachCatalog.selectedPersona.face.accentColor)
+                    }
+                } else if let recommendation = trainingPlanStore.recommendations.first {
+                    Button("Build a plan") {
+                        trainingPlanStore.acceptRecommendation(recommendation)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                }
             }
             .font(.subheadline.weight(.semibold))
         }
@@ -759,6 +836,45 @@ struct MotivationDashboardView: View {
         }
 
         return "\(suggestion.durationLabel) • \(suggestion.activityLabel)"
+    }
+
+    private func activitySuggestionDetail(for response: ActivitySuggestionResponse) -> String {
+        if let primary = response.primary {
+            return "\(primary.durationMinutes) min • \(primary.effortLabel)"
+        }
+
+        switch response.status {
+        case "restRecommended":
+            return "Recovery day"
+        default:
+            return "Suggestion unavailable"
+        }
+    }
+
+    private func activitySuggestionFallbackTitle(for response: ActivitySuggestionResponse) -> String {
+        switch response.status {
+        case "restRecommended":
+            return "Rest recommended"
+        default:
+            return "No suggestion yet"
+        }
+    }
+
+    private func activitySuggestionRelationshipLabel(_ relationship: String) -> String {
+        switch relationship {
+        case "todayPlannedWorkout":
+            return "Today's plan"
+        case "adjustedFromPlan":
+            return "Adjusted"
+        case "planFallback":
+            return "Plan option"
+        case "optionalRecovery":
+            return "Optional"
+        case "rest":
+            return "Rest"
+        default:
+            return "Suggested"
+        }
     }
 
     private var momentumStrip: some View {

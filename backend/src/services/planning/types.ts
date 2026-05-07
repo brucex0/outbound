@@ -233,3 +233,57 @@ export interface TodayPlanningResponse {
   coachLine: string;
   planningStatus: PlanningStatus;
 }
+
+export type ActivitySuggestionStatus = "suggested" | "restRecommended" | "noSuggestion";
+
+export type ActivitySuggestionSource = "plan" | "adaptive" | "recovery" | "offlineCache";
+
+export type ActivitySuggestionRelationship =
+  | "todayPlannedWorkout"
+  | "adjustedFromPlan"
+  | "planFallback"
+  | "noPlanSuggestion"
+  | "optionalRecovery"
+  | "rest";
+
+export type ActivitySuggestionIntensityModel = "rpe" | "pace" | "heartRate" | "power" | "open";
+
+export interface ActivitySuggestion {
+  id: string;
+  title: string;
+  modality: Modality;
+  stimulus: TrainingStimulus;
+  durationMinutes: number;
+  effortLabel: string;
+  intensityModel: ActivitySuggestionIntensityModel;
+  intensityTarget?: Record<string, unknown> | null;
+  why: string;
+  steps: string[];
+  startLabel: string;
+  plannedWorkoutId?: string | null;
+  archetypeId?: string | null;
+  optional: boolean;
+}
+
+export interface ActivitySuggestionResponse {
+  status: ActivitySuggestionStatus;
+  source: ActivitySuggestionSource;
+  relationship: ActivitySuggestionRelationship;
+  primary: ActivitySuggestion | null;
+  alternates: ActivitySuggestion[];
+  coachLine: string;
+  planningStatus: PlanningStatus;
+  generatedAt: string;
+  validForDate: string;
+  validUntil: string;
+  planVersionId?: string | null;
+  activityWatermark: {
+    lastActivityId?: string | null;
+    lastActivityStartedAt?: string | null;
+  };
+  decision: {
+    algorithmVersion: string;
+    reasons: string[];
+    safetyFlags: string[];
+  };
+}

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { buildActivitySuggestion } from "./activitySuggestion.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { enqueuePlanningEvent } from "./events.js";
 import { generateInitialPlan, normalizeGoalInput } from "./generator.js";
@@ -11,6 +12,7 @@ import type {
   CreateTrainingGoalInput,
   PlanningEventType,
   PlanningState,
+  ActivitySuggestionResponse,
   PlannedWorkoutForState,
   ReadinessForPlanning,
   RebuildPlanInput,
@@ -117,6 +119,11 @@ export async function getToday(userId: string): Promise<TodayPlanningResponse> {
       : "Create a goal and I will build today's session.",
     planningStatus: state.planningStatus,
   };
+}
+
+export async function getActivitySuggestion(userId: string): Promise<ActivitySuggestionResponse> {
+  await processDueEvents(userId);
+  return buildActivitySuggestion(userId, "stable");
 }
 
 export async function clearPlan(userId: string): Promise<PlanningState> {

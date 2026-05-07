@@ -25,7 +25,7 @@ This structure works for race preparation and for non-race use cases.
 ## Product Principles
 
 - Start from a realistic baseline, not an aspirational fantasy.
-- Short sessions count.
+- Short logged sessions can count, but the Today recommendation should be a meaningful activity. Standalone suggestions should generally be 20+ minutes and never under 15 minutes except for warmup, cooldown, mobility, or rehab-style add-ons.
 - Missed days should trigger re-entry, not failure language.
 - Today should always surface a clear next step.
 - A plan should adapt to real behavior, not only to a setup survey.
@@ -232,6 +232,91 @@ Potential outcomes:
 
 The coach voice should explain the recommendation in human language.
 
+## Activity Suggestion Model
+
+The Home `Now` activity suggestion should come from the backend planning engine.
+
+Endpoint:
+
+- `GET /v1/planning/activity-suggestion`
+
+Backend responsibility:
+
+- use the active plan if one exists
+- use synced activity history when no active plan exists
+- consider today, the last 7 days, and the last 28 days
+- select from reviewed coach-used workout archetypes
+- return clear, concrete session details rather than vague labels
+
+Client responsibility:
+
+- render the backend response
+- cache the latest valid response for offline display
+- avoid creating a competing local suggestion engine
+- fall back to freestyle start or cached plan content when offline and no valid suggestion cache exists
+
+Plan coordination rules:
+
+- If an active plan has a workout today, the suggestion card should show that workout first.
+- If today's planned workout should be softened, the card should say `Adjusted from plan`.
+- If the user completed today's planned workout, the card should usually recommend rest or optional recovery, not a second workout.
+- If no active plan exists, the card should show a standalone adaptive suggestion.
+- If readiness, pain, illness, or fatigue risk is high, the card should choose recovery, mobility, conservative walking, or rest.
+
+The card should answer four questions:
+
+- what exactly am I doing?
+- how hard should it feel?
+- why is this the right next action?
+- how does it relate to my plan, if I have one?
+
+Good suggestion examples:
+
+```text
+30 min easy run
+Conversational effort
+5 min easy warmup + 20 min relaxed run + 5 min easy cooldown
+Why this: You have not trained today and your recent week supports easy aerobic work.
+```
+
+```text
+25 min walk-run return
+Gentle effort
+5 min walk + 6 x 1 min jog / 2 min walk + easy finish
+Why this: You are returning after a gap, so this builds rhythm without pretending it is a normal training week.
+```
+
+```text
+30 min easy run + strides
+Easy with relaxed speed
+20 min easy + 4 x 20 sec relaxed strides + cooldown
+Why this: You have recent consistency and readiness is good, so a small neuromuscular touch is useful.
+```
+
+Avoid vague suggestion names:
+
+- `5 min reset`
+- `Fresh vibe`
+- `Confidence lap`
+- `Repeat yesterday's vibe`
+
+These can work as coach flavor inside explanatory copy, but they should not be the session title.
+
+Canonical archetypes for V1:
+
+- easy run
+- easy ride
+- recovery run
+- recovery spin
+- walk-run return
+- easy run with strides
+- progression run
+- fartlek
+- threshold intervals
+- hill repeats
+- long easy run, usually plan-driven
+- mobility add-on, never the main standalone suggestion
+
 ## Adaptation Rules
 
 Adaptation should happen at two levels:
@@ -278,40 +363,46 @@ Recommended system pattern:
 
 The client should not need to recreate plan logic locally.
 
-Recommended endpoints:
+Current backend namespace:
 
-- `GET /coach/plans/state`
-- `POST /coach/plans/recommendation`
-- `POST /coach/plans`
-- `GET /coach/plans/active`
-- `GET /coach/plans/active/week`
-- `GET /coach/today`
-- `DELETE /coach/plans/active`
-- `POST /coach/checkins/readiness`
-- `POST /coach/sessions`
-- `POST /coach/plans/active/adapt`
+- `/v1/planning`
+
+Current and target endpoints:
+
+- `GET /v1/planning/state`
+- `GET /v1/planning/today`
+- `GET /v1/planning/activity-suggestion`
+- `GET /v1/planning/goals`
+- `POST /v1/planning/goals`
+- `DELETE /v1/planning/plan`
+- `POST /v1/planning/readiness`
+- `POST /v1/planning/workouts/:id/complete`
+- `POST /v1/planning/workouts/:id/skip`
+- `POST /v1/planning/plan/rebuild`
+- `GET /v1/planning/adjustments`
 
 Suggested responsibilities:
 
-- `GET /coach/plans/state`: return the app-shaped training plan state for the current authenticated user, including either active plan/week/today or recommendation candidates
-- `GET /coach/plans/templates`: return the database-backed template catalog for the current authenticated app session
-- `POST /coach/plans/recommendation`: return one or more recommended plan candidates with rationale
-- `POST /coach/plans`: accept a candidate or create a personalized active plan
-- `GET /coach/plans/active`: fetch the active plan summary and metadata
-- `GET /coach/plans/active/week`: fetch the current or requested week structure
-- `GET /coach/today`: fetch today's best recommendation and explanation
-- `DELETE /coach/plans/active`: clear the current user's active plan and return fresh recommendation state
-- `POST /coach/checkins/readiness`: record readiness and optionally trigger recomputation
-- `POST /coach/sessions`: ingest a completed session summary and trigger plan updates
-- `POST /coach/plans/active/adapt`: force a re-plan when preferences or constraints change
+- `GET /v1/planning/state`: return the app-shaped training plan state for the current authenticated user, including active plan, current week, Today workout, upcoming workouts, athlete state, and latest adjustment
+- `GET /v1/planning/today`: return today's planned workout and plan adjustment context
+- `GET /v1/planning/activity-suggestion`: return the single Home `Now` activity suggestion, plan relationship, real workout steps, alternatives, and cache metadata
+- `GET /v1/planning/goals`: return current goal and active plan summary
+- `POST /v1/planning/goals`: create or replace the user's training goal and generated active plan
+- `DELETE /v1/planning/plan`: clear the active plan and return fresh recommendation state
+- `POST /v1/planning/readiness`: record readiness and trigger same-day reassessment
+- `POST /v1/planning/workouts/:id/complete`: link a completed activity to a planned workout and trigger adaptation
+- `POST /v1/planning/workouts/:id/skip`: mark a planned workout skipped and replan without cramming missed work
+- `POST /v1/planning/plan/rebuild`: force a near-term replan when preferences, schedule, or manual user action requires it
+- `GET /v1/planning/adjustments`: return recent plan adjustment events and explanations
 
 Current implementation notes:
 
-- `ActiveTrainingPlan` in Prisma stores one active plan per user with template id, tuned weekly targets, and start date.
-- `TrainingPlanTemplate` and its week/workout/step child tables store the reusable template catalog. The seed script rebuilds these rows from `backend/src/data/trainingPlanTemplates.ts`.
-- Recommendation and Today logic lives in `backend/src/services/trainingPlans.ts` and derives recent training stats from synced `Activity` rows.
-- Readiness is currently passed as request context from the iOS daily check-in and is not yet persisted as a `ReadinessCheckIn` row.
-- iOS caches the last active plan/week/today response for offline rendering, then falls back to local deterministic rules if the API is unavailable.
+- Adaptive planning routes live in `backend/src/routes/planning.ts` and are mounted under `/v1/planning`.
+- Planning orchestration lives in `backend/src/services/planning/planningService.ts`.
+- Durable planning events, athlete-state calculation, adaptation, scoring, and modality adapters live under `backend/src/services/planning/`.
+- Synced `Activity` rows are assumed to be available to the backend before activity suggestions are generated.
+- iOS should cache the last active plan/week/today/activity-suggestion response for offline rendering.
+- The old local `DailyMotivationEngine.makeSuggestions` behavior should become an offline fallback only, then be replaced by cached backend responses plus conservative freestyle fallback.
 
 ## Suggested Response Shapes
 
@@ -349,6 +440,20 @@ Keep responses structured and typed.
 - coach explanation
 - fallback easier option
 - confidence or rationale metadata for internal use
+
+`Activity suggestion` should include:
+
+- status: `suggested`, `restRecommended`, or `noSuggestion`
+- source: `plan`, `adaptive`, or `recovery`
+- relationship to plan: `todayPlannedWorkout`, `adjustedFromPlan`, `planFallback`, `noPlanSuggestion`, `optionalRecovery`, or `rest`
+- concrete title such as `30 min easy run`, not mood copy
+- modality and training stimulus
+- duration, effort label, intensity model, and optional intensity target
+- why this is recommended
+- structured steps that the start screen and live coach can use
+- alternatives only when they are safe and clearly different
+- cache metadata: generated time, valid date, expiry, plan version, and latest activity watermark
+- decision metadata for observability and debugging
 
 ## Session Modeling
 
@@ -461,18 +566,19 @@ Defer:
 
 ## Current Implementation Status
 
-Implemented locally in the iOS app now:
+Implemented now:
 
 - predefined running templates for consistency, comeback, 5K, 10K, 10 mile, and half marathon
-- local-first recommendation logic based on recent saved activity history and current motivation phase
+- backend planning routes under `/v1/planning`
 - one active plan at a time
+- backend event queue, athlete-state calculation, adaptation, scoring, and modality adapter foundations
 - weekly plan-progress summary on Today
-- adaptive today's plan suggestion that softens the recommendation when readiness is low or stressed
+- iOS cache for active plan/week/today state
 
 Still deferred:
 
-- backend-owned plan catalog and active plan state
-- plan APIs and cross-device sync
+- backend-owned `GET /v1/planning/activity-suggestion`
+- full replacement of local generic suggestion logic with backend-rendered suggestions
 - non-running plan templates exposed in product UI
 - richer weekly adaptation and rescheduling
 - AI-generated explanations backed by plan-specific server context

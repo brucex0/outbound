@@ -56,7 +56,8 @@ Recommended layers:
 4. Modality adapters translate stimuli into concrete workout prescriptions.
 5. The scoring layer compares candidate schedules.
 6. The adaptation layer revises today and the next 7-14 days as new data arrives.
-7. AI explains the decision in coach voice, but does not invent unsafe load from scratch.
+7. The activity suggestion layer selects the single best next action for the Home `Now` card.
+8. AI explains the decision in coach voice, but does not invent unsafe load from scratch.
 
 ## Planning Horizon
 
@@ -92,6 +93,7 @@ API routes
     -> plan generator
     -> adaptation engine
     -> modality adapters
+    -> activity suggestion formatter
     -> Prisma persistence
 ```
 
@@ -131,6 +133,7 @@ export interface PlanningService {
   createGoal(userId: string, input: CreateTrainingGoalInput): Promise<PlanningState>;
   getState(userId: string): Promise<PlanningState>;
   getToday(userId: string): Promise<TodayPlanningResponse>;
+  getActivitySuggestion(userId: string): Promise<ActivitySuggestionResponse>;
   submitReadiness(userId: string, input: SubmitReadinessInput): Promise<PlanningState>;
   skipWorkout(userId: string, workoutId: string): Promise<PlanningState>;
   completeWorkout(
@@ -426,6 +429,251 @@ export type TodayPlanningResponse = {
   planningStatus: PlanningState["planningStatus"];
 };
 ```
+
+### Activity Suggestion Engine
+
+The Home `Now` card should be backed by a backend-owned suggestion endpoint, not local poetic labels such as `5 min reset`.
+
+Route:
+
+- `GET /v1/planning/activity-suggestion`
+
+Service owner:
+
+- `backend/src/services/planning/planningService.ts`
+
+Suggested internal module:
+
+- `backend/src/services/planning/activitySuggestion.ts`
+
+Responsibilities:
+
+- process due planning events before reading state
+- load active plan, latest plan version, current week, today's planned workout, recent completions, latest readiness, and synced activities
+- compute acute context from today and the last 7 days
+- compute baseline context from the last 28 days
+- coordinate plan-first recommendations with non-plan adaptive suggestions
+- select from a small library of real coach-used workout archetypes
+- return an app-shaped response with title, effort, reason, steps, plan relationship, cache metadata, and safer alternatives
+
+The client should render this response. It should not recreate plan logic or generate its own training recommendation when online.
+
+#### Decision Priority
+
+The suggestion engine should follow this order:
+
+1. Process due planning events for the user.
+2. If the user has an active plan and a planned workout today, use that workout as the primary suggestion unless safety rules require an adjustment.
+3. If readiness, pain, illness, fatigue risk, or recent load makes the planned workout inappropriate, return an adjusted workout or plan fallback with `relationship: "adjustedFromPlan"` or `relationship: "planFallback"`.
+4. If the user already completed the planned workout today, avoid suggesting a second workout as primary. Return rest or optional recovery.
+5. If no active plan exists, choose a standalone suggestion from the canonical activity library based on recent synced activity.
+6. If recent data is insufficient, return a conservative easy aerobic suggestion or no recommendation, not a hard workout.
+
+Plans win over generic suggestions. The engine can soften, move, or replace a planned workout, but it should not silently ignore an active plan.
+
+#### Input Windows
+
+Assume activities are synced before the endpoint runs.
+
+Use multiple time windows:
+
+- `today`: did the user already train, and was it planned?
+- `last7Days`: acute load, number of sessions, hard/easy spacing, comeback gaps, and recovery needs
+- `last28Days`: baseline weekly minutes, longest recent session, normal frequency, and eligibility for progression or intensity
+
+Do not use only the last 7 days. A user coming off a rest week may still have a stronger baseline than the last 7 days suggest, and a user with one big recent workout may not be ready for another hard session.
+
+#### Guardrails
+
+Standalone activity suggestions should be meaningful training actions:
+
+- Do not suggest a standalone activity under 15 minutes.
+- Prefer 20 minutes or more for run, walk, and bike suggestions.
+- Allow under-15-minute work only as a warmup, cooldown, mobility add-on, or rehab-style add-on attached to a larger context.
+- Do not prescribe hard work without enough recent consistency.
+- Do not stack hard sessions on adjacent days unless the active plan explicitly supports it and readiness is good.
+- Do not suggest a second workout after a completed same-day workout unless it is explicitly optional recovery.
+- Do not cram missed workouts.
+- Cap volume increases against the user's 28-day baseline.
+- When pain or illness is flagged, return rest, mobility, or conservative walking, not intensity.
+
+#### Response Shape
+
+```ts
+export type ActivitySuggestionStatus =
+  | "suggested"
+  | "restRecommended"
+  | "noSuggestion";
+
+export type ActivitySuggestionSource =
+  | "plan"
+  | "adaptive"
+  | "recovery"
+  | "offlineCache";
+
+export type ActivitySuggestionRelationship =
+  | "todayPlannedWorkout"
+  | "adjustedFromPlan"
+  | "planFallback"
+  | "noPlanSuggestion"
+  | "optionalRecovery"
+  | "rest";
+
+export type ActivitySuggestion = {
+  id: string;
+  title: string;
+  modality: Modality;
+  stimulus: TrainingStimulus;
+  durationMinutes: number;
+  effortLabel: string;
+  intensityModel: "rpe" | "pace" | "heartRate" | "power" | "open";
+  intensityTarget?: Record<string, unknown> | null;
+  why: string;
+  steps: string[];
+  startLabel: string;
+  plannedWorkoutId?: string | null;
+  archetypeId?: string | null;
+  optional: boolean;
+};
+
+export type ActivitySuggestionResponse = {
+  status: ActivitySuggestionStatus;
+  source: ActivitySuggestionSource;
+  relationship: ActivitySuggestionRelationship;
+  primary: ActivitySuggestion | null;
+  alternates: ActivitySuggestion[];
+  coachLine: string;
+  planningStatus: PlanningStatus;
+  generatedAt: string;
+  validForDate: string;
+  validUntil: string;
+  planVersionId?: string | null;
+  activityWatermark: {
+    lastActivityId?: string | null;
+    lastActivityStartedAt?: string | null;
+  };
+  decision: {
+    algorithmVersion: string;
+    reasons: string[];
+    safetyFlags: string[];
+  };
+};
+```
+
+Example:
+
+```json
+{
+  "status": "suggested",
+  "source": "adaptive",
+  "relationship": "noPlanSuggestion",
+  "primary": {
+    "id": "easy-run-30",
+    "title": "30 min easy run",
+    "modality": "run",
+    "stimulus": "easyAerobic",
+    "durationMinutes": 30,
+    "effortLabel": "Conversational",
+    "intensityModel": "rpe",
+    "intensityTarget": { "rpe": 3 },
+    "why": "You have not trained today and your recent week supports an easy aerobic session.",
+    "steps": [
+      "5 min easy warmup",
+      "20 min relaxed run",
+      "5 min easy cooldown"
+    ],
+    "startLabel": "Start run",
+    "plannedWorkoutId": null,
+    "archetypeId": "run_easy_aerobic",
+    "optional": false
+  },
+  "alternates": [],
+  "coachLine": "Keep this comfortably easy. The goal is aerobic time, not proving fitness today.",
+  "planningStatus": "stable",
+  "generatedAt": "2026-05-06T15:00:00.000Z",
+  "validForDate": "2026-05-06",
+  "validUntil": "2026-05-07T05:00:00.000Z",
+  "planVersionId": null,
+  "activityWatermark": {
+    "lastActivityId": "activity_123",
+    "lastActivityStartedAt": "2026-05-04T16:20:00.000Z"
+  },
+  "decision": {
+    "algorithmVersion": "activity-suggestion-v1",
+    "reasons": ["no_active_plan", "no_activity_today", "baseline_supports_30_min_easy"],
+    "safetyFlags": []
+  }
+}
+```
+
+#### Canonical Activity Library
+
+Suggestions should be selected from reviewed workout archetypes that coaches and athletes recognize.
+
+Initial running and cycling archetypes:
+
+| Archetype | Minimum | Typical | Eligibility | Notes |
+| --- | ---: | ---: | --- | --- |
+| Recovery run | 20 min | 20-35 min | Recent hard or long session, no pain flag | Very easy effort only |
+| Recovery spin | 20 min | 20-40 min | Recent hard ride/run, bike preference | Very easy cadence, low pressure |
+| Walk-run return | 20 min | 20-30 min | Beginner, comeback, low baseline, or gap in activity | Example: 5 min walk, then 1 min jog / 2 min walk repeats |
+| Easy run | 20 min | 25-45 min | Default aerobic recommendation when baseline supports it | Conversational effort |
+| Easy ride | 25 min | 30-60 min | Bike preference and aerobic baseline | Smooth, low to moderate effort |
+| Easy run with strides | 25 min | 30-40 min | Consistent recent easy running and no high fatigue | Easy run plus 4-6 relaxed 20 sec strides |
+| Progression run | 30 min | 35-50 min | Good readiness, stable baseline, no hard session yesterday | Easy start, steady finish |
+| Fartlek | 30 min | 30-45 min | Recent consistency and readiness good | Informal speed play, not max effort |
+| Threshold intervals | 35 min | 40-60 min | Plan-driven or strong baseline | Controlled comfortably-hard blocks |
+| Hill repeats | 30 min | 35-50 min | Plan-driven or strong baseline, no injury risk | Short uphill efforts with easy recoveries |
+| Long easy run | 45 min | 45-120 min | Plan-driven or demonstrated baseline | Should almost always come from an active plan |
+| Mobility add-on | 5 min | 5-15 min | Add-on only, not standalone main suggestion | Useful after training, travel, soreness |
+
+The engine should store the chosen `archetypeId` in the response and optionally in a future suggestion decision log. This makes product analytics and debugging possible.
+
+#### Plan Coordination Examples
+
+| Situation | Response |
+| --- | --- |
+| Active plan has easy run today, readiness normal | `source: "plan"`, `relationship: "todayPlannedWorkout"` |
+| Active plan has intervals today, readiness low | `source: "plan"`, `relationship: "adjustedFromPlan"`, easier aerobic replacement |
+| User completed today's plan workout | `source: "recovery"`, `relationship: "optionalRecovery"` or `status: "restRecommended"` |
+| No active plan, no activity today, stable baseline | `source: "adaptive"`, `relationship: "noPlanSuggestion"` |
+| No active plan, hard workout yesterday | recovery run, recovery spin, walk, or rest depending on baseline |
+| Pain or illness flag | `status: "restRecommended"` with mobility or conservative walking only if appropriate |
+
+#### Offline Cache Contract
+
+The backend response should include enough metadata for safe offline rendering:
+
+- `generatedAt`
+- `validForDate`
+- `validUntil`
+- `planVersionId`
+- `activityWatermark.lastActivityId`
+- `activityWatermark.lastActivityStartedAt`
+
+Client behavior:
+
+- If offline and the cached suggestion is still valid for today, render it as the last-known suggestion.
+- If the user recorded an offline activity after the cached watermark, invalidate the suggestion and show that recommendations will refresh after sync.
+- If a cached active plan exists, show today's planned workout offline as plan content.
+- If no valid cache exists, show freestyle start or a conservative offline fallback without adaptive recommendation language.
+
+Offline fallback should never prescribe intensity, progression, tempo, fartlek, hill repeats, or plan changes. Backend remains canonical.
+
+#### Build Order
+
+Recommended implementation order:
+
+1. Add activity suggestion types to `backend/src/services/planning/types.ts`.
+2. Add `getActivitySuggestion(userId)` to `planningService.ts`.
+3. Create `activitySuggestion.ts` to load context, classify the situation, select an archetype, and format the response.
+4. Add `GET /activity-suggestion` to `backend/src/routes/planning.ts`.
+5. Reuse existing `computeAthleteTrainingState` for 7-day and 28-day load facts.
+6. Add a small canonical archetype library in code first; move to a `WorkoutArchetype` table only when product needs remote editing or analytics.
+7. Update iOS `APIClient` to fetch the endpoint and cache the response.
+8. Update the Home `Now` card to render backend fields: title, effort, why, plan relationship, and steps.
+9. Keep local generic suggestions only as temporary offline fallback, then remove them once cache behavior is solid.
+10. Add analytics for suggestion source, relationship, archetype, start taps, swaps, completions, and post-activity completion quality.
 
 ### Persistence Boundary
 
@@ -984,9 +1232,11 @@ Suggested authenticated endpoints:
 
 - `GET /v1/planning/goals`
 - `POST /v1/planning/goals`
+- `GET /v1/planning/state`
 - `GET /v1/planning/plan`
 - `POST /v1/planning/plan/rebuild`
 - `GET /v1/planning/today`
+- `GET /v1/planning/activity-suggestion`
 - `POST /v1/planning/readiness`
 - `POST /v1/planning/workouts/:id/skip`
 - `POST /v1/planning/workouts/:id/complete`
@@ -1029,6 +1279,7 @@ Add `/v1/planning/*` routes:
 - `POST /v1/planning/goals`
 - `GET /v1/planning/state`
 - `GET /v1/planning/today`
+- `GET /v1/planning/activity-suggestion`
 - `POST /v1/planning/readiness`
 - `POST /v1/planning/workouts/:id/skip`
 - `POST /v1/planning/workouts/:id/complete`
@@ -1050,6 +1301,7 @@ MVP route behavior:
 Implement deterministic MVP rules:
 
 - initial 14-day generation for run/walk goals
+- backend-owned Home activity suggestion from canonical archetypes
 - low-readiness same-day softening
 - missed-workout handling without cramming
 - pain/illness replacement with rest, walk, or mobility
@@ -1067,11 +1319,12 @@ Client responsibilities:
 
 - create or edit a `TrainingGoal`
 - render `PlannedWorkout` for Today and upcoming days
+- render `ActivitySuggestionResponse` for the Home `Now` card
 - submit readiness
 - mark planned workout skipped
 - link completed activity to planned workout when started from a suggestion
 - render plan adjustment explanations
-- cache the latest planning state for offline display
+- cache the latest planning state and activity suggestion for offline display
 
 Because there are no live users, old `/v1/coach/plans/*` client calls can be removed once the new screens compile.
 
@@ -1108,11 +1361,12 @@ Each adapter must define generation, stress estimate, completion evaluation, and
 5. Add `ReadinessCheckIn` and same-day low-readiness adaptation.
 6. Add skipped-workout adaptation without cramming.
 7. Add `TrainingPlanVersion` and `PlanAdjustmentEvent`.
-8. Replace iOS training-plan API calls with `/v1/planning/*`.
-9. Add candidate generation and scoring.
-10. Add first sport adapter split: run/walk versus strength/mobility.
-11. Add background worker and scheduled weekly rollover.
-12. Add multi-sport adapters after the generic workout shape is stable.
+8. Add `GET /v1/planning/activity-suggestion` with plan-first selection, real workout archetypes, and offline cache metadata.
+9. Replace iOS training-plan API calls with `/v1/planning/*`.
+10. Add candidate generation and scoring.
+11. Add first sport adapter split: run/walk versus strength/mobility.
+12. Add background worker and scheduled weekly rollover.
+13. Add multi-sport adapters after the generic workout shape is stable.
 
 ## Non-Goals For V1
 

@@ -386,6 +386,7 @@ final class TrainingPlanStore: ObservableObject {
     @Published private(set) var recommendations: [TrainingPlanRecommendation] = []
     @Published private(set) var currentWeek: TrainingPlanWeekSnapshot?
     @Published private(set) var todaySuggestion: TodayTrainingSuggestion?
+    @Published private(set) var activitySuggestion: ActivitySuggestionResponse?
 
     private let defaults: UserDefaults
     private let calendar: Calendar
@@ -413,10 +414,16 @@ final class TrainingPlanStore: ObservableObject {
         self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 
         if let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+            let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: Date()) == true
+                ? cachedState.activitySuggestion
+                : nil
             activePlan = cachedState.activePlan
             recommendations = cachedState.recommendations
             currentWeek = cachedState.currentWeek
-            todaySuggestion = cachedState.todaySuggestion
+            todaySuggestion = cachedState.activePlan == nil && cachedActivitySuggestion == nil
+                ? nil
+                : cachedState.todaySuggestion
+            activitySuggestion = cachedActivitySuggestion
         } else {
             activePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
         }
@@ -499,6 +506,7 @@ final class TrainingPlanStore: ObservableObject {
         activePlan = nil
         currentWeek = nil
         todaySuggestion = nil
+        activitySuggestion = nil
         applyLocalFallback(activities: lastActivities, readiness: lastReadiness, phase: lastPhase, now: now)
 
         refreshTask = Task {
@@ -552,6 +560,7 @@ final class TrainingPlanStore: ObservableObject {
         }
         currentWeek = state.currentWeek
         todaySuggestion = state.todaySuggestion
+        activitySuggestion = state.activitySuggestion?.isValid(now: now) == true ? state.activitySuggestion : nil
         persistState()
     }
 
@@ -562,6 +571,9 @@ final class TrainingPlanStore: ObservableObject {
         now: Date
     ) {
         resetDismissedRecommendationIfNeeded(now: now)
+        if activitySuggestion?.isValid(now: now) != true {
+            activitySuggestion = nil
+        }
 
         recommendations = Self.makeRecommendations(
             activities: activities,
@@ -575,7 +587,9 @@ final class TrainingPlanStore: ObservableObject {
 
         guard let activePlan else {
             currentWeek = nil
-            todaySuggestion = nil
+            if activitySuggestion?.shouldSuppressLocalSuggestion != true {
+                todaySuggestion = nil
+            }
             persistState()
             return
         }
@@ -596,7 +610,8 @@ final class TrainingPlanStore: ObservableObject {
             activePlan: activePlan,
             recommendations: activePlan == nil ? [] : recommendations,
             currentWeek: currentWeek,
-            todaySuggestion: todaySuggestion
+            todaySuggestion: todaySuggestion,
+            activitySuggestion: activitySuggestion
         )
 
         if let data = try? JSONEncoder().encode(state) {
