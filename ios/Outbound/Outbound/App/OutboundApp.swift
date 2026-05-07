@@ -461,6 +461,7 @@ final class TrainingPlanStore: ObservableObject {
         lastPhase = phase
 
         resetDismissedRecommendationIfNeeded(now: now)
+        updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now)
 
         refreshTask?.cancel()
         refreshTask = Task {
@@ -486,6 +487,20 @@ final class TrainingPlanStore: ObservableObject {
                 applyLocalFallback(activities: activities, readiness: readiness, phase: phase, now: now)
             }
         }
+    }
+
+    func prepareRecommendations(
+        activities: [SavedActivity],
+        readiness: DailyReadiness?,
+        phase: MotivationPhase,
+        now: Date = Date()
+    ) {
+        lastActivities = activities
+        lastReadiness = readiness
+        lastPhase = phase
+
+        resetDismissedRecommendationIfNeeded(now: now)
+        updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now, persist: true)
     }
 
     func acceptRecommendation(_ recommendation: TrainingPlanRecommendation, now: Date = Date()) {
@@ -569,12 +584,7 @@ final class TrainingPlanStore: ObservableObject {
             ?? (validActivitySuggestion?.isPlanLinkedToPlan == true ? previousActivePlan : nil)
 
         if activePlan == nil, state.recommendations.isEmpty {
-            recommendations = Self.makeRecommendations(
-                activities: lastActivities,
-                phase: lastPhase,
-                calendar: calendar,
-                now: now
-            )
+            updateLocalRecommendationsIfNeeded(activities: lastActivities, phase: lastPhase, now: now)
         } else {
             recommendations = state.recommendations
         }
@@ -598,12 +608,7 @@ final class TrainingPlanStore: ObservableObject {
             activitySuggestion = nil
         }
 
-        recommendations = Self.makeRecommendations(
-            activities: activities,
-            phase: phase,
-            calendar: calendar,
-            now: now
-        )
+        updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now)
         if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
             recommendations = []
         }
@@ -631,7 +636,7 @@ final class TrainingPlanStore: ObservableObject {
     private func persistState() {
         let state = TrainingPlanStateResponse(
             activePlan: activePlan,
-            recommendations: activePlan == nil ? [] : recommendations,
+            recommendations: recommendations,
             currentWeek: currentWeek,
             todaySuggestion: todaySuggestion,
             activitySuggestion: activitySuggestion
@@ -662,6 +667,33 @@ final class TrainingPlanStore: ObservableObject {
             defaults.set(lastSubmittedReadinessSignature, forKey: readinessSyncKey)
         } else {
             defaults.removeObject(forKey: readinessSyncKey)
+        }
+    }
+
+    private func updateLocalRecommendationsIfNeeded(
+        activities: [SavedActivity],
+        phase: MotivationPhase,
+        now: Date,
+        persist: Bool = false
+    ) {
+        guard activePlan == nil else { return }
+        guard dismissedRecommendationWeekStart != startOfWeek(for: now) else {
+            recommendations = []
+            if persist { persistState() }
+            return
+        }
+
+        let localRecommendations = Self.makeRecommendations(
+            activities: activities,
+            phase: phase,
+            calendar: calendar,
+            now: now
+        )
+        guard !localRecommendations.isEmpty else { return }
+
+        recommendations = localRecommendations
+        if persist {
+            persistState()
         }
     }
 

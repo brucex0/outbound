@@ -491,7 +491,7 @@ struct MotivationDashboardView: View {
                     selectedRecommendation = nil
                 } onMorePlans: {
                     selectedRecommendation = nil
-                    isPlanPickerPresented = true
+                    showPlanPicker()
                 }
             }
         }
@@ -753,6 +753,10 @@ struct MotivationDashboardView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if !hasPlanContext(response) {
+                plansLinkRow
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     if let primary {
@@ -843,6 +847,44 @@ struct MotivationDashboardView: View {
         isPlanDetailsPresented = true
     }
 
+    private func showPlanPicker() {
+        trainingPlanStore.prepareRecommendations(
+            activities: activityStore.activities,
+            readiness: checkInStore.readiness,
+            phase: snapshot.phase
+        )
+        isPlanPickerPresented = true
+    }
+
+    private var plansLinkRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Label {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(trainingPlanStore.recommendations.first?.template.title ?? "Browse training plans")
+                        .font(.caption.weight(.semibold))
+                    Text("Use a plan when you want the next few weeks mapped out.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "calendar.badge.plus")
+                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                showPlanPicker()
+            } label: {
+                Label("Plans", systemImage: "calendar")
+            }
+            .buttonStyle(.bordered)
+            .tint(coachCatalog.selectedPersona.face.accentColor)
+            .font(.caption.weight(.semibold))
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
     private var activePlanActionsMenu: some View {
         Menu {
             Button("Details") {
@@ -850,7 +892,7 @@ struct MotivationDashboardView: View {
             }
 
             Button("Change") {
-                isPlanPickerPresented = true
+                showPlanPicker()
             }
 
             Button("End", role: .destructive) {
@@ -935,7 +977,7 @@ struct MotivationDashboardView: View {
                             .font(.caption.weight(.semibold))
 
                             Button("More plans") {
-                                isPlanPickerPresented = true
+                                showPlanPicker()
                             }
                             .buttonStyle(.bordered)
                             .tint(coachCatalog.selectedPersona.face.accentColor)
