@@ -79,6 +79,26 @@ Optional later, when the backend grows beyond assistant-only testing:
 From the repo root:
 
 ```sh
+./scripts/deploy-backend-gcloud.sh
+```
+
+Useful overrides:
+
+- `PROJECT_ID`
+- `GCLOUD_ACCOUNT`
+- `REGION`
+- `SERVICE`
+- `SOURCE_DIR`
+- `GCLOUD_BIN`
+- `RUN_LOCAL_BUILD=0`
+- `RUN_HEALTH_CHECK=0`
+- `ALLOW_DIRTY_BACKEND=1`
+
+The script runs a local backend build first, deploys `backend/` to Cloud Run, prints the service URL, and checks `/health`.
+
+Raw command equivalent:
+
+```sh
 $HOME/google-cloud-sdk/bin/gcloud run deploy outbound-api \
   --project=outbound-494602 \
   --account=bruce.xia74@gmail.com \
