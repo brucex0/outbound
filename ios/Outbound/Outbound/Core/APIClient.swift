@@ -196,7 +196,7 @@ private extension PlanningAPIStateResponse {
         guard let goal, let plan else {
             return TrainingPlanStateResponse(
                 activePlan: nil,
-                recommendations: [],
+                recommendations: recommendations ?? [],
                 currentWeek: nil,
                 todaySuggestion: activitySuggestion?.todayTrainingSuggestion(),
                 activitySuggestion: activitySuggestion
@@ -877,6 +877,7 @@ private struct PlanningAPIStateResponse: Decodable {
     let currentVersion: PlanningAPIVersion?
     let today: PlanningAPIWorkout?
     let upcoming: [PlanningAPIWorkout]
+    let recommendations: [TrainingPlanRecommendation]?
     let athleteState: PlanningAPIAthleteState?
     let latestAdjustment: PlanningAPIAdjustment?
     let planningStatus: String

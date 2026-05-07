@@ -1,3 +1,5 @@
+import type { TrainingPlanRecommendation } from "../trainingPlans.js";
+
 export type Modality =
   | "run"
   | "walk"
@@ -222,6 +224,7 @@ export interface PlanningState {
   currentVersion: unknown | null;
   today: unknown | null;
   upcoming: unknown[];
+  recommendations: TrainingPlanRecommendation[];
   athleteState: unknown | null;
   latestAdjustment: unknown | null;
   planningStatus: PlanningStatus;

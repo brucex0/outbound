@@ -6,6 +6,8 @@ import { generateInitialPlan, normalizeGoalInput } from "./generator.js";
 import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { getPrismaClient } from "../prisma.js";
+import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
+import { buildTrainingPlanState } from "../trainingPlans.js";
 import type {
   ActivityForPlanning,
   CompleteWorkoutInput,
@@ -342,6 +344,7 @@ async function assemblePlanningState(
     workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned") ??
     workouts.find((workout) => workout.scheduledDate >= now && workout.status === "planned") ??
     null;
+  const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);
 
   return {
     goal,
@@ -349,6 +352,7 @@ async function assemblePlanningState(
     currentVersion: version ? { ...version, workouts: undefined } : null,
     today,
     upcoming: workouts.filter((workout) => workout.scheduledDate >= now).slice(0, 10),
+    recommendations,
     athleteState,
     latestAdjustment,
     planningStatus,
@@ -384,6 +388,18 @@ async function recentActivities(userId: string): Promise<ActivityForPlanning[]> 
       avgHeartRate: true,
     },
   }) as Promise<ActivityForPlanning[]>;
+}
+
+async function trainingPlanRecommendationsForUser(userId: string) {
+  const [activities, catalog] = await Promise.all([
+    recentActivities(userId),
+    loadTrainingPlanCatalog(),
+  ]);
+  return buildTrainingPlanState({
+    activePlan: null,
+    activities,
+    catalog,
+  }).recommendations;
 }
 
 function athleteStateData(userId: string, state: ReturnType<typeof computeAthleteTrainingState>) {
