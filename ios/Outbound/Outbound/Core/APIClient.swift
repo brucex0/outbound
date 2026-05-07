@@ -38,7 +38,8 @@ final class APIClient {
 
     func fetchTrainingPlanState(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await get("/planning/state")
-        return state.trainingPlanState(readiness: readiness)
+        let activitySuggestion = try? await fetchActivitySuggestion()
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
     }
 
     func createTrainingPlan(
@@ -49,7 +50,12 @@ final class APIClient {
             "/planning/goals",
             body: PlanningGoalRequest(recommendation: recommendation)
         )
-        return state.trainingPlanState(readiness: readiness, fallbackRecommendation: recommendation)
+        let activitySuggestion = try? await fetchActivitySuggestion()
+        return state.trainingPlanState(
+            readiness: readiness,
+            fallbackRecommendation: recommendation,
+            activitySuggestion: activitySuggestion
+        )
     }
 
     func submitTrainingReadiness(_ readiness: DailyReadiness) async throws -> TrainingPlanStateResponse {
@@ -57,12 +63,18 @@ final class APIClient {
             "/planning/readiness",
             body: PlanningReadinessRequest(readiness: readiness)
         )
-        return state.trainingPlanState(readiness: readiness)
+        let activitySuggestion = try? await fetchActivitySuggestion()
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
     }
 
     func clearActiveTrainingPlan(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await delete("/planning/plan")
-        return state.trainingPlanState(readiness: readiness)
+        let activitySuggestion = try? await fetchActivitySuggestion()
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
+    }
+
+    func fetchActivitySuggestion() async throws -> ActivitySuggestionResponse {
+        try await get("/planning/activity-suggestion")
     }
 
     // MARK: - Helpers
@@ -178,14 +190,16 @@ private struct APIErrorPayload: Decodable {
 private extension PlanningAPIStateResponse {
     func trainingPlanState(
         readiness: DailyReadiness?,
-        fallbackRecommendation: TrainingPlanRecommendation? = nil
+        fallbackRecommendation: TrainingPlanRecommendation? = nil,
+        activitySuggestion: ActivitySuggestionResponse? = nil
     ) -> TrainingPlanStateResponse {
         guard let goal, let plan else {
             return TrainingPlanStateResponse(
                 activePlan: nil,
                 recommendations: [],
                 currentWeek: nil,
-                todaySuggestion: nil
+                todaySuggestion: activitySuggestion?.todayTrainingSuggestion(),
+                activitySuggestion: activitySuggestion
             )
         }
 
@@ -256,7 +270,9 @@ private extension PlanningAPIStateResponse {
 
         let apiWorkout = today ?? upcoming.first
         let todaySuggestion: TodayTrainingSuggestion?
-        if let apiWorkout {
+        if let activityTodaySuggestion = activitySuggestion?.todayTrainingSuggestion() {
+            todaySuggestion = activityTodaySuggestion
+        } else if let apiWorkout {
             todaySuggestion = makeTodaySuggestion(
                 for: apiWorkout.trainingPlanWorkout(dayLabel: "Today"),
                 apiWorkout: apiWorkout,
@@ -270,7 +286,8 @@ private extension PlanningAPIStateResponse {
             activePlan: activePlan,
             recommendations: [],
             currentWeek: weekSnapshot,
-            todaySuggestion: todaySuggestion
+            todaySuggestion: todaySuggestion,
+            activitySuggestion: activitySuggestion
         )
     }
 
@@ -638,6 +655,127 @@ struct TrainingPlanStateResponse: Codable {
     let recommendations: [TrainingPlanRecommendation]
     let currentWeek: TrainingPlanWeekSnapshot?
     let todaySuggestion: TodayTrainingSuggestion?
+    let activitySuggestion: ActivitySuggestionResponse?
+}
+
+struct ActivitySuggestionResponse: Codable, Equatable {
+    let status: String
+    let source: String
+    let relationship: String
+    let primary: ActivitySuggestionPayload?
+    let alternates: [ActivitySuggestionPayload]
+    let coachLine: String
+    let planningStatus: String
+    let generatedAt: String
+    let validForDate: String
+    let validUntil: String
+    let planVersionId: String?
+    let activityWatermark: ActivitySuggestionWatermark
+    let decision: ActivitySuggestionDecision
+}
+
+struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
+    let id: String
+    let title: String
+    let modality: String
+    let stimulus: String
+    let durationMinutes: Int
+    let effortLabel: String
+    let intensityModel: String
+    let why: String
+    let steps: [String]
+    let startLabel: String
+    let plannedWorkoutId: String?
+    let archetypeId: String?
+    let optional: Bool
+}
+
+struct ActivitySuggestionWatermark: Codable, Equatable {
+    let lastActivityId: String?
+    let lastActivityStartedAt: String?
+}
+
+struct ActivitySuggestionDecision: Codable, Equatable {
+    let algorithmVersion: String
+    let reasons: [String]
+    let safetyFlags: [String]
+}
+
+extension ActivitySuggestionResponse {
+    var shouldSuppressLocalSuggestion: Bool {
+        status == "restRecommended" || status == "noSuggestion" || primary != nil
+    }
+
+    func isValid(now: Date = Date()) -> Bool {
+        guard let validUntilDate = APIDateParser.date(from: validUntil) else {
+            return false
+        }
+        return now < validUntilDate
+    }
+
+    func todayTrainingSuggestion() -> TodayTrainingSuggestion? {
+        primary?.todayTrainingSuggestion(coachLine: coachLine)
+    }
+}
+
+extension ActivitySuggestionPayload {
+    func todayTrainingSuggestion(coachLine: String) -> TodayTrainingSuggestion {
+        let durationSeconds = durationMinutes * 60
+        let stepDuration = max(60, durationSeconds / max(1, steps.count))
+        let workoutSteps = steps.enumerated().map { index, step in
+            TrainingPlanWorkoutStep(
+                id: "\(id)-step-\(index)",
+                kind: stimulus.stepKind,
+                label: step,
+                durationSeconds: stepDuration,
+                detail: effortLabel
+            )
+        }
+        let workout = TrainingPlanWorkout(
+            id: plannedWorkoutId ?? id,
+            title: title,
+            kind: stimulus.workoutKind,
+            dayLabel: "Today",
+            summary: why,
+            purpose: why,
+            coachCue: coachLine,
+            effortLabel: effortLabel,
+            durationSeconds: durationSeconds,
+            distanceLabel: nil,
+            steps: workoutSteps.isEmpty
+                ? [
+                    TrainingPlanWorkoutStep(
+                        id: "\(id)-main",
+                        kind: stimulus.stepKind,
+                        label: title,
+                        durationSeconds: durationSeconds,
+                        detail: effortLabel
+                    )
+                ]
+                : workoutSteps,
+            isOptional: optional
+        )
+        let suggestion = SuggestedSession(
+            id: plannedWorkoutId ?? archetypeId ?? id,
+            sport: SportType.apiSport(from: modality),
+            title: title,
+            durationLabel: "\(durationMinutes) min",
+            activityLabel: effortLabel.lowercased(),
+            framing: why,
+            coachLine: coachLine,
+            startLabel: startLabel
+        )
+
+        return TodayTrainingSuggestion(
+            title: title,
+            detail: "\(durationMinutes) min • \(effortLabel)",
+            coachLine: coachLine,
+            adjustmentLine: optional ? "Optional" : nil,
+            suggestedSession: suggestion,
+            workout: workout,
+            stepSummary: steps
+        )
+    }
 }
 
 private struct PlanningGoalRequest: Encodable {
