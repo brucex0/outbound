@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 @main
@@ -420,11 +421,11 @@ final class TrainingPlanStore: ObservableObject {
     init(
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current,
-        api: APIClient = .shared
+        api: APIClient? = nil
     ) {
         self.defaults = defaults
         self.calendar = calendar
-        self.api = api
+        self.api = api ?? .shared
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
         self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 

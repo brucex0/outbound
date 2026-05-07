@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 struct ImportedWorkout: Identifiable, Equatable {
@@ -38,9 +39,10 @@ final class HealthAuthorizationStore: ObservableObject {
 
     private let service: HealthKitServing
 
-    init(service: HealthKitServing = HealthKitService()) {
-        self.service = service
-        self.snapshot = service.currentAuthorizationSnapshot()
+    init(service: HealthKitServing? = nil) {
+        let resolvedService = service ?? HealthKitService()
+        self.service = resolvedService
+        self.snapshot = resolvedService.currentAuthorizationSnapshot()
     }
 
     func refresh() async {
@@ -95,8 +97,8 @@ final class HealthImportStore: ObservableObject {
 
     private let service: HealthKitServing
 
-    init(service: HealthKitServing = HealthKitService()) {
-        self.service = service
+    init(service: HealthKitServing? = nil) {
+        self.service = service ?? HealthKitService()
     }
 
     func refreshRecentWorkouts(limit: Int = 3) async {
