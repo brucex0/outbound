@@ -460,13 +460,12 @@ struct MotivationDashboardView: View {
         }
         .sheet(isPresented: $isPlanDetailsPresented) {
             if let activePlan = trainingPlanStore.activePlan,
-               let week = trainingPlanStore.currentWeek,
-               let todaySuggestion = trainingPlanStore.todaySuggestion {
+               let week = trainingPlanStore.currentWeek {
                 NavigationStack {
                     ActiveTrainingPlanDetailView(
                         activePlan: activePlan,
                         week: week,
-                        todaySuggestion: todaySuggestion,
+                        todaySuggestion: trainingPlanStore.todaySuggestion,
                         accentColor: coachCatalog.selectedPersona.face.accentColor
                     )
                 }
@@ -631,26 +630,8 @@ struct MotivationDashboardView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(coachCatalog.selectedPersona.face.accentColor)
 
-                Menu {
-                    Button("Details") {
-                        isPlanDetailsPresented = true
-                    }
-
-                    if !trainingPlanStore.recommendations.isEmpty {
-                        Button("Change") {
-                            isPlanPickerPresented = true
-                        }
-                    }
-
-                    Button("End", role: .destructive) {
-                        trainingPlanStore.clearActivePlan()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .frame(width: 44, height: 44)
-                }
-                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                activePlanDetailsButton
+                activePlanActionsMenu
             }
             .font(.subheadline.weight(.semibold))
         }
@@ -704,14 +685,29 @@ struct MotivationDashboardView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: 10) {
-                if let primary {
-                    Button(primary.startLabel) {
-                        onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    if let primary {
+                        Button(primary.startLabel) {
+                            onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(coachCatalog.selectedPersona.face.accentColor)
+                    } else if let recommendation = trainingPlanStore.recommendations.first {
+                        Button("Build a plan") {
+                            trainingPlanStore.acceptRecommendation(recommendation)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(coachCatalog.selectedPersona.face.accentColor)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
 
+                    if trainingPlanStore.activePlan != nil {
+                        activePlanDetailsButton
+                        activePlanActionsMenu
+                    }
+                }
+
+                if let primary {
                     if let alternate = response.alternates.first {
                         Button(alternate.title) {
                             onStartSuggestion(alternate.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
@@ -719,12 +715,6 @@ struct MotivationDashboardView: View {
                         .buttonStyle(.bordered)
                         .tint(coachCatalog.selectedPersona.face.accentColor)
                     }
-                } else if let recommendation = trainingPlanStore.recommendations.first {
-                    Button("Build a plan") {
-                        trainingPlanStore.acceptRecommendation(recommendation)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
                 }
             }
             .font(.subheadline.weight(.semibold))
@@ -733,6 +723,38 @@ struct MotivationDashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var activePlanDetailsButton: some View {
+        Button {
+            isPlanDetailsPresented = true
+        } label: {
+            Label("Plan details", systemImage: "calendar")
+        }
+        .buttonStyle(.bordered)
+        .tint(coachCatalog.selectedPersona.face.accentColor)
+    }
+
+    private var activePlanActionsMenu: some View {
+        Menu {
+            Button("Details") {
+                isPlanDetailsPresented = true
+            }
+
+            Button("Change") {
+                isPlanPickerPresented = true
+            }
+
+            Button("End", role: .destructive) {
+                trainingPlanStore.clearActivePlan()
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3)
+                .frame(width: 44, height: 44)
+        }
+        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+        .accessibilityLabel("Plan actions")
     }
 
     private func coachNowCard(primarySuggestion: SuggestedSession) -> some View {
@@ -1703,6 +1725,16 @@ private struct TrainingPlanPickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if recommendations.isEmpty {
+                    Text("No alternate plans are available right now.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+
                 ForEach(recommendations) { recommendation in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(recommendation.template.title)
@@ -1933,7 +1965,7 @@ private struct ActiveTrainingPlanDetailView: View {
 
     let activePlan: ActiveTrainingPlan
     let week: TrainingPlanWeekSnapshot
-    let todaySuggestion: TodayTrainingSuggestion
+    let todaySuggestion: TodayTrainingSuggestion?
     let accentColor: Color
 
     var body: some View {
@@ -1977,34 +2009,50 @@ private struct ActiveTrainingPlanDetailView: View {
                 .background(Color(.secondarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Today's recommendation")
-                        .font(.headline)
-                    Text(todaySuggestion.title)
-                        .font(.title3.weight(.bold))
-                    Text(todaySuggestion.detail)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accentColor)
-                    Text(todaySuggestion.coachLine)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let adjustmentLine = todaySuggestion.adjustmentLine {
-                        Label(adjustmentLine, systemImage: "heart.text.square.fill")
+                if let todaySuggestion {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Today's recommendation")
+                            .font(.headline)
+                        Text(todaySuggestion.title)
+                            .font(.title3.weight(.bold))
+                        Text(todaySuggestion.detail)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(accentColor)
-                    }
+                        Text(todaySuggestion.coachLine)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let adjustmentLine = todaySuggestion.adjustmentLine {
+                            Label(adjustmentLine, systemImage: "heart.text.square.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(accentColor)
+                        }
 
-                    ForEach(todaySuggestion.stepSummary.prefix(4), id: \.self) { step in
-                        Text(step)
+                        ForEach(todaySuggestion.stepSummary.prefix(4), id: \.self) { step in
+                            Text(step)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(18)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Today's recommendation")
+                            .font(.headline)
+                        Text("No session scheduled today")
+                            .font(.title3.weight(.bold))
+                        Text("Use the week schedule below, or change/end the plan from the Now card menu.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(18)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
-                .padding(18)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Week schedule")
