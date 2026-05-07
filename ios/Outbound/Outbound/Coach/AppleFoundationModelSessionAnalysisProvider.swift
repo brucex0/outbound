@@ -129,6 +129,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         let snapshot = request.snapshot
         let pace = snapshot.currentPaceSecsPerKm?.paceString ?? "unknown"
         let heartRate = snapshot.heartRate.map { "\($0) bpm" } ?? "unknown"
+        let intent = request.sessionIntent.map(describeIntent) ?? "No planned session intent supplied."
         let location = snapshot.location.map {
             String(
                 format: "%.5f, %.5f, accuracy %.0fm, speed %@",
@@ -142,6 +143,8 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 
         return """
         Active session snapshot:
+        - activity: \(request.sessionIntent?.title ?? "Freestyle run")
+        - plan: \(intent)
         - elapsed: \(snapshot.elapsedSeconds.formatted())
         - distance: \(String(format: "%.2f km", snapshot.distanceKilometers))
         - current pace: \(pace)
@@ -151,8 +154,31 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         Recent trend:
         \(recent.isEmpty ? "No trend data yet." : recent)
 
+        Use the activity name and any target distance, duration, route, or planned step when it materially improves the nudge.
         Decide whether the athlete needs a spoken nudge now. Return one useful nudge, urgency steady/opportunity/caution, and shouldSpeak.
         """
+    }
+
+    private static func describeIntent(_ intent: SessionIntent) -> String {
+        var parts = [intent.detail]
+
+        if let distance = intent.resolvedTargetDistanceMeters {
+            parts.append(String(format: "target distance %.2f km", distance / 1000))
+        }
+        if let duration = intent.resolvedTargetDurationSeconds {
+            parts.append("target duration \(duration.formatted())")
+        }
+        if let routeName = intent.routeName, !routeName.isEmpty {
+            parts.append("route \(routeName)")
+        }
+        if !intent.workoutSteps.isEmpty {
+            let steps = intent.workoutSteps.prefix(5).map {
+                "\($0.label) \($0.durationSeconds.formatted())"
+            }
+            parts.append("steps: \(steps.joined(separator: "; "))")
+        }
+
+        return parts.joined(separator: "; ")
     }
 
     private static func describe(_ snapshot: ActiveSessionSnapshot) -> String {

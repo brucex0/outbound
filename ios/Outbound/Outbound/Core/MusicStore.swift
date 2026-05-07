@@ -310,11 +310,6 @@ struct MusicQuickPick: Identifiable, Equatable, Hashable {
     let query: String?
 }
 
-enum CoachSpeechEvent {
-    case didStart
-    case didFinish
-}
-
 @MainActor
 protocol MusicService: AnyObject {
     var currentSnapshot: MusicConnectionSnapshot { get }

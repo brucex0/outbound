@@ -11,6 +11,21 @@ struct SessionAnalysisRequest {
     let persona: CoachPersona?
     let snapshot: ActiveSessionSnapshot
     let recentSnapshots: [ActiveSessionSnapshot]
+    let sessionIntent: SessionIntent?
+
+    init(
+        profile: CoachProfile?,
+        persona: CoachPersona?,
+        snapshot: ActiveSessionSnapshot,
+        recentSnapshots: [ActiveSessionSnapshot],
+        sessionIntent: SessionIntent? = nil
+    ) {
+        self.profile = profile
+        self.persona = persona
+        self.snapshot = snapshot
+        self.recentSnapshots = recentSnapshots
+        self.sessionIntent = sessionIntent
+    }
 }
 
 struct SessionAnalysisResult: Equatable {
@@ -129,7 +144,7 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
 
         if let heartRate = snapshot.heartRate, heartRate > 185 {
             parts.append(variant([
-                "Heart rate is up. Ease the effort and get the breathing back under you.",
+                "Heart rate is high. Ease the effort and get the breathing back under you.",
                 "That effort looks hot. Back off a touch and regain control.",
                 "Bring it down slightly here and let the breath catch up."
             ]))
@@ -286,6 +301,10 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
         let sport = request.persona?.template.sport ?? .run
 
         if request.snapshot.elapsedSeconds <= 90 {
+            if let sessionStartLine = sessionStartLine(for: request, sport: sport) {
+                return sessionStartLine
+            }
+
             return sport == .bike
                 ? variant([
                     "Nice easy start.",
@@ -299,7 +318,15 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
                 ])
         }
 
+        if let finishingLine = finishingGoalLine(for: request) {
+            return finishingLine
+        }
+
         guard messageCounter.isMultiple(of: 3) else { return nil }
+
+        if let plannedProgressLine = plannedProgressLine(for: request) {
+            return plannedProgressLine
+        }
 
         switch urgency {
         case .steady:
@@ -323,8 +350,157 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
         }
     }
 
+    private func sessionStartLine(for request: SessionAnalysisRequest, sport: SportType) -> String? {
+        guard let intent = request.sessionIntent else { return nil }
+        let fallback = sport == .bike ? "Settle into the ride." : "Keep the start smooth."
+
+        if let goal = spokenGoalSummary(for: intent) {
+            return "\(intent.title) is underway. \(goal)"
+        }
+
+        return "\(intent.title) is underway. \(fallback)"
+    }
+
+    private func plannedProgressLine(for request: SessionAnalysisRequest) -> String? {
+        guard let intent = request.sessionIntent else { return nil }
+
+        if let activeStep = activeStep(for: intent, elapsedSeconds: request.snapshot.elapsedSeconds),
+           intent.workoutSteps.count > 1 {
+            return "Step \(activeStep.index + 1) of \(activeStep.count): \(activeStep.step.label). Keep it controlled."
+        }
+
+        if let targetDistance = intent.resolvedTargetDistanceMeters, targetDistance > 0 {
+            let progress = request.snapshot.distanceMeters / targetDistance
+            if progress >= 0.72 {
+                return "\(spokenDistance(max(0, targetDistance - request.snapshot.distanceMeters))) left in \(intent.title). Hold this rhythm."
+            }
+            if progress >= 0.48 {
+                return "Halfway through \(intent.title). Stay smooth and patient."
+            }
+            if progress >= 0.22 {
+                return "\(spokenDistance(request.snapshot.distanceMeters)) into \(spokenDistance(targetDistance)). Keep the effort tidy."
+            }
+        }
+
+        if let targetDuration = intent.resolvedTargetDurationSeconds, targetDuration > 0 {
+            let progress = Double(request.snapshot.elapsedSeconds) / Double(targetDuration)
+            let remaining = max(0, targetDuration - request.snapshot.elapsedSeconds)
+            if progress >= 0.72 {
+                return "\(spokenDuration(remaining)) left in \(intent.title). Keep the rhythm calm."
+            }
+            if progress >= 0.48 {
+                return "Halfway through \(intent.title). Keep the effort even."
+            }
+        }
+
+        if let routeName = intent.routeName, !routeName.isEmpty {
+            return "Stay with \(routeName). Keep the effort smooth."
+        }
+
+        return nil
+    }
+
+    private func finishingGoalLine(for request: SessionAnalysisRequest) -> String? {
+        guard let intent = request.sessionIntent else { return nil }
+
+        if let targetDistance = intent.resolvedTargetDistanceMeters, targetDistance > 0 {
+            let remaining = targetDistance - request.snapshot.distanceMeters
+            if remaining <= 0 {
+                return "\(intent.title) distance is covered. Ease through the finish."
+            }
+            if remaining <= 400 {
+                return "\(spokenDistance(remaining)) left in \(intent.title). Stay tall and finish clean."
+            }
+        }
+
+        if let targetDuration = intent.resolvedTargetDurationSeconds, targetDuration > 0 {
+            let remaining = targetDuration - request.snapshot.elapsedSeconds
+            if remaining <= 0 {
+                return "\(intent.title) time is covered. Bring it down smoothly."
+            }
+            if remaining <= 120 {
+                return "\(spokenDuration(remaining)) left in \(intent.title). Stay composed."
+            }
+        }
+
+        return nil
+    }
+
+    private func activeStep(
+        for intent: SessionIntent,
+        elapsedSeconds: Int
+    ) -> (index: Int, count: Int, step: SessionIntentStep)? {
+        let steps = intent.workoutSteps.filter { $0.durationSeconds > 0 }
+        guard !steps.isEmpty else { return nil }
+
+        var remainingElapsed = elapsedSeconds
+        for (index, step) in steps.enumerated() {
+            if remainingElapsed < step.durationSeconds {
+                return (index, steps.count, step)
+            }
+            remainingElapsed -= step.durationSeconds
+        }
+
+        guard let finalStep = steps.last else { return nil }
+        return (steps.count - 1, steps.count, finalStep)
+    }
+
+    private func spokenGoalSummary(for intent: SessionIntent) -> String? {
+        let distance = intent.resolvedTargetDistanceMeters.map(spokenDistance)
+        let duration = intent.resolvedTargetDurationSeconds.map(spokenDuration)
+
+        if let routeName = intent.routeName, !routeName.isEmpty, let distance {
+            return "Follow \(routeName) for \(distance)."
+        }
+        if let routeName = intent.routeName, !routeName.isEmpty {
+            return "Follow \(routeName)."
+        }
+        if let distance, let duration {
+            return "Goal is \(distance) over \(duration)."
+        }
+        if let distance {
+            return "Goal is \(distance)."
+        }
+        if let duration {
+            return "Goal is \(duration)."
+        }
+        if intent.workoutSteps.count > 1 {
+            return "Planned workout has \(intent.workoutSteps.count) steps."
+        }
+
+        return nil
+    }
+
+    private func spokenDistance(_ meters: Double) -> String {
+        if meters < 1000 {
+            let roundedMeters = Int(meters.rounded())
+            return roundedMeters == 1 ? "1 meter" : "\(roundedMeters) meters"
+        }
+
+        let kilometers = meters / 1000
+        if abs(kilometers.rounded() - kilometers) < 0.05 {
+            let roundedKilometers = Int(kilometers.rounded())
+            return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
+        }
+
+        return String(format: "%.1f kilometers", kilometers)
+    }
+
+    private func spokenDuration(_ seconds: Int) -> String {
+        guard seconds > 0 else { return "0 minutes" }
+
+        if seconds >= 3600 {
+            let hours = seconds / 3600
+            let minutes = (seconds % 3600) / 60
+            return minutes > 0 ? "\(hours) hours \(minutes) minutes" : "\(hours) hours"
+        }
+
+        let minutes = max(1, Int((Double(seconds) / 60.0).rounded()))
+        return "\(minutes) minutes"
+    }
+
     private func variant(_ options: [String]) -> String {
         guard !options.isEmpty else { return "" }
-        return options[messageCounter % options.count]
+        return options[(max(messageCounter, 1) - 1) % options.count]
     }
 }

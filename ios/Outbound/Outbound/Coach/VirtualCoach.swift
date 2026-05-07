@@ -2,6 +2,11 @@ import Foundation
 import AVFoundation
 import Combine
 
+enum CoachSpeechEvent {
+    case didStart
+    case didFinish
+}
+
 // On-device real-time coach that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
@@ -35,7 +40,9 @@ final class VirtualCoach: NSObject, ObservableObject {
         super.init()
         // Apple documents this path as the synthesizer creating its own short-
         // lived session and automatically managing ducking and interruptions.
+        #if os(iOS)
         synthesizer.usesApplicationAudioSession = false
+        #endif
         synthesizer.delegate = self
     }
 
@@ -51,7 +58,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
         recentSpokenFingerprints = []
-        lastNudge = sessionIntent?.coachLine ?? ""
+        lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
         fallbackProvider.beginSession(profile: profile, persona: persona)
@@ -100,7 +107,8 @@ final class VirtualCoach: NSObject, ObservableObject {
             profile: profile,
             persona: persona,
             snapshot: snapshot,
-            recentSnapshots: snapshotHistory
+            recentSnapshots: snapshotHistory,
+            sessionIntent: sessionIntent
         )
         isAnalyzing = true
 
@@ -241,6 +249,50 @@ final class VirtualCoach: NSObject, ObservableObject {
             .replacingOccurrences(of: "[^a-z0-9 ]", with: "", options: .regularExpression)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func initialNudge(for intent: SessionIntent) -> String {
+        var parts = [intent.coachLine]
+
+        if let targetDistance = intent.resolvedTargetDistanceMeters {
+            parts.append("Goal: \(spokenDistance(targetDistance)).")
+        } else if let targetDuration = intent.resolvedTargetDurationSeconds {
+            parts.append("Goal: \(spokenDuration(targetDuration)).")
+        } else if let routeName = intent.routeName, !routeName.isEmpty {
+            parts.append("Route: \(routeName).")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private static func spokenDistance(_ meters: Double) -> String {
+        if meters < 1000 {
+            let roundedMeters = Int(meters.rounded())
+            return roundedMeters == 1 ? "1 meter" : "\(roundedMeters) meters"
+        }
+
+        let kilometers = meters / 1000
+        if abs(kilometers.rounded() - kilometers) < 0.05 {
+            let roundedKilometers = Int(kilometers.rounded())
+            return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
+        }
+
+        return String(format: "%.1f kilometers", kilometers)
+    }
+
+    private static func spokenDuration(_ seconds: Int) -> String {
+        if seconds >= 3600, seconds % 3600 == 0 {
+            return "\(seconds / 3600) hours"
+        }
+
+        if seconds >= 3600 {
+            let hours = seconds / 3600
+            let minutes = (seconds % 3600) / 60
+            return minutes > 0 ? "\(hours) hours \(minutes) minutes" : "\(hours) hours"
+        }
+
+        let minutes = max(1, Int((Double(seconds) / 60.0).rounded()))
+        return "\(minutes) minutes"
     }
 }
 

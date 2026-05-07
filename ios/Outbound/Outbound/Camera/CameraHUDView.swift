@@ -10,6 +10,7 @@ struct CameraHUDView: View {
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     @ObservedObject var musicStore: MusicStore
+    let intent: SessionIntent?
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -59,10 +60,13 @@ struct CameraHUDView: View {
 
                     SessionStatusCard(
                         state: recorder.state,
+                        intent: intent,
                         elapsedText: recorder.elapsedSeconds.formatted(),
+                        elapsedSeconds: recorder.elapsedSeconds,
                         paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                         paceText: sessionPaceText,
                         distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+                        distanceMeters: recorder.distanceMeters,
                         distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,
@@ -438,11 +442,16 @@ struct ShutterButton: View {
 }
 
 struct SessionStatusCard: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+
     let state: RecordingState
+    let intent: SessionIntent?
     let elapsedText: String
+    let elapsedSeconds: Int
     let paceLabel: String
     let paceText: String
     let distanceText: String
+    let distanceMeters: Double
     let distanceLabel: String
     let elevationText: String
     let elevationLabel: String
@@ -461,6 +470,7 @@ struct SessionStatusCard: View {
     var body: some View {
         VStack(spacing: 10) {
             topRow
+            extraCountdownStrip
             controlMetricsLayout
         }
         .padding(12)
@@ -475,18 +485,27 @@ struct SessionStatusCard: View {
     }
 
     private var topRow: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Circle()
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
 
-            Text(headerText)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityLabel(headerText)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activityTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .accessibilityLabel(activityTitle)
+
+                Text(headerText)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .accessibilityLabel(headerText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if state == .paused {
                 Button(action: onFinish) {
@@ -497,15 +516,15 @@ struct SessionStatusCard: View {
 
             musicMenu
         }
-        .frame(height: 30)
+        .frame(minHeight: 34)
     }
 
     private var controlMetricsLayout: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: 8) {
                 VStack(spacing: 8) {
-                    SessionMetricColumn(value: elapsedText, label: "Time")
-                    SessionMetricColumn(value: distanceText, label: distanceLabel)
+                    SessionMetricColumn(value: displayedElapsedText, label: nil)
+                    SessionMetricColumn(value: displayedDistanceText, label: nil)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -524,8 +543,8 @@ struct SessionStatusCard: View {
 
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
-                    SessionMetricColumn(value: elapsedText, label: "Time")
-                    SessionMetricColumn(value: distanceText, label: distanceLabel)
+                    SessionMetricColumn(value: displayedElapsedText, label: nil)
+                    SessionMetricColumn(value: displayedDistanceText, label: nil)
                     SessionMetricColumn(value: paceText, label: paceLabel)
                 }
 
@@ -535,6 +554,25 @@ struct SessionStatusCard: View {
                     SessionMetricColumn(value: heartRateText, label: "HR")
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var extraCountdownStrip: some View {
+        if currentStepProgress != nil || displayIntent.routeName?.isEmpty == false {
+            HStack(spacing: 8) {
+                if let stepProgress = currentStepProgress {
+                    SessionMiniCountdown(
+                        symbolName: "list.bullet",
+                        text: stepCountdownText(stepProgress)
+                    )
+                }
+
+                if let routeName = displayIntent.routeName, !routeName.isEmpty {
+                    SessionMiniCountdown(symbolName: "map.fill", text: routeName)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -649,6 +687,99 @@ struct SessionStatusCard: View {
         }
     }
 
+    private var displayIntent: SessionIntent {
+        intent ?? .freestyleRun
+    }
+
+    private var activityTitle: String {
+        displayIntent.title
+    }
+
+    private var displayedElapsedText: String {
+        guard let targetDurationSeconds = displayIntent.resolvedTargetDurationSeconds,
+              targetDurationSeconds > 0
+        else {
+            return elapsedText
+        }
+
+        return "\(elapsedText)/\(compactDurationText(seconds: targetDurationSeconds))"
+    }
+
+    private var displayedDistanceText: String {
+        guard let targetDistanceMeters = displayIntent.resolvedTargetDistanceMeters,
+              targetDistanceMeters > 0
+        else {
+            return measurementPreferences.unitSystem.distanceString(meters: distanceMeters)
+                .replacingOccurrences(of: " ", with: "")
+        }
+
+        return compactDistanceProgressText(targetMeters: targetDistanceMeters)
+    }
+
+    private var currentStepProgress: (index: Int, count: Int, step: SessionIntentStep, progress: Double)? {
+        let steps = displayIntent.workoutSteps.filter { $0.durationSeconds > 0 }
+        guard !steps.isEmpty else { return nil }
+
+        var remainingElapsed = elapsedSeconds
+        for (index, step) in steps.enumerated() {
+            if remainingElapsed < step.durationSeconds {
+                return (
+                    index,
+                    steps.count,
+                    step,
+                    Double(max(0, remainingElapsed)) / Double(step.durationSeconds)
+                )
+            }
+            remainingElapsed -= step.durationSeconds
+        }
+
+        guard let finalStep = steps.last else { return nil }
+        return (steps.count - 1, steps.count, finalStep, 1)
+    }
+
+    private func stepCountdownText(
+        _ stepProgress: (index: Int, count: Int, step: SessionIntentStep, progress: Double)
+    ) -> String {
+        let elapsedBeforeStep = displayIntent.workoutSteps
+            .prefix(stepProgress.index)
+            .reduce(0) { $0 + max(0, $1.durationSeconds) }
+        let elapsedInStep = max(0, elapsedSeconds - elapsedBeforeStep)
+        let remaining = max(0, stepProgress.step.durationSeconds - elapsedInStep)
+        return "\(stepProgress.index + 1)/\(stepProgress.count) \(stepProgress.step.label) \(remaining.formatted())"
+    }
+
+    private func compactDistanceProgressText(targetMeters: Double) -> String {
+        let unitSystem = measurementPreferences.unitSystem
+        let currentValue = unitSystem.distanceValue(meters: distanceMeters)
+        let targetValue = unitSystem.distanceValue(meters: targetMeters)
+        let currentText = compactDecimal(currentValue, fractionDigits: currentValue < 1 ? 2 : 1)
+        let targetText = compactDecimal(targetValue, fractionDigits: targetValue.rounded() == targetValue ? 0 : 1)
+        return "\(currentText)/\(targetText)\(unitSystem.distanceUnit)"
+    }
+
+    private func compactDurationText(seconds: Int) -> String {
+        if seconds < 60 {
+            return "\(seconds)s"
+        }
+
+        if seconds < 3600 {
+            let minutes = seconds / 60
+            let remainder = seconds % 60
+            return remainder == 0 ? "\(minutes)min" : "\(minutes):\(String(format: "%02d", remainder))"
+        }
+
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        return minutes == 0 ? "\(hours)h" : "\(hours)h\(minutes)m"
+    }
+
+    private func compactDecimal(_ value: Double, fractionDigits: Int) -> String {
+        let formatted = String(format: "%.\(fractionDigits)f", value)
+        return formatted
+            .replacingOccurrences(of: #"(\.\d*?)0+$"#, with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+    }
+
     private var statusColor: Color {
         switch state {
         case .idle: return .orange
@@ -660,24 +791,49 @@ struct SessionStatusCard: View {
 
 private struct SessionMetricColumn: View {
     let value: String
-    let label: String
+    let label: String?
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: label == nil ? 0 : 6) {
             Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: value.contains("/") ? 16 : 18, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.black)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
-            Text(label)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+
+            if let label {
+                Text(label)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
-        .frame(minWidth: 54, maxWidth: .infinity)
+        .frame(minWidth: value.contains("/") ? 70 : 54, maxWidth: .infinity, minHeight: label == nil ? 28 : nil)
+    }
+}
+
+private struct SessionMiniCountdown: View {
+    let symbolName: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbolName)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.orange)
+
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 24)
+        .background(Color(.systemGroupedBackground), in: Capsule())
     }
 }
 

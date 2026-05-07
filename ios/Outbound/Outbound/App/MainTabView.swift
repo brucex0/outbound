@@ -323,6 +323,38 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let framing: String
     let coachLine: String
     let startLabel: String
+    let targetDistanceMeters: Double?
+    let targetDurationSeconds: Int?
+    let routeName: String?
+    let workoutSteps: [SessionIntentStep]?
+
+    init(
+        id: String,
+        sport: SportType,
+        title: String,
+        durationLabel: String,
+        activityLabel: String,
+        framing: String,
+        coachLine: String,
+        startLabel: String,
+        targetDistanceMeters: Double? = nil,
+        targetDurationSeconds: Int? = nil,
+        routeName: String? = nil,
+        workoutSteps: [SessionIntentStep]? = nil
+    ) {
+        self.id = id
+        self.sport = sport
+        self.title = title
+        self.durationLabel = durationLabel
+        self.activityLabel = activityLabel
+        self.framing = framing
+        self.coachLine = coachLine
+        self.startLabel = startLabel
+        self.targetDistanceMeters = targetDistanceMeters
+        self.targetDurationSeconds = targetDurationSeconds
+        self.routeName = routeName
+        self.workoutSteps = workoutSteps
+    }
 
     var intent: SessionIntent {
         SessionIntent(
@@ -331,29 +363,13 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             title: title,
             detail: "\(durationLabel) • \(activityLabel)",
             coachLine: coachLine,
-            startLabel: startLabel
+            startLabel: startLabel,
+            targetDistanceMeters: targetDistanceMeters,
+            targetDurationSeconds: targetDurationSeconds ?? SessionIntentGoalParser.durationSeconds(from: durationLabel),
+            routeName: routeName,
+            workoutSteps: workoutSteps ?? []
         )
     }
-}
-
-struct SessionIntent: Identifiable, Hashable {
-    let id: String
-    let sport: SportType
-    let title: String
-    let detail: String
-    let coachLine: String
-    let startLabel: String
-
-    var systemImage: String { sport.systemImage }
-
-    static let freestyleRun = SessionIntent(
-        id: "freestyle-run",
-        sport: .run,
-        title: "Freestyle run",
-        detail: "Run • no preset target",
-        coachLine: "No pressure. Just start where you are.",
-        startLabel: "Start now"
-    )
 }
 
 struct MomentumNote: Identifiable, Hashable {

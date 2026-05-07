@@ -8,6 +8,7 @@ struct LiveMapView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var coach: VirtualCoach
     @ObservedObject var musicStore: MusicStore
+    let intent: SessionIntent?
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -64,10 +65,13 @@ struct LiveMapView: View {
 
                 SessionStatusCard(
                     state: recorder.state,
+                    intent: intent,
                     elapsedText: recorder.elapsedSeconds.formatted(),
+                    elapsedSeconds: recorder.elapsedSeconds,
                     paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
                     paceText: sessionPaceText,
                     distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+                    distanceMeters: recorder.distanceMeters,
                     distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                     elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                     elevationLabel: measurementPreferences.unitSystem.elevationLabel,

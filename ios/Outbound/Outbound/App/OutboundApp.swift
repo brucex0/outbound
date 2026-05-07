@@ -297,6 +297,21 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
             return "\(step.label) • \(step.durationLabel)"
         }
     }
+
+    var targetDistanceMeters: Double? {
+        distanceLabel.flatMap(SessionIntentGoalParser.distanceMeters)
+    }
+
+    var sessionIntentSteps: [SessionIntentStep] {
+        steps.map {
+            SessionIntentStep(
+                id: $0.id,
+                label: $0.label,
+                durationSeconds: $0.durationSeconds,
+                detail: $0.detail
+            )
+        }
+    }
 }
 
 struct TrainingPlanWeek: Identifiable, Codable, Hashable {
@@ -826,7 +841,11 @@ private extension TrainingPlanStore {
             activityLabel: workout.kind.displayName,
             framing: workout.purpose,
             coachLine: coachLine,
-            startLabel: "Start now"
+            startLabel: "Start now",
+            targetDistanceMeters: workout.targetDistanceMeters,
+            targetDurationSeconds: workout.durationSeconds,
+            routeName: nil,
+            workoutSteps: workout.sessionIntentSteps
         )
 
         return TodayTrainingSuggestion(

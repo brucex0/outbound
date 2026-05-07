@@ -75,4 +75,34 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
         XCTAssertEqual(result.urgency, .steady)
         XCTAssertTrue(result.message.contains("Cadence is drifting"))
     }
+
+    func testOpeningNudgeUsesSessionIntentGoal() async throws {
+        let provider = RuleBasedSessionAnalysisProvider()
+        let request = SessionAnalysisRequest(
+            profile: makeProfile(preferredPaceSecs: nil),
+            persona: nil,
+            snapshot: makeSnapshot(elapsedSeconds: 30, distanceMeters: 120, paceSecsPerKm: 330),
+            recentSnapshots: [],
+            sessionIntent: SessionIntent(
+                id: "tempo-5k",
+                sport: .run,
+                title: "5K Tempo",
+                detail: "5 km • Tempo",
+                coachLine: "Start controlled.",
+                startLabel: "Start tempo",
+                targetDistanceMeters: 5000
+            )
+        )
+
+        let result = try await provider.analyze(request)
+
+        XCTAssertTrue(result.message.contains("5K Tempo is underway"))
+        XCTAssertTrue(result.message.contains("Goal is 5 kilometers"))
+    }
+
+    func testDistanceParserDoesNotTreatIntervalRepsAsSessionGoal() {
+        XCTAssertNil(SessionIntentGoalParser.distanceMeters(from: "4 x 800m effort"))
+        XCTAssertNil(SessionIntentGoalParser.distanceMeters(from: "6x100m strides"))
+        XCTAssertEqual(SessionIntentGoalParser.distanceMeters(from: "5K Tempo"), 5000)
+    }
 }

@@ -324,7 +324,11 @@ private extension PlanningAPIStateResponse {
             activityLabel: workout.kind.displayName,
             framing: workout.purpose,
             coachLine: coachLine,
-            startLabel: "Start now"
+            startLabel: "Start now",
+            targetDistanceMeters: workout.targetDistanceMeters,
+            targetDurationSeconds: workout.durationSeconds,
+            routeName: nil,
+            workoutSteps: workout.sessionIntentSteps
         )
 
         return TodayTrainingSuggestion(
