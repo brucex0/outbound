@@ -19,22 +19,9 @@ struct MainTabView: View {
             currentContent
         }
         .background(Color(.systemGroupedBackground))
-        .overlay(alignment: .bottomTrailing) {
-            if shouldShowActivityFAB {
-                ActivityPortalButton(
-                    state: activitySessionState,
-                    elapsedSeconds: activityElapsedSeconds,
-                    sport: activeLaunch?.intent?.sport
-                ) {
-                    presentActivity()
-                }
-                .padding(.trailing, 18)
-                .padding(.bottom, activityButtonBottomPadding)
-            }
-        }
         .overlay(alignment: .bottom) {
             if !isActivityVisible {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     AssistantLauncherButton(accentColor: assistantAccentColor) {
                         isAssistantPresented = true
                     }
@@ -43,6 +30,14 @@ struct MainTabView: View {
                         selectedTab: $selectedTab,
                         accentColor: assistantAccentColor
                     )
+
+                    ActivityPortalButton(
+                        state: activitySessionState,
+                        elapsedSeconds: activityElapsedSeconds,
+                        sport: activeLaunch?.intent?.sport
+                    ) {
+                        presentActivity()
+                    }
                 }
                 .offset(y: 10)
                 .zIndex(2)
@@ -134,16 +129,8 @@ struct MainTabView: View {
         )
     }
 
-    private var shouldShowActivityFAB: Bool {
-        !isActivityVisible
-    }
-
-    private var activityButtonBottomPadding: CGFloat {
-        82
-    }
-
     private var bottomChromeContentInset: CGFloat {
-        132
+        96
     }
 
     private var assistantAccentColor: Color {
@@ -809,42 +796,29 @@ private struct ActivityPortalButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: iconName)
-                        .font(.headline.weight(.bold))
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: iconName)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
 
-                    if state != .idle {
-                        Circle()
-                            .fill(state == .paused ? Color.yellow : Color.red)
-                            .frame(width: 10, height: 10)
-                            .offset(x: 2, y: -2)
-                    }
+                if state != .idle {
+                    Circle()
+                        .fill(state == .paused ? Color.yellow : Color.red)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 1.5))
+                        .offset(x: 3, y: -3)
                 }
-
-                Text(title)
-                    .font(.subheadline.weight(.bold))
-                    .monospacedDigit()
             }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .frame(height: 56)
-            .background(backgroundStyle, in: Capsule())
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 10)
+            .frame(width: 48, height: 48)
+            .background(backgroundStyle, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(statusStrokeStyle, lineWidth: state == .idle ? 0.8 : 2.2)
+            }
         }
         .buttonStyle(.plain)
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
         .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var title: String {
-        switch state {
-        case .idle:
-            return "Start"
-        case .active:
-            return elapsedSeconds.formatted()
-        case .paused:
-            return elapsedSeconds > 0 ? elapsedSeconds.formatted() : "Paused"
-        }
     }
 
     private var iconName: String {
@@ -859,6 +833,17 @@ private struct ActivityPortalButton: View {
             return LinearGradient(colors: [Color(red: 1.0, green: 0.39, blue: 0.26), Color(red: 0.89, green: 0.18, blue: 0.23)], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .paused:
             return LinearGradient(colors: [Color(red: 0.98, green: 0.74, blue: 0.20), Color(red: 0.88, green: 0.57, blue: 0.14)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+
+    private var statusStrokeStyle: Color {
+        switch state {
+        case .idle:
+            return Color.white.opacity(0.24)
+        case .active:
+            return Color.red.opacity(0.7)
+        case .paused:
+            return Color.yellow.opacity(0.8)
         }
     }
 

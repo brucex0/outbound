@@ -20,7 +20,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ## Shell Model
 
 - Primary shell is a standalone sparkles icon in the main app chrome.
-- The icon sits to the left of the floating tab switcher as a separate control, not inside a shared navigation container.
+- The icon sits to the left of the floating tab switcher in the bottom chrome row as a separate control, not inside a shared navigation container.
 - The icon is the minimized state and expands into a richer assistant surface on demand.
 - During live recording, the assistant switches to a compact entry mode so it does not compete with the camera/map workout UI.
 
