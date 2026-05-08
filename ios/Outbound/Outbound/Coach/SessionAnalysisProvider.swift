@@ -154,7 +154,7 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
             parts.append(cue)
         }
 
-        return parts.joined(separator: " ")
+        return parts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func urgency(for request: SessionAnalysisRequest) -> SessionAnalysisUrgency {

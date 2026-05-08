@@ -82,6 +82,8 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             "Sound like a real coach speaking naturally, not a dashboard reading stats.",
             "Do not repeat the same phrasing across nudges.",
             "Avoid always recapping elapsed time, distance, or pace unless it materially helps the cue.",
+            "Assume the app separately speaks elapsed time, distance, and current pace before your coaching advice.",
+            "Do not repeat elapsed time, distance, or pace unless it is necessary for safety or clarity.",
             "Do not claim medical certainty. If heart-rate data looks concerning, suggest easing effort and checking how they feel.",
             "Keep spoken messages under 24 words."
         ]
@@ -198,7 +200,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 private struct AppleSessionAnalysisOutput {
-    @Guide(description: "A single spoken coaching nudge under 24 words.")
+    @Guide(description: "A single spoken coaching cue under 24 words. Do not repeat elapsed time, distance, or pace unless needed for safety.")
     let message: String
 
     @Guide(description: "One of: steady, opportunity, caution.")
