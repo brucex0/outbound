@@ -30,10 +30,12 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var lastProgressDistanceMilestone = 0
     private var isActive = false
     private var recentSpokenFingerprints: [String] = []
+    private var recentSpokenMessages: [String] = []
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
     private let maxRecentSpokenFingerprints = 4
+    private let maxRecentSpokenMessages = 4
     private let minimumProgressAnnouncementGapSeconds = 30
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
@@ -65,6 +67,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressTimeMilestone = 0
         lastProgressDistanceMilestone = 0
         recentSpokenFingerprints = []
+        recentSpokenMessages = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
@@ -117,7 +120,8 @@ final class VirtualCoach: NSObject, ObservableObject {
             persona: persona,
             snapshot: snapshot,
             recentSnapshots: snapshotHistory,
-            sessionIntent: sessionIntent
+            sessionIntent: sessionIntent,
+            recentNudges: recentSpokenMessages
         )
         isAnalyzing = true
 
@@ -157,6 +161,10 @@ final class VirtualCoach: NSObject, ObservableObject {
         recentSpokenFingerprints.append(fingerprint)
         if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
             recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
+        }
+        recentSpokenMessages.append(analysis.message)
+        if recentSpokenMessages.count > maxRecentSpokenMessages {
+            recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
         }
 
         speak(coachingAnnouncement(for: snapshot, message: analysis.message), urgency: analysis.urgency)

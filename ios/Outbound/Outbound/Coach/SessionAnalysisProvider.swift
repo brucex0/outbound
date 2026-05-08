@@ -12,19 +12,311 @@ struct SessionAnalysisRequest {
     let snapshot: ActiveSessionSnapshot
     let recentSnapshots: [ActiveSessionSnapshot]
     let sessionIntent: SessionIntent?
+    let recentNudges: [String]
 
     init(
         profile: CoachProfile?,
         persona: CoachPersona?,
         snapshot: ActiveSessionSnapshot,
         recentSnapshots: [ActiveSessionSnapshot],
-        sessionIntent: SessionIntent? = nil
+        sessionIntent: SessionIntent? = nil,
+        recentNudges: [String] = []
     ) {
         self.profile = profile
         self.persona = persona
         self.snapshot = snapshot
         self.recentSnapshots = recentSnapshots
         self.sessionIntent = sessionIntent
+        self.recentNudges = recentNudges
+    }
+}
+
+struct SessionNudgePacket: Encodable {
+    let session: SessionData
+    let plan: PlanData
+    let athlete: AthleteData
+    let coach: CoachData
+    let decision: DecisionData
+    let history: HistoryData
+
+    struct SessionData: Encodable {
+        let activityType: String
+        let workoutType: String
+        let phase: String
+        let elapsedSeconds: Int
+        let distanceMeters: Double
+        let paceSecondsPerKm: Double?
+        let heartRateBpm: Int?
+        let elevationGainMeters: Double?
+        let gradePercent: Double?
+        let signalConfidence: SignalConfidence
+    }
+
+    struct SignalConfidence: Encodable {
+        let pace: String
+        let heartRate: String
+        let gps: String
+    }
+
+    struct PlanData: Encodable {
+        let title: String
+        let segmentName: String?
+        let segmentGoal: String?
+        let targetDistanceMeters: Double?
+        let targetDurationSeconds: Int?
+        let targetPaceSecondsPerKm: Double?
+    }
+
+    struct AthleteData: Encodable {
+        let fitnessLevel: String?
+        let weeklyVolumeKm: Double?
+        let preferredPaceSecondsPerKm: Double?
+        let goal: String?
+        let recentPatterns: [String]
+    }
+
+    struct CoachData: Encodable {
+        let persona: String
+        let style: String
+        let intensity: String
+        let maxWords: Int
+    }
+
+    struct DecisionData: Encodable {
+        let shouldNudge: Bool
+        let reason: String
+        let intent: String
+        let urgency: String
+    }
+
+    struct HistoryData: Encodable {
+        let lastNudges: [String]
+    }
+}
+
+extension SessionAnalysisRequest {
+    var nudgePacket: SessionNudgePacket {
+        let sport = persona?.template.sport ?? .run
+        let phase = sessionPhase
+        let reason = nudgeReason
+        let intent = nudgeIntent
+        let currentStep = activeStep
+
+        return SessionNudgePacket(
+            session: .init(
+                activityType: sport.rawValue,
+                workoutType: sessionIntent?.title.replacingOccurrences(of: " ", with: "_").lowercased() ?? "freestyle_\(sport.rawValue)",
+                phase: phase,
+                elapsedSeconds: snapshot.elapsedSeconds,
+                distanceMeters: snapshot.distanceMeters,
+                paceSecondsPerKm: snapshot.currentPaceSecsPerKm,
+                heartRateBpm: snapshot.heartRate,
+                elevationGainMeters: elevationGainMeters,
+                gradePercent: gradePercent,
+                signalConfidence: .init(
+                    pace: paceConfidence,
+                    heartRate: heartRateConfidence,
+                    gps: gpsConfidence
+                )
+            ),
+            plan: .init(
+                title: sessionIntent?.title ?? "Freestyle \(sport.displayName)",
+                segmentName: currentStep?.label,
+                segmentGoal: currentStep?.detail ?? sessionIntent?.detail,
+                targetDistanceMeters: sessionIntent?.resolvedTargetDistanceMeters,
+                targetDurationSeconds: sessionIntent?.resolvedTargetDurationSeconds,
+                targetPaceSecondsPerKm: profile?.athlete.preferredPaceSecs
+            ),
+            athlete: .init(
+                fitnessLevel: profile?.athlete.fitnessLevel,
+                weeklyVolumeKm: profile?.athlete.weeklyVolumeKm,
+                preferredPaceSecondsPerKm: profile?.athlete.preferredPaceSecs,
+                goal: profile?.goals.first(where: { !$0.achieved })?.description,
+                recentPatterns: athletePatterns
+            ),
+            coach: .init(
+                persona: persona?.template.personality ?? "supportive, concise",
+                style: persona?.template.coachingStyle ?? "supportive live coaching",
+                intensity: persona?.intensity.displayName ?? CoachingIntensity.balanced.displayName,
+                maxWords: 18
+            ),
+            decision: .init(
+                shouldNudge: true,
+                reason: reason,
+                intent: intent,
+                urgency: derivedUrgency.rawValue
+            ),
+            history: .init(
+                lastNudges: Array(recentNudges.suffix(3))
+            )
+        )
+    }
+
+    private var sessionPhase: String {
+        switch snapshot.elapsedSeconds {
+        case ..<45:
+            "startup"
+        case ..<180:
+            "settling"
+        case ..<900:
+            "steady"
+        default:
+            "working"
+        }
+    }
+
+    private var nudgeReason: String {
+        if let heartRate = snapshot.heartRate, heartRate > 185 {
+            return "heart_rate_high"
+        }
+        if snapshot.currentPaceSecsPerKm == nil {
+            return "startup_settling"
+        }
+        if let target = profile?.athlete.preferredPaceSecs,
+           let pace = snapshot.currentPaceSecsPerKm {
+            if pace - target > 15 {
+                return "below_target_pace"
+            }
+            if target - pace > 15 {
+                return "above_target_pace"
+            }
+        }
+        if paceTrendIsSlowing {
+            return "pace_drift"
+        }
+        if finishingSoon {
+            return "finish_window"
+        }
+        if activeStep != nil {
+            return "segment_check_in"
+        }
+        return "steady_check_in"
+    }
+
+    private var nudgeIntent: String {
+        switch nudgeReason {
+        case "heart_rate_high":
+            return "settle_breathing"
+        case "startup_settling":
+            return "reassure_without_precision"
+        case "below_target_pace":
+            return "build_effort"
+        case "above_target_pace":
+            return "ease_back"
+        case "pace_drift":
+            return "restore_rhythm"
+        case "finish_window":
+            return "finish_composed"
+        case "segment_check_in":
+            return "hold_segment_goal"
+        default:
+            return "steady_reassurance"
+        }
+    }
+
+    private var derivedUrgency: SessionAnalysisUrgency {
+        if let heartRate = snapshot.heartRate, heartRate > 185 {
+            return .caution
+        }
+
+        guard let pace = snapshot.currentPaceSecsPerKm,
+              let target = profile?.athlete.preferredPaceSecs
+        else {
+            return .steady
+        }
+
+        return abs(pace - target) > 15 ? .opportunity : .steady
+    }
+
+    private var paceTrendIsSlowing: Bool {
+        let paces = recentSnapshots.compactMap(\.currentPaceSecsPerKm)
+        guard paces.count >= 4 else { return false }
+        let midpoint = paces.count / 2
+        let firstAverage = paces[..<midpoint].reduce(0, +) / Double(midpoint)
+        let secondAverage = paces[midpoint...].reduce(0, +) / Double(paces.count - midpoint)
+        return secondAverage - firstAverage > 20
+    }
+
+    private var finishingSoon: Bool {
+        if let targetDistance = sessionIntent?.resolvedTargetDistanceMeters, targetDistance > 0 {
+            return targetDistance - snapshot.distanceMeters <= 400
+        }
+        if let targetDuration = sessionIntent?.resolvedTargetDurationSeconds, targetDuration > 0 {
+            return targetDuration - snapshot.elapsedSeconds <= 120
+        }
+        return false
+    }
+
+    private var activeStep: SessionIntentStep? {
+        guard let intent = sessionIntent else { return nil }
+        let steps = intent.workoutSteps.filter { $0.durationSeconds > 0 }
+        guard !steps.isEmpty else { return nil }
+
+        var remainingElapsed = snapshot.elapsedSeconds
+        for step in steps {
+            if remainingElapsed < step.durationSeconds {
+                return step
+            }
+            remainingElapsed -= step.durationSeconds
+        }
+
+        return steps.last
+    }
+
+    private var elevationGainMeters: Double? {
+        let altitudes = recentSnapshots.compactMap(\.location?.altitudeMeters)
+        guard altitudes.count >= 2 else { return nil }
+        let gain = zip(altitudes, altitudes.dropFirst()).reduce(0.0) { total, pair in
+            total + max(0, pair.1 - pair.0)
+        }
+        return gain > 0 ? gain : nil
+    }
+
+    private var gradePercent: Double? {
+        let locations = recentSnapshots.compactMap(\.location)
+        guard let first = locations.first,
+              let last = locations.last
+        else {
+            return nil
+        }
+
+        let horizontalMeters = max(0, snapshot.distanceMeters - (recentSnapshots.dropLast().last?.distanceMeters ?? 0))
+        guard horizontalMeters > 0 else { return nil }
+        let grade = ((last.altitudeMeters - first.altitudeMeters) / horizontalMeters) * 100
+        return grade.isFinite ? grade : nil
+    }
+
+    private var paceConfidence: String {
+        if snapshot.currentPaceSecsPerKm == nil {
+            return "low"
+        }
+        return snapshot.elapsedSeconds < 60 ? "medium" : "high"
+    }
+
+    private var heartRateConfidence: String {
+        snapshot.heartRate == nil ? "missing" : "high"
+    }
+
+    private var gpsConfidence: String {
+        guard let accuracy = snapshot.location?.horizontalAccuracyMeters else { return "missing" }
+        switch accuracy {
+        case ..<12:
+            return "high"
+        case ..<30:
+            return "medium"
+        default:
+            return "low"
+        }
+    }
+
+    private var athletePatterns: [String] {
+        guard let profile else { return [] }
+
+        var patterns = profile.athlete.weaknesses
+        if !profile.memorySnapshot.recentInsight.isEmpty {
+            patterns.append(profile.memorySnapshot.recentInsight)
+        }
+        return Array(patterns.prefix(3))
     }
 }
 

@@ -128,65 +128,22 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
     }
 
     private static func prompt(for request: SessionAnalysisRequest) -> String {
-        let snapshot = request.snapshot
-        let pace = snapshot.currentPaceSecsPerKm?.paceString ?? "unknown"
-        let heartRate = snapshot.heartRate.map { "\($0) bpm" } ?? "unknown"
-        let intent = request.sessionIntent.map(describeIntent) ?? "No planned session intent supplied."
-        let location = snapshot.location.map {
-            String(
-                format: "%.5f, %.5f, accuracy %.0fm, speed %@",
-                $0.latitude,
-                $0.longitude,
-                $0.horizontalAccuracyMeters,
-                $0.speedMetersPerSecond.map { String(format: "%.1f m/s", $0) } ?? "unknown"
-            )
-        } ?? "unknown"
-        let recent = request.recentSnapshots.suffix(6).map(describe).joined(separator: "\n")
+        let packet = encodedPacket(request.nudgePacket)
 
         return """
-        Active session snapshot:
-        - activity: \(request.sessionIntent?.title ?? "Freestyle run")
-        - plan: \(intent)
-        - elapsed: \(snapshot.elapsedSeconds.formatted())
-        - distance: \(String(format: "%.2f km", snapshot.distanceKilometers))
-        - current pace: \(pace)
-        - heart rate: \(heartRate)
-        - location: \(location)
+        Write one spoken nudge from this structured workout context.
 
-        Recent trend:
-        \(recent.isEmpty ? "No trend data yet." : recent)
+        Context packet:
+        \(packet)
 
-        Use the activity name and any target distance, duration, route, or planned step when it materially improves the nudge.
-        Decide whether the athlete needs a spoken nudge now. Return one useful nudge, urgency steady/opportunity/caution, and shouldSpeak.
+        Requirements:
+        - Match the packet's decision intent and urgency.
+        - Use plan, athlete profile, and recent patterns only when they materially improve the cue.
+        - Mention time, distance, or pace only if they improve the coaching moment.
+        - Prefer conversational phrasing like "just over a kilometer in", "pace still settling", or "a touch quick".
+        - Do not list stats in dashboard order.
+        - Return one useful nudge, urgency steady/opportunity/caution, and shouldSpeak.
         """
-    }
-
-    private static func describeIntent(_ intent: SessionIntent) -> String {
-        var parts = [intent.detail]
-
-        if let distance = intent.resolvedTargetDistanceMeters {
-            parts.append(String(format: "target distance %.2f km", distance / 1000))
-        }
-        if let duration = intent.resolvedTargetDurationSeconds {
-            parts.append("target duration \(duration.formatted())")
-        }
-        if let routeName = intent.routeName, !routeName.isEmpty {
-            parts.append("route \(routeName)")
-        }
-        if !intent.workoutSteps.isEmpty {
-            let steps = intent.workoutSteps.prefix(5).map {
-                "\($0.label) \($0.durationSeconds.formatted())"
-            }
-            parts.append("steps: \(steps.joined(separator: "; "))")
-        }
-
-        return parts.joined(separator: "; ")
-    }
-
-    private static func describe(_ snapshot: ActiveSessionSnapshot) -> String {
-        let pace = snapshot.currentPaceSecsPerKm?.paceString ?? "unknown"
-        let heartRate = snapshot.heartRate.map { "\($0) bpm" } ?? "unknown"
-        return "- \(snapshot.elapsedSeconds.formatted()): \(String(format: "%.2f km", snapshot.distanceKilometers)), pace \(pace), HR \(heartRate)"
     }
 
     private static func clean(_ message: String) -> String {
@@ -194,6 +151,17 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\"", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func encodedPacket(_ packet: SessionNudgePacket) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(packet),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return "{}"
+        }
+        return json
     }
 }
 
