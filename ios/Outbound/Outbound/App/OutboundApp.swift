@@ -26,40 +26,59 @@ struct OutboundApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authStore.isAuthenticated {
-                MainTabView()
-                    .environmentObject(authStore)
-                    .environmentObject(coachStore)
-                    .environmentObject(coachCatalogStore)
-                    .environmentObject(activityStore)
-                    .environmentObject(goalStore)
-                    .environmentObject(trainingPlanStore)
-                    .environmentObject(assistantStore)
-                    .environmentObject(appNavigationStore)
-                    .environmentObject(healthAuthorizationStore)
-                    .environmentObject(healthImportStore)
-                    .environmentObject(dailyCheckInStore)
-                    .environmentObject(musicStore)
-                    .environmentObject(recognitionStore)
-                    .environmentObject(measurementPreferences)
-                    .environmentObject(onboardingStore)
-                    .task {
-                        await coachStore.syncIfNeeded()
-                        await activityStore.syncPendingActivitiesIfNeeded()
-                        await healthAuthorizationStore.refresh()
-                        await healthImportStore.refreshRecentWorkouts()
-                        await musicStore.refresh()
-                    }
-                    .onOpenURL { url in
-                        _ = authStore.handleOpenURL(url)
-                    }
-            } else {
-                AuthView()
-                    .environmentObject(authStore)
-                    .onOpenURL { url in
-                        _ = authStore.handleOpenURL(url)
-                    }
-            }
+            rootView
+        }
+    }
+
+    @ViewBuilder
+    private var rootView: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
+            DebugPostRunSummaryHarness()
+                .environmentObject(measurementPreferences)
+        } else {
+            authenticatedRoot
+        }
+        #else
+        authenticatedRoot
+        #endif
+    }
+
+    @ViewBuilder
+    private var authenticatedRoot: some View {
+        if authStore.isAuthenticated {
+            MainTabView()
+                .environmentObject(authStore)
+                .environmentObject(coachStore)
+                .environmentObject(coachCatalogStore)
+                .environmentObject(activityStore)
+                .environmentObject(goalStore)
+                .environmentObject(trainingPlanStore)
+                .environmentObject(assistantStore)
+                .environmentObject(appNavigationStore)
+                .environmentObject(healthAuthorizationStore)
+                .environmentObject(healthImportStore)
+                .environmentObject(dailyCheckInStore)
+                .environmentObject(musicStore)
+                .environmentObject(recognitionStore)
+                .environmentObject(measurementPreferences)
+                .environmentObject(onboardingStore)
+                .task {
+                    await coachStore.syncIfNeeded()
+                    await activityStore.syncPendingActivitiesIfNeeded()
+                    await healthAuthorizationStore.refresh()
+                    await healthImportStore.refreshRecentWorkouts()
+                    await musicStore.refresh()
+                }
+                .onOpenURL { url in
+                    _ = authStore.handleOpenURL(url)
+                }
+        } else {
+            AuthView()
+                .environmentObject(authStore)
+                .onOpenURL { url in
+                    _ = authStore.handleOpenURL(url)
+                }
         }
     }
 }

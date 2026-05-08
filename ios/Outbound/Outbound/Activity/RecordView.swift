@@ -168,7 +168,7 @@ struct RecordView: View {
                 lastNudge: coach.lastNudge,
                 reflection: activity.reflection,
                 recognitionPreviews: activity.recognitionPreviews,
-                onSave: { savePendingActivity(activity) },
+                onSave: { selectedPhotos in savePendingActivity(activity, photos: selectedPhotos) },
                 onDiscard: discardPendingActivity
             )
         }
@@ -236,13 +236,13 @@ struct RecordView: View {
         )
     }
 
-    private func savePendingActivity(_ activity: PendingFinishedActivity) {
+    private func savePendingActivity(_ activity: PendingFinishedActivity, photos: [(UIImage, PhotoMetadata)]) {
         let priorActivities = activityStore.activities
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
 
         guard let savedActivity = try? activityStore.save(
             summary: activity.summary,
-            photos: activity.photos,
+            photos: photos,
             lastNudge: coach.lastNudge
         ) else {
             return

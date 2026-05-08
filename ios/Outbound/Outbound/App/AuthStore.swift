@@ -37,6 +37,15 @@ final class AuthStore: ObservableObject {
     }
 
     init() {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
+            backend = .local
+            isAuthenticated = true
+            user = nil
+            localSessionLabel = "UI test session"
+            APIClient.shared.setToken(nil)
+            return
+        }
+
         isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
         backend = isFirebaseConfigured ? .firebase : .local
 

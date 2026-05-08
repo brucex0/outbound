@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
@@ -8,31 +9,58 @@ struct PostRunSummaryView: View {
     let lastNudge: String
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
-    let onSave: () -> Void
+    let onSave: ([(UIImage, PhotoMetadata)]) -> Void
     let onDiscard: () -> Void
+    @State private var selectedPhotoIndices: Set<Int>
+    @State private var isPhotoSelectionPresented = false
+
+    init(
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        lastNudge: String,
+        reflection: FinishReflection,
+        recognitionPreviews: [RecognitionPreview],
+        onSave: @escaping ([(UIImage, PhotoMetadata)]) -> Void,
+        onDiscard: @escaping () -> Void
+    ) {
+        self.summary = summary
+        self.photos = photos
+        self.lastNudge = lastNudge
+        self.reflection = reflection
+        self.recognitionPreviews = recognitionPreviews
+        self.onSave = onSave
+        self.onDiscard = onDiscard
+        _selectedPhotoIndices = State(initialValue: Set(photos.indices))
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 heroImage
                 reflectionSection
+                if !photos.isEmpty { photoReviewSection }
                 if let primaryRecognition = recognitionPreviews.first {
                     recognitionSection(primaryRecognition)
                 }
                 statsSection
                 if summary.trackPoints.count > 1 { routeMap }
                 if !lastNudge.isEmpty { coachSection }
-                if !photos.isEmpty { photoGrid }
                 actionButtons
             }
         }
         .ignoresSafeArea(edges: .top)
+        .sheet(isPresented: $isPhotoSelectionPresented) {
+            PhotoSelectionView(
+                photos: photos,
+                selectedPhotoIndices: $selectedPhotoIndices
+            )
+        }
     }
 
     private var heroImage: some View {
         Group {
-            if let (image, _) = photos.first {
-                Image(uiImage: image)
+            if let selectedPhoto = selectedPhotos.first {
+                Image(uiImage: selectedPhoto.0)
                     .resizable()
                     .scaledToFill()
             } else {
@@ -179,32 +207,73 @@ struct PostRunSummaryView: View {
         .disabled(true)
     }
 
-    private var photoGrid: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Photos")
-                .font(.headline)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+    private var selectedPhotos: [(UIImage, PhotoMetadata)] {
+        photos.indices
+            .filter { selectedPhotoIndices.contains($0) }
+            .map { photos[$0] }
+    }
 
-            LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)],
-                spacing: 2
-            ) {
-                ForEach(photos.indices, id: \.self) { i in
-                    Image(uiImage: photos[i].0)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 160)
-                        .clipped()
+    private var photoSelectionSummary: String {
+        switch selectedPhotos.count {
+        case 0:
+            return "None selected"
+        case photos.count:
+            return "\(photos.count) selected"
+        default:
+            return "\(selectedPhotos.count) of \(photos.count) selected"
+        }
+    }
+
+    private var photoReviewSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Photos")
+                        .font(.headline)
+                    Text(photoSelectionSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isPhotoSelectionPresented = true
+                } label: {
+                    Label("Manage", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .accessibilityIdentifier("ManagePhotosButton")
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(photos.indices, id: \.self) { index in
+                        PostRunPhotoThumbnail(
+                            image: photos[index].0,
+                            isSelected: selectedPhotoIndices.contains(index)
+                        )
+                    }
                 }
             }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
         .padding(.bottom, 8)
+        .accessibilityIdentifier("PostRunPhotoReviewSection")
     }
 
     private var actionButtons: some View {
         VStack(spacing: 12) {
-            Button(action: onSave) {
+            Button {
+                onSave(selectedPhotos)
+            } label: {
                 Label("Save Activity", systemImage: "checkmark.circle.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -223,6 +292,240 @@ struct PostRunSummaryView: View {
         .padding(.vertical, 28)
     }
 }
+
+private struct PostRunPhotoThumbnail: View {
+    let image: UIImage
+    let isSelected: Bool
+
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 68, height: 68)
+            .clipped()
+            .opacity(isSelected ? 1 : 0.35)
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(isSelected ? .orange : .white)
+                    .padding(5)
+                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct PhotoSelectionView: View {
+    let photos: [(UIImage, PhotoMetadata)]
+    @Binding var selectedPhotoIndices: Set<Int>
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 3),
+        GridItem(.flexible(), spacing: 3),
+        GridItem(.flexible(), spacing: 3)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 3) {
+                    ForEach(photos.indices, id: \.self) { index in
+                        Button {
+                            togglePhoto(at: index)
+                        } label: {
+                            PhotoSelectionTile(
+                                image: photos[index].0,
+                                isSelected: selectedPhotoIndices.contains(index)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Photo \(index + 1)")
+                        .accessibilityValue(selectedPhotoIndices.contains(index) ? "Selected" : "Not selected")
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Choose Photos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(allPhotosSelected ? "Clear" : "Select All") {
+                        if allPhotosSelected {
+                            selectedPhotoIndices.removeAll()
+                        } else {
+                            selectedPhotoIndices = Set(photos.indices)
+                        }
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Text(selectionCountText)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.bar)
+            }
+        }
+    }
+
+    private var allPhotosSelected: Bool {
+        selectedPhotoIndices.count == photos.count
+    }
+
+    private var selectionCountText: String {
+        "\(selectedPhotoIndices.count) of \(photos.count) selected"
+    }
+
+    private func togglePhoto(at index: Int) {
+        if selectedPhotoIndices.contains(index) {
+            selectedPhotoIndices.remove(index)
+        } else {
+            selectedPhotoIndices.insert(index)
+        }
+    }
+}
+
+private struct PhotoSelectionTile: View {
+    let image: UIImage
+    let isSelected: Bool
+
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fill)
+            .clipped()
+            .overlay {
+                if !isSelected {
+                    Color.black.opacity(0.38)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(isSelected ? .orange : .white)
+                    .padding(7)
+                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            }
+    }
+}
+
+#if DEBUG
+struct DebugPostRunSummaryHarness: View {
+    @State private var savedPhotoCount: Int?
+
+    var body: some View {
+        PostRunSummaryView(
+            summary: Self.summary,
+            photos: Self.photos,
+            lastNudge: "Nice close. Save the parts you want to remember.",
+            reflection: FinishReflection(
+                title: "Good finish",
+                body: "You got the session done and kept the finish simple.",
+                highlight: "Photos are ready to review.",
+                progressNote: nil
+            ),
+            recognitionPreviews: [],
+            onSave: { savedPhotoCount = $0.count },
+            onDiscard: {}
+        )
+        .overlay(alignment: .topTrailing) {
+            if let savedPhotoCount {
+                Text("Saved \(savedPhotoCount)")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 16)
+                    .padding(.trailing, 16)
+            }
+        }
+    }
+
+    private static var summary: ActivitySummary {
+        let start = Date().addingTimeInterval(-28 * 60)
+        let route = [
+            CLLocation(latitude: 37.7793, longitude: -122.4192),
+            CLLocation(latitude: 37.7819, longitude: -122.4147),
+            CLLocation(latitude: 37.7857, longitude: -122.4104)
+        ]
+        return ActivitySummary(
+            startedAt: start,
+            endedAt: Date(),
+            durationSecs: 28 * 60,
+            distanceM: 4820,
+            avgPace: 348,
+            elevationGainM: 34,
+            trackPoints: route
+        )
+    }
+
+    private static var photos: [(UIImage, PhotoMetadata)] {
+        [photo(index: 1), photo(index: 2), photo(index: 3)]
+    }
+
+    private static func photo(index: Int) -> (UIImage, PhotoMetadata) {
+        let offset = Double(index)
+        let coordinate = CLLocationCoordinate2D(
+            latitude: 37.7793 + offset * 0.002,
+            longitude: -122.4192 + offset * 0.002
+        )
+        let metadata = PhotoMetadata(
+            takenAt: Date().addingTimeInterval(offset * -180),
+            paceAtShot: 348,
+            hrAtShot: 142 + index,
+            distAtShot: offset * 1100,
+            coordinate: coordinate,
+            captureContext: .active
+        )
+        return (debugPhoto(index: index), metadata)
+    }
+
+    private static func debugPhoto(index: Int) -> UIImage {
+        let size = CGSize(width: 900, height: 1200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let colors: [(UIColor, UIColor)] = [
+                (.systemOrange, .systemBlue),
+                (.systemGreen, .systemIndigo),
+                (.systemPink, .systemTeal)
+            ]
+            let pair = colors[(index - 1) % colors.count]
+
+            pair.0.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+
+            pair.1.setFill()
+            context.fill(CGRect(x: 0, y: size.height * 0.56, width: size.width, height: size.height * 0.44))
+
+            UIColor.white.withAlphaComponent(0.95).setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 104, y: 120, width: 210, height: 210))
+
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 78, weight: .bold),
+                .foregroundColor: UIColor.white,
+                .paragraphStyle: paragraph
+            ]
+            "Run Photo\n\(index)".draw(
+                in: CGRect(x: 84, y: 430, width: size.width - 168, height: 230),
+                withAttributes: attributes
+            )
+        }
+    }
+}
+#endif
 
 private struct SummaryStatColumn: View {
     let label: String

@@ -79,6 +79,21 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testPostRunSummaryCanManageCapturedPhotos() throws {
+        let app = launchApp(extraArguments: ["-OutboundDebugPostRunSummary"])
+
+        XCTAssertTrue(app.staticTexts["3 selected"].waitForExistence(timeout: 5))
+        app.buttons["Manage"].tap()
+        XCTAssertTrue(app.navigationBars["Choose Photos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3 of 3 selected"].exists)
+        app.buttons["Clear"].tap()
+        XCTAssertTrue(app.staticTexts["0 of 3 selected"].waitForExistence(timeout: 3))
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["None selected"].waitForExistence(timeout: 3))
+        app.buttons["Discard"].tap()
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
@@ -87,9 +102,10 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchApp() -> XCUIApplication {
+    private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase"]
+        app.launchArguments += extraArguments
         app.launch()
         return app
     }

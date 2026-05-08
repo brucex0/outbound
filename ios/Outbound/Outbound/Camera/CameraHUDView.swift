@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import CoreLocation
+import UIKit
 
 // Full-screen camera with an always-available shutter, a right-edge utility
 // rail, and a bottom session card that carries live workout status plus coach
@@ -196,40 +197,51 @@ struct CameraHUDView: View {
     }
 
     private func capturePhoto() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUseSampleCameraPhoto") {
+            handleCapturedPhoto(UITestSampleCameraPhoto.make(index: capturedPhotoCount + 1))
+            return
+        }
+        #endif
+
         camera.capturePhoto { image in
             DispatchQueue.main.async {
                 guard let image else { return }
-                optimisticCapturedPhoto = image
-                startCaptureFlight(with: image)
-
-                withAnimation(.easeOut(duration: 0.1)) { showFlash = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    withAnimation { showFlash = false }
-                }
-
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.58)) {
-                    captureSuccessID += 1
-                    showCaptureSuccess = true
-                }
-                let successID = captureSuccessID
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
-                    guard successID == captureSuccessID else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        showCaptureSuccess = false
-                    }
-                }
-
-                let meta = PhotoMetadata(
-                    takenAt: Date(),
-                    paceAtShot: recorder.currentPace,
-                    hrAtShot: recorder.heartRate,
-                    distAtShot: recorder.distanceMeters,
-                    coordinate: recorder.locationManager.location?.coordinate,
-                    captureContext: recorder.photoCaptureContext
-                )
-                onCapture(image, meta)
+                handleCapturedPhoto(image)
             }
         }
+    }
+
+    private func handleCapturedPhoto(_ image: UIImage) {
+        optimisticCapturedPhoto = image
+        startCaptureFlight(with: image)
+
+        withAnimation(.easeOut(duration: 0.1)) { showFlash = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation { showFlash = false }
+        }
+
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.58)) {
+            captureSuccessID += 1
+            showCaptureSuccess = true
+        }
+        let successID = captureSuccessID
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+            guard successID == captureSuccessID else { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                showCaptureSuccess = false
+            }
+        }
+
+        let meta = PhotoMetadata(
+            takenAt: Date(),
+            paceAtShot: recorder.currentPace,
+            hrAtShot: recorder.heartRate,
+            distAtShot: recorder.distanceMeters,
+            coordinate: recorder.locationManager.location?.coordinate,
+            captureContext: recorder.photoCaptureContext
+        )
+        onCapture(image, meta)
     }
 
     private func pauseActivity() {
@@ -358,6 +370,7 @@ struct CapturedPhotoStackView: View {
         .animation(.spring(response: 0.28, dampingFraction: 0.72), value: image == nil)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(photoStackAccessibilityLabel)
+        .accessibilityIdentifier("CapturedPhotoStack")
     }
 
     @ViewBuilder
@@ -423,6 +436,37 @@ private struct CaptureFlightThumbnail: View {
         return max(0, Double((1 - progress) / 0.18))
     }
 }
+
+#if DEBUG
+private enum UITestSampleCameraPhoto {
+    static func make(index: Int) -> UIImage {
+        let size = CGSize(width: 900, height: 1200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+
+        return renderer.image { context in
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 0, y: size.height * 0.58, width: size.width, height: size.height * 0.42))
+
+            UIColor.white.withAlphaComponent(0.95).setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 96, y: 124, width: 220, height: 220))
+
+            let text = "Outbound\nPhoto \(index)"
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 84, weight: .bold),
+                .foregroundColor: UIColor.white,
+                .paragraphStyle: paragraph
+            ]
+            let textRect = CGRect(x: 80, y: 430, width: size.width - 160, height: 240)
+            text.draw(in: textRect, withAttributes: attributes)
+        }
+    }
+}
+#endif
 
 struct ShutterButton: View {
     let action: () -> Void
