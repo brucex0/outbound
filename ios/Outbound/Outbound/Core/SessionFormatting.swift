@@ -115,6 +115,26 @@ extension Double {
         let seconds = Int(self) % 60
         return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per kilometer"
     }
+
+    var spokenDistanceString: String {
+        let meters = Int(self.rounded())
+
+        if meters < 1000 {
+            return meters == 1 ? "1 meter" : "\(meters) meters"
+        }
+
+        let kilometers = self / 1000
+        if kilometers < 2 {
+            let roundedTenth = (kilometers * 10).rounded() / 10
+            if abs(roundedTenth - 1.0) < 0.01 {
+                return "1 kilometer"
+            }
+            return String(format: "%.1f kilometers", roundedTenth)
+        }
+
+        let roundedKilometers = Int(kilometers.rounded())
+        return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
+    }
 }
 
 extension Int {
@@ -149,5 +169,26 @@ extension Int {
         }
 
         return parts.joined(separator: " ")
+    }
+
+    var conversationalDurationString: String {
+        switch self {
+        case ..<60:
+            return "\(self) \(self == 1 ? "second" : "seconds") in"
+        case ..<3600:
+            let minutes = self / 60
+            let seconds = self % 60
+            if seconds == 0 {
+                return "\(minutes) \(minutes == 1 ? "minute" : "minutes") in"
+            }
+            return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") in"
+        default:
+            let hours = self / 3600
+            let minutes = (self % 3600) / 60
+            if minutes == 0 {
+                return "\(hours) \(hours == 1 ? "hour" : "hours") in"
+            }
+            return "\(hours) \(hours == 1 ? "hour" : "hours") \(minutes) \(minutes == 1 ? "minute" : "minutes") in"
+        }
     }
 }

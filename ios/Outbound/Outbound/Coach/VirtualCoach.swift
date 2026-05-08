@@ -193,13 +193,14 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
-        var parts = [
-            "Time \(snapshot.elapsedSeconds.spokenDurationString).",
-            String(format: "Distance %.2f kilometers.", snapshot.distanceKilometers)
-        ]
+        var parts = ["\(snapshot.elapsedSeconds.conversationalDurationString)."]
+
+        if snapshot.distanceMeters > 0 {
+            parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
+        }
 
         if let pace = snapshot.currentPaceSecsPerKm {
-            parts.append("Current pace \(pace.spokenPaceString).")
+            parts.append("Pace \(pace.spokenPaceString).")
         } else {
             parts.append("Pace still settling.")
         }
