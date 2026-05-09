@@ -77,6 +77,10 @@ final class APIClient {
         try await get("/planning/activity-suggestion")
     }
 
+    func fetchPlanRecommendations() async throws -> PlanRecommendationsResponse {
+        try await get("/planning/recommendations")
+    }
+
     // MARK: - Helpers
 
     private func get<T: Decodable>(
@@ -673,6 +677,14 @@ struct ActivitySuggestionResponse: Codable, Equatable {
     let planContext: ActivitySuggestionPlanContext?
     let activityWatermark: ActivitySuggestionWatermark
     let decision: ActivitySuggestionDecision
+}
+
+struct PlanRecommendationsResponse: Codable, Equatable {
+    let recommendations: [TrainingPlanRecommendation]
+    let source: String
+    let generatedAt: Date
+    let activePlanId: String?
+    let catalogVersion: String?
 }
 
 struct ActivitySuggestionPlanContext: Codable, Equatable {

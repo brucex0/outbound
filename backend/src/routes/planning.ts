@@ -9,6 +9,7 @@ import {
   createGoal,
   getActivitySuggestion,
   getAdjustments,
+  getRecommendations,
   getState,
   getToday,
   rebuildPlan,
@@ -87,6 +88,12 @@ router.get("/activity-suggestion", async (c) => {
   const user = await requirePlanningUser(c);
   if (user instanceof Response) return user;
   return c.json(await getActivitySuggestion(user.id));
+});
+
+router.get("/recommendations", async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  return c.json(await getRecommendations(user.id));
 });
 
 router.get("/goals", async (c) => {

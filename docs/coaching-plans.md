@@ -185,7 +185,7 @@ Current iOS MVP note:
 - imported plain-text plans are normalized into Outbound workout kinds and step lists so the same detail UI and Today adaptation logic can still work across authored and imported plans
 - the same catalog has been exported into `backend/src/data/trainingPlanTemplates.ts` for seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables
 - the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
-- iOS still keeps `TrainingPlanLibrary.swift` as an offline fallback and compatibility cache, but the normal authenticated flow calls the plan API through `APIClient`
+- iOS fetches Explore Plans recommendations from `GET /v1/planning/recommendations`, caches the last good server response for immediate/offline display, and keeps `TrainingPlanLibrary.swift` as the final offline fallback and compatibility cache.
 
 ## Personalization Parameters
 

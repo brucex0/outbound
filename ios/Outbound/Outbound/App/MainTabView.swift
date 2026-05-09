@@ -499,6 +499,7 @@ struct MotivationDashboardView: View {
             NavigationStack {
                 TrainingPlanPickerView(
                     recommendations: trainingPlanStore.recommendations,
+                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
                     accentColor: coachCatalog.selectedPersona.face.accentColor,
                     onSelectPlan: { recommendation in
                         selectedRecommendation = recommendation
@@ -899,22 +900,40 @@ struct MotivationDashboardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 8) {
-                if let recommendation {
-                    Button("Use") {
-                        trainingPlanStore.acceptRecommendation(recommendation)
+            HStack(alignment: .center, spacing: 12) {
+                Label {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(recommendation?.template.title ?? "Browse training plans")
+                            .font(.caption.weight(.semibold))
+                        Text(recommendation?.rationale ?? "Use a plan when you want the next few weeks mapped out.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                } icon: {
+                    Image(systemName: "calendar.badge.plus")
+                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                 }
 
-                Button("More") {
-                    showPlanPicker()
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    if let recommendation {
+                        Button("Use") {
+                            trainingPlanStore.acceptRecommendation(recommendation)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(coachCatalog.selectedPersona.face.accentColor)
+                    }
+
+                    Button("More") {
+                        showPlanPicker()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(coachCatalog.selectedPersona.face.accentColor)
                 }
-                .buttonStyle(.bordered)
-                .tint(coachCatalog.selectedPersona.face.accentColor)
+                .font(.caption.weight(.semibold))
             }
-            .font(.caption.weight(.semibold))
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -1681,6 +1700,7 @@ struct TrainingPlanCard: View {
             NavigationStack {
                 TrainingPlanPickerView(
                     recommendations: trainingPlanStore.recommendations,
+                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
                     accentColor: accentColor,
                     onSelectPlan: { recommendation in
                         selectedRecommendation = recommendation
@@ -1902,6 +1922,7 @@ private struct TrainingPlanPickerView: View {
     @Environment(\.dismiss) private var dismiss
 
     let recommendations: [TrainingPlanRecommendation]
+    let isRefreshing: Bool
     let accentColor: Color
     let onSelectPlan: (TrainingPlanRecommendation) -> Void
     let onUsePlan: (TrainingPlanRecommendation) -> Void
@@ -1910,13 +1931,25 @@ private struct TrainingPlanPickerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if recommendations.isEmpty {
-                    Text("No alternate plans are available right now.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(18)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    HStack(spacing: 10) {
+                        if isRefreshing {
+                            ProgressView()
+                        }
+                        Text(isRefreshing ? "Loading plans..." : "No alternate plans are available right now.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else if isRefreshing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Refreshing plans")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 ForEach(recommendations) { recommendation in

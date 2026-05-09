@@ -422,12 +422,14 @@ final class TrainingPlanStore: ObservableObject {
     @Published private(set) var currentWeek: TrainingPlanWeekSnapshot?
     @Published private(set) var todaySuggestion: TodayTrainingSuggestion?
     @Published private(set) var activitySuggestion: ActivitySuggestionResponse?
+    @Published private(set) var isRefreshingPlanRecommendations = false
 
     private let defaults: UserDefaults
     private let calendar: Calendar
     private let api: APIClient
     private let activePlanKey = "training_plan_store_active_plan_v1"
     private let stateCacheKey = "training_plan_store_state_v2"
+    private let recommendationCacheKey = "training_plan_store_recommendations_cache_v1"
     private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
     private let readinessSyncKey = "training_plan_store_readiness_sync_v1"
     private var dismissedRecommendationWeekStart: Date?
@@ -436,6 +438,7 @@ final class TrainingPlanStore: ObservableObject {
     private var lastReadiness: DailyReadiness?
     private var lastPhase: MotivationPhase = .firstSession
     private var refreshTask: Task<Void, Never>?
+    private var recommendationRefreshTask: Task<Void, Never>?
 
     init(
         defaults: UserDefaults = .standard,
@@ -519,11 +522,26 @@ final class TrainingPlanStore: ObservableObject {
         lastPhase = phase
 
         resetDismissedRecommendationIfNeeded(now: now)
-        updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now, persist: true)
+        let cachedRecommendations = cachedPlanRecommendations(now: now)
+        if !cachedRecommendations.isEmpty {
+            recommendations = cachedRecommendations
+        } else {
+            recommendations = Self.makeRecommendations(
+                activities: activities,
+                phase: phase,
+                calendar: calendar,
+                now: now,
+                excludingTemplateID: activePlan?.templateID
+            )
+        }
+        persistState()
+        refreshPlanRecommendations(activities: activities, phase: phase, now: now)
     }
 
     func acceptRecommendation(_ recommendation: TrainingPlanRecommendation, now: Date = Date()) {
         refreshTask?.cancel()
+        recommendationRefreshTask?.cancel()
+        isRefreshingPlanRecommendations = false
         activePlan = ActiveTrainingPlan(
             id: UUID().uuidString,
             templateID: recommendation.template.id,
@@ -554,6 +572,8 @@ final class TrainingPlanStore: ObservableObject {
 
     func clearActivePlan(now: Date = Date()) {
         refreshTask?.cancel()
+        recommendationRefreshTask?.cancel()
+        isRefreshingPlanRecommendations = false
         activePlan = nil
         currentWeek = nil
         todaySuggestion = nil
@@ -606,6 +626,17 @@ final class TrainingPlanStore: ObservableObject {
             updateLocalRecommendationsIfNeeded(activities: lastActivities, phase: lastPhase, now: now)
         } else {
             recommendations = state.recommendations
+            if !state.recommendations.isEmpty {
+                cachePlanRecommendations(
+                    PlanRecommendationsResponse(
+                        recommendations: state.recommendations,
+                        source: "server",
+                        generatedAt: now,
+                        activePlanId: activePlan?.id,
+                        catalogVersion: nil
+                    )
+                )
+            }
         }
         if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
             recommendations = []
@@ -689,6 +720,72 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    private func refreshPlanRecommendations(
+        activities: [SavedActivity],
+        phase: MotivationPhase,
+        now: Date
+    ) {
+        recommendationRefreshTask?.cancel()
+        isRefreshingPlanRecommendations = true
+        recommendationRefreshTask = Task {
+            do {
+                let response = try await api.fetchPlanRecommendations()
+                guard !Task.isCancelled else { return }
+                let serverRecommendations = recommendationsForCurrentPlan(response.recommendations)
+                if !serverRecommendations.isEmpty {
+                    recommendations = serverRecommendations
+                    cachePlanRecommendations(response)
+                    persistState()
+                } else if recommendations.isEmpty {
+                    recommendations = Self.makeRecommendations(
+                        activities: activities,
+                        phase: phase,
+                        calendar: calendar,
+                        now: now,
+                        excludingTemplateID: activePlan?.templateID
+                    )
+                    persistState()
+                }
+                isRefreshingPlanRecommendations = false
+            } catch {
+                guard !Task.isCancelled else { return }
+                print("[TrainingPlanStore] plan recommendations refresh failed: \(error.localizedDescription)")
+                if recommendations.isEmpty {
+                    recommendations = Self.makeRecommendations(
+                        activities: activities,
+                        phase: phase,
+                        calendar: calendar,
+                        now: now,
+                        excludingTemplateID: activePlan?.templateID
+                    )
+                    persistState()
+                }
+                isRefreshingPlanRecommendations = false
+            }
+        }
+    }
+
+    private func cachedPlanRecommendations(now: Date) -> [TrainingPlanRecommendation] {
+        guard let response = Self.decode(
+            PlanRecommendationsResponse.self,
+            from: defaults.data(forKey: recommendationCacheKey)
+        ) else { return [] }
+        return recommendationsForCurrentPlan(response.recommendations)
+    }
+
+    private func recommendationsForCurrentPlan(
+        _ recommendations: [TrainingPlanRecommendation]
+    ) -> [TrainingPlanRecommendation] {
+        guard let activeTemplateID = activePlan?.templateID else { return recommendations }
+        return recommendations.filter { $0.template.id != activeTemplateID }
+    }
+
+    private func cachePlanRecommendations(_ response: PlanRecommendationsResponse) {
+        if let data = try? JSONEncoder().encode(response) {
+            defaults.set(data, forKey: recommendationCacheKey)
+        }
+    }
+
     private func updateLocalRecommendationsIfNeeded(
         activities: [SavedActivity],
         phase: MotivationPhase,
@@ -745,9 +842,22 @@ private extension TrainingPlanStore {
         uniqueKeysWithValues: templates.map { ($0.id, $0) }
     )
 
-    static func makeRecommendations(activities: [SavedActivity], phase: MotivationPhase, calendar: Calendar, now: Date) -> [TrainingPlanRecommendation] {
+    static func makeRecommendations(
+        activities: [SavedActivity],
+        phase: MotivationPhase,
+        calendar: Calendar,
+        now: Date,
+        excludingTemplateID: String? = nil
+    ) -> [TrainingPlanRecommendation] {
         let stats = recentTrainingStats(activities: activities, calendar: calendar, now: now)
-        return recommendedTemplateIDs(stats: stats, phase: phase).compactMap { templateID in
+        var templateIDs = recommendedTemplateIDs(stats: stats, phase: phase)
+        if let excludingTemplateID {
+            templateIDs.removeAll { $0 == excludingTemplateID }
+        }
+        if templateIDs.isEmpty {
+            templateIDs = templates.map(\.id).filter { $0 != excludingTemplateID }
+        }
+        return templateIDs.compactMap { templateID in
             guard let template = templateLookup[templateID] else { return nil }
             return makeRecommendation(template: template, stats: stats, phase: phase)
         }

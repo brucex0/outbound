@@ -15,6 +15,7 @@ import type {
   PlanningEventType,
   PlanningState,
   ActivitySuggestionResponse,
+  PlanRecommendationsResponse,
   PlannedWorkoutForState,
   ReadinessForPlanning,
   RebuildPlanInput,
@@ -126,6 +127,32 @@ export async function getToday(userId: string): Promise<TodayPlanningResponse> {
 export async function getActivitySuggestion(userId: string): Promise<ActivitySuggestionResponse> {
   await processDueEvents(userId);
   return buildActivitySuggestion(userId, "stable");
+}
+
+export async function getRecommendations(userId: string): Promise<PlanRecommendationsResponse> {
+  await processDueEvents(userId);
+  const [plan, activities, catalog] = await Promise.all([
+    activePlanForUser(userId),
+    recentActivities(userId),
+    loadTrainingPlanCatalog(),
+  ]);
+  const activeTemplateId = activeTemplateIdFor(plan);
+  const state = buildTrainingPlanState({
+    activePlan: null,
+    activities,
+    catalog,
+  });
+  const recommendations = activeTemplateId
+    ? state.recommendations.filter((recommendation) => recommendation.template.id !== activeTemplateId)
+    : state.recommendations;
+
+  return {
+    recommendations,
+    source: "server",
+    generatedAt: new Date().toISOString(),
+    activePlanId: plan?.id ?? null,
+    catalogVersion: "training-plan-catalog-v1",
+  };
 }
 
 export async function clearPlan(userId: string): Promise<PlanningState> {
@@ -371,7 +398,15 @@ async function activePlanForUser(userId: string) {
   return getPrismaClient().trainingPlan.findFirst({
     where: { userId, status: "active" },
     orderBy: { createdAt: "desc" },
+    include: { goal: true },
   });
+}
+
+function activeTemplateIdFor(plan: Awaited<ReturnType<typeof activePlanForUser>>): string | null {
+  const constraints = plan?.goal.constraints;
+  if (!constraints || typeof constraints !== "object" || Array.isArray(constraints)) return null;
+  const templateId = (constraints as Record<string, unknown>).templateID;
+  return typeof templateId === "string" ? templateId : null;
 }
 
 async function recentActivities(userId: string): Promise<ActivityForPlanning[]> {

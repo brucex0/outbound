@@ -237,6 +237,14 @@ export interface TodayPlanningResponse {
   planningStatus: PlanningStatus;
 }
 
+export interface PlanRecommendationsResponse {
+  recommendations: TrainingPlanRecommendation[];
+  source: "server";
+  generatedAt: string;
+  activePlanId?: string | null;
+  catalogVersion: string;
+}
+
 export type ActivitySuggestionStatus = "suggested" | "restRecommended" | "noSuggestion";
 
 export type ActivitySuggestionSource = "plan" | "adaptive" | "recovery" | "offlineCache";

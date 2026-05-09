@@ -184,6 +184,7 @@ Rules:
 
 Current API shape:
 
+- `GET /v1/planning/recommendations`
 - `GET /v1/coach/plans/state`
 - `POST /v1/coach/plans/recommendation`
 - `POST /v1/coach/plans`
