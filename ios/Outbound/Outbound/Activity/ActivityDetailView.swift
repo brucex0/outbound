@@ -55,6 +55,7 @@ struct ActivityDetailView: View {
                 mapSection
                 routeControls
                 statsStrip
+                if let reflection = currentActivity.reflection { reflectionSection(reflection) }
                 if !currentActivity.coachNudge.isEmpty { coachSection }
                 if !currentActivity.photos.isEmpty { photoGrid }
             }
@@ -157,6 +158,24 @@ struct ActivityDetailView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 16)
         .background(Color(.secondarySystemBackground))
+    }
+
+    private func reflectionSection(_ reflection: FinishReflection) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "figure.run.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.orange)
+            Text(reflection.highlight)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.08))
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
     }
 
     private var coachSection: some View {

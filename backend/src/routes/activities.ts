@@ -58,6 +58,15 @@ const createSchema = z.object({
   calories: z.number().optional(),
   route: z.any().optional(),
   splits: z.any().optional(),
+  reflection: z
+    .object({
+      title: z.string(),
+      body: z.string(),
+      highlight: z.string(),
+      progressNote: z.string().optional().nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 router.post("/", zValidator("json", createSchema), async (c) => {
@@ -88,6 +97,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     calories: body.calories,
     route: body.route,
     splits: body.splits,
+    reflection: body.reflection ?? undefined,
     userId: resolvedUserId,
   };
 

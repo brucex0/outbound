@@ -118,6 +118,7 @@ model Activity {
 
   route         Json?     // GeoJSON LineString
   splits        Json?     // Split[]
+  reflection    Json?     // post-activity finish reflection saved by the client
   photos        Photo[]
   posts         Post[]
   workoutCompletions WorkoutCompletion[]

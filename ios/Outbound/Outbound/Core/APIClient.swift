@@ -963,6 +963,7 @@ struct ActivityUploadRequest: Encodable {
     let avgPace: Double?
     let avgHeartRate: Int?
     let route: SavedRoute?
+    let reflection: FinishReflection?
 }
 
 struct ActivityUploadResponse: Decodable {

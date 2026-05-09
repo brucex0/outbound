@@ -42,7 +42,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Local Persistence
 
 - `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`.
-- `activities.json`: manifest containing `SavedActivity` entries, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` still load through a backward-compatibility path.
+- `activities.json`: manifest containing `SavedActivity` entries, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
 

@@ -11,12 +11,13 @@ final class ActivityStore: ObservableObject {
     init() { refresh() }
 
     @discardableResult
-    func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)], lastNudge: String) throws -> SavedActivity {
+    func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)], reflection: FinishReflection?) throws -> SavedActivity {
         let activity = try LocalActivityStore.save(
             summary: summary,
             photos: photos,
             title: autoTitle(for: summary.startedAt),
-            coachNudge: lastNudge
+            coachNudge: "",
+            reflection: reflection
         )
         refresh()
         Task {
@@ -96,7 +97,8 @@ final class ActivityStore: ObservableObject {
                     elevationM: activity.elevationGainM,
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
-                    route: activity.route
+                    route: activity.route,
+                    reflection: activity.reflection
                 )
             )
 
@@ -127,6 +129,7 @@ final class ActivityStore: ObservableObject {
             id: current.id,
             title: current.title,
             coachNudge: current.coachNudge,
+            reflection: current.reflection,
             createdAt: current.createdAt,
             startedAt: current.startedAt,
             endedAt: current.endedAt,
@@ -167,6 +170,7 @@ final class ActivityStore: ObservableObject {
             id: UUID(uuidString: "11111111-2222-3333-4444-555555555555") ?? UUID(),
             title: "UI Test Route Activity",
             coachNudge: "Keep your cadence steady.",
+            reflection: nil,
             createdAt: startedAt,
             startedAt: startedAt,
             endedAt: startedAt.addingTimeInterval(1_845),

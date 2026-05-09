@@ -10,7 +10,8 @@ enum LocalActivityStore {
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
         title: String,
-        coachNudge: String
+        coachNudge: String,
+        reflection: FinishReflection?
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -29,6 +30,7 @@ enum LocalActivityStore {
             id: activityId,
             title: title,
             coachNudge: coachNudge,
+            reflection: reflection,
             createdAt: Date(),
             startedAt: summary.startedAt,
             endedAt: summary.endedAt,
@@ -127,6 +129,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
     let coachNudge: String
+    let reflection: FinishReflection?
     let createdAt: Date
     let startedAt: Date
     let endedAt: Date
@@ -175,16 +178,18 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         photos = try c.decode([SavedPhoto].self, forKey: .photos)
         sync = try c.decodeIfPresent(SavedActivitySyncState.self, forKey: .sync)
         coachNudge = (try? c.decodeIfPresent(String.self, forKey: .coachNudge)) ?? ""
+        reflection = try c.decodeIfPresent(FinishReflection.self, forKey: .reflection)
         let day = startedAt.formatted(.dateTime.weekday(.wide))
         title = ((try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil) ?? "\(day) Run"
     }
 
-    init(id: UUID, title: String, coachNudge: String, createdAt: Date,
+    init(id: UUID, title: String, coachNudge: String, reflection: FinishReflection?, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
          healthMetrics: ActivityHealthMetrics? = nil, route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
+        self.reflection = reflection
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
         self.elevationGainM = elevationGainM; self.healthMetrics = healthMetrics
@@ -195,6 +200,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         case id
         case title
         case coachNudge
+        case reflection
         case createdAt
         case startedAt
         case endedAt
@@ -216,6 +222,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encode(id, forKey: .id)
         try c.encode(title, forKey: .title)
         try c.encode(coachNudge, forKey: .coachNudge)
+        try c.encodeIfPresent(reflection, forKey: .reflection)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(startedAt, forKey: .startedAt)
         try c.encode(endedAt, forKey: .endedAt)

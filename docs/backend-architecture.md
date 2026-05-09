@@ -102,6 +102,7 @@ Responsibilities:
 
 - ingest completed activities from the phone
 - store normalized workout metadata
+- store the client-generated finish reflection shown after Save Activity
 - attach route summaries and photo metadata
 - trigger downstream coach and plan work
 

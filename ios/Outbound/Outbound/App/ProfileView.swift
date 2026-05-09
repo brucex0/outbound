@@ -300,7 +300,12 @@ private struct RecentActivitySummaryCard: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if !activity.coachNudge.isEmpty {
+            if let reflection = activity.reflection {
+                Text(reflection.highlight)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            } else if !activity.coachNudge.isEmpty {
                 Text(activity.coachNudge)
                     .font(.caption)
                     .foregroundStyle(.secondary)

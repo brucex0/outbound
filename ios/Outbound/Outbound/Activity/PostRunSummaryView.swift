@@ -6,10 +6,9 @@ struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
-    let lastNudge: String
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
-    let onSave: ([(UIImage, PhotoMetadata)]) -> Void
+    let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) -> Void
     let onDiscard: () -> Void
     @State private var selectedPhotoIndices: Set<Int>
     @State private var isPhotoSelectionPresented = false
@@ -17,15 +16,13 @@ struct PostRunSummaryView: View {
     init(
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
-        lastNudge: String,
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
-        onSave: @escaping ([(UIImage, PhotoMetadata)]) -> Void,
+        onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) -> Void,
         onDiscard: @escaping () -> Void
     ) {
         self.summary = summary
         self.photos = photos
-        self.lastNudge = lastNudge
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
         self.onSave = onSave
@@ -34,21 +31,25 @@ struct PostRunSummaryView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                heroImage
-                reflectionSection
-                if !photos.isEmpty { photoReviewSection }
-                if let primaryRecognition = recognitionPreviews.first {
-                    recognitionSection(primaryRecognition)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    heroImage
+                    reflectionSection
+                    if !photos.isEmpty { photoReviewSection }
+                    if let primaryRecognition = recognitionPreviews.first {
+                        recognitionSection(primaryRecognition)
+                    }
+                    statsSection
+                    if summary.trackPoints.count > 1 { routeMap }
+                    motivationSection
                 }
-                statsSection
-                if summary.trackPoints.count > 1 { routeMap }
-                if !lastNudge.isEmpty { coachSection }
-                actionButtons
+                .padding(.bottom, 100)
             }
+            .ignoresSafeArea(edges: .top)
+            
+            actionButtons
         }
-        .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $isPhotoSelectionPresented) {
             PhotoSelectionView(
                 photos: photos,
@@ -83,50 +84,43 @@ struct PostRunSummaryView: View {
     }
 
     private var statsSection: some View {
-        VStack(spacing: 20) {
-            Text("Activity Complete")
-                .font(.title2.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    SummaryStatColumn(
-                        label: "Distance",
-                        value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
-                        unit: measurementPreferences.unitSystem.distanceUnit
-                    )
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                SummaryStatColumn(
+                    label: "Distance",
+                    value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
+                    unit: measurementPreferences.unitSystem.distanceUnit
+                )
+                Divider().frame(height: 48)
+                SummaryStatColumn(
+                    label: "Time",
+                    value: summary.durationSecs.formatted(),
+                    unit: ""
+                )
+                if let pace = summary.avgPace {
                     Divider().frame(height: 48)
-                    SummaryStatColumn(
-                        label: "Time",
-                        value: summary.durationSecs.formatted(),
-                        unit: ""
-                    )
-                    if let pace = summary.avgPace {
-                        Divider().frame(height: 48)
-                        SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
-                    }
-                }
-
-                Divider().padding(.vertical, 12)
-
-                HStack(spacing: 0) {
-                    SummaryStatColumn(
-                        label: "Elev Gain",
-                        value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
-                        unit: measurementPreferences.unitSystem.elevationUnit
-                    )
-                    if let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM {
-                        Divider().frame(height: 48)
-                        SummaryStatColumn(label: "Avg HR", value: "\(averageHeartRate)", unit: "bpm")
-                    }
+                    SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
 
+            Divider().padding(.vertical, 12)
+
+            HStack(spacing: 0) {
+                SummaryStatColumn(
+                    label: "Elev Gain",
+                    value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
+                    unit: measurementPreferences.unitSystem.elevationUnit
+                )
+                if let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM {
+                    Divider().frame(height: 48)
+                    SummaryStatColumn(label: "Avg HR", value: "\(averageHeartRate)", unit: "bpm")
+                }
+            }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 20)
         .padding(.top, 24)
         .padding(.bottom, 8)
@@ -165,14 +159,14 @@ struct PostRunSummaryView: View {
         .padding(.bottom, 8)
     }
 
-    private var coachSection: some View {
+    private var motivationSection: some View {
         HStack(spacing: 12) {
             Image(systemName: "figure.run.circle.fill")
                 .font(.title3)
                 .foregroundStyle(.orange)
-            Text(lastNudge)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Text(reflection.highlight)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
@@ -270,26 +264,32 @@ struct PostRunSummaryView: View {
     }
 
     private var actionButtons: some View {
-        VStack(spacing: 12) {
-            Button {
-                onSave(selectedPhotos)
-            } label: {
-                Label("Save Activity", systemImage: "checkmark.circle.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
-
+        HStack(spacing: 16) {
             Button(role: .destructive, action: onDiscard) {
-                Text("Discard")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 24))
             }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .frame(width: 44, height: 44)
+            .background(Color(.tertiarySystemBackground))
+            .clipShape(Circle())
+
+            Button {
+                onSave(selectedPhotos, reflection)
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.borderless)
+            .frame(width: 64, height: 64)
+            .background(Color.orange)
+            .clipShape(Circle())
         }
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
-        .padding(.vertical, 28)
+        .padding(.vertical, 16)
     }
 }
 
@@ -428,7 +428,6 @@ struct DebugPostRunSummaryHarness: View {
         PostRunSummaryView(
             summary: Self.summary,
             photos: Self.photos,
-            lastNudge: "Nice close. Save the parts you want to remember.",
             reflection: FinishReflection(
                 title: "Good finish",
                 body: "You got the session done and kept the finish simple.",
@@ -436,7 +435,7 @@ struct DebugPostRunSummaryHarness: View {
                 progressNote: nil
             ),
             recognitionPreviews: [],
-            onSave: { savedPhotoCount = $0.count },
+            onSave: { selectedPhotos, _ in savedPhotoCount = selectedPhotos.count },
             onDiscard: {}
         )
         .overlay(alignment: .topTrailing) {
@@ -525,6 +524,12 @@ struct DebugPostRunSummaryHarness: View {
         }
     }
 }
+
+#Preview {
+    DebugPostRunSummaryHarness()
+        .environmentObject(MeasurementPreferences())
+}
+
 #endif
 
 private struct SummaryStatColumn: View {

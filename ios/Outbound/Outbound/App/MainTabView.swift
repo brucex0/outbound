@@ -379,7 +379,7 @@ struct MomentumNote: Identifiable, Hashable {
     let symbol: String
 }
 
-struct FinishReflection: Equatable {
+struct FinishReflection: Equatable, Codable {
     let title: String
     let body: String
     let highlight: String
@@ -899,39 +899,22 @@ struct MotivationDashboardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            HStack(alignment: .center, spacing: 12) {
-                Label {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(recommendation?.template.title ?? "Browse training plans")
-                            .font(.caption.weight(.semibold))
-                        Text(recommendation?.rationale ?? "Use a plan when you want the next few weeks mapped out.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                if let recommendation {
+                    Button("Use") {
+                        trainingPlanStore.acceptRecommendation(recommendation)
                     }
-                } icon: {
-                    Image(systemName: "calendar.badge.plus")
-                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 8) {
-                    if let recommendation {
-                        Button("Use") {
-                            trainingPlanStore.acceptRecommendation(recommendation)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(coachCatalog.selectedPersona.face.accentColor)
-                    }
-
-                    Button("More") {
-                        showPlanPicker()
-                    }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .tint(coachCatalog.selectedPersona.face.accentColor)
                 }
-                .font(.caption.weight(.semibold))
+
+                Button("More") {
+                    showPlanPicker()
+                }
+                .buttonStyle(.bordered)
+                .tint(coachCatalog.selectedPersona.face.accentColor)
             }
+            .font(.caption.weight(.semibold))
         }
         .fixedSize(horizontal: false, vertical: true)
     }
