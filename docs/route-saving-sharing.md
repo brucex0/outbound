@@ -16,8 +16,9 @@ Open this when implementing saved routes, route export, route sharing, or route 
   - `latitude`
   - `longitude`
   - `timestamp`
+- Route points should also persist `altitude` and `verticalAccuracy` when Core Location provides them so activity detail can render a real elevation profile.
 - Point order must be preserved exactly so route playback and plotting remain correct.
-- Optional future fields such as `altitude`, `speed`, or `horizontalAccuracy` should be added only if they unlock a concrete product need.
+- Optional future fields such as `speed` or `horizontalAccuracy` should be added only if they unlock a concrete product need.
 
 ## Saved Route Experience
 
@@ -62,7 +63,7 @@ Open this when implementing saved routes, route export, route sharing, or route 
 
 ## Recommended V1 Direction
 
-- Persist a simplified but map-accurate ordered route locally with `latitude`, `longitude`, and `timestamp`.
+- Persist a simplified but map-accurate ordered route locally with `latitude`, `longitude`, `timestamp`, and available elevation metadata.
 - Use that stored route as the canonical source for in-app map rendering and sharing.
 - Export standard share formats only when requested.
 - Keep route UI attached to activity detail first, then add broader sharing surfaces later if product needs it.

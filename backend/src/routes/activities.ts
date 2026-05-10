@@ -56,7 +56,23 @@ const createSchema = z.object({
   avgPace: z.number().optional(),
   avgHeartRate: z.number().optional(),
   calories: z.number().optional(),
-  route: z.any().optional(),
+  route: z
+    .object({
+      points: z
+        .array(
+          z.object({
+            timestamp: z.string(),
+            latitude: z.number().finite(),
+            longitude: z.number().finite(),
+            altitude: z.number().finite().optional().nullable(),
+            verticalAccuracy: z.number().finite().optional().nullable(),
+          })
+        )
+        .min(2),
+      visibility: z.string().optional().nullable(),
+    })
+    .optional()
+    .nullable(),
   splits: z.any().optional(),
   reflection: z
     .object({
@@ -68,6 +84,30 @@ const createSchema = z.object({
     .optional()
     .nullable(),
 });
+
+type ActivityRoutePayload = NonNullable<z.infer<typeof createSchema>["route"]>;
+
+function normalizeRoute(route: ActivityRoutePayload | null | undefined) {
+  if (!route) return undefined;
+
+  return {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: route.points.map((point) => {
+        if (point.altitude == null) {
+          return [point.longitude, point.latitude];
+        }
+        return [point.longitude, point.latitude, point.altitude];
+      }),
+    },
+    properties: {
+      visibility: route.visibility ?? "private",
+      timestamps: route.points.map((point) => point.timestamp),
+      verticalAccuracy: route.points.map((point) => point.verticalAccuracy ?? null),
+    },
+  };
+}
 
 router.post("/", zValidator("json", createSchema), async (c) => {
   const unavailable = requireDatabase(c);
@@ -95,7 +135,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     avgPace: body.avgPace,
     avgHeartRate: body.avgHeartRate,
     calories: body.calories,
-    route: body.route,
+    route: normalizeRoute(body.route),
     splits: body.splits,
     reflection: body.reflection ?? undefined,
     userId: resolvedUserId,

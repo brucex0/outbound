@@ -278,17 +278,23 @@ struct SavedRoutePoint: Codable, Hashable {
     let timestamp: Date
     let latitude: Double
     let longitude: Double
+    let altitude: Double?
+    let verticalAccuracy: Double?
 
     nonisolated init(location: CLLocation) {
         timestamp = location.timestamp
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
+        altitude = location.altitude
+        verticalAccuracy = location.verticalAccuracy >= 0 ? location.verticalAccuracy : nil
     }
 
-    init(trackPoint: SavedTrackPoint) {
+    nonisolated init(trackPoint: SavedTrackPoint) {
         timestamp = trackPoint.timestamp
         latitude = trackPoint.latitude
         longitude = trackPoint.longitude
+        altitude = trackPoint.altitude
+        verticalAccuracy = nil
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -404,12 +410,16 @@ enum RouteFileExporter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let points = activity.routePoints.map { point in
-            """
-                  <trkpt lat="\(point.latitude)" lon="\(point.longitude)">
-                    <time>\(formatter.string(from: point.timestamp))</time>
-                  </trkpt>
-            """
+        let points = activity.routePoints.map { point -> String in
+            var lines = [
+                "      <trkpt lat=\"\(point.latitude)\" lon=\"\(point.longitude)\">"
+            ]
+            if let altitude = point.altitude {
+                lines.append("        <ele>\(altitude)</ele>")
+            }
+            lines.append("        <time>\(formatter.string(from: point.timestamp))</time>")
+            lines.append("      </trkpt>")
+            return lines.joined(separator: "\n")
         }.joined(separator: "\n")
 
         return """
@@ -451,7 +461,12 @@ enum RouteFileExporter {
             "properties": properties,
             "geometry": [
                 "type": "LineString",
-                "coordinates": activity.routePoints.map { [$0.longitude, $0.latitude] }
+                "coordinates": activity.routePoints.map { point in
+                    if let altitude = point.altitude {
+                        return [point.longitude, point.latitude, altitude]
+                    }
+                    return [point.longitude, point.latitude]
+                }
             ]
         ]
 

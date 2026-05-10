@@ -104,6 +104,7 @@ Responsibilities:
 - store normalized workout metadata
 - store the client-generated finish reflection shown after Save Activity
 - attach route summaries and photo metadata
+- normalize uploaded route points into an `Activity.route` GeoJSON Feature, using `[longitude, latitude, altitude]` coordinates when altitude is available and preserving per-point timestamps/vertical accuracy in route properties
 - trigger downstream coach and plan work
 
 Rules:

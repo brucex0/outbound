@@ -116,7 +116,7 @@ model Activity {
   avgHeartRate  Int?
   calories      Int?
 
-  route         Json?     // GeoJSON LineString
+  route         Json?     // GeoJSON Feature with LineString geometry
   splits        Json?     // Split[]
   reflection    Json?     // post-activity finish reflection saved by the client
   photos        Photo[]
