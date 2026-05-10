@@ -917,7 +917,7 @@ struct MotivationDashboardView: View {
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 8) {
+                VStack(spacing: 8) {
                     if let recommendation {
                         Button("Use") {
                             trainingPlanStore.acceptRecommendation(recommendation)
@@ -1021,7 +1021,7 @@ struct MotivationDashboardView: View {
 
                         Spacer(minLength: 0)
 
-                        HStack(spacing: 8) {
+                        VStack(spacing: 8) {
                             Button("View") {
                                 selectedRecommendation = recommendation
                             }
@@ -1029,7 +1029,7 @@ struct MotivationDashboardView: View {
                             .tint(coachCatalog.selectedPersona.face.accentColor)
                             .font(.caption.weight(.semibold))
 
-                            Button("More plans") {
+                            Button("More") {
                                 showPlanPicker()
                             }
                             .buttonStyle(.bordered)
