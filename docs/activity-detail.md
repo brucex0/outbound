@@ -6,22 +6,18 @@ Open this when redesigning, polishing, or adding features to the activity detail
 
 File: `ios/Outbound/Outbound/Activity/ActivityDetailView.swift`
 
-The current view is a `ScrollView` with:
+The current view is a Strava-style layered detail page:
 
-1. **Static map** (240pt, disabled) with an orange polyline
-2. **Route controls bar** — privacy badge + share menu
-3. **Stats strip** — 3-column grid (distance, time, pace, elevation, HR)
-4. **Coach reflection** — small orange banner with `reflection.highlight`
-5. **Coach nudge** — orange tinted section with `coachNudge`
-6. **Photo grid** — 2-column grid at the bottom
+1. **Full-screen route map** — backed by `MKMapView`, with pace-colored route segments and photo pins
+2. **Draggable information sheet** — default split position, collapsed map-first position, and expanded full-info position
+3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
+4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
+5. **Collapsible splits** — per-km/mile breakdown
+6. **Route controls** — privacy badge + share/export menu
+7. **Coach reflection** — full card with reflection title/body and optional nudge
+8. **Photos** — horizontal story strip
 
 Limitations vs Strava and category expectations:
-- Map is disabled (no pan/zoom/tap-to-expand)
-- No elevation profile
-- No splits/laps
-- No pace heatmap on the route
-- Coach reflection is a small banner, not a hero card
-- Photos are not pinned to map
 - Share is in a menu, not a persistent bottom toolbar
 - No comparison to previous activities
 - No mood/training context tags
@@ -129,17 +125,16 @@ Future phases needing backend:
 
 ## Layout Decisions (Revised Per UX Feedback)
 
-The layout uses this section ordering and spacing:
+The layout uses a persistent full-screen route map with a bottom information sheet:
 
-1. **Map** (hero, 260pt, interactive with expand button) — top
-2. **Stats hero** — vertical layout: large distance heading first, then 2×2 grid for secondary stats
-3. **Elevation profile** — compact collapsible Swift Charts line chart (80pt height), placed after stats and collapsed by default
-4. **Splits** — collapsible section with chevron toggle, placed before route controls
-5. **Route controls** — inline privacy badge + share/export, not a floating toolbar
-6. **Coach hero card** — persona avatar, reflection title/body, optional nudge
-7. **Photos** — horizontal scroll with distance-at-shot labels
+1. **Collapsed detent** — compact summary row, full-screen route map visible
+2. **Split detent** — default opening state, route fit above the sheet and key information visible
+3. **Expanded detent** — information sheet fills the screen and its content becomes scrollable
+4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
+5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
+6. **Content order** — stats, elevation, splits, route controls, coach card, photos
 
 Safe-area strategy:
-- No `.safeAreaInset` on bottom, to avoid fighting the global tab bar
-- Inner VStack gets `.padding(.bottom, 110)` so scroll content clears the persistent bottom nav
-- Route controls are inline in the scroll content, not a floating bar
+- The map ignores container safe areas so it feels full screen.
+- The sheet owns bottom padding for the persistent app chrome.
+- Route controls are inline in the sheet content, not a floating toolbar.

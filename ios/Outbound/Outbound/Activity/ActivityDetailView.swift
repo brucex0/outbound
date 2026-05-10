@@ -11,32 +11,16 @@ struct ActivityDetailView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @State private var shareURL: URL?
     @State private var shareError: ShareRouteError?
-    @State private var showFullMap = false
     @State private var showSplits = false
     @State private var showElevationProfile = false
+    @State private var sheetDetent: ActivityDetailSheetDetent = .split
+    @GestureState private var sheetDragTranslation: CGFloat = 0
 
     private var currentActivity: SavedActivity {
         activityStore.activity(id: activity.id) ?? activity
     }
 
     private var unitSystem: MeasurementUnitSystem { measurementPreferences.unitSystem }
-
-    // MARK: Map
-
-    private var mapPosition: MapCameraPosition {
-        guard currentActivity.hasRoute else { return .automatic }
-        let lats = currentActivity.routePoints.map(\.latitude)
-        let lngs = currentActivity.routePoints.map(\.longitude)
-        let center = CLLocationCoordinate2D(
-            latitude: (lats.min()! + lats.max()!) / 2,
-            longitude: (lngs.min()! + lngs.max()!) / 2
-        )
-        let span = MKCoordinateSpan(
-            latitudeDelta: max((lats.max()! - lats.min()!) * 1.5, 0.005),
-            longitudeDelta: max((lngs.max()! - lngs.min()!) * 1.5, 0.005)
-        )
-        return .region(MKCoordinateRegion(center: center, span: span))
-    }
 
     private var routeCoordinates: [CLLocationCoordinate2D] {
         currentActivity.routeCoordinates
@@ -79,97 +63,139 @@ struct ActivityDetailView: View {
     // MARK: Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                mapSection
-                statsHeroSection
-                elevationProfileSection
-                if !splits.isEmpty { splitsSection }
-                routeControlsSection
-                if let reflection = currentActivity.reflection { coachHeroCard(reflection) }
-                if !currentActivity.photos.isEmpty { photoSection }
+        GeometryReader { proxy in
+            let sheetHeight = sheetDetent.height(in: proxy)
+            let interactiveSheetHeight = max(
+                sheetDetent.minimumHeight(in: proxy),
+                min(sheetDetent.maximumHeight(in: proxy), sheetHeight - sheetDragTranslation)
+            )
+
+            ZStack(alignment: .bottom) {
+                ActivityRouteMapView(
+                    routeCoordinates: routeCoordinates,
+                    paceSegments: paceSegments,
+                    photos: currentActivity.photos,
+                    bottomInset: interactiveSheetHeight,
+                    isRouteProminent: sheetDetent != .expanded
+                )
+                .ignoresSafeArea()
+
+                activitySheet(height: interactiveSheetHeight, proxy: proxy)
+                    .animation(.snappy(duration: 0.32), value: sheetDetent)
+                    .simultaneousGesture(sheetDragGesture(in: proxy))
             }
-            .padding(.bottom, 110)
         }
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
             if let shareURL {
                 ShareSheet(activityItems: [shareURL])
             }
-        }
-        .fullScreenCover(isPresented: $showFullMap) {
-            FullScreenMapView(
-                routeCoordinates: routeCoordinates,
-                photos: currentActivity.photos,
-                activityStore: activityStore,
-                mapPosition: mapPosition
-            )
         }
         .alert(item: $shareError) { error in
             Alert(title: Text("Unable to Share Route"), message: Text(error.message))
         }
     }
 
-    // MARK: - Map Section
+    // MARK: - Sheet
 
-    private var mapSection: some View {
-        Group {
-            if routeCoordinates.count > 1 {
-                ZStack(alignment: .topTrailing) {
-                    Map(position: .constant(mapPosition)) {
-                        MapPolyline(coordinates: routeCoordinates)
-                            .stroke(.black.opacity(0.15), lineWidth: 7)
-                        ForEach(paceSegments.indices, id: \.self) { index in
-                            let seg = paceSegments[index]
-                            let coords = Array(routeCoordinates[seg.startIndex...seg.endIndex])
-                            if coords.count > 1 {
-                                MapPolyline(coordinates: coords)
-                                    .stroke(paceColor(seg.pace),
-                                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                            }
-                        }
-                        ForEach(currentActivity.photos) { photo in
-                            if let coord = photo.coordinate {
-                                Annotation("", coordinate: CLLocationCoordinate2D(
-                                    latitude: coord.latitude, longitude: coord.longitude
-                                )) {
-                                    Image(systemName: "camera.fill")
-                                        .font(.caption2)
-                                        .padding(4)
-                                        .background(.ultraThinMaterial, in: Circle())
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: 260)
+    private func activitySheet(height: CGFloat, proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            sheetGrabber
+                .padding(.top, 8)
+                .padding(.bottom, sheetDetent == .collapsed ? 2 : 6)
 
-                    Button {
-                        showFullMap = true
-                    } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption.weight(.semibold))
-                            .padding(8)
-                            .background(.regularMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .padding(10)
-                    }
-                }
+            if sheetDetent == .collapsed {
+                collapsedSummary
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
-                Color(.systemGroupedBackground)
-                    .frame(height: 240)
-                    .overlay {
-                        VStack(spacing: 8) {
-                            Image(systemName: "map")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                            Text("No route data")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                ScrollView(showsIndicators: sheetDetent == .expanded) {
+                    VStack(spacing: 0) {
+                        statsHeroSection
+                        elevationProfileSection
+                        if !splits.isEmpty { splitsSection }
+                        routeControlsSection
+                        if let reflection = currentActivity.reflection { coachHeroCard(reflection) }
+                        if !currentActivity.photos.isEmpty { photoSection }
                     }
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 110)
+                }
+                .scrollDisabled(sheetDetent != .expanded)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: height, alignment: .top)
+        .background(.regularMaterial)
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+        .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: -6)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .contain)
+    }
+
+    private var sheetGrabber: some View {
+        Capsule()
+            .fill(Color.secondary.opacity(0.35))
+            .frame(width: 42, height: 5)
+            .onTapGesture {
+                withAnimation(.snappy) {
+                    sheetDetent = sheetDetent == .expanded ? .split : .expanded
+                }
+            }
+    }
+
+    private var collapsedSummary: some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(primaryStat)
+                    .font(.title3.bold().monospacedDigit())
+                Text(currentActivity.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            ForEach(activityStats.prefix(2)) { stat in
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(stat.value)
+                        .font(.subheadline.bold().monospacedDigit())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(stat.label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.snappy) { sheetDetent = .split }
+        }
+    }
+
+    private func sheetDragGesture(in proxy: GeometryProxy) -> some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
+            .updating($sheetDragTranslation) { value, state, _ in
+                let currentHeight = sheetDetent.height(in: proxy)
+                let proposedHeight = currentHeight - value.translation.height
+                let clampedHeight = min(
+                    max(proposedHeight, sheetDetent.minimumHeight(in: proxy)),
+                    sheetDetent.maximumHeight(in: proxy)
+                )
+                state = currentHeight - clampedHeight
+            }
+            .onEnded { value in
+                let projectedHeight = sheetDetent.height(in: proxy) - value.predictedEndTranslation.height
+                withAnimation(.snappy(duration: 0.32)) {
+                    sheetDetent = ActivityDetailSheetDetent.nearest(to: projectedHeight, in: proxy)
+                }
+            }
     }
 
     // MARK: - Elevation Profile
@@ -479,42 +505,248 @@ struct ActivityDetailView: View {
     }
 }
 
-// MARK: - Full-Screen Map
+// MARK: - Sheet Detents
 
-private struct FullScreenMapView: View {
+private enum ActivityDetailSheetDetent: CaseIterable {
+    case collapsed
+    case split
+    case expanded
+
+    func height(in proxy: GeometryProxy) -> CGFloat {
+        let availableHeight = proxy.size.height
+        switch self {
+        case .collapsed:
+            return min(132 + proxy.safeAreaInsets.bottom, availableHeight * 0.28)
+        case .split:
+            return min(max(340, availableHeight * 0.48), availableHeight * 0.62)
+        case .expanded:
+            return availableHeight - proxy.safeAreaInsets.top - 10
+        }
+    }
+
+    func minimumHeight(in proxy: GeometryProxy) -> CGFloat {
+        Self.collapsed.height(in: proxy)
+    }
+
+    func maximumHeight(in proxy: GeometryProxy) -> CGFloat {
+        proxy.size.height - proxy.safeAreaInsets.top - 10
+    }
+
+    static func nearest(to height: CGFloat, in proxy: GeometryProxy) -> ActivityDetailSheetDetent {
+        allCases.min {
+            abs($0.height(in: proxy) - height) < abs($1.height(in: proxy) - height)
+        } ?? .split
+    }
+}
+
+// MARK: - Route Map
+
+private struct ActivityRouteMapView: View {
     let routeCoordinates: [CLLocationCoordinate2D]
+    let paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)]
     let photos: [SavedPhoto]
-    let activityStore: ActivityStore
-    let mapPosition: MapCameraPosition
-    @Environment(\.dismiss) private var dismiss
+    let bottomInset: CGFloat
+    let isRouteProminent: Bool
 
     var body: some View {
-        NavigationStack {
-            Map(position: .constant(mapPosition)) {
-                MapPolyline(coordinates: routeCoordinates)
-                    .stroke(.black.opacity(0.12), lineWidth: 8)
-                MapPolyline(coordinates: routeCoordinates)
-                    .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                ForEach(photos) { photo in
-                    if let coord = photo.coordinate {
-                        Annotation("", coordinate: CLLocationCoordinate2D(
-                            latitude: coord.latitude, longitude: coord.longitude
-                        )) {
-                            Image(systemName: "camera.fill")
+        Group {
+            if routeCoordinates.count > 1 {
+                ActivityRouteMapRepresentable(
+                    routeCoordinates: routeCoordinates,
+                    paceSegments: paceSegments,
+                    photos: photos,
+                    bottomInset: bottomInset,
+                    isRouteProminent: isRouteProminent
+                )
+            } else {
+                Color(.systemGroupedBackground)
+                    .overlay {
+                        VStack(spacing: 8) {
+                            Image(systemName: "map")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("No route data")
                                 .font(.caption)
-                                .padding(6)
-                                .background(.ultraThinMaterial, in: Circle())
+                                .foregroundStyle(.secondary)
                         }
                     }
-                }
-            }
-            .ignoresSafeArea()
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
             }
         }
+    }
+}
+
+private struct ActivityRouteMapRepresentable: UIViewRepresentable {
+    let routeCoordinates: [CLLocationCoordinate2D]
+    let paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)]
+    let photos: [SavedPhoto]
+    let bottomInset: CGFloat
+    let isRouteProminent: Bool
+
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView(frame: .zero)
+        mapView.delegate = context.coordinator
+        mapView.showsCompass = false
+        mapView.showsScale = false
+        mapView.pointOfInterestFilter = .excludingAll
+        mapView.isPitchEnabled = false
+        mapView.backgroundColor = .secondarySystemBackground
+        return mapView
+    }
+
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        context.coordinator.routeCoordinates = routeCoordinates
+        context.coordinator.paceSegments = paceSegments
+        context.coordinator.photos = photos
+        context.coordinator.bottomInset = bottomInset
+        context.coordinator.isRouteProminent = isRouteProminent
+        context.coordinator.refresh(mapView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        var routeCoordinates: [CLLocationCoordinate2D] = []
+        var paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)] = []
+        var photos: [SavedPhoto] = []
+        var bottomInset: CGFloat = 0
+        var isRouteProminent = true
+
+        private var previousRouteSignature: String?
+        private var previousPhotoSignature: String?
+        private var previousBottomInset: CGFloat?
+        private var previousProminence: Bool?
+        private var previousMapSize: CGSize?
+        private var hasSetInitialRegion = false
+
+        func refresh(_ mapView: MKMapView) {
+            let routeSignature = "\(routeCoordinates.count)-\(routeCoordinates.first?.latitude ?? 0)-\(routeCoordinates.last?.longitude ?? 0)-\(isRouteProminent)"
+            if routeSignature != previousRouteSignature {
+                mapView.removeOverlays(mapView.overlays)
+                addRouteOverlays(to: mapView)
+                previousRouteSignature = routeSignature
+            }
+
+            let photoSignature = photos.map(\.id).map(\.uuidString).joined(separator: ",")
+            if photoSignature != previousPhotoSignature {
+                mapView.removeAnnotations(mapView.annotations)
+                mapView.addAnnotations(photos.compactMap(ActivityRoutePhotoAnnotation.init(photo:)))
+                previousPhotoSignature = photoSignature
+            }
+
+            let insetChanged = abs((previousBottomInset ?? -1) - bottomInset) > 6
+            let prominenceChanged = previousProminence != isRouteProminent
+            let sizeChanged = previousMapSize != mapView.bounds.size
+            if mapView.bounds.width > 10,
+               mapView.bounds.height > 10,
+               insetChanged || prominenceChanged || sizeChanged || !hasSetInitialRegion {
+                fitRoute(in: mapView, animated: hasSetInitialRegion)
+                previousBottomInset = bottomInset
+                previousProminence = isRouteProminent
+                previousMapSize = mapView.bounds.size
+                hasSetInitialRegion = true
+            }
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let polyline = overlay as? ActivityRoutePolyline else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+
+            let renderer = MKPolylineRenderer(polyline: polyline)
+            renderer.strokeColor = polyline.strokeColor
+            renderer.lineWidth = polyline.lineWidth
+            renderer.lineCap = .round
+            renderer.lineJoin = .round
+            return renderer
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard annotation is ActivityRoutePhotoAnnotation else { return nil }
+            let identifier = "activity-photo"
+            let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+            view.annotation = annotation
+            if let markerView = view as? MKMarkerAnnotationView {
+                markerView.glyphImage = UIImage(systemName: "camera.fill")
+                markerView.markerTintColor = .systemOrange
+                markerView.glyphTintColor = .white
+                markerView.displayPriority = .required
+            }
+            return view
+        }
+
+        private func addRouteOverlays(to mapView: MKMapView) {
+            guard routeCoordinates.count > 1 else { return }
+
+            let shadow = ActivityRoutePolyline(coordinates: routeCoordinates, count: routeCoordinates.count)
+            shadow.strokeColor = UIColor.black.withAlphaComponent(0.18)
+            shadow.lineWidth = isRouteProminent ? 8 : 6
+            mapView.addOverlay(shadow, level: .aboveRoads)
+
+            if paceSegments.isEmpty {
+                let route = ActivityRoutePolyline(coordinates: routeCoordinates, count: routeCoordinates.count)
+                route.strokeColor = .systemOrange
+                route.lineWidth = isRouteProminent ? 5 : 4
+                mapView.addOverlay(route, level: .aboveRoads)
+                return
+            }
+
+            for segment in paceSegments {
+                guard segment.startIndex < routeCoordinates.count,
+                      segment.endIndex < routeCoordinates.count,
+                      segment.endIndex > segment.startIndex else { continue }
+                let coordinates = Array(routeCoordinates[segment.startIndex...segment.endIndex])
+                let route = ActivityRoutePolyline(coordinates: coordinates, count: coordinates.count)
+                route.strokeColor = paceUIColor(segment.pace)
+                route.lineWidth = isRouteProminent ? 5 : 4
+                mapView.addOverlay(route, level: .aboveRoads)
+            }
+        }
+
+        private func fitRoute(in mapView: MKMapView, animated: Bool) {
+            guard routeCoordinates.count > 1 else { return }
+            guard mapView.bounds.width > 10, mapView.bounds.height > 10 else { return }
+
+            var mapRect = MKMapRect.null
+            for coordinate in routeCoordinates {
+                let point = MKMapPoint(coordinate)
+                let pointRect = MKMapRect(x: point.x, y: point.y, width: 1, height: 1)
+                mapRect = mapRect.union(pointRect)
+            }
+
+            if mapRect.width < 250 {
+                mapRect = mapRect.insetBy(dx: -250, dy: 0)
+            }
+            if mapRect.height < 250 {
+                mapRect = mapRect.insetBy(dx: 0, dy: -250)
+            }
+
+            let mapHeight = max(mapView.bounds.height, 1)
+            let clampedBottom = min(bottomInset + 28, mapHeight * (isRouteProminent ? 0.72 : 0.42))
+            let topInset = isRouteProminent ? CGFloat(84) : CGFloat(52)
+            let padding = UIEdgeInsets(top: topInset, left: 28, bottom: clampedBottom, right: 28)
+            mapView.setVisibleMapRect(mapRect, edgePadding: padding, animated: animated)
+        }
+    }
+}
+
+private final class ActivityRoutePolyline: MKPolyline {
+    var strokeColor: UIColor = .systemOrange
+    var lineWidth: CGFloat = 5
+}
+
+private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+
+    nonisolated init?(photo: SavedPhoto) {
+        guard let photoCoordinate = photo.coordinate else { return nil }
+        coordinate = CLLocationCoordinate2D(
+            latitude: photoCoordinate.latitude,
+            longitude: photoCoordinate.longitude
+        )
+        super.init()
     }
 }
 
@@ -715,16 +947,16 @@ private func haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: D
     return r * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
-private func paceColor(_ pace: Double) -> Color {
-    guard pace > 0, pace.isFinite else { return .orange }
+private func paceUIColor(_ pace: Double) -> UIColor {
+    guard pace > 0, pace.isFinite else { return .systemOrange }
     let fast: Double = 240  // 4:00/km
     let slow: Double = 420  // 7:00/km
     let t = max(0, min(1, (pace - fast) / (slow - fast)))
     if t < 0.5 {
         let u = t / 0.5
-        return Color(red: u, green: 1, blue: 0)
+        return UIColor(red: u, green: 1, blue: 0, alpha: 1)
     } else {
         let u = (t - 0.5) / 0.5
-        return Color(red: 1, green: 1 - u, blue: 0)
+        return UIColor(red: 1, green: 1 - u, blue: 0, alpha: 1)
     }
 }
