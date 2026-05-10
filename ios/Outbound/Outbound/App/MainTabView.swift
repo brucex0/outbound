@@ -914,6 +914,13 @@ struct MotivationDashboardView: View {
                     Image(systemName: "calendar.badge.plus")
                         .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let recommendation {
+                        selectedRecommendation = recommendation
+                    }
+                }
+                .accessibilityAddTraits(recommendation == nil ? [] : .isButton)
 
                 Spacer(minLength: 0)
 
@@ -1018,6 +1025,11 @@ struct MotivationDashboardView: View {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedRecommendation = recommendation
+                        }
+                        .accessibilityAddTraits(.isButton)
 
                         Spacer(minLength: 0)
 
@@ -1870,6 +1882,11 @@ struct TrainingPlanCard: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedRecommendation = lead
+                }
+                .accessibilityAddTraits(.isButton)
 
                 HStack(spacing: 10) {
                     Button("Use this plan") {
