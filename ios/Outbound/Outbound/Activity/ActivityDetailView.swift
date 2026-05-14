@@ -14,7 +14,7 @@ struct ActivityDetailView: View {
     @State private var showSplits = false
     @State private var showElevationProfile = false
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
-    @GestureState private var sheetDragTranslation: CGFloat = 0
+    @State private var sheetDragHeight: CGFloat?
 
     private var currentActivity: SavedActivity {
         activityStore.activity(id: activity.id) ?? activity
@@ -34,13 +34,17 @@ struct ActivityDetailView: View {
 
     private var activityStats: [DetailActivityStat] {
         var stats = [
-            DetailActivityStat(label: "Time", value: currentActivity.durationSecs.formatted()),
+            DetailActivityStat(label: "Distance", value: primaryStat),
         ]
         if let pace = currentActivity.avgPace {
             stats.append(DetailActivityStat(label: "Avg Pace", value: pace.paceString(for: unitSystem)))
         }
+        stats.append(DetailActivityStat(label: "Moving Time", value: currentActivity.durationSecs.formatted()))
         if let elevationGainM = currentActivity.elevationGainM {
             stats.append(DetailActivityStat(label: "Elev Gain", value: unitSystem.elevationString(meters: elevationGainM)))
+        }
+        if let maxElevation = maxElevationMeters(from: elevationProfilePoints) {
+            stats.append(DetailActivityStat(label: "Max Elevation", value: unitSystem.elevationString(meters: maxElevation)))
         }
         if let hr = currentActivity.healthMetrics?.averageHeartRateBPM {
             stats.append(DetailActivityStat(label: "Avg HR", value: "\(hr) bpm"))
@@ -65,10 +69,7 @@ struct ActivityDetailView: View {
     var body: some View {
         GeometryReader { proxy in
             let sheetHeight = sheetDetent.height(in: proxy)
-            let interactiveSheetHeight = max(
-                sheetDetent.minimumHeight(in: proxy),
-                min(sheetDetent.maximumHeight(in: proxy), sheetHeight - sheetDragTranslation)
-            )
+            let interactiveSheetHeight = sheetDragHeight ?? sheetHeight
 
             ZStack(alignment: .bottom) {
                 ActivityRouteMapView(
@@ -81,14 +82,16 @@ struct ActivityDetailView: View {
                 .ignoresSafeArea()
 
                 activitySheet(height: interactiveSheetHeight, proxy: proxy)
-                    .animation(.snappy(duration: 0.32), value: sheetDetent)
                     .simultaneousGesture(sheetDragGesture(in: proxy))
             }
+            .animation(sheetDragHeight == nil ? .snappy(duration: 0.32) : nil, value: sheetDetent)
+            .ignoresSafeArea(.container, edges: .bottom)
         }
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbar(sheetDetent == .expanded ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
             if let shareURL {
                 ShareSheet(activityItems: [shareURL])
@@ -102,7 +105,10 @@ struct ActivityDetailView: View {
     // MARK: - Sheet
 
     private func activitySheet(height: CGFloat, proxy: GeometryProxy) -> some View {
-        VStack(spacing: 0) {
+        let isExpandedHeight = height >= ActivityDetailSheetDetent.expanded.height(in: proxy) - 1
+        let topRadius: CGFloat = isExpandedHeight ? 0 : 22
+
+        return VStack(spacing: 0) {
             sheetGrabber
                 .padding(.top, 8)
                 .padding(.bottom, sheetDetent == .collapsed ? 2 : 6)
@@ -120,7 +126,7 @@ struct ActivityDetailView: View {
                         if let reflection = currentActivity.reflection { coachHeroCard(reflection) }
                         if !currentActivity.photos.isEmpty { photoSection }
                     }
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 110)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
                 }
                 .scrollDisabled(sheetDetent != .expanded)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -128,11 +134,12 @@ struct ActivityDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height, alignment: .top)
-        .background(.regularMaterial)
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+        .background(Color(.systemBackground))
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: topRadius, topTrailingRadius: topRadius))
         .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: -6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     private var sheetGrabber: some View {
@@ -181,19 +188,30 @@ struct ActivityDetailView: View {
 
     private func sheetDragGesture(in proxy: GeometryProxy) -> some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .global)
-            .updating($sheetDragTranslation) { value, state, _ in
+            .onChanged { value in
                 let currentHeight = sheetDetent.height(in: proxy)
                 let proposedHeight = currentHeight - value.translation.height
                 let clampedHeight = min(
                     max(proposedHeight, sheetDetent.minimumHeight(in: proxy)),
                     sheetDetent.maximumHeight(in: proxy)
                 )
-                state = currentHeight - clampedHeight
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    sheetDragHeight = clampedHeight
+                }
             }
             .onEnded { value in
                 let projectedHeight = sheetDetent.height(in: proxy) - value.predictedEndTranslation.height
+                let target = ActivityDetailSheetDetent.snapTarget(
+                    from: sheetDetent,
+                    translation: value.translation.height,
+                    projectedHeight: projectedHeight,
+                    in: proxy
+                )
                 withAnimation(.snappy(duration: 0.32)) {
-                    sheetDetent = ActivityDetailSheetDetent.nearest(to: projectedHeight, in: proxy)
+                    sheetDetent = target
+                    sheetDragHeight = nil
                 }
             }
     }
@@ -229,75 +247,98 @@ struct ActivityDetailView: View {
                 .buttonStyle(.plain)
 
                 if showElevationProfile {
-                    Chart(elevationProfilePoints) { point in
-                        LineMark(
-                            x: .value("Distance", unitSystem.distanceValue(meters: point.distanceMeters)),
-                            y: .value("Elevation", unitSystem.elevationValue(meters: point.altitudeMeters))
-                        )
-                        .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(Color.orange.gradient)
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 3)) { _ in
-                            AxisValueLabel()
-                        }
-                    }
-                    .chartYAxis {
-                        AxisMarks(values: .automatic(desiredCount: 3)) { _ in
-                            AxisValueLabel()
-                        }
-                    }
-                    .chartXAxisLabel(unitSystem.distanceUnit, alignment: .trailing)
-                    .chartYAxisLabel(unitSystem.elevationUnit, alignment: .trailing)
-                    .frame(height: 80)
+                    elevationChart
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .padding(.bottom, 14)
+                    .transition(.opacity)
                 }
             }
-            .background(Color(.secondarySystemBackground).opacity(0.3))
+            .background(Color(.systemBackground))
         }
+    }
+
+    private var elevationChart: some View {
+        let yDomain = elevationChartDomain(points: elevationProfilePoints, unitSystem: unitSystem)
+        let xDomain = elevationChartDistanceDomain(points: elevationProfilePoints, unitSystem: unitSystem)
+
+        return Chart(elevationProfilePoints) { point in
+            AreaMark(
+                x: .value("Distance", unitSystem.distanceValue(meters: point.distanceMeters)),
+                yStart: .value("Baseline", yDomain.lowerBound),
+                yEnd: .value("Elevation", unitSystem.elevationValue(meters: point.altitudeMeters))
+            )
+            .foregroundStyle(Color.orange.opacity(0.14))
+
+            LineMark(
+                x: .value("Distance", unitSystem.distanceValue(meters: point.distanceMeters)),
+                y: .value("Elevation", unitSystem.elevationValue(meters: point.altitudeMeters))
+            )
+            .interpolationMethod(.catmullRom)
+            .lineStyle(StrokeStyle(lineWidth: 2.25, lineCap: .round, lineJoin: .round))
+            .foregroundStyle(Color.orange)
+        }
+        .chartXScale(domain: xDomain)
+        .chartYScale(domain: yDomain)
+        .chartXAxis {
+            AxisMarks(values: [xDomain.lowerBound, xDomain.upperBound]) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                    .foregroundStyle(Color(.separator).opacity(0.35))
+                AxisValueLabel {
+                    if let distance = value.as(Double.self) {
+                        Text(distance, format: .number.precision(.fractionLength(0...1)))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartOverlay(alignment: .topTrailing) { _ in
+            Text("\(Int(yDomain.upperBound.rounded())) \(unitSystem.elevationUnit)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 112)
     }
 
     // MARK: - Stats Hero
 
     private var statsHeroSection: some View {
-        VStack(spacing: 6) {
-            // Primary: large distance
-            HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(primaryStat)
-                        .font(.largeTitle.bold().monospacedDigit())
-                    Text("Distance")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 16)
+        VStack(alignment: .leading, spacing: 18) {
+            Text(currentActivity.title)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 20)
+                .lineLimit(2)
 
-            // Secondary: 2×2 grid
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible(), spacing: 0),
-                    GridItem(.flexible(), spacing: 0),
+                    GridItem(.flexible(), spacing: 20),
+                    GridItem(.flexible(), spacing: 20),
                 ],
-                spacing: 8
+                alignment: .leading,
+                spacing: 18
             ) {
                 ForEach(activityStats) { stat in
                     DetailStatCell(label: stat.label, value: stat.value)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 28)
         }
-        .padding(.vertical, 14)
-        .background(Color(.secondarySystemBackground))
+        .padding(.top, 22)
+        .padding(.bottom, 24)
+        .background(Color(.systemBackground))
     }
 
     // MARK: - Splits
 
     private var splitsSection: some View {
-        VStack(spacing: 0) {
+        let fastestPace = splits.map(\.pace).filter { $0 > 0 }.min() ?? 0
+        let slowestPace = splits.map(\.pace).filter { $0 > 0 }.max() ?? fastestPace
+        let showElevation = splits.contains { $0.elevationChangeM != nil }
+
+        return VStack(spacing: 0) {
             Button {
                 withAnimation(.snappy) { showSplits.toggle() }
             } label: {
@@ -321,51 +362,45 @@ struct ActivityDetailView: View {
 
             if showSplits {
                 VStack(spacing: 0) {
-                    HStack(spacing: 0) {
+                    HStack(spacing: 8) {
                         Text(unitSystem.distanceUnit.uppercased())
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                            .frame(width: 36, alignment: .leading)
-                        Text("Time")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                        Spacer()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 30, alignment: .leading)
                         Text("Pace")
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 54, alignment: .leading)
                         Spacer()
-                        if currentActivity.elevationGainM != nil {
+                        if showElevation {
                             Text("Elev")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                                .frame(width: 44, alignment: .trailing)
-                        }
-                        if currentActivity.healthMetrics?.averageHeartRateBPM != nil {
-                            Text("HR")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                                .frame(width: 36, alignment: .trailing)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 42, alignment: .trailing)
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
 
-                    Divider()
-
-                    ForEach(Array(splits.enumerated()), id: \.offset) { _, split in
+                    ForEach(splits) { split in
                         SplitRow(
                             split: split,
                             unitSystem: unitSystem,
-                            showElevation: currentActivity.elevationGainM != nil,
-                            showHeartRate: currentActivity.healthMetrics?.averageHeartRateBPM != nil
+                            paceFraction: splitPaceFraction(
+                                pace: split.pace,
+                                fastestPace: fastestPace,
+                                slowestPace: slowestPace
+                            ),
+                            showElevation: showElevation
                         )
-                        Divider().padding(.leading, 16)
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.bottom, 10)
+                .transition(.opacity)
             }
         }
-        .background(Color(.secondarySystemBackground).opacity(0.15))
+        .background(Color(.systemBackground))
     }
 
     // MARK: - Coach Hero Card
@@ -388,7 +423,7 @@ struct ActivityDetailView: View {
 
             Text(reflection.body)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !currentActivity.coachNudge.isEmpty {
@@ -407,7 +442,7 @@ struct ActivityDetailView: View {
             }
         }
         .padding(16)
-        .background(Color.orange.opacity(0.06))
+        .background(Color.orange.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.top, 16)
@@ -520,7 +555,7 @@ private enum ActivityDetailSheetDetent: CaseIterable {
         case .split:
             return min(max(340, availableHeight * 0.48), availableHeight * 0.62)
         case .expanded:
-            return availableHeight - proxy.safeAreaInsets.top - 10
+            return maximumHeight(in: proxy)
         }
     }
 
@@ -529,13 +564,42 @@ private enum ActivityDetailSheetDetent: CaseIterable {
     }
 
     func maximumHeight(in proxy: GeometryProxy) -> CGFloat {
-        proxy.size.height - proxy.safeAreaInsets.top - 10
+        proxy.size.height + proxy.safeAreaInsets.bottom
     }
 
     static func nearest(to height: CGFloat, in proxy: GeometryProxy) -> ActivityDetailSheetDetent {
         allCases.min {
             abs($0.height(in: proxy) - height) < abs($1.height(in: proxy) - height)
         } ?? .split
+    }
+
+    static func snapTarget(
+        from current: ActivityDetailSheetDetent,
+        translation: CGFloat,
+        projectedHeight: CGFloat,
+        in proxy: GeometryProxy
+    ) -> ActivityDetailSheetDetent {
+        if translation < -56 {
+            switch current {
+            case .collapsed:
+                return .split
+            case .split, .expanded:
+                return .expanded
+            }
+        }
+
+        if translation > 56 {
+            switch current {
+            case .collapsed:
+                return .collapsed
+            case .split:
+                return .collapsed
+            case .expanded:
+                return .split
+            }
+        }
+
+        return nearest(to: projectedHeight, in: proxy)
     }
 }
 
@@ -773,40 +837,39 @@ private struct ActivityElevationProfilePoint: Identifiable {
 private struct SplitRow: View {
     let split: ActivitySplit
     let unitSystem: MeasurementUnitSystem
+    let paceFraction: Double
     let showElevation: Bool
-    let showHeartRate: Bool
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             Text("\(split.number)")
-                .font(.callout.monospacedDigit())
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .leading)
-
-            Text(split.timeSeconds.formatted())
-                .font(.callout.monospacedDigit())
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: 30, alignment: .leading)
 
             Text(split.pace.paceString(for: unitSystem))
-                .font(.callout.monospacedDigit())
-                .frame(maxWidth: .infinity)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.primary)
+                .frame(width: 54, alignment: .leading)
+
+            GeometryReader { proxy in
+                let barWidth = max(18, proxy.size.width * paceFraction)
+                Capsule()
+                    .fill(Color.blue)
+                    .frame(width: barWidth, height: 14)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+            .frame(height: 18)
 
             if showElevation {
-                Text(unitSystem.elevationString(meters: split.elevationChangeM ?? 0))
-                    .font(.callout.monospacedDigit())
+                Text(split.elevationChangeM.map { signedElevationString(meters: $0, unitSystem: unitSystem) } ?? "--")
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
-                    .frame(width: 44, alignment: .trailing)
-            }
-
-            if showHeartRate {
-                Text(split.heartRateBPM.map { "\($0)" } ?? "--")
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, alignment: .trailing)
+                    .frame(width: 42, alignment: .trailing)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 3)
     }
 }
 
@@ -838,11 +901,17 @@ private struct DetailStatCell: View {
     let value: String
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text(value).font(.subheadline.bold().monospacedDigit())
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title3.weight(.bold).monospacedDigit())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -866,12 +935,20 @@ private func computeSplits(from points: [SavedRoutePoint], unitSystem: Measureme
             let segPace = segDistance > 0 ? segTime / (segDistance / 1000) : 0
 
             if segDistance > 20 {
+                let elevationChange: Double?
+                if let startAltitude = points[segStart].altitude,
+                   let endAltitude = points[segEnd].altitude {
+                    elevationChange = endAltitude - startAltitude
+                } else {
+                    elevationChange = nil
+                }
+
                 splits.append(ActivitySplit(
                     number: splitNumber,
                     timeSeconds: Int(segTime),
                     pace: segPace,
                     distanceMeters: segDistance,
-                    elevationChangeM: nil,
+                    elevationChangeM: elevationChange,
                     heartRateBPM: nil
                 ))
                 lastSplitEndIndex = i
@@ -898,6 +975,50 @@ private func computeElevationProfilePoints(from points: [SavedRoutePoint]) -> [A
             altitudeMeters: altitude
         )
     }
+}
+
+private func elevationChartDomain(
+    points: [ActivityElevationProfilePoint],
+    unitSystem: MeasurementUnitSystem
+) -> ClosedRange<Double> {
+    let values = points.map { unitSystem.elevationValue(meters: $0.altitudeMeters) }
+    guard let minimum = values.min(), let maximum = values.max() else {
+        return 0...1
+    }
+
+    let spread = maximum - minimum
+    let padding = max(spread * 0.25, unitSystem == .metric ? 8 : 25)
+    return (minimum - padding)...(maximum + padding)
+}
+
+private func elevationChartDistanceDomain(
+    points: [ActivityElevationProfilePoint],
+    unitSystem: MeasurementUnitSystem
+) -> ClosedRange<Double> {
+    let maximum = points
+        .map { unitSystem.distanceValue(meters: $0.distanceMeters) }
+        .max() ?? 1
+    return 0...max(maximum, 0.1)
+}
+
+private func maxElevationMeters(from points: [ActivityElevationProfilePoint]) -> Double? {
+    points.map(\.altitudeMeters).max()
+}
+
+private func splitPaceFraction(pace: Double, fastestPace: Double, slowestPace: Double) -> Double {
+    guard pace > 0, fastestPace > 0, slowestPace > fastestPace else {
+        return 0.85
+    }
+    let normalized = (slowestPace - pace) / (slowestPace - fastestPace)
+    return 0.28 + (max(0, min(1, normalized)) * 0.72)
+}
+
+private func signedElevationString(meters: Double, unitSystem: MeasurementUnitSystem) -> String {
+    let value = Int(unitSystem.elevationValue(meters: meters).rounded())
+    if value > 0 {
+        return "+\(value)"
+    }
+    return "\(value)"
 }
 
 private func computePaceSegments(from points: [SavedRoutePoint]) -> [(startIndex: Int, endIndex: Int, pace: Double)] {

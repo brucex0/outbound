@@ -129,12 +129,17 @@ The layout uses a persistent full-screen route map with a bottom information she
 
 1. **Collapsed detent** — compact summary row, full-screen route map visible
 2. **Split detent** — default opening state, route fit above the sheet and key information visible
-3. **Expanded detent** — information sheet fills the screen and its content becomes scrollable
+3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
 6. **Content order** — stats, elevation, splits, route controls, coach card, photos
+7. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
+8. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
+9. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras
+10. **Splits layout** — Strava-style table with distance index, pace-as-time, proportional blue bar, and optional elevation delta; do not show a separate time column
 
 Safe-area strategy:
 - The map ignores container safe areas so it feels full screen.
+- The sheet ignores the bottom safe area but stays below the status bar when expanded.
 - The sheet owns bottom padding for the persistent app chrome.
 - Route controls are inline in the sheet content, not a floating toolbar.
