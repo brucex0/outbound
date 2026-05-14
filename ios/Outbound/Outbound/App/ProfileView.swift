@@ -336,6 +336,8 @@ struct AssistantView: View {
     @EnvironmentObject private var goalStore: GoalStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @StateObject private var voiceCommandStore = AssistantVoiceCommandStore()
+    @State private var hasHandledVoiceActivityCommand = false
+    @State private var pendingVoiceCommandTask: Task<Void, Never>?
 
     let screenName: String
     let isRecordingActive: Bool
@@ -476,9 +478,19 @@ struct AssistantView: View {
 
             HStack(alignment: .bottom, spacing: 12) {
                 Button {
+                    if !voiceCommandStore.isRecording {
+                        hasHandledVoiceActivityCommand = false
+                        pendingVoiceCommandTask?.cancel()
+                        pendingVoiceCommandTask = nil
+                    }
+
                     voiceCommandStore.toggleRecording { partialTranscript in
                         assistantStore.draft = partialTranscript
+                        handleLiveVoiceTranscript(partialTranscript)
                     } onFinalTranscript: { transcript in
+                        guard !hasHandledVoiceActivityCommand else { return }
+                        pendingVoiceCommandTask?.cancel()
+                        pendingVoiceCommandTask = nil
                         handleVoiceTranscript(transcript)
                     }
                 } label: {
@@ -494,6 +506,10 @@ struct AssistantView: View {
 
                 Button {
                     Task {
+                        if handleActivityCommandIfPresent(assistantStore.draft) {
+                            return
+                        }
+
                         if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
                             routeThroughApp(target)
                         }
@@ -533,8 +549,12 @@ struct AssistantView: View {
         dismiss()
     }
 
-    private func handleVoiceTranscript(_ transcript: String) {
+    @discardableResult
+    private func handleActivityCommandIfPresent(_ transcript: String) -> Bool {
         if let intent = AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) {
+            hasHandledVoiceActivityCommand = true
+            pendingVoiceCommandTask?.cancel()
+            pendingVoiceCommandTask = nil
             assistantStore.draft = ""
             assistantStore.recordPreparedActivityCommand(
                 transcript: transcript,
@@ -543,7 +563,28 @@ struct AssistantView: View {
             )
             appNavigationStore.prepareActivity(intent: intent)
             dismiss()
+            return true
         } else {
+            return false
+        }
+    }
+
+    private func handleLiveVoiceTranscript(_ transcript: String) {
+        guard !hasHandledVoiceActivityCommand else { return }
+        guard AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) != nil else { return }
+        pendingVoiceCommandTask?.cancel()
+        pendingVoiceCommandTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            guard !Task.isCancelled, !hasHandledVoiceActivityCommand else { return }
+            let latestTranscript = assistantStore.draft
+            guard AssistantActivityCommandParser.parse(latestTranscript, unitSystem: measurementPreferences.unitSystem) != nil else { return }
+            voiceCommandStore.cancelRecording()
+            handleActivityCommandIfPresent(latestTranscript)
+        }
+    }
+
+    private func handleVoiceTranscript(_ transcript: String) {
+        if !handleActivityCommandIfPresent(transcript) {
             assistantStore.draft = transcript
         }
     }
@@ -678,6 +719,10 @@ private final class AssistantVoiceCommandStore: ObservableObject {
         }
     }
 
+    func cancelRecording() {
+        finishRecording(shouldEmitTranscript: false)
+    }
+
     private func requestPermissionAndStart() {
         statusMessage = nil
         SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
@@ -718,6 +763,8 @@ private final class AssistantVoiceCommandStore: ObservableObject {
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
+        request.taskHint = .search
+        request.contextualStrings = AssistantActivityCommandParser.recognitionHints
         recognitionRequest = request
 
         let audioSession = AVAudioSession.sharedInstance()

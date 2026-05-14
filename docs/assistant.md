@@ -82,7 +82,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - saved activity count
   - current week distance
   - current goal summary line, when present
-- Microphone commands are deterministic V1 actions, not open-ended chat. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start.
+- Activity-start commands are deterministic V1 actions, not open-ended chat. The speech request uses command-specific recognition hints, and the parser normalizes common short-command variants such as `ten kay run`, `5 k`, and `thirty minute run`. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start. During voice input, a recognized command executes after the live partial transcript stays stable briefly; the composer Send button uses the same parser before falling back to assistant chat, so corrected voice text and typed commands route the same way.
 - The response stack is:
   - try the backend assistant chat endpoint first
   - fall back to Apple Foundation Models when available on device

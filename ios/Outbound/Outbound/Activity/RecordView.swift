@@ -387,17 +387,17 @@ struct RecordView: View {
                     .foregroundStyle(.secondary)
             case .distance:
                 LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
-                    goalPresetButton(title: "3K") { applyGoal(.distanceMeters(3_000)) }
-                    goalPresetButton(title: "5K") { applyGoal(.distanceMeters(5_000)) }
-                    goalPresetButton(title: "10K") { applyGoal(.distanceMeters(10_000)) }
-                    goalPresetButton(title: "Custom") { presentCustomGoal(.distance) }
+                    goalPresetButton(title: "3K", isSelected: isSelectedDistancePreset(3_000)) { applyGoal(.distanceMeters(3_000)) }
+                    goalPresetButton(title: "5K", isSelected: isSelectedDistancePreset(5_000)) { applyGoal(.distanceMeters(5_000)) }
+                    goalPresetButton(title: "10K", isSelected: isSelectedDistancePreset(10_000)) { applyGoal(.distanceMeters(10_000)) }
+                    goalPresetButton(title: "Custom", isSelected: isCustomDistanceSelected) { presentCustomGoal(.distance) }
                 }
             case .time:
                 LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
-                    goalPresetButton(title: "20 min") { applyGoal(.timeSeconds(20 * 60)) }
-                    goalPresetButton(title: "30 min") { applyGoal(.timeSeconds(30 * 60)) }
-                    goalPresetButton(title: "45 min") { applyGoal(.timeSeconds(45 * 60)) }
-                    goalPresetButton(title: "Custom") { presentCustomGoal(.time) }
+                    goalPresetButton(title: "20 min", isSelected: isSelectedTimePreset(20 * 60)) { applyGoal(.timeSeconds(20 * 60)) }
+                    goalPresetButton(title: "30 min", isSelected: isSelectedTimePreset(30 * 60)) { applyGoal(.timeSeconds(30 * 60)) }
+                    goalPresetButton(title: "45 min", isSelected: isSelectedTimePreset(45 * 60)) { applyGoal(.timeSeconds(45 * 60)) }
+                    goalPresetButton(title: "Custom", isSelected: isCustomTimeSelected) { presentCustomGoal(.time) }
                 }
             }
         }
@@ -434,16 +434,46 @@ struct RecordView: View {
         .buttonStyle(.plain)
     }
 
-    private func goalPresetButton(title: String, action: @escaping () -> Void) -> some View {
+    private func goalPresetButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.tertiarySystemBackground), in: Capsule())
+            HStack(spacing: 6) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(isSelected ? Color.orange : Color(.tertiarySystemBackground), in: Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    private var currentActivityGoal: ActivityGoal {
+        (plannedIntent ?? .freestyleRun).activityGoal
+    }
+
+    private func isSelectedDistancePreset(_ meters: Double) -> Bool {
+        guard case .distanceMeters(let selectedMeters) = currentActivityGoal else { return false }
+        return abs(selectedMeters - meters) < 1
+    }
+
+    private func isSelectedTimePreset(_ seconds: Int) -> Bool {
+        guard case .timeSeconds(let selectedSeconds) = currentActivityGoal else { return false }
+        return selectedSeconds == seconds
+    }
+
+    private var isCustomDistanceSelected: Bool {
+        guard case .distanceMeters = currentActivityGoal else { return false }
+        return ![3_000, 5_000, 10_000].contains { isSelectedDistancePreset(Double($0)) }
+    }
+
+    private var isCustomTimeSelected: Bool {
+        guard case .timeSeconds = currentActivityGoal else { return false }
+        return ![20 * 60, 30 * 60, 45 * 60].contains { isSelectedTimePreset($0) }
     }
 
     private func applyGoal(_ goal: ActivityGoal) {
