@@ -70,7 +70,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - five capability chips: Discover, Navigate, Support, Brainstorm, Plan
   - quick-start prompt cards
   - a lightweight conversation timeline
-  - a bottom composer with a microphone shortcut for short activity-start commands
+  - a bottom composer with a microphone shortcut for short activity-start commands, including an animated listening wave and live transcript text in the composer
 - The Reset button clears the stored conversation and restores the seeded intro message.
 
 ## Response Strategy

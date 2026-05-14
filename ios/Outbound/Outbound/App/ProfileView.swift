@@ -462,15 +462,23 @@ struct AssistantView: View {
     private var composer: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let statusLine = voiceStatusLine {
-                Text(statusLine)
-                    .font(.caption)
-                    .foregroundStyle(voiceCommandStore.isRecording ? personaAccentColor : .secondary)
-                    .padding(.horizontal, 4)
+                HStack(spacing: 8) {
+                    if voiceCommandStore.isRecording {
+                        AssistantListeningWave(accentColor: personaAccentColor)
+                    }
+
+                    Text(statusLine)
+                        .font(.caption.weight(voiceCommandStore.isRecording ? .semibold : .regular))
+                        .foregroundStyle(voiceCommandStore.isRecording ? personaAccentColor : .secondary)
+                }
+                .padding(.horizontal, 4)
             }
 
             HStack(alignment: .bottom, spacing: 12) {
                 Button {
-                    voiceCommandStore.toggleRecording { transcript in
+                    voiceCommandStore.toggleRecording { partialTranscript in
+                        assistantStore.draft = partialTranscript
+                    } onFinalTranscript: { transcript in
                         handleVoiceTranscript(transcript)
                     }
                 } label: {
@@ -504,7 +512,7 @@ struct AssistantView: View {
 
     private var voiceStatusLine: String? {
         if voiceCommandStore.isRecording {
-            return "Listening for an activity command..."
+            return voiceCommandStore.liveTranscript.isEmpty ? "Listening..." : "Listening"
         }
         return voiceCommandStore.statusMessage
     }
@@ -527,6 +535,7 @@ struct AssistantView: View {
 
     private func handleVoiceTranscript(_ transcript: String) {
         if let intent = AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) {
+            assistantStore.draft = ""
             assistantStore.recordPreparedActivityCommand(
                 transcript: transcript,
                 intent: intent,
@@ -616,23 +625,55 @@ private struct AssistantBubble: View {
     }
 }
 
+private struct AssistantListeningWave: View {
+    let accentColor: Color
+
+    private let barCount = 5
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.16)) { context in
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    Capsule(style: .continuous)
+                        .fill(accentColor)
+                        .frame(width: 3, height: barHeight(for: index, date: context.date))
+                }
+            }
+            .frame(width: 28, height: 18)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func barHeight(for index: Int, date: Date) -> CGFloat {
+        let phase = date.timeIntervalSinceReferenceDate * 7.0 + Double(index) * 0.72
+        let normalized = (sin(phase) + 1) / 2
+        return 5 + CGFloat(normalized) * 13
+    }
+}
+
 @MainActor
 private final class AssistantVoiceCommandStore: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var statusMessage: String?
+    @Published private(set) var liveTranscript = ""
 
     private let audioEngine = AVAudioEngine()
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var bestTranscript = ""
-    private var onTranscript: ((String) -> Void)?
+    private var onPartialTranscript: ((String) -> Void)?
+    private var onFinalTranscript: ((String) -> Void)?
 
-    func toggleRecording(onTranscript: @escaping (String) -> Void) {
+    func toggleRecording(
+        onPartialTranscript: @escaping (String) -> Void,
+        onFinalTranscript: @escaping (String) -> Void
+    ) {
         if isRecording {
             finishRecording(shouldEmitTranscript: true)
         } else {
-            self.onTranscript = onTranscript
+            self.onPartialTranscript = onPartialTranscript
+            self.onFinalTranscript = onFinalTranscript
             requestPermissionAndStart()
         }
     }
@@ -645,7 +686,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
                     guard let self else { return }
                     guard speechStatus == .authorized, microphoneAllowed else {
                         self.statusMessage = "Speech or microphone permission is off."
-                        self.onTranscript = nil
+                        self.clearTranscriptHandlers()
                         return
                     }
                     self.startRecording()
@@ -665,13 +706,15 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     private func startRecording() {
         guard recognizer?.isAvailable == true else {
             statusMessage = "Speech recognition is unavailable right now."
-            onTranscript = nil
+            clearTranscriptHandlers()
             return
         }
 
         recognitionTask?.cancel()
         recognitionTask = nil
         bestTranscript = ""
+        liveTranscript = ""
+        onPartialTranscript?("")
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -693,7 +736,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
             try audioEngine.start()
         } catch {
             statusMessage = "Could not start listening."
-            onTranscript = nil
+            clearTranscriptHandlers()
             return
         }
 
@@ -704,6 +747,8 @@ private final class AssistantVoiceCommandStore: ObservableObject {
                 guard let self else { return }
                 if let result {
                     self.bestTranscript = result.bestTranscription.formattedString
+                    self.liveTranscript = self.bestTranscript
+                    self.onPartialTranscript?(self.bestTranscript)
                     if result.isFinal {
                         self.finishRecording(shouldEmitTranscript: true)
                     }
@@ -728,15 +773,20 @@ private final class AssistantVoiceCommandStore: ObservableObject {
         isRecording = false
 
         let transcript = bestTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        let handler = onTranscript
-        onTranscript = nil
+        let finalHandler = onFinalTranscript
+        clearTranscriptHandlers()
 
         if shouldEmitTranscript, !transcript.isEmpty {
             statusMessage = nil
-            handler?(transcript)
+            finalHandler?(transcript)
         } else if shouldEmitTranscript {
             statusMessage = "I did not hear enough to use."
         }
+    }
+
+    private func clearTranscriptHandlers() {
+        onPartialTranscript = nil
+        onFinalTranscript = nil
     }
 }
 
