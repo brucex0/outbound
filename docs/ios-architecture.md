@@ -25,7 +25,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Me-tab suggestion it shows that confirmation state; when opened from the bottom-row quick-start button it jumps straight to freestyle confirmation. After Start it opens the live camera/map recorder, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the bottom-row activity button reopens it.
+- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Me-tab suggestion it shows that confirmation state; when opened from the bottom-row quick-start button it jumps straight to freestyle confirmation. The start page can optionally set a per-session distance or time goal before Start. After Start it opens the live camera/map recorder, activates `VirtualCoach` with `coachCatalog.selectedPersona`, forwards live snapshots to the coach, collects captured photos during the activity, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the bottom-row activity button reopens it.
+- `Activity/ActivityGoal.swift`: per-session goal model for freestyle, distance, and time starts, plus helpers that convert selected goals into `SessionIntent` values.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Elapsed time is derived from active wall-clock segments rather than only a foreground timer, and location updates also refresh the live snapshot so coaching continues while the app is backgrounded during a run. Supports pause/resume by stopping both the UI timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/SessionLiveActivityManager.swift`: ActivityKit bridge that starts, updates, and ends the active session Live Activity using recorder snapshots.
 - `Shared/OutboundLiveActivityAttributes.swift`: shared ActivityKit attributes/content-state model compiled into both the app target and the widget extension.
@@ -42,7 +43,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Local Persistence
 
 - `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`.
-- `activities.json`: manifest containing `SavedActivity` entries, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
+- `activities.json`: manifest containing `SavedActivity` entries, optional per-session goal metadata, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
 
@@ -70,11 +71,12 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Assistant
 
-- `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, and the optional Apple Foundation Models responder.
+- `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, activity-prep navigation state, and the optional Apple Foundation Models responder.
+- `App/AssistantActivityCommandParser.swift`: deterministic parser for short voice commands that prepare a run or bike activity with a distance or time goal.
 - `Core/APIClient.swift`: assistant chat transport to the backend, plus existing coach/activity endpoints.
 - `App/MainTabView.swift`: persistent bottom assistant launcher for the main tabs, including the standalone minimized icon and expanded assistant presentation states.
 - `Activity/RecordView.swift`: compact live-session assistant entry so the assistant stays reachable without overwhelming the camera/map experience.
-- `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, and planning.
+- `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, planning, and tap-to-talk activity commands.
 - `backend/src/routes/assistant.ts`: backend assistant chat route that currently uses a BoatShare-style DeepSeek integration.
 - `docs/assistant.md`: focused product and implementation notes for the assistant surface.
 

@@ -1293,13 +1293,22 @@ struct AssistantContext {
 @MainActor
 final class AppNavigationStore: ObservableObject {
     @Published var pendingAssistantTarget: AssistantNavigationTarget?
+    @Published var pendingActivityIntent: SessionIntent?
 
     func open(_ target: AssistantNavigationTarget) {
         pendingAssistantTarget = target
     }
 
+    func prepareActivity(intent: SessionIntent) {
+        pendingActivityIntent = intent
+    }
+
     func consume() {
         pendingAssistantTarget = nil
+    }
+
+    func consumePreparedActivity() {
+        pendingActivityIntent = nil
     }
 }
 
@@ -1381,6 +1390,29 @@ final class AssistantStore: ObservableObject {
         messages = []
         persistMessages()
         ensureSeedMessage(context: context)
+    }
+
+    func recordPreparedActivityCommand(
+        transcript: String,
+        intent: SessionIntent,
+        context: AssistantContext
+    ) {
+        ensureSeedMessage(context: context)
+        messages.append(
+            AssistantMessage(
+                author: .user,
+                text: transcript,
+                capability: .plan
+            )
+        )
+        messages.append(
+            AssistantMessage(
+                author: .assistant,
+                text: "Opening \(intent.title) with the goal already set. Tap Start when you are ready.",
+                capability: .plan
+            )
+        )
+        persistMessages()
     }
 
     private func send(

@@ -11,7 +11,8 @@ enum LocalActivityStore {
         photos: [(UIImage, PhotoMetadata)],
         title: String,
         coachNudge: String,
-        reflection: FinishReflection?
+        reflection: FinishReflection?,
+        goal: ActivityGoal?
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -39,6 +40,7 @@ enum LocalActivityStore {
             avgPace: summary.avgPace,
             elevationGainM: summary.elevationGainM,
             healthMetrics: summary.healthMetrics,
+            goal: goal,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -138,6 +140,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     let avgPace: Double?
     let elevationGainM: Double?
     let healthMetrics: ActivityHealthMetrics?
+    let goal: ActivityGoal?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -169,6 +172,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         } else {
             healthMetrics = nil
         }
+        goal = try c.decodeIfPresent(ActivityGoal.self, forKey: .goal)
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -186,13 +190,14 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     init(id: UUID, title: String, coachNudge: String, reflection: FinishReflection?, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
-         healthMetrics: ActivityHealthMetrics? = nil, route: SavedRoute?,
+         healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil, route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
         self.reflection = reflection
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
         self.elevationGainM = elevationGainM; self.healthMetrics = healthMetrics
+        self.goal = goal
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -211,6 +216,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         case elevationM
         case healthMetrics
         case avgHeartRate
+        case goal
         case route
         case trackPoints
         case photos
@@ -231,6 +237,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(avgPace, forKey: .avgPace)
         try c.encodeIfPresent(elevationGainM, forKey: .elevationGainM)
         try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
+        try c.encodeIfPresent(goal, forKey: .goal)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)

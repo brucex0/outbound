@@ -92,6 +92,11 @@ struct MainTabView: View {
                 isActivityVisible = false
             }
         }
+        .onChange(of: appNavigationStore.pendingActivityIntent) { _, intent in
+            guard let intent else { return }
+            presentActivity(intent: intent)
+            appNavigationStore.consumePreparedActivity()
+        }
     }
 
     private var onboardingIdentity: String {

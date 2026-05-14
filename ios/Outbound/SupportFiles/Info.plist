@@ -59,7 +59,9 @@
     <string>Outbound keeps the camera ready so you can capture moments during your run without leaving the app.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>Outbound uses the microphone to let your AI coach speak to you during runs.</string>
+    <string>Outbound uses the microphone for voice activity commands and coach audio during workouts.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Outbound uses speech recognition to turn short voice commands into prepared activities.</string>
 
     <key>NSAppleMusicUsageDescription</key>
     <string>Outbound uses Apple Music to play music during workouts and keep your coach experience in one place.</string>

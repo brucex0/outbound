@@ -1,3 +1,6 @@
+import AVFoundation
+import Combine
+import Speech
 import SwiftUI
 
 struct ProfileView: View {
@@ -331,6 +334,8 @@ struct AssistantView: View {
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var goalStore: GoalStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @StateObject private var voiceCommandStore = AssistantVoiceCommandStore()
 
     let screenName: String
     let isRecordingActive: Bool
@@ -455,26 +460,53 @@ struct AssistantView: View {
     }
 
     private var composer: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Ask for help", text: $assistantStore.draft, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(1...4)
-
-            Button {
-                Task {
-                    if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
-                        routeThroughApp(target)
-                    }
-                }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
+        VStack(alignment: .leading, spacing: 6) {
+            if let statusLine = voiceStatusLine {
+                Text(statusLine)
+                    .font(.caption)
+                    .foregroundStyle(voiceCommandStore.isRecording ? personaAccentColor : .secondary)
+                    .padding(.horizontal, 4)
             }
-            .disabled(assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistantStore.isResponding)
+
+            HStack(alignment: .bottom, spacing: 12) {
+                Button {
+                    voiceCommandStore.toggleRecording { transcript in
+                        handleVoiceTranscript(transcript)
+                    }
+                } label: {
+                    Image(systemName: voiceCommandStore.isRecording ? "mic.circle.fill" : "mic.circle")
+                        .font(.system(size: 30))
+                        .foregroundStyle(voiceCommandStore.isRecording ? Color.red : personaAccentColor)
+                }
+                .accessibilityLabel(voiceCommandStore.isRecording ? "Stop listening" : "Speak activity command")
+
+                TextField("Ask for help", text: $assistantStore.draft, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+
+                Button {
+                    Task {
+                        if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
+                            routeThroughApp(target)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 30))
+                }
+                .disabled(assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistantStore.isResponding)
+            }
         }
         .padding(.horizontal)
         .padding(.top, 8)
         .padding(.bottom, 10)
+    }
+
+    private var voiceStatusLine: String? {
+        if voiceCommandStore.isRecording {
+            return "Listening for an activity command..."
+        }
+        return voiceCommandStore.statusMessage
     }
 
     private var assistantContext: AssistantContext {
@@ -491,6 +523,20 @@ struct AssistantView: View {
     private func routeThroughApp(_ target: AssistantNavigationTarget) {
         appNavigationStore.open(target)
         dismiss()
+    }
+
+    private func handleVoiceTranscript(_ transcript: String) {
+        if let intent = AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) {
+            assistantStore.recordPreparedActivityCommand(
+                transcript: transcript,
+                intent: intent,
+                context: assistantContext
+            )
+            appNavigationStore.prepareActivity(intent: intent)
+            dismiss()
+        } else {
+            assistantStore.draft = transcript
+        }
     }
 
     private var compactSuggestions: [AssistantSuggestion] {
@@ -567,6 +613,130 @@ private struct AssistantBubble: View {
         .padding(14)
         .background(message.author == .assistant ? Color(.secondarySystemBackground) : accentColor)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+@MainActor
+private final class AssistantVoiceCommandStore: ObservableObject {
+    @Published private(set) var isRecording = false
+    @Published private(set) var statusMessage: String?
+
+    private let audioEngine = AVAudioEngine()
+    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var bestTranscript = ""
+    private var onTranscript: ((String) -> Void)?
+
+    func toggleRecording(onTranscript: @escaping (String) -> Void) {
+        if isRecording {
+            finishRecording(shouldEmitTranscript: true)
+        } else {
+            self.onTranscript = onTranscript
+            requestPermissionAndStart()
+        }
+    }
+
+    private func requestPermissionAndStart() {
+        statusMessage = nil
+        SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
+            Self.requestMicrophonePermission { microphoneAllowed in
+                Task { @MainActor in
+                    guard let self else { return }
+                    guard speechStatus == .authorized, microphoneAllowed else {
+                        self.statusMessage = "Speech or microphone permission is off."
+                        self.onTranscript = nil
+                        return
+                    }
+                    self.startRecording()
+                }
+            }
+        }
+    }
+
+    private nonisolated static func requestMicrophonePermission(_ completion: @Sendable @escaping (Bool) -> Void) {
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission(completionHandler: completion)
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission(completion)
+        }
+    }
+
+    private func startRecording() {
+        guard recognizer?.isAvailable == true else {
+            statusMessage = "Speech recognition is unavailable right now."
+            onTranscript = nil
+            return
+        }
+
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        bestTranscript = ""
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        recognitionRequest = request
+
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+            let inputNode = audioEngine.inputNode
+            let format = inputNode.outputFormat(forBus: 0)
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak request] buffer, _ in
+                request?.append(buffer)
+            }
+
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            statusMessage = "Could not start listening."
+            onTranscript = nil
+            return
+        }
+
+        isRecording = true
+        statusMessage = nil
+        recognitionTask = recognizer?.recognitionTask(with: request) { [weak self] result, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if let result {
+                    self.bestTranscript = result.bestTranscription.formattedString
+                    if result.isFinal {
+                        self.finishRecording(shouldEmitTranscript: true)
+                    }
+                } else if error != nil {
+                    self.finishRecording(shouldEmitTranscript: false)
+                    self.statusMessage = "I could not catch that."
+                }
+            }
+        }
+    }
+
+    private func finishRecording(shouldEmitTranscript: Bool) {
+        guard isRecording || recognitionRequest != nil else { return }
+
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        isRecording = false
+
+        let transcript = bestTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let handler = onTranscript
+        onTranscript = nil
+
+        if shouldEmitTranscript, !transcript.isEmpty {
+            statusMessage = nil
+            handler?(transcript)
+        } else if shouldEmitTranscript {
+            statusMessage = "I did not hear enough to use."
+        }
     }
 }
 

@@ -11,13 +11,19 @@ final class ActivityStore: ObservableObject {
     init() { refresh() }
 
     @discardableResult
-    func save(summary: ActivitySummary, photos: [(UIImage, PhotoMetadata)], reflection: FinishReflection?) throws -> SavedActivity {
+    func save(
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        reflection: FinishReflection?,
+        goal: ActivityGoal? = nil
+    ) throws -> SavedActivity {
         let activity = try LocalActivityStore.save(
             summary: summary,
             photos: photos,
             title: autoTitle(for: summary.startedAt),
             coachNudge: "",
-            reflection: reflection
+            reflection: reflection,
+            goal: goal
         )
         refresh()
         Task {
@@ -138,6 +144,7 @@ final class ActivityStore: ObservableObject {
             avgPace: current.avgPace,
             elevationGainM: current.elevationGainM,
             healthMetrics: current.healthMetrics,
+            goal: current.goal,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -183,6 +190,7 @@ final class ActivityStore: ObservableObject {
                 maxHeartRateBPM: 162,
                 heartRateSampleCount: 12
             ),
+            goal: .distanceMeters(5_000),
             route: SavedRoute(points: points),
             photos: [],
             sync: nil

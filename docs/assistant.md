@@ -70,7 +70,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - five capability chips: Discover, Navigate, Support, Brainstorm, Plan
   - quick-start prompt cards
   - a lightweight conversation timeline
-  - a bottom composer
+  - a bottom composer with a microphone shortcut for short activity-start commands
 - The Reset button clears the stored conversation and restores the seeded intro message.
 
 ## Response Strategy
@@ -82,6 +82,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - saved activity count
   - current week distance
   - current goal summary line, when present
+- Microphone commands are deterministic V1 actions, not open-ended chat. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start.
 - The response stack is:
   - try the backend assistant chat endpoint first
   - fall back to Apple Foundation Models when available on device
@@ -92,16 +93,17 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ## File Map
 
 - `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and optional Apple Foundation Models responder.
+- `ios/Outbound/Outbound/App/AssistantActivityCommandParser.swift`: deterministic parser for short voice activity commands.
 - `ios/Outbound/Outbound/Core/APIClient.swift`: assistant chat request/response transport to the backend.
 - `ios/Outbound/Outbound/App/MainTabView.swift`: standalone assistant launcher and expanded assistant presentation from the main app tabs.
 - `ios/Outbound/Outbound/Activity/RecordView.swift`: compact live-session assistant entry.
-- `ios/Outbound/Outbound/App/ProfileView.swift`: assistant screen, quick starts, message bubbles, and composer.
+- `ios/Outbound/Outbound/App/ProfileView.swift`: assistant screen, quick starts, message bubbles, composer, and speech recognition bridge.
 - `backend/src/routes/assistant.ts`: assistant chat endpoint.
 - `backend/src/services/ai.ts`: Anthropic-backed assistant reply generation.
 
 ## Extension Ideas
 
-- Add typed assistant actions that can deep-link into specific settings, goals, history, or social destinations.
+- Expand typed assistant actions beyond activity prep into settings, goals, history, or social destinations.
 - Add deep links from assistant replies into specific screens such as coach settings, activity history, or social sections.
 - Expand planning to generate structured weekly cards instead of plain text.
 - Add support-specific diagnostics for auth setup, permissions, and imports.

@@ -27,6 +27,11 @@ struct RecordView: View {
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
     @State private var isAssistantPresented = false
+    @State private var selectedGoalMode: SessionGoalMode = .freestyle
+    @State private var customDistanceText = ""
+    @State private var customTimeText = ""
+    @State private var customGoalKind: CustomGoalKind?
+    @State private var isCustomGoalAlertPresented = false
 
     let isVisible: Bool
     private let onCloseRequest: ((Bool) -> Void)?
@@ -179,6 +184,25 @@ struct RecordView: View {
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
+        .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
+            if customGoalKind == .distance {
+                TextField("Distance in km", text: $customDistanceText)
+                    .keyboardType(.decimalPad)
+            } else {
+                TextField("Time in minutes", text: $customTimeText)
+                    .keyboardType(.numberPad)
+            }
+
+            Button("Set") {
+                applyCustomGoal()
+            }
+
+            Button("Cancel", role: .cancel) {
+                customGoalKind = nil
+            }
+        } message: {
+            Text(customGoalAlertMessage)
+        }
     }
 
     private func startRecording() {
@@ -242,7 +266,8 @@ struct RecordView: View {
         guard let savedActivity = try? activityStore.save(
             summary: activity.summary,
             photos: photos,
-            reflection: reflection
+            reflection: reflection,
+            goal: activeIntent?.activityGoal
         ) else {
             return
         }
@@ -273,6 +298,7 @@ struct RecordView: View {
         capturedPhotos = []
         activeIntent = nil
         plannedIntent = nil
+        selectedGoalMode = .freestyle
     }
 
     private var preferredSessionPage: SessionPage {
@@ -317,8 +343,10 @@ struct RecordView: View {
             musicSetupCard
 
             VStack(spacing: 12) {
+                sessionGoalCard(for: intent)
+
                 Button(action: startRecording) {
-                    Label(intent.startLabel, systemImage: "record.circle.fill")
+                    Label((plannedIntent ?? intent).startLabel, systemImage: "record.circle.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -333,6 +361,130 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private func sessionGoalCard(for intent: SessionIntent) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Goal", systemImage: "flag")
+                    .font(.headline)
+                Spacer()
+                Text(intent.activityGoal.label(unitSystem: measurementPreferences.unitSystem))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                goalModeButton(.freestyle)
+                goalModeButton(.distance)
+                goalModeButton(.time)
+            }
+
+            switch selectedGoalMode {
+            case .freestyle:
+                Text("No preset target. Tap Start and move by feel.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            case .distance:
+                LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
+                    goalPresetButton(title: "3K") { applyGoal(.distanceMeters(3_000)) }
+                    goalPresetButton(title: "5K") { applyGoal(.distanceMeters(5_000)) }
+                    goalPresetButton(title: "10K") { applyGoal(.distanceMeters(10_000)) }
+                    goalPresetButton(title: "Custom") { presentCustomGoal(.distance) }
+                }
+            case .time:
+                LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
+                    goalPresetButton(title: "20 min") { applyGoal(.timeSeconds(20 * 60)) }
+                    goalPresetButton(title: "30 min") { applyGoal(.timeSeconds(30 * 60)) }
+                    goalPresetButton(title: "45 min") { applyGoal(.timeSeconds(45 * 60)) }
+                    goalPresetButton(title: "Custom") { presentCustomGoal(.time) }
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onAppear {
+            selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
+        }
+    }
+
+    private var goalPresetColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 76), spacing: 8)]
+    }
+
+    private func goalModeButton(_ mode: SessionGoalMode) -> some View {
+        Button {
+            selectedGoalMode = mode
+            if mode == .freestyle {
+                applyGoal(.freestyle)
+            }
+        } label: {
+            Text(mode.title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(selectedGoalMode == mode ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(
+                    Capsule()
+                        .fill(selectedGoalMode == mode ? Color.orange : Color(.tertiarySystemBackground))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func goalPresetButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(.tertiarySystemBackground), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func applyGoal(_ goal: ActivityGoal) {
+        let currentIntent = plannedIntent ?? .freestyleRun
+        plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
+        selectedGoalMode = SessionGoalMode(goal: goal)
+    }
+
+    private func presentCustomGoal(_ kind: CustomGoalKind) {
+        customGoalKind = kind
+        switch kind {
+        case .distance:
+            customDistanceText = ""
+        case .time:
+            customTimeText = ""
+        }
+        isCustomGoalAlertPresented = true
+    }
+
+    private func applyCustomGoal() {
+        switch customGoalKind {
+        case .distance:
+            let value = Double(customDistanceText.replacingOccurrences(of: ",", with: ".")) ?? 0
+            guard value > 0 else { return }
+            applyGoal(.distanceMeters(value * 1000))
+        case .time:
+            let minutes = Int(customTimeText) ?? 0
+            guard minutes > 0 else { return }
+            applyGoal(.timeSeconds(minutes * 60))
+        case .none:
+            return
+        }
+        customGoalKind = nil
+    }
+
+    private var customGoalAlertTitle: String {
+        customGoalKind == .distance ? "Custom distance" : "Custom time"
+    }
+
+    private var customGoalAlertMessage: String {
+        customGoalKind == .distance ? "Enter kilometers for this activity." : "Enter minutes for this activity."
     }
 
     @ViewBuilder
@@ -453,4 +605,37 @@ struct StatBlock: View {
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
     }
+}
+
+private enum SessionGoalMode: Equatable {
+    case freestyle
+    case distance
+    case time
+
+    init(goal: ActivityGoal) {
+        switch goal {
+        case .freestyle:
+            self = .freestyle
+        case .distanceMeters:
+            self = .distance
+        case .timeSeconds:
+            self = .time
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .freestyle:
+            return "Freestyle"
+        case .distance:
+            return "Distance"
+        case .time:
+            return "Time"
+        }
+    }
+}
+
+private enum CustomGoalKind: Equatable {
+    case distance
+    case time
 }
