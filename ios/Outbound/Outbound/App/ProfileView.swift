@@ -702,6 +702,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var speechAnalyzerSession: AnyObject?
     private var bestTranscript = ""
     private var onPartialTranscript: ((String) -> Void)?
     private var onFinalTranscript: ((String) -> Void)?
@@ -749,6 +750,58 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     }
 
     private func startRecording() {
+        if #available(iOS 26.0, *),
+           SpeechTranscriber.isAvailable {
+            beginListeningState()
+            Task { @MainActor in
+                if await self.startSpeechAnalyzerRecordingIfPossible() {
+                    return
+                }
+                self.finishRecording(shouldEmitTranscript: false)
+            }
+            return
+        }
+
+        startLegacyRecording()
+    }
+
+    private func beginListeningState() {
+        isRecording = true
+        statusMessage = nil
+        bestTranscript = ""
+        liveTranscript = ""
+        onPartialTranscript?("")
+    }
+
+    @available(iOS 26.0, *)
+    private func startSpeechAnalyzerRecordingIfPossible() async -> Bool {
+        let session = AssistantSpeechAnalyzerSession(
+            hints: AssistantActivityCommandParser.recognitionHints,
+            onPartialTranscript: { [weak self] transcript in
+                guard let self else { return }
+                self.bestTranscript = transcript
+                self.liveTranscript = transcript
+                self.onPartialTranscript?(transcript)
+            },
+            onFinalTranscript: { [weak self] transcript in
+                guard let self else { return }
+                self.bestTranscript = transcript
+                self.liveTranscript = transcript
+                self.finishRecording(shouldEmitTranscript: true)
+            },
+            onFailure: { [weak self] message in
+                guard let self else { return }
+                self.statusMessage = message
+                self.finishRecording(shouldEmitTranscript: false)
+            }
+        )
+
+        guard await session.start() else { return false }
+        speechAnalyzerSession = session
+        return true
+    }
+
+    private func startLegacyRecording() {
         guard recognizer?.isAvailable == true else {
             statusMessage = "Speech recognition is unavailable right now."
             clearTranscriptHandlers()
@@ -808,10 +861,18 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     }
 
     private func finishRecording(shouldEmitTranscript: Bool) {
-        guard isRecording || recognitionRequest != nil else { return }
+        guard isRecording || recognitionRequest != nil || speechAnalyzerSession != nil else { return }
 
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if #available(iOS 26.0, *),
+           let analyzerSession = speechAnalyzerSession as? AssistantSpeechAnalyzerSession {
+            analyzerSession.stop()
+            speechAnalyzerSession = nil
+        }
+
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
         recognitionRequest?.endAudio()
         recognitionRequest = nil
         recognitionTask?.cancel()
@@ -835,6 +896,259 @@ private final class AssistantVoiceCommandStore: ObservableObject {
         onPartialTranscript = nil
         onFinalTranscript = nil
     }
+}
+
+@available(iOS 26.0, *)
+@MainActor
+private final class AssistantSpeechAnalyzerSession {
+    private let audioEngine = AVAudioEngine()
+    private let hints: [String]
+    private let onPartialTranscript: (String) -> Void
+    private let onFinalTranscript: (String) -> Void
+    private let onFailure: (String) -> Void
+
+    private var analyzer: SpeechAnalyzer?
+    private var transcriber: SpeechTranscriber?
+    private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
+    private var analysisTask: Task<Void, Never>?
+    private var resultsTask: Task<Void, Never>?
+    private var reservedLocale: Locale?
+    private var bestTranscript = ""
+
+    init(
+        hints: [String],
+        onPartialTranscript: @escaping (String) -> Void,
+        onFinalTranscript: @escaping (String) -> Void,
+        onFailure: @escaping (String) -> Void
+    ) {
+        self.hints = hints
+        self.onPartialTranscript = onPartialTranscript
+        self.onFinalTranscript = onFinalTranscript
+        self.onFailure = onFailure
+    }
+
+    func start() async -> Bool {
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en_US")) else {
+            return false
+        }
+
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            return false
+        }
+
+        let inputNode = audioEngine.inputNode
+        let audioFormat = inputNode.outputFormat(forBus: 0)
+        guard audioFormat.sampleRate > 0, audioFormat.channelCount > 0 else {
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        let transcriber = SpeechTranscriber(
+            locale: locale,
+            preset: .progressiveTranscription
+        )
+        do {
+            try await prepareAssets(for: transcriber, locale: locale)
+        } catch {
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        let context = AnalysisContext()
+        context.contextualStrings[.general] = hints
+
+        guard let analyzerFormat = await compatibleAnalyzerFormat(
+            for: transcriber,
+            sourceFormat: audioFormat
+        ) else {
+            releaseReservedLocale()
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+        guard let audioConverter = AVAudioConverter(from: audioFormat, to: analyzerFormat) else {
+            releaseReservedLocale()
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        let analyzer = SpeechAnalyzer(
+            modules: [transcriber],
+            options: SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .whileInUse)
+        )
+
+        do {
+            try await analyzer.setContext(context)
+            try await analyzer.prepareToAnalyze(in: analyzerFormat)
+        } catch {
+            releaseReservedLocale()
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        var streamContinuation: AsyncStream<AnalyzerInput>.Continuation?
+        let inputStream = AsyncStream<AnalyzerInput> { continuation in
+            inputContinuation = continuation
+            streamContinuation = continuation
+        }
+        guard let streamContinuation else {
+            releaseReservedLocale()
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: audioFormat) { buffer, _ in
+            guard let convertedBuffer = Self.convert(buffer, with: audioConverter, to: analyzerFormat) else {
+                return
+            }
+            streamContinuation.yield(AnalyzerInput(buffer: convertedBuffer))
+        }
+
+        do {
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            inputNode.removeTap(onBus: 0)
+            inputContinuation?.finish()
+            inputContinuation = nil
+            releaseReservedLocale()
+            try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            return false
+        }
+
+        self.analyzer = analyzer
+        self.transcriber = transcriber
+
+        resultsTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                for try await result in transcriber.results {
+                    let transcript = String(result.text.characters)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !transcript.isEmpty else { continue }
+                    self.bestTranscript = transcript
+                    self.onPartialTranscript(transcript)
+                }
+            } catch {
+                self.onFailure("Speech analysis stopped.")
+            }
+        }
+
+        analysisTask = Task { [weak analyzer] in
+            do {
+                try await analyzer?.start(inputSequence: inputStream)
+            } catch {
+                await MainActor.run {
+                    self.onFailure("Speech analysis stopped.")
+                }
+            }
+        }
+
+        return true
+    }
+
+    private func prepareAssets(for transcriber: SpeechTranscriber, locale: Locale) async throws {
+        try await AssetInventory.reserve(locale: locale)
+        reservedLocale = locale
+
+        let modules: [any SpeechModule] = [transcriber]
+        let status = await AssetInventory.status(forModules: modules)
+        guard status != .unsupported else {
+            throw SpeechAnalyzerSessionError.unsupportedAssets
+        }
+        if status < .installed {
+            if let request = try await AssetInventory.assetInstallationRequest(supporting: modules) {
+                try await request.downloadAndInstall()
+            }
+        }
+    }
+
+    private func compatibleAnalyzerFormat(
+        for transcriber: SpeechTranscriber,
+        sourceFormat: AVAudioFormat
+    ) async -> AVAudioFormat? {
+        let compatibleFormats = await transcriber.availableCompatibleAudioFormats
+        if let format = compatibleFormats.first(where: { Self.isAnalyzerInputFormat($0) }) {
+            return format
+        }
+
+        guard let compatibleFormat = compatibleFormats.first else { return nil }
+        return AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: compatibleFormat.sampleRate,
+            channels: min(sourceFormat.channelCount, compatibleFormat.channelCount),
+            interleaved: false
+        )
+    }
+
+    nonisolated private static func isAnalyzerInputFormat(_ format: AVAudioFormat) -> Bool {
+        format.commonFormat == .pcmFormatInt16 && !format.isInterleaved
+    }
+
+    nonisolated private static func convert(
+        _ buffer: AVAudioPCMBuffer,
+        with converter: AVAudioConverter,
+        to format: AVAudioFormat
+    ) -> AVAudioPCMBuffer? {
+        guard let convertedBuffer = AVAudioPCMBuffer(
+            pcmFormat: format,
+            frameCapacity: AVAudioFrameCount(Double(buffer.frameLength) * format.sampleRate / buffer.format.sampleRate) + 1
+        ) else {
+            return nil
+        }
+
+        var didProvideInput = false
+        var conversionError: NSError?
+        let status = converter.convert(to: convertedBuffer, error: &conversionError) { _, outStatus in
+            if didProvideInput {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+
+            didProvideInput = true
+            outStatus.pointee = .haveData
+            return buffer
+        }
+
+        guard conversionError == nil, status != .error, convertedBuffer.frameLength > 0 else {
+            return nil
+        }
+
+        return convertedBuffer
+    }
+
+    func stop() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        inputContinuation?.finish()
+        inputContinuation = nil
+        analysisTask?.cancel()
+        analysisTask = nil
+        resultsTask?.cancel()
+        resultsTask = nil
+        releaseReservedLocale()
+        Task { [analyzer] in
+            await analyzer?.cancelAndFinishNow()
+        }
+    }
+
+    private func releaseReservedLocale() {
+        guard let reservedLocale else { return }
+        self.reservedLocale = nil
+        Task {
+            await AssetInventory.release(reservedLocale: reservedLocale)
+        }
+    }
+}
+
+private enum SpeechAnalyzerSessionError: Error {
+    case unsupportedAssets
 }
 
 private struct AppleHealthSettingsCard: View {

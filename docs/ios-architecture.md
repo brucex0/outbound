@@ -73,10 +73,12 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `App/OutboundApp.swift`: assistant capabilities, message records, local-first assistant store, `UserDefaults` persistence, activity-prep navigation state, and the optional Apple Foundation Models responder.
 - `App/AssistantActivityCommandParser.swift`: deterministic parser for short voice commands that prepare a run or bike activity with a distance or time goal.
+- `App/OutboundActivityIntents.swift`: Siri/App Shortcuts intents that prepare preset distance, timed, or freestyle run/bike activities and open the app without starting recording.
+- `App/PreparedActivityLaunch.swift`: compact persisted launch request that App Intents write and `MainTabView` consumes when the app appears or becomes active.
 - `Core/APIClient.swift`: assistant chat transport to the backend, plus existing coach/activity endpoints.
 - `App/MainTabView.swift`: persistent bottom assistant launcher for the main tabs, including the standalone minimized icon and expanded assistant presentation states.
 - `Activity/RecordView.swift`: compact live-session assistant entry so the assistant stays reachable without overwhelming the camera/map experience.
-- `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, planning, and tap-to-talk activity commands.
+- `App/ProfileView.swift`: chat-style assistant UI for discovery, navigation, support, brainstorming, planning, and tap-to-talk activity commands. The iOS 26+ mic path uses `SpeechAnalyzer`/`SpeechTranscriber`, reserves speech assets with `AssetInventory`, and converts mic buffers into a compatible 16-bit signed PCM transcriber format before analysis; older OS versions use `SFSpeechRecognizer`.
 - `backend/src/routes/assistant.ts`: backend assistant chat route that currently uses a BoatShare-style DeepSeek integration.
 - `docs/assistant.md`: focused product and implementation notes for the assistant surface.
 

@@ -2,12 +2,14 @@ import FirebaseAuth
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
@@ -81,6 +83,7 @@ struct MainTabView: View {
         }
         .onAppear {
             prepareOnboarding()
+            consumeStoredPreparedActivityIfNeeded()
         }
         .onChange(of: onboardingIdentity) { _, _ in
             prepareOnboarding()
@@ -96,6 +99,10 @@ struct MainTabView: View {
             guard let intent else { return }
             presentActivity(intent: intent)
             appNavigationStore.consumePreparedActivity()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            consumeStoredPreparedActivityIfNeeded()
         }
     }
 
@@ -183,6 +190,11 @@ struct MainTabView: View {
 
     private func applyOnboardingProfile(_ profile: OnboardingProfile) {
         dailyCheckInStore.select(profile.suggestedReadiness)
+    }
+
+    private func consumeStoredPreparedActivityIfNeeded() {
+        guard activitySessionState == .idle else { return }
+        appNavigationStore.consumeStoredPreparedActivity(unitSystem: measurementPreferences.unitSystem)
     }
 }
 

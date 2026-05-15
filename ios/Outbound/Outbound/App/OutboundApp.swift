@@ -1303,6 +1303,11 @@ final class AppNavigationStore: ObservableObject {
         pendingActivityIntent = intent
     }
 
+    func consumeStoredPreparedActivity(unitSystem: MeasurementUnitSystem) {
+        guard let launch = PreparedActivityLaunchStore.consume() else { return }
+        pendingActivityIntent = launch.sessionIntent(unitSystem: unitSystem)
+    }
+
     func consume() {
         pendingAssistantTarget = nil
     }
