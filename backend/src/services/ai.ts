@@ -1,4 +1,15 @@
+
 import Anthropic from "@anthropic-ai/sdk";
+import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
+import { parseUtteranceCommand } from "./commandParser.js";
+// Final-pass transcription and command parsing for short recorded utterances
+export async function runFinalTranscriptionAndParse({ audioUrl, language }: { audioUrl: string; language?: string }) {
+  // 1. Run OpenAI gpt-4o-mini transcription
+  const transcript = await gpt4oMiniTranscribe({ audioUrl, language });
+  // 2. Run deterministic command parser
+  const command = parseUtteranceCommand(transcript);
+  return { transcript, command };
+}
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
