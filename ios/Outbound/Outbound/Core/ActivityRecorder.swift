@@ -41,7 +41,8 @@ final class ActivityRecorder: ObservableObject {
     private var locationCancellable: AnyCancellable?
     private var autoPauseCandidateStart: Date?
     private let autoPauseSpeedThresholdMetersPerSecond: Double = 1.4
-    private let autoPauseDurationSeconds: TimeInterval = 15
+    private let autoPauseWarmupSeconds: TimeInterval = 5
+    private let autoPauseDurationSeconds: TimeInterval = 8
     private var startDate: Date?
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
@@ -140,7 +141,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func evaluateAutoPauseCandidate(now: Date) {
-        guard currentElapsedSeconds(at: now) >= 30 else {
+        guard currentElapsedSeconds(at: now) >= autoPauseWarmupSeconds else {
             resetAutoPauseCandidate()
             return
         }
