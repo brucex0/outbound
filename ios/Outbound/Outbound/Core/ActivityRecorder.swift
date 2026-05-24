@@ -34,10 +34,14 @@ final class ActivityRecorder: ObservableObject {
         }
     }
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
+    @Published var autoPaused = false
 
     let locationManager: LocationManager
     private var timer: AnyCancellable?
     private var locationCancellable: AnyCancellable?
+    private var autoPauseCandidateStart: Date?
+    private let autoPauseSpeedThresholdMetersPerSecond: Double = 1.4
+    private let autoPauseDurationSeconds: TimeInterval = 15
     private var startDate: Date?
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
@@ -54,6 +58,8 @@ final class ActivityRecorder: ObservableObject {
         timer?.cancel()
         let now = Date()
         state = .active
+        autoPaused = false
+        autoPauseCandidateStart = nil
         startDate = now
         currentSegmentStartDate = now
         accumulatedActiveDuration = 0
@@ -70,12 +76,14 @@ final class ActivityRecorder: ObservableObject {
             .sink { [weak self] _ in self?.tick() }
     }
 
-    func pause() {
+    func pause(autoTriggered: Bool = false) {
         guard state == .active else { return }
         updateSessionMetrics(now: Date())
         state = .paused
+        autoPaused = autoTriggered
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
         currentSegmentStartDate = nil
+        autoPauseCandidateStart = nil
         timer?.cancel()
         locationManager.pauseTracking()
         liveSnapshot = makeSnapshot()
@@ -84,6 +92,8 @@ final class ActivityRecorder: ObservableObject {
     func resume() {
         guard state == .paused else { return }
         state = .active
+        autoPaused = false
+        autoPauseCandidateStart = nil
         currentSegmentStartDate = Date()
         locationManager.resumeTracking()
         liveSnapshot = makeSnapshot()
@@ -95,6 +105,8 @@ final class ActivityRecorder: ObservableObject {
     func finish() -> ActivitySummary {
         updateSessionMetrics(now: Date())
         state = .idle
+        autoPaused = false
+        autoPauseCandidateStart = nil
         timer?.cancel()
         let track = locationManager.stopTracking()
         let summary = ActivitySummary(
@@ -117,12 +129,40 @@ final class ActivityRecorder: ObservableObject {
 
     private func tick() {
         guard state == .active else { return }
+        evaluateAutoPauseCandidate(now: Date())
         updateSessionMetrics(now: Date())
     }
 
     private func handleLocationUpdate() {
         guard state == .active else { return }
+        evaluateAutoPauseCandidate(now: Date())
         updateSessionMetrics(now: Date())
+    }
+
+    private func evaluateAutoPauseCandidate(now: Date) {
+        guard currentElapsedSeconds(at: now) >= 30 else {
+            resetAutoPauseCandidate()
+            return
+        }
+
+        guard let speed = locationManager.currentSpeedMetersPerSecond else {
+            resetAutoPauseCandidate()
+            return
+        }
+
+        if speed < autoPauseSpeedThresholdMetersPerSecond {
+            if autoPauseCandidateStart == nil {
+                autoPauseCandidateStart = now
+            } else if now.timeIntervalSince(autoPauseCandidateStart!) >= autoPauseDurationSeconds {
+                pause(autoTriggered: true)
+            }
+        } else {
+            resetAutoPauseCandidate()
+        }
+    }
+
+    private func resetAutoPauseCandidate() {
+        autoPauseCandidateStart = nil
     }
 
     private func updateSessionMetrics(now: Date) {

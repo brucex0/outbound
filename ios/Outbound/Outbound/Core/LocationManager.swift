@@ -7,6 +7,22 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var trackPoints: [CLLocation] = []
 
+    var currentSpeedMetersPerSecond: Double? {
+        guard let location = location else { return nil }
+        if location.speed >= 0 {
+            return location.speed
+        }
+
+        guard trackPoints.count > 1 else { return nil }
+        let recentPoints = Array(trackPoints.suffix(5))
+        let distance = zip(recentPoints, recentPoints.dropFirst()).reduce(0.0) { total, pair in
+            total + pair.0.distance(from: pair.1)
+        }
+        let duration = recentPoints.last!.timestamp.timeIntervalSince(recentPoints.first!.timestamp)
+        guard duration > 0 else { return nil }
+        return distance / duration
+    }
+
     private let manager = CLLocationManager()
     private var wantsTracking = false
 
