@@ -7,10 +7,16 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var trackPoints: [CLLocation] = []
 
+    private let maximumValidRunningSpeedMetersPerSecond: Double = 10
+    private let maximumValidLocationAccuracyMeters: Double = 40
+    private let minimumValidPaceDistanceMeters: Double = 20
+    private let minimumValidPaceDurationSeconds: TimeInterval = 5
+    private let minimumValidPaceSecsPerKm: Double = 150
+
     var currentSpeedMetersPerSecond: Double? {
         guard let location = location else { return nil }
         if location.speed >= 0 {
-            return location.speed
+            return location.speed <= maximumValidRunningSpeedMetersPerSecond ? location.speed : nil
         }
 
         guard trackPoints.count > 1 else { return nil }
@@ -20,7 +26,8 @@ final class LocationManager: NSObject, ObservableObject {
         }
         let duration = recentPoints.last!.timestamp.timeIntervalSince(recentPoints.first!.timestamp)
         guard duration > 0 else { return nil }
-        return distance / duration
+        let impliedSpeed = distance / duration
+        return impliedSpeed <= maximumValidRunningSpeedMetersPerSecond ? impliedSpeed : nil
     }
 
     private let manager = CLLocationManager()
@@ -101,9 +108,13 @@ final class LocationManager: NSObject, ObservableObject {
         guard trackPoints.count > 5 else { return nil }
         let recent = Array(trackPoints.suffix(10))
         let dist = zip(recent, recent.dropFirst()).reduce(0.0) { $0 + $1.0.distance(from: $1.1) }
-        guard dist > 0 else { return nil }
+        guard dist >= minimumValidPaceDistanceMeters else { return nil }
         let time = recent.last!.timestamp.timeIntervalSince(recent.first!.timestamp)
-        return (time / dist) * 1000
+        guard time >= minimumValidPaceDurationSeconds else { return nil }
+
+        let pace = (time / dist) * 1000
+        guard pace >= minimumValidPaceSecsPerKm else { return nil }
+        return pace
     }
 }
 
@@ -112,8 +123,32 @@ extension LocationManager: CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             self.location = loc
-            self.trackPoints.append(loc)
+            if self.shouldAppendTrackPoint(loc) {
+                self.trackPoints.append(loc)
+            }
         }
+    }
+
+    private func shouldAppendTrackPoint(_ location: CLLocation) -> Bool {
+        guard location.horizontalAccuracy >= 0,
+              location.horizontalAccuracy <= maximumValidLocationAccuracyMeters else {
+            return false
+        }
+
+        if location.speed >= 0,
+           location.speed > maximumValidRunningSpeedMetersPerSecond {
+            return false
+        }
+
+        if let previous = trackPoints.last {
+            let interval = location.timestamp.timeIntervalSince(previous.timestamp)
+            guard interval > 0 else { return false }
+            let distance = previous.distance(from: location)
+            let impliedSpeed = distance / interval
+            return impliedSpeed <= maximumValidRunningSpeedMetersPerSecond
+        }
+
+        return true
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
