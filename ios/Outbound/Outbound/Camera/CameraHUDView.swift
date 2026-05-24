@@ -147,6 +147,15 @@ struct CameraHUDView: View {
             )
             .readFrame(in: coordinateSpaceName, key: PhotoStackFramePreferenceKey.self)
 
+            Button { camera.flipCamera() } label: {
+                Image(systemName: "camera.rotate")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(.black.opacity(0.42)))
+            }
+            .accessibilityLabel("Flip Camera")
+
             Button { activePage = .map } label: {
                 Image(systemName: "map.fill")
                     .font(.title2)

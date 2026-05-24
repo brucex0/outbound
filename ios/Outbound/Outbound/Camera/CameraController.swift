@@ -5,6 +5,7 @@ import UIKit
 final class CameraController: ObservableObject {
     let session = AVCaptureSession()
     @Published private(set) var authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    @Published private(set) var cameraPosition: AVCaptureDevice.Position = .back
 
     private var photoOutput = AVCapturePhotoOutput()
     private var captureCallbacks: [Int64: (UIImage?) -> Void] = [:]
@@ -75,11 +76,38 @@ final class CameraController: ObservableObject {
         }
     }
 
+    func flipCamera() {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+            self.configureSessionIfNeeded()
+            guard self.isConfigured else { return }
+
+            let newPosition: AVCaptureDevice.Position = self.cameraPosition == .back ? .front : .back
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition),
+                  let input = try? AVCaptureDeviceInput(device: device) else {
+                return
+            }
+
+            self.session.beginConfiguration()
+            self.session.inputs
+                .compactMap { $0 as? AVCaptureDeviceInput }
+                .forEach { self.session.removeInput($0) }
+
+            if self.session.canAddInput(input) {
+                self.session.addInput(input)
+                self.cameraPosition = newPosition
+            }
+            self.session.commitConfiguration()
+        }
+    }
+
     private func configureSessionIfNeeded() {
         guard !isConfigured else { return }
         session.beginConfiguration()
         session.sessionPreset = .photo
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+        let defaultPosition = cameraPosition
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: defaultPosition),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
             session.commitConfiguration()
