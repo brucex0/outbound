@@ -12,6 +12,7 @@ final class LocationManager: NSObject, ObservableObject {
     private let minimumValidPaceDistanceMeters: Double = 20
     private let minimumValidPaceDurationSeconds: TimeInterval = 5
     private let minimumValidPaceSecsPerKm: Double = 150
+    private let maximumValidPaceSecsPerKm: Double = 1500
 
     var currentSpeedMetersPerSecond: Double? {
         guard let location = location else { return nil }
@@ -19,13 +20,14 @@ final class LocationManager: NSObject, ObservableObject {
             return location.speed <= maximumValidRunningSpeedMetersPerSecond ? location.speed : nil
         }
 
-        guard trackPoints.count > 1 else { return nil }
-        let recentPoints = Array(trackPoints.suffix(5))
-        let distance = zip(recentPoints, recentPoints.dropFirst()).reduce(0.0) { total, pair in
-            total + pair.0.distance(from: pair.1)
+        guard let previous = trackPoints.last else { return nil }
+        let duration = location.timestamp.timeIntervalSince(previous.timestamp)
+        if duration == 0 {
+            let age = Date().timeIntervalSince(location.timestamp)
+            return age >= 10 ? 0 : nil
         }
-        let duration = recentPoints.last!.timestamp.timeIntervalSince(recentPoints.first!.timestamp)
-        guard duration > 0 else { return nil }
+
+        let distance = previous.distance(from: location)
         let impliedSpeed = distance / duration
         return impliedSpeed <= maximumValidRunningSpeedMetersPerSecond ? impliedSpeed : nil
     }
@@ -37,7 +39,7 @@ final class LocationManager: NSObject, ObservableObject {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = 5  // meters
+        manager.distanceFilter = 1  // meters
         manager.activityType = .fitness
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
@@ -113,7 +115,7 @@ final class LocationManager: NSObject, ObservableObject {
         guard time >= minimumValidPaceDurationSeconds else { return nil }
 
         let pace = (time / dist) * 1000
-        guard pace >= minimumValidPaceSecsPerKm else { return nil }
+        guard pace >= minimumValidPaceSecsPerKm, pace <= maximumValidPaceSecsPerKm else { return nil }
         return pace
     }
 }
