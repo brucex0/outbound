@@ -7,11 +7,35 @@ enum CoachSpeechEvent {
     case didFinish
 }
 
+private enum CoachingMomentRole {
+    case progress
+    case form
+    case hype
+    case paceAdjustment
+    case segment
+    case finish
+    case caution
+}
+
+private struct CoachingMoment {
+    let role: CoachingMomentRole
+
+    var includesProgressContext: Bool {
+        switch role {
+        case .progress, .segment, .finish:
+            return true
+        case .form, .hype, .paceAdjustment, .caution:
+            return false
+        }
+    }
+}
+
 // On-device real-time coach that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
 final class VirtualCoach: NSObject, ObservableObject {
     @Published var lastNudge: String = ""
+    @Published private(set) var lastSpokenAnnouncement: String = ""
     @Published var latestAnalysis: SessionAnalysisResult?
     @Published var isAnalyzing = false
     @Published var providerName: String
@@ -19,6 +43,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     private let provider: any SessionAnalysisProvider
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = AVSpeechSynthesizer()
+    private let speechEnabled: Bool
     private var profile: CoachProfile?
     private var persona: CoachPersona?
     private var sessionIntent: SessionIntent?
@@ -31,17 +56,20 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var isActive = false
     private var recentSpokenFingerprints: [String] = []
     private var recentSpokenMessages: [String] = []
+    private var recentSpokenRoles: [CoachingMomentRole] = []
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
     private let maxRecentSpokenFingerprints = 4
     private let maxRecentSpokenMessages = 4
+    private let maxRecentSpokenRoles = 4
     private let minimumProgressAnnouncementGapSeconds = 30
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
-    init(provider: (any SessionAnalysisProvider)? = nil) {
+    init(provider: (any SessionAnalysisProvider)? = nil, speechEnabled: Bool = true) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
         self.provider = selectedProvider
+        self.speechEnabled = speechEnabled
         providerName = selectedProvider.displayName
         super.init()
         // Apple documents this path as the synthesizer creating its own short-
@@ -68,7 +96,9 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressDistanceMilestone = 0
         recentSpokenFingerprints = []
         recentSpokenMessages = []
+        recentSpokenRoles = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
+        lastSpokenAnnouncement = ""
         latestAnalysis = nil
         provider.beginSession(profile: profile, persona: persona)
         fallbackProvider.beginSession(profile: profile, persona: persona)
@@ -167,7 +197,12 @@ final class VirtualCoach: NSObject, ObservableObject {
             recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
         }
 
-        speak(coachingAnnouncement(for: snapshot, message: analysis.message), urgency: analysis.urgency)
+        let moment = coachingMoment(for: snapshot, analysis: analysis)
+        speak(
+            coachingAnnouncement(for: snapshot, message: analysis.message, moment: moment),
+            urgency: analysis.urgency,
+            role: moment.role
+        )
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
@@ -189,7 +224,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressTimeMilestone = nextTimeMilestone
         lastProgressDistanceMilestone = nextDistanceMilestone
         lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-        speak(progressAnnouncement(for: snapshot))
+        speak(progressAnnouncement(for: snapshot), role: .progress)
     }
 
     private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
@@ -208,12 +243,28 @@ final class VirtualCoach: NSObject, ObservableObject {
         return parts.joined(separator: " ")
     }
 
-    private func coachingAnnouncement(for snapshot: ActiveSessionSnapshot, message: String) -> String {
-        "\(progressAnnouncement(for: snapshot)) \(message)"
+    private func coachingAnnouncement(
+        for snapshot: ActiveSessionSnapshot,
+        message: String,
+        moment: CoachingMoment
+    ) -> String {
+        guard moment.includesProgressContext else { return message }
+        return "\(progressAnnouncement(for: snapshot)) \(message)"
     }
 
-    private func speak(_ text: String, urgency: SessionAnalysisUrgency = .steady) {
-        let utterance = AVSpeechUtterance(string: spokenText(for: text))
+    private func speak(
+        _ text: String,
+        urgency: SessionAnalysisUrgency = .steady,
+        role: CoachingMomentRole? = nil
+    ) {
+        let announcement = spokenText(for: text)
+        lastSpokenAnnouncement = announcement
+        if let role {
+            rememberSpokenRole(role)
+        }
+        guard speechEnabled else { return }
+
+        let utterance = AVSpeechUtterance(string: announcement)
         if let voice = persona?.voice {
             utterance.voice = selectedSpeechVoice(for: voice)
             utterance.rate = adjustedRate(for: voice, urgency: urgency)
@@ -227,6 +278,86 @@ final class VirtualCoach: NSObject, ObservableObject {
         utterance.preUtteranceDelay = 0.06
         utterance.postUtteranceDelay = 0.12
         synthesizer.speak(utterance)
+    }
+
+    private func coachingMoment(
+        for snapshot: ActiveSessionSnapshot,
+        analysis: SessionAnalysisResult
+    ) -> CoachingMoment {
+        let role = preferredCoachingMomentRole(for: snapshot, analysis: analysis)
+        return CoachingMoment(role: role)
+    }
+
+    private func preferredCoachingMomentRole(
+        for snapshot: ActiveSessionSnapshot,
+        analysis: SessionAnalysisResult
+    ) -> CoachingMomentRole {
+        if analysis.urgency == .caution || (snapshot.heartRate ?? 0) > 185 {
+            return .caution
+        }
+
+        if isNearFinish(snapshot) {
+            return .finish
+        }
+
+        if isSegmentCheckIn(snapshot) {
+            return .segment
+        }
+
+        if analysis.urgency == .opportunity {
+            return .paceAdjustment
+        }
+
+        if shouldUseProgressRole(for: snapshot) {
+            return .progress
+        }
+
+        let naturalRole: CoachingMomentRole = recentSpokenRoles.last == .hype ? .form : .hype
+        if roleWouldRepeatTooMuch(naturalRole) {
+            return naturalRole == .hype ? .form : .hype
+        }
+        return naturalRole
+    }
+
+    private func shouldUseProgressRole(for snapshot: ActiveSessionSnapshot) -> Bool {
+        guard snapshot.elapsedSeconds >= currentProgressIntervalSeconds else { return false }
+        guard !roleWouldRepeatTooMuch(.progress) else { return false }
+
+        let nearTimeMilestone = snapshot.elapsedSeconds % currentProgressIntervalSeconds <= 8
+        let distanceRemainder = snapshot.distanceMeters.truncatingRemainder(dividingBy: currentProgressDistanceIntervalMeters)
+        let nearDistanceMilestone = snapshot.distanceMeters > 0 && distanceRemainder <= 80
+        return nearTimeMilestone || nearDistanceMilestone
+    }
+
+    private func isNearFinish(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        if let targetDistance = sessionIntent?.resolvedTargetDistanceMeters, targetDistance > 0 {
+            return targetDistance - snapshot.distanceMeters <= 400
+        }
+        if let targetDuration = sessionIntent?.resolvedTargetDurationSeconds, targetDuration > 0 {
+            return targetDuration - snapshot.elapsedSeconds <= 120
+        }
+        return false
+    }
+
+    private func isSegmentCheckIn(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        guard let sessionIntent else { return false }
+        let timedSteps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
+        guard timedSteps.count > 1 else { return false }
+        let elapsedInWorkout = timedSteps.reduce(snapshot.elapsedSeconds) { remaining, step in
+            remaining >= step.durationSeconds ? remaining - step.durationSeconds : remaining
+        }
+        return elapsedInWorkout <= 12
+    }
+
+    private func roleWouldRepeatTooMuch(_ role: CoachingMomentRole) -> Bool {
+        recentSpokenRoles.suffix(2).allSatisfy { $0 == role } && recentSpokenRoles.count >= 2
+    }
+
+    private func rememberSpokenRole(_ role: CoachingMomentRole) {
+        recentSpokenRoles.append(role)
+        if recentSpokenRoles.count > maxRecentSpokenRoles {
+            recentSpokenRoles.removeFirst(recentSpokenRoles.count - maxRecentSpokenRoles)
+        }
     }
 
     private var currentAnalysisIntervalSeconds: Int {

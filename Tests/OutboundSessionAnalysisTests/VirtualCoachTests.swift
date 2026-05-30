@@ -57,6 +57,35 @@ final class VirtualCoachTests: XCTestCase {
 
         coach.deactivate()
     }
+
+    func testSpokenAnalysisDoesNotAlwaysPrefixProgressStats() async throws {
+        let provider = FakeSessionAnalysisProvider(shouldSpeak: true)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil)
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 90, paceSecsPerKm: 320))
+        try await waitUntil { coach.latestAnalysis != nil }
+
+        XCTAssertEqual(coach.lastNudge, "Hold steady.")
+        XCTAssertEqual(coach.lastSpokenAnnouncement, "Hold steady.")
+
+        coach.deactivate()
+    }
+
+    func testProgressMomentKeepsProgressContext() async throws {
+        let provider = FakeSessionAnalysisProvider(shouldSpeak: true)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil)
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 180, distanceMeters: 1_000, paceSecsPerKm: 320))
+        try await waitUntil { coach.latestAnalysis != nil }
+
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("3 minutes in."))
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("1 kilometer."))
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Hold steady."))
+
+        coach.deactivate()
+    }
 }
 
 @MainActor
@@ -66,9 +95,11 @@ private final class FakeSessionAnalysisProvider: SessionAnalysisProvider {
 
     private(set) var requests: [SessionAnalysisRequest] = []
     private let error: Error?
+    private let shouldSpeak: Bool
 
-    init(error: Error? = nil) {
+    init(error: Error? = nil, shouldSpeak: Bool = false) {
         self.error = error
+        self.shouldSpeak = shouldSpeak
     }
 
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult {
@@ -81,7 +112,7 @@ private final class FakeSessionAnalysisProvider: SessionAnalysisProvider {
         return SessionAnalysisResult(
             message: "Hold steady.",
             urgency: .steady,
-            shouldSpeak: false,
+            shouldSpeak: shouldSpeak,
             generatedAt: Date(),
             providerID: identifier
         )

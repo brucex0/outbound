@@ -40,6 +40,8 @@ Primary flow:
 | Saved routes, route export, sharing requirements, storage efficiency | `docs/route-saving-sharing.md` | Product requirements for canonical route data, saved-route UX, sharing modes, and route simplification/storage rules |
 | Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
+| Live coach announcement cadence and moment direction | `docs/superpowers/specs/2026-05-30-coach-moment-director-design.md` | Lightweight design for making spoken live coach nudges feel high-presence without repetitive stat recaps |
+| Coach moment director implementation steps | `docs/superpowers/plans/2026-05-30-coach-moment-director.md` | Scoped plan for the in-place `VirtualCoach` moment-direction pass |
 | Firebase Auth, Google project setup, Firebase plist, REST inspection | `docs/firebase.md` | Project IDs, app IDs, callback scheme, auth/provider notes, REST pattern |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
 
