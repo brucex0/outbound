@@ -15,6 +15,7 @@ struct ActivityDetailView: View {
     @State private var showElevationProfile = false
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
     @State private var sheetDragHeight: CGFloat?
+    @State private var showsCollapsedSheetContent = false
 
     private var currentActivity: SavedActivity {
         activityStore.activity(id: activity.id) ?? activity
@@ -84,7 +85,6 @@ struct ActivityDetailView: View {
                 activitySheet(height: interactiveSheetHeight, proxy: proxy)
                     .simultaneousGesture(sheetDragGesture(in: proxy))
             }
-            .animation(sheetDragHeight == nil ? .snappy(duration: 0.32) : nil, value: sheetDetent)
             .ignoresSafeArea(.container, edges: .bottom)
         }
         .navigationTitle(currentActivity.title)
@@ -106,6 +106,7 @@ struct ActivityDetailView: View {
 
     private func activitySheet(height: CGFloat, proxy: GeometryProxy) -> some View {
         let isExpandedHeight = height >= ActivityDetailSheetDetent.expanded.height(in: proxy) - 1
+        let isShowingCollapsedSummary = showsCollapsedSheetContent && sheetDetent == .collapsed && sheetDragHeight == nil
         let topRadius: CGFloat = isExpandedHeight ? 0 : 22
 
         return VStack(spacing: 0) {
@@ -113,10 +114,11 @@ struct ActivityDetailView: View {
                 .padding(.top, 8)
                 .padding(.bottom, sheetDetent == .collapsed ? 2 : 6)
 
-            if sheetDetent == .collapsed {
+            ZStack(alignment: .top) {
                 collapsedSummary
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else {
+                    .opacity(isShowingCollapsedSummary ? 1 : 0)
+                    .allowsHitTesting(isShowingCollapsedSummary)
+
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
                         statsHeroSection
@@ -129,8 +131,10 @@ struct ActivityDetailView: View {
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
                 }
                 .scrollDisabled(sheetDetent != .expanded)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .opacity(isShowingCollapsedSummary ? 0 : 1)
+                .allowsHitTesting(!isShowingCollapsedSummary)
             }
+            .animation(.easeInOut(duration: 0.16), value: isShowingCollapsedSummary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: height, alignment: .top)
@@ -147,9 +151,8 @@ struct ActivityDetailView: View {
             .fill(Color.secondary.opacity(0.35))
             .frame(width: 42, height: 5)
             .onTapGesture {
-                withAnimation(.snappy) {
-                    sheetDetent = sheetDetent == .expanded ? .split : .expanded
-                }
+                showsCollapsedSheetContent = false
+                sheetDetent = sheetDetent == .expanded ? .split : .expanded
             }
     }
 
@@ -182,13 +185,20 @@ struct ActivityDetailView: View {
         .padding(.top, 4)
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.snappy) { sheetDetent = .split }
+            showsCollapsedSheetContent = false
+            sheetDetent = .split
         }
     }
 
     private func sheetDragGesture(in proxy: GeometryProxy) -> some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .global)
             .onChanged { value in
+                if showsCollapsedSheetContent {
+                    withAnimation(.easeInOut(duration: 0.16)) {
+                        showsCollapsedSheetContent = false
+                    }
+                }
+
                 let currentHeight = sheetDetent.height(in: proxy)
                 let proposedHeight = currentHeight - value.translation.height
                 let clampedHeight = min(
@@ -209,9 +219,19 @@ struct ActivityDetailView: View {
                     projectedHeight: projectedHeight,
                     in: proxy
                 )
-                withAnimation(.snappy(duration: 0.32)) {
-                    sheetDetent = target
-                    sheetDragHeight = nil
+                let targetHeight = target.height(in: proxy)
+                withAnimation(.snappy(duration: 0.28)) {
+                    sheetDragHeight = targetHeight
+                } completion: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        sheetDetent = target
+                        sheetDragHeight = nil
+                    }
+                    withAnimation(.easeInOut(duration: 0.16)) {
+                        showsCollapsedSheetContent = target == .collapsed
+                    }
                 }
             }
     }
