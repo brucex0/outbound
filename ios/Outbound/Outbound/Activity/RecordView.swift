@@ -307,21 +307,23 @@ struct RecordView: View {
 
     private var readyView: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                Spacer(minLength: 72)
+            VStack(spacing: 20) {
+                Spacer(minLength: 92)
                 confirmationView(for: plannedIntent ?? .freestyleRun)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 40)
+            .padding(.bottom, 36)
         }
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             VStack(spacing: 8) {
                 Text(intent.title)
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
                 Text(intent.detail)
                     .font(.headline)
                     .foregroundStyle(.secondary)
@@ -335,14 +337,14 @@ struct RecordView: View {
                     .font(.title3.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(20)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.orange.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
             musicSetupCard
 
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 sessionGoalCard(for: intent)
 
                 Button(action: startRecording) {
@@ -364,7 +366,7 @@ struct RecordView: View {
     }
 
     private func sessionGoalCard(for intent: SessionIntent) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Label("Goal", systemImage: "flag")
                     .font(.headline)
@@ -401,17 +403,20 @@ struct RecordView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
         .onAppear {
             selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
         }
     }
 
     private var goalPresetColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: 76), spacing: 8)]
+        [
+            GridItem(.flexible(minimum: 112), spacing: 10),
+            GridItem(.flexible(minimum: 112), spacing: 10)
+        ]
     }
 
     private func goalModeButton(_ mode: SessionGoalMode) -> some View {
@@ -426,6 +431,8 @@ struct RecordView: View {
                 .foregroundStyle(selectedGoalMode == mode ? .white : .primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
                 .background(
                     Capsule()
                         .fill(selectedGoalMode == mode ? Color.orange : Color(.tertiarySystemBackground))
@@ -443,10 +450,12 @@ struct RecordView: View {
                 }
                 Text(title)
                     .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
             .foregroundStyle(isSelected ? .white : .primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
             .background(isSelected ? Color.orange : Color(.tertiarySystemBackground), in: Capsule())
         }
         .buttonStyle(.plain)
@@ -519,7 +528,7 @@ struct RecordView: View {
 
     @ViewBuilder
     private var musicSetupCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Music", systemImage: "music.note.list")
                     .font(.headline)
@@ -594,27 +603,28 @@ struct RecordView: View {
                 Button {
                     Task { await musicStore.performPrimaryAction() }
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
                         Text(musicStore.primaryActionTitle)
                             .font(.subheadline.bold())
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
                     }
-                    .padding(.horizontal, 14)
+                    .foregroundStyle(musicStore.isPrimaryActionEnabled ? Color.orange : Color.secondary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                    .frame(height: 42)
                 }
                 .buttonStyle(.plain)
                 .disabled(!musicStore.isPrimaryActionEnabled)
             }
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
+
+    private var startSetupCardCornerRadius: CGFloat { 20 }
 }
 
 private struct PendingFinishedActivity: Identifiable {

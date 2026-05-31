@@ -40,6 +40,8 @@ Primary flow:
 | Saved routes, route export, sharing requirements, storage efficiency | `docs/route-saving-sharing.md` | Product requirements for canonical route data, saved-route UX, sharing modes, and route simplification/storage rules |
 | Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
+| Activity start screen polish, goal chips, setup card hierarchy | `docs/superpowers/specs/2026-05-30-start-activity-polish-design.md` | Focused design for fixing wrapped goal chips and tightening the start activity setup UI |
+| Activity start screen polish implementation steps | `docs/superpowers/plans/2026-05-30-start-activity-polish.md` | Scoped plan for the selected start activity polish pass in `RecordView` |
 | Live coach announcement cadence and moment direction | `docs/superpowers/specs/2026-05-30-coach-moment-director-design.md` | Lightweight design for making spoken live coach nudges feel high-presence without repetitive stat recaps |
 | Coach moment director implementation steps | `docs/superpowers/plans/2026-05-30-coach-moment-director.md` | Scoped plan for the in-place `VirtualCoach` moment-direction pass |
 | Firebase Auth, Google project setup, Firebase plist, REST inspection | `docs/firebase.md` | Project IDs, app IDs, callback scheme, auth/provider notes, REST pattern |
