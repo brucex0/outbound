@@ -764,18 +764,7 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
     }
 
     private func spokenDistance(_ meters: Double) -> String {
-        if meters < 1000 {
-            let roundedMeters = Int(meters.rounded())
-            return roundedMeters == 1 ? "1 meter" : "\(roundedMeters) meters"
-        }
-
-        let kilometers = meters / 1000
-        if abs(kilometers.rounded() - kilometers) < 0.05 {
-            let roundedKilometers = Int(kilometers.rounded())
-            return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
-        }
-
-        return String(format: "%.1f kilometers", kilometers)
+        meters.spokenDistanceString
     }
 
     private func spokenDuration(_ seconds: Int) -> String {

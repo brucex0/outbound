@@ -324,8 +324,9 @@ final class VirtualCoach: NSObject, ObservableObject {
         guard !roleWouldRepeatTooMuch(.progress) else { return false }
 
         let nearTimeMilestone = snapshot.elapsedSeconds % currentProgressIntervalSeconds <= 8
+        let completedDistanceMilestone = Int(snapshot.distanceMeters / currentProgressDistanceIntervalMeters)
         let distanceRemainder = snapshot.distanceMeters.truncatingRemainder(dividingBy: currentProgressDistanceIntervalMeters)
-        let nearDistanceMilestone = snapshot.distanceMeters > 0 && distanceRemainder <= 80
+        let nearDistanceMilestone = completedDistanceMilestone > 0 && distanceRemainder <= 80
         return nearTimeMilestone || nearDistanceMilestone
     }
 
@@ -469,18 +470,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private static func spokenDistance(_ meters: Double) -> String {
-        if meters < 1000 {
-            let roundedMeters = Int(meters.rounded())
-            return roundedMeters == 1 ? "1 meter" : "\(roundedMeters) meters"
-        }
-
-        let kilometers = meters / 1000
-        if abs(kilometers.rounded() - kilometers) < 0.05 {
-            let roundedKilometers = Int(kilometers.rounded())
-            return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
-        }
-
-        return String(format: "%.1f kilometers", kilometers)
+        meters.spokenDistanceString
     }
 
     private static func spokenDuration(_ seconds: Int) -> String {

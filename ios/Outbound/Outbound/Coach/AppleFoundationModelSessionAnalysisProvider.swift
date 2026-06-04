@@ -140,7 +140,8 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         - Match the packet's decision intent and urgency.
         - Use plan, athlete profile, and recent patterns only when they materially improve the cue.
         - Mention time, distance, or pace only if they improve the coaching moment.
-        - Do not describe the athlete as being over a kilometer or another distance milestone if the packet reports zero distance.
+        - Do not describe the athlete as reaching a kilometer or another distance milestone until session.distanceMeters is at least that raw milestone.
+        - For short distances, prefer meters; for example 20 meters should not become 0.02 kilometers.
         - Prefer conversational phrasing like "just over a kilometer in", "pace still settling", or "a touch quick" only when it matches the packet.
         - Do not list stats in dashboard order.
         - Return one useful nudge, urgency steady/opportunity/caution, and shouldSpeak.

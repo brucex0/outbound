@@ -117,23 +117,21 @@ extension Double {
     }
 
     var spokenDistanceString: String {
-        let meters = Int(self.rounded())
+        let distanceMeters = max(0, self)
+        let meters = Int(distanceMeters.rounded())
 
-        if meters < 1000 {
+        if distanceMeters < 995 {
             return meters == 1 ? "1 meter" : "\(meters) meters"
         }
 
-        let kilometers = self / 1000
-        if kilometers < 2 {
-            let roundedTenth = (kilometers * 10).rounded() / 10
-            if abs(roundedTenth - 1.0) < 0.01 {
-                return "1 kilometer"
-            }
-            return String(format: "%.1f kilometers", roundedTenth)
+        let roundedHundredths = ((distanceMeters / 1000) * 100).rounded() / 100
+        let roundedWhole = roundedHundredths.rounded()
+        if abs(roundedHundredths - roundedWhole) < 0.005 {
+            let wholeKilometers = Int(roundedWhole)
+            return wholeKilometers == 1 ? "1 kilometer" : "\(wholeKilometers) kilometers"
         }
 
-        let roundedKilometers = Int(kilometers.rounded())
-        return roundedKilometers == 1 ? "1 kilometer" : "\(roundedKilometers) kilometers"
+        return String(format: "%.2f kilometers", roundedHundredths)
     }
 }
 
