@@ -131,6 +131,11 @@ final class VirtualCoach: NSObject, ObservableObject {
         runAnalysis(for: snapshot)
     }
 
+    func announceStartCountdown(_ text: String) {
+        synthesizer.stopSpeaking(at: .immediate)
+        speak(text, urgency: .opportunity)
+    }
+
     // MARK: - Private
 
     private func shouldAnalyze(_ snapshot: ActiveSessionSnapshot) -> Bool {

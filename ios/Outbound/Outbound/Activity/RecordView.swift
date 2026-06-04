@@ -7,6 +7,7 @@ enum SessionPage: String {
 
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var coachCatalog: CoachCatalogStore
@@ -32,6 +33,8 @@ struct RecordView: View {
     @State private var customTimeText = ""
     @State private var customGoalKind: CustomGoalKind?
     @State private var isCustomGoalAlertPresented = false
+    @State private var countdownStep: ActivityStartCountdownStep?
+    @State private var countdownTask: Task<Void, Never>?
 
     let isVisible: Bool
     private let onCloseRequest: ((Bool) -> Void)?
@@ -103,6 +106,12 @@ struct RecordView: View {
         .background(Color(.systemBackground))
         .ignoresSafeArea()
         .toolbar(showCamera && isVisible ? .hidden : .visible, for: .tabBar)
+        .overlay {
+            if let countdownStep {
+                ActivityStartCountdownOverlay(step: countdownStep, reduceMotion: reduceMotion)
+                    .transition(.opacity)
+            }
+        }
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
             liveActivityManager.update(
@@ -133,10 +142,17 @@ struct RecordView: View {
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
         }
+        .onDisappear {
+            cancelStartCountdown(returnToSetup: recorder.state == .idle)
+        }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
                 Button {
-                    onCloseRequest(recorder.state != .idle || pendingActivity != nil)
+                    if isCountingDown {
+                        cancelStartCountdown(returnToSetup: true)
+                    } else {
+                        onCloseRequest(recorder.state != .idle || pendingActivity != nil)
+                    }
                 } label: {
                     Image(systemName: "chevron.down")
                         .font(.headline.weight(.bold))
@@ -206,7 +222,7 @@ struct RecordView: View {
     }
 
     private func startRecording() {
-        guard recorder.state == .idle else { return }
+        guard recorder.state == .idle, !isCountingDown else { return }
         capturedPhotos = []
         pendingActivity = nil
         activePage = preferredSessionPage
@@ -217,6 +233,54 @@ struct RecordView: View {
             persona: coachCatalog.selectedPersona,
             sessionIntent: activeIntent
         )
+        showCamera = true
+        beginStartCountdown()
+    }
+
+    private func beginStartCountdown() {
+        countdownTask?.cancel()
+        countdownTask = Task { @MainActor in
+            for step in ActivityStartCountdownStep.sequence {
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: reduceMotion ? 0.12 : 0.22)) {
+                    countdownStep = step
+                }
+                announceCountdownStep(step)
+
+                do {
+                    try await Task.sleep(nanoseconds: step.durationNanoseconds)
+                } catch {
+                    return
+                }
+            }
+
+            guard !Task.isCancelled else { return }
+            completeStartCountdown()
+        }
+    }
+
+    private func announceCountdownStep(_ step: ActivityStartCountdownStep) {
+        coach.announceStartCountdown(step.spokenText)
+        #if os(iOS)
+        UIAccessibility.post(notification: .announcement, argument: step.accessibilityText)
+        switch step {
+        case .go:
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        case .three, .two, .one:
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+        #endif
+    }
+
+    private func completeStartCountdown() {
+        guard recorder.state == .idle else {
+            countdownStep = nil
+            countdownTask = nil
+            return
+        }
+
+        countdownStep = nil
+        countdownTask = nil
         recorder.start()
         liveActivityManager.update(
             snapshot: recorder.liveSnapshot,
@@ -227,10 +291,26 @@ struct RecordView: View {
         Task {
             await musicStore.beginWorkoutPlaybackIfNeeded()
         }
-        showCamera = true
+    }
+
+    private func cancelStartCountdown(returnToSetup: Bool) {
+        guard isCountingDown else { return }
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdownStep = nil
+        coach.deactivate()
+        activeIntent = nil
+        if returnToSetup {
+            showCamera = false
+        }
+    }
+
+    private var isCountingDown: Bool {
+        countdownStep != nil || countdownTask != nil
     }
 
     private func finishRecording() {
+        cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         coach.deactivate()
@@ -294,6 +374,7 @@ struct RecordView: View {
     }
 
     private func clearPending() {
+        cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
         capturedPhotos = []
         activeIntent = nil
@@ -678,4 +759,114 @@ private enum SessionGoalMode: Equatable {
 private enum CustomGoalKind: Equatable {
     case distance
     case time
+}
+
+private enum ActivityStartCountdownStep: CaseIterable, Equatable {
+    case three
+    case two
+    case one
+    case go
+
+    static let sequence: [ActivityStartCountdownStep] = [.three, .two, .one, .go]
+
+    var displayText: String {
+        switch self {
+        case .three:
+            return "3"
+        case .two:
+            return "2"
+        case .one:
+            return "1"
+        case .go:
+            return "Go"
+        }
+    }
+
+    var spokenText: String {
+        switch self {
+        case .three:
+            return "Starting in 3"
+        case .two:
+            return "2"
+        case .one:
+            return "1"
+        case .go:
+            return "Go"
+        }
+    }
+
+    var accessibilityText: String {
+        switch self {
+        case .three:
+            return "Starting in 3"
+        case .two:
+            return "2"
+        case .one:
+            return "1"
+        case .go:
+            return "Go"
+        }
+    }
+
+    var durationNanoseconds: UInt64 {
+        switch self {
+        case .three, .two, .one:
+            return 1_000_000_000
+        case .go:
+            return 420_000_000
+        }
+    }
+
+    var progress: CGFloat {
+        guard let index = Self.sequence.firstIndex(of: self) else { return 0 }
+        return CGFloat(index + 1) / CGFloat(Self.sequence.count)
+    }
+}
+
+private struct ActivityStartCountdownOverlay: View {
+    let step: ActivityStartCountdownStep
+    let reduceMotion: Bool
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(.black.opacity(0.42))
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .stroke(.white.opacity(0.2), lineWidth: 8)
+                    Circle()
+                        .trim(from: 0, to: step.progress)
+                        .stroke(
+                            Color.orange,
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+
+                    Text(step.displayText)
+                        .font(.system(size: step == .go ? 76 : 118, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .minimumScaleFactor(0.72)
+                        .lineLimit(1)
+                        .contentTransition(reduceMotion ? .identity : .numericText())
+                        .id(step)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.86).combined(with: .opacity))
+                }
+                .frame(width: 188, height: 188)
+                .shadow(color: .black.opacity(0.26), radius: 20, y: 8)
+
+                Text("Outbound")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.86))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 28)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(step.accessibilityText)
+        }
+        .allowsHitTesting(true)
+        .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.24), value: step)
+    }
 }
