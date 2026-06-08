@@ -19,7 +19,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after hosted Google sign-in.
 - `App/AuthStore.swift`: Firebase auth wrapper for provider-backed Apple and Google sign-in. Apple uses native `AuthenticationServices` with a nonce-backed Firebase credential; Google uses Firebase Auth's hosted OAuth flow. Existing-email provider conflicts keep the pending credential and require the user to prove the already-linked provider before accounts are connected.
 - `App/AuthView.swift`: login UI for Apple and Google provider sign-in only. Email/password and phone/password login are intentionally not user-facing.
-- `App/MainTabView.swift`: top-level shell with a bottom row of separate controls: sparkles assistant launcher on the left, lightweight `Me` / `Social` pill switcher in the center, and a circular quick-start/resume activity button on the right. It also owns the two-state assistant shell (minimized icon and expanded sheet) and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
+- `App/MainTabView.swift`: top-level shell with a bottom row of separate controls: sparkles assistant launcher, optional `Me` / `Social` pill switcher when `OUTBOUND_ENABLE_SOCIAL` is defined, and a circular quick-start/resume activity button. It also owns the two-state assistant shell (minimized icon and expanded sheet) and the retained overlay presentation into `RecordView` so live sessions can be hidden and reopened without resetting.
 - `App/OnboardingStore.swift` and `App/OnboardingFlowView.swift`: local-first new-user onboarding. The store tracks account-scoped completion/profile state in `UserDefaults`; the view gathers intent, sport, starting point, first-session length, and weekly rhythm, then can launch the personalized first session through `MainTabView`.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
@@ -85,7 +85,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Network And Placeholders
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
-- `Social/ActivityFeedView.swift`: local-first social hub with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. See `docs/social.md` before changing social product loops.
+- `Social/ActivityFeedView.swift`: optional local-first social hub compiled only when `OUTBOUND_ENABLE_SOCIAL` is defined, with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. Default beta builds omit this surface for App Review safety. See `docs/social.md` before changing social product loops.
 - `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, Apple Health, Apple Music, DEBUG-only onboarding replay, and sign-out.
 
 ## Integrations

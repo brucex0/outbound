@@ -1,3 +1,4 @@
+#if OUTBOUND_ENABLE_SOCIAL
 import SwiftUI
 
 struct ActivityFeedView: View {
@@ -1003,3 +1004,4 @@ private enum SocialSeed {
         SocialRival(id: "r4", rank: 4, person: zoe, weeklyKm: 24.7, delta: "-5.9 km", note: "Climbing week")
     ]
 }
+#endif

@@ -29,10 +29,12 @@ struct MainTabView: View {
                         isAssistantPresented = true
                     }
 
+#if OUTBOUND_ENABLE_SOCIAL
                     CompactTabSwitcher(
                         selectedTab: $selectedTab,
                         accentColor: assistantAccentColor
                     )
+#endif
 
                     ActivityPortalButton(
                         state: activitySessionState,
@@ -63,7 +65,7 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $isAssistantPresented) {
             AssistantView(
-                screenName: selectedTab == .me ? "Me" : "Social",
+                screenName: currentScreenName,
                 isRecordingActive: false
             )
             .presentationDetents([.fraction(0.58), .large])
@@ -112,6 +114,7 @@ struct MainTabView: View {
 
     @ViewBuilder
     private var currentContent: some View {
+#if OUTBOUND_ENABLE_SOCIAL
         Group {
             switch selectedTab {
             case .me:
@@ -140,10 +143,26 @@ struct MainTabView: View {
                     }
                 }
         )
+#else
+        ProfileView(
+            bottomContentInset: bottomChromeContentInset,
+            onStartSuggestion: { suggestion in
+                presentActivity(intent: suggestion.intent)
+            }
+        )
+#endif
     }
 
     private var bottomChromeContentInset: CGFloat {
         96
+    }
+
+    private var currentScreenName: String {
+#if OUTBOUND_ENABLE_SOCIAL
+        selectedTab == .me ? "Me" : "Social"
+#else
+        "Me"
+#endif
     }
 
     private var assistantAccentColor: Color {
@@ -200,33 +219,45 @@ struct MainTabView: View {
 
 private enum AppTab {
     case me
+#if OUTBOUND_ENABLE_SOCIAL
     case social
+#endif
 
     var title: String {
         switch self {
         case .me: return "Me"
+#if OUTBOUND_ENABLE_SOCIAL
         case .social: return "Social"
+#endif
         }
     }
 
     var systemImage: String {
         switch self {
         case .me: return "person.fill"
+#if OUTBOUND_ENABLE_SOCIAL
         case .social: return "person.2.fill"
+#endif
         }
     }
 
     var next: AppTab {
         switch self {
+#if OUTBOUND_ENABLE_SOCIAL
         case .me: return .social
         case .social: return .social
+#else
+        case .me: return .me
+#endif
         }
     }
 
     var previous: AppTab {
         switch self {
         case .me: return .me
+#if OUTBOUND_ENABLE_SOCIAL
         case .social: return .me
+#endif
         }
     }
 }
@@ -253,6 +284,7 @@ private struct AssistantLauncherButton: View {
     }
 }
 
+#if OUTBOUND_ENABLE_SOCIAL
 private struct CompactTabSwitcher: View {
     @Binding var selectedTab: AppTab
     let accentColor: Color
@@ -294,6 +326,7 @@ private struct CompactTabSwitcher: View {
         .buttonStyle(.plain)
     }
 }
+#endif
 
 private struct RecordLaunch: Identifiable {
     let id = UUID()

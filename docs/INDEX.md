@@ -11,12 +11,12 @@ Primary flow:
 1. App launches directly into `MainTabView`.
 2. New authenticated accounts see the first-win onboarding flow before normal use; completed accounts skip it.
 3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, recent activity, and optional momentum.
-4. Me launches suggested sessions directly, while the bottom-row activity button on Me and Social quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
+4. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 5. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
 6. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 7. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 8. Save writes the activity manifest, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-9. Social remains a separate tab with Squad, Clubs, and Rivals loops backed by local seeded state.
+9. Social is isolated behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition; default beta builds omit the Social tab.
 10. Coach customization lives under Settings, where the user can choose a predefined coach and tune voice, face, style, and nudge frequency.
 
 ## Open Docs By Task
