@@ -10,8 +10,8 @@ Primary flow:
 
 1. App launches directly into `MainTabView`.
 2. New authenticated accounts see the first-win onboarding flow before normal use; completed accounts skip it.
-3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, recent activity, and optional momentum.
-4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, best efforts, and recent activity stat highlights derived from saved activities.
+3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, Progress, and recent activity.
+4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, best efforts, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.

@@ -88,6 +88,41 @@ struct ProgressStatsEngineTests {
         #expect(longest?.activityID == "older-a")
         #expect(bestWeek?.distanceMeters == 15_000)
     }
+
+    @Test func derivesMomentumNoteForCompletedToday() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = date(2026, 6, 10, 12)
+        let activities = [
+            activity(id: "today", startedAt: date(2026, 6, 10, 8), duration: 1_200, distance: 3_000, elevation: 8),
+            activity(id: "prior", startedAt: date(2026, 6, 9, 8), duration: 1_400, distance: 4_000, elevation: 10)
+        ]
+
+        let snapshot = ProgressStatsEngine.snapshot(
+            from: activities,
+            now: now,
+            calendar: calendar
+        )
+
+        #expect(snapshot.momentumNote?.text == "You showed up today")
+        #expect(snapshot.momentumNote?.symbolName == "checkmark.circle.fill")
+    }
+
+    @Test func derivesMomentumNoteForComebackWindow() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = date(2026, 6, 10, 12)
+        let activities = [
+            activity(id: "older", startedAt: date(2026, 6, 6, 8), duration: 1_800, distance: 5_000, elevation: 18)
+        ]
+
+        let snapshot = ProgressStatsEngine.snapshot(
+            from: activities,
+            now: now,
+            calendar: calendar
+        )
+
+        #expect(snapshot.momentumNote?.text == "Back after a rest window")
+        #expect(snapshot.momentumNote?.symbolName == "arrow.clockwise")
+    }
 }
 
 private func activity(

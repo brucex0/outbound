@@ -192,6 +192,18 @@ struct ProgressSummaryCard: View {
                             )
                         }
                     }
+
+                    if let momentumNote = snapshot.momentumNote {
+                        HStack(spacing: 8) {
+                            Image(systemName: momentumNote.symbolName)
+                                .foregroundStyle(.orange)
+                            Text(momentumNote.text)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                    }
                 }
             }
             .padding(14)

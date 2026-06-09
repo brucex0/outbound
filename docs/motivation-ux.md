@@ -21,7 +21,7 @@ Core loop:
 3. Light readiness tuning when helpful
 4. Activity recording
 5. Post-activity emotional reward
-6. Momentum reflection
+6. Progress reflection with one momentum note
 
 ## Coach Surface Model
 
@@ -43,7 +43,7 @@ What belongs here:
 - daily message
 - readiness check-in
 - today suggestion cards
-- recent reflections and momentum notes
+- recent reflections and progress notes
 - coaching settings such as tone, voice, intensity, and nudge frequency
 - future training plan and recovery advice
 
@@ -198,10 +198,13 @@ Freestyle confirmation should show:
 The Me motivation surface should keep this order:
 - one emotionally strong hero
 - one compact `Now` card
+- one compact Progress card with stats and a lightweight momentum note
 - one compact recent-activity card
-- optional momentum below
 
 The user should never have to scroll to find the recommended start, and the floating activity button should remain visible as the global fallback.
+
+Current implementation note:
+- Momentum is no longer a standalone Me section. Its user-facing role is a single interpretive line inside the Progress card, while the full Progress surface owns historical stats and trends.
 
 ### 1. Coach Spark Card
 

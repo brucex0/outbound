@@ -423,12 +423,6 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     }
 }
 
-struct MomentumNote: Identifiable, Hashable {
-    let id: String
-    let text: String
-    let symbol: String
-}
-
 struct FinishReflection: Equatable, Codable {
     let title: String
     let body: String
@@ -440,7 +434,6 @@ struct DailyMotivationSnapshot {
     let phase: MotivationPhase
     let spark: CoachSpark
     let suggestions: [SuggestedSession]
-    let momentumNotes: [MomentumNote]
 }
 
 struct MotivationDashboardView: View {
@@ -463,28 +456,10 @@ struct MotivationDashboardView: View {
         )
     }
 
-    private var momentumNotes: [MomentumNote] {
-        var notes: [MomentumNote] = []
-        if let week = trainingPlanStore.currentWeek {
-            notes.append(
-                MomentumNote(
-                    id: "plan-week-progress",
-                    text: week.summaryLine,
-                    symbol: "calendar.badge.clock"
-                )
-            )
-        }
-        notes.append(contentsOf: snapshot.momentumNotes)
-        return Array(notes.prefix(4))
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             sparkCard
             nowCard
-            if !momentumNotes.isEmpty {
-                momentumStrip
-            }
         }
         .onAppear {
             checkInStore.refresh()
@@ -1167,31 +1142,6 @@ struct MotivationDashboardView: View {
         }
     }
 
-    private var momentumStrip: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Momentum")
-                .font(.headline)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(momentumNotes) { note in
-                        HStack(spacing: 8) {
-                            Image(systemName: note.symbol)
-                                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
-                            Text(note.text)
-                                .font(.subheadline.weight(.medium))
-                                .lineLimit(2)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(Capsule())
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-    }
 }
 
 private struct ActivityPortalButton: View {
@@ -1347,8 +1297,7 @@ enum DailyMotivationEngine {
         return DailyMotivationSnapshot(
             phase: phase,
             spark: makeSpark(phase: phase, readiness: readiness, persona: persona),
-            suggestions: makeSuggestions(phase: phase, readiness: readiness, persona: persona),
-            momentumNotes: makeMomentumNotes(activities: activities, phase: phase, now: now, calendar: calendar)
+            suggestions: makeSuggestions(phase: phase, readiness: readiness, persona: persona)
         )
     }
 
@@ -1595,45 +1544,6 @@ enum DailyMotivationEngine {
                 )
             ]
         }
-    }
-
-    private static func makeMomentumNotes(
-        activities: [SavedActivity],
-        phase: MotivationPhase,
-        now: Date,
-        calendar: Calendar
-    ) -> [MomentumNote] {
-        var notes: [MomentumNote] = []
-        let weekCount = activitiesThisWeek(activities: activities, now: now, calendar: calendar)
-
-        switch phase {
-        case .momentum:
-            notes.append(MomentumNote(id: "rhythm", text: "You are building rhythm", symbol: "waveform.path.ecg"))
-        case .comeback:
-            notes.append(MomentumNote(id: "return", text: "Back after a rest window", symbol: "arrow.clockwise"))
-        case .completedToday:
-            notes.append(MomentumNote(id: "today", text: "You showed up today", symbol: "checkmark.circle.fill"))
-        default:
-            break
-        }
-
-        if weekCount > 0 {
-            notes.append(MomentumNote(
-                id: "week-count",
-                text: "\(weekCount) activit\(weekCount == 1 ? "y" : "ies") this week",
-                symbol: "calendar"
-            ))
-        }
-
-        if let latest = activities.first, latest.durationSecs <= 15 * 60 {
-            notes.append(MomentumNote(id: "short-counts", text: "Short sessions still count", symbol: "bolt.heart"))
-        }
-
-        if notes.isEmpty {
-            notes.append(MomentumNote(id: "steady", text: "Keep the day simple", symbol: "sun.max"))
-        }
-
-        return Array(notes.prefix(3))
     }
 
     private static func defaultHeadline(for readiness: DailyReadiness?) -> String {

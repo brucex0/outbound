@@ -49,8 +49,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Progress
 
-- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
-- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, recent activity stat highlights, and empty states.
+- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, one momentum note, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
+- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, recent activity stat highlights, momentum copy, and empty states.
 - `App/ProfileView.swift`: embeds `ProgressSummaryCard` between the motivation dashboard and recent activity so Progress is reachable without adding a new tab.
 - `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, and best weekly distance.
 
@@ -72,7 +72,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Goals/GoalConversationCard.swift`: motivation-card UI for conversational goal setup, active-focus progress, and lightweight adjustment.
 - `App/OutboundApp.swift`: now also defines training plan response models and `TrainingPlanStore`, which fetches server-owned plan state through `APIClient`, caches the last active plan/week/today payload for offline rendering, and falls back to local deterministic rules when the API is unavailable.
 - `App/TrainingPlanLibrary.swift`: offline fallback structured plan library. It stores `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` content, including Outbound-authored consistency, comeback, 5K, 10K, 10 mile, half marathon, marathon, and base-building plans. Retained MIT imports are compatibility/fallback content, while authenticated recommendation and Today flows use the backend-curated catalog as the source of truth.
-- `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, which drives the Me-tab spark card, compact `Now` card for either today's plan or coach recommendation, readiness-aware copy, momentum strip, and the local engine that derives motivation state and finish reflections.
+- `App/MainTabView.swift`: now also contains the motivation MVP types and `MotivationDashboardView`, which drives the Me-tab spark card, compact `Now` card for either today's plan or coach recommendation, readiness-aware copy, and the local engine that derives motivation state and finish reflections.
 - `docs/new-user-onboarding.md`: product and implementation notes for first-win onboarding and the DEBUG-only Settings replay trigger.
 - `docs/goals-progress.md`: the product and implementation spec for local-first focus and goal tracking. The V1 implementation now uses `GoalStore`, progress chips in Me's motivation surface, and goal-aware post-run reflection notes.
 

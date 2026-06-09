@@ -20,6 +20,7 @@ struct ProgressStatsSnapshot: Equatable {
     let currentWeek: ProgressPeriodTotals
     let weeklyBuckets: [ProgressWeekBucket]
     let bestEfforts: [ProgressBestEffort]
+    let momentumNote: ProgressMomentumNote?
     let eligibleActivityCount: Int
 
     var coachNote: String {
@@ -40,6 +41,11 @@ struct ProgressStatsSnapshot: Equatable {
         }
         return "A few more saved activities will unlock stronger trends."
     }
+}
+
+struct ProgressMomentumNote: Equatable {
+    let text: String
+    let symbolName: String
 }
 
 struct ProgressPeriodTotals: Equatable {
@@ -132,6 +138,12 @@ enum ProgressStatsEngine {
             currentWeek: totals(for: currentWeekActivities),
             weeklyBuckets: buckets,
             bestEfforts: bestEfforts(from: eligible, weeklyBuckets: buckets),
+            momentumNote: momentumNote(
+                from: eligible,
+                currentWeekActivities: currentWeekActivities,
+                now: now,
+                calendar: calendar
+            ),
             eligibleActivityCount: eligible.count
         )
     }
@@ -275,6 +287,55 @@ enum ProgressStatsEngine {
             .min(by: effortSort)
     }
 
+    private static func momentumNote(
+        from activities: [ProgressActivity],
+        currentWeekActivities: [ProgressActivity],
+        now: Date,
+        calendar: Calendar
+    ) -> ProgressMomentumNote? {
+        guard let latest = activities.first else { return nil }
+
+        if calendar.isDate(latest.startedAt, inSameDayAs: now) {
+            return ProgressMomentumNote(
+                text: "You showed up today",
+                symbolName: "checkmark.circle.fill"
+            )
+        }
+
+        if daysSince(date: latest.startedAt, now: now, calendar: calendar) >= 2 {
+            return ProgressMomentumNote(
+                text: "Back after a rest window",
+                symbolName: "arrow.clockwise"
+            )
+        }
+
+        if currentWeekActivities.count >= 3 {
+            return ProgressMomentumNote(
+                text: "You are building rhythm",
+                symbolName: "waveform.path.ecg"
+            )
+        }
+
+        if latest.durationSeconds <= 15 * 60 {
+            return ProgressMomentumNote(
+                text: "Short sessions still count",
+                symbolName: "bolt.heart"
+            )
+        }
+
+        if currentWeekActivities.count > 0 {
+            return ProgressMomentumNote(
+                text: "\(currentWeekActivities.count) activit\(currentWeekActivities.count == 1 ? "y" : "ies") this week",
+                symbolName: "calendar"
+            )
+        }
+
+        return ProgressMomentumNote(
+            text: "Keep the day simple",
+            symbolName: "sun.max"
+        )
+    }
+
     private static func fastestRouteWindow(in activity: ProgressActivity, targetMeters: Double) -> Int? {
         let points = activity.routePoints
             .filter { $0.cumulativeDistanceMeters.isFinite }
@@ -304,6 +365,12 @@ enum ProgressStatsEngine {
         }
 
         return bestDuration.map { Int($0.rounded()) }
+    }
+
+    private static func daysSince(date: Date, now: Date, calendar: Calendar) -> Int {
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.startOfDay(for: now)
+        return calendar.dateComponents([.day], from: start, to: end).day ?? 0
     }
 
     nonisolated private static func effortSort(_ lhs: ProgressBestEffort, _ rhs: ProgressBestEffort) -> Bool {
