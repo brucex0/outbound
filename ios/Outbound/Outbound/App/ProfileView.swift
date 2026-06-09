@@ -541,7 +541,8 @@ struct AssistantView: View {
             weeklyDistanceKilometers: weeklyDistanceKilometers,
             currentGoalSummary: goalStore.progress?.summaryLine,
             currentScreen: screenName,
-            isRecordingActive: isRecordingActive
+            isRecordingActive: isRecordingActive,
+            timeZoneIdentifier: TimeZone.current.identifier
         )
     }
 

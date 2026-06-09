@@ -1291,6 +1291,7 @@ struct AssistantContext {
     let currentGoalSummary: String?
     let currentScreen: String?
     let isRecordingActive: Bool
+    let timeZoneIdentifier: String
 }
 
 @MainActor
@@ -1479,7 +1480,8 @@ final class AssistantStore: ObservableObject {
                 weeklyDistanceKilometers: context.weeklyDistanceKilometers,
                 currentGoalSummary: context.currentGoalSummary,
                 currentScreen: context.currentScreen,
-                isRecordingActive: context.isRecordingActive
+                isRecordingActive: context.isRecordingActive,
+                timeZoneIdentifier: context.timeZoneIdentifier
             ),
             messages: recentMessagesForAPI(),
             firebaseUid: AuthStore.currentUserId

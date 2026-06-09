@@ -646,6 +646,7 @@ struct AssistantChatAPIContext: Encodable {
     let currentGoalSummary: String?
     let currentScreen: String?
     let isRecordingActive: Bool
+    let timeZoneIdentifier: String
 }
 
 struct AssistantChatAPIPriorMessage: Encodable {

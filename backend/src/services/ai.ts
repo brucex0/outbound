@@ -2,6 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
+import type { AssistantActivityToolContext } from "./assistantActivityTools.js";
 // Final-pass transcription and command parsing for short recorded utterances
 export async function runFinalTranscriptionAndParse({ audioUrl, language }: { audioUrl: string; language?: string }) {
   // 1. Run OpenAI gpt-4o-mini transcription
@@ -27,6 +28,7 @@ type AssistantChatContext = {
   currentGoalSummary?: string | null;
   currentScreen?: string | null;
   isRecordingActive?: boolean;
+  timeZoneIdentifier?: string | null;
 };
 
 type AssistantChatMessage = {
@@ -125,6 +127,7 @@ export async function generateAssistantReply(input: {
   context: AssistantChatContext;
   messages: AssistantChatMessage[];
   firebaseUid?: string;
+  activityContext?: AssistantActivityToolContext | null;
 }): Promise<string> {
   const apiKey = process.env.APP_AI_KEY;
   const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
@@ -138,6 +141,8 @@ export async function generateAssistantReply(input: {
 You help with product discovery, navigation, support, brainstorming, and planning.
 Be concise, warm, and specific to Outbound.
 Do not mention internal implementation details.
+You may answer from the provided backend activity context. Do not claim you lack access to activity history when the backend activity context contains the needed facts.
+If the backend activity context is empty or unavailable, say what is missing in plain product terms.
 Prefer short, practical answers with a clear next step when useful.
 If the user is in an active recording flow, keep the answer extra brief and non-distracting.
 Return only valid JSON in the shape {"message":"..."} with no markdown fencing.`;
@@ -149,7 +154,11 @@ Coach name: ${input.context.coachName}
 Saved activities: ${input.context.activityCount}
 Weekly distance: ${input.context.weeklyDistanceKilometers.toFixed(1)} km
 Goal summary: ${input.context.currentGoalSummary ?? "No active goal"}
+Time zone: ${input.context.timeZoneIdentifier ?? input.activityContext?.timeZoneIdentifier ?? "unknown"}
 Firebase UID: ${input.firebaseUid ?? "not provided"}
+
+Backend activity context:
+${formatActivityContextForPrompt(input.activityContext)}
 
 Recent conversation:
 ${input.messages.slice(-10).map((message) => `${message.role}: ${message.text}`).join("\n") || "No prior conversation."}
@@ -198,4 +207,34 @@ Respond in 2 to 4 short paragraphs. Keep it compact and actionable.`;
 
   const parsed = JSON.parse(content) as DeepSeekAssistantResponse;
   return parsed.message?.trim() || "";
+}
+
+function formatActivityContextForPrompt(context: AssistantActivityToolContext | null | undefined): string {
+  if (!context) {
+    return "No backend activity context was available for this request.";
+  }
+
+  if (context.recentActivities.length === 0) {
+    return `Generated at ${context.generatedAt}. No synced activities found.`;
+  }
+
+  const activities = context.recentActivities
+    .slice(0, 12)
+    .map((activity) => {
+      const distanceKm = activity.distanceM == null ? "unknown distance" : `${(activity.distanceM / 1000).toFixed(1)} km`;
+      const duration = activity.durationSecs == null ? "unknown duration" : `${Math.round(activity.durationSecs / 60)} min`;
+      const pace = activity.avgPace == null ? "unknown pace" : `${Math.round(activity.avgPace)} sec/km`;
+      return [
+        activity.startedAt,
+        activity.type,
+        activity.title ?? "Untitled activity",
+        distanceKm,
+        duration,
+        pace,
+        `${activity.photoCount} photos`,
+      ].join(" | ");
+    })
+    .join("\n");
+
+  return `Generated at ${context.generatedAt} for ${context.timeZoneIdentifier}. Recent synced activities:\n${activities}`;
 }

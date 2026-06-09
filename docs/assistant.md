@@ -82,6 +82,8 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - saved activity count
   - current week distance
   - current goal summary line, when present
+  - current screen and recording state
+  - current device time zone, so backend date questions such as "yesterday" use the user's local day
 - Activity-start commands are deterministic V1 actions, not open-ended chat. The speech request uses command-specific recognition hints, and the parser normalizes common short-command variants such as `ten kay run`, `5 k`, and `thirty minute run`. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start. During voice input, a recognized command executes after the live partial transcript stays stable briefly; the composer Send button uses the same parser before falling back to assistant chat, so corrected voice text and typed commands route the same way.
 - The response stack is:
   - try the backend assistant chat endpoint first
@@ -89,6 +91,13 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - fall back again to deterministic local copy so the UI still works everywhere
 - Backend chat keeps provider keys on the server rather than in the iOS app.
 - The current assistant backend path follows the BoatShare pattern: OpenAI-compatible server-side calls to DeepSeek with JSON-shaped responses for predictable parsing.
+- When Firebase auth and `DATABASE_URL` are available, the backend assistant route enriches each chat request with read-only, typed activity tools:
+  - resolves the authenticated app user on the server
+  - reads recent synced activity summaries through Prisma
+  - excludes route geometry, coordinates, images, and health metrics from assistant chat context
+  - answers simple activity-history questions such as "did I run yesterday?" deterministically before calling the model
+  - passes the same recent activity summaries into the model prompt for richer history and planning answers
+- Do not expose arbitrary SQL or raw database rows to the model. Add backend tool functions with typed input/output when the assistant needs more app capability.
 
 ## Voice Recognition Upgrade Path
 
