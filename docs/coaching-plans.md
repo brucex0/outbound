@@ -186,6 +186,7 @@ Current iOS/backend MVP note:
 - the backend now applies a curation layer in `backend/src/data/curatedTrainingPlanTemplates.ts` over the raw exported catalog before seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables
 - the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
 - iOS fetches Explore Plans recommendations from `GET /v1/planning/recommendations`, caches the last good server response for immediate/offline display, and keeps `TrainingPlanLibrary.swift` as the final offline fallback and compatibility cache.
+- The top coach pick should stay personalized and short, but the More Plans picker should show the broader public plan catalog so users can browse credible presets beyond the current recommendation shortlist.
 
 ## Personalization Parameters
 

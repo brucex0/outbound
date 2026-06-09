@@ -421,6 +421,7 @@ struct TodayTrainingSuggestion: Codable, Equatable {
 final class TrainingPlanStore: ObservableObject {
     @Published private(set) var activePlan: ActiveTrainingPlan?
     @Published private(set) var recommendations: [TrainingPlanRecommendation] = []
+    @Published private(set) var planOptions: [TrainingPlanRecommendation] = []
     @Published private(set) var currentWeek: TrainingPlanWeekSnapshot?
     @Published private(set) var todaySuggestion: TodayTrainingSuggestion?
     @Published private(set) var activitySuggestion: ActivitySuggestionResponse?
@@ -468,6 +469,7 @@ final class TrainingPlanStore: ObservableObject {
         } else {
             activePlan = persistedActivePlan
         }
+        updatePlanOptions(activities: [], phase: .firstSession, now: Date())
     }
 
     var shouldShowRecommendations: Bool {
@@ -486,6 +488,7 @@ final class TrainingPlanStore: ObservableObject {
 
         resetDismissedRecommendationIfNeeded(now: now)
         updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now)
+        updatePlanOptions(activities: activities, phase: phase, now: now)
 
         refreshTask?.cancel()
         refreshTask = Task {
@@ -524,6 +527,7 @@ final class TrainingPlanStore: ObservableObject {
         lastPhase = phase
 
         resetDismissedRecommendationIfNeeded(now: now)
+        updatePlanOptions(activities: activities, phase: phase, now: now)
         let cachedRecommendations = cachedPlanRecommendations(now: now)
         if !cachedRecommendations.isEmpty {
             recommendations = cachedRecommendations
@@ -646,6 +650,7 @@ final class TrainingPlanStore: ObservableObject {
         currentWeek = state.currentWeek
         todaySuggestion = state.todaySuggestion
         activitySuggestion = validActivitySuggestion
+        updatePlanOptions(activities: lastActivities, phase: lastPhase, now: now)
         persistState()
     }
 
@@ -661,6 +666,7 @@ final class TrainingPlanStore: ObservableObject {
         }
 
         updateLocalRecommendationsIfNeeded(activities: activities, phase: phase, now: now)
+        updatePlanOptions(activities: activities, phase: phase, now: now)
         if activePlan == nil, dismissedRecommendationWeekStart == startOfWeek(for: now) {
             recommendations = []
         }
@@ -788,6 +794,20 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    private func updatePlanOptions(
+        activities: [SavedActivity],
+        phase: MotivationPhase,
+        now: Date
+    ) {
+        planOptions = Self.makePlanOptions(
+            activities: activities,
+            phase: phase,
+            calendar: calendar,
+            now: now,
+            excludingTemplateID: activePlan?.templateID
+        )
+    }
+
     private func updateLocalRecommendationsIfNeeded(
         activities: [SavedActivity],
         phase: MotivationPhase,
@@ -843,6 +863,16 @@ private extension TrainingPlanStore {
     static let templateLookup: [String: TrainingPlanTemplate] = Dictionary(
         uniqueKeysWithValues: templates.map { ($0.id, $0) }
     )
+    static let publicPlanTemplateIDs: [String] = [
+        "run-base-30-v1",
+        "run-consistency-v1",
+        "run-comeback-v1",
+        "run-5k-v1",
+        "run-10k-v1",
+        "run-10mile-v1",
+        "run-half-v1",
+        "run-marathon-v1"
+    ]
 
     static func makeRecommendations(
         activities: [SavedActivity],
@@ -863,6 +893,22 @@ private extension TrainingPlanStore {
             guard let template = templateLookup[templateID] else { return nil }
             return makeRecommendation(template: template, stats: stats, phase: phase)
         }
+    }
+
+    static func makePlanOptions(
+        activities: [SavedActivity],
+        phase: MotivationPhase,
+        calendar: Calendar,
+        now: Date,
+        excludingTemplateID: String? = nil
+    ) -> [TrainingPlanRecommendation] {
+        let stats = recentTrainingStats(activities: activities, calendar: calendar, now: now)
+        return publicPlanTemplateIDs
+            .filter { $0 != excludingTemplateID }
+            .compactMap { templateID in
+                guard let template = templateLookup[templateID] else { return nil }
+                return makeRecommendation(template: template, stats: stats, phase: phase)
+            }
     }
 
     static func recommendedTemplateIDs(stats: RecentTrainingStats, phase: MotivationPhase) -> [String] {

@@ -523,7 +523,7 @@ struct MotivationDashboardView: View {
         .sheet(isPresented: $isPlanPickerPresented) {
             NavigationStack {
                 TrainingPlanPickerView(
-                    recommendations: trainingPlanStore.recommendations,
+                    recommendations: trainingPlanStore.planOptions,
                     isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
                     accentColor: coachCatalog.selectedPersona.face.accentColor,
                     onSelectPlan: { recommendation in
@@ -1657,7 +1657,7 @@ struct TrainingPlanCard: View {
         .sheet(isPresented: $isMorePlansPresented) {
             NavigationStack {
                 TrainingPlanPickerView(
-                    recommendations: trainingPlanStore.recommendations,
+                    recommendations: trainingPlanStore.planOptions,
                     isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
                     accentColor: accentColor,
                     onSelectPlan: { recommendation in
