@@ -12,7 +12,7 @@ Polish only the setup screen in `RecordView`. Do not change the live camera/map 
 
 Use the recommended polish pass:
 
-- Replace the adaptive goal preset grid with predictable two-column preset rows so all labels, including `Custom`, have enough width.
+- Use compact wrapping goal preset chips so short labels stay small while longer labels such as `Half marathon` can use the room they need.
 - Keep goal mode controls compact and stable with one-line labels.
 - Reduce oversized card radius and spacing so the screen reads as a focused setup tool rather than stacked oversized cards.
 - Make the Music card less visually heavy by using a lighter inline action row.

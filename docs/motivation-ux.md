@@ -121,6 +121,12 @@ Recommended start actions:
 - one compact `Now` card with the main action for today
 - optional secondary action inside the same card
 
+No-plan behavior:
+- if the API or local fallback returns a recommended plan and no plan is active, the `Now` card presents that plan directly
+- the recommended plan card uses the same compact card shape and icon-first CTA style as activity suggestions
+- `Use recommended plan` is the primary action, with details and more plans as compact secondary actions
+- do not add a separate `Explore plans` section below the `Now` card
+
 Principle:
 - guided, not gatekeeping
 

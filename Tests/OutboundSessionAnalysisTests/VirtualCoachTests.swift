@@ -116,6 +116,54 @@ final class VirtualCoachTests: XCTestCase {
 
         coach.deactivate()
     }
+
+    func testDistanceGoalSpeaksHalfwayAndLastMileMilestones() async throws {
+        let provider = FakeSessionAnalysisProvider(shouldSpeak: false)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil, sessionIntent: SessionIntent(
+            id: "three-mile-run",
+            sport: .run,
+            title: "3 mile run",
+            detail: "Run • 3 miles",
+            coachLine: "Settle in.",
+            startLabel: "Start",
+            targetDistanceMeters: 3 * 1_609.344
+        ))
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 300, distanceMeters: 2_500, paceSecsPerKm: 320))
+        try await waitForMainActor()
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Halfway through your distance goal."))
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 360, distanceMeters: 3_300, paceSecsPerKm: 320))
+        try await waitForMainActor()
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Last mile"))
+
+        coach.deactivate()
+    }
+
+    func testTimeGoalSpeaksHalfwayAndLastMinuteMilestones() async throws {
+        let provider = FakeSessionAnalysisProvider(shouldSpeak: false)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil, sessionIntent: SessionIntent(
+            id: "thirty-minute-run",
+            sport: .run,
+            title: "30 minute run",
+            detail: "Run • 30 minutes",
+            coachLine: "Settle in.",
+            startLabel: "Start",
+            targetDurationSeconds: 30 * 60
+        ))
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 15 * 60, distanceMeters: 2_500, paceSecsPerKm: 320))
+        try await waitForMainActor()
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Halfway through your time goal."))
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 29 * 60, distanceMeters: 4_700, paceSecsPerKm: 320))
+        try await waitForMainActor()
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Last minute of the time goal."))
+
+        coach.deactivate()
+    }
 }
 
 @MainActor

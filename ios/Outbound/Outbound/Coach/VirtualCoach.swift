@@ -30,6 +30,20 @@ private struct CoachingMoment {
     }
 }
 
+private enum GoalMilestone: Hashable {
+    case distanceOneThird
+    case distanceHalfway
+    case distanceTwoThirds
+    case distanceLastUnit
+    case distanceComplete
+    case durationOneThird
+    case durationHalfway
+    case durationTwoThirds
+    case durationLastFiveMinutes
+    case durationLastMinute
+    case durationComplete
+}
+
 // On-device real-time coach that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
@@ -57,6 +71,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var recentSpokenFingerprints: [String] = []
     private var recentSpokenMessages: [String] = []
     private var recentSpokenRoles: [CoachingMomentRole] = []
+    private var spokenGoalMilestones: Set<GoalMilestone> = []
 
     private let firstAnalysisAfterSeconds = 20
     private let maxSnapshotHistory = 20
@@ -97,6 +112,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         recentSpokenFingerprints = []
         recentSpokenMessages = []
         recentSpokenRoles = []
+        spokenGoalMilestones = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
@@ -211,6 +227,16 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
+        if let goalMilestone = nextGoalMilestone(for: snapshot) {
+            guard canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
+
+            spokenGoalMilestones.insert(goalMilestone)
+            rememberProgressMilestones(for: snapshot)
+            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+            speak(goalProgressAnnouncement(for: goalMilestone), role: .progress)
+            return
+        }
+
         let timeInterval = currentProgressIntervalSeconds
         let distanceIntervalMeters = currentProgressDistanceIntervalMeters
 
@@ -221,15 +247,114 @@ final class VirtualCoach: NSObject, ObservableObject {
 
         guard reachedTimeMilestone || reachedDistanceMilestone else { return }
 
-        if let lastProgressAnnouncementElapsedSeconds,
-           snapshot.elapsedSeconds - lastProgressAnnouncementElapsedSeconds < minimumProgressAnnouncementGapSeconds {
-            return
-        }
+        guard canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
 
         lastProgressTimeMilestone = nextTimeMilestone
         lastProgressDistanceMilestone = nextDistanceMilestone
         lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
         speak(progressAnnouncement(for: snapshot), role: .progress)
+    }
+
+    private func canAnnounceProgress(at elapsedSeconds: Int) -> Bool {
+        guard let lastProgressAnnouncementElapsedSeconds else { return true }
+        return elapsedSeconds - lastProgressAnnouncementElapsedSeconds >= minimumProgressAnnouncementGapSeconds
+    }
+
+    private func rememberProgressMilestones(for snapshot: ActiveSessionSnapshot) {
+        lastProgressTimeMilestone = snapshot.elapsedSeconds / currentProgressIntervalSeconds
+        lastProgressDistanceMilestone = Int(snapshot.distanceMeters / currentProgressDistanceIntervalMeters)
+    }
+
+    private func nextGoalMilestone(for snapshot: ActiveSessionSnapshot) -> GoalMilestone? {
+        if let distanceMilestone = nextDistanceGoalMilestone(for: snapshot) {
+            return distanceMilestone
+        }
+
+        return nextDurationGoalMilestone(for: snapshot)
+    }
+
+    private func nextDistanceGoalMilestone(for snapshot: ActiveSessionSnapshot) -> GoalMilestone? {
+        guard let targetDistance = sessionIntent?.resolvedTargetDistanceMeters, targetDistance > 0 else {
+            return nil
+        }
+
+        let progress = snapshot.distanceMeters / targetDistance
+        let remaining = targetDistance - snapshot.distanceMeters
+        let lastUnitMeters = preferredLastDistanceUnitMeters(for: targetDistance)
+        let candidates: [(GoalMilestone, Bool)] = [
+            (.distanceComplete, progress >= 1),
+            (.distanceLastUnit, targetDistance > lastUnitMeters * 1.5 && remaining > 0 && remaining <= lastUnitMeters),
+            (.distanceTwoThirds, progress >= 2.0 / 3.0),
+            (.distanceHalfway, progress >= 0.5),
+            (.distanceOneThird, progress >= 1.0 / 3.0)
+        ]
+
+        return candidates.first { milestone, isReached in
+            isReached && !spokenGoalMilestones.contains(milestone)
+        }?.0
+    }
+
+    private func nextDurationGoalMilestone(for snapshot: ActiveSessionSnapshot) -> GoalMilestone? {
+        guard let targetDuration = sessionIntent?.resolvedTargetDurationSeconds, targetDuration > 0 else {
+            return nil
+        }
+
+        let progress = Double(snapshot.elapsedSeconds) / Double(targetDuration)
+        let remaining = targetDuration - snapshot.elapsedSeconds
+        let candidates: [(GoalMilestone, Bool)] = [
+            (.durationComplete, progress >= 1),
+            (.durationLastMinute, targetDuration > 120 && remaining > 0 && remaining <= 60),
+            (.durationLastFiveMinutes, targetDuration > 600 && remaining > 60 && remaining <= 300),
+            (.durationTwoThirds, progress >= 2.0 / 3.0),
+            (.durationHalfway, progress >= 0.5),
+            (.durationOneThird, progress >= 1.0 / 3.0)
+        ]
+
+        return candidates.first { milestone, isReached in
+            isReached && !spokenGoalMilestones.contains(milestone)
+        }?.0
+    }
+
+    private func goalProgressAnnouncement(for milestone: GoalMilestone) -> String {
+        switch milestone {
+        case .distanceOneThird:
+            return "One third of your distance goal done. Keep it smooth."
+        case .distanceHalfway:
+            return "Halfway through your distance goal. Stay patient."
+        case .distanceTwoThirds:
+            return "Two thirds of the distance goal done. Keep stacking it."
+        case .distanceLastUnit:
+            let unitName = isMileBasedDistanceGoal(sessionIntent?.resolvedTargetDistanceMeters ?? 0) ? "mile" : "kilometer"
+            return "Last \(unitName) of the distance goal. Stay tall."
+        case .distanceComplete:
+            return "Distance goal covered. Ease through the finish."
+        case .durationOneThird:
+            return "One third of your time goal done. Settle into the rhythm."
+        case .durationHalfway:
+            return "Halfway through your time goal. Keep the effort even."
+        case .durationTwoThirds:
+            return "Two thirds of the time goal done. Stay composed."
+        case .durationLastFiveMinutes:
+            return "Last 5 minutes of the time goal. Keep the rhythm calm."
+        case .durationLastMinute:
+            return "Last minute of the time goal. Finish steady."
+        case .durationComplete:
+            return "Time goal covered. Bring it down smoothly."
+        }
+    }
+
+    private func preferredLastDistanceUnitMeters(for targetDistance: Double) -> Double {
+        if isMileBasedDistanceGoal(targetDistance) {
+            return 1_609.344
+        }
+
+        return 1_000
+    }
+
+    private func isMileBasedDistanceGoal(_ targetDistance: Double) -> Bool {
+        let miles = targetDistance / 1_609.344
+        let roundedMiles = miles.rounded()
+        return roundedMiles >= 2 && abs(miles - roundedMiles) < 0.03
     }
 
     private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {

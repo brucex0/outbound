@@ -35,8 +35,10 @@ struct RecordView: View {
     @State private var isCustomGoalAlertPresented = false
     @State private var countdownStep: ActivityStartCountdownStep?
     @State private var countdownTask: Task<Void, Never>?
+    @State private var didApplySmartGoalDefault = false
 
     let isVisible: Bool
+    private let shouldApplySmartGoalDefault: Bool
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
     private let onElapsedTimeChange: ((Int) -> Void)?
@@ -49,6 +51,7 @@ struct RecordView: View {
         onElapsedTimeChange: ((Int) -> Void)? = nil
     ) {
         _plannedIntent = State(initialValue: initialIntent ?? .freestyleRun)
+        self.shouldApplySmartGoalDefault = initialIntent == nil
         self.isVisible = isVisible
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
@@ -395,6 +398,7 @@ struct RecordView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 36)
         }
+        .onAppear(perform: applySmartGoalDefaultIfNeeded)
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -469,17 +473,21 @@ struct RecordView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             case .distance:
-                LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
-                    goalPresetButton(title: "3K", isSelected: isSelectedDistancePreset(3_000)) { applyGoal(.distanceMeters(3_000)) }
-                    goalPresetButton(title: "5K", isSelected: isSelectedDistancePreset(5_000)) { applyGoal(.distanceMeters(5_000)) }
-                    goalPresetButton(title: "10K", isSelected: isSelectedDistancePreset(10_000)) { applyGoal(.distanceMeters(10_000)) }
+                GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
+                    ForEach(distanceGoalPresets) { preset in
+                        goalPresetButton(title: preset.title, isSelected: isSelectedDistancePreset(preset.meters)) {
+                            applyGoal(.distanceMeters(preset.meters))
+                        }
+                    }
                     goalPresetButton(title: "Custom", isSelected: isCustomDistanceSelected) { presentCustomGoal(.distance) }
                 }
             case .time:
-                LazyVGrid(columns: goalPresetColumns, alignment: .leading, spacing: 8) {
-                    goalPresetButton(title: "20 min", isSelected: isSelectedTimePreset(20 * 60)) { applyGoal(.timeSeconds(20 * 60)) }
-                    goalPresetButton(title: "30 min", isSelected: isSelectedTimePreset(30 * 60)) { applyGoal(.timeSeconds(30 * 60)) }
-                    goalPresetButton(title: "45 min", isSelected: isSelectedTimePreset(45 * 60)) { applyGoal(.timeSeconds(45 * 60)) }
+                GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
+                    ForEach(timeGoalPresets) { preset in
+                        goalPresetButton(title: preset.title, isSelected: isSelectedTimePreset(preset.seconds)) {
+                            applyGoal(.timeSeconds(preset.seconds))
+                        }
+                    }
                     goalPresetButton(title: "Custom", isSelected: isCustomTimeSelected) { presentCustomGoal(.time) }
                 }
             }
@@ -491,13 +499,6 @@ struct RecordView: View {
         .onAppear {
             selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
         }
-    }
-
-    private var goalPresetColumns: [GridItem] {
-        [
-            GridItem(.flexible(minimum: 112), spacing: 10),
-            GridItem(.flexible(minimum: 112), spacing: 10)
-        ]
     }
 
     private func goalModeButton(_ mode: SessionGoalMode) -> some View {
@@ -534,16 +535,25 @@ struct RecordView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
+            .padding(.horizontal, isSelected ? 18 : 20)
+            .frame(height: 40)
             .foregroundStyle(isSelected ? .white : .primary)
             .background(isSelected ? Color.orange : Color(.tertiarySystemBackground), in: Capsule())
+            .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.plain)
     }
 
     private var currentActivityGoal: ActivityGoal {
         (plannedIntent ?? .freestyleRun).activityGoal
+    }
+
+    private var distanceGoalPresets: [DistanceGoalPreset] {
+        DistanceGoalPreset.recommended(from: activityStore.activities)
+    }
+
+    private var timeGoalPresets: [TimeGoalPreset] {
+        TimeGoalPreset.recommended(from: activityStore.activities)
     }
 
     private func isSelectedDistancePreset(_ meters: Double) -> Bool {
@@ -558,18 +568,28 @@ struct RecordView: View {
 
     private var isCustomDistanceSelected: Bool {
         guard case .distanceMeters = currentActivityGoal else { return false }
-        return ![3_000, 5_000, 10_000].contains { isSelectedDistancePreset(Double($0)) }
+        return !distanceGoalPresets.contains { isSelectedDistancePreset($0.meters) }
     }
 
     private var isCustomTimeSelected: Bool {
         guard case .timeSeconds = currentActivityGoal else { return false }
-        return ![20 * 60, 30 * 60, 45 * 60].contains { isSelectedTimePreset($0) }
+        return !timeGoalPresets.contains { isSelectedTimePreset($0.seconds) }
     }
 
     private func applyGoal(_ goal: ActivityGoal) {
         let currentIntent = plannedIntent ?? .freestyleRun
         plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
         selectedGoalMode = SessionGoalMode(goal: goal)
+    }
+
+    private func applySmartGoalDefaultIfNeeded() {
+        guard shouldApplySmartGoalDefault, !didApplySmartGoalDefault else { return }
+        didApplySmartGoalDefault = true
+        guard currentActivityGoal.isFreestyle,
+              let preferredGoal = SmartGoalPreference.preferredFrequentCustomGoal(from: activityStore.activities) else {
+            return
+        }
+        applyGoal(preferredGoal)
     }
 
     private func presentCustomGoal(_ kind: CustomGoalKind) {
@@ -785,7 +805,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
     var spokenText: String {
         switch self {
         case .three:
-            return "Starting in 3"
+            return "3"
         case .two:
             return "2"
         case .one:
@@ -798,7 +818,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
     var accessibilityText: String {
         switch self {
         case .three:
-            return "Starting in 3"
+            return "3"
         case .two:
             return "2"
         case .one:
@@ -868,5 +888,313 @@ private struct ActivityStartCountdownOverlay: View {
         }
         .allowsHitTesting(true)
         .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.24), value: step)
+    }
+}
+
+private struct GoalPresetFlow: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        let rows = arrangedRows(in: maxWidth, subviews: subviews)
+        let width = rows.reduce(0) { max($0, $1.width) }
+        let height = rows.enumerated().reduce(CGFloat.zero) { total, item in
+            total + item.element.height + (item.offset == 0 ? 0 : verticalSpacing)
+        }
+        return CGSize(width: proposal.width ?? width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var origin = bounds.origin
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            let wouldOverflow = origin.x > bounds.minX && origin.x + size.width > bounds.maxX
+            if wouldOverflow {
+                origin.x = bounds.minX
+                origin.y += rowHeight + verticalSpacing
+                rowHeight = 0
+            }
+
+            subview.place(
+                at: CGPoint(x: origin.x, y: origin.y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+            origin.x += size.width + horizontalSpacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+
+    private func arrangedRows(in maxWidth: CGFloat, subviews: Subviews) -> [(width: CGFloat, height: CGFloat)] {
+        var rows: [(width: CGFloat, height: CGFloat)] = []
+        var rowWidth: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            let spacing = rowWidth == 0 ? 0 : horizontalSpacing
+            let wouldOverflow = rowWidth > 0 && rowWidth + spacing + size.width > maxWidth
+            if wouldOverflow {
+                rows.append((rowWidth, rowHeight))
+                rowWidth = size.width
+                rowHeight = size.height
+            } else {
+                rowWidth += spacing + size.width
+                rowHeight = max(rowHeight, size.height)
+            }
+        }
+
+        if rowWidth > 0 {
+            rows.append((rowWidth, rowHeight))
+        }
+
+        return rows
+    }
+}
+
+private struct SmartGoalPreference {
+    let goal: ActivityGoal
+    let count: Int
+    let firstSeenOrder: Int
+
+    static func preferredFrequentCustomGoal(from activities: [SavedActivity]) -> ActivityGoal? {
+        [
+            DistanceGoalPreset.preferredFrequentCustom(from: activities),
+            TimeGoalPreset.preferredFrequentCustom(from: activities)
+        ]
+        .compactMap { $0 }
+        .sorted { lhs, rhs in
+            if lhs.count != rhs.count { return lhs.count > rhs.count }
+            return lhs.firstSeenOrder < rhs.firstSeenOrder
+        }
+        .first?
+        .goal
+    }
+}
+
+private struct DistanceGoalPreset: Identifiable, Hashable {
+    let title: String
+    let meters: Double
+
+    var id: Int {
+        Self.normalizedDistanceKey(meters)
+    }
+
+    static func recommended(from activities: [SavedActivity]) -> [DistanceGoalPreset] {
+        let stats = distanceStats(from: activities)
+        var presets = defaultPresets
+
+        if stats.totalDistanceGoalCount >= matureHistoryCount {
+            let usedDefaults = defaultPresets.filter { stats.usageCounts[$0.id, default: 0] > 0 }
+            presets = usedDefaults.isEmpty ? Array(defaultPresets.prefix(2)) : usedDefaults
+        }
+
+        for custom in frequentCustomPresets(from: stats) where !presets.contains(where: { $0.id == custom.id }) {
+            presets.insert(custom, at: 0)
+        }
+
+        if presets.count < minimumPresetCount {
+            for preset in defaultPresets where !presets.contains(where: { $0.id == preset.id }) {
+                presets.append(preset)
+                if presets.count == minimumPresetCount { break }
+            }
+        }
+
+        return Array(presets.prefix(maximumPresetCount))
+    }
+
+    static func preferredFrequentCustom(from activities: [SavedActivity]) -> SmartGoalPreference? {
+        let stats = distanceStats(from: activities)
+        guard let candidate = frequentCustomPresets(from: stats).first else { return nil }
+        return SmartGoalPreference(
+            goal: .distanceMeters(candidate.meters),
+            count: stats.usageCounts[candidate.id, default: 0],
+            firstSeenOrder: stats.firstSeenOrder[candidate.id, default: Int.max]
+        )
+    }
+
+    private static let defaultPresets: [DistanceGoalPreset] = [
+        DistanceGoalPreset(title: "5K", meters: 5_000),
+        DistanceGoalPreset(title: "10K", meters: 10_000),
+        DistanceGoalPreset(title: "Half marathon", meters: 21_097.5),
+        DistanceGoalPreset(title: "Marathon", meters: 42_195)
+    ]
+
+    private static let frequentCustomUseThreshold = 3
+    private static let recentActivityLimit = 30
+    private static let matureHistoryCount = 8
+    private static let minimumPresetCount = 4
+    private static let maximumPresetCount = 6
+    private static let distanceBucketMeters = 100.0
+
+    private struct DistanceStats {
+        var usageCounts: [Int: Int]
+        var firstSeenOrder: [Int: Int]
+        var totalDistanceGoalCount: Int
+    }
+
+    private static func frequentCustomPresets(from stats: DistanceStats) -> [DistanceGoalPreset] {
+        stats.usageCounts
+            .filter { key, count in
+                count >= frequentCustomUseThreshold && !defaultPresets.contains { $0.id == key }
+            }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return stats.firstSeenOrder[lhs.key, default: Int.max] < stats.firstSeenOrder[rhs.key, default: Int.max]
+            }
+            .map { key, _ in
+                let meters = Double(key) * distanceBucketMeters
+                return DistanceGoalPreset(title: label(forMeters: meters), meters: meters)
+            }
+    }
+
+    private static func distanceStats(from activities: [SavedActivity]) -> DistanceStats {
+        var usageCounts: [Int: Int] = [:]
+        var firstSeenOrder: [Int: Int] = [:]
+        var totalDistanceGoalCount = 0
+
+        for (index, activity) in activities.prefix(recentActivityLimit).enumerated() {
+            guard let meters = activity.goal?.targetDistanceMeters, meters >= 1_000 else { continue }
+            let key = normalizedDistanceKey(meters)
+            usageCounts[key, default: 0] += 1
+            firstSeenOrder[key] = min(firstSeenOrder[key, default: index], index)
+            totalDistanceGoalCount += 1
+        }
+
+        return DistanceStats(
+            usageCounts: usageCounts,
+            firstSeenOrder: firstSeenOrder,
+            totalDistanceGoalCount: totalDistanceGoalCount
+        )
+    }
+
+    private static func normalizedDistanceKey(_ meters: Double) -> Int {
+        Int((meters / distanceBucketMeters).rounded())
+    }
+
+    private static func label(forMeters meters: Double) -> String {
+        let kilometers = meters / 1000
+        if abs(kilometers.rounded() - kilometers) < 0.05 {
+            return "\(Int(kilometers.rounded()))K"
+        }
+        return String(format: "%.1fK", kilometers)
+            .replacingOccurrences(of: #"\.0K$"#, with: "K", options: .regularExpression)
+    }
+}
+
+private struct TimeGoalPreset: Identifiable, Hashable {
+    let title: String
+    let seconds: Int
+
+    var id: Int {
+        Self.normalizedTimeKey(seconds)
+    }
+
+    static func recommended(from activities: [SavedActivity]) -> [TimeGoalPreset] {
+        let stats = timeStats(from: activities)
+        var presets = defaultPresets
+
+        if stats.totalTimeGoalCount >= matureHistoryCount {
+            let usedDefaults = defaultPresets.filter { stats.usageCounts[$0.id, default: 0] > 0 }
+            presets = usedDefaults.isEmpty ? Array(defaultPresets.prefix(3)) : usedDefaults
+        }
+
+        for custom in frequentCustomPresets(from: stats) where !presets.contains(where: { $0.id == custom.id }) {
+            presets.insert(custom, at: 0)
+        }
+
+        if presets.count < minimumPresetCount {
+            for preset in defaultPresets where !presets.contains(where: { $0.id == preset.id }) {
+                presets.append(preset)
+                if presets.count == minimumPresetCount { break }
+            }
+        }
+
+        return Array(presets.prefix(maximumPresetCount))
+    }
+
+    static func preferredFrequentCustom(from activities: [SavedActivity]) -> SmartGoalPreference? {
+        let stats = timeStats(from: activities)
+        guard let candidate = frequentCustomPresets(from: stats).first else { return nil }
+        return SmartGoalPreference(
+            goal: .timeSeconds(candidate.seconds),
+            count: stats.usageCounts[candidate.id, default: 0],
+            firstSeenOrder: stats.firstSeenOrder[candidate.id, default: Int.max]
+        )
+    }
+
+    private static let defaultPresets: [TimeGoalPreset] = [
+        TimeGoalPreset(title: "20 min", seconds: 20 * 60),
+        TimeGoalPreset(title: "30 min", seconds: 30 * 60),
+        TimeGoalPreset(title: "45 min", seconds: 45 * 60),
+        TimeGoalPreset(title: "1 hr", seconds: 60 * 60),
+        TimeGoalPreset(title: "1.5 hr", seconds: 90 * 60)
+    ]
+
+    private static let frequentCustomUseThreshold = 3
+    private static let recentActivityLimit = 30
+    private static let matureHistoryCount = 8
+    private static let minimumPresetCount = 4
+    private static let maximumPresetCount = 6
+    private static let timeBucketSeconds = 60
+
+    private struct TimeStats {
+        var usageCounts: [Int: Int]
+        var firstSeenOrder: [Int: Int]
+        var totalTimeGoalCount: Int
+    }
+
+    private static func frequentCustomPresets(from stats: TimeStats) -> [TimeGoalPreset] {
+        stats.usageCounts
+            .filter { key, count in
+                count >= frequentCustomUseThreshold && !defaultPresets.contains { $0.id == key }
+            }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return stats.firstSeenOrder[lhs.key, default: Int.max] < stats.firstSeenOrder[rhs.key, default: Int.max]
+            }
+            .map { key, _ in
+                let seconds = key * timeBucketSeconds
+                return TimeGoalPreset(title: label(forSeconds: seconds), seconds: seconds)
+            }
+    }
+
+    private static func timeStats(from activities: [SavedActivity]) -> TimeStats {
+        var usageCounts: [Int: Int] = [:]
+        var firstSeenOrder: [Int: Int] = [:]
+        var totalTimeGoalCount = 0
+
+        for (index, activity) in activities.prefix(recentActivityLimit).enumerated() {
+            guard let seconds = activity.goal?.targetDurationSeconds, seconds >= timeBucketSeconds else { continue }
+            let key = normalizedTimeKey(seconds)
+            usageCounts[key, default: 0] += 1
+            firstSeenOrder[key] = min(firstSeenOrder[key, default: index], index)
+            totalTimeGoalCount += 1
+        }
+
+        return TimeStats(
+            usageCounts: usageCounts,
+            firstSeenOrder: firstSeenOrder,
+            totalTimeGoalCount: totalTimeGoalCount
+        )
+    }
+
+    private static func normalizedTimeKey(_ seconds: Int) -> Int {
+        Int((Double(seconds) / Double(timeBucketSeconds)).rounded())
+    }
+
+    private static func label(forSeconds seconds: Int) -> String {
+        if seconds < 3600 {
+            return "\(max(1, seconds / 60)) min"
+        }
+
+        let hours = Double(seconds) / 3600
+        if abs(hours.rounded() - hours) < 0.01 {
+            return "\(Int(hours.rounded())) hr"
+        }
+        return String(format: "%.1f hr", hours)
+            .replacingOccurrences(of: #"\.0 hr$"#, with: " hr", options: .regularExpression)
     }
 }
