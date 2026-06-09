@@ -75,6 +75,18 @@ Build without installing:
 
 This mode disables code signing with `CODE_SIGNING_ALLOWED=NO`, so it is useful for compile validation even when Xcode is not signed into an Apple Developer account. The output app is not installable on a physical device.
 
+Social is disabled by default for beta/App Review builds. To compile the optional Social tab locally:
+
+```sh
+./scripts/build-install-bruce-main.sh --build-only --with-social
+```
+
+Use `--without-social` to make the default explicit:
+
+```sh
+./scripts/build-install-bruce-main.sh --build-only --without-social
+```
+
 Build, install, and launch:
 
 ```sh

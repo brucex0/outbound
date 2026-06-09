@@ -19,6 +19,7 @@ PROFILE_DIRS=(
 
 build_only=false
 launch_after_install=false
+enable_social=false
 
 timestamp() {
   date '+%H:%M:%S'
@@ -39,20 +40,23 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--build-only] [--launch]
+Usage: $0 [--build-only] [--launch] [--with-social|--without-social]
 
 Build and install Outbound on Bruce main.
 
 Options:
-  --build-only   Build the app without installing it.
-  --launch       Launch the app after installing. Phone must be unlocked.
-  -h, --help     Show this help.
+  --build-only      Build the app without installing it.
+  --launch          Launch the app after installing. Phone must be unlocked.
+  --with-social     Enable the Social tab with OUTBOUND_ENABLE_SOCIAL.
+  --without-social  Disable Social tab. This is the default beta-safe build.
+  -h, --help        Show this help.
 
 Environment:
   DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp.
   TARGET_DEVICE_NAME Defaults to Bruce main.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
   DEVELOPMENT_TEAM   Defaults to ${DEVELOPMENT_TEAM}.
+  OTHER_SWIFT_FLAGS  Preserved when --with-social appends the Social flag.
 USAGE
 }
 
@@ -118,6 +122,12 @@ while [[ $# -gt 0 ]]; do
     --launch)
       launch_after_install=true
       ;;
+    --with-social)
+      enable_social=true
+      ;;
+    --without-social)
+      enable_social=false
+      ;;
     -h|--help)
       usage
       exit 0
@@ -136,6 +146,11 @@ cd "$ROOT_DIR"
 log "Starting build helper for ${TARGET_DEVICE_NAME}"
 log "DerivedData: ${DERIVED_DATA_PATH}"
 log "CoreDevice ID: ${CORE_DEVICE_ID}"
+if [[ "$enable_social" == true ]]; then
+  log "Social: enabled"
+else
+  log "Social: disabled"
+fi
 if [[ "$build_only" == true ]]; then
   log "Mode: build only"
   log "Signing: disabled for compile-only validation"
@@ -163,6 +178,11 @@ if [[ "$build_only" == true ]]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO)
 else
   build_args+=(-allowProvisioningUpdates DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM")
+fi
+
+if [[ "$enable_social" == true ]]; then
+  social_swift_flags="${OTHER_SWIFT_FLAGS:-\$(inherited)} -D OUTBOUND_ENABLE_SOCIAL"
+  build_args+=(OTHER_SWIFT_FLAGS="$social_swift_flags")
 fi
 
 build_args+=(build)
