@@ -1877,7 +1877,7 @@ struct TrainingPlanCard: View {
     }
 
     private func planQualityBadge(for recommendation: TrainingPlanRecommendation) -> some View {
-        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Coach-built plan" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Curated plan" : "Reviewed plan", systemImage: "checkmark.seal.fill")
             .font(.caption.weight(.semibold))
             .foregroundStyle(accentColor)
     }
@@ -1933,7 +1933,7 @@ private struct TrainingPlanPickerView: View {
                             pill("\(recommendation.targetWeeklyMinutes) min")
                         }
 
-                        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Coach-built" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+                        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Curated" : "Reviewed plan", systemImage: "checkmark.seal.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(accentColor)
 
