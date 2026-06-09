@@ -620,6 +620,8 @@ struct MotivationDashboardView: View {
             } else {
                 activePlanPendingNowCard(activePlan: activePlan, week: trainingPlanStore.currentWeek)
             }
+        } else if let recommendation = trainingPlanStore.recommendations.first {
+            planRecommendationNowCard(recommendation)
         } else if let activitySuggestion = trainingPlanStore.activitySuggestion {
             activitySuggestionNowCard(activitySuggestion)
         } else if let primarySuggestion = snapshot.suggestions.first {
@@ -838,12 +840,6 @@ struct MotivationDashboardView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Start alternate: \(alternate.title)")
                     }
-                } else if let recommendation = trainingPlanStore.recommendations.first {
-                    Button("Build a plan") {
-                        trainingPlanStore.acceptRecommendation(recommendation)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
                 }
 
                 Spacer(minLength: 0)
@@ -853,8 +849,97 @@ struct MotivationDashboardView: View {
                 }
             }
 
-            if !hasPlanContext(response) {
-                plansLinkRow
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func planRecommendationNowCard(_ recommendation: TrainingPlanRecommendation) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Now")
+                        .font(.headline)
+                    Label("Coach pick", systemImage: "calendar.badge.plus")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    Text(recommendation.template.title)
+                        .font(.title3.weight(.bold))
+                }
+
+                Spacer()
+
+                Text("\(recommendation.sessionsPerWeek)x / week")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(.systemBackground), in: Capsule())
+            }
+
+            Text(planRecommendationDetail(for: recommendation))
+                .font(.subheadline.weight(.semibold))
+
+            Text(recommendation.rationale)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Button {
+                    trainingPlanStore.acceptRecommendation(recommendation)
+                } label: {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Use recommended plan")
+
+                Button {
+                    selectedRecommendation = recommendation
+                } label: {
+                    Text("Details")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(Color(.systemBackground), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("View recommended plan details")
+
+                Button {
+                    showPlanPicker()
+                } label: {
+                    Text("More plans")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(Color(.systemBackground), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Show more plans")
+
+                Spacer(minLength: 0)
             }
         }
         .padding(18)
@@ -924,6 +1009,10 @@ struct MotivationDashboardView: View {
         return "Structure: \(steps.joined(separator: "; "))"
     }
 
+    private func planRecommendationDetail(for recommendation: TrainingPlanRecommendation) -> String {
+        "\(recommendation.durationWeeks) weeks • \(recommendation.sessionsPerWeek)x / week • \(recommendation.targetWeeklyMinutes) min / week"
+    }
+
     private func presentPlanDetails() {
         trainingPlanStore.refresh(
             activities: activityStore.activities,
@@ -940,59 +1029,6 @@ struct MotivationDashboardView: View {
             phase: snapshot.phase
         )
         isPlanPickerPresented = true
-    }
-
-    private var plansLinkRow: some View {
-        let recommendation = trainingPlanStore.recommendations.first
-
-        return VStack(alignment: .leading, spacing: 6) {
-            Text("Explore plans")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            HStack(alignment: .center, spacing: 12) {
-                Label {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(recommendation?.template.title ?? "Browse training plans")
-                            .font(.caption.weight(.semibold))
-                        Text(recommendation?.rationale ?? "Use a plan when you want the next few weeks mapped out.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                } icon: {
-                    Image(systemName: "calendar.badge.plus")
-                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if let recommendation {
-                        selectedRecommendation = recommendation
-                    }
-                }
-                .accessibilityAddTraits(recommendation == nil ? [] : .isButton)
-
-                Spacer(minLength: 0)
-
-                VStack(spacing: 8) {
-                    if let recommendation {
-                        Button("Use") {
-                            trainingPlanStore.acceptRecommendation(recommendation)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(coachCatalog.selectedPersona.face.accentColor)
-                    }
-
-                    Button("More") {
-                        showPlanPicker()
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
-                }
-                .font(.caption.weight(.semibold))
-            }
-        }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var activePlanActionsMenu: some View {
@@ -1049,59 +1085,9 @@ struct MotivationDashboardView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(coachCatalog.selectedPersona.face.accentColor)
-                } else if let recommendation = trainingPlanStore.recommendations.first {
-                    Button("Build a plan") {
-                        trainingPlanStore.acceptRecommendation(recommendation)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
                 }
             }
             .font(.subheadline.weight(.semibold))
-
-            if let recommendation = trainingPlanStore.recommendations.first {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Want more structure?")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(recommendation.template.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
-                            Text(recommendation.rationale)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedRecommendation = recommendation
-                        }
-                        .accessibilityAddTraits(.isButton)
-
-                        Spacer(minLength: 0)
-
-                        VStack(spacing: 8) {
-                            Button("View") {
-                                selectedRecommendation = recommendation
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(coachCatalog.selectedPersona.face.accentColor)
-                            .font(.caption.weight(.semibold))
-
-                            Button("More") {
-                                showPlanPicker()
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(coachCatalog.selectedPersona.face.accentColor)
-                            .font(.caption.weight(.semibold))
-                        }
-                    }
-                }
-                .padding(.top, 2)
-            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1909,11 +1895,7 @@ struct TrainingPlanCard: View {
                         planPill("\(lead.targetWeeklyMinutes) min")
                     }
 
-                    if let source = lead.template.source {
-                        Text("Imported cues: \(source.name)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(accentColor)
-                    }
+                    planQualityBadge(for: lead)
 
                     Text(lead.rationale)
                         .font(.subheadline)
@@ -1983,6 +1965,12 @@ struct TrainingPlanCard: View {
             .padding(.vertical, 8)
             .background(Color(.systemBackground), in: Capsule())
     }
+
+    private func planQualityBadge(for recommendation: TrainingPlanRecommendation) -> some View {
+        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Coach-built plan" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(accentColor)
+    }
 }
 
 private struct TrainingPlanPickerView: View {
@@ -2034,6 +2022,10 @@ private struct TrainingPlanPickerView: View {
                             pill("\(recommendation.sessionsPerWeek)x / week")
                             pill("\(recommendation.targetWeeklyMinutes) min")
                         }
+
+                        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Coach-built" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(accentColor)
 
                         if let openingWeek = recommendation.template.weeks.first {
                             Text(openingWeek.summary)
@@ -2102,10 +2094,7 @@ private struct TrainingPlanRecommendationDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 statGrid
-                if let source = recommendation.template.source {
-                    section("Imported source", text: "\(source.attribution) • \(source.license)")
-                    section("Import notes", text: source.importNotes)
-                }
+                section("Plan standard", text: planStandardText)
                 section("Why this fits", text: recommendation.rationale)
                 section("What to expect", text: recommendation.template.summary)
                 section("Tradeoff", text: recommendation.tradeoff)
@@ -2214,7 +2203,7 @@ private struct TrainingPlanRecommendationDetailView: View {
                     Text(week.summary)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    ForEach(week.workouts.prefix(3)) { workout in
+                    ForEach(week.workouts.filter { $0.durationSeconds > 0 }.prefix(3)) { workout in
                         workoutPreviewRow(workout)
                     }
                 }
@@ -2241,6 +2230,13 @@ private struct TrainingPlanRecommendationDetailView: View {
             }
             Spacer()
         }
+    }
+
+    private var planStandardText: String {
+        if recommendation.template.source?.name == "Outbound plan standards" {
+            return "Outbound-authored and benchmarked against established road-running structure: mostly easy running, controlled quality, cutback weeks, and event-specific tapering."
+        }
+        return "Reviewed against Outbound's coaching standards for safe progression, clear recovery, and practical workout purpose."
     }
 }
 

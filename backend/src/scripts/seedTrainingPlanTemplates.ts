@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
-import { trainingPlanTemplates } from "../data/trainingPlanTemplates.js";
+import { trainingPlanTemplates } from "../data/curatedTrainingPlanTemplates.js";
 import type { TrainingPlanTemplate } from "../services/trainingPlans.js";
 
 const prisma = new PrismaClient();

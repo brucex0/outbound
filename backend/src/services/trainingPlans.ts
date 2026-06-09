@@ -1,4 +1,4 @@
-import { trainingPlanTemplates } from "../data/trainingPlanTemplates.js";
+import { trainingPlanTemplates } from "../data/curatedTrainingPlanTemplates.js";
 
 export type TrainingPlanFocus =
   | "consistency"
@@ -6,7 +6,8 @@ export type TrainingPlanFocus =
   | "fiveK"
   | "tenK"
   | "tenMile"
-  | "halfMarathon";
+  | "halfMarathon"
+  | "marathon";
 
 export type TrainingPlanSport = "run" | "walk" | "bike" | "mixed";
 
@@ -468,6 +469,7 @@ function makeRecommendation(
     case "tenK":
     case "tenMile":
     case "halfMarathon":
+    case "marathon":
       suggestedSessions = Math.min(
         template.maxSessionsPerWeek,
         Math.max(template.minSessionsPerWeek, baselineSessions)
@@ -509,10 +511,9 @@ function recommendedTemplateIDs(stats: RecentTrainingStats, phase: MotivationPha
         stats.weeklySessionAverage >= 4.5
       ) {
         return [
-          "run-half-hansons-advanced-v1",
+          "run-marathon-v1",
           "run-half-v1",
           "run-10mile-v1",
-          "run-half-hansons-beginner-v1",
           "run-10k-v1",
           "run-base-30-v1",
         ];
@@ -524,7 +525,6 @@ function recommendedTemplateIDs(stats: RecentTrainingStats, phase: MotivationPha
       ) {
         return [
           "run-10k-v1",
-          "run-half-hansons-beginner-v1",
           "run-10mile-v1",
           "run-half-v1",
           "run-base-30-v1",
@@ -540,10 +540,9 @@ function recommendedTemplateIDs(stats: RecentTrainingStats, phase: MotivationPha
         stats.weeklySessionAverage >= 4
       ) {
         return [
-          "run-half-hansons-advanced-v1",
+          "run-marathon-v1",
           "run-10mile-v1",
           "run-half-v1",
-          "run-half-hansons-beginner-v1",
           "run-10k-v1",
           "run-base-30-v1",
         ];
@@ -556,7 +555,6 @@ function recommendedTemplateIDs(stats: RecentTrainingStats, phase: MotivationPha
         return [
           "run-10k-v1",
           "run-base-30-v1",
-          "run-half-hansons-beginner-v1",
           "run-half-v1",
           "run-5k-v1",
           "run-consistency-v1",
@@ -605,6 +603,8 @@ function weeklyMinuteLift(focus: TrainingPlanFocus, phase: MotivationPhase): num
       return 40;
     case "halfMarathon":
       return 50;
+    case "marathon":
+      return 70;
   }
 }
 
@@ -622,6 +622,8 @@ function longMinuteLift(focus: TrainingPlanFocus): number {
       return 12;
     case "halfMarathon":
       return 15;
+    case "marathon":
+      return 20;
   }
 }
 
@@ -648,6 +650,8 @@ function rationale(
       return phase === "momentum"
         ? "Your recent rhythm supports a half build, so long as the week keeps adapting around fatigue."
         : "You have enough baseline to start a half build, but the plan still needs to stay grounded in your current routine.";
+    case "marathon":
+      return "Your recent long-run pattern is strong enough to consider a marathon build, with cutbacks and taper weeks protecting the risk.";
   }
 }
 
@@ -664,7 +668,9 @@ function tradeoff(focus: TrainingPlanFocus, sessionsPerWeek: number): string {
     case "tenMile":
       return "Needs honest recovery and a real long-run slot.";
     case "halfMarathon":
-      return "Most demanding of the current options, with bigger long-run expectations.";
+      return "A real endurance build with bigger long-run expectations.";
+    case "marathon":
+      return "Highest commitment: long-run progression, fueling practice, and honest recovery matter.";
   }
 }
 
@@ -767,6 +773,7 @@ function fallbackWorkout(focus: TrainingPlanFocus): TrainingPlanWorkout {
       );
     case "tenMile":
     case "halfMarathon":
+    case "marathon":
       return longRun(
         "fallback-endurance",
         "Today",

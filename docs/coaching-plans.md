@@ -176,14 +176,14 @@ Example template families:
 - `strength_consistency`
 - `hybrid_endurance_strength`
 
-Current iOS MVP note:
+Current iOS/backend MVP note:
 
 - the app now ships a local plan library with structured `weeks -> workouts -> steps`
-- the `5K` plan is directly imported from the MIT-licensed [`lmorchard/c25k-web`](https://github.com/lmorchard/c25k-web) Couch-to-5K data
-- the local `consistency`, `comeback`, `10K`, `10 mile`, and `half marathon` plans are authored in-app but use open-source MIT workout taxonomy cues from [`danielcoats/training-planner`](https://github.com/danielcoats/training-planner) for realistic workout types such as `intervals`, `fartlek`, `long run`, `cross-train`, and `time trial`
-- the library now also imports larger week-by-week plans from MIT-licensed [`hoovercj/time-to-run`](https://github.com/hoovercj/time-to-run), including a `base 30 mpw` phase plus `half marathon beginner` and `half marathon advanced` variants
-- imported plain-text plans are normalized into Outbound workout kinds and step lists so the same detail UI and Today adaptation logic can still work across authored and imported plans
-- the same catalog has been exported into `backend/src/data/trainingPlanTemplates.ts` for seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables
+- the primary user-facing presets are Outbound-authored or Outbound-reviewed plans for consistency, comeback, 5K, 10K, 10 mile, half marathon, marathon, and base building
+- Outbound-authored plans are benchmarked against established road-running structure rather than copied from copyrighted public plans: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and event-specific tapers
+- MIT open-source imports remain as compatibility/fallback content, but high-volume imported half-marathon plans should not lead normal recommendations
+- retained imported plain-text plans are normalized into Outbound workout kinds and step lists, and rest days are represented as rest placeholders rather than 30-minute scheduled workouts
+- the backend now applies a curation layer in `backend/src/data/curatedTrainingPlanTemplates.ts` over the raw exported catalog before seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables
 - the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
 - iOS fetches Explore Plans recommendations from `GET /v1/planning/recommendations`, caches the last good server response for immediate/offline display, and keeps `TrainingPlanLibrary.swift` as the final offline fallback and compatibility cache.
 

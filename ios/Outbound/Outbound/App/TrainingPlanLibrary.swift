@@ -1,6 +1,14 @@
 import Foundation
 
 enum TrainingPlanLibrary {
+    static let outboundPlanStandardsSource = TrainingPlanSource(
+        name: "Outbound plan standards",
+        license: "Original",
+        attribution: "Outbound-authored plans benchmarked against established road-running coaching patterns",
+        url: "https://www.halhigdon.com/",
+        importNotes: "Uses original Outbound workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans."
+    )
+
     static let importedC25KSource = TrainingPlanSource(
         name: "c25k-web",
         license: "MIT",
@@ -33,6 +41,7 @@ enum TrainingPlanLibrary {
         tenKTemplate,
         tenMileTemplate,
         halfTemplate,
+        marathonTemplate,
         halfHansonsBeginnerTemplate,
         halfHansonsAdvancedTemplate
     ]
@@ -78,7 +87,7 @@ enum TrainingPlanLibrary {
                 summary: "Steady running without extra pressure.",
                 cue: "Smooth beats fast today."
             )
-        case .tenMile, .halfMarathon:
+        case .tenMile, .halfMarathon, .marathon:
             return longRun(
                 id: "fallback-endurance",
                 day: "Today",
@@ -127,7 +136,7 @@ enum TrainingPlanLibrary {
             "A short quality touch keeps things interesting without dominating the schedule.",
             "One optional session gives flexibility instead of guilt."
         ],
-        source: workoutTaxonomySource,
+        source: outboundPlanStandardsSource,
         weeks: [
             week(
                 1,
@@ -197,7 +206,7 @@ enum TrainingPlanLibrary {
             "Rest days are part of the design, not evidence of weakness.",
             "The final week leaves enough headroom to continue instead of crash."
         ],
-        source: workoutTaxonomySource,
+        source: outboundPlanStandardsSource,
         weeks: [
             week(
                 1,
@@ -251,7 +260,7 @@ enum TrainingPlanLibrary {
         focus: .fiveK,
         sport: .run,
         title: "Couch to 5K",
-        subtitle: "A full nine-week run/walk progression imported from open-source plan data.",
+        subtitle: "A nine-week run/walk progression for building up to continuous running.",
         defaultWeeks: 9,
         minSessionsPerWeek: 3,
         maxSessionsPerWeek: 3,
@@ -272,7 +281,7 @@ enum TrainingPlanLibrary {
         focus: .consistency,
         sport: .run,
         title: "Base building 30 mpw",
-        subtitle: "A 10-week imported base phase built around general aerobic work, strides, threshold touches, and endurance long runs.",
+        subtitle: "A 10-week base phase built around general aerobic work, strides, threshold touches, and endurance long runs.",
         defaultWeeks: 10,
         minSessionsPerWeek: 3,
         maxSessionsPerWeek: 4,
@@ -288,7 +297,7 @@ enum TrainingPlanLibrary {
         weeks: importedWeeks(
             prefix: "base30",
             focus: "Build aerobic durability",
-            summaryPrefix: "Imported base week",
+            summaryPrefix: "Base week",
             notes: ["Treat cross-training days as optional support unless your body benefits from the extra movement."],
             weeks: [
                 [("Rest or cross-training", 0), ("General aerobic 4 miles", 4), ("Rest or cross-training", 0), ("General aerobic 3 miles", 3), ("General aerobic 3 miles", 3), ("Rest or cross-training", 0), ("Endurance 6 miles", 6)],
@@ -322,7 +331,7 @@ enum TrainingPlanLibrary {
             "Long runs build gradually instead of spiking.",
             "Week 4 and week 8 back off so the block stays usable."
         ],
-        source: workoutTaxonomySource,
+        source: outboundPlanStandardsSource,
         weeks: [
             buildWeek(index: 1, prefix: "10k-w1", focus: "Set the aerobic floor", summary: "Start with familiar paces and a light workout touch.", easyMinutes: 35, quality: intervalRun(id: "10k-w1-q", day: "Thu", title: "4 x 2 min intervals", summary: "Controlled faster running with easy recoveries.", cue: "Work the reps, but keep the first one restrained.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 120, easySeconds: 120, repeats: 4), longMinutes: 50),
             buildWeek(index: 2, prefix: "10k-w2", focus: "Add steady pressure", summary: "The quality day shifts toward threshold work while the long run grows slightly.", easyMinutes: 36, quality: tempoRun(id: "10k-w2-q", day: "Thu", durationMinutes: 38, summary: "Two controlled tempo blocks.", cue: "Smooth breathing matters more than pace numbers.", blocks: [8 * 60, 8 * 60], floatSeconds: 3 * 60), longMinutes: 55),
@@ -330,7 +339,7 @@ enum TrainingPlanLibrary {
             buildWeek(index: 4, prefix: "10k-w4", focus: "Cut back and absorb", summary: "A lighter week keeps the block sustainable.", easyMinutes: 30, quality: hillRun(id: "10k-w4-q", day: "Thu", durationMinutes: 28, summary: "Short hill form session.", cue: "Keep the climbs springy and the recoveries complete.", hardSeconds: 45, easySeconds: 75, repeats: 6), longMinutes: 45),
             buildWeek(index: 5, prefix: "10k-w5", focus: "Rebuild after the cutback", summary: "The second half of the block starts a little stronger than the first.", easyMinutes: 40, quality: intervalRun(id: "10k-w5-q", day: "Thu", title: "5 x 3 min intervals", summary: "Slightly longer reps at controlled 10K effort.", cue: "Keep the final rep looking like the first.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 180, easySeconds: 120, repeats: 5), longMinutes: 62),
             buildWeek(index: 6, prefix: "10k-w6", focus: "Sharpen threshold", summary: "Longer steady blocks make race effort feel calmer.", easyMinutes: 40, quality: tempoRun(id: "10k-w6-q", day: "Thu", durationMinutes: 42, summary: "Three tempo segments with short floats.", cue: "Stay patient for the first two blocks.", blocks: [8 * 60, 8 * 60, 6 * 60], floatSeconds: 2 * 60), longMinutes: 65),
-            buildWeek(index: 7, prefix: "10k-w7", focus: "Peak specific work", summary: "A classic open-source-style workout mix of intervals, easy mileage, and a long aerobic finish.", easyMinutes: 35, quality: intervalRun(id: "10k-w7-q", day: "Thu", title: "4 x 800m effort", summary: "Inspired by open-source interval workout seeds.", cue: "Run these at rhythm, not rage.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 240, easySeconds: 120, repeats: 4), longMinutes: 70),
+            buildWeek(index: 7, prefix: "10k-w7", focus: "Peak specific work", summary: "A classic 10K sharpening week with controlled intervals, easy mileage, and a long aerobic finish.", easyMinutes: 35, quality: intervalRun(id: "10k-w7-q", day: "Thu", title: "4 x 800m effort", summary: "Specific 10K rhythm practice with full control.", cue: "Run these at rhythm, not rage.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 240, easySeconds: 120, repeats: 4), longMinutes: 70),
             buildWeek(index: 8, prefix: "10k-w8", focus: "Freshen up and check fitness", summary: "Back off volume, then finish with a controlled 10K effort or local race.", easyMinutes: 28, quality: racePrepRun(id: "10k-w8-q", day: "Thu", durationMinutes: 24, summary: "Short pickups to feel sharp without fatigue.", cue: "Keep this snappy, not draining.", pickupSeconds: 60, floatSeconds: 90, repeats: 5), longMinutes: 40, raceDay: raceRun(id: "10k-w8-race", day: "Sun", title: "10K effort day", durationMinutes: 55, summary: "A local 10K, time trial, or controlled progression run.", cue: "Settle in early and finish the last third with intent."))
         ]
     )
@@ -352,7 +361,7 @@ enum TrainingPlanLibrary {
             "Midweek tempo and hill sessions build durable strength.",
             "Cross-training stays optional so the plan remains livable."
         ],
-        source: workoutTaxonomySource,
+        source: outboundPlanStandardsSource,
         weeks: [
             buildWeek(index: 1, prefix: "10m-w1", focus: "Build steady range", summary: "Start with aerobic volume that feels durable.", easyMinutes: 40, quality: hillRun(id: "10m-w1-q", day: "Thu", durationMinutes: 36, summary: "Form-focused hill repetitions.", cue: "Run tall and keep the downhill recoveries easy.", hardSeconds: 60, easySeconds: 90, repeats: 6), longMinutes: 70),
             buildWeek(index: 2, prefix: "10m-w2", focus: "Add tempo control", summary: "The week gets slightly longer while the quality stays measured.", easyMinutes: 42, quality: tempoRun(id: "10m-w2-q", day: "Thu", durationMinutes: 42, summary: "Two ten-minute tempo blocks.", cue: "Stay smooth and avoid a red-line feel.", blocks: [10 * 60, 10 * 60], floatSeconds: 3 * 60), longMinutes: 75),
@@ -382,7 +391,7 @@ enum TrainingPlanLibrary {
             "Quality work emphasizes sustained control rather than repeated all-out efforts.",
             "Cutback weeks prevent the plan from becoming brittle."
         ],
-        source: workoutTaxonomySource,
+        source: outboundPlanStandardsSource,
         weeks: [
             buildWeek(index: 1, prefix: "half-w1", focus: "Settle into half structure", summary: "The first week establishes the four-day rhythm without forcing pace.", easyMinutes: 42, quality: tempoRun(id: "half-w1-q", day: "Thu", durationMinutes: 44, summary: "Two ten-minute tempo blocks.", cue: "Think calm strength.", blocks: [10 * 60, 10 * 60], floatSeconds: 3 * 60), longMinutes: 75),
             buildWeek(index: 2, prefix: "half-w2", focus: "Strength through range", summary: "The long run grows, while the quality day stays controlled.", easyMinutes: 45, quality: intervalRun(id: "half-w2-q", day: "Thu", title: "4 x 5 min intervals", summary: "Longer threshold reps with complete recoveries.", cue: "Settle into rhythm before the pace settles into you.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 300, easySeconds: 120, repeats: 4), longMinutes: 85),
@@ -394,6 +403,44 @@ enum TrainingPlanLibrary {
             buildWeek(index: 8, prefix: "half-w8", focus: "Step down slightly", summary: "The long run comes back while tempo rhythm stays alive.", easyMinutes: 42, quality: tempoRun(id: "half-w8-q", day: "Thu", durationMinutes: 42, summary: "Shorter threshold blocks with plenty in reserve.", cue: "Practice restraint.", blocks: [8 * 60, 8 * 60], floatSeconds: 3 * 60), longMinutes: 95),
             buildWeek(index: 9, prefix: "half-w9", focus: "Sharpen, don't chase", summary: "A lighter week with a final specific session.", easyMinutes: 35, quality: intervalRun(id: "half-w9-q", day: "Thu", title: "3 x 5 min race-pace effort", summary: "Controlled half-marathon effort with easy recoveries.", cue: "Let the pace come to you.", warmupMinutes: 10, cooldownMinutes: 8, hardSeconds: 300, easySeconds: 120, repeats: 3), longMinutes: 70),
             buildWeek(index: 10, prefix: "half-w10", focus: "Race week", summary: "Carry freshness into your half marathon or supported long effort.", easyMinutes: 24, quality: racePrepRun(id: "half-w10-q", day: "Thu", durationMinutes: 22, summary: "Short tune-up with quick strides.", cue: "This should feel crisp and brief.", pickupSeconds: 45, floatSeconds: 75, repeats: 4), longMinutes: 40, raceDay: raceRun(id: "half-w10-race", day: "Sun", title: "Half marathon effort day", durationMinutes: 120, summary: "Race day or a calm supported long progression.", cue: "Start patient, settle into rhythm, and trust the work."))
+        ]
+    )
+
+    private static let marathonTemplate = TrainingPlanTemplate(
+        id: "run-marathon-v1",
+        focus: .marathon,
+        sport: .run,
+        title: "Marathon plan",
+        subtitle: "A 16-week marathon build with patient mileage, cutback weeks, race-specific endurance, and a real taper.",
+        defaultWeeks: 16,
+        minSessionsPerWeek: 4,
+        maxSessionsPerWeek: 5,
+        baseWeeklyMinutes: 260,
+        baseLongSessionMinutes: 100,
+        summary: "A steady marathon block for runners who already have a running base and need long-run progression without turning every day hard.",
+        highlights: [
+            "Long runs progress in waves so adaptation has room to land.",
+            "Midweek quality alternates hills, tempo, marathon-effort work, and light sharpening.",
+            "Cutback weeks and a three-week taper protect freshness before race day."
+        ],
+        source: outboundPlanStandardsSource,
+        weeks: [
+            marathonWeek(index: 1, prefix: "marathon-w1", focus: "Set the marathon rhythm", summary: "Establish four steady run days without forcing pace.", easyMinutes: 45, quality: hillRun(id: "marathon-w1-q", day: "Thu", durationMinutes: 42, summary: "Short hill repetitions to build durable mechanics.", cue: "Run tall and keep every climb controlled.", hardSeconds: 60, easySeconds: 90, repeats: 6), mediumMinutes: 50, longMinutes: 90),
+            marathonWeek(index: 2, prefix: "marathon-w2", focus: "Build aerobic range", summary: "A little more time on feet while the quality stays restrained.", easyMinutes: 48, quality: tempoRun(id: "marathon-w2-q", day: "Thu", durationMinutes: 48, summary: "Two controlled tempo blocks inside a steady run.", cue: "Stay below strain; marathon fitness is patient.", blocks: [10 * 60, 10 * 60], floatSeconds: 3 * 60), mediumMinutes: 55, longMinutes: 100),
+            marathonWeek(index: 3, prefix: "marathon-w3", focus: "Extend the long day", summary: "Let the long run grow while weekday work remains manageable.", easyMinutes: 50, quality: fartlekRun(id: "marathon-w3-q", day: "Thu", durationMinutes: 50, summary: "Relaxed surges that add range without track pressure.", cue: "Keep the fast parts smooth enough to recover from.", hardSeconds: 180, easySeconds: 150, repeats: 5), mediumMinutes: 60, longMinutes: 110),
+            marathonWeek(index: 4, prefix: "marathon-w4", focus: "Cut back and absorb", summary: "Reduce load so the next build has somewhere to go.", easyMinutes: 40, quality: racePrepRun(id: "marathon-w4-q", day: "Thu", durationMinutes: 34, summary: "Light strides to keep the legs awake.", cue: "Quick, relaxed, and done before it bites.", pickupSeconds: 45, floatSeconds: 75, repeats: 5), mediumMinutes: 45, longMinutes: 85),
+            marathonWeek(index: 5, prefix: "marathon-w5", focus: "Return to steady pressure", summary: "Rebuild volume with a controlled threshold touch.", easyMinutes: 52, quality: tempoRun(id: "marathon-w5-q", day: "Thu", durationMinutes: 54, summary: "Three tempo pieces with easy floats.", cue: "You are practicing control, not proving speed.", blocks: [10 * 60, 10 * 60, 8 * 60], floatSeconds: 2 * 60), mediumMinutes: 65, longMinutes: 120),
+            marathonWeek(index: 6, prefix: "marathon-w6", focus: "Practice marathon effort", summary: "Introduce marathon-effort rhythm while the long run grows.", easyMinutes: 55, quality: tempoRun(id: "marathon-w6-q", day: "Thu", durationMinutes: 58, summary: "Sustained marathon-effort running with plenty of control.", cue: "This should feel honest but repeatable.", blocks: [14 * 60, 12 * 60], floatSeconds: 3 * 60), mediumMinutes: 68, longMinutes: 130),
+            marathonWeek(index: 7, prefix: "marathon-w7", focus: "Build strength late", summary: "A bigger endurance week with hills for strength instead of raw speed.", easyMinutes: 55, quality: hillRun(id: "marathon-w7-q", day: "Thu", durationMinutes: 48, summary: "Moderate hill repetitions for strength under control.", cue: "Powerful, not frantic.", hardSeconds: 75, easySeconds: 105, repeats: 7), mediumMinutes: 70, longMinutes: 140),
+            marathonWeek(index: 8, prefix: "marathon-w8", focus: "Second cutback", summary: "Step down before the most specific part of the plan.", easyMinutes: 44, quality: easyRun(id: "marathon-w8-q", day: "Thu", title: "Steady cutback run", durationMinutes: 40, summary: "A relaxed run with no hidden agenda.", cue: "Let this week give something back."), mediumMinutes: 52, longMinutes: 100),
+            marathonWeek(index: 9, prefix: "marathon-w9", focus: "Marathon-specific endurance", summary: "The long run gets serious while midweek work stays measured.", easyMinutes: 58, quality: tempoRun(id: "marathon-w9-q", day: "Thu", durationMinutes: 60, summary: "Long steady blocks near marathon effort.", cue: "Settle into rhythm and leave ego out of it.", blocks: [16 * 60, 14 * 60], floatSeconds: 3 * 60), mediumMinutes: 72, longMinutes: 150),
+            marathonWeek(index: 10, prefix: "marathon-w10", focus: "Peak support week", summary: "Use controlled quality to support the biggest long-run stretch.", easyMinutes: 58, quality: intervalRun(id: "marathon-w10-q", day: "Thu", title: "5 x 5 min controlled reps", summary: "Long controlled reps with easy recoveries.", cue: "Smooth form matters more than pace.", warmupMinutes: 12, cooldownMinutes: 10, hardSeconds: 300, easySeconds: 150, repeats: 5), mediumMinutes: 75, longMinutes: 160),
+            marathonWeek(index: 11, prefix: "marathon-w11", focus: "Absorb before peak", summary: "A lighter long run keeps the block from getting brittle.", easyMinutes: 48, quality: racePrepRun(id: "marathon-w11-q", day: "Thu", durationMinutes: 38, summary: "Short pickups to stay coordinated.", cue: "Keep this light and clean.", pickupSeconds: 60, floatSeconds: 90, repeats: 5), mediumMinutes: 60, longMinutes: 120),
+            marathonWeek(index: 12, prefix: "marathon-w12", focus: "Peak long run", summary: "The longest week asks for patience, fueling practice, and restraint.", easyMinutes: 60, quality: tempoRun(id: "marathon-w12-q", day: "Thu", durationMinutes: 56, summary: "A final controlled marathon-effort touch.", cue: "Stay economical; save the big swing for race day.", blocks: [18 * 60, 10 * 60], floatSeconds: 3 * 60), mediumMinutes: 75, longMinutes: 180),
+            marathonWeek(index: 13, prefix: "marathon-w13", focus: "Begin the taper", summary: "Keep rhythm while volume starts to come down.", easyMinutes: 50, quality: fartlekRun(id: "marathon-w13-q", day: "Thu", durationMinutes: 44, summary: "Short relaxed surges for leg turnover.", cue: "Freshness is the priority.", hardSeconds: 90, easySeconds: 120, repeats: 6), mediumMinutes: 60, longMinutes: 135),
+            marathonWeek(index: 14, prefix: "marathon-w14", focus: "Sharpen lightly", summary: "Shorter sessions keep confidence high without adding fatigue.", easyMinutes: 42, quality: racePrepRun(id: "marathon-w14-q", day: "Thu", durationMinutes: 34, summary: "Brief pickups with long easy floats.", cue: "Light, quick, and under control.", pickupSeconds: 45, floatSeconds: 90, repeats: 5), mediumMinutes: 48, longMinutes: 100),
+            marathonWeek(index: 15, prefix: "marathon-w15", focus: "Protect freshness", summary: "Race rhythm stays alive while the total load drops.", easyMinutes: 34, quality: racePrepRun(id: "marathon-w15-q", day: "Thu", durationMinutes: 28, summary: "A short tune-up to keep the legs awake.", cue: "Finish wanting more.", pickupSeconds: 30, floatSeconds: 75, repeats: 4), mediumMinutes: 35, longMinutes: 65),
+            marathonWeek(index: 16, prefix: "marathon-w16", focus: "Race week", summary: "A calm final week that protects energy for the marathon.", easyMinutes: 25, quality: racePrepRun(id: "marathon-w16-q", day: "Thu", durationMinutes: 22, summary: "Tiny tune-up with relaxed strides.", cue: "Sharp, not tired.", pickupSeconds: 25, floatSeconds: 75, repeats: 4), mediumMinutes: 18, longMinutes: 30, raceDay: raceRun(id: "marathon-w16-race", day: "Sun", title: "Marathon effort day", durationMinutes: 260, summary: "Race day or a supported marathon-distance effort.", cue: "Start with restraint, fuel early, and let the back half come to you."))
         ]
     )
 
@@ -588,6 +635,30 @@ private extension TrainingPlanLibrary {
             workouts[3] = raceDay
         }
         return week(index, focus: focus, summary: summary, workouts: workouts, notes: ["If you miss a weekday, do not stack it onto the long-run day."])
+    }
+
+    static func marathonWeek(
+        index: Int,
+        prefix: String,
+        focus: String,
+        summary: String,
+        easyMinutes: Int,
+        quality: TrainingPlanWorkout,
+        mediumMinutes: Int,
+        longMinutes: Int,
+        raceDay: TrainingPlanWorkout? = nil
+    ) -> TrainingPlanWeek {
+        var workouts = [
+            easyRun(id: "\(prefix)-easy", day: "Tue", title: "Easy aerobic run", durationMinutes: easyMinutes, summary: "Steady conversational running.", cue: "Keep this comfortably aerobic."),
+            quality,
+            longRun(id: "\(prefix)-medium", day: "Sat", durationMinutes: mediumMinutes, summary: "Medium-long support run.", cue: "Treat this as endurance support, not a second race."),
+            longRun(id: "\(prefix)-long", day: "Sun", durationMinutes: longMinutes, summary: "Key long run for marathon durability.", cue: "Practice patience and fueling before you practice toughness.")
+        ]
+        if let raceDay {
+            workouts[2] = recoveryRun(id: "\(prefix)-shakeout", day: "Sat", durationMinutes: max(15, mediumMinutes), summary: "Short shakeout before the event.", cue: "Keep this tiny and confidence-building.", optional: true)
+            workouts[3] = raceDay
+        }
+        return week(index, focus: focus, summary: summary, workouts: workouts, notes: ["Do not stack missed weekday work onto the long run.", "Practice fueling on long runs once they pass 90 minutes."])
     }
 
     static func repeatedC25KWeek(
@@ -1094,17 +1165,17 @@ private extension TrainingPlanLibrary {
         if lowercase.contains("rest or cross-train") || lowercase == "rest" {
             return TrainingPlanWorkout(
                 id: id,
-                title: "Rest or cross-train",
+                title: "Rest day",
                 kind: .crossTrain,
                 dayLabel: day,
                 summary: normalized,
-                purpose: "Use this day for recovery or light aerobic support.",
-                coachCue: "Take the easiest option that helps you absorb the week.",
-                effortLabel: "Optional easy",
-                durationSeconds: 30 * 60,
+                purpose: "Absorb the week and protect the next real session.",
+                coachCue: "Take the rest day seriously. Recovery is part of the plan.",
+                effortLabel: "Rest",
+                durationSeconds: 0,
                 distanceLabel: nil,
                 steps: [
-                    step("\(id)-main", .crossTrain, "Optional cross-train or full rest", 30 * 60, "Walk, bike, mobility, or take the day off entirely.")
+                    step("\(id)-main", .crossTrain, "Rest or light mobility", 0, "Take the day off, or keep movement short and restorative.")
                 ],
                 isOptional: true
             )

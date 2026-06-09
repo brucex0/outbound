@@ -451,6 +451,7 @@ private extension TrainingPlanFocus {
         }
 
         if let targetDistanceMeters = goal.targetDistanceMeters {
+            if targetDistanceMeters >= 40_000 { return .marathon }
             if targetDistanceMeters >= 20_000 { return .halfMarathon }
             if targetDistanceMeters >= 15_000 { return .tenMile }
             if targetDistanceMeters >= 9_000 { return .tenK }
@@ -459,6 +460,7 @@ private extension TrainingPlanFocus {
 
         let loweredType = goal.type.lowercased()
         if loweredType.contains("comeback") { return .comeback }
+        if loweredType.contains("marathon"), !loweredType.contains("half") { return .marathon }
         if loweredType.contains("half") { return .halfMarathon }
         if loweredType.contains("10k") { return .tenK }
         if loweredType.contains("5k") { return .fiveK }
@@ -471,6 +473,7 @@ private extension TrainingPlanFocus {
         case .tenK: return 10_000
         case .tenMile: return 16_093.4
         case .halfMarathon: return 21_097.5
+        case .marathon: return 42_195
         case .consistency, .comeback: return nil
         }
     }
@@ -483,6 +486,7 @@ private extension TrainingPlanFocus {
         case .tenK: return "Adaptive 10K plan"
         case .tenMile: return "Adaptive 10 mile plan"
         case .halfMarathon: return "Adaptive half marathon plan"
+        case .marathon: return "Adaptive marathon plan"
         }
     }
 }

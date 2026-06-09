@@ -199,6 +199,7 @@ enum TrainingPlanFocus: String, Codable, CaseIterable, Identifiable {
     case tenK
     case tenMile
     case halfMarathon
+    case marathon
 
     var id: String { rawValue }
 
@@ -210,6 +211,7 @@ enum TrainingPlanFocus: String, Codable, CaseIterable, Identifiable {
         case .tenK: return "10K"
         case .tenMile: return "10 mile"
         case .halfMarathon: return "Half marathon"
+        case .marathon: return "Marathon"
         }
     }
 }
@@ -882,17 +884,15 @@ private extension TrainingPlanStore {
         case .momentum:
             if stats.recentDistanceKilometers >= 65 || stats.longestSessionMinutes >= 85 || stats.weeklySessionAverage >= 4.5 {
                 return [
-                    "run-half-hansons-advanced-v1",
+                    "run-marathon-v1",
                     "run-half-v1",
                     "run-10mile-v1",
-                    "run-half-hansons-beginner-v1",
                     "run-10k-v1",
                     "run-base-30-v1"
                 ]
             } else if stats.recentDistanceKilometers >= 35 || stats.longestSessionMinutes >= 55 || stats.weeklySessionAverage >= 3 {
                 return [
                     "run-10k-v1",
-                    "run-half-hansons-beginner-v1",
                     "run-10mile-v1",
                     "run-half-v1",
                     "run-base-30-v1",
@@ -910,10 +910,9 @@ private extension TrainingPlanStore {
         case .steady, .completedToday:
             if stats.recentDistanceKilometers >= 60 || stats.longestSessionMinutes >= 80 || stats.weeklySessionAverage >= 4 {
                 return [
-                    "run-half-hansons-advanced-v1",
+                    "run-marathon-v1",
                     "run-10mile-v1",
                     "run-half-v1",
-                    "run-half-hansons-beginner-v1",
                     "run-10k-v1",
                     "run-base-30-v1"
                 ]
@@ -921,7 +920,6 @@ private extension TrainingPlanStore {
                 return [
                     "run-10k-v1",
                     "run-base-30-v1",
-                    "run-half-hansons-beginner-v1",
                     "run-half-v1",
                     "run-5k-v1",
                     "run-consistency-v1"
@@ -947,7 +945,7 @@ private extension TrainingPlanStore {
             suggestedSessions = min(template.maxSessionsPerWeek, max(template.minSessionsPerWeek, baselineSessions <= 1 ? 2 : baselineSessions))
         case .consistency:
             suggestedSessions = min(template.maxSessionsPerWeek, max(template.minSessionsPerWeek, baselineSessions + (phase == .momentum ? 1 : 0)))
-        case .fiveK, .tenK, .tenMile, .halfMarathon:
+        case .fiveK, .tenK, .tenMile, .halfMarathon, .marathon:
             suggestedSessions = min(template.maxSessionsPerWeek, max(template.minSessionsPerWeek, baselineSessions))
         }
 
@@ -1065,6 +1063,7 @@ private extension TrainingPlanStore {
         case .tenK: return 30
         case .tenMile: return 40
         case .halfMarathon: return 50
+        case .marathon: return 70
         }
     }
 
@@ -1076,6 +1075,7 @@ private extension TrainingPlanStore {
         case .tenK: return 10
         case .tenMile: return 12
         case .halfMarathon: return 15
+        case .marathon: return 20
         }
     }
 
@@ -1093,6 +1093,8 @@ private extension TrainingPlanStore {
             return "You've built enough baseline work that a longer endurance focus can be realistic if the week stays controlled."
         case .halfMarathon:
             return phase == .momentum ? "Your recent rhythm supports a half build, so long as the week keeps adapting around fatigue." : "You have enough baseline to start a half build, but the plan still needs to stay grounded in your current routine."
+        case .marathon:
+            return "Your recent long-run pattern is strong enough to consider a marathon build, with cutbacks and taper weeks protecting the risk."
         }
     }
 
@@ -1103,7 +1105,8 @@ private extension TrainingPlanStore {
         case .fiveK: return "\(sessionsPerWeek)x per week with one slightly more focused day."
         case .tenK: return "More steady work each week, but still manageable for a normal schedule."
         case .tenMile: return "Needs honest recovery and a real long-run slot."
-        case .halfMarathon: return "Most demanding of the current options, with bigger long-run expectations."
+        case .halfMarathon: return "A real endurance build with bigger long-run expectations."
+        case .marathon: return "Highest commitment: long-run progression, fueling practice, and honest recovery matter."
         }
     }
 

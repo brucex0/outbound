@@ -24,6 +24,6 @@ export async function gpt4oMiniTranscribe({ audioUrl, language }: { audioUrl: st
     throw new Error(`OpenAI transcription failed: ${response.status} ${await response.text()}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { text?: string };
   return data.text as string;
 }
