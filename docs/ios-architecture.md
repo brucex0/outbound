@@ -47,6 +47,13 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
 
+## Progress
+
+- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
+- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, recent activity stat highlights, and empty states.
+- `App/ProfileView.swift`: embeds `ProgressSummaryCard` between the motivation dashboard and recent activity so Progress is reachable without adding a new tab.
+- `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, and best weekly distance.
+
 ## Coach And Session Analysis
 
 - `Coach/CoachTemplate.swift`: predefined coach catalog model. Current fixtures include one female and one male coach for Run and Bike. Each template defines sport, persona traits, sample nudges, voice options, face options, and a prompt seed.

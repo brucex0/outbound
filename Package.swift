@@ -33,11 +33,13 @@ let package = Package(
                 "Core/FirebaseBootstrap.swift",
                 "Core/LocalImageView.swift",
                 "Core/LocalActivityStore.swift",
-                "Core/LocationManager.swift"
+                "Core/LocationManager.swift",
+                "Progress/ProgressView.swift"
             ],
             sources: [
                 "Core/ActiveSessionSnapshot.swift",
                 "Core/SessionFormatting.swift",
+                "Progress/ProgressStatsEngine.swift",
                 "Coach/CoachProfile.swift",
                 "Coach/CoachTemplate.swift",
                 "Coach/SessionAnalysisProvider.swift",

@@ -27,6 +27,7 @@ struct ProfileView: View {
                     MotivationDashboardView(
                         onStartSuggestion: onStartSuggestion
                     )
+                    ProgressSummaryCard()
                     recentActivitySection
                 }
                 .padding()
