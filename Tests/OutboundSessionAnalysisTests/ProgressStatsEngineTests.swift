@@ -123,6 +123,55 @@ struct ProgressStatsEngineTests {
         #expect(snapshot.momentumNote?.text == "Back after a rest window")
         #expect(snapshot.momentumNote?.symbolName == "arrow.clockwise")
     }
+
+    @Test func reportsPersonalRecordsForCommonDistances() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = date(2026, 6, 10, 12)
+        let routeActivity = activity(
+            id: "route-pr",
+            startedAt: date(2026, 6, 9, 8),
+            duration: 2_000,
+            distance: 5_000,
+            elevation: 20,
+            route: route(
+                start: date(2026, 6, 9, 8),
+                metersPerPoint: 1_000,
+                secondsPerPoint: 300,
+                count: 6
+            )
+        )
+
+        let snapshot = ProgressStatsEngine.snapshot(
+            from: [routeActivity],
+            now: now,
+            calendar: calendar
+        )
+
+        #expect(snapshot.personalRecords.contains { $0.title == "1K" && $0.effort.durationSeconds == 300 })
+        #expect(snapshot.personalRecords.contains { $0.title == "5K" && $0.effort.durationSeconds == 1_500 })
+    }
+
+    @Test func derivesRacePredictionsFromBestRecentRecord() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = date(2026, 6, 10, 12)
+        let activities = [
+            activity(id: "five-k", startedAt: date(2026, 6, 9, 8), duration: 1_500, distance: 5_000, elevation: 20),
+            activity(id: "easy-a", startedAt: date(2026, 6, 7, 8), duration: 1_800, distance: 4_000, elevation: 10),
+            activity(id: "easy-b", startedAt: date(2026, 6, 5, 8), duration: 1_900, distance: 4_200, elevation: 8),
+            activity(id: "easy-c", startedAt: date(2026, 6, 3, 8), duration: 1_700, distance: 3_800, elevation: 8),
+            activity(id: "easy-d", startedAt: date(2026, 6, 1, 8), duration: 1_600, distance: 3_600, elevation: 8)
+        ]
+
+        let snapshot = ProgressStatsEngine.snapshot(
+            from: activities,
+            now: now,
+            calendar: calendar
+        )
+
+        let tenK = snapshot.racePredictions.first { $0.title == "10K" }
+        #expect(tenK?.confidence == .medium)
+        #expect((2_900...3_200).contains(tenK?.predictedSeconds ?? 0))
+    }
 }
 
 private func activity(

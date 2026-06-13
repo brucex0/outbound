@@ -9,10 +9,12 @@ struct ActivityDetailView: View {
     let activity: SavedActivity
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var gearStore: GearStore
     @State private var shareURL: URL?
     @State private var shareError: ShareRouteError?
     @State private var showSplits = false
     @State private var showElevationProfile = false
+    @State private var isEditPresented = false
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
     @State private var sheetDragHeight: CGFloat?
     @State private var showsCollapsedSheetContent = false
@@ -89,6 +91,16 @@ struct ActivityDetailView: View {
         }
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isEditPresented = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .accessibilityLabel("Edit activity")
+            }
+        }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
         .toolbar(sheetDetent == .expanded ? .hidden : .visible, for: .navigationBar)
@@ -99,6 +111,11 @@ struct ActivityDetailView: View {
         }
         .alert(item: $shareError) { error in
             Alert(title: Text("Unable to Share Route"), message: Text(error.message))
+        }
+        .sheet(isPresented: $isEditPresented) {
+            EditActivityView(activity: currentActivity)
+                .environmentObject(activityStore)
+                .environmentObject(gearStore)
         }
     }
 
@@ -122,6 +139,7 @@ struct ActivityDetailView: View {
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
                         statsHeroSection
+                        metadataSection
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
                         routeControlsSection
@@ -349,6 +367,70 @@ struct ActivityDetailView: View {
         .padding(.top, 22)
         .padding(.bottom, 24)
         .background(Color(.systemBackground))
+    }
+
+    private var metadataSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ActivityMetadataRow(
+                icon: sourceIcon,
+                title: sourceTitle,
+                detail: currentActivity.source.deviceName ?? sourceDetail
+            )
+
+            if let gear = currentActivity.gear {
+                ActivityMetadataRow(icon: "shoeprints.fill", title: "Shoes", detail: gear.shoeName)
+            }
+
+            if currentActivity.indoor?.isIndoor == true {
+                ActivityMetadataRow(icon: "figure.run.treadmill", title: "Treadmill", detail: "Indoor run")
+            }
+
+            if let cadence = currentActivity.cadence,
+               cadence.averageStepsPerMinute != nil || cadence.maxStepsPerMinute != nil {
+                ActivityMetadataRow(
+                    icon: "metronome.fill",
+                    title: "Cadence",
+                    detail: [
+                        cadence.averageStepsPerMinute.map { "Avg \($0) spm" },
+                        cadence.maxStepsPerMinute.map { "Max \($0) spm" }
+                    ].compactMap { $0 }.joined(separator: " • ")
+                )
+            }
+
+            if let zones = currentActivity.heartRateZones {
+                HeartRateZonesMiniView(summary: zones)
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+    }
+
+    private var sourceTitle: String {
+        if currentActivity.manualEdits != nil { return "Edited activity" }
+        return currentActivity.source.displayName
+    }
+
+    private var sourceDetail: String {
+        if let edits = currentActivity.manualEdits {
+            return edits.editedFields.joined(separator: ", ")
+        }
+        switch currentActivity.source.kind {
+        case .outbound: return "Recorded in Outbound"
+        case .appleHealth: return "Imported from Apple Health"
+        case .garminViaHealth: return "Garmin via Apple Health"
+        case .manual: return "Manual entry"
+        case .importedFile: return "Imported file"
+        }
+    }
+
+    private var sourceIcon: String {
+        if currentActivity.manualEdits != nil { return "pencil" }
+        switch currentActivity.source.kind {
+        case .outbound: return "iphone"
+        case .appleHealth, .garminViaHealth: return "heart.text.square.fill"
+        case .manual: return "square.and.pencil"
+        case .importedFile: return "doc.badge.arrow.up"
+        }
     }
 
     // MARK: - Splits
@@ -932,6 +1014,131 @@ private struct DetailStatCell: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ActivityMetadataRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(.orange)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(detail.isEmpty ? "--" : detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct HeartRateZonesMiniView: View {
+    let summary: ActivityHeartRateZoneSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Heart-rate zones", systemImage: "heart.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text("Max \(summary.estimatedMaxHeartRate)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 3) {
+                ForEach(summary.zones) { zone in
+                    Capsule()
+                        .fill(zone.seconds > 0 ? Color.orange : Color(.tertiarySystemFill))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 8)
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct EditActivityView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var activityStore: ActivityStore
+    @EnvironmentObject var gearStore: GearStore
+
+    let activity: SavedActivity
+    @State private var title: String
+    @State private var startedAt: Date
+    @State private var distanceText: String
+    @State private var durationMinutesText: String
+    @State private var shoeID: UUID?
+
+    init(activity: SavedActivity) {
+        self.activity = activity
+        _title = State(initialValue: activity.title)
+        _startedAt = State(initialValue: activity.startedAt)
+        _distanceText = State(initialValue: String(format: "%.2f", activity.distanceM / 1000))
+        _durationMinutesText = State(initialValue: String(format: "%.0f", Double(activity.durationSecs) / 60))
+        _shoeID = State(initialValue: activity.gear?.shoeID)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Activity") {
+                    TextField("Title", text: $title)
+                    DatePicker("Date", selection: $startedAt)
+                    TextField("Distance in km", text: $distanceText)
+                        .keyboardType(.decimalPad)
+                    TextField("Duration in minutes", text: $durationMinutesText)
+                        .keyboardType(.numberPad)
+                }
+
+                Section("Gear") {
+                    Picker("Shoes", selection: $shoeID) {
+                        Text("None").tag(UUID?.none)
+                        ForEach(gearStore.activeShoes) { shoe in
+                            Text(shoe.displayName).tag(Optional(shoe.id))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Edit Activity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    private func save() {
+        let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000
+        let durationSecs = max(1, Int((Double(durationMinutesText) ?? Double(activity.durationSecs) / 60) * 60))
+        let selectedShoe = shoeID.flatMap { id in gearStore.shoes.first { $0.id == id } }
+        try? activityStore.updateActivity(
+            activity,
+            title: title,
+            startedAt: startedAt,
+            distanceM: distanceM,
+            durationSecs: durationSecs,
+            gear: gearStore.attachment(for: selectedShoe)
+        )
+        dismiss()
     }
 }
 

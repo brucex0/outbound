@@ -12,7 +12,13 @@ enum LocalActivityStore {
         title: String,
         coachNudge: String,
         reflection: FinishReflection?,
-        goal: ActivityGoal?
+        goal: ActivityGoal?,
+        source: ActivitySourceMetadata = .outboundRecorded,
+        gear: ActivityGearAttachment? = nil,
+        manualEdits: ActivityManualEdits? = nil,
+        indoor: ActivityIndoorMetadata? = nil,
+        cadence: ActivityCadenceSummary? = nil,
+        heartRateZones: ActivityHeartRateZoneSummary? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -41,6 +47,12 @@ enum LocalActivityStore {
             elevationGainM: summary.elevationGainM,
             healthMetrics: summary.healthMetrics,
             goal: goal,
+            source: source,
+            gear: gear,
+            manualEdits: manualEdits,
+            indoor: indoor,
+            cadence: cadence,
+            heartRateZones: heartRateZones,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -141,6 +153,12 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     let elevationGainM: Double?
     let healthMetrics: ActivityHealthMetrics?
     let goal: ActivityGoal?
+    let source: ActivitySourceMetadata
+    let gear: ActivityGearAttachment?
+    let manualEdits: ActivityManualEdits?
+    let indoor: ActivityIndoorMetadata?
+    let cadence: ActivityCadenceSummary?
+    let heartRateZones: ActivityHeartRateZoneSummary?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -173,6 +191,12 @@ struct SavedActivity: Codable, Identifiable, Hashable {
             healthMetrics = nil
         }
         goal = try c.decodeIfPresent(ActivityGoal.self, forKey: .goal)
+        source = try c.decodeIfPresent(ActivitySourceMetadata.self, forKey: .source) ?? .outboundRecorded
+        gear = try c.decodeIfPresent(ActivityGearAttachment.self, forKey: .gear)
+        manualEdits = try c.decodeIfPresent(ActivityManualEdits.self, forKey: .manualEdits)
+        indoor = try c.decodeIfPresent(ActivityIndoorMetadata.self, forKey: .indoor)
+        cadence = try c.decodeIfPresent(ActivityCadenceSummary.self, forKey: .cadence)
+        heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -190,7 +214,14 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     init(id: UUID, title: String, coachNudge: String, reflection: FinishReflection?, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
-         healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil, route: SavedRoute?,
+         healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil,
+         source: ActivitySourceMetadata = .outboundRecorded,
+         gear: ActivityGearAttachment? = nil,
+         manualEdits: ActivityManualEdits? = nil,
+         indoor: ActivityIndoorMetadata? = nil,
+         cadence: ActivityCadenceSummary? = nil,
+         heartRateZones: ActivityHeartRateZoneSummary? = nil,
+         route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
         self.reflection = reflection
@@ -198,6 +229,12 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
         self.elevationGainM = elevationGainM; self.healthMetrics = healthMetrics
         self.goal = goal
+        self.source = source
+        self.gear = gear
+        self.manualEdits = manualEdits
+        self.indoor = indoor
+        self.cadence = cadence
+        self.heartRateZones = heartRateZones
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -217,6 +254,12 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         case healthMetrics
         case avgHeartRate
         case goal
+        case source
+        case gear
+        case manualEdits
+        case indoor
+        case cadence
+        case heartRateZones
         case route
         case trackPoints
         case photos
@@ -238,10 +281,76 @@ struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(elevationGainM, forKey: .elevationGainM)
         try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
         try c.encodeIfPresent(goal, forKey: .goal)
+        try c.encode(source, forKey: .source)
+        try c.encodeIfPresent(gear, forKey: .gear)
+        try c.encodeIfPresent(manualEdits, forKey: .manualEdits)
+        try c.encodeIfPresent(indoor, forKey: .indoor)
+        try c.encodeIfPresent(cadence, forKey: .cadence)
+        try c.encodeIfPresent(heartRateZones, forKey: .heartRateZones)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)
     }
+}
+
+struct ActivitySourceMetadata: Codable, Hashable {
+    enum Kind: String, Codable, Hashable {
+        case outbound
+        case appleHealth
+        case garminViaHealth
+        case manual
+        case importedFile
+    }
+
+    let kind: Kind
+    let displayName: String
+    let deviceName: String?
+    let externalID: String?
+    let importedAt: Date?
+
+    nonisolated static let outboundRecorded = ActivitySourceMetadata(
+        kind: .outbound,
+        displayName: "Outbound",
+        deviceName: nil,
+        externalID: nil,
+        importedAt: nil
+    )
+
+    var isManual: Bool { kind == .manual }
+}
+
+struct ActivityGearAttachment: Codable, Hashable {
+    let shoeID: UUID
+    let shoeName: String
+}
+
+struct ActivityManualEdits: Codable, Hashable {
+    let editedAt: Date
+    let editedFields: [String]
+}
+
+struct ActivityIndoorMetadata: Codable, Hashable {
+    let isIndoor: Bool
+    let mode: String?
+}
+
+struct ActivityCadenceSummary: Codable, Hashable {
+    let averageStepsPerMinute: Int?
+    let maxStepsPerMinute: Int?
+}
+
+struct ActivityHeartRateZoneSummary: Codable, Hashable {
+    let estimatedMaxHeartRate: Int
+    let zones: [ActivityHeartRateZone]
+}
+
+struct ActivityHeartRateZone: Codable, Hashable, Identifiable {
+    let index: Int
+    let lowerBoundBPM: Int
+    let upperBoundBPM: Int?
+    let seconds: Int
+
+    var id: Int { index }
 }
 
 struct SavedActivitySyncState: Codable, Hashable {

@@ -11,14 +11,14 @@ Primary flow:
 1. App launches directly into `MainTabView`.
 2. New authenticated accounts see the first-win onboarding flow before normal use; completed accounts skip it.
 3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, Progress, and recent activity.
-4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, best efforts, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
+4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, PR history, race predictions, shoe mileage, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
-6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused.
+6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is shared through the system Share Sheet and updated from live location snapshots.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
-9. Save writes the activity manifest, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
+9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
 10. Social is isolated behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition; default beta builds omit the Social tab.
-11. Coach customization lives under Settings, where the user can choose a predefined coach and tune voice, face, style, and nudge frequency.
+11. Coach customization and shoe tracking live under Settings; the user can choose a predefined coach, tune voice/face/style/nudge frequency, and add or retire running shoes.
 
 ## Open Docs By Task
 
@@ -34,6 +34,8 @@ Primary flow:
 | Active-session voice commands, spoken coach Q&A, and workout conversation scope | `docs/session-voice-control.md` | Product and implementation spec for tap-to-talk commands, live stats Q&A, and coach replies during activities |
 | Product strategy, competitor scan, feature gaps, roadmap priorities | `docs/product-strategy.md` | Category landscape, Outbound strengths/weaknesses, recommended feature set, and phased roadmap |
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
+| Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
+| Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |
 | Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
 | Motivation UX, daily coach loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
 | Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |

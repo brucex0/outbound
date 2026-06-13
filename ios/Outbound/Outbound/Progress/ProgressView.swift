@@ -4,6 +4,7 @@ import SwiftUI
 struct RunnerProgressView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var gearStore: GearStore
 
     private var snapshot: ProgressStatsSnapshot {
         ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
@@ -22,6 +23,9 @@ struct RunnerProgressView: View {
                     topSummary
                     trendsSection
                     bestEffortsSection
+                    personalRecordsSection
+                    racePredictionsSection
+                    gearMileageSection
                     recentStatsSection
                     coachNote
                 }
@@ -115,6 +119,58 @@ struct RunnerProgressView: View {
         }
     }
 
+    private var personalRecordsSection: some View {
+        ProgressSection(title: "PR History") {
+            if snapshot.personalRecords.isEmpty {
+                Text("Longer saved runs unlock more PR distances.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(snapshot.personalRecords.prefix(8)) { record in
+                        PersonalRecordRow(record: record)
+                        if record.id != snapshot.personalRecords.prefix(8).last?.id {
+                            Divider().padding(.leading, 42)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var racePredictionsSection: some View {
+        ProgressSection(title: "Race Predictions") {
+            if snapshot.racePredictions.isEmpty {
+                Text("Save a few runs with clean distances to estimate race ranges.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(snapshot.racePredictions) { prediction in
+                        RacePredictionRow(prediction: prediction)
+                    }
+                }
+            }
+        }
+    }
+
+    private var gearMileageSection: some View {
+        let summaries = gearStore.mileageSummaries(from: activityStore.activities)
+        return ProgressSection(title: "Shoe Mileage") {
+            if summaries.isEmpty {
+                Text("Add shoes in Settings to track mileage by pair.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(summaries) { summary in
+                        GearMileageRow(summary: summary, unitSystem: measurementPreferences.unitSystem)
+                    }
+                }
+            }
+        }
+    }
+
     private var recentStatsSection: some View {
         ProgressSection(title: "Recent Activity Stats") {
             VStack(spacing: 10) {
@@ -147,6 +203,7 @@ struct RunnerProgressView: View {
 struct ProgressSummaryCard: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var gearStore: GearStore
 
     private var snapshot: ProgressStatsSnapshot {
         ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
@@ -154,9 +211,10 @@ struct ProgressSummaryCard: View {
 
     var body: some View {
         NavigationLink {
-            RunnerProgressView()
-                .environmentObject(activityStore)
-                .environmentObject(measurementPreferences)
+                RunnerProgressView()
+                    .environmentObject(activityStore)
+                    .environmentObject(measurementPreferences)
+                    .environmentObject(gearStore)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -368,6 +426,87 @@ private struct BestEffortRow: View {
     }
 }
 
+private struct PersonalRecordRow: View {
+    let record: ProgressPersonalRecord
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "rosette")
+                .font(.headline)
+                .foregroundStyle(.orange)
+                .frame(width: 30, height: 30)
+                .background(Color.orange.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(record.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(record.effort.date.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(record.effort.durationSeconds?.formatted() ?? "--")
+                .font(.subheadline.weight(.bold).monospacedDigit())
+        }
+        .padding(.vertical, 9)
+    }
+}
+
+private struct RacePredictionRow: View {
+    let prediction: ProgressRacePrediction
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(prediction.title)
+                    .font(.subheadline.weight(.semibold))
+                Text("\(prediction.confidence.title) confidence")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(prediction.predictedSeconds.formatted())
+                .font(.subheadline.weight(.bold).monospacedDigit())
+        }
+        .padding(10)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct GearMileageRow: View {
+    let summary: GearMileageSummary
+    let unitSystem: MeasurementUnitSystem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(summary.item.displayName, systemImage: "shoeprints.fill")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(unitSystem.distanceString(meters: summary.distanceMeters, fractionDigits: 1))
+                    .font(.caption.weight(.bold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            ProgressView(value: summary.usageFraction)
+                .tint(.orange)
+
+            Text("\(unitSystem.distanceString(meters: summary.remainingMeters, fractionDigits: 0)) before suggested retirement")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 private struct RecentProgressActivityRow: View {
     let activity: SavedActivity
     let notableEfforts: [ProgressBestEffort]
@@ -396,6 +535,15 @@ private struct RecentProgressActivityRow: View {
                 }
             }
 
+            HStack(spacing: 6) {
+                SourceBadge(activity: activity)
+                if let gear = activity.gear {
+                    Text(gear.shoeName)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             HStack(spacing: 12) {
                 Text(unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 2))
                 Text(activity.durationSecs.formatted())
@@ -412,6 +560,37 @@ private struct RecentProgressActivityRow: View {
         .padding(10)
         .background(Color(.tertiarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SourceBadge: View {
+    let activity: SavedActivity
+
+    var body: some View {
+        Label(sourceLabel, systemImage: sourceIcon)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(Color(.quaternarySystemFill))
+            .clipShape(Capsule())
+    }
+
+    private var sourceLabel: String {
+        if activity.indoor?.isIndoor == true { return "Indoor" }
+        if activity.manualEdits != nil { return "Edited" }
+        return activity.source.displayName
+    }
+
+    private var sourceIcon: String {
+        if activity.indoor?.isIndoor == true { return "figure.run.treadmill" }
+        if activity.manualEdits != nil { return "pencil" }
+        switch activity.source.kind {
+        case .outbound: return "iphone"
+        case .appleHealth, .garminViaHealth: return "heart.text.square.fill"
+        case .manual: return "square.and.pencil"
+        case .importedFile: return "doc.badge.arrow.up"
+        }
     }
 }
 

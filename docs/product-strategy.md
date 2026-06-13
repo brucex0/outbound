@@ -203,9 +203,10 @@ The near-term wedge remains motivation plus coaching, not sport count.
 - No training plan or “what should I do today?” engine.
 - No strong progress layer: goals, streak alternatives, training load, PRs, benchmarks, calendar, badges.
 - No route discovery or recommendation.
-- No live safety or location sharing.
+- No live safety or location sharing with trusted people.
 - No wearable/device sync story.
 - No structured workout support such as intervals, target pace, or plan execution.
+- Practical runner utilities are still thin: shoe tracking, manual edits, source attribution, HR zones, cadence, treadmill mode, PR history, and race predictions are not yet productized.
 - No trust signals yet around consistency, depth, and reliability of recorded data.
 
 ### Where copying the market would be a mistake
@@ -229,6 +230,7 @@ Use three buckets instead of one flat backlog.
 - Apple Watch and HealthKit-first sync strategy
 - live safety location sharing
 - shoe tracking
+- PR history, manual activity editing, treadmill mode, source badges, HR zones, and cadence when data exists
 - structured workout primitives: warmup, intervals, cooldown, target pace
 
 ### Core differentiators to build hard
@@ -259,6 +261,8 @@ Use three buckets instead of one flat backlog.
 - weekly progress view with activity count, time, distance, and consistency
 - goals and milestones
 - live location safety sharing
+- shoe tracking and source-aware activity history
+- manual activity editing plus treadmill/indoor run entry
 - Apple Watch companion or workout sync path
 
 ### V2 coaching system
@@ -304,6 +308,7 @@ Ship:
 - route detail and sharing polish
 - weekly progress summary
 - live safety sharing
+- shoe tracking, source badges, and basic manual edits
 
 Why first:
 - without trust, identity, and shareability, the rest of the product cannot compound
@@ -331,6 +336,8 @@ Goal:
 
 Ship:
 - goals and milestone system
+- PR history and race-result views
+- heart-rate zone summaries and cadence display when data exists
 - structured workouts
 - coach memory and adaptive nudges
 - weekly/monthly recaps
@@ -413,9 +420,9 @@ Outbound should own:
 If only five things can happen next, choose these:
 
 1. real account plus backend-backed social identity
-2. shareable activity posts with route and photo support
+2. trusted live sharing plus shareable activity posts with route and photo support
 3. motivation-first Home with daily spark, readiness, and suggested actions
-4. goals, weekly recap, and comeback/momentum logic
+4. goals, weekly recap, comeback/momentum logic, and practical runner logbook utilities
 5. simple structured workouts plus beginner return-to-run plans
 
 ## Anti-Backlog

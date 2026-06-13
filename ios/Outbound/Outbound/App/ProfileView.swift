@@ -150,6 +150,7 @@ private struct SettingsView: View {
     @EnvironmentObject var musicStore: MusicStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var onboardingStore: OnboardingStore
+    @EnvironmentObject var gearStore: GearStore
 
     let initialFocusSection: SettingsFocusSection?
 
@@ -225,6 +226,12 @@ private struct SettingsView: View {
                         .environmentObject(musicStore)
                         .listRowInsets(EdgeInsets())
                         .id(SettingsFocusSection.appleMusic)
+                }
+
+                Section("Gear") {
+                    GearSettingsCard()
+                        .environmentObject(gearStore)
+                        .listRowInsets(EdgeInsets())
                 }
 
                 Section("App") {
@@ -326,6 +333,136 @@ private struct RecentActivitySummaryCard: View {
 private enum SettingsFocusSection: Hashable {
     case appleHealth
     case appleMusic
+}
+
+private struct GearSettingsCard: View {
+    @EnvironmentObject var gearStore: GearStore
+    @State private var isAddShoePresented = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Shoes")
+                        .font(.title3.bold())
+                    Text(gearStore.shoes.isEmpty ? "Track mileage by pair" : "\(gearStore.activeShoes.count) active")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isAddShoePresented = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .accessibilityLabel("Add shoe")
+            }
+
+            if gearStore.shoes.isEmpty {
+                Text("Add your current pair and Outbound will attach it to new runs by default.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(gearStore.shoes) { shoe in
+                        HStack(spacing: 10) {
+                            Image(systemName: "shoeprints.fill")
+                                .foregroundStyle(shoe.retiredAt == nil ? .orange : .secondary)
+                                .frame(width: 26)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(shoe.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(shoe.retiredAt == nil ? "Mileage tracked on saved runs" : "Retired")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            if gearStore.defaultShoeID == shoe.id {
+                                Text("Default")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.orange)
+                            } else if shoe.retiredAt == nil {
+                                Button("Use") { gearStore.setDefault(shoe) }
+                                    .font(.caption.weight(.semibold))
+                            }
+
+                            if shoe.retiredAt == nil {
+                                Button {
+                                    gearStore.retire(shoe)
+                                } label: {
+                                    Image(systemName: "archivebox")
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("Retire shoe")
+                            }
+                        }
+                        .padding(10)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color.orange.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .sheet(isPresented: $isAddShoePresented) {
+            AddShoeView()
+                .environmentObject(gearStore)
+        }
+    }
+}
+
+private struct AddShoeView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var gearStore: GearStore
+    @State private var name = "Daily trainer"
+    @State private var brand = ""
+    @State private var model = ""
+    @State private var limitText = "640"
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Shoe") {
+                    TextField("Name", text: $name)
+                    TextField("Brand", text: $brand)
+                    TextField("Model", text: $model)
+                    TextField("Retirement distance in km", text: $limitText)
+                        .keyboardType(.decimalPad)
+                }
+            }
+            .navigationTitle("Add Shoe")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        gearStore.addShoe(
+                            name: name,
+                            brand: brand,
+                            model: model,
+                            distanceLimitM: (Double(limitText) ?? 640) * 1000
+                        )
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
 }
 
 struct AssistantView: View {

@@ -20,6 +20,8 @@ struct ProgressStatsSnapshot: Equatable {
     let currentWeek: ProgressPeriodTotals
     let weeklyBuckets: [ProgressWeekBucket]
     let bestEfforts: [ProgressBestEffort]
+    let personalRecords: [ProgressPersonalRecord]
+    let racePredictions: [ProgressRacePrediction]
     let momentumNote: ProgressMomentumNote?
     let eligibleActivityCount: Int
 
@@ -46,6 +48,31 @@ struct ProgressStatsSnapshot: Equatable {
 struct ProgressMomentumNote: Equatable {
     let text: String
     let symbolName: String
+}
+
+struct ProgressPersonalRecord: Identifiable, Equatable {
+    let title: String
+    let targetMeters: Double
+    let effort: ProgressBestEffort
+
+    var id: String { "\(Int(targetMeters.rounded()))-\(effort.id)" }
+}
+
+struct ProgressRacePrediction: Identifiable, Equatable {
+    enum Confidence: String, Equatable {
+        case low
+        case medium
+        case high
+
+        var title: String { rawValue.capitalized }
+    }
+
+    let title: String
+    let targetMeters: Double
+    let predictedSeconds: Int
+    let confidence: Confidence
+
+    var id: String { title }
 }
 
 struct ProgressPeriodTotals: Equatable {
@@ -138,6 +165,8 @@ enum ProgressStatsEngine {
             currentWeek: totals(for: currentWeekActivities),
             weeklyBuckets: buckets,
             bestEfforts: bestEfforts(from: eligible, weeklyBuckets: buckets),
+            personalRecords: personalRecords(from: eligible),
+            racePredictions: racePredictions(from: eligible, now: now, calendar: calendar),
             momentumNote: momentumNote(
                 from: eligible,
                 currentWeekActivities: currentWeekActivities,
@@ -244,6 +273,71 @@ enum ProgressStatsEngine {
         }
 
         return efforts
+    }
+
+    private static func personalRecords(from activities: [ProgressActivity]) -> [ProgressPersonalRecord] {
+        [
+            ("400m", 400),
+            ("1K", 1_000),
+            ("1 mile", 1_609.344),
+            ("5K", 5_000),
+            ("10K", 10_000),
+            ("10 mile", 16_093.44),
+            ("Half marathon", 21_097.5),
+            ("Marathon", 42_195)
+        ].compactMap { title, meters in
+            fastestEffort(kind: .fastestKilometer, targetMeters: meters, activities: activities).map {
+                ProgressPersonalRecord(title: title, targetMeters: meters, effort: $0)
+            }
+        }
+    }
+
+    private static func racePredictions(
+        from activities: [ProgressActivity],
+        now: Date,
+        calendar: Calendar
+    ) -> [ProgressRacePrediction] {
+        guard let reference = personalRecords(from: activities)
+            .filter({ $0.targetMeters >= 1_000 && $0.targetMeters <= 21_097.5 })
+            .compactMap({ record -> (ProgressPersonalRecord, Int)? in
+                guard let seconds = record.effort.durationSeconds else { return nil }
+                return (record, seconds)
+            })
+            .min(by: { lhs, rhs in
+                let lhsRecency = daysSince(date: lhs.0.effort.date, now: now, calendar: calendar)
+                let rhsRecency = daysSince(date: rhs.0.effort.date, now: now, calendar: calendar)
+                let lhsScore = lhs.0.targetMeters * (lhsRecency <= 90 ? 1 : 0.75)
+                let rhsScore = rhs.0.targetMeters * (rhsRecency <= 90 ? 1 : 0.75)
+                return lhsScore > rhsScore
+            }) else {
+            return []
+        }
+
+        let activityCount = activities.count
+        let recentCount = activities.filter { daysSince(date: $0.startedAt, now: now, calendar: calendar) <= 42 }.count
+        let confidence: ProgressRacePrediction.Confidence
+        if activityCount >= 12, recentCount >= 6 {
+            confidence = .high
+        } else if activityCount >= 5, recentCount >= 3 {
+            confidence = .medium
+        } else {
+            confidence = .low
+        }
+
+        return [
+            ("5K", 5_000),
+            ("10K", 10_000),
+            ("Half", 21_097.5),
+            ("Marathon", 42_195)
+        ].map { title, meters in
+            let predicted = Double(reference.1) * pow(meters / reference.0.targetMeters, 1.06)
+            return ProgressRacePrediction(
+                title: title,
+                targetMeters: meters,
+                predictedSeconds: Int(predicted.rounded()),
+                confidence: confidence
+            )
+        }
     }
 
     private static func fastestEffort(

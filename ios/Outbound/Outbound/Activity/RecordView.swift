@@ -17,6 +17,8 @@ struct RecordView: View {
     @EnvironmentObject var musicStore: MusicStore
     @EnvironmentObject var recognitionStore: RecognitionStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var gearStore: GearStore
+    @EnvironmentObject var liveShareStore: LiveShareStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -36,6 +38,9 @@ struct RecordView: View {
     @State private var countdownStep: ActivityStartCountdownStep?
     @State private var countdownTask: Task<Void, Never>?
     @State private var didApplySmartGoalDefault = false
+    @State private var isIndoorSession = false
+    @State private var isStartingActivity = false
+    @State private var liveShareURLToPresent: LiveShareURL?
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -117,6 +122,7 @@ struct RecordView: View {
         }
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
+            liveShareStore.ingest(snapshot)
             liveActivityManager.update(
                 snapshot: snapshot,
                 state: recorder.state,
@@ -203,6 +209,9 @@ struct RecordView: View {
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(item: $liveShareURLToPresent) { item in
+            SystemShareSheet(activityItems: [item.url])
+        }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
             if customGoalKind == .distance {
                 TextField("Distance in km", text: $customDistanceText)
@@ -226,6 +235,20 @@ struct RecordView: View {
 
     private func startRecording() {
         guard recorder.state == .idle, !isCountingDown else { return }
+        guard !isStartingActivity else { return }
+        isStartingActivity = true
+        Task { @MainActor in
+            let intent = plannedIntent
+            let shareURL = await liveShareStore.beginIfArmed(intent: intent)
+            if let shareURL {
+                liveShareURLToPresent = LiveShareURL(url: shareURL)
+            }
+            beginRecordingAfterLiveShareSetup()
+            isStartingActivity = false
+        }
+    }
+
+    private func beginRecordingAfterLiveShareSetup() {
         capturedPhotos = []
         pendingActivity = nil
         activePage = preferredSessionPage
@@ -316,6 +339,7 @@ struct RecordView: View {
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
+        liveShareStore.end()
         coach.deactivate()
         musicStore.clearPendingWorkoutPlayback()
         showCamera = false
@@ -350,7 +374,11 @@ struct RecordView: View {
             summary: activity.summary,
             photos: photos,
             reflection: reflection,
-            goal: activeIntent?.activityGoal
+            goal: activeIntent?.activityGoal,
+            source: .outboundRecorded,
+            gear: gearStore.attachment(for: gearStore.defaultShoe),
+            indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
+            heartRateZones: heartRateZones(from: activity.summary)
         ) else {
             return
         }
@@ -372,6 +400,7 @@ struct RecordView: View {
 
     private func discardPendingActivity() {
         liveActivityManager.end()
+        liveShareStore.end()
         clearPending()
         onCloseRequest?(false)
     }
@@ -383,6 +412,7 @@ struct RecordView: View {
         activeIntent = nil
         plannedIntent = nil
         selectedGoalMode = .freestyle
+        isIndoorSession = false
     }
 
     private var preferredSessionPage: SessionPage {
@@ -428,18 +458,21 @@ struct RecordView: View {
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
             musicSetupCard
+            safetySetupCard
+            practicalSetupCard
 
             VStack(spacing: 14) {
                 sessionGoalCard(for: intent)
 
                 Button(action: startRecording) {
-                    Label((plannedIntent ?? intent).startLabel, systemImage: "record.circle.fill")
+                    Label(isStartingActivity ? "Preparing..." : (plannedIntent ?? intent).startLabel, systemImage: "record.circle.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(Capsule().fill(.orange))
                         .foregroundStyle(.white)
                 }
+                .disabled(isStartingActivity)
 
                 Button("Change activity") {
                     onCloseRequest?(false)
@@ -448,6 +481,81 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var safetySetupCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: Binding(
+                get: { liveShareStore.isArmedForNextActivity },
+                set: { liveShareStore.armForNextActivity($0) }
+            )) {
+                Label("Share live run", systemImage: "location.circle.fill")
+                    .font(.headline)
+            }
+            .tint(.orange)
+
+            Text(liveShareStore.isArmedForNextActivity ? "A private trusted link will be active until you finish or stop sharing." : "Off by default. Turn on only when a trusted person should follow this session.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let message = liveShareStore.lastErrorMessage {
+                Text(message)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+    }
+
+    private var practicalSetupCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $isIndoorSession) {
+                Label("Treadmill / indoor", systemImage: "figure.run.treadmill")
+                    .font(.headline)
+            }
+            .tint(.orange)
+
+            if let shoe = gearStore.defaultShoe {
+                Label(shoe.displayName, systemImage: "shoeprints.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("Add shoes in Settings to track mileage", systemImage: "shoeprints.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+    }
+
+    private func heartRateZones(from summary: ActivitySummary) -> ActivityHeartRateZoneSummary? {
+        guard let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM else { return nil }
+        let estimatedMax = 190
+        let bounds = [
+            (1, 0.50, 0.60),
+            (2, 0.60, 0.70),
+            (3, 0.70, 0.80),
+            (4, 0.80, 0.90),
+            (5, 0.90, 1.01)
+        ]
+        let zones = bounds.map { index, lower, upper in
+            let lowerBPM = Int((Double(estimatedMax) * lower).rounded())
+            let upperBPM = upper >= 1 ? nil : Int((Double(estimatedMax) * upper).rounded())
+            let containsAverage = averageHeartRate >= lowerBPM && (upperBPM.map { averageHeartRate < $0 } ?? true)
+            return ActivityHeartRateZone(
+                index: index,
+                lowerBoundBPM: lowerBPM,
+                upperBoundBPM: upperBPM,
+                seconds: containsAverage ? summary.durationSecs : 0
+            )
+        }
+        return ActivityHeartRateZoneSummary(estimatedMaxHeartRate: estimatedMax, zones: zones)
     }
 
     private func sessionGoalCard(for intent: SessionIntent) -> some View {
@@ -726,6 +834,11 @@ struct RecordView: View {
     }
 
     private var startSetupCardCornerRadius: CGFloat { 20 }
+}
+
+private struct LiveShareURL: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 private struct PendingFinishedActivity: Identifiable {

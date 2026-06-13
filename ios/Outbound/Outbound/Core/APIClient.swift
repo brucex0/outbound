@@ -81,6 +81,21 @@ final class APIClient {
         try await get("/planning/recommendations")
     }
 
+    func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
+        try await post("/safety/live-shares", body: request)
+    }
+
+    func updateLiveShareLocation(
+        shareID: String,
+        request: LiveShareLocationUpdateRequest
+    ) async throws -> LiveShareStatusResponse {
+        try await patch("/safety/live-shares/\(shareID)/location", body: request)
+    }
+
+    func endLiveShare(shareID: String) async throws -> LiveShareStatusResponse {
+        try await post("/safety/live-shares/\(shareID)/end", body: EmptyBody())
+    }
+
     // MARK: - Helpers
 
     private func get<T: Decodable>(
@@ -99,6 +114,19 @@ final class APIClient {
     private func post<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         var req = URLRequest(url: url(for: path))
         req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try encoder.encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        var req = URLRequest(url: url(for: path))
+        req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -988,4 +1016,38 @@ struct ActivityUploadResponse: Decodable {
     let clientActivityId: String?
     let status: String
     let uploadedAt: Date
+}
+
+struct LiveShareCreateRequest: Encodable {
+    let sport: String?
+    let title: String?
+    let expiresInSeconds: Int?
+}
+
+struct LiveShareCreateResponse: Decodable {
+    let id: String
+    let token: String
+    let shareURL: URL
+    let status: String
+    let startedAt: Date
+    let expiresAt: Date
+}
+
+struct LiveShareLocationUpdateRequest: Encodable {
+    let recordedAt: Date
+    let latitude: Double
+    let longitude: Double
+    let altitudeM: Double?
+    let accuracyM: Double?
+    let elapsedSeconds: Int
+    let distanceM: Double
+}
+
+struct LiveShareStatusResponse: Decodable {
+    let id: String
+    let status: String
+    let startedAt: Date
+    let expiresAt: Date
+    let endedAt: Date?
+    let lastLocationAt: Date?
 }

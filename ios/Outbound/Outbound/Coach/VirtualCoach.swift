@@ -79,6 +79,9 @@ final class VirtualCoach: NSObject, ObservableObject {
     private let maxRecentSpokenMessages = 4
     private let maxRecentSpokenRoles = 4
     private let minimumProgressAnnouncementGapSeconds = 30
+    private let minimumDistanceProgressElapsedSeconds = 30
+    private let maximumRunningProgressAverageSpeedMetersPerSecond: Double = 10
+    private let maximumCyclingProgressAverageSpeedMetersPerSecond: Double = 25
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil, speechEnabled: Bool = true) {
@@ -243,7 +246,10 @@ final class VirtualCoach: NSObject, ObservableObject {
         let nextTimeMilestone = snapshot.elapsedSeconds / timeInterval
         let nextDistanceMilestone = Int(snapshot.distanceMeters / distanceIntervalMeters)
         let reachedTimeMilestone = nextTimeMilestone > lastProgressTimeMilestone
-        let reachedDistanceMilestone = nextDistanceMilestone > lastProgressDistanceMilestone
+        let reachedDistanceMilestone = (
+            nextDistanceMilestone > lastProgressDistanceMilestone
+            && hasReliableDistanceProgress(snapshot)
+        )
 
         guard reachedTimeMilestone || reachedDistanceMilestone else { return }
 
@@ -275,6 +281,9 @@ final class VirtualCoach: NSObject, ObservableObject {
 
     private func nextDistanceGoalMilestone(for snapshot: ActiveSessionSnapshot) -> GoalMilestone? {
         guard let targetDistance = sessionIntent?.resolvedTargetDistanceMeters, targetDistance > 0 else {
+            return nil
+        }
+        guard hasReliableDistanceProgress(snapshot) else {
             return nil
         }
 
@@ -355,6 +364,23 @@ final class VirtualCoach: NSObject, ObservableObject {
         let miles = targetDistance / 1_609.344
         let roundedMiles = miles.rounded()
         return roundedMiles >= 2 && abs(miles - roundedMiles) < 0.03
+    }
+
+    private func hasReliableDistanceProgress(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        guard snapshot.distanceMeters > 0 else { return false }
+        guard snapshot.elapsedSeconds >= minimumDistanceProgressElapsedSeconds else { return false }
+
+        let averageSpeed = snapshot.distanceMeters / Double(max(snapshot.elapsedSeconds, 1))
+        return averageSpeed <= maximumReliableProgressAverageSpeedMetersPerSecond
+    }
+
+    private var maximumReliableProgressAverageSpeedMetersPerSecond: Double {
+        switch persona?.template.sport ?? sessionIntent?.sport ?? .run {
+        case .run:
+            return maximumRunningProgressAverageSpeedMetersPerSecond
+        case .bike:
+            return maximumCyclingProgressAverageSpeedMetersPerSecond
+        }
     }
 
     private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {

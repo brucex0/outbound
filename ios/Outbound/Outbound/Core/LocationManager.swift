@@ -13,6 +13,7 @@ final class LocationManager: NSObject, ObservableObject {
     private let minimumValidPaceDurationSeconds: TimeInterval = 5
     private let minimumValidPaceSecsPerKm: Double = 150
     private let maximumValidPaceSecsPerKm: Double = 1500
+    private let maximumPreStartLocationAgeSeconds: TimeInterval = 3
 
     var currentSpeedMetersPerSecond: Double? {
         guard let location = location else { return nil }
@@ -34,6 +35,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     private var wantsTracking = false
+    private var trackingStartedAt: Date?
 
     override init() {
         super.init()
@@ -51,6 +53,8 @@ final class LocationManager: NSObject, ObservableObject {
 
     func startTracking() {
         trackPoints = []
+        location = nil
+        trackingStartedAt = Date()
         wantsTracking = true
 
         switch manager.authorizationStatus {
@@ -81,6 +85,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     func stopTracking() -> [CLLocation] {
         wantsTracking = false
+        trackingStartedAt = nil
         manager.stopUpdatingLocation()
         return trackPoints
     }
@@ -124,6 +129,7 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         Task { @MainActor in
+            guard self.shouldAcceptLocationUpdate(loc) else { return }
             self.location = loc
             if self.shouldAppendTrackPoint(loc) {
                 self.trackPoints.append(loc)
@@ -131,12 +137,20 @@ extension LocationManager: CLLocationManagerDelegate {
         }
     }
 
-    private func shouldAppendTrackPoint(_ location: CLLocation) -> Bool {
+    private func shouldAcceptLocationUpdate(_ location: CLLocation) -> Bool {
         guard location.horizontalAccuracy >= 0,
               location.horizontalAccuracy <= maximumValidLocationAccuracyMeters else {
             return false
         }
 
+        guard wantsTracking, let trackingStartedAt else {
+            return true
+        }
+
+        return location.timestamp >= trackingStartedAt.addingTimeInterval(-maximumPreStartLocationAgeSeconds)
+    }
+
+    private func shouldAppendTrackPoint(_ location: CLLocation) -> Bool {
         if location.speed >= 0,
            location.speed > maximumValidRunningSpeedMetersPerSecond {
             return false

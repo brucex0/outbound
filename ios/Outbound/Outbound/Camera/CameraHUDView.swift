@@ -8,6 +8,7 @@ import UIKit
 // motivation while the session is active.
 struct CameraHUDView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var liveShareStore: LiveShareStore
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     @ObservedObject var musicStore: MusicStore
@@ -140,6 +141,19 @@ struct CameraHUDView: View {
 
     private var rightControlRail: some View {
         VStack(spacing: 14) {
+            if liveShareStore.isSharing {
+                Button {
+                    liveShareStore.end()
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(.orange))
+                }
+                .accessibilityLabel("Stop live sharing")
+            }
+
             CapturedPhotoStackView(
                 image: displayPhoto,
                 count: displayPhotoCount,

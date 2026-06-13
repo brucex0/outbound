@@ -25,7 +25,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Recording
 
-- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Me-tab suggestion it shows that confirmation state; when opened from the bottom-row quick-start button it jumps straight to freestyle confirmation unless recent saved activity goals promote a frequently reused custom distance or time as the default. The start page can optionally set a per-session distance or time goal before Start, with distance and time presets seeded by standard targets and personalized from saved goal history. Start opens the live camera/map surface, runs a short visual and spoken countdown through `VirtualCoach`, then starts `ActivityRecorder` on "Go" so elapsed time and GPS begin after the countdown. During the activity it forwards live snapshots to the coach, collects captured photos, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the bottom-row activity button reopens it.
+- `Activity/RecordView.swift`: owns the shared activity start page and recording flow. When opened from a Me-tab suggestion it shows that confirmation state; when opened from the bottom-row quick-start button it jumps straight to freestyle confirmation unless recent saved activity goals promote a frequently reused custom distance or time as the default. The start page can optionally set a per-session distance or time goal, arm local live sharing, and mark the session as treadmill/indoor before Start. Start opens the live camera/map surface, runs a short visual and spoken countdown through `VirtualCoach`, then starts `ActivityRecorder` on "Go" so elapsed time and GPS begin after the countdown. During the activity it forwards live snapshots to the coach, collects captured photos, and presents the reflection-first Save/Discard sheet after finish. A top `chevron.down` hides the page without stopping an active session, and the bottom-row activity button reopens it.
 - `Activity/ActivityGoal.swift`: per-session goal model for freestyle, distance, and time starts, plus helpers that convert selected goals into `SessionIntent` values.
 - `Core/ActivityRecorder.swift`: main activity state machine. Tracks elapsed time, distance, current pace, heart-rate placeholder, and `liveSnapshot`. Elapsed time is derived from active wall-clock segments rather than only a foreground timer, and location updates also refresh the live snapshot so coaching continues while the app is backgrounded during a run. Supports pause/resume by stopping both the UI timer and GPS updates without discarding the current track. `finish()` returns `ActivitySummary` with track points.
 - `Core/SessionLiveActivityManager.swift`: ActivityKit bridge that starts, updates, and ends the active session Live Activity using recorder snapshots.
@@ -38,21 +38,21 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Camera/CameraController.swift`: AVFoundation capture session, camera authorization, session queue, retained photo-capture delegates, and still-photo capture.
 - `Camera/CameraPreviewLayer.swift`: SwiftUI wrapper for `AVCaptureVideoPreviewLayer`.
-- `Camera/CameraHUDView.swift`: full-screen camera plus a Strava-style bottom state card and a right-edge control rail during an active session. While recording, the bottom card shows live stats, the latest coach message, music state, and Pause; while paused, it expands into Resume and Finish. Captured photos are returned to `RecordView` with `PhotoMetadata`, including whether the shot was taken while active or paused.
+- `Camera/CameraHUDView.swift`: full-screen camera plus a Strava-style bottom state card and a right-edge control rail during an active session. While recording, the bottom card shows live stats, the latest coach message, music state, and Pause; while paused, it expands into Resume and Finish. When local live sharing is active, the rail shows a stop-sharing control. Captured photos are returned to `RecordView` with `PhotoMetadata`, including whether the shot was taken while active or paused.
 
 ## Local Persistence
 
 - `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`.
-- `activities.json`: manifest containing `SavedActivity` entries, optional per-session goal metadata, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
+- `activities.json`: manifest containing `SavedActivity` entries, source attribution, optional gear/indoor/manual-edit/cadence/heart-rate-zone metadata, optional per-session goal metadata, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
 
 ## Progress
 
-- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, one momentum note, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
-- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, recent activity stat highlights, momentum copy, and empty states.
+- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, PR history, race predictions, one momentum note, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
+- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, PR history, race predictions, shoe mileage, recent activity stat highlights, momentum copy, and empty states.
 - `App/ProfileView.swift`: embeds `ProgressSummaryCard` between the motivation dashboard and recent activity so Progress is reachable without adding a new tab.
-- `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, and best weekly distance.
+- `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, best weekly distance, PR history, race predictions, and momentum notes.
 
 ## Coach And Session Analysis
 
@@ -93,9 +93,17 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
 - `Social/ActivityFeedView.swift`: optional local-first social hub compiled only when `OUTBOUND_ENABLE_SOCIAL` is defined, with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. Default beta builds omit this surface for App Review safety. See `docs/social.md` before changing social product loops.
-- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, Apple Health, Apple Music, DEBUG-only onboarding replay, and sign-out.
+- `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, shoe tracking, Apple Health, Apple Music, DEBUG-only onboarding replay, and sign-out.
 
 ## Integrations
 
 - `Integrations/HealthKit/HealthKitService.swift`: lightweight `HealthKit` wrapper that defines the initial workout import/write-back permission set, exposes authorization snapshot state, and safely reports unavailable environments.
 - `Integrations/HealthKit/HealthAuthorizationStore.swift`: UI-facing observable stores for refreshing HealthKit permission state, requesting Apple Health access from the Me tab, and previewing recent imported workouts with a normalized `ImportedWorkout` model.
+
+## Safety And Runner Utilities
+
+- `Safety/LiveShareStore.swift`: network-backed V1 live-share state. It can arm the next activity, create a server private-link session, send throttled live location updates, expose stale/unavailable status, and end sharing from finish/discard or the live HUD.
+- `Gear/GearStore.swift`: local-first running shoe inventory stored in `UserDefaults`, with default-shoe selection, retirement, and mileage summaries derived from saved activities.
+- `RecordView`: has a pre-start `Share live run` toggle and a treadmill/indoor toggle; save attaches default shoe, source attribution, indoor metadata, and estimated HR-zone summary when HR exists.
+- `ActivityDetailView`: shows source, edited/manual, shoe, indoor, cadence, and HR-zone metadata and includes an edit sheet for title, date, distance, duration, and shoe corrections.
+- `docs/runner-utilities.md`: runner-utility roadmap for remaining import/export breadth, fuller HR/cadence ingestion, and device/source polish.

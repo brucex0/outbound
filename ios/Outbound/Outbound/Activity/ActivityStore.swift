@@ -15,15 +15,28 @@ final class ActivityStore: ObservableObject {
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection?,
-        goal: ActivityGoal? = nil
+        goal: ActivityGoal? = nil,
+        title: String? = nil,
+        source: ActivitySourceMetadata = .outboundRecorded,
+        gear: ActivityGearAttachment? = nil,
+        manualEdits: ActivityManualEdits? = nil,
+        indoor: ActivityIndoorMetadata? = nil,
+        cadence: ActivityCadenceSummary? = nil,
+        heartRateZones: ActivityHeartRateZoneSummary? = nil
     ) throws -> SavedActivity {
         let activity = try LocalActivityStore.save(
             summary: summary,
             photos: photos,
-            title: autoTitle(for: summary.startedAt),
+            title: title ?? autoTitle(for: summary.startedAt),
             coachNudge: "",
             reflection: reflection,
-            goal: goal
+            goal: goal,
+            source: source,
+            gear: gear,
+            manualEdits: manualEdits,
+            indoor: indoor,
+            cadence: cadence,
+            heartRateZones: heartRateZones
         )
         refresh()
         Task {
@@ -47,6 +60,64 @@ final class ActivityStore: ObservableObject {
 
     func exportRoute(for activity: SavedActivity, format: RouteExportFormat) throws -> URL {
         try RouteFileExporter.export(activity: self.activity(id: activity.id) ?? activity, format: format)
+    }
+
+    func updateActivity(
+        _ activity: SavedActivity,
+        title: String,
+        startedAt: Date,
+        distanceM: Double,
+        durationSecs: Int,
+        gear: ActivityGearAttachment?
+    ) throws {
+        let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        var editedFields: [String] = []
+        if cleanedTitle != activity.title { editedFields.append("title") }
+        if startedAt != activity.startedAt { editedFields.append("date") }
+        if abs(distanceM - activity.distanceM) > 0.5 { editedFields.append("distance") }
+        if durationSecs != activity.durationSecs { editedFields.append("duration") }
+        if gear != activity.gear { editedFields.append("shoe") }
+
+        let avgPace = distanceM > 0 && durationSecs > 0
+            ? Double(durationSecs) / (distanceM / 1000)
+            : nil
+
+        let updated = SavedActivity(
+            id: activity.id,
+            title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
+            coachNudge: activity.coachNudge,
+            reflection: activity.reflection,
+            createdAt: activity.createdAt,
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),
+            durationSecs: max(1, durationSecs),
+            distanceM: max(0, distanceM),
+            avgPace: avgPace,
+            elevationGainM: activity.elevationGainM,
+            healthMetrics: activity.healthMetrics,
+            goal: activity.goal,
+            source: editedFields.isEmpty ? activity.source : ActivitySourceMetadata(
+                kind: activity.source.kind == .manual ? .manual : activity.source.kind,
+                displayName: activity.source.displayName,
+                deviceName: activity.source.deviceName,
+                externalID: activity.source.externalID,
+                importedAt: activity.source.importedAt
+            ),
+            gear: gear,
+            manualEdits: editedFields.isEmpty ? activity.manualEdits : ActivityManualEdits(
+                editedAt: Date(),
+                editedFields: Array(Set((activity.manualEdits?.editedFields ?? []) + editedFields)).sorted()
+            ),
+            indoor: activity.indoor,
+            cadence: activity.cadence,
+            heartRateZones: activity.heartRateZones,
+            route: activity.route,
+            photos: activity.photos,
+            sync: activity.sync
+        )
+
+        try LocalActivityStore.replace(updated)
+        refresh()
     }
 
     func syncPendingActivitiesIfNeeded() async {
@@ -145,6 +216,12 @@ final class ActivityStore: ObservableObject {
             elevationGainM: current.elevationGainM,
             healthMetrics: current.healthMetrics,
             goal: current.goal,
+            source: current.source,
+            gear: current.gear,
+            manualEdits: current.manualEdits,
+            indoor: current.indoor,
+            cadence: current.cadence,
+            heartRateZones: current.heartRateZones,
             route: current.route,
             photos: current.photos,
             sync: syncState

@@ -58,6 +58,8 @@ This is still one product backend, but with explicit module boundaries:
 - `assistant`
 - `plans`
 - `social`
+- `safety`
+- `gear`
 - `media`
 - `notifications`
 
@@ -224,6 +226,62 @@ Recommended early API shape:
 - `POST /v1/social/reactions`
 - `POST /v1/social/comments`
 
+### Safety
+
+Responsibilities:
+
+- create and end trusted live-share sessions
+- receive throttled live location updates during an active workout
+- serve time-limited public live-view links
+- expire stale shares and avoid long-term high-resolution location retention
+
+Rules:
+
+- live sharing is off by default and explicit per session
+- public links use unguessable tokens stored hashed server-side
+- recipients can view only the active shared session, not the runner's profile or history
+- route privacy zones should be designed before broad route sharing or public live maps
+
+Recommended early API shape:
+
+- `POST /v1/safety/live-shares`
+- `PATCH /v1/safety/live-shares/:id/location`
+- `POST /v1/safety/live-shares/:id/end`
+- `GET /live/:token`
+
+Current V1:
+
+- `backend/src/routes/safety.ts` implements the API above.
+- `GET /live/:token` serves the public viewer HTML, and `GET /live/:token?format=json` serves the polling payload.
+- `SafetyLiveShare` stores session state, hashed token, expiry, latest location, route preview, elapsed time, and distance.
+- `SafetyLiveSharePoint` stores live-share points for the active session history.
+- Public tokens are random 32-byte base64url strings and only SHA-256 hashes are stored.
+- iOS throttles updates to every 10 seconds or 25 meters and continues recording if sharing fails.
+
+### Gear And Runner Utilities
+
+Responsibilities:
+
+- store shoes and later other gear
+- attach gear to activities
+- preserve source attribution for local, HealthKit, file, manual, and vendor imports
+- support manual activity edits without hiding the original source
+- support computed runner stats such as PRs, HR zones, cadence, and race predictions
+
+Rules:
+
+- start local-first on the client, then sync once authenticated activity sync is stable
+- distinguish manual edits, imported workouts, and Outbound-recorded workouts in UI and API payloads
+- do not fabricate cadence or detailed HR zones when the source data does not provide enough samples
+
+Recommended early API shape after activity sync:
+
+- `GET /v1/gear`
+- `POST /v1/gear`
+- `PATCH /v1/gear/:id`
+- `POST /v1/activities/:id/gear`
+- `PATCH /v1/activities/:id`
+
 ### Media
 
 Responsibilities:
@@ -267,6 +325,11 @@ Add after the first server-owned plan pass:
 - `PlannedSession`
 - `ReadinessCheckIn`
 - `PlanAdaptation`
+- `SafetyShareSession`
+- `TrustedContact`
+- `GearItem`
+- `ActivityGear`
+- optional `ActivityEdit` audit records
 
 Keep `route` as JSON for the first implementation unless query requirements force a separate route table.
 

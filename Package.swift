@@ -23,6 +23,8 @@ let package = Package(
                 "App",
                 "Assets.xcassets",
                 "Camera",
+                "Gear",
+                "Safety",
                 "Social",
                 "GoogleService-Info.plist",
                 "Coach/CoachCatalogStore.swift",
@@ -34,6 +36,7 @@ let package = Package(
                 "Core/LocalImageView.swift",
                 "Core/LocalActivityStore.swift",
                 "Core/LocationManager.swift",
+                "Core/SystemShareSheet.swift",
                 "Progress/ProgressView.swift"
             ],
             sources: [

@@ -96,7 +96,7 @@ final class VirtualCoachTests: XCTestCase {
         try await waitForMainActor()
 
         XCTAssertTrue(coach.lastSpokenAnnouncement.contains("20 meters."))
-        XCTAssertFalse(coach.lastSpokenAnnouncement.localizedCaseInsensitiveContains("kilometer"))
+        XCTAssertFalse(coach.lastSpokenAnnouncement.localizedCaseInsensitiveContains("1 kilometer."))
 
         coach.deactivate()
     }
@@ -106,13 +106,26 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 60, distanceMeters: 999, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 120, distanceMeters: 999, paceSecsPerKm: 320))
         try await waitForMainActor()
         XCTAssertEqual(coach.lastSpokenAnnouncement, "")
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 61, distanceMeters: 1_000, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 121, distanceMeters: 1_000, paceSecsPerKm: 320))
         try await waitForMainActor()
         XCTAssertTrue(coach.lastSpokenAnnouncement.contains("1 kilometer."))
+
+        coach.deactivate()
+    }
+
+    func testDistanceProgressMilestoneIgnoresImplausibleStartupJump() async throws {
+        let provider = FakeSessionAnalysisProvider(shouldSpeak: false)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil)
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 5, distanceMeters: 1_000, paceSecsPerKm: 320))
+        try await waitForMainActor()
+
+        XCTAssertEqual(coach.lastSpokenAnnouncement, "")
 
         coach.deactivate()
     }
