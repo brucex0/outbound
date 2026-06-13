@@ -31,6 +31,7 @@ model User {
   athleteTrainingStates AthleteTrainingState[]
   planningEvents PlanningEvent[]
   planAdjustmentEvents PlanAdjustmentEvent[]
+  safetyLiveShares SafetyLiveShare[]
   posts         Post[]
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
@@ -129,6 +130,49 @@ model Activity {
   createdAt     DateTime  @default(now())
 
   @@unique([userId, clientActivityId])
+}
+
+model SafetyLiveShare {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId      String?
+  tokenHash       String    @unique
+  status          String    @default("active")
+  recipientLabel  String?
+  sport           String?
+  title           String?
+  startedAt       DateTime  @default(now())
+  expiresAt       DateTime
+  endedAt         DateTime?
+  lastLocationAt  DateTime?
+  lastLocation    Json?
+  routePreview    Json      @default("[]")
+  elapsedSeconds  Int       @default(0)
+  distanceM       Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  points          SafetyLiveSharePoint[]
+
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+model SafetyLiveSharePoint {
+  id              String    @id @default(cuid())
+  shareId         String
+  share           SafetyLiveShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  recordedAt      DateTime
+  latitude        Float
+  longitude       Float
+  altitudeM       Float?
+  accuracyM       Float?
+  elapsedSeconds  Int
+  distanceM       Float
+  createdAt       DateTime  @default(now())
+
+  @@index([shareId, recordedAt])
 }
 
 model TrainingPlanTemplate {

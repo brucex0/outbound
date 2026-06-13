@@ -10,6 +10,7 @@ import social from "./routes/social.js";
 import media from "./routes/media.js";
 import auth from "./routes/auth.js";
 import planning from "./routes/planning.js";
+import safety, { liveShareViewer } from "./routes/safety.js";
 import type { AppEnv } from "./types/hono.js";
 
 const app = new Hono<AppEnv>();
@@ -19,6 +20,7 @@ app.use("*", cors({ origin: "*" }));
 app.use("/v1/*", authMiddleware);
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
+app.get("/live/:token", liveShareViewer);
 
 app.route("/v1/auth", auth);
 app.route("/v1/activities", activities);
@@ -28,6 +30,7 @@ app.route("/v1/coach", coach);
 app.route("/v1/planning", planning);
 app.route("/v1/social", social);
 app.route("/v1/media", media);
+app.route("/v1/safety", safety);
 app.route("/v1/transcribe", transcribeRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
