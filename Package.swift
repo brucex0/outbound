@@ -41,6 +41,7 @@ let package = Package(
             ],
             sources: [
                 "Core/ActiveSessionSnapshot.swift",
+                "Core/ElevationGainCalculator.swift",
                 "Core/SessionFormatting.swift",
                 "Progress/ProgressStatsEngine.swift",
                 "Coach/CoachProfile.swift",
