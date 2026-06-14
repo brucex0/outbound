@@ -15,12 +15,17 @@ Core loops:
 
 ## Current iOS Shape
 
-- `Social/ActivityFeedView.swift` owns the first-pass local social hub.
+- `Social/ActivityFeedView.swift` owns the local social hub UI.
+- `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift` own Social-only models, seed data, interaction state, and Social-only recognition awards.
 - The Social module is behind the `OUTBOUND_ENABLE_SOCIAL` Swift compilation condition.
-- Beta/App Review builds should leave that flag unset until moderation, reporting, blocking, contact, and backend ownership are ready.
+- Beta/App Review builds should leave that flag unset until server moderation, developer response ownership, user contact, and backend social ownership are ready.
 - The current implementation is local/seeded UI state. It does not call a backend yet.
 - It reads `ActivityStore.activities.first` to offer the latest saved activity as a share card.
-- Feed cards use route previews, social actions, and seeded people so interaction patterns are visible while backend APIs are still absent.
+- Squad feed cards use route previews, cheers, local comments, route prompts, report, and block controls.
+- Clubs support local join/leave state. Challenges support local join state and progress cards.
+- Relays can be locally composed from route, time window, and audience choices, then appear in Squad.
+- Rivals show a weekly leaderboard and a local edge-claim action.
+- Social assistant copy and Social-only recognition state are also gated behind `OUTBOUND_ENABLE_SOCIAL`; no-social build artifacts should not contain Social/Squad/Rival/Relay/Cheer strings.
 
 ## App Review Readiness
 

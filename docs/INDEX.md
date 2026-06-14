@@ -17,7 +17,7 @@ Primary flow:
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-10. Social is isolated behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition; default beta builds omit the Social tab.
+10. Social is isolated behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition; default beta builds omit the Social tab, Social stores, Social recognition state, and Social assistant copy.
 11. Coach customization and shoe tracking live under Settings; the user can choose a predefined coach, tune voice/face/style/nudge frequency, and add or retire running shoes.
 
 ## Open Docs By Task

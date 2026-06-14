@@ -15,7 +15,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## App Entry
 
-- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after Firebase authentication.
+- `App/OutboundApp.swift`: app root. Calls `FirebaseBootstrap.configureIfAvailable()`, creates `AuthStore`, `CoachStore`, `CoachCatalogStore`, `ActivityStore`, `GoalStore`, `HealthAuthorizationStore`, `HealthImportStore`, and `DailyCheckInStore`, and shows `MainTabView` after Firebase authentication. When `OUTBOUND_ENABLE_SOCIAL` is defined, it also creates the Social-only local stores.
 - `App/AppDelegate.swift`: minimal UIKit bridge used by the SwiftUI app to hand Firebase Auth OAuth callback URLs back to `Auth.auth().canHandle(_:)` after hosted Google sign-in.
 - `App/AuthStore.swift`: Firebase auth wrapper for provider-backed Apple and Google sign-in. Apple uses native `AuthenticationServices` with a nonce-backed Firebase credential; Google uses Firebase Auth's hosted OAuth flow. Existing-email provider conflicts keep the pending credential and require the user to prove the already-linked provider before accounts are connected.
 - `App/AuthView.swift`: login UI for Apple and Google provider sign-in only. Email/password and phone/password login are intentionally not user-facing.
@@ -92,7 +92,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Network And Placeholders
 
 - `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
-- `Social/ActivityFeedView.swift`: optional local-first social hub compiled only when `OUTBOUND_ENABLE_SOCIAL` is defined, with Squad, Clubs, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, club joins, challenge cards, and rivalry rows. Default beta builds omit this surface for App Review safety. See `docs/social.md` before changing social product loops.
+- `Social/ActivityFeedView.swift`: optional local-first social hub compiled only when `OUTBOUND_ENABLE_SOCIAL` is defined, with Squad, Clubs, Relays, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, local comments, route prompts, report/block controls, privacy visibility, club joins, challenge joins, relay composition, and rivalry rows.
+- `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift`: Social-only models, seed data, local interaction state, and Social-only recognition awards. Default beta builds omit these code paths and related assistant copy for App Review safety. See `docs/social.md` before changing social product loops.
 - `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account, coach customization, shoe tracking, Apple Health, Apple Music, DEBUG-only onboarding replay, and sign-out.
 
 ## Integrations
