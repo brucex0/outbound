@@ -12,6 +12,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var gearStore: GearStore
     @State private var shareURL: URL?
     @State private var shareError: ShareRouteError?
+    @State private var isPreparingShareCard = false
     @State private var showSplits = false
     @State private var showElevationProfile = false
     @State private var isEditPresented = false
@@ -600,23 +601,37 @@ struct ActivityDetailView: View {
             Spacer()
 
             Menu {
+                Button {
+                    shareActivityCard()
+                } label: {
+                    Label("Share Activity Card", systemImage: "photo.on.rectangle.angled")
+                }
+                .disabled(isPreparingShareCard)
+
+                Divider()
+
                 ForEach(RouteExportFormat.allCases) { format in
                     Button {
                         shareRoute(format)
                     } label: {
                         Label("Export \(format.title)", systemImage: "square.and.arrow.up")
                     }
+                    .disabled(!currentActivity.hasRoute)
                 }
             } label: {
-                Label("Share", systemImage: "square.and.arrow.up")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.orange)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+                if isPreparingShareCard {
+                    Label("Preparing", systemImage: "hourglass")
+                } else {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
             }
-            .disabled(!currentActivity.hasRoute)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.orange)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .disabled(isPreparingShareCard)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -631,6 +646,21 @@ struct ActivityDetailView: View {
                 if !isPresented { shareURL = nil }
             }
         )
+    }
+
+    private func shareActivityCard() {
+        isPreparingShareCard = true
+        Task { @MainActor in
+            defer { isPreparingShareCard = false }
+            do {
+                shareURL = try ActivityShareCardRenderer.exportCard(
+                    activity: currentActivity,
+                    unitSystem: unitSystem
+                )
+            } catch {
+                shareError = ShareRouteError(message: error.localizedDescription)
+            }
+        }
     }
 
     private func shareRoute(_ format: RouteExportFormat) {
