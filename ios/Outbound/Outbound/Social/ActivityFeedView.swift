@@ -3,7 +3,7 @@ import SwiftUI
 
 struct ActivityFeedView: View {
     @EnvironmentObject private var activityStore: ActivityStore
-    @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let bottomContentInset: CGFloat
     @State private var selectedScope: SocialFeedScope = .squad
     @State private var cheeredPostIDs: Set<String> = ["maya-waterfront"]
@@ -14,7 +14,7 @@ struct ActivityFeedView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     socialCommandBar
-                    if let socialHighlight = recognitionStore.socialHighlight {
+                    if let socialHighlight = socialRecognitionStore.highlight {
                         SocialRecognitionCard(preview: socialHighlight)
                     }
                     crewPulseStrip
@@ -24,7 +24,7 @@ struct ActivityFeedView: View {
                         ShareLatestRunCard(
                             activity: latestActivity,
                             activityStore: activityStore,
-                            isShared: recognitionStore.sharedActivityIDs.contains(latestActivity.id)
+                            isShared: socialRecognitionStore.sharedActivityIDs.contains(latestActivity.id)
                         ) {
                             toggleShared(latestActivity)
                         }
@@ -141,7 +141,7 @@ struct ActivityFeedView: View {
             ForEach(SocialSeed.clubs) { club in
                 SocialClubCard(
                     club: club,
-                    isJoined: recognitionStore.joinedClubIDs.contains(club.id)
+                    isJoined: socialRecognitionStore.joinedClubIDs.contains(club.id)
                 ) {
                     toggleClub(club)
                 }
@@ -155,8 +155,8 @@ struct ActivityFeedView: View {
 
     private var rivalBoard: some View {
         LazyVStack(spacing: 12) {
-            RivalryHeaderCard(hasClaimedEdge: recognitionStore.claimedRivalEdge) {
-                _ = recognitionStore.claimRivalEdge()
+            RivalryHeaderCard(hasClaimedEdge: socialRecognitionStore.claimedRivalEdge) {
+                _ = socialRecognitionStore.claimRivalEdge()
             }
 
             ForEach(SocialSeed.rivals) { rival in
@@ -170,16 +170,16 @@ struct ActivityFeedView: View {
             cheeredPostIDs.remove(post.id)
         } else {
             cheeredPostIDs.insert(post.id)
-            _ = recognitionStore.registerCheer(for: post.id)
+            _ = socialRecognitionStore.registerCheer(for: post.id)
         }
     }
 
     private func toggleClub(_ club: SocialClub) {
-        _ = recognitionStore.toggleClubMembership(clubID: club.id)
+        _ = socialRecognitionStore.toggleClubMembership(clubID: club.id)
     }
 
     private func toggleShared(_ activity: SavedActivity) {
-        _ = recognitionStore.toggleShare(for: activity)
+        _ = socialRecognitionStore.toggleShare(for: activity)
     }
 }
 
@@ -551,7 +551,7 @@ private struct RivalryHeaderCard: View {
 }
 
 private struct SocialRecognitionCard: View {
-    let preview: RecognitionPreview
+    let preview: SocialRecognitionPreview
 
     var body: some View {
         HStack(spacing: 12) {
