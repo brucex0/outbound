@@ -8,6 +8,8 @@ struct ActivityFeedView: View {
     let bottomContentInset: CGFloat
     @State private var selectedScope: SocialFeedScope = .squad
     @State private var showingRelayComposer = false
+    @State private var selectedCommentPost: SocialFeedPost?
+    @State private var routePrompt: String?
 
     var body: some View {
         NavigationStack {
@@ -19,6 +21,7 @@ struct ActivityFeedView: View {
                     }
                     crewPulseStrip
                     scopePicker
+                    PrivacyControlCard(visibility: $socialStore.defaultVisibility)
 
                     if let latestActivity = activityStore.activities.first {
                         ShareLatestRunCard(
@@ -28,6 +31,18 @@ struct ActivityFeedView: View {
                         ) {
                             toggleShared(latestActivity)
                         }
+                    }
+
+                    if let routePrompt {
+                        SocialStatusCard(symbol: "arrow.triangle.turn.up.right.circle.fill", title: "Route prompt saved", message: routePrompt)
+                    }
+
+                    if !socialStore.reportedContentIDs.isEmpty || !socialStore.blockedPersonIDs.isEmpty {
+                        SocialStatusCard(
+                            symbol: "checkmark.shield.fill",
+                            title: "Local safety controls active",
+                            message: "\(socialStore.reportedContentIDs.count) report\(socialStore.reportedContentIDs.count == 1 ? "" : "s") and \(socialStore.blockedPersonIDs.count) block\(socialStore.blockedPersonIDs.count == 1 ? "" : "s") are hidden in this preview."
+                        )
                     }
 
                     switch selectedScope {
@@ -65,7 +80,18 @@ struct ActivityFeedView: View {
                 }
             }
             .sheet(isPresented: $showingRelayComposer) {
-                RelayComposerSheet()
+                RelayComposerSheet { routeLabel, windowLabel, audienceLabel in
+                    socialStore.createRelay(routeLabel: routeLabel, windowLabel: windowLabel, audienceLabel: audienceLabel)
+                    _ = socialRecognitionStore.toggleClubMembership(clubID: "relay-preview")
+                }
+            }
+            .sheet(item: $selectedCommentPost) { post in
+                CommentThreadSheet(
+                    post: post,
+                    comments: socialStore.comments(for: post.id)
+                ) { text in
+                    socialStore.addComment(text, to: post.id)
+                }
             }
         }
     }
@@ -125,13 +151,32 @@ struct ActivityFeedView: View {
 
     private var squadFeed: some View {
         LazyVStack(spacing: 12) {
+            ForEach(socialStore.relayInvites) { invite in
+                RelayInviteCard(invite: invite)
+            }
+
             ForEach(SocialSeed.feedPosts) { post in
-                SocialFeedPostCard(
-                    post: post,
-                    isCheered: socialStore.cheeredPostIDs.contains(post.id),
-                    commentCount: socialStore.commentCount(for: post)
-                ) {
-                    toggleCheer(for: post)
+                if !socialStore.blockedPersonIDs.contains(post.author.id) && !socialStore.reportedContentIDs.contains(post.id) {
+                    SocialFeedPostCard(
+                        post: post,
+                        isCheered: socialStore.cheeredPostIDs.contains(post.id),
+                        commentCount: socialStore.commentCount(for: post),
+                        onCheer: {
+                            toggleCheer(for: post)
+                        },
+                        onComment: {
+                            selectedCommentPost = post
+                        },
+                        onRunRoute: {
+                            routePrompt = "\(post.activity.routeName) is queued as a route idea for your next start."
+                        },
+                        onReport: {
+                            socialStore.reportContent(post.id)
+                        },
+                        onBlock: {
+                            socialStore.blockPerson(post.author.id)
+                        }
+                    )
                 }
             }
         }
@@ -149,7 +194,12 @@ struct ActivityFeedView: View {
             }
 
             ForEach(SocialSeed.challenges) { challenge in
-                SocialChallengeCard(challenge: challenge)
+                SocialChallengeCard(
+                    challenge: challenge,
+                    isJoined: socialStore.joinedChallengeIDs.contains(challenge.id)
+                ) {
+                    socialStore.toggleChallenge(challenge.id)
+                }
             }
         }
     }
@@ -205,6 +255,63 @@ private struct SocialMetricPill: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.tertiarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct PrivacyControlCard: View {
+    @Binding var visibility: SocialVisibility
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Default visibility", systemImage: "lock.shield.fill")
+                    .font(.subheadline.bold())
+                Spacer()
+                Text("Local preview")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("Default visibility", selection: $visibility) {
+                ForEach(SocialVisibility.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SocialStatusCard: View {
+    let symbol: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(.green)
+                .frame(width: 34, height: 34)
+                .background(.green.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
@@ -301,11 +408,45 @@ private struct ShareLatestRunCard: View {
     }
 }
 
+private struct RelayInviteCard: View {
+    let invite: SocialRelayInvite
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bolt.fill")
+                .font(.title3.bold())
+                .foregroundStyle(.green)
+                .frame(width: 42, height: 42)
+                .background(.green.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Relay invite created")
+                    .font(.headline)
+                Text("\(invite.routeLabel) - \(invite.windowLabel) - \(invite.audienceLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            LiveBadge()
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 private struct SocialFeedPostCard: View {
     let post: SocialFeedPost
     let isCheered: Bool
     let commentCount: Int
     let onCheer: () -> Void
+    let onComment: () -> Void
+    let onRunRoute: () -> Void
+    let onReport: () -> Void
+    let onBlock: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -330,11 +471,21 @@ private struct SocialFeedPostCard: View {
 
                 Spacer()
 
-                Image(systemName: post.kind.symbol)
-                    .font(.headline)
-                    .foregroundStyle(post.kind.tint)
-                    .frame(width: 34, height: 34)
-                    .background(post.kind.tint.opacity(0.12), in: Circle())
+                Menu {
+                    Button("Report post", systemImage: "exclamationmark.bubble") {
+                        onReport()
+                    }
+                    Button("Block \(post.author.firstName)", systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
+                        onBlock()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+                }
+                .accessibilityLabel("Post options")
             }
 
             Text(post.caption)
@@ -351,8 +502,8 @@ private struct SocialFeedPostCard: View {
                     action: onCheer
                 )
 
-                SocialActionButton(title: "\(commentCount)", symbol: "bubble.left.fill", isActive: false) { }
-                SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false) { }
+                SocialActionButton(title: "\(commentCount)", symbol: "bubble.left.fill", isActive: false, action: onComment)
+                SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false, action: onRunRoute)
 
                 Spacer()
 
@@ -460,6 +611,8 @@ private struct SocialClubCard: View {
 
 private struct SocialChallengeCard: View {
     let challenge: SocialChallenge
+    let isJoined: Bool
+    let onToggleJoin: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -491,9 +644,12 @@ private struct SocialChallengeCard: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            Button(isJoined ? "Joined" : "Join") {
+                onToggleJoin()
+            }
+            .font(.caption.bold())
+            .buttonStyle(.bordered)
+            .tint(isJoined ? .green : challenge.tint)
         }
         .padding(14)
         .background(Color(.secondarySystemGroupedBackground))
@@ -713,8 +869,78 @@ private struct RouteLineShape: Shape {
     }
 }
 
+private struct CommentThreadSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let post: SocialFeedPost
+    let comments: [SocialComment]
+    let onSend: (String) -> Void
+    @State private var draft = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                List {
+                    Section {
+                        Text(post.caption)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } header: {
+                        Text(post.author.fullName)
+                    }
+
+                    Section("Thread") {
+                        if comments.isEmpty {
+                            Text("No comments yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(comments) { comment in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(comment.authorName)
+                                        .font(.caption.bold())
+                                    Text(comment.text)
+                                        .font(.subheadline)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    TextField("Add a comment", text: $draft)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button {
+                        onSend(draft)
+                        draft = ""
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.headline)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(12)
+                .background(.bar)
+            }
+            .navigationTitle("Comments")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
 private struct RelayComposerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    let onCreate: (String, String, String) -> Void
+    @State private var selectedRoute = "Neighborhood Loop"
+    @State private var selectedWindow = "Lunch Window"
+    @State private var selectedAudience = "Squad Only"
 
     var body: some View {
         NavigationStack {
@@ -724,13 +950,29 @@ private struct RelayComposerSheet: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                RelayOptionRow(symbol: "location.fill", title: "Neighborhood Loop", subtitle: "3.2 km near home")
-                RelayOptionRow(symbol: "clock.fill", title: "Lunch Window", subtitle: "Open for the next 45 minutes")
-                RelayOptionRow(symbol: "person.2.fill", title: "Squad Only", subtitle: "Maya, Leo, Zoe, Chen")
+                RelayOptionPicker(
+                    symbol: "location.fill",
+                    title: "Route",
+                    options: ["Neighborhood Loop", "Waterfront Out-and-Back", "Track Ladder"],
+                    selection: $selectedRoute
+                )
+                RelayOptionPicker(
+                    symbol: "clock.fill",
+                    title: "Window",
+                    options: ["Lunch Window", "After Work", "Weekend Morning"],
+                    selection: $selectedWindow
+                )
+                RelayOptionPicker(
+                    symbol: "person.2.fill",
+                    title: "Audience",
+                    options: ["Squad Only", "Club Members", "Rivals"],
+                    selection: $selectedAudience
+                )
 
                 Spacer()
 
                 Button {
+                    onCreate(selectedRoute, selectedWindow, selectedAudience)
                     dismiss()
                 } label: {
                     Label("Create Relay", systemImage: "bolt.fill")
@@ -753,10 +995,11 @@ private struct RelayComposerSheet: View {
     }
 }
 
-private struct RelayOptionRow: View {
+private struct RelayOptionPicker: View {
     let symbol: String
     let title: String
-    let subtitle: String
+    let options: [String]
+    @Binding var selection: String
 
     var body: some View {
         HStack(spacing: 12) {
@@ -769,9 +1012,12 @@ private struct RelayOptionRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.subheadline.bold())
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Picker(title, selection: $selection) {
+                    ForEach(options, id: \.self) { option in
+                        Text(option).tag(option)
+                    }
+                }
+                .labelsHidden()
             }
 
             Spacer()
