@@ -4,11 +4,13 @@ import SwiftUI
 import UIKit
 
 enum ActivityShareCardRenderer {
+    private static let cardSize = CGSize(width: 1080, height: 1920)
+
     @MainActor
     static func exportCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem) async throws -> URL {
-        let mapImage = try? await ActivityShareMapSnapshotRenderer.snapshot(for: activity)
+        let mapImage = try? await ActivityShareMapSnapshotRenderer.snapshot(for: activity, size: cardSize)
         let card = ActivityShareCardView(activity: activity, unitSystem: unitSystem, mapImage: mapImage)
-            .frame(width: 1080, height: 1350)
+            .frame(width: cardSize.width, height: cardSize.height)
 
         let renderer = ImageRenderer(content: card)
         renderer.scale = 1
@@ -60,105 +62,91 @@ private struct ActivityShareCardView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.06, green: 0.07, blue: 0.08),
-                    Color(red: 0.10, green: 0.11, blue: 0.12)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(alignment: .leading, spacing: 42) {
-                header
-                routePanel
-                footer
-            }
-            .padding(70)
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(dateText.uppercased())
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.64))
-
-            Text(activity.title)
-                .font(.system(size: 70, weight: .black))
-                .foregroundStyle(.white)
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var routePanel: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 36)
-                .fill(Color.white.opacity(0.08))
-
             if let mapImage {
                 Image(uiImage: mapImage)
                     .resizable()
                     .scaledToFill()
-                    .overlay {
-                        LinearGradient(
-                            colors: [
-                                .black.opacity(0.02),
-                                .black.opacity(0.12),
-                                .black.opacity(0.70)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
             } else {
-                VStack(spacing: 20) {
-                    Image(systemName: "figure.run")
-                        .font(.system(size: 92, weight: .semibold))
-                    Text("Activity complete")
-                        .font(.system(size: 42, weight: .bold))
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.76, green: 0.82, blue: 0.84),
+                        Color(red: 0.42, green: 0.48, blue: 0.50)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.00), location: 0.18),
+                    .init(color: .black.opacity(0.12), location: 0.48),
+                    .init(color: .black.opacity(0.66), location: 0.78),
+                    .init(color: .black.opacity(0.82), location: 1.00)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            shareOverlay
+        }
+    }
+
+    private var shareOverlay: some View {
+        VStack {
+            Spacer()
+
+            HStack(alignment: .bottom, spacing: 42) {
+                VStack(alignment: .leading, spacing: 34) {
+                    Image(systemName: "figure.run.circle.fill")
+                        .font(.system(size: 78, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(activity.title)
+                            .font(.system(size: 62, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+
+                        Text(dateText.uppercased())
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.76))
+                    }
+
+                    statsStack
                 }
-                .foregroundStyle(.white.opacity(0.82))
+
+                Spacer()
+
+                Text("OUTBOUND")
+                    .font(.system(size: 44, weight: .black))
+                    .tracking(1.5)
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 252)
+            }
+            .padding(.horizontal, 104)
+            .padding(.bottom, 128)
+        }
+    }
+
+    private var statsStack: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack(alignment: .top, spacing: 72) {
+                ShareStat(label: "Distance", value: unitSystem.distanceString(meters: activity.distanceM))
+                ShareStat(label: "Time", value: activity.durationSecs.formatted())
+            }
+
+            HStack(alignment: .top, spacing: 72) {
+                ShareStat(label: "Pace", value: paceText)
+                if let elevation = activity.elevationGainM {
+                    ShareStat(label: "Elev", value: unitSystem.elevationString(meters: elevation))
+                }
             }
         }
-        .frame(height: 760)
-        .clipShape(RoundedRectangle(cornerRadius: 36))
-        .overlay(alignment: .bottomLeading) {
-            statsGrid
-                .padding(28)
-        }
-        .overlay(alignment: .topLeading) {
-            Text(mapImage == nil && activity.routeCoordinates.count <= 1 ? "Stats only" : "Route map")
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.72))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(.black.opacity(0.32), in: Capsule())
-                .padding(28)
-        }
-    }
-
-    private var statsGrid: some View {
-        HStack(spacing: 18) {
-            ShareStat(label: "Distance", value: unitSystem.distanceString(meters: activity.distanceM))
-            ShareStat(label: "Time", value: activity.durationSecs.formatted())
-            ShareStat(label: "Pace", value: paceText)
-            ShareStat(label: "Elev", value: activity.elevationGainM.map(unitSystem.elevationString(meters:)) ?? "--")
-        }
-    }
-
-    private var footer: some View {
-        HStack {
-            Text("OUTBOUND")
-                .font(.system(size: 28, weight: .black))
-                .tracking(3)
-            Spacer()
-            Text("Shared from activity")
-                .font(.system(size: 28, weight: .semibold))
-        }
-        .foregroundStyle(.white.opacity(0.72))
     }
 }
 
@@ -169,34 +157,30 @@ private struct ShareStat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(value)
-                .font(.system(size: 38, weight: .black))
+                .font(.system(size: 62, weight: .bold))
                 .foregroundStyle(.white)
-                .lineLimit(1)
+                .lineLimit(2)
                 .minimumScaleFactor(0.58)
             Text(label.uppercased())
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.52))
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.80))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        .frame(width: 250, alignment: .leading)
     }
 }
 
 private enum ActivityShareMapSnapshotRenderer {
-    private static let imageSize = CGSize(width: 940, height: 760)
-
-    static func snapshot(for activity: SavedActivity) async throws -> UIImage {
+    static func snapshot(for activity: SavedActivity, size: CGSize) async throws -> UIImage {
         let coordinates = activity.routeCoordinates
         guard coordinates.count > 1 else { throw ActivityShareCardError.renderFailed }
 
         let options = MKMapSnapshotter.Options()
-        options.size = imageSize
+        options.size = size
         options.scale = 1
         options.mapType = .mutedStandard
         options.pointOfInterestFilter = .excludingAll
         options.showsBuildings = false
-        options.mapRect = mapRect(for: coordinates, size: imageSize)
+        options.mapRect = mapRect(for: coordinates, size: size)
 
         let snapshot = try await MKMapSnapshotter(options: options).start()
         return drawRoute(coordinates, on: snapshot)
