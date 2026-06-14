@@ -653,7 +653,7 @@ struct ActivityDetailView: View {
         Task { @MainActor in
             defer { isPreparingShareCard = false }
             do {
-                shareURL = try ActivityShareCardRenderer.exportCard(
+                shareURL = try await ActivityShareCardRenderer.exportCard(
                     activity: currentActivity,
                     unitSystem: unitSystem
                 )

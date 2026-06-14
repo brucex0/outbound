@@ -1,11 +1,13 @@
 import CoreLocation
+import MapKit
 import SwiftUI
 import UIKit
 
 enum ActivityShareCardRenderer {
     @MainActor
-    static func exportCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem) throws -> URL {
-        let card = ActivityShareCardView(activity: activity, unitSystem: unitSystem)
+    static func exportCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem) async throws -> URL {
+        let mapImage = try? await ActivityShareMapSnapshotRenderer.snapshot(for: activity)
+        let card = ActivityShareCardView(activity: activity, unitSystem: unitSystem, mapImage: mapImage)
             .frame(width: 1080, height: 1350)
 
         let renderer = ImageRenderer(content: card)
@@ -46,6 +48,7 @@ enum ActivityShareCardError: LocalizedError {
 private struct ActivityShareCardView: View {
     let activity: SavedActivity
     let unitSystem: MeasurementUnitSystem
+    let mapImage: UIImage?
 
     private var dateText: String {
         activity.startedAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year())
@@ -69,7 +72,6 @@ private struct ActivityShareCardView: View {
             VStack(alignment: .leading, spacing: 42) {
                 header
                 routePanel
-                statsGrid
                 footer
             }
             .padding(70)
@@ -96,18 +98,21 @@ private struct ActivityShareCardView: View {
             RoundedRectangle(cornerRadius: 36)
                 .fill(Color.white.opacity(0.08))
 
-            if activity.routeCoordinates.count > 1 {
-                ActivityRouteTraceShape(coordinates: activity.routeCoordinates)
-                    .stroke(
+            if let mapImage {
+                Image(uiImage: mapImage)
+                    .resizable()
+                    .scaledToFill()
+                    .overlay {
                         LinearGradient(
-                            colors: [.orange, .red, .pink],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 18, lineCap: .round, lineJoin: .round)
-                    )
-                    .shadow(color: .orange.opacity(0.34), radius: 22)
-                    .padding(66)
+                            colors: [
+                                .black.opacity(0.02),
+                                .black.opacity(0.12),
+                                .black.opacity(0.70)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
             } else {
                 VStack(spacing: 20) {
                     Image(systemName: "figure.run")
@@ -118,11 +123,19 @@ private struct ActivityShareCardView: View {
                 .foregroundStyle(.white.opacity(0.82))
             }
         }
-        .frame(height: 530)
+        .frame(height: 760)
+        .clipShape(RoundedRectangle(cornerRadius: 36))
         .overlay(alignment: .bottomLeading) {
-            Text(activity.routeCoordinates.count > 1 ? "Route trace" : "Stats only")
+            statsGrid
+                .padding(28)
+        }
+        .overlay(alignment: .topLeading) {
+            Text(mapImage == nil && activity.routeCoordinates.count <= 1 ? "Stats only" : "Route map")
                 .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(.white.opacity(0.72))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(.black.opacity(0.32), in: Capsule())
                 .padding(28)
         }
     }
@@ -170,31 +183,85 @@ private struct ShareStat: View {
     }
 }
 
-private struct ActivityRouteTraceShape: Shape {
-    let coordinates: [CLLocationCoordinate2D]
+private enum ActivityShareMapSnapshotRenderer {
+    private static let imageSize = CGSize(width: 940, height: 760)
 
-    func path(in rect: CGRect) -> Path {
-        guard coordinates.count > 1 else { return Path() }
+    static func snapshot(for activity: SavedActivity) async throws -> UIImage {
+        let coordinates = activity.routeCoordinates
+        guard coordinates.count > 1 else { throw ActivityShareCardError.renderFailed }
 
-        let minLatitude = coordinates.map(\.latitude).min() ?? 0
-        let maxLatitude = coordinates.map(\.latitude).max() ?? 0
-        let minLongitude = coordinates.map(\.longitude).min() ?? 0
-        let maxLongitude = coordinates.map(\.longitude).max() ?? 0
-        let latitudeSpan = max(maxLatitude - minLatitude, 0.000001)
-        let longitudeSpan = max(maxLongitude - minLongitude, 0.000001)
+        let options = MKMapSnapshotter.Options()
+        options.size = imageSize
+        options.scale = 1
+        options.mapType = .mutedStandard
+        options.pointOfInterestFilter = .excludingAll
+        options.showsBuildings = false
+        options.mapRect = mapRect(for: coordinates, size: imageSize)
 
-        func point(for coordinate: CLLocationCoordinate2D) -> CGPoint {
-            CGPoint(
-                x: rect.minX + ((coordinate.longitude - minLongitude) / longitudeSpan) * rect.width,
-                y: rect.minY + ((maxLatitude - coordinate.latitude) / latitudeSpan) * rect.height
-            )
+        let snapshot = try await MKMapSnapshotter(options: options).start()
+        return drawRoute(coordinates, on: snapshot)
+    }
+
+    private static func mapRect(for coordinates: [CLLocationCoordinate2D], size: CGSize) -> MKMapRect {
+        var rect = MKMapRect.null
+        for coordinate in coordinates {
+            let point = MKMapPoint(coordinate)
+            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
         }
 
-        var path = Path()
-        path.move(to: point(for: coordinates[0]))
-        for coordinate in coordinates.dropFirst() {
-            path.addLine(to: point(for: coordinate))
+        if rect.width < 300 {
+            rect = rect.insetBy(dx: -300, dy: 0)
         }
-        return path
+        if rect.height < 300 {
+            rect = rect.insetBy(dx: 0, dy: -300)
+        }
+
+        let targetAspect = size.width / size.height
+        let currentAspect = rect.width / rect.height
+        if currentAspect > targetAspect {
+            let targetHeight = rect.width / targetAspect
+            rect = rect.insetBy(dx: 0, dy: -(targetHeight - rect.height) / 2)
+        } else {
+            let targetWidth = rect.height * targetAspect
+            rect = rect.insetBy(dx: -(targetWidth - rect.width) / 2, dy: 0)
+        }
+
+        return rect.insetBy(dx: -rect.width * 0.18, dy: -rect.height * 0.22)
+    }
+
+    private static func drawRoute(_ coordinates: [CLLocationCoordinate2D], on snapshot: MKMapSnapshotter.Snapshot) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: snapshot.image.size)
+        return renderer.image { context in
+            snapshot.image.draw(at: .zero)
+
+            let path = UIBezierPath()
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.move(to: snapshot.point(for: coordinates[0]))
+            for coordinate in coordinates.dropFirst() {
+                path.addLine(to: snapshot.point(for: coordinate))
+            }
+
+            UIColor.black.withAlphaComponent(0.28).setStroke()
+            path.lineWidth = 15
+            path.stroke()
+
+            UIColor.systemOrange.setStroke()
+            path.lineWidth = 10
+            path.stroke()
+
+            drawEndpoint(at: snapshot.point(for: coordinates[0]), fill: .systemGreen, in: context.cgContext)
+            drawEndpoint(at: snapshot.point(for: coordinates[coordinates.count - 1]), fill: .systemPink, in: context.cgContext)
+        }
+    }
+
+    private static func drawEndpoint(at point: CGPoint, fill: UIColor, in context: CGContext) {
+        let outer = CGRect(x: point.x - 14, y: point.y - 14, width: 28, height: 28)
+        context.setFillColor(UIColor.white.cgColor)
+        context.fillEllipse(in: outer)
+
+        let inner = outer.insetBy(dx: 5, dy: 5)
+        context.setFillColor(fill.cgColor)
+        context.fillEllipse(in: inner)
     }
 }
