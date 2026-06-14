@@ -13,6 +13,16 @@ const router = new Hono<AppEnv>();
 const createLiveShareSchema = z.object({
   activityId: z.string().min(1).max(128).optional(),
   recipientLabel: z.string().trim().min(1).max(80).optional(),
+  deliveryTargets: z
+    .array(
+      z.object({
+        channel: z.enum(["sms", "push"]),
+        label: z.string().trim().min(1).max(80).optional(),
+        address: z.string().trim().min(1).max(160).optional(),
+      })
+    )
+    .max(5)
+    .optional(),
   sport: z.string().trim().min(1).max(32).optional(),
   title: z.string().trim().min(1).max(120).optional(),
   expiresInSeconds: z.number().int().min(300).max(8 * 60 * 60).optional(),
@@ -56,14 +66,23 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
     },
   });
 
+  const shareURL = publicLiveURL(c.req.url, token);
+  const deliveries = await deliverLiveShareStub({
+    shareId: share.id,
+    shareURL,
+    title: share.title ?? "Live run",
+    targets: body.deliveryTargets ?? [],
+  });
+
   return c.json(
     {
       id: share.id,
       token,
-      shareURL: publicLiveURL(c.req.url, token),
+      shareURL,
       status: share.status,
       startedAt: share.startedAt,
       expiresAt: share.expiresAt,
+      deliveries,
     },
     201
   );
@@ -247,6 +266,26 @@ function publicLiveURL(requestURL: string, token: string) {
   const configured = process.env.PUBLIC_WEB_BASE_URL?.trim();
   const origin = configured && configured.length > 0 ? configured : new URL(requestURL).origin;
   return `${origin.replace(/\/$/, "")}/live/${encodeURIComponent(token)}`;
+}
+
+async function deliverLiveShareStub(input: {
+  shareId: string;
+  shareURL: string;
+  title: string;
+  targets: Array<{ channel: "sms" | "push"; label?: string; address?: string }>;
+}) {
+  return input.targets.map((target, index) => ({
+    id: `${input.shareId}-${target.channel}-${index + 1}`,
+    channel: target.channel,
+    label: target.label ?? null,
+    addressLast4: target.address ? target.address.slice(-4) : null,
+    status: "stubbed",
+    message:
+      target.channel === "sms"
+        ? "SMS delivery is stubbed until the provider is configured."
+        : "Push delivery is stubbed until recipient devices are registered.",
+    shareURL: input.shareURL,
+  }));
 }
 
 function appendRoutePoint(routePreview: unknown, point: Record<string, unknown>) {

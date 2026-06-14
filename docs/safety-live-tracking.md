@@ -51,6 +51,7 @@ Add a simple contact list once identity and notification plumbing are reliable:
 - one-tap start sharing with favorites
 - optional expected-finish alert
 - stale-location warning when the phone stops updating
+- server delivery targets for SMS/push, with stub delivery until real providers are configured
 
 ### V3 Safety Escalation
 
@@ -98,12 +99,16 @@ Core tables:
   - `deliveryAddressEncrypted` or platform contact reference
   - `createdAt`
 
+Current trusted contacts are local-first on iOS. The backend accepts delivery targets on live-share creation but does not persist contact addresses yet.
+
 Initial API:
 
 - `POST /v1/safety/live-shares`
 - `PATCH /v1/safety/live-shares/:id/location`
 - `POST /v1/safety/live-shares/:id/end`
 - `GET /live/:token`
+
+`POST /v1/safety/live-shares` accepts optional `recipientLabel` and `deliveryTargets` entries with `sms` or `push` channels. Current server delivery returns `stubbed` results so the API contract is ready for SMS/push providers later without changing the client flow.
 
 Rules:
 
@@ -117,8 +122,7 @@ Rules:
 New modules:
 
 - `Safety/LiveShareStore.swift`
-- `Safety/LiveShareModels.swift`
-- `Safety/LiveShareSettingsView.swift`
+- `Safety/SafetyContactStore.swift`
 - `Safety/LiveShareControls.swift`
 
 Integration points:
@@ -147,11 +151,13 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
   - `POST /v1/safety/live-shares`
   - `PATCH /v1/safety/live-shares/:id/location`
   - `POST /v1/safety/live-shares/:id/end`
+- `POST /v1/safety/live-shares` accepts selected trusted-contact delivery targets and returns stubbed SMS/push delivery statuses.
 - Recipient route:
   - `GET /live/:token`
   - `GET /live/:token?format=json` for browser polling
-- `RecordView` creates the server share before countdown when `Share live run` is armed.
-- iOS presents the returned public link in the system Share Sheet.
+- `Settings` has local trusted contacts, default recipient selection, and SMS/push channel labels.
+- `RecordView` creates the server share before countdown when `Share live run` is armed, using the default trusted contact when one exists.
+- iOS presents a prefilled system Share Sheet before countdown; recording starts after the sheet is dismissed.
 - `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.
 - The public page polls every 10 seconds and shows route preview, current/last location, elapsed time, distance, update age, stale state, and ended/expired state.
 - Finish, discard, and the live HUD stop-sharing control call the backend end endpoint.
@@ -165,7 +171,7 @@ npm run db:generate
 npm run db:push
 ```
 
-Trusted contacts, notification delivery, route privacy zones, and emergency escalation remain future work.
+Real SMS/push provider delivery, route privacy zones, and emergency escalation remain future work.
 
 ### Milestone 1: Private Live Link
 
@@ -177,8 +183,9 @@ Trusted contacts, notification delivery, route privacy zones, and emergency esca
 
 ### Milestone 2: Trusted Contacts
 
-- manage favorites in Settings
-- share via system share sheet or stored contact path
+- manage favorites in Settings: shipped locally
+- share via system Share Sheet: shipped
+- server SMS/push delivery contract: shipped with stubbed delivery
 - stale-location and expected-finish copy
 
 ### Milestone 3: Route Privacy

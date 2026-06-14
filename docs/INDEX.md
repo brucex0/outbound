@@ -13,7 +13,7 @@ Primary flow:
 3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, Progress, and recent activity.
 4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, PR history, race predictions, shoe mileage, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
-6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is shared through the system Share Sheet and updated from live location snapshots.
+6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is created for the default trusted contact, server SMS/push delivery is stubbed, the system Share Sheet opens with the link, and updates stream from live location snapshots.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.

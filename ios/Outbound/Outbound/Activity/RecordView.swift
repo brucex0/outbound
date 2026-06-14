@@ -19,6 +19,7 @@ struct RecordView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject var liveShareStore: LiveShareStore
+    @EnvironmentObject var safetyContactStore: SafetyContactStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -40,7 +41,6 @@ struct RecordView: View {
     @State private var didApplySmartGoalDefault = false
     @State private var isIndoorSession = false
     @State private var isStartingActivity = false
-    @State private var liveShareURLToPresent: LiveShareURL?
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -209,9 +209,6 @@ struct RecordView: View {
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(item: $liveShareURLToPresent) { item in
-            SystemShareSheet(activityItems: [item.url])
-        }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
             if customGoalKind == .distance {
                 TextField("Distance in km", text: $customDistanceText)
@@ -239,9 +236,17 @@ struct RecordView: View {
         isStartingActivity = true
         Task { @MainActor in
             let intent = plannedIntent
-            let shareURL = await liveShareStore.beginIfArmed(intent: intent)
-            if let shareURL {
-                liveShareURLToPresent = LiveShareURL(url: shareURL)
+            let liveSharePresentation = await liveShareStore.beginIfArmed(
+                intent: intent,
+                contact: safetyContactStore.defaultContact
+            )
+            if let liveSharePresentation {
+                isStartingActivity = false
+                await SystemSharePresenter.present(activityItems: liveSharePresentation.activityItems)
+                guard recorder.state == .idle, !isCountingDown else { return }
+                beginRecordingAfterLiveShareSetup()
+                isStartingActivity = false
+                return
             }
             beginRecordingAfterLiveShareSetup()
             isStartingActivity = false
@@ -498,6 +503,14 @@ struct RecordView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if liveShareStore.isArmedForNextActivity {
+                Label(
+                    safetyContactStore.defaultContact.map { "Recipient: \($0.name) (\($0.deliveryChannel.title) stub + Share Sheet)" } ?? "Recipient: choose in Share Sheet",
+                    systemImage: "person.crop.circle.badge.checkmark"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
             if let message = liveShareStore.lastErrorMessage {
                 Text(message)
                     .font(.caption.weight(.semibold))
@@ -834,11 +847,6 @@ struct RecordView: View {
     }
 
     private var startSetupCardCornerRadius: CGFloat { 20 }
-}
-
-private struct LiveShareURL: Identifiable {
-    let id = UUID()
-    let url: URL
 }
 
 private struct PendingFinishedActivity: Identifiable {

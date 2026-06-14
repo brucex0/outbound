@@ -16,6 +16,18 @@ struct LiveShareSession: Identifiable, Hashable {
     }
 }
 
+struct LiveShareStartPresentation: Identifiable, Hashable {
+    let id = UUID()
+    let url: URL
+    let message: String
+    let recipientName: String?
+    let deliveries: [LiveShareDeliveryResult]
+
+    var activityItems: [Any] {
+        [message, url]
+    }
+}
+
 @MainActor
 final class LiveShareStore: ObservableObject {
     @Published private(set) var activeSession: LiveShareSession?
@@ -48,7 +60,7 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
-    func beginIfArmed(intent: SessionIntent?) async -> URL? {
+    func beginIfArmed(intent: SessionIntent?, contact: SafetyContact?) async -> LiveShareStartPresentation? {
         guard isArmedForNextActivity, activeSession == nil else { return nil }
 
         isStarting = true
@@ -56,8 +68,19 @@ final class LiveShareStore: ObservableObject {
         defer { isStarting = false }
 
         do {
+            let deliveryTargets = contact.map {
+                [
+                    LiveShareDeliveryTarget(
+                        channel: $0.deliveryChannel.rawValue,
+                        label: $0.name,
+                        address: $0.deliveryAddress.isEmpty ? nil : $0.deliveryAddress
+                    )
+                ]
+            }
             let response = try await api.createLiveShare(
                 LiveShareCreateRequest(
+                    recipientLabel: contact?.name,
+                    deliveryTargets: deliveryTargets,
                     sport: intent?.sport.rawValue,
                     title: intent?.title,
                     expiresInSeconds: 4 * 60 * 60
@@ -76,9 +99,14 @@ final class LiveShareStore: ObservableObject {
             isArmedForNextActivity = false
             lastSentAt = nil
             lastSentDistanceM = nil
-            return response.shareURL
+            return LiveShareStartPresentation(
+                url: response.shareURL,
+                message: shareMessage(url: response.shareURL, intent: intent, contact: contact),
+                recipientName: contact?.name,
+                deliveries: response.deliveries ?? []
+            )
         } catch {
-            lastErrorMessage = "Live sharing unavailable. Starting without sharing."
+            lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
             isArmedForNextActivity = false
             activeSession = nil
             return nil
@@ -152,5 +180,13 @@ final class LiveShareStore: ObservableObject {
         session.endedAt = response.endedAt
         session.lastLocationAt = response.lastLocationAt
         activeSession = session
+    }
+
+    private func shareMessage(url: URL, intent: SessionIntent?, contact: SafetyContact?) -> String {
+        let sport = intent?.sport.rawValue ?? "run"
+        if let contact {
+            return "Hi \(contact.name), follow my live \(sport) on Outbound: \(url.absoluteString)"
+        }
+        return "Follow my live \(sport) on Outbound: \(url.absoluteString)"
     }
 }

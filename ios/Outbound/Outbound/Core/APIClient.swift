@@ -1019,9 +1019,17 @@ struct ActivityUploadResponse: Decodable {
 }
 
 struct LiveShareCreateRequest: Encodable {
+    let recipientLabel: String?
+    let deliveryTargets: [LiveShareDeliveryTarget]?
     let sport: String?
     let title: String?
     let expiresInSeconds: Int?
+}
+
+struct LiveShareDeliveryTarget: Encodable {
+    let channel: String
+    let label: String?
+    let address: String?
 }
 
 struct LiveShareCreateResponse: Decodable {
@@ -1031,6 +1039,17 @@ struct LiveShareCreateResponse: Decodable {
     let status: String
     let startedAt: Date
     let expiresAt: Date
+    let deliveries: [LiveShareDeliveryResult]?
+}
+
+struct LiveShareDeliveryResult: Decodable, Hashable {
+    let id: String
+    let channel: String
+    let label: String?
+    let addressLast4: String?
+    let status: String
+    let message: String
+    let shareURL: URL
 }
 
 struct LiveShareLocationUpdateRequest: Encodable {

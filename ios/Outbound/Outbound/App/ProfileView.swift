@@ -151,6 +151,7 @@ private struct SettingsView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var onboardingStore: OnboardingStore
     @EnvironmentObject var gearStore: GearStore
+    @EnvironmentObject var safetyContactStore: SafetyContactStore
 
     let initialFocusSection: SettingsFocusSection?
 
@@ -232,6 +233,13 @@ private struct SettingsView: View {
                     GearSettingsCard()
                         .environmentObject(gearStore)
                         .listRowInsets(EdgeInsets())
+                }
+
+                Section("Safety") {
+                    SafetyContactsSettingsCard()
+                        .environmentObject(safetyContactStore)
+                        .listRowInsets(EdgeInsets())
+                        .id(SettingsFocusSection.safety)
                 }
 
                 Section("App") {
@@ -333,6 +341,156 @@ private struct RecentActivitySummaryCard: View {
 private enum SettingsFocusSection: Hashable {
     case appleHealth
     case appleMusic
+    case safety
+}
+
+private struct SafetyContactsSettingsCard: View {
+    @EnvironmentObject var safetyContactStore: SafetyContactStore
+    @State private var isAddContactPresented = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Trusted Contacts")
+                        .font(.title3.bold())
+                    Text(safetyContactStore.enabledContacts.isEmpty ? "Share live runs faster" : "\(safetyContactStore.enabledContacts.count) enabled")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isAddContactPresented = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .accessibilityLabel("Add trusted contact")
+            }
+
+            if safetyContactStore.contacts.isEmpty {
+                Text("Add someone you trust. Outbound will use them as the default recipient when you turn on Share live run.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(safetyContactStore.contacts) { contact in
+                        SafetyContactRow(contact: contact)
+                            .environmentObject(safetyContactStore)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color.orange.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .sheet(isPresented: $isAddContactPresented) {
+            AddSafetyContactView()
+                .environmentObject(safetyContactStore)
+        }
+    }
+}
+
+private struct SafetyContactRow: View {
+    @EnvironmentObject var safetyContactStore: SafetyContactStore
+    let contact: SafetyContact
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: contact.deliveryChannel == .sms ? "message.fill" : "bell.badge.fill")
+                .foregroundStyle(contact.isEnabledForLiveShare ? .orange : .secondary)
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(contact.name)
+                    .font(.subheadline.weight(.semibold))
+                Text("\(contact.deliveryChannel.title) \(contact.displayAddress)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            if contact.isDefault {
+                Text("Default")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.orange)
+            } else if contact.isEnabledForLiveShare {
+                Button("Use") { safetyContactStore.setDefault(contact) }
+                    .font(.caption.weight(.semibold))
+            }
+
+            Toggle("Enabled", isOn: Binding(
+                get: { contact.isEnabledForLiveShare },
+                set: { safetyContactStore.setEnabled(contact, isEnabled: $0) }
+            ))
+            .labelsHidden()
+            .tint(.orange)
+
+            Button {
+                safetyContactStore.remove(contact)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Remove trusted contact")
+        }
+        .padding(10)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct AddSafetyContactView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var safetyContactStore: SafetyContactStore
+    @State private var name = ""
+    @State private var channel: SafetyDeliveryChannel = .sms
+    @State private var address = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Contact") {
+                    TextField("Name", text: $name)
+                    Picker("Delivery", selection: $channel) {
+                        ForEach(SafetyDeliveryChannel.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    TextField(channel == .sms ? "Phone number" : "Push address or device label", text: $address)
+                        .keyboardType(channel == .sms ? .phonePad : .default)
+                }
+
+                Section {
+                    Text("SMS and push delivery are stubbed on the server for now. Outbound will still open the system Share Sheet when a live run starts.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Trusted Contact")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        safetyContactStore.addContact(name: name, channel: channel, address: address)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
 }
 
 private struct GearSettingsCard: View {

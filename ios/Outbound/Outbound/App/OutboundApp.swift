@@ -21,6 +21,7 @@ struct OutboundApp: App {
     @StateObject private var onboardingStore = OnboardingStore()
     @StateObject private var gearStore = GearStore()
     @StateObject private var liveShareStore = LiveShareStore()
+    @StateObject private var safetyContactStore = SafetyContactStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -67,6 +68,7 @@ struct OutboundApp: App {
                 .environmentObject(onboardingStore)
                 .environmentObject(gearStore)
                 .environmentObject(liveShareStore)
+                .environmentObject(safetyContactStore)
                 .task {
                     await coachStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
