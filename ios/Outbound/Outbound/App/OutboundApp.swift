@@ -18,6 +18,7 @@ struct OutboundApp: App {
     @StateObject private var musicStore = MusicStore()
     @StateObject private var recognitionStore = RecognitionStore()
 #if OUTBOUND_ENABLE_SOCIAL
+    @StateObject private var socialStore = SocialStore()
     @StateObject private var socialRecognitionStore = SocialRecognitionStore()
 #endif
     @StateObject private var measurementPreferences = MeasurementPreferences()
@@ -67,6 +68,7 @@ struct OutboundApp: App {
                 .environmentObject(musicStore)
                 .environmentObject(recognitionStore)
 #if OUTBOUND_ENABLE_SOCIAL
+                .environmentObject(socialStore)
                 .environmentObject(socialRecognitionStore)
 #endif
                 .environmentObject(measurementPreferences)

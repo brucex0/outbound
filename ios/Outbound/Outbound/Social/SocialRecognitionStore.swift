@@ -36,7 +36,7 @@ private struct SocialSupportEvent: Codable, Hashable {
 @MainActor
 final class SocialRecognitionStore: ObservableObject {
     @Published private(set) var awards: [SocialRecognitionAward]
-    @Published private(set) var supportEvents: [SocialSupportEvent]
+    @Published private var supportEvents: [SocialSupportEvent]
     @Published private(set) var sharedActivityIDs: Set<UUID>
     @Published private(set) var joinedClubIDs: Set<String>
     @Published private(set) var claimedRivalEdge = false

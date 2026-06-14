@@ -3,10 +3,10 @@ import SwiftUI
 
 struct ActivityFeedView: View {
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var socialStore: SocialStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let bottomContentInset: CGFloat
     @State private var selectedScope: SocialFeedScope = .squad
-    @State private var cheeredPostIDs: Set<String> = ["maya-waterfront"]
     @State private var showingRelayComposer = false
 
     var body: some View {
@@ -128,7 +128,8 @@ struct ActivityFeedView: View {
             ForEach(SocialSeed.feedPosts) { post in
                 SocialFeedPostCard(
                     post: post,
-                    isCheered: cheeredPostIDs.contains(post.id)
+                    isCheered: socialStore.cheeredPostIDs.contains(post.id),
+                    commentCount: socialStore.commentCount(for: post)
                 ) {
                     toggleCheer(for: post)
                 }
@@ -166,10 +167,7 @@ struct ActivityFeedView: View {
     }
 
     private func toggleCheer(for post: SocialFeedPost) {
-        if cheeredPostIDs.contains(post.id) {
-            cheeredPostIDs.remove(post.id)
-        } else {
-            cheeredPostIDs.insert(post.id)
+        if socialStore.toggleCheer(for: post.id) {
             _ = socialRecognitionStore.registerCheer(for: post.id)
         }
     }
@@ -181,14 +179,6 @@ struct ActivityFeedView: View {
     private func toggleShared(_ activity: SavedActivity) {
         _ = socialRecognitionStore.toggleShare(for: activity)
     }
-}
-
-private enum SocialFeedScope: String, CaseIterable, Identifiable {
-    case squad = "Squad"
-    case clubs = "Clubs"
-    case rivals = "Rivals"
-
-    var id: String { rawValue }
 }
 
 private struct SocialMetricPill: View {
@@ -314,6 +304,7 @@ private struct ShareLatestRunCard: View {
 private struct SocialFeedPostCard: View {
     let post: SocialFeedPost
     let isCheered: Bool
+    let commentCount: Int
     let onCheer: () -> Void
 
     var body: some View {
@@ -360,7 +351,7 @@ private struct SocialFeedPostCard: View {
                     action: onCheer
                 )
 
-                SocialActionButton(title: "\(post.comments)", symbol: "bubble.left.fill", isActive: false) { }
+                SocialActionButton(title: "\(commentCount)", symbol: "bubble.left.fill", isActive: false) { }
                 SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false) { }
 
                 Spacer()
@@ -791,217 +782,4 @@ private struct RelayOptionRow: View {
     }
 }
 
-private struct SocialPerson: Identifiable {
-    let id: String
-    let firstName: String
-    let fullName: String
-    let initials: String
-    let tint: Color
-    let isRunning: Bool
-}
-
-private struct SocialFeedPost: Identifiable {
-    let id: String
-    let author: SocialPerson
-    let context: String
-    let caption: String
-    let activity: SocialActivitySummary
-    let kind: SocialPostKind
-    let gradient: [Color]
-    let isLive: Bool
-    let cheers: Int
-    let comments: Int
-}
-
-private struct SocialActivitySummary {
-    let routeName: String
-    let distanceKm: Double
-    let duration: String
-    let pace: String
-
-    func distanceText(unitSystem: MeasurementUnitSystem) -> String {
-        unitSystem.distanceString(meters: distanceKm * 1000, fractionDigits: 1)
-    }
-
-    func paceText(unitSystem: MeasurementUnitSystem) -> String {
-        guard let secondsPerKilometer else { return pace }
-        return secondsPerKilometer.paceString(for: unitSystem)
-    }
-
-    private var secondsPerKilometer: Double? {
-        let timePart = pace.split(separator: " ").first ?? Substring(pace)
-        let pieces = timePart.split(separator: ":")
-        guard pieces.count == 2,
-              let minutes = Double(String(pieces[0])),
-              let seconds = Double(String(pieces[1])) else {
-            return nil
-        }
-        return minutes * 60 + seconds
-    }
-}
-
-private enum SocialPostKind {
-    case run
-    case relay
-    case challenge
-
-    var symbol: String {
-        switch self {
-        case .run: return "figure.run"
-        case .relay: return "bolt.fill"
-        case .challenge: return "flag.checkered"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .run: return .orange
-        case .relay: return .green
-        case .challenge: return .blue
-        }
-    }
-}
-
-private struct SocialClub: Identifiable {
-    let id: String
-    let name: String
-    let subtitle: String
-    let symbol: String
-    let tint: Color
-    let memberInitials: [String]
-    let memberCount: Int
-    let nextRun: String
-}
-
-private struct SocialChallenge: Identifiable {
-    let id: String
-    let title: String
-    let subtitle: String
-    let reward: String
-    let progress: Double
-    let tint: Color
-}
-
-private struct SocialRival: Identifiable {
-    let id: String
-    let rank: Int
-    let person: SocialPerson
-    let weeklyKm: Double
-    let delta: String
-    let note: String
-
-    func weeklyDistanceText(unitSystem: MeasurementUnitSystem) -> String {
-        unitSystem.distanceString(meters: weeklyKm * 1000, fractionDigits: 1)
-    }
-
-    func deltaText(unitSystem: MeasurementUnitSystem) -> String {
-        guard delta != "You" else { return delta }
-        let sign = delta.hasPrefix("+") ? "+" : delta.hasPrefix("-") ? "-" : ""
-        let unsignedDelta = delta
-            .replacingOccurrences(of: "+", with: "")
-            .replacingOccurrences(of: "-", with: "")
-            .replacingOccurrences(of: " km", with: "")
-        guard let kilometers = Double(unsignedDelta) else { return delta }
-        return "\(sign)\(unitSystem.distanceString(meters: kilometers * 1000, fractionDigits: 1))"
-    }
-}
-
-private enum SocialSeed {
-    static let maya = SocialPerson(id: "maya", firstName: "Maya", fullName: "Maya Chen", initials: "MC", tint: .orange, isRunning: true)
-    static let leo = SocialPerson(id: "leo", firstName: "Leo", fullName: "Leo Park", initials: "LP", tint: .blue, isRunning: true)
-    static let zoe = SocialPerson(id: "zoe", firstName: "Zoe", fullName: "Zoe Kim", initials: "ZK", tint: .pink, isRunning: false)
-    static let noah = SocialPerson(id: "noah", firstName: "Noah", fullName: "Noah Singh", initials: "NS", tint: .green, isRunning: true)
-    static let ava = SocialPerson(id: "ava", firstName: "Ava", fullName: "Ava Brooks", initials: "AB", tint: .purple, isRunning: false)
-    static let chen = SocialPerson(id: "chen", firstName: "Chen", fullName: "Chen Li", initials: "CL", tint: .teal, isRunning: true)
-
-    static let people = [maya, leo, zoe, noah, ava, chen]
-
-    static let feedPosts = [
-        SocialFeedPost(
-            id: "maya-waterfront",
-            author: maya,
-            context: "Waterfront Loop - 8 min ago",
-            caption: "Negative split the last kilometer. Someone take this segment before dinner.",
-            activity: SocialActivitySummary(routeName: "Pier Dash", distanceKm: 5.4, duration: "26:12", pace: "4:51 /km"),
-            kind: .challenge,
-            gradient: [.orange.opacity(0.85), .blue.opacity(0.62)],
-            isLive: false,
-            cheers: 18,
-            comments: 4
-        ),
-        SocialFeedPost(
-            id: "leo-relay",
-            author: leo,
-            context: "Mission Relay - live now",
-            caption: "Holding a conversational pace for anyone who wants to jump in remotely.",
-            activity: SocialActivitySummary(routeName: "Mission Grid", distanceKm: 3.1, duration: "15:48", pace: "5:05 /km"),
-            kind: .relay,
-            gradient: [.green.opacity(0.82), .cyan.opacity(0.55)],
-            isLive: true,
-            cheers: 11,
-            comments: 7
-        ),
-        SocialFeedPost(
-            id: "zoe-hills",
-            author: zoe,
-            context: "Twin Peaks - yesterday",
-            caption: "Hill repeats are better when the group chat is watching.",
-            activity: SocialActivitySummary(routeName: "Peak Steps", distanceKm: 6.8, duration: "41:03", pace: "6:02 /km"),
-            kind: .run,
-            gradient: [.pink.opacity(0.78), .orange.opacity(0.58)],
-            isLive: false,
-            cheers: 24,
-            comments: 6
-        )
-    ]
-
-    static let clubs = [
-        SocialClub(
-            id: "sf-dawn",
-            name: "SF Dawn Patrol",
-            subtitle: "Early runs, quiet streets, coffee after.",
-            symbol: "sunrise.fill",
-            tint: .orange,
-            memberInitials: ["MC", "LP", "ZK", "CL"],
-            memberCount: 128,
-            nextRun: "Tue 6:30"
-        ),
-        SocialClub(
-            id: "founders",
-            name: "Founders 5K",
-            subtitle: "Fast lunch loops for builders and designers.",
-            symbol: "building.2.fill",
-            tint: .blue,
-            memberInitials: ["AB", "NS", "LP", "MC"],
-            memberCount: 74,
-            nextRun: "Today"
-        )
-    ]
-
-    static let challenges = [
-        SocialChallenge(
-            id: "seven-day-chain",
-            title: "7 Day Chain",
-            subtitle: "Four teammates have checked in today.",
-            reward: "2 days left",
-            progress: 0.71,
-            tint: .green
-        ),
-        SocialChallenge(
-            id: "city-segments",
-            title: "City Segments",
-            subtitle: "Own three short routes before Sunday.",
-            reward: "1 segment held",
-            progress: 0.33,
-            tint: .blue
-        )
-    ]
-
-    static let rivals = [
-        SocialRival(id: "r1", rank: 1, person: maya, weeklyKm: 32.4, delta: "+1.8 km", note: "Won Pier Dash"),
-        SocialRival(id: "r2", rank: 2, person: chen, weeklyKm: 30.6, delta: "You", note: "2 runs logged"),
-        SocialRival(id: "r3", rank: 3, person: leo, weeklyKm: 28.1, delta: "-2.5 km", note: "Live relay open"),
-        SocialRival(id: "r4", rank: 4, person: zoe, weeklyKm: 24.7, delta: "-5.9 km", note: "Climbing week")
-    ]
-}
 #endif
