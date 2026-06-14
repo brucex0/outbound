@@ -17,6 +17,10 @@ struct OutboundApp: App {
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
     @StateObject private var musicStore = MusicStore()
     @StateObject private var recognitionStore = RecognitionStore()
+#if OUTBOUND_ENABLE_SOCIAL
+    @StateObject private var socialStore = SocialStore()
+    @StateObject private var socialRecognitionStore = SocialRecognitionStore()
+#endif
     @StateObject private var measurementPreferences = MeasurementPreferences()
     @StateObject private var onboardingStore = OnboardingStore()
     @StateObject private var gearStore = GearStore()
@@ -64,6 +68,10 @@ struct OutboundApp: App {
                 .environmentObject(dailyCheckInStore)
                 .environmentObject(musicStore)
                 .environmentObject(recognitionStore)
+#if OUTBOUND_ENABLE_SOCIAL
+                .environmentObject(socialStore)
+                .environmentObject(socialRecognitionStore)
+#endif
                 .environmentObject(measurementPreferences)
                 .environmentObject(onboardingStore)
                 .environmentObject(gearStore)
@@ -1268,7 +1276,11 @@ enum AssistantCapability: String, CaseIterable, Codable, Identifiable {
         case .support:
             "Get help with setup and stuck moments."
         case .brainstorm:
+#if OUTBOUND_ENABLE_SOCIAL
             "Shape ideas for training and social loops."
+#else
+            "Shape ideas for training and motivation loops."
+#endif
         case .plan:
             "Turn loose goals into a doable week."
         }
@@ -1390,7 +1402,13 @@ final class AssistantStore: ObservableObject {
             id: "navigate-where-to-go",
             capability: .navigate,
             title: "Where do I go?",
-            prompt: "Where do I go for activities, coach settings, and social?"
+            prompt: {
+#if OUTBOUND_ENABLE_SOCIAL
+                "Where do I go for activities, coach settings, and social?"
+#else
+                "Where do I go for activities, coach settings, and activity history?"
+#endif
+            }()
         ),
         AssistantSuggestion(
             id: "support-setup",
@@ -1558,12 +1576,21 @@ final class AssistantStore: ObservableObject {
     ) -> String {
         switch capability {
         case .discover:
+#if OUTBOUND_ENABLE_SOCIAL
             return """
             Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and Social for squad energy.
 
             If you want the best first experience, check your coach style, try one suggested session, and save one activity so the app has momentum to build on.
             """
+#else
+            return """
+            Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and your saved activity history.
+
+            If you want the best first experience, check your coach style, try one suggested session, and save one activity so the app has momentum to build on.
+            """
+#endif
         case .navigate:
+#if OUTBOUND_ENABLE_SOCIAL
             return """
             Here’s the fastest map:
             Me is where you check motivation, tune your coach, review activities, and open Settings.
@@ -1572,6 +1599,15 @@ final class AssistantStore: ObservableObject {
 
             If you tell me what you want to do, I can point to the exact screen.
             """
+#else
+            return """
+            Here’s the fastest map:
+            Me is where you check motivation, tune your coach, review activities, and open Settings.
+            Activity history lives on Me, and the floating orange activity button starts or resumes a live session.
+
+            If you tell me what you want to do, I can point to the exact screen.
+            """
+#endif
         case .support:
             return """
             The main support checkpoints are account setup, coach preferences, Apple Health or Music permissions, and making sure the start flow feels clear.
@@ -1579,6 +1615,7 @@ final class AssistantStore: ObservableObject {
             If something feels broken, tell me the exact step and what you expected to happen. I’ll turn it into a short troubleshooting path instead of generic advice.
             """
         case .brainstorm:
+#if OUTBOUND_ENABLE_SOCIAL
             return """
             A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
 
@@ -1587,6 +1624,16 @@ final class AssistantStore: ObservableObject {
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
             Use it in Social to suggest clubs, challenges, or rivalry nudges based on recent activity.
             """
+#else
+            return """
+            A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
+
+            Good ideas to explore:
+            Give it guided prompts for finding features, choosing a coach vibe, and building a comeback plan.
+            Let it turn vague intent like “I only have 20 minutes” into a suggested session.
+            Use it to explain progress, route history, and the next realistic training step from recent activity.
+            """
+#endif
         case .plan:
             let goalLine = context.currentGoalSummary ?? "No active weekly goal yet."
             let activityLine: String
@@ -1729,6 +1776,20 @@ private final class AssistantFoundationModelSession {
             """
         }
 
+        let appMap: String
+#if OUTBOUND_ENABLE_SOCIAL
+        appMap = """
+        - Me: motivation, coach settings, highlights, activity history, settings
+        - Social: squad, clubs, rivals
+        - Floating orange button: start or resume a live session
+        """
+#else
+        appMap = """
+        - Me: motivation, coach settings, highlights, activity history, settings
+        - Floating orange button: start or resume a live session
+        """
+#endif
+
         let response = try await session.respond(
             to: """
             Capability: \(capability.title)
@@ -1738,9 +1799,7 @@ private final class AssistantFoundationModelSession {
             Goal summary: \(context.currentGoalSummary ?? "No active goal.")
 
             App map:
-            - Me: motivation, coach settings, highlights, activity history, settings
-            - Social: squad, clubs, rivals
-            - Floating orange button: start or resume a live session
+            \(appMap)
 
             User request: \(prompt)
 

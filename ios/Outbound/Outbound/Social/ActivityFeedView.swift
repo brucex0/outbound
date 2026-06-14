@@ -3,31 +3,46 @@ import SwiftUI
 
 struct ActivityFeedView: View {
     @EnvironmentObject private var activityStore: ActivityStore
-    @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var socialStore: SocialStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let bottomContentInset: CGFloat
     @State private var selectedScope: SocialFeedScope = .squad
-    @State private var cheeredPostIDs: Set<String> = ["maya-waterfront"]
     @State private var showingRelayComposer = false
+    @State private var selectedCommentPost: SocialFeedPost?
+    @State private var routePrompt: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     socialCommandBar
-                    if let socialHighlight = recognitionStore.socialHighlight {
+                    if let socialHighlight = socialRecognitionStore.highlight {
                         SocialRecognitionCard(preview: socialHighlight)
                     }
                     crewPulseStrip
                     scopePicker
+                    PrivacyControlCard(visibility: $socialStore.defaultVisibility)
 
                     if let latestActivity = activityStore.activities.first {
                         ShareLatestRunCard(
                             activity: latestActivity,
                             activityStore: activityStore,
-                            isShared: recognitionStore.sharedActivityIDs.contains(latestActivity.id)
+                            isShared: socialRecognitionStore.sharedActivityIDs.contains(latestActivity.id)
                         ) {
                             toggleShared(latestActivity)
                         }
+                    }
+
+                    if let routePrompt {
+                        SocialStatusCard(symbol: "arrow.triangle.turn.up.right.circle.fill", title: "Route prompt saved", message: routePrompt)
+                    }
+
+                    if !socialStore.reportedContentIDs.isEmpty || !socialStore.blockedPersonIDs.isEmpty {
+                        SocialStatusCard(
+                            symbol: "checkmark.shield.fill",
+                            title: "Local safety controls active",
+                            message: "\(socialStore.reportedContentIDs.count) report\(socialStore.reportedContentIDs.count == 1 ? "" : "s") and \(socialStore.blockedPersonIDs.count) block\(socialStore.blockedPersonIDs.count == 1 ? "" : "s") are hidden in this preview."
+                        )
                     }
 
                     switch selectedScope {
@@ -65,7 +80,18 @@ struct ActivityFeedView: View {
                 }
             }
             .sheet(isPresented: $showingRelayComposer) {
-                RelayComposerSheet()
+                RelayComposerSheet { routeLabel, windowLabel, audienceLabel in
+                    socialStore.createRelay(routeLabel: routeLabel, windowLabel: windowLabel, audienceLabel: audienceLabel)
+                    _ = socialRecognitionStore.toggleClubMembership(clubID: "relay-preview")
+                }
+            }
+            .sheet(item: $selectedCommentPost) { post in
+                CommentThreadSheet(
+                    post: post,
+                    comments: socialStore.comments(for: post.id)
+                ) { text in
+                    socialStore.addComment(text, to: post.id)
+                }
             }
         }
     }
@@ -125,12 +151,32 @@ struct ActivityFeedView: View {
 
     private var squadFeed: some View {
         LazyVStack(spacing: 12) {
+            ForEach(socialStore.relayInvites) { invite in
+                RelayInviteCard(invite: invite)
+            }
+
             ForEach(SocialSeed.feedPosts) { post in
-                SocialFeedPostCard(
-                    post: post,
-                    isCheered: cheeredPostIDs.contains(post.id)
-                ) {
-                    toggleCheer(for: post)
+                if !socialStore.blockedPersonIDs.contains(post.author.id) && !socialStore.reportedContentIDs.contains(post.id) {
+                    SocialFeedPostCard(
+                        post: post,
+                        isCheered: socialStore.cheeredPostIDs.contains(post.id),
+                        commentCount: socialStore.commentCount(for: post),
+                        onCheer: {
+                            toggleCheer(for: post)
+                        },
+                        onComment: {
+                            selectedCommentPost = post
+                        },
+                        onRunRoute: {
+                            routePrompt = "\(post.activity.routeName) is queued as a route idea for your next start."
+                        },
+                        onReport: {
+                            socialStore.reportContent(post.id)
+                        },
+                        onBlock: {
+                            socialStore.blockPerson(post.author.id)
+                        }
+                    )
                 }
             }
         }
@@ -141,22 +187,27 @@ struct ActivityFeedView: View {
             ForEach(SocialSeed.clubs) { club in
                 SocialClubCard(
                     club: club,
-                    isJoined: recognitionStore.joinedClubIDs.contains(club.id)
+                    isJoined: socialRecognitionStore.joinedClubIDs.contains(club.id)
                 ) {
                     toggleClub(club)
                 }
             }
 
             ForEach(SocialSeed.challenges) { challenge in
-                SocialChallengeCard(challenge: challenge)
+                SocialChallengeCard(
+                    challenge: challenge,
+                    isJoined: socialStore.joinedChallengeIDs.contains(challenge.id)
+                ) {
+                    socialStore.toggleChallenge(challenge.id)
+                }
             }
         }
     }
 
     private var rivalBoard: some View {
         LazyVStack(spacing: 12) {
-            RivalryHeaderCard(hasClaimedEdge: recognitionStore.claimedRivalEdge) {
-                _ = recognitionStore.claimRivalEdge()
+            RivalryHeaderCard(hasClaimedEdge: socialRecognitionStore.claimedRivalEdge) {
+                _ = socialRecognitionStore.claimRivalEdge()
             }
 
             ForEach(SocialSeed.rivals) { rival in
@@ -166,29 +217,18 @@ struct ActivityFeedView: View {
     }
 
     private func toggleCheer(for post: SocialFeedPost) {
-        if cheeredPostIDs.contains(post.id) {
-            cheeredPostIDs.remove(post.id)
-        } else {
-            cheeredPostIDs.insert(post.id)
-            _ = recognitionStore.registerCheer(for: post.id)
+        if socialStore.toggleCheer(for: post.id) {
+            _ = socialRecognitionStore.registerCheer(for: post.id)
         }
     }
 
     private func toggleClub(_ club: SocialClub) {
-        _ = recognitionStore.toggleClubMembership(clubID: club.id)
+        _ = socialRecognitionStore.toggleClubMembership(clubID: club.id)
     }
 
     private func toggleShared(_ activity: SavedActivity) {
-        _ = recognitionStore.toggleShare(for: activity)
+        _ = socialRecognitionStore.toggleShare(for: activity)
     }
-}
-
-private enum SocialFeedScope: String, CaseIterable, Identifiable {
-    case squad = "Squad"
-    case clubs = "Clubs"
-    case rivals = "Rivals"
-
-    var id: String { rawValue }
 }
 
 private struct SocialMetricPill: View {
@@ -215,6 +255,63 @@ private struct SocialMetricPill: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.tertiarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct PrivacyControlCard: View {
+    @Binding var visibility: SocialVisibility
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Default visibility", systemImage: "lock.shield.fill")
+                    .font(.subheadline.bold())
+                Spacer()
+                Text("Local preview")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("Default visibility", selection: $visibility) {
+                ForEach(SocialVisibility.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SocialStatusCard: View {
+    let symbol: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(.green)
+                .frame(width: 34, height: 34)
+                .background(.green.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
@@ -311,10 +408,45 @@ private struct ShareLatestRunCard: View {
     }
 }
 
+private struct RelayInviteCard: View {
+    let invite: SocialRelayInvite
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bolt.fill")
+                .font(.title3.bold())
+                .foregroundStyle(.green)
+                .frame(width: 42, height: 42)
+                .background(.green.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Relay invite created")
+                    .font(.headline)
+                Text("\(invite.routeLabel) - \(invite.windowLabel) - \(invite.audienceLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            LiveBadge()
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 private struct SocialFeedPostCard: View {
     let post: SocialFeedPost
     let isCheered: Bool
+    let commentCount: Int
     let onCheer: () -> Void
+    let onComment: () -> Void
+    let onRunRoute: () -> Void
+    let onReport: () -> Void
+    let onBlock: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -339,11 +471,21 @@ private struct SocialFeedPostCard: View {
 
                 Spacer()
 
-                Image(systemName: post.kind.symbol)
-                    .font(.headline)
-                    .foregroundStyle(post.kind.tint)
-                    .frame(width: 34, height: 34)
-                    .background(post.kind.tint.opacity(0.12), in: Circle())
+                Menu {
+                    Button("Report post", systemImage: "exclamationmark.bubble") {
+                        onReport()
+                    }
+                    Button("Block \(post.author.firstName)", systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
+                        onBlock()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+                }
+                .accessibilityLabel("Post options")
             }
 
             Text(post.caption)
@@ -360,8 +502,8 @@ private struct SocialFeedPostCard: View {
                     action: onCheer
                 )
 
-                SocialActionButton(title: "\(post.comments)", symbol: "bubble.left.fill", isActive: false) { }
-                SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false) { }
+                SocialActionButton(title: "\(commentCount)", symbol: "bubble.left.fill", isActive: false, action: onComment)
+                SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false, action: onRunRoute)
 
                 Spacer()
 
@@ -469,6 +611,8 @@ private struct SocialClubCard: View {
 
 private struct SocialChallengeCard: View {
     let challenge: SocialChallenge
+    let isJoined: Bool
+    let onToggleJoin: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -500,9 +644,12 @@ private struct SocialChallengeCard: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            Button(isJoined ? "Joined" : "Join") {
+                onToggleJoin()
+            }
+            .font(.caption.bold())
+            .buttonStyle(.bordered)
+            .tint(isJoined ? .green : challenge.tint)
         }
         .padding(14)
         .background(Color(.secondarySystemGroupedBackground))
@@ -551,7 +698,7 @@ private struct RivalryHeaderCard: View {
 }
 
 private struct SocialRecognitionCard: View {
-    let preview: RecognitionPreview
+    let preview: SocialRecognitionPreview
 
     var body: some View {
         HStack(spacing: 12) {
@@ -722,8 +869,78 @@ private struct RouteLineShape: Shape {
     }
 }
 
+private struct CommentThreadSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let post: SocialFeedPost
+    let comments: [SocialComment]
+    let onSend: (String) -> Void
+    @State private var draft = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                List {
+                    Section {
+                        Text(post.caption)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } header: {
+                        Text(post.author.fullName)
+                    }
+
+                    Section("Thread") {
+                        if comments.isEmpty {
+                            Text("No comments yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(comments) { comment in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(comment.authorName)
+                                        .font(.caption.bold())
+                                    Text(comment.text)
+                                        .font(.subheadline)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    TextField("Add a comment", text: $draft)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button {
+                        onSend(draft)
+                        draft = ""
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.headline)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(12)
+                .background(.bar)
+            }
+            .navigationTitle("Comments")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
 private struct RelayComposerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    let onCreate: (String, String, String) -> Void
+    @State private var selectedRoute = "Neighborhood Loop"
+    @State private var selectedWindow = "Lunch Window"
+    @State private var selectedAudience = "Squad Only"
 
     var body: some View {
         NavigationStack {
@@ -733,13 +950,29 @@ private struct RelayComposerSheet: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                RelayOptionRow(symbol: "location.fill", title: "Neighborhood Loop", subtitle: "3.2 km near home")
-                RelayOptionRow(symbol: "clock.fill", title: "Lunch Window", subtitle: "Open for the next 45 minutes")
-                RelayOptionRow(symbol: "person.2.fill", title: "Squad Only", subtitle: "Maya, Leo, Zoe, Chen")
+                RelayOptionPicker(
+                    symbol: "location.fill",
+                    title: "Route",
+                    options: ["Neighborhood Loop", "Waterfront Out-and-Back", "Track Ladder"],
+                    selection: $selectedRoute
+                )
+                RelayOptionPicker(
+                    symbol: "clock.fill",
+                    title: "Window",
+                    options: ["Lunch Window", "After Work", "Weekend Morning"],
+                    selection: $selectedWindow
+                )
+                RelayOptionPicker(
+                    symbol: "person.2.fill",
+                    title: "Audience",
+                    options: ["Squad Only", "Club Members", "Rivals"],
+                    selection: $selectedAudience
+                )
 
                 Spacer()
 
                 Button {
+                    onCreate(selectedRoute, selectedWindow, selectedAudience)
                     dismiss()
                 } label: {
                     Label("Create Relay", systemImage: "bolt.fill")
@@ -762,10 +995,11 @@ private struct RelayComposerSheet: View {
     }
 }
 
-private struct RelayOptionRow: View {
+private struct RelayOptionPicker: View {
     let symbol: String
     let title: String
-    let subtitle: String
+    let options: [String]
+    @Binding var selection: String
 
     var body: some View {
         HStack(spacing: 12) {
@@ -778,9 +1012,12 @@ private struct RelayOptionRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.subheadline.bold())
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Picker(title, selection: $selection) {
+                    ForEach(options, id: \.self) { option in
+                        Text(option).tag(option)
+                    }
+                }
+                .labelsHidden()
             }
 
             Spacer()
@@ -791,217 +1028,4 @@ private struct RelayOptionRow: View {
     }
 }
 
-private struct SocialPerson: Identifiable {
-    let id: String
-    let firstName: String
-    let fullName: String
-    let initials: String
-    let tint: Color
-    let isRunning: Bool
-}
-
-private struct SocialFeedPost: Identifiable {
-    let id: String
-    let author: SocialPerson
-    let context: String
-    let caption: String
-    let activity: SocialActivitySummary
-    let kind: SocialPostKind
-    let gradient: [Color]
-    let isLive: Bool
-    let cheers: Int
-    let comments: Int
-}
-
-private struct SocialActivitySummary {
-    let routeName: String
-    let distanceKm: Double
-    let duration: String
-    let pace: String
-
-    func distanceText(unitSystem: MeasurementUnitSystem) -> String {
-        unitSystem.distanceString(meters: distanceKm * 1000, fractionDigits: 1)
-    }
-
-    func paceText(unitSystem: MeasurementUnitSystem) -> String {
-        guard let secondsPerKilometer else { return pace }
-        return secondsPerKilometer.paceString(for: unitSystem)
-    }
-
-    private var secondsPerKilometer: Double? {
-        let timePart = pace.split(separator: " ").first ?? Substring(pace)
-        let pieces = timePart.split(separator: ":")
-        guard pieces.count == 2,
-              let minutes = Double(String(pieces[0])),
-              let seconds = Double(String(pieces[1])) else {
-            return nil
-        }
-        return minutes * 60 + seconds
-    }
-}
-
-private enum SocialPostKind {
-    case run
-    case relay
-    case challenge
-
-    var symbol: String {
-        switch self {
-        case .run: return "figure.run"
-        case .relay: return "bolt.fill"
-        case .challenge: return "flag.checkered"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .run: return .orange
-        case .relay: return .green
-        case .challenge: return .blue
-        }
-    }
-}
-
-private struct SocialClub: Identifiable {
-    let id: String
-    let name: String
-    let subtitle: String
-    let symbol: String
-    let tint: Color
-    let memberInitials: [String]
-    let memberCount: Int
-    let nextRun: String
-}
-
-private struct SocialChallenge: Identifiable {
-    let id: String
-    let title: String
-    let subtitle: String
-    let reward: String
-    let progress: Double
-    let tint: Color
-}
-
-private struct SocialRival: Identifiable {
-    let id: String
-    let rank: Int
-    let person: SocialPerson
-    let weeklyKm: Double
-    let delta: String
-    let note: String
-
-    func weeklyDistanceText(unitSystem: MeasurementUnitSystem) -> String {
-        unitSystem.distanceString(meters: weeklyKm * 1000, fractionDigits: 1)
-    }
-
-    func deltaText(unitSystem: MeasurementUnitSystem) -> String {
-        guard delta != "You" else { return delta }
-        let sign = delta.hasPrefix("+") ? "+" : delta.hasPrefix("-") ? "-" : ""
-        let unsignedDelta = delta
-            .replacingOccurrences(of: "+", with: "")
-            .replacingOccurrences(of: "-", with: "")
-            .replacingOccurrences(of: " km", with: "")
-        guard let kilometers = Double(unsignedDelta) else { return delta }
-        return "\(sign)\(unitSystem.distanceString(meters: kilometers * 1000, fractionDigits: 1))"
-    }
-}
-
-private enum SocialSeed {
-    static let maya = SocialPerson(id: "maya", firstName: "Maya", fullName: "Maya Chen", initials: "MC", tint: .orange, isRunning: true)
-    static let leo = SocialPerson(id: "leo", firstName: "Leo", fullName: "Leo Park", initials: "LP", tint: .blue, isRunning: true)
-    static let zoe = SocialPerson(id: "zoe", firstName: "Zoe", fullName: "Zoe Kim", initials: "ZK", tint: .pink, isRunning: false)
-    static let noah = SocialPerson(id: "noah", firstName: "Noah", fullName: "Noah Singh", initials: "NS", tint: .green, isRunning: true)
-    static let ava = SocialPerson(id: "ava", firstName: "Ava", fullName: "Ava Brooks", initials: "AB", tint: .purple, isRunning: false)
-    static let chen = SocialPerson(id: "chen", firstName: "Chen", fullName: "Chen Li", initials: "CL", tint: .teal, isRunning: true)
-
-    static let people = [maya, leo, zoe, noah, ava, chen]
-
-    static let feedPosts = [
-        SocialFeedPost(
-            id: "maya-waterfront",
-            author: maya,
-            context: "Waterfront Loop - 8 min ago",
-            caption: "Negative split the last kilometer. Someone take this segment before dinner.",
-            activity: SocialActivitySummary(routeName: "Pier Dash", distanceKm: 5.4, duration: "26:12", pace: "4:51 /km"),
-            kind: .challenge,
-            gradient: [.orange.opacity(0.85), .blue.opacity(0.62)],
-            isLive: false,
-            cheers: 18,
-            comments: 4
-        ),
-        SocialFeedPost(
-            id: "leo-relay",
-            author: leo,
-            context: "Mission Relay - live now",
-            caption: "Holding a conversational pace for anyone who wants to jump in remotely.",
-            activity: SocialActivitySummary(routeName: "Mission Grid", distanceKm: 3.1, duration: "15:48", pace: "5:05 /km"),
-            kind: .relay,
-            gradient: [.green.opacity(0.82), .cyan.opacity(0.55)],
-            isLive: true,
-            cheers: 11,
-            comments: 7
-        ),
-        SocialFeedPost(
-            id: "zoe-hills",
-            author: zoe,
-            context: "Twin Peaks - yesterday",
-            caption: "Hill repeats are better when the group chat is watching.",
-            activity: SocialActivitySummary(routeName: "Peak Steps", distanceKm: 6.8, duration: "41:03", pace: "6:02 /km"),
-            kind: .run,
-            gradient: [.pink.opacity(0.78), .orange.opacity(0.58)],
-            isLive: false,
-            cheers: 24,
-            comments: 6
-        )
-    ]
-
-    static let clubs = [
-        SocialClub(
-            id: "sf-dawn",
-            name: "SF Dawn Patrol",
-            subtitle: "Early runs, quiet streets, coffee after.",
-            symbol: "sunrise.fill",
-            tint: .orange,
-            memberInitials: ["MC", "LP", "ZK", "CL"],
-            memberCount: 128,
-            nextRun: "Tue 6:30"
-        ),
-        SocialClub(
-            id: "founders",
-            name: "Founders 5K",
-            subtitle: "Fast lunch loops for builders and designers.",
-            symbol: "building.2.fill",
-            tint: .blue,
-            memberInitials: ["AB", "NS", "LP", "MC"],
-            memberCount: 74,
-            nextRun: "Today"
-        )
-    ]
-
-    static let challenges = [
-        SocialChallenge(
-            id: "seven-day-chain",
-            title: "7 Day Chain",
-            subtitle: "Four teammates have checked in today.",
-            reward: "2 days left",
-            progress: 0.71,
-            tint: .green
-        ),
-        SocialChallenge(
-            id: "city-segments",
-            title: "City Segments",
-            subtitle: "Own three short routes before Sunday.",
-            reward: "1 segment held",
-            progress: 0.33,
-            tint: .blue
-        )
-    ]
-
-    static let rivals = [
-        SocialRival(id: "r1", rank: 1, person: maya, weeklyKm: 32.4, delta: "+1.8 km", note: "Won Pier Dash"),
-        SocialRival(id: "r2", rank: 2, person: chen, weeklyKm: 30.6, delta: "You", note: "2 runs logged"),
-        SocialRival(id: "r3", rank: 3, person: leo, weeklyKm: 28.1, delta: "-2.5 km", note: "Live relay open"),
-        SocialRival(id: "r4", rank: 4, person: zoe, weeklyKm: 24.7, delta: "-5.9 km", note: "Climbing week")
-    ]
-}
 #endif
