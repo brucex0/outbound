@@ -17,6 +17,8 @@ The current view is a Strava-style layered detail page:
 7. **Coach reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — horizontal story strip
 
+The Share Activity Card action exports a portrait image built from a muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid on the map. If a route snapshot cannot be created, the export falls back to a stats-only card so sharing still succeeds.
+
 Limitations vs Strava and category expectations:
 - Share is in a menu, not a persistent bottom toolbar
 - No comparison to previous activities
