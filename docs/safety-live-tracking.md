@@ -155,6 +155,7 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - Recipient route:
   - `GET /live/:token`
   - `GET /live/:token?format=json` for browser polling
+- The public viewer uses a map-first mobile layout: route history is drawn as an orange path, the current point is centered when only one location exists, and distance/elapsed/update stats are compressed below the map.
 - `Settings` has local trusted contacts, default recipient selection, and SMS/push channel labels.
 - `RecordView` creates the server share before countdown when `Share live run` is armed, using the default trusted contact when one exists.
 - iOS presents a prefilled system Share Sheet before countdown; recording starts after the sheet is dismissed.
