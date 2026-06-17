@@ -7,50 +7,72 @@ Outbound onboarding should create a first win, not teach the whole product.
 New authenticated users should reach a concrete success state in two to three minutes:
 
 1. Understand that Outbound is for coached endurance sessions.
-2. Tell the app why they are here.
-3. Give only the context needed to shape the first session.
-4. See a personalized first-session setup.
-5. Start that session or land on Me with momentum.
+2. Tell the coach, in their own words, what they want help with.
+3. Provide body basics needed for calorie estimates and safer plan sizing.
+4. Describe their current baseline and realistic weekly availability.
+5. Review the coach's structured read of those answers.
+6. See a personalized plan path and first-session setup.
+7. Start that session or land on Me with momentum.
 
-The flow should avoid feature tours, early permission prompts, and empty-dashboard handoffs.
+The flow should avoid feature tours, early permission prompts, and empty-dashboard handoffs. It should use free-text AI-style intake wherever personal context matters, with preset controls reserved for exact or constrained inputs such as units, body profile, and final plan intensity.
 
 ## Flow
 
 1. Welcome
    - Brand signal: Outbound.
-   - Promise: one small win first, coach-guided next steps after.
+   - Promise: tell the coach the real story, then start with a concrete first session.
    - Actions: set up first win or skip.
 
-2. Intent
-   - Options: move today, build rhythm, restart gently, train for a goal.
-   - This determines the tone and suggested first session.
+2. Goal
+   - Free-text prompt for what the user wants help with.
+   - Example chips fill the text box but do not constrain the answer.
+   - The local intake analyzer maps the prose to a plan focus such as first 5K, race preparation, run farther, run faster, fitness and weight support, safe return, or steady fitness.
 
-3. Context
-   - First sport: run or bike.
-   - Starting point: new, returning, or steady.
-   - Today: 10, 20, or 35 minutes.
-   - Weekly rhythm: 2x, 3x, or 4x.
+3. Body basics
+   - Unit system.
+   - Age.
+   - Height.
+   - Weight.
+   - Optional body profile for calorie estimates.
+   - These fields are exact inputs rather than AI intake because calorie estimates and load heuristics need numeric values.
 
-4. Setup
-   - Shows the personalized first session.
-   - Shows the lightweight weekly setup.
-   - Offers Start first session as the primary action and Go to Me as the fast exit.
+4. Baseline and week
+   - Free-text starting-point prompt.
+   - Free-text realistic-week prompt.
+   - Example chips can seed common answers.
+   - The intake analyzer extracts sport, comfortable duration, recent weekly frequency, injury/recovery caution, weekly rhythm, first-session length, and effort preference.
+
+5. Coach review
+   - Shows the structured read back to the user.
+   - Lets the user choose easier, balanced, or harder before recommendation.
+   - Includes an edit path back to the free-text answers.
+
+6. Recommendation
+   - Shows the recommended plan path.
+   - Shows the first session.
+   - Explains why it fits using goal, body basics, baseline, and availability.
+   - Offers Start first session as the primary action and Save plan and go to Me as the fast exit.
 
 ## Implementation
 
 - `App/OnboardingStore.swift`
   - Owns account-scoped completion state in `UserDefaults`.
   - Keeps the in-progress draft local.
-  - Produces an `OnboardingProfile`, suggested readiness, and a `SuggestedSession`.
+  - Stores raw intake text, body basics, extracted intake summary, suggested readiness, and a `SuggestedSession`.
+  - Uses a deterministic local intake analyzer for V1 so onboarding remains offline and predictable; a backend or on-device model can replace the analyzer later while preserving the structured summary shape.
 
 - `App/OnboardingFlowView.swift`
   - Renders the full-screen SwiftUI flow.
   - Uses the selected coach face color as the accent.
+  - Uses text editors for goal, baseline, and schedule intake.
+  - Uses exact fields for age, height, weight, units, and body profile.
+  - Shows the extracted coach review before the recommendation.
   - Calls back with whether the user chose to start the first session.
 
 - `App/MainTabView.swift`
   - Presents onboarding after authentication when the current account has not completed it.
   - Applies the profile by setting the daily readiness.
+  - Applies the onboarding unit choice to app measurement preferences.
   - Starts `RecordView` with the personalized `SessionIntent` when requested.
 
 - `App/ProfileView.swift`

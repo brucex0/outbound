@@ -208,6 +208,7 @@ struct MainTabView: View {
     }
 
     private func applyOnboardingProfile(_ profile: OnboardingProfile) {
+        measurementPreferences.unitSystem = profile.bodyProfile.unitSystem
         dailyCheckInStore.select(profile.suggestedReadiness)
     }
 
