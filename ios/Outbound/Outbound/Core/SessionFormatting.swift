@@ -135,6 +135,75 @@ extension Double {
     }
 }
 
+extension String {
+    func correctingPrematureCurrentDistanceClaims(currentDistanceMeters: Double) -> String {
+        let currentMeters = max(0, currentDistanceMeters)
+        var corrected = self
+
+        let numericPatterns: [(pattern: String, multiplier: Double)] = [
+            (#"\b([0-9]+(?:\.[0-9]+)?)\s*(?:km|k|kilometer|kilometers)\s+(in|done|covered|complete|completed)\b"#, 1_000),
+            (#"\b([0-9]+(?:\.[0-9]+)?)\s*(?:mi|mile|miles)\s+(in|done|covered|complete|completed)\b"#, 1_609.344)
+        ]
+
+        for numericPattern in numericPatterns {
+            corrected = corrected.replacingCurrentDistanceClaims(
+                matching: numericPattern.pattern
+            ) { match in
+                guard let valueRange = Range(match.range(at: 1), in: corrected),
+                      let suffixRange = Range(match.range(at: 2), in: corrected),
+                      let value = Double(corrected[valueRange])
+                else {
+                    return nil
+                }
+
+                let claimedMeters = value * numericPattern.multiplier
+                guard claimedMeters > currentMeters + 25 else { return nil }
+                return "\(currentMeters.spokenDistanceString) \(corrected[suffixRange])"
+            }
+        }
+
+        let wordPatterns: [String] = [
+            #"\b(?:one|a)\s+(?:km|k|kilometer|kilometre)\s+(in|done|covered|complete|completed)\b"#,
+            #"\bjust\s+over\s+(?:one|a)\s+(?:km|k|kilometer|kilometre)\s+(in|done|covered|complete|completed)\b"#,
+            #"\bover\s+(?:one|a)\s+(?:km|k|kilometer|kilometre)\s+(in|done|covered|complete|completed)\b"#
+        ]
+
+        for pattern in wordPatterns where currentMeters < 1_000 {
+            corrected = corrected.replacingCurrentDistanceClaims(
+                matching: pattern
+            ) { match in
+                guard let suffixRange = Range(match.range(at: 1), in: corrected) else {
+                    return nil
+                }
+                return "\(currentMeters.spokenDistanceString) \(corrected[suffixRange])"
+            }
+        }
+
+        return corrected
+    }
+
+    private func replacingCurrentDistanceClaims(
+        matching pattern: String,
+        replacement: (NSTextCheckingResult) -> String?
+    ) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return self
+        }
+
+        var result = self
+        let range = NSRange(result.startIndex..<result.endIndex, in: result)
+        for match in regex.matches(in: result, range: range).reversed() {
+            guard let replacementText = replacement(match),
+                  let matchRange = Range(match.range, in: result)
+            else {
+                continue
+            }
+            result.replaceSubrange(matchRange, with: replacementText)
+        }
+        return result
+    }
+}
+
 extension Int {
     func formatted() -> String {
         let hours = self / 3600

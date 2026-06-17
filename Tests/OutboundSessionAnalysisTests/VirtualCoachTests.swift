@@ -72,6 +72,21 @@ final class VirtualCoachTests: XCTestCase {
         coach.deactivate()
     }
 
+    func testProviderDistanceClaimIsCorrectedWhenItExceedsCurrentDistance() async throws {
+        let provider = FakeSessionAnalysisProvider(message: "1 km in. Stay smooth.", shouldSpeak: true)
+        let coach = VirtualCoach(provider: provider, speechEnabled: false)
+        coach.activate(with: nil)
+
+        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 130, paceSecsPerKm: 320))
+        try await waitUntil { coach.latestAnalysis != nil }
+
+        XCTAssertEqual(coach.lastNudge, "130 meters in. Stay smooth.")
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("130 meters in."))
+        XCTAssertFalse(coach.lastSpokenAnnouncement.localizedCaseInsensitiveContains("1 km in"))
+
+        coach.deactivate()
+    }
+
     func testProgressMomentKeepsProgressContext() async throws {
         let provider = FakeSessionAnalysisProvider(shouldSpeak: true)
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
@@ -186,10 +201,12 @@ private final class FakeSessionAnalysisProvider: SessionAnalysisProvider {
 
     private(set) var requests: [SessionAnalysisRequest] = []
     private let error: Error?
+    private let message: String
     private let shouldSpeak: Bool
 
-    init(error: Error? = nil, shouldSpeak: Bool = false) {
+    init(error: Error? = nil, message: String = "Hold steady.", shouldSpeak: Bool = false) {
         self.error = error
+        self.message = message
         self.shouldSpeak = shouldSpeak
     }
 
@@ -201,7 +218,7 @@ private final class FakeSessionAnalysisProvider: SessionAnalysisProvider {
         }
 
         return SessionAnalysisResult(
-            message: "Hold steady.",
+            message: message,
             urgency: .steady,
             shouldSpeak: shouldSpeak,
             generatedAt: Date(),

@@ -204,26 +204,29 @@ final class VirtualCoach: NSObject, ObservableObject {
 
     private func apply(_ analysis: SessionAnalysisResult, for snapshot: ActiveSessionSnapshot) {
         latestAnalysis = analysis
-        guard !analysis.message.isEmpty else { return }
+        let message = analysis.message.correctingPrematureCurrentDistanceClaims(
+            currentDistanceMeters: snapshot.distanceMeters
+        )
+        guard !message.isEmpty else { return }
 
-        lastNudge = analysis.message
+        lastNudge = message
         guard analysis.shouldSpeak else { return }
 
-        let fingerprint = normalizedFingerprint(for: analysis.message)
+        let fingerprint = normalizedFingerprint(for: message)
         guard !recentSpokenFingerprints.contains(fingerprint) else { return }
 
         recentSpokenFingerprints.append(fingerprint)
         if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
             recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
         }
-        recentSpokenMessages.append(analysis.message)
+        recentSpokenMessages.append(message)
         if recentSpokenMessages.count > maxRecentSpokenMessages {
             recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
         }
 
         let moment = coachingMoment(for: snapshot, analysis: analysis)
         speak(
-            coachingAnnouncement(for: snapshot, message: analysis.message, moment: moment),
+            coachingAnnouncement(for: snapshot, message: message, moment: moment),
             urgency: analysis.urgency,
             role: moment.role
         )
