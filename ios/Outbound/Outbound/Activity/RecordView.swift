@@ -463,8 +463,7 @@ struct RecordView: View {
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
             musicSetupCard
-            safetySetupCard
-            practicalSetupCard
+            sessionOptionsCard
 
             VStack(spacing: 14) {
                 sessionGoalCard(for: intent)
@@ -488,21 +487,34 @@ struct RecordView: View {
         }
     }
 
-    private var safetySetupCard: some View {
+    private var sessionOptionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: Binding(
-                get: { liveShareStore.isArmedForNextActivity },
-                set: { liveShareStore.armForNextActivity($0) }
-            )) {
-                Label("Share live run", systemImage: "location.circle.fill")
-                    .font(.headline)
-            }
-            .tint(.orange)
+            HStack(spacing: 10) {
+                setupOptionButton(
+                    title: "Live",
+                    subtitle: liveShareStore.isArmedForNextActivity ? "Sharing" : "Off",
+                    systemImage: "location.circle.fill",
+                    isSelected: liveShareStore.isArmedForNextActivity
+                ) {
+                    liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                }
+                .accessibilityLabel(liveShareStore.isArmedForNextActivity ? "Turn off live sharing" : "Turn on live sharing")
 
-            Text(liveShareStore.isArmedForNextActivity ? "A private trusted link will be active until you finish or stop sharing." : "Off by default. Turn on only when a trusted person should follow this session.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                setupOptionButton(
+                    title: "Treadmill",
+                    subtitle: isIndoorSession ? "Indoor" : "Outdoor",
+                    systemImage: "figure.run.treadmill",
+                    isSelected: isIndoorSession
+                ) {
+                    isIndoorSession.toggle()
+                }
+                .accessibilityLabel(isIndoorSession ? "Turn off treadmill mode" : "Turn on treadmill mode")
+            }
+
+            Divider()
+
+            gearSetupRow
+
             if liveShareStore.isArmedForNextActivity {
                 Label(
                     safetyContactStore.defaultContact.map { "Recipient: \($0.name) (\($0.deliveryChannel.title) stub + Share Sheet)" } ?? "Recipient: choose in Share Sheet",
@@ -523,28 +535,55 @@ struct RecordView: View {
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
-    private var practicalSetupCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $isIndoorSession) {
-                Label("Treadmill / indoor", systemImage: "figure.run.treadmill")
+    private func setupOptionButton(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
                     .font(.headline)
+                    .foregroundStyle(isSelected ? .white : .orange)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                    Text(subtitle)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(isSelected ? .white.opacity(0.82) : .secondary)
+                }
+                Spacer(minLength: 0)
             }
-            .tint(.orange)
+            .padding(.horizontal, 12)
+            .frame(height: 54)
+            .background(isSelected ? Color.orange : Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+    }
 
+    private var gearSetupRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "shoeprints.fill")
+                .foregroundStyle(.secondary)
+                .frame(width: 22)
             if let shoe = gearStore.defaultShoe {
-                Label(shoe.displayName, systemImage: "shoeprints.fill")
+                Text(shoe.displayName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             } else {
-                Label("Add shoes in Settings to track mileage", systemImage: "shoeprints.fill")
+                Text("Add shoes in Settings to track mileage")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
     private func heartRateZones(from summary: ActivitySummary) -> ActivityHeartRateZoneSummary? {

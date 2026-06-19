@@ -1,4 +1,5 @@
 import Combine
+import OSLog
 import SwiftUI
 
 @main
@@ -1387,6 +1388,8 @@ final class AppNavigationStore: ObservableObject {
 
 @MainActor
 final class AssistantStore: ObservableObject {
+    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "Assistant")
+
     @Published var draft = ""
     @Published private(set) var messages: [AssistantMessage]
     @Published private(set) var isResponding = false
@@ -1541,39 +1544,55 @@ final class AssistantStore: ObservableObject {
         capability: AssistantCapability,
         context: AssistantContext
     ) async -> String {
-        if let remote = try? await APIClient.shared.chatWithAssistant(AssistantChatRequest(
-            prompt: prompt,
-            capability: capability.rawValue,
-            context: AssistantChatAPIContext(
-                coachName: context.coachName,
-                activityCount: context.activityCount,
-                weeklyDistanceKilometers: context.weeklyDistanceKilometers,
-                currentGoalSummary: context.currentGoalSummary,
-                currentScreen: context.currentScreen,
-                isRecordingActive: context.isRecordingActive,
-                timeZoneIdentifier: context.timeZoneIdentifier
-            ),
-            messages: recentMessagesForAPI(),
-            firebaseUid: AuthStore.currentUserId
-        )), !remote.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return remote.message
+        do {
+            let remote = try await APIClient.shared.chatWithAssistant(AssistantChatRequest(
+                prompt: prompt,
+                capability: capability.rawValue,
+                context: AssistantChatAPIContext(
+                    coachName: context.coachName,
+                    activityCount: context.activityCount,
+                    weeklyDistanceKilometers: context.weeklyDistanceKilometers,
+                    currentGoalSummary: context.currentGoalSummary,
+                    currentScreen: context.currentScreen,
+                    isRecordingActive: context.isRecordingActive,
+                    timeZoneIdentifier: context.timeZoneIdentifier
+                ),
+                messages: recentMessagesForAPI(),
+                firebaseUid: AuthStore.currentUserId
+            ))
+            let message = remote.message.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !message.isEmpty, !Self.isGenericFailureReply(message) {
+                return message
+            }
+            Self.logger.warning("Assistant remote returned unusable message for capability \(capability.rawValue, privacy: .public).")
+        } catch {
+            Self.logger.error("Assistant remote request failed: \(String(describing: error), privacy: .public)")
         }
 
         if let generated = await AssistantFoundationModelResponder.generateReply(
             prompt: prompt,
             capability: capability,
             context: context
-        ) {
+        ), !Self.isGenericFailureReply(generated) {
             return generated
         }
 
-        return fallbackReply(for: capability, context: context)
+        return fallbackReply(for: prompt, capability: capability, context: context)
     }
 
     private func fallbackReply(
-        for capability: AssistantCapability,
+        for prompt: String,
+        capability: AssistantCapability,
         context: AssistantContext
     ) -> String {
+        if Self.looksLikeExternalDiscoveryRequest(prompt) {
+            return """
+            I cannot browse or show live outside listings from inside Outbound yet.
+
+            If you are planning time around Vancouver, I can still help turn that into an active outing: pick a walk, run, or ride window, then use the orange activity button when you are ready to record it.
+            """
+        }
+
         switch capability {
         case .discover:
 #if OUTBOUND_ENABLE_SOCIAL
@@ -1721,6 +1740,28 @@ final class AssistantStore: ObservableObject {
             return .plan
         }
         return .discover
+    }
+
+    private static func isGenericFailureReply(_ reply: String) -> Bool {
+        let normalized = reply
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return normalized == "sorry, something went wrong. please try again."
+            || normalized == "something went wrong. please try again."
+            || normalized == "sorry, something went wrong."
+    }
+
+    private static func looksLikeExternalDiscoveryRequest(_ prompt: String) -> Bool {
+        let lowercased = prompt.lowercased()
+        guard lowercased.contains("show me") || lowercased.contains("find") || lowercased.contains("search") else {
+            return false
+        }
+
+        let outboundTerms = [
+            "activity", "activities", "run", "walk", "ride", "bike", "coach",
+            "goal", "plan", "history", "settings", "music", "health"
+        ]
+        return !outboundTerms.contains { lowercased.contains($0) }
     }
 
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {

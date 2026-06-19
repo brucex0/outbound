@@ -89,6 +89,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - try the backend assistant chat endpoint first
   - fall back to Apple Foundation Models when available on device
   - fall back again to deterministic local copy so the UI still works everywhere
+- Generic provider failure text such as `Sorry, something went wrong. Please try again.` is treated as unusable and falls through to deterministic local copy; backend transport errors are logged under the `Assistant` OSLog category for device debugging.
 - Backend chat keeps provider keys on the server rather than in the iOS app.
 - The current assistant backend path follows the BoatShare pattern: OpenAI-compatible server-side calls to DeepSeek with JSON-shaped responses for predictable parsing.
 - When Firebase auth and `DATABASE_URL` are available, the backend assistant route enriches each chat request with read-only, typed activity tools:
