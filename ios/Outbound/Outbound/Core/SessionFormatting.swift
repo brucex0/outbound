@@ -51,6 +51,15 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    func distanceMeters(from value: Double) -> Double {
+        switch self {
+        case .metric:
+            return value * 1000
+        case .imperial:
+            return value * 1609.344
+        }
+    }
+
     func distanceValueString(meters: Double, fractionDigits: Int = 2) -> String {
         decimalString(distanceValue(meters: meters), fractionDigits: fractionDigits)
     }

@@ -538,7 +538,7 @@ private struct GearSettingsCard: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(shoe.displayName)
                                     .font(.subheadline.weight(.semibold))
-                                Text(shoe.retiredAt == nil ? "Mileage tracked on saved runs" : "Retired")
+                                Text(shoeStatusText(shoe))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -579,29 +579,93 @@ private struct GearSettingsCard: View {
                 .environmentObject(gearStore)
         }
     }
+
+    private func shoeStatusText(_ shoe: GearItem) -> String {
+        let addDate = shoe.startedAt.formatted(date: .abbreviated, time: .omitted)
+        if let retiredAt = shoe.retiredAt {
+            let retiredDate = retiredAt.formatted(date: .abbreviated, time: .omitted)
+            return "Added \(addDate) • Retired \(retiredDate)"
+        }
+        return "Added \(addDate) • Mileage tracked on saved runs"
+    }
 }
 
 private struct AddShoeView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var gearStore: GearStore
-    @State private var name = "Daily trainer"
-    @State private var brand = ""
-    @State private var model = ""
-    @State private var limitText = "640"
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @State private var purpose: GearPurpose = .dailyTrainer
+    @State private var shoeQuery = ""
+    @State private var limitText = ""
+    @State private var selectedCatalogEntry: GearShoeCatalogEntry?
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Shoe") {
-                    TextField("Name", text: $name)
-                    TextField("Brand", text: $brand)
-                    TextField("Model", text: $model)
-                    TextField("Retirement distance in km", text: $limitText)
-                        .keyboardType(.decimalPad)
+                Picker("Purpose", selection: $purpose) {
+                    ForEach(GearPurpose.allCases) { purpose in
+                        Text(purpose.title).tag(purpose)
+                    }
                 }
+                .pickerStyle(.menu)
+
+                TextField("Search brand or model", text: $shoeQuery)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+
+                if let bestMatch {
+                    Button {
+                        applyCatalogEntry(bestMatch)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(bestMatch.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(bestMatch.purpose.title)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Text("Use")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Text("Retire around")
+                    Spacer()
+                    TextField("", text: $limitText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 72)
+                    Text(measurementPreferences.unitSystem.distanceUnit)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(retirementHintText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .navigationTitle("Add Shoe")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                prepareDefaultsIfNeeded()
+            }
+            .onChange(of: purpose) { oldPurpose, newPurpose in
+                if limitText == formattedLimitText(for: oldPurpose.suggestedDistanceLimitM) {
+                    limitText = formattedLimitText(for: newPurpose.suggestedDistanceLimitM)
+                }
+                selectedCatalogEntry = nil
+            }
+            .onChange(of: shoeQuery) { _, newValue in
+                if selectedCatalogEntry?.displayName != newValue {
+                    selectedCatalogEntry = nil
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -609,17 +673,75 @@ private struct AddShoeView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         gearStore.addShoe(
-                            name: name,
-                            brand: brand,
-                            model: model,
-                            distanceLimitM: (Double(limitText) ?? 640) * 1000
+                            name: purpose.suggestedNickname,
+                            brand: resolvedBrand,
+                            model: resolvedModel,
+                            purpose: purpose,
+                            distanceLimitM: resolvedDistanceLimitM
                         )
                         dismiss()
                     }
                     .fontWeight(.semibold)
+                    .disabled(!canAddShoe)
                 }
             }
         }
+    }
+
+    private var bestMatch: GearShoeCatalogEntry? {
+        guard selectedCatalogEntry == nil else { return nil }
+        return GearShoeCatalog.bestMatch(for: shoeQuery, purpose: purpose)
+    }
+
+    private var resolvedCatalogEntry: GearShoeCatalogEntry? {
+        selectedCatalogEntry ?? bestMatch
+    }
+
+    private var resolvedBrand: String {
+        if let resolvedCatalogEntry { return resolvedCatalogEntry.brand }
+        return ""
+    }
+
+    private var resolvedModel: String {
+        if let resolvedCatalogEntry { return resolvedCatalogEntry.model }
+        return shoeQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var resolvedDistanceLimitM: Double {
+        if let entryLimit = resolvedCatalogEntry?.distanceLimitM {
+            return entryLimit
+        }
+        let value = Double(limitText) ?? measurementPreferences.unitSystem.distanceValue(meters: purpose.suggestedDistanceLimitM)
+        return measurementPreferences.unitSystem.distanceMeters(from: value)
+    }
+
+    private var canAddShoe: Bool {
+        if resolvedCatalogEntry != nil { return true }
+        return !shoeQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func applyCatalogEntry(_ entry: GearShoeCatalogEntry) {
+        selectedCatalogEntry = entry
+        shoeQuery = entry.displayName
+        if let distanceLimitM = entry.distanceLimitM {
+            limitText = formattedLimitText(for: distanceLimitM)
+        }
+    }
+
+    private func prepareDefaultsIfNeeded() {
+        guard limitText.isEmpty else { return }
+        limitText = formattedLimitText(for: purpose.suggestedDistanceLimitM)
+    }
+
+    private func formattedLimitText(for meters: Double) -> String {
+        String(format: "%.0f", measurementPreferences.unitSystem.distanceValue(meters: meters))
+    }
+
+    private var retirementHintText: String {
+        let range = purpose.suggestedDistanceRangeM
+        let lower = formattedLimitText(for: range.lowerBound)
+        let upper = formattedLimitText(for: range.upperBound)
+        return "\(purpose.retirementHintPrefix) \(lower)-\(upper) \(measurementPreferences.unitSystem.distanceUnit)."
     }
 }
 
