@@ -160,6 +160,7 @@ For activity source attribution, expand `Activity.syncSource` into a structured 
 
 ### Progress
 
+- tabs for Now, Trends, Records, and Gear to keep the stats surface discoverable
 - PR history
 - shoe mileage
 - race prediction card with confidence

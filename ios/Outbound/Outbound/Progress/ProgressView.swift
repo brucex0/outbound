@@ -5,6 +5,7 @@ struct RunnerProgressView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var gearStore: GearStore
+    @State private var selectedTab: RunnerProgressTab = .now
 
     private var snapshot: ProgressStatsSnapshot {
         ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
@@ -20,14 +21,8 @@ struct RunnerProgressView: View {
                 if snapshot.eligibleActivityCount == 0 {
                     emptyState
                 } else {
-                    topSummary
-                    trendsSection
-                    bestEffortsSection
-                    personalRecordsSection
-                    racePredictionsSection
-                    gearMileageSection
-                    recentStatsSection
-                    coachNote
+                    progressTabs
+                    selectedTabContent
                 }
             }
             .padding()
@@ -35,6 +30,42 @@ struct RunnerProgressView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Progress")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var progressTabs: some View {
+        Picker("Progress view", selection: $selectedTab) {
+            ForEach(RunnerProgressTab.allCases) { tab in
+                Text(tab.title).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Progress sections")
+    }
+
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        switch selectedTab {
+        case .now:
+            VStack(alignment: .leading, spacing: 18) {
+                topSummary
+                coachNote
+                recentStatsSection
+            }
+        case .trends:
+            VStack(alignment: .leading, spacing: 18) {
+                trendsSection
+            }
+        case .records:
+            VStack(alignment: .leading, spacing: 18) {
+                bestEffortsSection
+                personalRecordsSection
+                racePredictionsSection
+            }
+        case .gear:
+            VStack(alignment: .leading, spacing: 18) {
+                gearMileageSection
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -197,6 +228,24 @@ struct RunnerProgressView: View {
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private enum RunnerProgressTab: String, CaseIterable, Identifiable {
+    case now
+    case trends
+    case records
+    case gear
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .now: return "Now"
+        case .trends: return "Trends"
+        case .records: return "Records"
+        case .gear: return "Gear"
+        }
     }
 }
 

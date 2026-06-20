@@ -50,7 +50,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 ## Progress
 
 - `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, PR history, race predictions, one momentum note, and a lightweight coach note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
-- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and renders weekly totals, trend bars, best efforts, PR history, race predictions, shoe mileage, recent activity stat highlights, momentum copy, and empty states.
+- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and organizes weekly summary/recent stats, trends, records, and gear mileage into Now, Trends, Records, and Gear tabs.
 - `App/ProfileView.swift`: embeds `ProgressSummaryCard` between the motivation dashboard and recent activity so Progress is reachable without adding a new tab.
 - `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, best weekly distance, PR history, race predictions, and momentum notes.
 
