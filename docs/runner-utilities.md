@@ -227,7 +227,7 @@ This gives Outbound practical logbook credibility without blocking on HealthKit 
 Implemented locally:
 
 - `Gear/GearStore.swift` stores shoes in `UserDefaults`, supports default shoes and retirement, and computes mileage from saved activities.
-- Settings uses a compact Add Shoe form: purpose picker, one search/freeform shoe field, offline brand/model best-match suggestions, suggested retirement distance, and add-date display after save.
+- Settings uses a collapsed-by-default Shoes settings row that shows the selected shoe, plus a compact Add Shoe form with purpose picker, one search/freeform shoe field, offline brand/model best-match suggestions, suggested retirement distance, and add-date display after save.
 - `Gear/GearShoeCatalog.swift` owns the small curated offline shoe list used for typeahead. Keep it intentionally small and update it with common models only.
 - `SavedActivity` now carries source, gear, manual-edit, indoor, cadence, and heart-rate-zone metadata with decoding defaults for older manifests.
 - `RecordView` can mark treadmill/indoor sessions and attaches the default shoe on save.

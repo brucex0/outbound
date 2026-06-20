@@ -496,77 +496,101 @@ private struct AddSafetyContactView: View {
 private struct GearSettingsCard: View {
     @EnvironmentObject var gearStore: GearStore
     @State private var isAddShoePresented = false
+    @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Shoes")
-                        .font(.title3.bold())
-                    Text(gearStore.shoes.isEmpty ? "Track mileage by pair" : "\(gearStore.activeShoes.count) active")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            Button {
+                withAnimation(.snappy) {
+                    isExpanded.toggle()
                 }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "shoeprints.fill")
+                        .foregroundStyle(.orange)
+                        .frame(width: 26)
 
-                Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Shoes")
+                            .font(.title3.bold())
+                            .foregroundStyle(.primary)
+                        Text(selectedShoeSummary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
 
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Shoes")
+            .accessibilityValue(selectedShoeSummary)
+            .accessibilityHint(isExpanded ? "Collapse shoe settings" : "Expand shoe settings")
+
+            if isExpanded {
                 Button {
                     isAddShoePresented = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.headline.weight(.semibold))
-                        .frame(width: 34, height: 34)
+                    Label("Add Shoe", systemImage: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .tint(.orange)
                 .accessibilityLabel("Add shoe")
-            }
 
-            if gearStore.shoes.isEmpty {
-                Text("Add your current pair and Outbound will attach it to new runs by default.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(gearStore.shoes) { shoe in
-                        HStack(spacing: 10) {
-                            Image(systemName: "shoeprints.fill")
-                                .foregroundStyle(shoe.retiredAt == nil ? .orange : .secondary)
-                                .frame(width: 26)
+                if gearStore.shoes.isEmpty {
+                    Text("Add your current pair and Outbound will attach it to new runs by default.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(gearStore.shoes) { shoe in
+                            HStack(spacing: 10) {
+                                Image(systemName: "shoeprints.fill")
+                                    .foregroundStyle(shoe.retiredAt == nil ? .orange : .secondary)
+                                    .frame(width: 26)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(shoe.displayName)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(shoeStatusText(shoe))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            if gearStore.defaultShoeID == shoe.id {
-                                Text("Default")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(.orange)
-                            } else if shoe.retiredAt == nil {
-                                Button("Use") { gearStore.setDefault(shoe) }
-                                    .font(.caption.weight(.semibold))
-                            }
-
-                            if shoe.retiredAt == nil {
-                                Button {
-                                    gearStore.retire(shoe)
-                                } label: {
-                                    Image(systemName: "archivebox")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(shoe.displayName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(shoeStatusText(shoe))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.secondary)
-                                .accessibilityLabel("Retire shoe")
+
+                                Spacer()
+
+                                if gearStore.defaultShoeID == shoe.id {
+                                    Text("Default")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(.orange)
+                                } else if shoe.retiredAt == nil {
+                                    Button("Use") { gearStore.setDefault(shoe) }
+                                        .font(.caption.weight(.semibold))
+                                }
+
+                                if shoe.retiredAt == nil {
+                                    Button {
+                                        gearStore.retire(shoe)
+                                    } label: {
+                                        Image(systemName: "archivebox")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityLabel("Retire shoe")
+                                }
                             }
+                            .padding(10)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
                         }
-                        .padding(10)
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
@@ -578,6 +602,13 @@ private struct GearSettingsCard: View {
             AddShoeView()
                 .environmentObject(gearStore)
         }
+    }
+
+    private var selectedShoeSummary: String {
+        if let defaultShoe = gearStore.defaultShoe {
+            return "Selected: \(defaultShoe.displayName)"
+        }
+        return gearStore.shoes.isEmpty ? "No shoe selected" : "\(gearStore.activeShoes.count) active"
     }
 
     private func shoeStatusText(_ shoe: GearItem) -> String {
