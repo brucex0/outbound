@@ -150,3 +150,11 @@ Recording must continue if group sharing fails.
 5. Lifecycle cleanup on finish, discard, stop sharing, and expiry.
 
 The existing one-way safety live share remains separate. Future work can connect Club scheduled runs, friend-to-friend live watching, QR/code joining, privacy zones, and richer Social presence to the `live` domain.
+
+Apply backend schema changes with:
+
+```sh
+cd backend
+npm run db:generate
+npm run db:push
+```
