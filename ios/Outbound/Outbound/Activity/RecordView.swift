@@ -39,8 +39,10 @@ struct RecordView: View {
     @State private var countdownStep: ActivityStartCountdownStep?
     @State private var countdownTask: Task<Void, Never>?
     @State private var didApplySmartGoalDefault = false
+    @State private var didApplyDefaultSessionShoe = false
     @State private var isIndoorSession = false
     @State private var isStartingActivity = false
+    @State private var selectedSessionShoeID: UUID?
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -381,7 +383,7 @@ struct RecordView: View {
             reflection: reflection,
             goal: activeIntent?.activityGoal,
             source: .outboundRecorded,
-            gear: gearStore.attachment(for: gearStore.defaultShoe),
+            gear: gearStore.attachment(for: selectedSessionShoe),
             indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
             heartRateZones: heartRateZones(from: activity.summary)
         ) else {
@@ -417,6 +419,8 @@ struct RecordView: View {
         activeIntent = nil
         plannedIntent = nil
         selectedGoalMode = .freestyle
+        selectedSessionShoeID = nil
+        didApplyDefaultSessionShoe = false
         isIndoorSession = false
     }
 
@@ -433,7 +437,10 @@ struct RecordView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 36)
         }
-        .onAppear(perform: applySmartGoalDefaultIfNeeded)
+        .onAppear {
+            applySmartGoalDefaultIfNeeded()
+            applyDefaultSessionShoeIfNeeded()
+        }
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -513,7 +520,7 @@ struct RecordView: View {
 
             Divider()
 
-            gearSetupRow
+            gearSetupMenu
 
             if liveShareStore.isArmedForNextActivity {
                 Label(
@@ -566,24 +573,66 @@ struct RecordView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var gearSetupRow: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "shoeprints.fill")
-                .foregroundStyle(.secondary)
-                .frame(width: 22)
-            if let shoe = gearStore.defaultShoe {
-                Text(shoe.displayName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+    private var gearSetupMenu: some View {
+        Menu {
+            if gearStore.activeShoes.isEmpty {
+                Text("Add shoes in Settings")
             } else {
-                Text("Add shoes in Settings to track mileage")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                ForEach(gearStore.activeShoes) { shoe in
+                    Button {
+                        selectedSessionShoeID = shoe.id
+                    } label: {
+                        if selectedSessionShoe?.id == shoe.id {
+                            Label(shoe.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(shoe.displayName)
+                        }
+                    }
+                }
             }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "shoeprints.fill")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shoes")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(selectedSessionShoe?.displayName ?? "Add shoes in Settings to track mileage")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(gearStore.activeShoes.isEmpty)
+        .accessibilityLabel("Change shoes")
+    }
+
+    private var selectedSessionShoe: GearItem? {
+        if let selectedSessionShoeID,
+           let selectedShoe = gearStore.activeShoes.first(where: { $0.id == selectedSessionShoeID }) {
+            return selectedShoe
+        }
+        return gearStore.defaultShoe
+    }
+
+    private func applyDefaultSessionShoeIfNeeded() {
+        guard !didApplyDefaultSessionShoe else { return }
+        selectedSessionShoeID = gearStore.defaultShoe?.id
+        didApplyDefaultSessionShoe = true
     }
 
     private func heartRateZones(from summary: ActivitySummary) -> ActivityHeartRateZoneSummary? {
