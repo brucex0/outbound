@@ -9,6 +9,7 @@ import coach from "./routes/coach.js";
 import social from "./routes/social.js";
 import media from "./routes/media.js";
 import auth from "./routes/auth.js";
+import live from "./routes/live.js";
 import planning from "./routes/planning.js";
 import safety, { liveShareViewer } from "./routes/safety.js";
 import type { AppEnv } from "./types/hono.js";
@@ -31,6 +32,7 @@ app.route("/v1/planning", planning);
 app.route("/v1/social", social);
 app.route("/v1/media", media);
 app.route("/v1/safety", safety);
+app.route("/v1/live", live);
 app.route("/v1/transcribe", transcribeRoutes);
 
 const port = Number(process.env.PORT ?? 3000);

@@ -32,6 +32,8 @@ model User {
   planningEvents PlanningEvent[]
   planAdjustmentEvents PlanAdjustmentEvent[]
   safetyLiveShares SafetyLiveShare[]
+  liveGroupSessionsCreated LiveGroupSession[] @relation("LiveGroupSessionCreator")
+  liveGroupParticipants LiveGroupParticipant[]
   posts         Post[]
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
@@ -173,6 +175,49 @@ model SafetyLiveSharePoint {
   createdAt       DateTime  @default(now())
 
   @@index([shareId, recordedAt])
+}
+
+model LiveGroupSession {
+  id              String    @id @default(cuid())
+  creatorUserId   String
+  creator         User      @relation("LiveGroupSessionCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  inviteTokenHash String    @unique
+  kind            String    @default("group_run")
+  status          String    @default("active")
+  title           String?
+  sport           String?
+  startedAt       DateTime  @default(now())
+  expiresAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  participants    LiveGroupParticipant[]
+
+  @@index([creatorUserId, status])
+  @@index([expiresAt])
+}
+
+model LiveGroupParticipant {
+  id                   String    @id @default(cuid())
+  sessionId            String
+  session              LiveGroupSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName          String
+  status               String    @default("active")
+  joinedAt             DateTime  @default(now())
+  leftAt               DateTime?
+  lastLocationAt       DateTime?
+  lastLocation         Json?
+  lastActivitySnapshot Json?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([sessionId, userId])
+  @@index([sessionId, status])
+  @@index([userId, status])
+  @@index([lastLocationAt])
 }
 
 model TrainingPlanTemplate {
