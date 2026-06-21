@@ -9,6 +9,7 @@ import UIKit
 struct CameraHUDView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveShareStore: LiveShareStore
+    @EnvironmentObject var liveGroupStore: LiveGroupStore
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var coach: VirtualCoach
     @ObservedObject var musicStore: MusicStore
@@ -152,6 +153,19 @@ struct CameraHUDView: View {
                         .background(Circle().fill(.orange))
                 }
                 .accessibilityLabel("Stop live sharing")
+            }
+
+            if liveGroupStore.isSharing {
+                Button {
+                    liveGroupStore.leave()
+                } label: {
+                    Image(systemName: "person.2.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(.blue))
+                }
+                .accessibilityLabel("Leave group sharing")
             }
 
             CapturedPhotoStackView(

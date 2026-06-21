@@ -96,6 +96,33 @@ final class APIClient {
         try await post("/safety/live-shares/\(shareID)/end", body: EmptyBody())
     }
 
+    func createLiveGroupRun(_ request: LiveGroupCreateRequest) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs", body: request)
+    }
+
+    func joinLiveGroupRun(_ request: LiveGroupJoinRequest) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs/join", body: request)
+    }
+
+    func fetchLiveGroupRun(sessionID: String) async throws -> LiveGroupSessionResponse {
+        try await get("/live/group-runs/\(sessionID)")
+    }
+
+    func updateLiveGroupLocation(
+        sessionID: String,
+        request: LiveGroupLocationUpdateRequest
+    ) async throws -> LiveGroupSessionResponse {
+        try await patch("/live/group-runs/\(sessionID)/participants/me/location", body: request)
+    }
+
+    func leaveLiveGroupRun(sessionID: String) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs/\(sessionID)/participants/me/leave", body: EmptyBody())
+    }
+
+    func endLiveGroupRun(sessionID: String) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs/\(sessionID)/end", body: EmptyBody())
+    }
+
     // MARK: - Helpers
 
     private func get<T: Decodable>(
@@ -1069,4 +1096,65 @@ struct LiveShareStatusResponse: Decodable {
     let expiresAt: Date
     let endedAt: Date?
     let lastLocationAt: Date?
+}
+
+struct LiveGroupCreateRequest: Encodable {
+    let title: String?
+    let sport: String?
+    let expiresInSeconds: Int?
+}
+
+struct LiveGroupJoinRequest: Encodable {
+    let invite: String
+}
+
+struct LiveGroupLocationUpdateRequest: Encodable {
+    let recordedAt: Date
+    let latitude: Double
+    let longitude: Double
+    let altitudeM: Double?
+    let accuracyM: Double?
+    let elapsedSeconds: Int
+    let distanceM: Double
+    let paceSecondsPerKM: Double?
+}
+
+struct LiveGroupSessionResponse: Decodable {
+    let id: String
+    let status: String
+    let title: String?
+    let sport: String?
+    let creatorUserId: String
+    let currentUserId: String
+    let startedAt: Date
+    let expiresAt: Date
+    let endedAt: Date?
+    let inviteToken: String?
+    let inviteURL: URL?
+    let participants: [LiveGroupParticipantResponse]
+}
+
+struct LiveGroupParticipantResponse: Decodable, Identifiable, Hashable {
+    let id: String
+    let userId: String
+    let displayName: String
+    let status: String
+    let joinedAt: Date
+    let leftAt: Date?
+    let lastLocationAt: Date?
+    let lastLocation: LiveGroupLocationResponse?
+    let lastActivitySnapshot: LiveGroupActivitySnapshotResponse?
+}
+
+struct LiveGroupLocationResponse: Decodable, Hashable {
+    let latitude: Double
+    let longitude: Double
+    let altitudeM: Double?
+    let accuracyM: Double?
+}
+
+struct LiveGroupActivitySnapshotResponse: Decodable, Hashable {
+    let elapsedSeconds: Int?
+    let distanceM: Double?
+    let paceSecondsPerKM: Double?
 }

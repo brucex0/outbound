@@ -4,6 +4,7 @@ import UIKit
 
 struct LiveMapView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var liveGroupStore: LiveGroupStore
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var coach: VirtualCoach
@@ -18,6 +19,7 @@ struct LiveMapView: View {
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
     @State private var statusCardHeight: CGFloat = 132
+    @State private var focusedParticipantID: String?
 
     var body: some View {
         ZStack {
@@ -52,6 +54,18 @@ struct LiveMapView: View {
                             .shadow(radius: 4)
                     }
                 }
+                ForEach(liveGroupStore.visibleParticipants) { participant in
+                    if let coordinate = participant.coordinate {
+                        Annotation(participant.displayName, coordinate: coordinate) {
+                            LiveGroupParticipantPin(participant: participant)
+                                .onTapGesture {
+                                    focusedParticipantID = participant.id
+                                    isFollowingUser = false
+                                    updateMapCamera(for: coordinate, animated: true)
+                                }
+                        }
+                    }
+                }
             }
             .onMapCameraChange(frequency: .onEnd) { _ in
                 if mapPosition.positionedByUser {
@@ -62,6 +76,22 @@ struct LiveMapView: View {
 
             VStack(spacing: 12) {
                 Spacer()
+
+                if !liveGroupStore.visibleParticipants.isEmpty {
+                    LiveGroupRunnerStrip(
+                        participants: liveGroupStore.visibleParticipants,
+                        currentCoordinate: currentCoordinate,
+                        unitSystem: measurementPreferences.unitSystem,
+                        focusedParticipantID: focusedParticipantID,
+                        onSelect: { participant in
+                            guard let coordinate = participant.coordinate else { return }
+                            focusedParticipantID = participant.id
+                            isFollowingUser = false
+                            updateMapCamera(for: coordinate, animated: true)
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                }
 
                 SessionStatusCard(
                     state: recorder.state,
@@ -162,6 +192,7 @@ struct LiveMapView: View {
             Button {
                 if let loc = locationManager.location {
                     isFollowingUser = true
+                    focusedParticipantID = nil
                     updateMapCamera(for: loc, animated: true)
                 }
             } label: {
@@ -216,5 +247,117 @@ struct LiveMapView: View {
         } else {
             update()
         }
+    }
+
+    private func updateMapCamera(for coordinate: CLLocationCoordinate2D, animated: Bool) {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        updateMapCamera(for: location, animated: animated)
+    }
+}
+
+private struct LiveGroupParticipantPin: View {
+    let participant: LiveGroupParticipant
+
+    var body: some View {
+        Text(participant.initials)
+            .font(.caption.weight(.black))
+            .foregroundStyle(.white)
+            .frame(width: 34, height: 34)
+            .background(pinColor.opacity(participant.isFresh ? 1 : 0.52), in: Circle())
+            .overlay {
+                Circle()
+                    .stroke(.white, lineWidth: 3)
+            }
+            .shadow(radius: 4)
+            .accessibilityLabel("\(participant.displayName), \(participant.isFresh ? "live" : "last seen")")
+    }
+
+    private var pinColor: Color {
+        let palette: [Color] = [.blue, .green, .purple, .pink, .teal]
+        let index = abs(participant.id.hashValue) % palette.count
+        return palette[index]
+    }
+}
+
+private struct LiveGroupRunnerStrip: View {
+    let participants: [LiveGroupParticipant]
+    let currentCoordinate: CLLocationCoordinate2D?
+    let unitSystem: MeasurementUnitSystem
+    let focusedParticipantID: String?
+    let onSelect: (LiveGroupParticipant) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(participants) { participant in
+                    Button {
+                        onSelect(participant)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(participant.initials)
+                                .font(.caption.weight(.black))
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(pinColor(for: participant).opacity(participant.isFresh ? 1 : 0.52), in: Circle())
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(participant.displayName)
+                                    .font(.caption.weight(.bold))
+                                    .lineLimit(1)
+                                Text(statusText(for: participant))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .frame(height: 46)
+                        .background(
+                            Capsule()
+                                .fill(focusedParticipantID == participant.id ? Color.orange.opacity(0.18) : Color(.systemBackground).opacity(0.92))
+                        )
+                        .overlay {
+                            Capsule()
+                                .stroke(focusedParticipantID == participant.id ? Color.orange : Color.black.opacity(0.08), lineWidth: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    private func statusText(for participant: LiveGroupParticipant) -> String {
+        var parts: [String] = []
+        if let distanceText = distanceText(to: participant.coordinate) {
+            parts.append(distanceText)
+        }
+        if let lastLocationAt = participant.lastLocationAt {
+            parts.append(participant.isFresh ? "last \(relativeAge(from: lastLocationAt))" : "last seen \(relativeAge(from: lastLocationAt))")
+        } else {
+            parts.append("waiting")
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    private func distanceText(to coordinate: CLLocationCoordinate2D?) -> String? {
+        guard let currentCoordinate, let coordinate else { return nil }
+        let current = CLLocation(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
+        let other = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let meters = current.distance(from: other)
+        return unitSystem.distanceValueString(meters: meters)
+    }
+
+    private func relativeAge(from date: Date) -> String {
+        let seconds = max(0, Int(Date().timeIntervalSince(date)))
+        if seconds < 60 { return "\(seconds)s" }
+        return "\(seconds / 60)m"
+    }
+
+    private func pinColor(for participant: LiveGroupParticipant) -> Color {
+        let palette: [Color] = [.blue, .green, .purple, .pink, .teal]
+        let index = abs(participant.id.hashValue) % palette.count
+        return palette[index]
     }
 }

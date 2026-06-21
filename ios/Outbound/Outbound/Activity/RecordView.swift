@@ -19,6 +19,7 @@ struct RecordView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject var liveShareStore: LiveShareStore
+    @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
@@ -43,6 +44,8 @@ struct RecordView: View {
     @State private var isIndoorSession = false
     @State private var isStartingActivity = false
     @State private var selectedSessionShoeID: UUID?
+    @State private var isGroupJoinAlertPresented = false
+    @State private var groupInviteText = ""
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -125,6 +128,7 @@ struct RecordView: View {
         .onReceive(recorder.$liveSnapshot) { snapshot in
             coach.ingest(snapshot)
             liveShareStore.ingest(snapshot)
+            liveGroupStore.ingest(snapshot)
             liveActivityManager.update(
                 snapshot: snapshot,
                 state: recorder.state,
@@ -229,6 +233,23 @@ struct RecordView: View {
             }
         } message: {
             Text(customGoalAlertMessage)
+        }
+        .alert("Join group run", isPresented: $isGroupJoinAlertPresented) {
+            TextField("Invite link or token", text: $groupInviteText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            Button("Join") {
+                let invite = groupInviteText
+                groupInviteText = ""
+                Task { await liveGroupStore.joinGroup(invite: invite) }
+            }
+
+            Button("Cancel", role: .cancel) {
+                groupInviteText = ""
+            }
+        } message: {
+            Text("Paste the Outbound group run invite from another runner.")
         }
     }
 
@@ -347,6 +368,7 @@ struct RecordView: View {
         let summary = recorder.finish()
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
+        liveGroupStore.finishActivity()
         coach.deactivate()
         musicStore.clearPendingWorkoutPlayback()
         showCamera = false
@@ -408,6 +430,7 @@ struct RecordView: View {
     private func discardPendingActivity() {
         liveActivityManager.end()
         liveShareStore.end()
+        liveGroupStore.finishActivity()
         clearPending()
         onCloseRequest?(false)
     }
@@ -535,11 +558,93 @@ struct RecordView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
             }
+            Divider()
+            liveGroupSetup
+            if let message = liveGroupStore.lastErrorMessage {
+                Text(message)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+    }
+
+    private var liveGroupSetup: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Group run", systemImage: "person.2.fill")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(liveGroupStore.statusSummary)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if liveGroupStore.isSharing {
+                HStack(spacing: 10) {
+                    Button {
+                        Task {
+                            guard let session = liveGroupStore.activeSession,
+                                  let url = session.inviteURL else { return }
+                            let message = "Join my Outbound group \(session.sport ?? "run"): \(url.absoluteString)"
+                            await SystemSharePresenter.present(activityItems: [message, url])
+                        }
+                    } label: {
+                        Label("Invite", systemImage: "square.and.arrow.up")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color(.tertiarySystemBackground), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(role: .destructive) {
+                        liveGroupStore.leave()
+                    } label: {
+                        Label("Leave", systemImage: "xmark")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color(.tertiarySystemBackground), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Button {
+                        Task {
+                            if let presentation = await liveGroupStore.createGroup(intent: plannedIntent) {
+                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                            }
+                        }
+                    } label: {
+                        Label(liveGroupStore.isCreating ? "Creating..." : "Create", systemImage: "plus")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color(.tertiarySystemBackground), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(liveGroupStore.isCreating)
+
+                    Button {
+                        groupInviteText = ""
+                        isGroupJoinAlertPresented = true
+                    } label: {
+                        Label(liveGroupStore.isJoining ? "Joining..." : "Join", systemImage: "link")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color(.tertiarySystemBackground), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(liveGroupStore.isJoining)
+                }
+            }
+        }
     }
 
     private func setupOptionButton(
