@@ -119,6 +119,10 @@ final class APIClient {
         try await post("/live/group-runs/\(sessionID)/participants/me/leave", body: EmptyBody())
     }
 
+    func finishLiveGroupRunParticipation(sessionID: String) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs/\(sessionID)/participants/me/finish", body: EmptyBody())
+    }
+
     func endLiveGroupRun(sessionID: String) async throws -> LiveGroupSessionResponse {
         try await post("/live/group-runs/\(sessionID)/end", body: EmptyBody())
     }

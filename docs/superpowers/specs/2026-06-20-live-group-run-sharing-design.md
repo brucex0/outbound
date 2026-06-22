@@ -16,7 +16,7 @@ V1 supports informal invite-link group runs:
 2. They create or join a live group share.
 3. Creating a group produces a private invite link shared through the system Share Sheet.
 4. Joined runners who actively share their own location appear on each other's in-run map.
-5. The group share ends when the runner finishes, stops sharing, leaves the group, or the session expires.
+5. The group share ends only when all participants have finished or left, the creator explicitly ends it, or the session expires.
 
 Runner-to-runner visibility is mutual. A runner must share their own active location to see the in-app group map. Spectators remain separate and should use the existing private safety-style viewer.
 
@@ -68,6 +68,7 @@ Suggested freshness behavior:
 - There is no automatic public sharing.
 - Group sessions must expire server-side.
 - The runner can stop sharing or leave the group during the activity.
+- Finishing one runner's own activity marks only that participant as finished; it does not end the group for everyone.
 - Seeing runner locations in-app requires mutual sharing.
 - Spectator links are view-only and separate from the mutual runner group.
 - Recipients should not get profile history, past activities, photos, or route trails through V1 group sharing.
@@ -106,7 +107,15 @@ Suggested APIs:
 - `GET /v1/live/group-runs/:id`
 - `PATCH /v1/live/group-runs/:id/participants/me/location`
 - `POST /v1/live/group-runs/:id/participants/me/leave`
+- `POST /v1/live/group-runs/:id/participants/me/finish`
 - `POST /v1/live/group-runs/:id/end`
+
+Lifecycle rules:
+
+- `finish` marks the current participant finished and keeps the group active while any participant is still active.
+- `leave` marks the current participant left and keeps the group active while any participant is still active.
+- `end` is creator-only and explicitly ends the group for every participant.
+- Expiry ends a group opportunistically when the backend next reads or updates the session after `expiresAt`.
 
 Polling is acceptable for V1 and matches the current safety live viewer shape. A later server-sent events or WebSocket transport can reuse the same domain model.
 
@@ -121,7 +130,8 @@ Responsibilities:
 - Track current group session, participant list, stale state, and local sharing state.
 - Send throttled location updates from `ActiveSessionSnapshot`.
 - Poll group participant locations while an activity is active.
-- Leave or end group sharing on finish, discard, explicit stop, or expiry.
+- Mark the current participant finished on activity finish or discard.
+- Leave or explicitly end group sharing only from management controls, or when the session expires.
 
 Integration points:
 

@@ -20,6 +20,7 @@ struct LiveMapView: View {
     @State private var isFollowingUser = true
     @State private var statusCardHeight: CGFloat = 132
     @State private var focusedParticipantID: String?
+    @State private var isGroupManagementExpanded = false
 
     var body: some View {
         ZStack {
@@ -76,6 +77,26 @@ struct LiveMapView: View {
 
             VStack(spacing: 12) {
                 Spacer()
+
+                if liveGroupStore.isSharing {
+                    LiveGroupManagementPanel(
+                        title: liveGroupStore.displayTitle,
+                        statusSummary: liveGroupStore.statusSummary,
+                        participants: liveGroupStore.participants,
+                        isExpanded: $isGroupManagementExpanded,
+                        isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
+                        onInvite: {
+                            Task {
+                                guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
+                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                            }
+                        },
+                        onStop: {
+                            liveGroupStore.stopFromManagementControl()
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                }
 
                 if !liveGroupStore.visibleParticipants.isEmpty {
                     LiveGroupRunnerStrip(
@@ -252,6 +273,115 @@ struct LiveMapView: View {
     private func updateMapCamera(for coordinate: CLLocationCoordinate2D, animated: Bool) {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         updateMapCamera(for: location, animated: animated)
+    }
+}
+
+private struct LiveGroupManagementPanel: View {
+    let title: String
+    let statusSummary: String
+    let participants: [LiveGroupParticipant]
+    @Binding var isExpanded: Bool
+    let isCreator: Bool
+    let onInvite: () -> Void
+    let onStop: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "person.2.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(.blue))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(statusSummary)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(Color(.tertiarySystemBackground), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse group run" : "Expand group run")
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(participants) { participant in
+                        HStack(spacing: 9) {
+                            Text(participant.initials)
+                                .font(.caption2.weight(.black))
+                                .foregroundStyle(.white)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(participant.isCurrentUser ? Color.orange : Color.blue))
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(participant.isCurrentUser ? "You" : participant.displayName)
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                Text(statusText(for: participant))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        Button(action: onInvite) {
+                            Label("Invite", systemImage: "square.and.arrow.up")
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 34)
+                                .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(role: .destructive, action: onStop) {
+                            Label(isCreator ? "End" : "Leave", systemImage: "xmark")
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 34)
+                                .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.top, 2)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(.systemBackground).opacity(0.94), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    private func statusText(for participant: LiveGroupParticipant) -> String {
+        guard let lastLocationAt = participant.lastLocationAt else {
+            return participant.statusLabel
+        }
+        let seconds = max(0, Int(Date().timeIntervalSince(lastLocationAt)))
+        let age = seconds < 60 ? "\(seconds)s ago" : "\(seconds / 60)m ago"
+        return participant.isFresh ? "Live - \(age)" : "\(participant.statusLabel) - \(age)"
     }
 }
 

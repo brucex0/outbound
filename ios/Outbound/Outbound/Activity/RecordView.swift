@@ -46,6 +46,7 @@ struct RecordView: View {
     @State private var selectedSessionShoeID: UUID?
     @State private var isGroupJoinAlertPresented = false
     @State private var groupInviteText = ""
+    @State private var isGroupParticipantsExpanded = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -575,8 +576,16 @@ struct RecordView: View {
     private var liveGroupSetup: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Group run", systemImage: "person.2.fill")
-                    .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Group run", systemImage: "person.2.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(liveGroupStore.isSharing ? liveGroupStore.displayTitle : "Create or join a group run")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
                 Spacer()
                 Text(liveGroupStore.statusSummary)
                     .font(.caption.weight(.semibold))
@@ -584,13 +593,13 @@ struct RecordView: View {
             }
 
             if liveGroupStore.isSharing {
+                liveGroupParticipantDisclosure
+
                 HStack(spacing: 10) {
                     Button {
                         Task {
-                            guard let session = liveGroupStore.activeSession,
-                                  let url = session.inviteURL else { return }
-                            let message = "Join my Outbound group \(session.sport ?? "run"): \(url.absoluteString)"
-                            await SystemSharePresenter.present(activityItems: [message, url])
+                            guard let presentation = liveGroupStore.invitePresentation(intent: plannedIntent) else { return }
+                            await SystemSharePresenter.present(activityItems: presentation.activityItems)
                         }
                     } label: {
                         Label("Invite", systemImage: "square.and.arrow.up")
@@ -602,9 +611,9 @@ struct RecordView: View {
                     .buttonStyle(.plain)
 
                     Button(role: .destructive) {
-                        liveGroupStore.leave()
+                        liveGroupStore.stopFromManagementControl()
                     } label: {
-                        Label("Leave", systemImage: "xmark")
+                        Label(liveGroupStore.activeSession?.isCreatedByCurrentUser == true ? "End" : "Leave", systemImage: "xmark")
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 40)
@@ -645,6 +654,48 @@ struct RecordView: View {
                 }
             }
         }
+    }
+
+    private var liveGroupParticipantDisclosure: some View {
+        DisclosureGroup(isExpanded: $isGroupParticipantsExpanded) {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(liveGroupStore.participants) { participant in
+                    HStack(spacing: 10) {
+                        Text(participant.initials)
+                            .font(.caption.weight(.black))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(participant.isCurrentUser ? Color.orange : Color.blue))
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(participant.isCurrentUser ? "You" : participant.displayName)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(groupParticipantStatus(participant))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+                    }
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            Text(liveGroupStore.participants.isEmpty ? "Participants" : "Participants (\(liveGroupStore.participants.count))")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .tint(.secondary)
+    }
+
+    private func groupParticipantStatus(_ participant: LiveGroupParticipant) -> String {
+        guard let lastLocationAt = participant.lastLocationAt else {
+            return participant.statusLabel
+        }
+        let seconds = max(0, Int(Date().timeIntervalSince(lastLocationAt)))
+        let age = seconds < 60 ? "\(seconds)s ago" : "\(seconds / 60)m ago"
+        return participant.isFresh ? "Live - \(age)" : "\(participant.statusLabel) - \(age)"
     }
 
     private func setupOptionButton(

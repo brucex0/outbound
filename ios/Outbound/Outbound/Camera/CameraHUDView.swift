@@ -157,7 +157,7 @@ struct CameraHUDView: View {
 
             if liveGroupStore.isSharing {
                 Button {
-                    liveGroupStore.leave()
+                    liveGroupStore.stopFromManagementControl()
                 } label: {
                     Image(systemName: "person.2.fill")
                         .font(.title3)

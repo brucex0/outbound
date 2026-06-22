@@ -188,10 +188,30 @@ router.post("/group-runs/:id/participants/me/leave", async (c) => {
     },
   });
 
-  const updated = await getPrismaClient().liveGroupSession.findUniqueOrThrow({
-    where: { id: session.id },
-    include: { participants: true },
+  const updated = await closeIfNoActiveParticipants(session.id);
+
+  return c.json(groupRunPayload(updated, user.id));
+});
+
+router.post("/group-runs/:id/participants/me/finish", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required." }, 401);
+
+  const session = await requireParticipantSession(c.req.param("id"), user.id);
+  if (!session) return c.json({ error: "Live group not found." }, 404);
+
+  await getPrismaClient().liveGroupParticipant.update({
+    where: { sessionId_userId: { sessionId: session.id, userId: user.id } },
+    data: {
+      status: "finished",
+      leftAt: new Date(),
+    },
   });
+
+  const updated = await closeIfNoActiveParticipants(session.id);
 
   return c.json(groupRunPayload(updated, user.id));
 });
@@ -268,6 +288,35 @@ async function requireActiveSession(sessionId: string) {
   const session = await refreshSessionStatus(sessionId);
   if (!session || session.status !== "active" || session.endedAt) return null;
   return session;
+}
+
+async function closeIfNoActiveParticipants(sessionId: string) {
+  const prisma = getPrismaClient();
+  const session =
+    (await refreshSessionStatus(sessionId)) ??
+    (await prisma.liveGroupSession.findUniqueOrThrow({
+      where: { id: sessionId },
+      include: { participants: true },
+    }));
+  if (session.status !== "active" || session.endedAt) {
+    return session;
+  }
+
+  const hasActiveParticipant = session.participants.some(
+    (participant) => participant.status === "active"
+  );
+  if (hasActiveParticipant) {
+    return session;
+  }
+
+  return prisma.liveGroupSession.update({
+    where: { id: session.id },
+    data: {
+      status: "ended",
+      endedAt: new Date(),
+    },
+    include: { participants: true },
+  });
 }
 
 function groupRunPayload(

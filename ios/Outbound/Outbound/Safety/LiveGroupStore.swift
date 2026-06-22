@@ -22,6 +22,11 @@ struct LiveGroupSession: Identifiable, Hashable {
     var isCreatedByCurrentUser: Bool {
         creatorUserId == currentUserId
     }
+
+    var displayTitle: String {
+        let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Group run" : trimmed
+    }
 }
 
 struct LiveGroupParticipant: Identifiable, Hashable {
@@ -35,6 +40,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
     let coordinate: CLLocationCoordinate2D?
     let distanceM: Double?
     let paceSecondsPerKM: Double?
+    let isCurrentUser: Bool
 
     var initials: String {
         let parts = displayName
@@ -46,6 +52,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
     }
 
     var isVisibleOnMap: Bool {
+        guard !isCurrentUser else { return false }
         guard coordinate != nil else { return false }
         if status == "active" || status == "stale" { return true }
         guard let lastLocationAt else { return false }
@@ -54,6 +61,22 @@ struct LiveGroupParticipant: Identifiable, Hashable {
 
     var isFresh: Bool {
         status == "active"
+    }
+
+    var statusLabel: String {
+        if isCurrentUser, status == "active" { return "You - sharing" }
+        switch status {
+        case "active":
+            return lastLocationAt == nil ? "Joined - waiting for location" : "Live"
+        case "stale":
+            return "Last seen"
+        case "left":
+            return "Left"
+        case "finished":
+            return "Finished"
+        default:
+            return status.capitalized
+        }
     }
 
     static func == (lhs: LiveGroupParticipant, rhs: LiveGroupParticipant) -> Bool {
@@ -68,6 +91,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
             && lhs.coordinate?.longitude == rhs.coordinate?.longitude
             && lhs.distanceM == rhs.distanceM
             && lhs.paceSecondsPerKM == rhs.paceSecondsPerKM
+            && lhs.isCurrentUser == rhs.isCurrentUser
     }
 
     func hash(into hasher: inout Hasher) {
@@ -82,6 +106,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
         hasher.combine(coordinate?.longitude)
         hasher.combine(distanceM)
         hasher.combine(paceSecondsPerKM)
+        hasher.combine(isCurrentUser)
     }
 }
 
@@ -122,11 +147,27 @@ final class LiveGroupStore: ObservableObject {
         participants.filter { $0.isVisibleOnMap }
     }
 
+    var activeParticipantCount: Int {
+        participants.filter { $0.status == "active" || $0.status == "stale" }.count
+    }
+
     var statusSummary: String {
         guard let session = activeSession else { return "Off" }
-        let count = visibleParticipants.count
         guard session.isActive else { return "Ended" }
-        return count == 0 ? "Waiting" : "\(count) live"
+        let count = max(activeParticipantCount, 1)
+        return count == 1 ? "1 runner" : "\(count) runners"
+    }
+
+    var displayTitle: String {
+        activeSession?.displayTitle ?? "Group run"
+    }
+
+    func invitePresentation(intent: SessionIntent?) -> LiveGroupStartPresentation? {
+        guard let session = activeSession, let inviteURL = session.inviteURL else { return nil }
+        return LiveGroupStartPresentation(
+            url: inviteURL,
+            message: shareMessage(url: inviteURL, intent: intent, title: session.displayTitle)
+        )
     }
 
     func createGroup(intent: SessionIntent?) async -> LiveGroupStartPresentation? {
@@ -134,7 +175,7 @@ final class LiveGroupStore: ObservableObject {
             if let inviteURL = activeSession?.inviteURL {
                 return LiveGroupStartPresentation(
                     url: inviteURL,
-                    message: shareMessage(url: inviteURL, intent: intent)
+                    message: shareMessage(url: inviteURL, intent: intent, title: activeSession?.displayTitle)
                 )
             }
             return nil
@@ -157,7 +198,7 @@ final class LiveGroupStore: ObservableObject {
             guard let inviteURL = response.inviteURL else { return nil }
             return LiveGroupStartPresentation(
                 url: inviteURL,
-                message: shareMessage(url: inviteURL, intent: intent)
+                message: shareMessage(url: inviteURL, intent: intent, title: response.title)
             )
         } catch {
             lastErrorMessage = "Group sharing unavailable: \(error.localizedDescription)"
@@ -223,6 +264,34 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func finishActivity() {
+        guard let sessionID = activeSession?.id else { return }
+        updateTask?.cancel()
+        updateTask = nil
+        lastSentAt = nil
+        lastSentDistanceM = nil
+        isUpdating = false
+
+        Task { [api] in
+            do {
+                let response = try await api.finishLiveGroupRunParticipation(sessionID: sessionID)
+                await MainActor.run {
+                    apply(response)
+                    if activeSession?.isActive == true {
+                        startPolling()
+                    } else {
+                        pollingTask?.cancel()
+                    }
+                    lastErrorMessage = nil
+                }
+            } catch {
+                await MainActor.run {
+                    lastErrorMessage = "Could not finish group participation."
+                }
+            }
+        }
+    }
+
+    func stopFromManagementControl() {
         guard let session = activeSession else { return }
         if session.isCreatedByCurrentUser {
             end()
@@ -315,15 +384,17 @@ final class LiveGroupStore: ObservableObject {
             inviteURL: response.inviteURL ?? activeSession?.inviteURL
         )
         participants = response.participants
-            .filter { $0.userId != response.currentUserId }
-            .map(Self.participant)
-            .filter { $0.isVisibleOnMap || $0.status == "active" || $0.status == "stale" }
+            .map { Self.participant($0, currentUserID: response.currentUserId) }
+            .filter { $0.isCurrentUser || $0.isVisibleOnMap || $0.status == "active" || $0.status == "stale" }
         if activeSession?.isActive == false {
             pollingTask?.cancel()
         }
     }
 
-    private static func participant(_ response: LiveGroupParticipantResponse) -> LiveGroupParticipant {
+    private static func participant(
+        _ response: LiveGroupParticipantResponse,
+        currentUserID: String
+    ) -> LiveGroupParticipant {
         let coordinate = response.lastLocation.map {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         }
@@ -337,12 +408,17 @@ final class LiveGroupStore: ObservableObject {
             lastLocationAt: response.lastLocationAt,
             coordinate: coordinate,
             distanceM: response.lastActivitySnapshot?.distanceM,
-            paceSecondsPerKM: response.lastActivitySnapshot?.paceSecondsPerKM
+            paceSecondsPerKM: response.lastActivitySnapshot?.paceSecondsPerKM,
+            isCurrentUser: response.userId == currentUserID
         )
     }
 
-    private func shareMessage(url: URL, intent: SessionIntent?) -> String {
+    private func shareMessage(url: URL, intent: SessionIntent?, title: String?) -> String {
         let sport = intent?.sport.rawValue ?? "run"
+        let name = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let name, !name.isEmpty {
+            return "Join \(name) on Outbound: \(url.absoluteString)"
+        }
         return "Join my Outbound group \(sport): \(url.absoluteString)"
     }
 }
