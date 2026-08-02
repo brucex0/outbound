@@ -4,7 +4,7 @@ import OSLog
 
 @MainActor
 final class MusicStore: ObservableObject {
-    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "MusicStore")
+    private static let logger = Logger(subsystem: "plainstride.outbound", category: "MusicStore")
 
     @Published private(set) var snapshot: MusicConnectionSnapshot
     @Published private(set) var quickPicks: [MusicQuickPick] = []

@@ -16,7 +16,7 @@ struct OutboundTests {
         let urlTypes = try #require(infoDictionary["CFBundleURLTypes"] as? [[String: Any]])
         let urlSchemes = urlTypes.flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
 
-        #expect(urlSchemes.contains("app-1-186140050970-ios-e8305464ba7fbb30a033a3"))
+        #expect(urlSchemes.contains("app-1-186140050970-ios-9dcd3698a906d4cca033a3"))
     }
 
     @Test func firebaseConfigMatchesOutboundAppWhenPresent() throws {
@@ -29,9 +29,9 @@ struct OutboundTests {
             PropertyListSerialization.propertyList(from: configData, format: nil) as? [String: Any]
         )
 
-        #expect(config["GOOGLE_APP_ID"] as? String == "1:186140050970:ios:e8305464ba7fbb30a033a3")
+        #expect(config["GOOGLE_APP_ID"] as? String == "1:186140050970:ios:9dcd3698a906d4cca033a3")
         #expect(config["PROJECT_ID"] as? String == "outbound-494602")
-        #expect(config["BUNDLE_ID"] as? String == "xhstudio.Outbound")
+        #expect(config["BUNDLE_ID"] as? String == "plainstride.outbound")
     }
 
     @Test func appBundleDeclaresAppleMusicUsageDescription() throws {

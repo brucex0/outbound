@@ -4,7 +4,7 @@ import OSLog
 
 @MainActor
 final class AppleMusicService: MusicService {
-    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "AppleMusic")
+    private static let logger = Logger(subsystem: "plainstride.outbound", category: "AppleMusic")
 
     private let player = ApplicationMusicPlayer.shared
     private var currentQuickPick: MusicQuickPick?

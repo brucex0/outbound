@@ -262,9 +262,9 @@ No new entitlement file entry is expected for the MusicKit app service itself; t
 
 If the app shows `Failed to request developer token` or the more specific Outbound message about an incomplete MusicKit setup, fix the Apple-side configuration in this order:
 
-1. Open the Apple Developer portal and select the explicit App ID for `xhstudio.Outbound`.
+1. Open the Apple Developer portal and select the explicit App ID for `plainstride.outbound`.
 2. Enable the `MusicKit` app service for that App ID.
-3. Confirm the installed app build still uses the same bundle identifier: `xhstudio.Outbound`.
+3. Confirm the installed app build still uses the same bundle identifier: `plainstride.outbound`.
 4. Rebuild and reinstall Outbound on the device after enabling the service.
 5. Relaunch the app and reconnect Apple Music.
 6. Make sure the device is signed into an Apple ID with Apple Music playback access.

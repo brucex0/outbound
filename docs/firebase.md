@@ -8,13 +8,13 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - Firebase/GCP display name: `outbound`.
 - GCP project ID: `outbound-494602`.
 - GCP project number: `186140050970`.
-- Firebase iOS app ID: `1:186140050970:ios:e8305464ba7fbb30a033a3`.
-- Firebase iOS bundle ID: `xhstudio.Outbound`.
+- Firebase iOS app ID: `1:186140050970:ios:9dcd3698a906d4cca033a3`.
+- Firebase iOS bundle ID: `plainstride.outbound`.
 - Firebase Email/Password auth is not part of the user-facing login surface.
 - Firebase Phone Auth provider may exist for older experiments, but the app no longer depends on SMS verification or phone/password sign-in.
 - Firebase Google auth is enabled through the Identity Platform `google.com` provider with a standard Google web OAuth client.
-- Firebase Apple auth must be enabled through the Identity Platform `apple.com` provider, and the iOS target needs the Sign in with Apple entitlement.
-- Phone Auth callback URL scheme in `Info.plist`: `app-1-186140050970-ios-e8305464ba7fbb30a033a3`.
+- Firebase Apple auth is enabled through the Identity Platform `apple.com` provider, and the iOS target includes the Sign in with Apple entitlement.
+- Phone Auth callback URL scheme in `Info.plist`: `app-1-186140050970-ios-9dcd3698a906d4cca033a3`.
 
 ## Local Config
 
@@ -41,13 +41,14 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 - Allowed redirect URI: `https://outbound-494602.firebaseapp.com/__/auth/handler`.
 - Keep the real Google web OAuth credential in a local-only file such as `config/google-oauth-web-client.local.json`.
 - The checked-in example template is `config/google-oauth-web-client.example.json`.
-- The Firebase app config currently does not expose `CLIENT_ID` or `REVERSED_CLIENT_ID`, so the app uses Firebase Auth's hosted OAuth flow instead of the native Google Sign-In SDK.
+- The app uses Firebase Auth's hosted OAuth flow for Google sign-in; the generated plist also includes `CLIENT_ID` and `REVERSED_CLIENT_ID` for the registered iOS app.
 
 ## Apple Provider Setup
 
-- Enable the Firebase/Identity Platform `apple.com` provider before shipping provider login.
-- Keep `com.apple.developer.applesignin = Default` in `ios/Outbound/SupportFiles/Outbound.entitlements` for Release builds. Debug device builds intentionally use an empty entitlement file so personal-team installs can keep working.
-- In the Apple Developer account, ensure bundle ID `xhstudio.Outbound` has Sign in with Apple enabled.
+- The Firebase/Identity Platform `apple.com` provider is enabled for native iOS sign-in; no Services ID or OAuth code-flow key is configured because the app uses `AuthenticationServices` directly.
+- Keep `com.apple.developer.applesignin = Default` in both `ios/Outbound/SupportFiles/OutboundDebug.entitlements` and `ios/Outbound/SupportFiles/Outbound.entitlements` so Apple sign-in is available in Debug and Release builds.
+- Keep the `APPLE_SIGN_IN_ENABLED` Swift compilation condition on both the Debug and Release app-target configurations; `AuthStore` uses it to expose Apple sign-in only in builds intended to carry the entitlement.
+- In the Apple Developer account, bundle ID `plainstride.outbound` has Sign in with Apple enabled as a primary App ID.
 - Apple private relay emails should not be merged with Google-visible emails unless the user links Apple while already signed in.
 
 ## REST Inspection Pattern
@@ -67,4 +68,4 @@ plutil -extract PROJECT_ID raw ~/Library/Developer/Xcode/DerivedData/Outbound-gn
 plutil -extract BUNDLE_ID raw ~/Library/Developer/Xcode/DerivedData/Outbound-gniranfbeecymqczagdjamiipyqq/Build/Products/Debug-iphonesimulator/Outbound.app/GoogleService-Info.plist
 ```
 
-Expected values: app ID `1:186140050970:ios:e8305464ba7fbb30a033a3`, project ID `outbound-494602`, bundle ID `xhstudio.Outbound`.
+Expected values: app ID `1:186140050970:ios:9dcd3698a906d4cca033a3`, project ID `outbound-494602`, bundle ID `plainstride.outbound`.

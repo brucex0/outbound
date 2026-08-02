@@ -4,15 +4,15 @@ Open this when validating changes, installing on device, editing signing setting
 
 ## Signing And Entitlements
 
-- Bundle ID: `xhstudio.Outbound`.
-- Development team in the project: `JGNGM4YRX5`.
+- Bundle ID: `plainstride.outbound`.
+- Development team in the project: Plainstride Labs Inc. (`WT54K7D7VH`).
 - Current iOS deployment target in Xcode: `18.0`.
-- Debug device builds use `ios/Outbound/SupportFiles/OutboundDebug.entitlements`, which is intentionally empty so personal-team installs can still work.
-- Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`, which includes Sign in with Apple (`com.apple.developer.applesignin`).
+- Debug device builds use `ios/Outbound/SupportFiles/OutboundDebug.entitlements`, and Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`.
+- Both configurations include Sign in with Apple, HealthKit, and WeatherKit for the paid Plainstride Labs team.
 - Use a paid Apple Developer team before validating Apple provider sign-in on device or shipping.
-- Do not re-add `aps-environment`, `com.apple.developer.healthkit`, or `com.apple.developer.healthkit.access` unless switching to a paid team that supports Push Notifications and HealthKit.
-- Device installs still require an Apple Development identity and iOS Development provisioning profiles for both `xhstudio.Outbound` and `xhstudio.Outbound.OutboundLiveActivityExtension`.
-- To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for team `JGNGM4YRX5`, use Manage Certificates to create an Apple Development certificate if needed, then select both the `Outbound` app target and `OutboundLiveActivityExtension` target and keep Automatically manage signing enabled with team `JGNGM4YRX5`.
+- Do not add `aps-environment`, HealthKit clinical-record access, or HealthKit background delivery unless the matching capability and implementation are required.
+- Device installs still require an Apple Development identity and iOS Development provisioning profiles for both `plainstride.outbound` and `plainstride.outbound.liveactivity`.
+- To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for Plainstride Labs Inc. (`WT54K7D7VH`), use Manage Certificates to create an Apple Development certificate if needed, then select both the `Outbound` app target and `OutboundLiveActivityExtension` target and keep Automatically manage signing enabled with team `WT54K7D7VH`.
 - If Xcode offers to register `Bruce main` or create/download provisioning profiles during the next build, allow it.
 
 ## Device IDs
@@ -114,5 +114,5 @@ Optional launch, only when the phone is unlocked:
 ```sh
 xcrun devicectl device process launch \
   --device 591E461F-4950-5FBD-A797-4777F1E83532 \
-  xhstudio.Outbound
+  plainstride.outbound
 ```

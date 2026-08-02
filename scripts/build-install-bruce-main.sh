@@ -9,9 +9,9 @@ else
 fi
 TARGET_DEVICE_NAME="${TARGET_DEVICE_NAME:-Bruce main}"
 CORE_DEVICE_ID="${CORE_DEVICE_ID:-591E461F-4950-5FBD-A797-4777F1E83532}"
-BUNDLE_ID="xhstudio.Outbound"
-EXTENSION_BUNDLE_ID="${BUNDLE_ID}.OutboundLiveActivityExtension"
-DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-JGNGM4YRX5}"
+BUNDLE_ID="plainstride.outbound"
+EXTENSION_BUNDLE_ID="${BUNDLE_ID}.liveactivity"
+DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
 PROFILE_DIRS=(
   "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
   "$HOME/Library/MobileDevice/Provisioning Profiles"

@@ -32,10 +32,10 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>CFBundleURLName</key>
-            <string>xhstudio.Outbound</string>
+            <string>plainstride.outbound</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>app-1-186140050970-ios-e8305464ba7fbb30a033a3</string>
+                <string>app-1-186140050970-ios-9dcd3698a906d4cca033a3</string>
             </array>
         </dict>
     </array>

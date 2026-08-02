@@ -1390,7 +1390,7 @@ final class AppNavigationStore: ObservableObject {
 
 @MainActor
 final class AssistantStore: ObservableObject {
-    private static let logger = Logger(subsystem: "xhstudio.Outbound", category: "Assistant")
+    private static let logger = Logger(subsystem: "plainstride.outbound", category: "Assistant")
 
     @Published var draft = ""
     @Published private(set) var messages: [AssistantMessage]
