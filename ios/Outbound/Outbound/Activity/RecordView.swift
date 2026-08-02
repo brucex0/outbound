@@ -21,6 +21,7 @@ struct RecordView: View {
     @EnvironmentObject var liveShareStore: LiveShareStore
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var safetyContactStore: SafetyContactStore
+    @EnvironmentObject var onboardingStore: OnboardingStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -413,6 +414,20 @@ struct RecordView: View {
             return
         }
 
+        let savedSport = activeIntent?.sport ?? .run
+        let estimatedEnergy = estimatedEnergyKilocalories(
+            for: savedActivity,
+            sport: savedSport,
+            weightKilograms: onboardingStore.bodyProfile.weightKilograms
+        )
+        Task {
+            try? await HealthKitService().saveWorkout(
+                savedActivity,
+                sport: savedSport,
+                energyKilocalories: estimatedEnergy
+            )
+        }
+
         _ = recognitionStore.recordSavedActivity(
             savedActivity,
             priorActivities: priorActivities,
@@ -426,6 +441,23 @@ struct RecordView: View {
         )
         clearPending()
         onCloseRequest?(false)
+    }
+
+    private func estimatedEnergyKilocalories(
+        for activity: SavedActivity,
+        sport: SportType,
+        weightKilograms: Double?
+    ) -> Double? {
+        guard let weightKilograms, weightKilograms > 0, activity.durationSecs > 0 else { return nil }
+
+        switch sport {
+        case .run:
+            guard activity.distanceM > 0 else { return nil }
+            return weightKilograms * (activity.distanceM / 1_000)
+        case .bike:
+            let moderateCyclingMET = 8.0
+            return moderateCyclingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
+        }
     }
 
     private func discardPendingActivity() {

@@ -141,6 +141,13 @@ Ship:
 - read heart rate for activity detail and coach context
 - write Outbound-recorded workouts back to Apple Health
 
+Current implementation:
+
+- saving an Outbound-recorded activity also creates a running or cycling workout in Apple Health when write access is authorized
+- the workout includes start/end time, duration, distance, estimated active energy when onboarding weight is available, Outbound metadata, and the recorded route when at least two points exist
+- local activity persistence completes first; HealthKit failure does not discard the Outbound activity
+- route, distance, and active-energy write types are included in the Apple Health authorization request
+
 User value:
 - Outbound stops feeling like an isolated tracker
 - coach features can use real fitness context
@@ -259,15 +266,11 @@ Do not ask for every health permission at once unless the product needs it immed
 Current repo state:
 
 - `Info.plist` already includes `NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription`
-- no `HealthKit` integration code is present yet
-- Debug device builds use an empty `ios/Outbound/SupportFiles/OutboundDebug.entitlements`
-- Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`, which includes Sign in with Apple
+- `Integrations/HealthKit` contains permission, recent-workout read, and Outbound workout write-back services
+- Debug and Release device builds both include the HealthKit entitlement
 - `docs/build-test-device.md` notes that Apple provider sign-in/device validation should use a paid Apple Developer team
 
-Implication:
-
-- HealthKit implementation should wait until the project is on a paid Apple Developer team that can support `com.apple.developer.healthkit`
-- architecture and UI planning can happen now without enabling the entitlement yet
+Device validation still requires signing with the paid team and granting workout, route, distance, and active-energy access in the Apple Health sheet.
 
 ## Decision Summary
 

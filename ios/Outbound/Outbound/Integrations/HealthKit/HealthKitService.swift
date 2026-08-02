@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 #if canImport(HealthKit)
 import HealthKit
@@ -94,6 +95,7 @@ protocol HealthKitServing {
     func refreshAuthorizationSnapshot() async -> HealthAuthorizationSnapshot
     func requestAuthorization() async throws -> HealthAuthorizationSnapshot
     func fetchRecentWorkouts(limit: Int) async throws -> [ImportedWorkout]
+    func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws
 }
 
 enum HealthKitServiceError: LocalizedError {
@@ -164,6 +166,22 @@ struct HealthKitService: HealthKitServing {
 #endif
     }
 
+    func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {
+#if canImport(HealthKit)
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitServiceError.unavailable
+        }
+
+        guard healthStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized else {
+            throw HealthKitServiceError.requestFailed("Apple Health workout write access has not been granted.")
+        }
+
+        try await saveWorkoutInternal(activity, sport: sport, energyKilocalories: energyKilocalories)
+#else
+        throw HealthKitServiceError.unavailable
+#endif
+    }
+
     private func makeSnapshot(requestState: HealthAuthorizationRequestState) -> HealthAuthorizationSnapshot {
 #if canImport(HealthKit)
         guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
@@ -208,7 +226,18 @@ private extension HealthKitService {
     }
 
     var shareTypes: Set<HKSampleType> {
-        [HKObjectType.workoutType()]
+        var types: Set<HKSampleType> = [
+            HKObjectType.workoutType(),
+            HKSeriesType.workoutRoute()
+        ]
+
+        if let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+            types.insert(distanceType)
+        }
+        if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+            types.insert(energyType)
+        }
+        return types
     }
 
     var readTypes: Set<HKObjectType> {
@@ -272,6 +301,94 @@ private extension HealthKitService {
             }
 
             healthStore.execute(query)
+        }
+    }
+
+    func saveWorkoutInternal(
+        _ activity: SavedActivity,
+        sport: SportType,
+        energyKilocalories: Double?
+    ) async throws {
+        let metadata: [String: Any] = [
+            HKMetadataKeyExternalUUID: activity.id.uuidString,
+            HKMetadataKeyIndoorWorkout: activity.indoor?.isIndoor ?? false,
+            "com.plainstride.outbound.activity-title": activity.title,
+            "com.plainstride.outbound.source": activity.source.displayName
+        ]
+        let distance = activity.distanceM > 0
+            ? HKQuantity(unit: .meter(), doubleValue: activity.distanceM)
+            : nil
+        let energy = energyKilocalories.flatMap { value in
+            value > 0 ? HKQuantity(unit: .kilocalorie(), doubleValue: value) : nil
+        }
+        let workout = HKWorkout(
+            activityType: sport == .bike ? .cycling : .running,
+            start: activity.startedAt,
+            end: activity.endedAt,
+            workoutEvents: nil,
+            totalEnergyBurned: energy,
+            totalDistance: distance,
+            device: .local(),
+            metadata: metadata
+        )
+
+        try await save(workout)
+
+        let locations = activity.routePoints.map { point in
+            CLLocation(
+                coordinate: point.coordinate,
+                altitude: point.altitude ?? 0,
+                horizontalAccuracy: -1,
+                verticalAccuracy: point.verticalAccuracy ?? -1,
+                timestamp: point.timestamp
+            )
+        }
+        guard locations.count > 1 else { return }
+
+        let routeBuilder = HKWorkoutRouteBuilder(healthStore: healthStore, device: .local())
+        try await insert(locations, into: routeBuilder)
+        try await finish(routeBuilder, workout: workout, metadata: metadata)
+    }
+
+    func save(_ workout: HKWorkout) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            healthStore.save(workout) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not save the workout."))
+                }
+            }
+        }
+    }
+
+    func insert(_ locations: [CLLocation], into routeBuilder: HKWorkoutRouteBuilder) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            routeBuilder.insertRouteData(locations) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not save the workout route."))
+                }
+            }
+        }
+    }
+
+    func finish(_ routeBuilder: HKWorkoutRouteBuilder, workout: HKWorkout, metadata: [String: Any]) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            routeBuilder.finishRoute(with: workout, metadata: metadata) { route, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if route != nil {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not finish the workout route."))
+                }
+            }
         }
     }
 
