@@ -1,0 +1,32 @@
+{
+  "contractVersion": 1,
+  "modelVersion": "runner-model-demo-1",
+  "generatedAt": "2026-08-08T17:00:00Z",
+  "calibration": {
+    "status": "inProgress",
+    "completedSessionCount": 0,
+    "targetSessionCount": 3,
+    "currentSession": "comfortableRun"
+  },
+  "insights": [
+    {
+      "id": "comfortable-duration",
+      "kind": "endurance",
+      "label": "Comfortable duration",
+      "value": "About 30 minutes",
+      "confidence": "low",
+      "evidenceCount": 1,
+      "lastUpdatedAt": "2026-08-08T17:00:00Z"
+    },
+    {
+      "id": "weekly-capacity",
+      "kind": "schedule",
+      "label": "Realistic week",
+      "value": "Three runs, Saturday longer",
+      "confidence": "medium",
+      "evidenceCount": 2,
+      "lastUpdatedAt": "2026-08-08T17:00:00Z"
+    }
+  ],
+  "pendingAdjustment": null
+}

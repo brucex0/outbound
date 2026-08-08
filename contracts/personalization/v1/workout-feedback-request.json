@@ -1,0 +1,9 @@
+{
+  "idempotencyKey": "ios-feedback-demo-1",
+  "workoutId": "workout-comfortable-1",
+  "activityId": "activity-demo-1",
+  "recordedAt": "2026-08-08T18:00:00Z",
+  "effort": "aboutRight",
+  "continuationCapacity": "tenMinutes",
+  "note": null
+}

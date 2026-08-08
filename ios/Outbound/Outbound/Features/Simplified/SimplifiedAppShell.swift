@@ -30,6 +30,9 @@ struct SimplifiedAppShell: View {
 
 private struct SimplifiedTodayView: View {
     let onStartRun: () -> Void
+    @State private var showsReadinessCheckIn = false
+
+    private let personalization = PersonalizationSnapshotDTO.preview
 
     private let phases = [
         WorkoutPhaseItem(id: "warmup", duration: "5m", title: "Warm-up", weight: 1),
@@ -62,13 +65,35 @@ private struct SimplifiedTodayView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             WorkoutPhaseSummary(phases: phases)
-                            OutboundPrimaryButton(title: "Start run", systemImage: "figure.run", action: onStartRun)
+                            OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
+                                showsReadinessCheckIn = true
+                            }
                             HStack {
                                 quickAction("15 min", image: "clock")
                                 quickAction("Tired", image: "moon.zzz")
                                 quickAction("Ask", image: "sparkles")
                             }
                             AIExplanationView(text: "Tuesday was harder than planned, so today stays easy.")
+                        }
+                    }
+
+                    OutboundCard {
+                        CalibrationProgressBanner(summary: personalization.calibration)
+                    }
+
+                    OutboundCard {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                            Text("QUICK RUN")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text("Run without today’s workout")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            HStack {
+                                quickRunAction("Open", image: "infinity")
+                                quickRunAction("Distance", image: "ruler")
+                                quickRunAction("Time", image: "timer")
+                            }
                         }
                     }
 
@@ -96,6 +121,13 @@ private struct SimplifiedTodayView: View {
             .background(OutboundPalette.background)
             .navigationTitle("Today")
         }
+        .sheet(isPresented: $showsReadinessCheckIn) {
+            ReadinessCheckInView(workoutTitle: "Easy run") { _ in
+                showsReadinessCheckIn = false
+                onStartRun()
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     private func quickAction(_ title: String, image: String) -> some View {
@@ -103,6 +135,16 @@ private struct SimplifiedTodayView: View {
             Label(title, systemImage: image)
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 38)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+    }
+
+    private func quickRunAction(_ title: String, image: String) -> some View {
+        Button(action: onStartRun) {
+            Label(title, systemImage: image)
+                .font(.caption.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -198,4 +240,3 @@ private struct SimplifiedMeView: View {
 #Preview {
     SimplifiedAppShell(onStartRun: {})
 }
-

@@ -38,6 +38,12 @@ Current gaps:
 - Use deterministic rules for safety-critical progression logic and AI for explanation, summarization, and rewriting.
 - Prefer app-shaped API responses over exposing raw database rows.
 
+## Personalization Contracts
+
+- `backend/src/services/personalization/contracts.ts` owns runtime-validated V1 DTOs for calibration, confidence-bearing runner insights, readiness, workout feedback, and adjustment proposals.
+- `contracts/personalization/v1/` contains canonical JSON examples shared with the iOS Codable model in `Domains/Athlete/PersonalizationContracts.swift`.
+- Planning persistence and routes should adopt these contracts rather than extending the legacy free-form `CoachProfile.memorySnapshot`.
+
 ## Recommended System Shape
 
 Start with one Cloud Run service backed by Postgres and object storage.
