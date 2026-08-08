@@ -977,6 +977,17 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-onboarding h2 { letter-spacing:-.02em; }
 #outbound-onboarding .oo-progress span { border-radius:5px; }
 #outbound-onboarding .oo-social-proof { padding-top:9px; border-top:1px solid light-dark(#e0e5e1,#354139); }
+#outbound-onboarding .oo-summary { display:grid; gap:10px; margin:15px 0; }
+#outbound-onboarding .oo-summary-row { display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid light-dark(#dce2dd,#344039); }
+#outbound-onboarding .oo-summary-row:last-child { border-bottom:0; }
+#outbound-onboarding .oo-summary-icon { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; background:light-dark(#e5eee6,#28372d); color:light-dark(#315f3f,#abd0b5); }
+#outbound-onboarding .oo-confidence { font-size:.72rem; color:light-dark(#6c786f,#a4afa7); }
+#outbound-onboarding .oo-calibration { display:grid; gap:8px; margin:14px 0; }
+#outbound-onboarding .oo-calibration-row { display:grid; grid-template-columns:30px 1fr auto; gap:9px; align-items:center; padding:11px 12px; border:1px solid light-dark(#dbe2dc,#37433c); border-radius:14px; background:light-dark(#fff,#1b241f); }
+#outbound-onboarding .oo-calibration-row strong, #outbound-onboarding .oo-calibration-row span { display:block; }
+#outbound-onboarding .oo-calibration-row span { color:light-dark(#6a766d,#a8b3ab); font-size:.8rem; }
+#outbound-onboarding .oo-checkcircle { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; background:light-dark(#e5eee6,#28372d); color:light-dark(#315f3f,#abd0b5); }
+#outbound-onboarding .oo-learning { margin:0 0 11px; padding:10px 12px; border-radius:13px; background:light-dark(#e7f0e8,#29372d); color:light-dark(#315f3f,#abd0b5); display:flex; align-items:center; gap:8px; }
 @media (max-width:350px) { #outbound-onboarding .oo-screen { padding-left:14px; padding-right:14px; } }
 &lt;/style&gt;
 
@@ -986,7 +997,9 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;button data-jump=&quot;goal&quot;&gt;Goal&lt;/button&gt;
     &lt;button data-jump=&quot;baseline&quot;&gt;Starting point&lt;/button&gt;
     &lt;button data-jump=&quot;week&quot;&gt;Your week&lt;/button&gt;
+    &lt;button data-jump=&quot;understanding&quot;&gt;Understanding&lt;/button&gt;
     &lt;button data-jump=&quot;plan&quot;&gt;First plan&lt;/button&gt;
+    &lt;button data-jump=&quot;calibration&quot;&gt;Calibration&lt;/button&gt;
     &lt;button data-jump=&quot;people&quot;&gt;Your people&lt;/button&gt;
     &lt;button data-jump=&quot;today&quot;&gt;Today&lt;/button&gt;
   &lt;/div&gt;
@@ -995,7 +1008,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;main class=&quot;oo-screen&quot;&gt;
       &lt;section class=&quot;oo-page is-active oo-welcome&quot; data-page=&quot;welcome&quot;&gt;
         &lt;div class=&quot;oo-head&quot;&gt;&lt;strong&gt;OUTBOUND&lt;/strong&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;
-        &lt;div class=&quot;oo-people-scene&quot; aria-label=&quot;Your AI coach aligns training with family, friends, and clubs&quot;&gt;
+        &lt;div class=&quot;oo-people-scene&quot; aria-label=&quot;Your AI running companion aligns training with family, friends, and clubs&quot;&gt;
           &lt;div class=&quot;oo-orbit&quot;&gt;&lt;/div&gt;
           &lt;div class=&quot;oo-person oo-p1&quot;&gt;&lt;i data-lucide=&quot;circle-user-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;oo-ai-core&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;small&gt;You&lt;/small&gt;&lt;/div&gt;
           &lt;div class=&quot;oo-person oo-p2&quot;&gt;&lt;i data-lucide=&quot;heart&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;small&gt;Family&lt;/small&gt;&lt;/div&gt;
@@ -1010,9 +1023,9 @@ html&gt;body{padding:0}&lt;/style&gt;
 
       &lt;section class=&quot;oo-page&quot; data-page=&quot;goal&quot;&gt;
         &lt;div class=&quot;oo-head&quot;&gt;&lt;button class=&quot;oo-back&quot; data-go=&quot;welcome&quot;&gt;‹ Back&lt;/button&gt;&lt;span class=&quot;oo-step&quot;&gt;1 of 3&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-progress&quot;&gt;&lt;span style=&quot;width:33%&quot;&gt;&lt;/span&gt;&lt;/div&gt;
-        &lt;h2&gt;What are you working toward?&lt;/h2&gt;&lt;p&gt;Your coach will turn this into a realistic first week.&lt;/p&gt;
+        &lt;h2&gt;What are you working toward?&lt;/h2&gt;&lt;p&gt;Your companion will turn this into a realistic first week.&lt;/p&gt;
         &lt;div class=&quot;oo-options&quot; data-single&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;true&quot;&gt;Run consistently&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;Start running&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;Return after a break&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;Train for a race&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;Run faster&lt;/button&gt;&lt;/div&gt;
-        &lt;button class=&quot;oo-link&quot;&gt;Tell your coach something else…&lt;/button&gt;
+        &lt;button class=&quot;oo-link&quot;&gt;Share something else…&lt;/button&gt;
         &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;baseline&quot;&gt;Continue&lt;/button&gt;&lt;/div&gt;
       &lt;/section&gt;
 
@@ -1031,16 +1044,41 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;oo-label&quot;&gt;Runs per week&lt;/div&gt;&lt;div class=&quot;oo-adjust&quot; data-single&gt;&lt;button aria-pressed=&quot;false&quot;&gt;2&lt;/button&gt;&lt;button aria-pressed=&quot;true&quot;&gt;3&lt;/button&gt;&lt;button aria-pressed=&quot;false&quot;&gt;4+&lt;/button&gt;&lt;/div&gt;
         &lt;div class=&quot;oo-label&quot;&gt;Typical time available&lt;/div&gt;&lt;div class=&quot;oo-two&quot; data-single&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;20 min&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;true&quot;&gt;30 min&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;45 min&lt;/button&gt;&lt;button class=&quot;oo-option&quot; aria-pressed=&quot;false&quot;&gt;Varies&lt;/button&gt;&lt;/div&gt;
         &lt;div class=&quot;oo-label&quot;&gt;Anything to work around? · Optional&lt;/div&gt;&lt;textarea aria-label=&quot;Optional training context&quot; placeholder=&quot;Injury, returning from illness, travel, schedule…&quot;&gt;&lt;/textarea&gt;
+        &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;understanding&quot;&gt;Continue&lt;/button&gt;&lt;/div&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;oo-page&quot; data-page=&quot;understanding&quot;&gt;
+        &lt;div class=&quot;oo-head&quot;&gt;&lt;button class=&quot;oo-back&quot; data-go=&quot;week&quot;&gt;‹ Back&lt;/button&gt;&lt;span class=&quot;oo-step&quot;&gt;Your companion&lt;/span&gt;&lt;/div&gt;
+        &lt;h2&gt;Here’s what I understand&lt;/h2&gt;&lt;p&gt;I’ll keep learning from your runs and feedback. You can correct anything now.&lt;/p&gt;
+        &lt;div class=&quot;oo-summary&quot;&gt;
+          &lt;div class=&quot;oo-summary-row&quot;&gt;&lt;div class=&quot;oo-summary-icon&quot;&gt;&lt;i data-lucide=&quot;target&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;div&gt;&lt;h3&gt;Build consistency&lt;/h3&gt;&lt;p&gt;Without adding much intensity yet&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;oo-smallbtn&quot;&gt;Edit&lt;/button&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-summary-row&quot;&gt;&lt;div class=&quot;oo-summary-icon&quot;&gt;&lt;i data-lucide=&quot;calendar-days&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;div&gt;&lt;h3&gt;Three runs most weeks&lt;/h3&gt;&lt;p&gt;About 30 minutes · Saturday longer&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;oo-smallbtn&quot;&gt;Edit&lt;/button&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-summary-row&quot;&gt;&lt;div class=&quot;oo-summary-icon&quot;&gt;&lt;i data-lucide=&quot;activity&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/div&gt;&lt;div&gt;&lt;h3&gt;Current baseline&lt;/h3&gt;&lt;p&gt;1–2 runs · 30 minutes comfortable&lt;/p&gt;&lt;/div&gt;&lt;span class=&quot;oo-confidence&quot;&gt;Starting estimate&lt;/span&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;oo-ai&quot;&gt;✦ I’ll use your first few runs to learn your comfortable effort, endurance, and recovery—not judge your speed.&lt;/div&gt;
         &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;plan&quot;&gt;Build my first week&lt;/button&gt;&lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;oo-page&quot; data-page=&quot;plan&quot;&gt;
         &lt;div class=&quot;oo-head&quot;&gt;&lt;button class=&quot;oo-back&quot; data-go=&quot;week&quot;&gt;‹ Edit&lt;/button&gt;&lt;span class=&quot;oo-step&quot;&gt;Ready&lt;/span&gt;&lt;/div&gt;
-        &lt;h2&gt;Your first week&lt;/h2&gt;&lt;p&gt;Three approachable runs. No unnecessary intensity.&lt;/p&gt;
-        &lt;div class=&quot;oo-plan&quot;&gt;&lt;div class=&quot;oo-planhead&quot;&gt;&lt;h3&gt;Run consistently&lt;/h3&gt;&lt;span&gt;85 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Tue&lt;/strong&gt;&lt;span&gt;Easy run&lt;/span&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Thu&lt;/strong&gt;&lt;span&gt;Easy + strides&lt;/span&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Sat&lt;/strong&gt;&lt;span&gt;Longer easy run&lt;/span&gt;&lt;span&gt;35 min&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
-        &lt;div class=&quot;oo-ai&quot;&gt;✦ You already run once or twice most weeks. This adds consistency before adding much intensity.&lt;/div&gt;
+        &lt;h2&gt;Your first week&lt;/h2&gt;&lt;p&gt;Three approachable runs that also help me learn how running feels for you.&lt;/p&gt;
+        &lt;div class=&quot;oo-plan&quot;&gt;&lt;div class=&quot;oo-planhead&quot;&gt;&lt;h3&gt;Run consistently&lt;/h3&gt;&lt;span&gt;85 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Tue&lt;/strong&gt;&lt;span&gt;Comfortable run&lt;/span&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Thu&lt;/strong&gt;&lt;span&gt;Easy + short pickups&lt;/span&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;oo-day&quot;&gt;&lt;strong&gt;Sat&lt;/strong&gt;&lt;span&gt;Longer relaxed run&lt;/span&gt;&lt;span&gt;35 min&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;oo-ai&quot;&gt;✦ These are normal training runs—not fitness tests. Together they help tune your effort and weekly load.&lt;/div&gt;
         &lt;div class=&quot;oo-adjust&quot;&gt;&lt;button&gt;Easier&lt;/button&gt;&lt;button&gt;Days&lt;/button&gt;&lt;button&gt;✦ Ask&lt;/button&gt;&lt;/div&gt;
-        &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;people&quot;&gt;Use this plan&lt;/button&gt;&lt;/div&gt;
+        &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;calibration&quot;&gt;Use this plan&lt;/button&gt;&lt;/div&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;oo-page&quot; data-page=&quot;calibration&quot;&gt;
+        &lt;div class=&quot;oo-head&quot;&gt;&lt;button class=&quot;oo-back&quot; data-go=&quot;plan&quot;&gt;‹ Plan&lt;/button&gt;&lt;span class=&quot;oo-step&quot;&gt;First 7–10 days&lt;/span&gt;&lt;/div&gt;
+        &lt;h2&gt;We’ll learn as you run&lt;/h2&gt;&lt;p&gt;No all-out test is required. Just run naturally and share how it felt.&lt;/p&gt;
+        &lt;div class=&quot;oo-calibration&quot;&gt;
+          &lt;div class=&quot;oo-calibration-row&quot;&gt;&lt;div class=&quot;oo-checkcircle&quot;&gt;1&lt;/div&gt;&lt;div&gt;&lt;strong&gt;Comfortable run&lt;/strong&gt;&lt;span&gt;Learn your natural easy effort&lt;/span&gt;&lt;/div&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-calibration-row&quot;&gt;&lt;div class=&quot;oo-checkcircle&quot;&gt;2&lt;/div&gt;&lt;div&gt;&lt;strong&gt;Easy + pickups&lt;/strong&gt;&lt;span&gt;Observe controlled faster running&lt;/span&gt;&lt;/div&gt;&lt;span&gt;25 min&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-calibration-row&quot;&gt;&lt;div class=&quot;oo-checkcircle&quot;&gt;3&lt;/div&gt;&lt;div&gt;&lt;strong&gt;Longer relaxed run&lt;/strong&gt;&lt;span&gt;Learn endurance and recovery&lt;/span&gt;&lt;/div&gt;&lt;span&gt;35 min&lt;/span&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;oo-ai&quot;&gt;✦ After each run: one tap for effort, with an optional note. I’ll show what I learned and why the plan changes.&lt;/div&gt;
+        &lt;button class=&quot;oo-link&quot;&gt;I have a recent race or benchmark ›&lt;/button&gt;
+        &lt;div class=&quot;oo-footer&quot;&gt;&lt;button class=&quot;oo-primary&quot; data-go=&quot;people&quot;&gt;Sounds good&lt;/button&gt;&lt;button class=&quot;oo-link&quot; data-go=&quot;people&quot; style=&quot;width:100%&quot;&gt;Skip explanation&lt;/button&gt;&lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;oo-page&quot; data-page=&quot;people&quot;&gt;
@@ -1055,7 +1093,8 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;section class=&quot;oo-page&quot; data-page=&quot;today&quot;&gt;
         &lt;div class=&quot;oo-head&quot;&gt;&lt;strong&gt;OUTBOUND&lt;/strong&gt;&lt;span class=&quot;oo-step&quot;&gt;Today&lt;/span&gt;&lt;/div&gt;
         &lt;div class=&quot;oo-today-quote&quot;&gt;&lt;blockquote&gt;“You don’t need a perfect run. You need a beginning.”&lt;/blockquote&gt;&lt;p&gt;Your first week is ready.&lt;/p&gt;&lt;/div&gt;
-        &lt;div class=&quot;oo-workout&quot;&gt;&lt;div class=&quot;oo-planhead&quot;&gt;&lt;div&gt;&lt;span class=&quot;oo-label&quot;&gt;Today&lt;/span&gt;&lt;h3&gt;Easy run · 25 min&lt;/h3&gt;&lt;/div&gt;&lt;span&gt;✦&lt;/span&gt;&lt;/div&gt;&lt;p&gt;Conversational effort&lt;/p&gt;&lt;div class=&quot;oo-flow&quot;&gt;&lt;div&gt;&lt;strong&gt;5m&lt;/strong&gt;&lt;span&gt;Warm-up&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;strong&gt;15m&lt;/strong&gt;&lt;span&gt;Relaxed&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;strong&gt;5m&lt;/strong&gt;&lt;span&gt;Cool-down&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;oo-primary&quot;&gt;Start run&lt;/button&gt;&lt;div class=&quot;oo-social-proof&quot;&gt;&lt;div class=&quot;oo-miniavatars&quot;&gt;&lt;span&gt;X&lt;/span&gt;&lt;span&gt;SU&lt;/span&gt;&lt;/div&gt;&lt;span&gt;Invite someone or find a club in Together&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;oo-learning&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;Getting to know your running · Run 1 of 3&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;oo-workout&quot;&gt;&lt;div class=&quot;oo-planhead&quot;&gt;&lt;div&gt;&lt;span class=&quot;oo-label&quot;&gt;Today&lt;/span&gt;&lt;h3&gt;Comfortable run · 25 min&lt;/h3&gt;&lt;/div&gt;&lt;span&gt;✦&lt;/span&gt;&lt;/div&gt;&lt;p&gt;Run naturally at a conversational effort&lt;/p&gt;&lt;div class=&quot;oo-flow&quot;&gt;&lt;div&gt;&lt;strong&gt;5m&lt;/strong&gt;&lt;span&gt;Settle in&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;strong&gt;15m&lt;/strong&gt;&lt;span&gt;Comfortable&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;strong&gt;5m&lt;/strong&gt;&lt;span&gt;Easy finish&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;button class=&quot;oo-primary&quot;&gt;Start run&lt;/button&gt;&lt;div class=&quot;oo-social-proof&quot;&gt;&lt;div class=&quot;oo-miniavatars&quot;&gt;&lt;span&gt;♥&lt;/span&gt;&lt;span&gt;●&lt;/span&gt;&lt;/div&gt;&lt;span&gt;Invite someone or find a club in Together&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
       &lt;/section&gt;
     &lt;/main&gt;
   &lt;/section&gt;

@@ -35,6 +35,24 @@ Do not use a separate Progress tab. Show immediate progress context on Today and
 
 Keep the inspirational quote as the emotional opening. Pair it with a factual, personalized line that proves Outbound understands the runner.
 
+### Planned workout and quick run
+
+Keep two clear paths:
+
+- `Start workout` launches the companion-prescribed session with its existing time, distance, and interval structure.
+- `Quick run` preserves runner control with compact `Open`, `Distance`, and `Time` goal choices.
+
+Workout type (`easy`, `long`, `tempo`, `intervals`, or `recovery`) and recording goal (`open`, `distance`, or `time`) are separate concepts. The companion recommends the workout type; the runner may choose the recording goal.
+
+### Personalization loop
+
+Today participates in the learning loop defined in `docs/personalized-running-companion.md`:
+
+- request a one-tap readiness check only when it could change the recommendation;
+- show calibration progress compactly during the first 7-10 days;
+- explain meaningful adaptations and preserve `Keep original` or undo;
+- avoid claiming a new insight until supported by observable evidence and confidence.
+
 Information order:
 
 1. Inspirational quote and personalized context.

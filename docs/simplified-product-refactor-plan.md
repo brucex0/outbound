@@ -283,9 +283,16 @@ Document one canonical rebuild command when the schema implementation lands.
 
 ### 1. Onboarding and Today
 
-- Backend: `/v1/me`, onboarding draft/complete, `/v1/today`, reviewed plan seed.
-- Client: new shell, shared design system, onboarding, Today, workout preview/detail.
+- Backend: `/v1/me`, onboarding draft/complete, runner facts, calibration status, `/v1/today`, reviewed plan seed.
+- Client: new shell, shared design system, onboarding, editable understanding, calibration overview, Today, workout preview/detail.
 - Reset old onboarding and plan state.
+
+### 1A. First personalization loop
+
+- Freeze shared readiness, feedback, runner-insight, confidence, and adjustment DTOs with JSON fixtures.
+- Backend: versioned runner-model projection, readiness and workout-feedback writes, reviewed calibration evidence, and one bounded immediate adjustment policy.
+- Client: conditional pre-run check-in, post-run effort feedback, `What I learned`, and before/after adjustment explanation with undo.
+- Complete this slice before expanding generic AI conversation. The acceptance path is one observed run producing one evidence-backed, safe, explained adjustment.
 
 ### 2. Guided workout
 
@@ -351,4 +358,3 @@ Mitigate by shipping and validating complete vertical slices, using contract fix
 - Old plan/social/onboarding data and compatibility code are removed.
 - New feature roots have explicit dependencies and reusable UI components.
 - Old primary screens and legacy routes are deleted rather than indefinitely retained.
-

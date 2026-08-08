@@ -9,9 +9,11 @@ New authenticated users should reach a concrete success state in about 90 second
 1. Understand that Outbound combines an adaptive running companion with people and clubs.
 2. Authenticate with Apple or Google.
 3. Choose a goal, recent baseline, and realistic weekly capacity.
-4. See a credible first week with a concise AI explanation.
-5. Optionally invite a person or find a club.
-6. Land on Today with the first session ready.
+4. Review and correct the companion's understanding.
+5. See a credible first week with a concise AI explanation.
+6. Understand that the first three normal runs form a low-pressure calibration period.
+7. Optionally invite a person or find a club.
+8. Land on Today with the first session ready.
 
 The flow should avoid feature tours, early permission prompts, mandatory essays, body-profile intake, and empty-dashboard handoffs. AI should prove its value through the generated week and explanation rather than through a chatbot-centric setup.
 
@@ -43,17 +45,25 @@ The flow should avoid feature tours, early permission prompts, mandatory essays,
 
 5. First week
    - Show the three-session week, total time, and one precise AI explanation.
-   - Offer easier, different days, or Ask Coach adjustments.
-   - Do not add a separate read-back screen.
+   - Offer easier, different days, or Ask adjustments.
+   - Do not add another plan-confirmation screen after the editable understanding and first-week preview.
 
-6. Optional social connection
+6. Editable understanding and calibration
+   - Show a compact summary of goal, realistic schedule, starting baseline, and material constraints.
+   - Label runner-provided facts separately from starting estimates and allow section-level edits.
+   - Explain that the first 7-10 days use three normal training runs to tune effort, endurance, and recovery.
+   - Do not require an all-out fitness test. Offer recent race/imported benchmark input only as an optional experienced-runner path.
+   - Make the calibration explanation skippable; it must not block Today.
+
+7. Optional social connection
    - Ask `Who helps you get out?`
    - Offer invite someone, find a club, or do this later.
    - Explain that private training context is not shared.
 
-7. Today
+8. Today
    - Land on the real Today surface with the quote, first workout, and Start action.
    - Keep the onboarding recommendation visually continuous with the product.
+   - Show small `Run 1 of 3` calibration progress without making Today feel like an assessment dashboard.
 
 The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`.
 
