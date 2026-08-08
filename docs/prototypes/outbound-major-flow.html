@@ -1110,6 +1110,19 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-flow .of-ai-highlight { margin:13px 0 7px; padding-top:11px; border-top:1px solid light-dark(#e0e5e1,#354139); color:light-dark(#315f3f,#9ac2a4); }
 #outbound-flow .of-social-actions { display:flex; gap:7px; margin-top:8px; }
 #outbound-flow .of-social-actions .of-ghost { padding-left:0; padding-right:12px; }
+#outbound-flow button { transition: transform .14s ease, opacity .14s ease, background-color .14s ease; }
+#outbound-flow button:active { transform: scale(.97); }
+#outbound-flow .of-primary { box-shadow: 0 7px 16px light-dark(rgba(190,78,42,.18),rgba(0,0,0,.24)); }
+#outbound-flow .of-quote { box-shadow: inset 0 1px 0 light-dark(rgba(255,255,255,.14),rgba(255,255,255,.2)); }
+#outbound-flow .of-card { box-shadow: 0 5px 18px light-dark(rgba(35,55,42,.055),rgba(0,0,0,.13)); }
+#outbound-flow .of-tab { min-height:48px; display:grid; place-items:center; align-content:center; gap:2px; }
+#outbound-flow .of-tab svg { width:19px; height:19px; }
+#outbound-flow .of-tab em { opacity:0; height:0; overflow:hidden; transition:opacity .14s ease; }
+#outbound-flow .of-tab[aria-selected=&quot;true&quot;] em { opacity:1; height:auto; }
+#outbound-flow .of-camera-button { display:grid; place-items:center; box-shadow:0 5px 14px light-dark(rgba(21,39,27,.14),rgba(0,0,0,.3)); }
+#outbound-flow .of-camera-button svg { width:20px; height:20px; }
+#outbound-flow .of-ai-highlight { font-weight:500; }
+#outbound-flow .of-head h2, #outbound-flow .of-card h3 { letter-spacing:-.012em; }
 @media (max-width: 350px) {
   #outbound-flow .of-screen { padding-left: 13px; padding-right: 13px; }
   #outbound-flow .of-live { margin-left:-13px; margin-right:-13px; }
@@ -1159,7 +1172,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 
       &lt;section class=&quot;of-page&quot; data-page=&quot;live&quot;&gt;
         &lt;div class=&quot;of-live&quot;&gt;
-          &lt;div class=&quot;of-live-map&quot;&gt;&lt;div class=&quot;of-route&quot;&gt;&lt;/div&gt;&lt;button class=&quot;of-camera-button&quot; data-go=&quot;moment&quot; aria-label=&quot;Capture a moment&quot;&gt;▣&lt;/button&gt;&lt;/div&gt;
+          &lt;div class=&quot;of-live-map&quot;&gt;&lt;div class=&quot;of-route&quot;&gt;&lt;/div&gt;&lt;button class=&quot;of-camera-button&quot; data-go=&quot;moment&quot; aria-label=&quot;Capture a moment&quot;&gt;&lt;i data-lucide=&quot;camera&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
           &lt;div class=&quot;of-livepanel&quot;&gt;
             &lt;span class=&quot;of-label&quot;&gt;Relaxed · 12:08 remaining&lt;/span&gt;&lt;div class=&quot;of-livebig&quot;&gt;5:58 /km&lt;/div&gt;&lt;div class=&quot;of-livecaption&quot;&gt;Comfortable effort&lt;/div&gt;
             &lt;div class=&quot;of-livephase&quot;&gt;✓ Warm-up &amp;nbsp; · &amp;nbsp; ● Relaxed &amp;nbsp; · &amp;nbsp; ○ Cool-down&lt;/div&gt;
@@ -1170,7 +1183,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 
       &lt;section class=&quot;of-page&quot; data-page=&quot;moment&quot;&gt;
         &lt;div class=&quot;of-camera-view&quot;&gt;
-          &lt;div class=&quot;of-camera-top&quot;&gt;&lt;button data-go=&quot;live&quot; aria-label=&quot;Close camera&quot;&gt;×&lt;/button&gt;&lt;button aria-label=&quot;Switch camera&quot;&gt;↻&lt;/button&gt;&lt;/div&gt;
+          &lt;div class=&quot;of-camera-top&quot;&gt;&lt;button data-go=&quot;live&quot; aria-label=&quot;Close camera&quot;&gt;&lt;i data-lucide=&quot;x&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button aria-label=&quot;Switch camera&quot;&gt;&lt;i data-lucide=&quot;switch-camera&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
           &lt;div class=&quot;of-camera-message&quot;&gt;Relaxed section · Run continues recording&lt;/div&gt;
           &lt;div class=&quot;of-camera-bottom&quot;&gt;&lt;button class=&quot;of-shutter&quot; data-capture aria-label=&quot;Take photo&quot;&gt;&lt;/button&gt;&lt;div class=&quot;of-note&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;button class=&quot;of-primary&quot; data-go=&quot;live&quot;&gt;Keep moment &amp; return&lt;/button&gt;&lt;/div&gt;
         &lt;/div&gt;
@@ -1224,9 +1237,9 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;/section&gt;
     &lt;/main&gt;
     &lt;nav class=&quot;of-nav&quot; aria-label=&quot;Primary navigation&quot;&gt;
-      &lt;button class=&quot;of-tab&quot; data-tab=&quot;together&quot; aria-selected=&quot;false&quot;&gt;&lt;span&gt;♧&lt;/span&gt;&lt;em&gt;Together&lt;/em&gt;&lt;/button&gt;
-      &lt;button class=&quot;of-tab&quot; data-tab=&quot;today&quot; aria-selected=&quot;true&quot;&gt;&lt;span&gt;✦&lt;/span&gt;&lt;em&gt;Today&lt;/em&gt;&lt;/button&gt;
-      &lt;button class=&quot;of-tab&quot; data-tab=&quot;me&quot; aria-selected=&quot;false&quot;&gt;&lt;span&gt;○&lt;/span&gt;&lt;em&gt;Me&lt;/em&gt;&lt;/button&gt;
+      &lt;button class=&quot;of-tab&quot; data-tab=&quot;together&quot; aria-selected=&quot;false&quot;&gt;&lt;i data-lucide=&quot;users&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;em&gt;Together&lt;/em&gt;&lt;/button&gt;
+      &lt;button class=&quot;of-tab&quot; data-tab=&quot;today&quot; aria-selected=&quot;true&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;em&gt;Today&lt;/em&gt;&lt;/button&gt;
+      &lt;button class=&quot;of-tab&quot; data-tab=&quot;me&quot; aria-selected=&quot;false&quot;&gt;&lt;i data-lucide=&quot;circle-user-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;em&gt;Me&lt;/em&gt;&lt;/button&gt;
     &lt;/nav&gt;
   &lt;/section&gt;
 &lt;/div&gt;

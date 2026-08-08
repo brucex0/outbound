@@ -955,6 +955,17 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-onboarding .oo-miniavatars { display:flex; }
 #outbound-onboarding .oo-miniavatars span { width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:light-dark(#dae6dc,#2c3a31);border:2px solid light-dark(#fff,#1b241f);margin-left:-6px;font-size:.7rem; }
 #outbound-onboarding .oo-miniavatars span:first-child { margin-left:0; }
+#outbound-onboarding button { transition:transform .14s ease, background-color .14s ease, border-color .14s ease; }
+#outbound-onboarding button:active { transform:scale(.98); }
+#outbound-onboarding .oo-authbtn, #outbound-onboarding .oo-option, #outbound-onboarding .oo-plan, #outbound-onboarding .oo-workout { box-shadow:0 5px 18px light-dark(rgba(35,55,42,.055),rgba(0,0,0,.13)); }
+#outbound-onboarding .oo-authbtn { display:flex; align-items:center; justify-content:center; gap:9px; }
+#outbound-onboarding .oo-authbtn svg { width:18px; height:18px; }
+#outbound-onboarding .oo-option { position:relative; padding-right:40px; }
+#outbound-onboarding .oo-option[aria-pressed=&quot;true&quot;]::after { content:&quot;✓&quot;; position:absolute; right:14px; top:50%; transform:translateY(-50%); width:22px; height:22px; border-radius:50%; display:grid; place-items:center; color:light-dark(#f5faf5,#172019); background:light-dark(#315f3f,#9ac2a4); }
+#outbound-onboarding .oo-primary { box-shadow:0 7px 16px light-dark(rgba(190,78,42,.18),rgba(0,0,0,.24)); }
+#outbound-onboarding h2 { letter-spacing:-.02em; }
+#outbound-onboarding .oo-progress span { border-radius:5px; }
+#outbound-onboarding .oo-social-proof { padding-top:9px; border-top:1px solid light-dark(#e0e5e1,#354139); }
 @media (max-width:350px) { #outbound-onboarding .oo-screen { padding-left:14px; padding-right:14px; } }
 &lt;/style&gt;
 
@@ -978,7 +989,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/div&gt;
         &lt;p class=&quot;oo-label&quot;&gt;Your AI running coach&lt;/p&gt;
         &lt;h2&gt;Train with purpose.&lt;br&gt;Run with your people.&lt;/h2&gt;
-        &lt;div class=&quot;oo-auth&quot;&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;● Continue with Apple&lt;/button&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;G&amp;nbsp; Continue with Google&lt;/button&gt;&lt;/div&gt;
+        &lt;div class=&quot;oo-auth&quot;&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;&lt;i data-lucide=&quot;apple&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Continue with Apple&lt;/button&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;&lt;strong&gt;G&lt;/strong&gt;Continue with Google&lt;/button&gt;&lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;oo-page&quot; data-page=&quot;goal&quot;&gt;
