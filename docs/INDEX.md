@@ -38,6 +38,7 @@ Primary flow:
 | Product strategy, competitor scan, feature gaps, roadmap priorities | `docs/product-strategy.md` | Category landscape, Outbound strengths/weaknesses, recommended feature set, and phased roadmap |
 | Simplified product UX, primary navigation, AI role, plan presentation, and social model | `docs/simplified-product-ux.md` | Target direction for Together, Today, Me, coaching behavior, workout flows, and recent activity cards |
 | Engineering handoff for simplified product, onboarding, and cycle-aware UI | `docs/product-ui-engineering-handoff.md` | Shared SwiftUI component contracts, screen states, accessibility, privacy, analytics, and acceptance criteria |
+| Client/backend replacement strategy and vertical migration sequence | `docs/simplified-product-refactor-plan.md` | Keep/replace/delete decisions, target modules and APIs, database reset, effort, risks, and cutover plan |
 | Simplified product flow prototype | `docs/prototypes/outbound-major-flow.html` | Clickable wireframe for Today, workout detail, live run, post-run, Together, club runs, and Me |
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
