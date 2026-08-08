@@ -44,6 +44,15 @@ model User {
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
   reactions     Reaction[]
+  connectionsRequested Connection[] @relation("ConnectionRequester")
+  connectionsReceived Connection[] @relation("ConnectionAddressee")
+  circlesOwned Circle[] @relation("CircleOwner")
+  circleMemberships CircleMember[]
+  clubMemberships ClubMembership[]
+  groupRunsCreated GroupRun[] @relation("GroupRunCreator")
+  invitationsSent Invitation[] @relation("InvitationSender")
+  invitationsReceived Invitation[] @relation("InvitationRecipient")
+  moments       Moment[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -131,6 +140,7 @@ model Activity {
   photos        Photo[]
   posts         Post[]
   workoutCompletions WorkoutCompletion[]
+  moments       Moment[]
 
   // AI coach analysis generated after activity
   coachAnalysis Json?
@@ -656,6 +666,27 @@ model Photo {
   createdAt   DateTime  @default(now())
 }
 
+model Moment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId     String
+  activity       Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  clientMomentId String
+  storageKey     String
+  takenAt        DateTime
+  elapsedSeconds Int?
+  phaseId        String?
+  latitude       Float?
+  longitude      Float?
+  altText        String?
+  visibility     String   @default("private")
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, clientMomentId])
+  @@index([activityId, takenAt])
+}
+
 model Post {
   id          String     @id @default(cuid())
   userId      String
@@ -666,6 +697,123 @@ model Post {
   createdAt   DateTime   @default(now())
   reactions   Reaction[]
   comments    Comment[]
+  visibility  String     @default("connections")
+}
+
+model Connection {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("ConnectionAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+model Circle {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  kind      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   CircleMember[]
+
+  @@index([ownerId])
+}
+
+model CircleMember {
+  id        String   @id @default(cuid())
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([circleId, userId])
+  @@index([userId])
+}
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  city        String?
+  isDiscoverable Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  memberships ClubMembership[]
+  runs        GroupRun[]
+}
+
+model ClubMembership {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  @@unique([clubId, userId])
+  @@index([userId])
+}
+
+model GroupRun {
+  id           String   @id @default(cuid())
+  clubId       String?
+  club         Club?    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  creatorId    String
+  creator      User     @relation("GroupRunCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  title        String
+  startsAt     DateTime
+  locationName String?
+  paceNote     String?
+  status       String   @default("scheduled")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  groups       GroupRunOption[]
+  invitations  Invitation[]
+
+  @@index([startsAt, status])
+  @@index([clubId, startsAt])
+}
+
+model GroupRunOption {
+  id             String   @id @default(cuid())
+  groupRunId     String
+  groupRun       GroupRun @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
+  label          String
+  distanceMeters Float?
+  paceMinSeconds Int?
+  paceMaxSeconds Int?
+  capacity       Int?
+  sortOrder      Int      @default(0)
+
+  @@index([groupRunId, sortOrder])
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String?
+  recipient   User?    @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  groupRunId  String?
+  groupRun    GroupRun? @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
+  kind        String
+  tokenHash   String?  @unique
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+
+  @@index([recipientId, status])
+  @@index([senderId, status])
 }
 
 model Follow {
