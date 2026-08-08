@@ -28,6 +28,7 @@ struct OutboundApp: App {
     @StateObject private var liveShareStore = LiveShareStore()
     @StateObject private var liveGroupStore = LiveGroupStore()
     @StateObject private var safetyContactStore = SafetyContactStore()
+    @StateObject private var personalizationStore = PersonalizationStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -45,6 +46,7 @@ struct OutboundApp: App {
         if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
+                .environmentObject(personalizationStore)
         } else {
             authenticatedRoot
         }
@@ -80,12 +82,14 @@ struct OutboundApp: App {
                 .environmentObject(liveShareStore)
                 .environmentObject(liveGroupStore)
                 .environmentObject(safetyContactStore)
+                .environmentObject(personalizationStore)
                 .task {
                     await coachStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
                     await healthAuthorizationStore.refresh()
                     await healthImportStore.refreshRecentWorkouts()
                     await musicStore.refresh()
+                    await personalizationStore.refresh()
                 }
                 .onOpenURL { url in
                     _ = authStore.handleOpenURL(url)

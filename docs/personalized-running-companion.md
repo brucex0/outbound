@@ -243,3 +243,34 @@ Use checked-in JSON fixtures in both backend contract checks and Swift previews 
 8. Social schedule awareness without exposing private coaching evidence.
 
 The first shippable learning loop is complete when a new runner can finish intake, see an editable understanding, complete calibration runs, submit lightweight feedback, and receive one safe, explained plan adjustment grounded in visible evidence.
+
+## Implemented V1 Vertical Slice
+
+- Simplified onboarding captures structured runner facts and shows an editable understanding before calibration.
+- Three reviewed calibration workouts are scaled from comfortable duration and take precedence on Today while calibration is active.
+- Today uses backend plan data outside calibration and preserves Open, Distance, and Time Quick Run starts.
+- Readiness and workout feedback are authenticated, idempotent, cached locally, and queued offline.
+- Feedback projects confidence-bearing insights into immutable runner-model versions.
+- Tired, sore, short-on-time, and harder-than-expected signals can create bounded adjustment proposals.
+- The runner explicitly accepts or rejects changes; accepted duration changes update the owned planned workout.
+- Me displays up to three evidence-backed insights with confidence language.
+
+Authenticated API surface:
+
+```text
+GET  /v1/personalization/snapshot
+PUT  /v1/personalization/profile
+POST /v1/personalization/readiness
+POST /v1/personalization/workouts/:id/feedback
+POST /v1/personalization/adjustments/:id/decision
+```
+
+## Development Database Rebuild
+
+The personalization schema intentionally does not preserve unpublished development rows. After pulling the schema implementation, rebuild and reseed from `backend/`:
+
+```bash
+npm run db:rebuild
+```
+
+This resets the configured development database, generates Prisma Client, builds the backend, and seeds the reviewed training-plan catalog. Do not run it against a database whose data must be retained.

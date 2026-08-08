@@ -81,6 +81,29 @@ final class APIClient {
         try await get("/planning/recommendations")
     }
 
+    func fetchPersonalizationSnapshot() async throws -> PersonalizationSnapshotDTO {
+        try await get("/personalization/snapshot")
+    }
+
+    func updateRunnerProfile(_ request: RunnerProfileRequestDTO) async throws -> PersonalizationMutationResponseDTO {
+        try await put("/personalization/profile", body: request)
+    }
+
+    func submitPersonalizationReadiness(_ request: ReadinessCheckInRequestDTO) async throws -> PersonalizationMutationResponseDTO {
+        try await post("/personalization/readiness", body: request)
+    }
+
+    func submitWorkoutFeedback(_ request: WorkoutFeedbackRequestDTO) async throws -> PersonalizationMutationResponseDTO {
+        try await post("/personalization/workouts/\(request.workoutId)/feedback", body: request)
+    }
+
+    func decidePersonalizationAdjustment(id: String, accept: Bool) async throws -> AdjustmentProposalDTO {
+        try await post(
+            "/personalization/adjustments/\(id)/decision",
+            body: AdjustmentDecisionRequestDTO(decision: accept ? "accept" : "reject")
+        )
+    }
+
     func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
         try await post("/safety/live-shares", body: request)
     }
@@ -158,6 +181,19 @@ final class APIClient {
     private func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         var req = URLRequest(url: url(for: path))
         req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try encoder.encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        var req = URLRequest(url: url(for: path))
+        req.httpMethod = "PUT"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

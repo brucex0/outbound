@@ -10,6 +10,8 @@ struct MainTabView: View {
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var personalizationStore: PersonalizationStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @State private var selectedTab: AppTab = .me
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
@@ -72,15 +74,26 @@ struct MainTabView: View {
             .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $onboardingStore.isPresented) {
-            OnboardingFlowView { shouldStartSession in
-                let profile = onboardingStore.complete()
-                applyOnboardingProfile(profile)
-                if shouldStartSession {
-                    presentActivity(intent: profile.suggestedSession.intent)
+            Group {
+                if usesSimplifiedShell {
+                    SimplifiedOnboardingFlow { profile in
+                        applyOnboardingProfile(profile)
+                    }
+                    .environmentObject(onboardingStore)
+                    .environmentObject(personalizationStore)
+                    .environmentObject(trainingPlanStore)
+                } else {
+                    OnboardingFlowView { shouldStartSession in
+                        let profile = onboardingStore.complete()
+                        applyOnboardingProfile(profile)
+                        if shouldStartSession {
+                            presentActivity(intent: profile.suggestedSession.intent)
+                        }
+                    }
+                    .environmentObject(onboardingStore)
+                    .environmentObject(coachCatalog)
                 }
             }
-            .environmentObject(onboardingStore)
-            .environmentObject(coachCatalog)
             .interactiveDismissDisabled()
         }
         .onAppear {
@@ -115,8 +128,8 @@ struct MainTabView: View {
     @ViewBuilder
     private var currentContent: some View {
         if usesSimplifiedShell {
-            SimplifiedAppShell {
-                presentActivity()
+            SimplifiedAppShell { intent in
+                presentActivity(intent: intent)
             }
         } else {
             legacyContent
@@ -223,7 +236,6 @@ struct MainTabView: View {
     }
 
     private func prepareOnboarding() {
-        guard !usesSimplifiedShell else { return }
         onboardingStore.prepareForAuthenticatedUser(identity: onboardingIdentity)
     }
 

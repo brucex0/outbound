@@ -26,6 +26,22 @@ struct CalibrationSummaryDTO: Codable, Equatable, Sendable {
     let currentSession: CalibrationSessionKind?
 }
 
+struct CalibrationWorkoutStepDTO: Codable, Identifiable, Equatable, Sendable {
+    let id: String
+    let label: String
+    let durationSeconds: Int
+    let detail: String
+}
+
+struct CalibrationWorkoutDTO: Codable, Identifiable, Equatable, Sendable {
+    let id: String
+    let kind: CalibrationSessionKind
+    let title: String
+    let purpose: String
+    let durationSeconds: Int
+    let steps: [CalibrationWorkoutStepDTO]
+}
+
 enum RunnerInsightKind: String, Codable, Sendable {
     case effort
     case endurance
@@ -73,6 +89,7 @@ struct PersonalizationSnapshotDTO: Codable, Equatable, Sendable {
     let modelVersion: String
     let generatedAt: Date
     let calibration: CalibrationSummaryDTO
+    let calibrationWorkouts: [CalibrationWorkoutDTO]
     let insights: [RunnerInsightDTO]
     let pendingAdjustment: AdjustmentProposalDTO?
 }
@@ -120,6 +137,28 @@ struct WorkoutFeedbackRequestDTO: Codable, Equatable, Sendable {
     let note: String?
 }
 
+struct RunnerProfileRequestDTO: Codable, Equatable, Sendable {
+    let goalSummary: String?
+    let scheduleSummary: String?
+    let comfortableDurationMinutes: Int?
+    let recentSessionsPerWeek: Int?
+    let targetSessionsPerWeek: Int
+    let preferredLongRunDay: String?
+    let coachingDetail: String
+    let constraints: [String: String]
+    let complete: Bool
+}
+
+struct PersonalizationMutationResponseDTO: Codable, Sendable {
+    let accepted: Bool?
+    let adjustment: AdjustmentProposalDTO?
+    let personalization: PersonalizationSnapshotDTO
+}
+
+struct AdjustmentDecisionRequestDTO: Codable, Sendable {
+    let decision: String
+}
+
 extension PersonalizationSnapshotDTO {
     static let preview = PersonalizationSnapshotDTO(
         contractVersion: 1,
@@ -131,6 +170,20 @@ extension PersonalizationSnapshotDTO {
             targetSessionCount: 3,
             currentSession: .comfortableRun
         ),
+        calibrationWorkouts: [
+            CalibrationWorkoutDTO(
+                id: "calibration-comfortable-run",
+                kind: .comfortableRun,
+                title: "Comfortable run",
+                purpose: "Learn your natural easy effort without testing your speed.",
+                durationSeconds: 30 * 60,
+                steps: [
+                    CalibrationWorkoutStepDTO(id: "settle", label: "Settle in", durationSeconds: 5 * 60, detail: "Very easy"),
+                    CalibrationWorkoutStepDTO(id: "main", label: "Run naturally", durationSeconds: 20 * 60, detail: "Conversational effort"),
+                    CalibrationWorkoutStepDTO(id: "finish", label: "Easy finish", durationSeconds: 5 * 60, detail: "Ease down"),
+                ]
+            ),
+        ],
         insights: [
             RunnerInsightDTO(
                 id: "comfortable-duration",

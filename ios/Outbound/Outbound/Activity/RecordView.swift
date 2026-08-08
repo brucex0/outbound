@@ -205,6 +205,7 @@ struct RecordView: View {
                 photos: activity.photos,
                 reflection: activity.reflection,
                 recognitionPreviews: activity.recognitionPreviews,
+                workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
                 onSave: { selectedPhotos, reflection in savePendingActivity(activity, photos: selectedPhotos, reflection: reflection) },
                 onDiscard: discardPendingActivity
             )

@@ -4,20 +4,25 @@ import UIKit
 
 struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject var personalizationStore: PersonalizationStore
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
+    let workoutID: String
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) -> Void
     let onDiscard: () -> Void
     @State private var selectedPhotoIndices: Set<Int>
     @State private var isPhotoSelectionPresented = false
+    @State private var selectedEffort: RunEffort?
+    @State private var continuationCapacity: ContinuationCapacity?
 
     init(
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
+        workoutID: String = "freestyle-run",
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) -> Void,
         onDiscard: @escaping () -> Void
     ) {
@@ -25,6 +30,7 @@ struct PostRunSummaryView: View {
         self.photos = photos
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
+        self.workoutID = workoutID
         self.onSave = onSave
         self.onDiscard = onDiscard
         _selectedPhotoIndices = State(initialValue: Set(photos.indices))
@@ -41,6 +47,7 @@ struct PostRunSummaryView: View {
                         recognitionSection(primaryRecognition)
                     }
                     statsSection
+                    feedbackSection
                     if summary.trackPoints.count > 1 { routeMap }
                     motivationSection
                 }
@@ -177,6 +184,49 @@ struct PostRunSummaryView: View {
         .padding(.bottom, 8)
     }
 
+    private var feedbackSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("How did that feel?")
+                .font(.headline)
+            HStack {
+                effortButton(.easy, title: "Easy")
+                effortButton(.aboutRight, title: "About right")
+                effortButton(.tooHard, title: "Too hard")
+            }
+            if selectedEffort != nil {
+                Text("Could you have continued?")
+                    .font(.subheadline.weight(.semibold))
+                HStack {
+                    capacityButton(.none, title: "No")
+                    capacityButton(.tenMinutes, title: "10 min")
+                    capacityButton(.muchLonger, title: "Much longer")
+                }
+            }
+            Text("Optional. This helps your companion learn what the run data cannot show.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private func effortButton(_ effort: RunEffort, title: String) -> some View {
+        Button(title) { selectedEffort = effort }
+            .buttonStyle(.bordered)
+            .tint(selectedEffort == effort ? .orange : .secondary)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func capacityButton(_ capacity: ContinuationCapacity, title: String) -> some View {
+        Button(title) { continuationCapacity = capacity }
+            .buttonStyle(.bordered)
+            .tint(continuationCapacity == capacity ? .orange : .secondary)
+            .frame(maxWidth: .infinity)
+    }
+
     private var routeMapPosition: MapCameraPosition {
         let coords = summary.trackPoints.map(\.coordinate)
         let lats = coords.map(\.latitude)
@@ -276,6 +326,16 @@ struct PostRunSummaryView: View {
             .clipShape(Circle())
 
             Button {
+                if let selectedEffort {
+                    Task {
+                        await personalizationStore.submitFeedback(
+                            effort: selectedEffort,
+                            continuationCapacity: continuationCapacity,
+                            workoutID: workoutID,
+                            activityID: nil
+                        )
+                    }
+                }
                 onSave(selectedPhotos, reflection)
             } label: {
                 Image(systemName: "square.and.arrow.down")

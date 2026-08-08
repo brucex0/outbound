@@ -7,7 +7,10 @@ enum SimplifiedAppTab: Hashable {
 }
 
 struct SimplifiedAppShell: View {
-    let onStartRun: () -> Void
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
 
     var body: some View {
@@ -25,20 +28,21 @@ struct SimplifiedAppShell: View {
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(OutboundPalette.companion)
+        .onAppear {
+            trainingPlanStore.refresh(
+                activities: activityStore.activities,
+                readiness: dailyCheckInStore.readiness,
+                phase: DailyMotivationEngine.phase(for: activityStore.activities)
+            )
+        }
     }
 }
 
 private struct SimplifiedTodayView: View {
-    let onStartRun: () -> Void
+    @EnvironmentObject private var personalizationStore: PersonalizationStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    let onStartRun: (SessionIntent?) -> Void
     @State private var showsReadinessCheckIn = false
-
-    private let personalization = PersonalizationSnapshotDTO.preview
-
-    private let phases = [
-        WorkoutPhaseItem(id: "warmup", duration: "5m", title: "Warm-up", weight: 1),
-        WorkoutPhaseItem(id: "relaxed", duration: "20m", title: "Relaxed", weight: 3),
-        WorkoutPhaseItem(id: "cooldown", duration: "5m", title: "Cool-down", weight: 1),
-    ]
 
     var body: some View {
         NavigationStack {
@@ -59,12 +63,12 @@ private struct SimplifiedTodayView: View {
                             Text("TODAY · AI ADJUSTED")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            Text("Easy run · 30 min")
+                            Text(todayTitle)
                                 .font(.title3.weight(.semibold))
-                            Text("Conversational effort")
+                            Text(todayDetail)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            WorkoutPhaseSummary(phases: phases)
+                            WorkoutPhaseSummary(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
                                 showsReadinessCheckIn = true
                             }
@@ -73,12 +77,38 @@ private struct SimplifiedTodayView: View {
                                 quickAction("Tired", image: "moon.zzz")
                                 quickAction("Ask", image: "sparkles")
                             }
-                            AIExplanationView(text: "Tuesday was harder than planned, so today stays easy.")
+                            AIExplanationView(text: todayExplanation)
                         }
                     }
 
                     OutboundCard {
-                        CalibrationProgressBanner(summary: personalization.calibration)
+                        CalibrationProgressBanner(summary: personalizationStore.snapshot.calibration)
+                    }
+
+                    if let adjustment = personalizationStore.snapshot.pendingAdjustment {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("A BETTER FIT FOR TODAY")
+                                    .font(.caption.weight(.semibold))
+                                Text(adjustment.explanation)
+                                    .font(.subheadline)
+                                ForEach(adjustment.changes, id: \.workoutId) { change in
+                                    Text("\(change.beforeTitle) → \(change.afterTitle)")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                HStack {
+                                    Button("Keep original") {
+                                        Task { await personalizationStore.decideAdjustment(accept: false) }
+                                    }
+                                    .buttonStyle(.bordered)
+                                    Button("Use change") {
+                                        Task { await personalizationStore.decideAdjustment(accept: true) }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                }
+                                .tint(OutboundPalette.companion)
+                            }
+                        }
                     }
 
                     OutboundCard {
@@ -122,9 +152,12 @@ private struct SimplifiedTodayView: View {
             .navigationTitle("Today")
         }
         .sheet(isPresented: $showsReadinessCheckIn) {
-            ReadinessCheckInView(workoutTitle: "Easy run") { _ in
+            ReadinessCheckInView(workoutTitle: todayTitle) { choice in
+                if let choice {
+                    Task { await personalizationStore.submitReadiness(choice, workoutID: todayWorkoutID) }
+                }
                 showsReadinessCheckIn = false
-                onStartRun()
+                onStartRun(plannedRunIntent)
             }
             .presentationDetents([.medium, .large])
         }
@@ -141,13 +174,139 @@ private struct SimplifiedTodayView: View {
     }
 
     private func quickRunAction(_ title: String, image: String) -> some View {
-        Button(action: onStartRun) {
+        Button {
+            onStartRun(quickRunIntent(for: title))
+        } label: {
             Label(title, systemImage: image)
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+    }
+
+    private var plannedRunIntent: SessionIntent {
+        if let workout = currentCalibrationWorkout {
+            return SessionIntent(
+                id: workout.id,
+                sport: .run,
+                title: workout.title,
+                detail: "Run · \(durationLabel(workout.durationSeconds)) · conversational effort",
+                coachLine: workout.purpose,
+                startLabel: "Start workout",
+                targetDurationSeconds: workout.durationSeconds,
+                workoutSteps: workout.steps.map {
+                    SessionIntentStep(id: $0.id, label: $0.label, durationSeconds: $0.durationSeconds, detail: $0.detail)
+                }
+            )
+        }
+        if let suggestion = trainingPlanStore.todaySuggestion {
+            return suggestion.suggestedSession.intent
+        }
+        return SessionIntent(
+            id: "today-comfortable-run",
+            sport: .run,
+            title: "Easy run",
+            detail: "Run · 30 min · conversational effort",
+            coachLine: "Settle into a conversational effort and keep this one comfortable.",
+            startLabel: "Start workout",
+            targetDurationSeconds: 30 * 60,
+            workoutSteps: [
+                SessionIntentStep(id: "warmup", label: "Warm-up", durationSeconds: 5 * 60, detail: "Very easy"),
+                SessionIntentStep(id: "relaxed", label: "Relaxed", durationSeconds: 20 * 60, detail: "Conversational effort"),
+                SessionIntentStep(id: "cooldown", label: "Cool-down", durationSeconds: 5 * 60, detail: "Ease down"),
+            ]
+        )
+    }
+
+    private var todayWorkoutID: String {
+        currentCalibrationWorkout?.id ?? trainingPlanStore.todaySuggestion?.workout.id ?? plannedRunIntent.id
+    }
+
+    private var todayTitle: String {
+        if let workout = currentCalibrationWorkout {
+            return "\(workout.title) · \(durationLabel(workout.durationSeconds))"
+        }
+        guard let suggestion = trainingPlanStore.todaySuggestion else { return "Easy run · 30 min" }
+        return "\(suggestion.workout.title) · \(suggestion.workout.durationLabel)"
+    }
+
+    private var todayDetail: String {
+        if currentCalibrationWorkout != nil { return "Run naturally at a conversational effort" }
+        return trainingPlanStore.todaySuggestion?.workout.effortLabel ?? "Conversational effort"
+    }
+
+    private var todayExplanation: String {
+        if let workout = currentCalibrationWorkout { return workout.purpose }
+        return trainingPlanStore.todaySuggestion?.adjustmentLine
+            ?? trainingPlanStore.todaySuggestion?.coachLine
+            ?? "This approachable run builds consistency while Outbound learns your natural easy effort."
+    }
+
+    private var todayPhases: [WorkoutPhaseItem] {
+        if let workout = currentCalibrationWorkout {
+            return workout.steps.map {
+                WorkoutPhaseItem(
+                    id: $0.id,
+                    duration: durationLabel($0.durationSeconds).replacingOccurrences(of: " min", with: "m"),
+                    title: $0.label,
+                    weight: max(1, CGFloat($0.durationSeconds) / 300)
+                )
+            }
+        }
+        let steps = trainingPlanStore.todaySuggestion?.workout.steps ?? []
+        guard !steps.isEmpty else {
+            return [
+                WorkoutPhaseItem(id: "warmup", duration: "5m", title: "Warm-up", weight: 1),
+                WorkoutPhaseItem(id: "relaxed", duration: "20m", title: "Relaxed", weight: 3),
+                WorkoutPhaseItem(id: "cooldown", duration: "5m", title: "Cool-down", weight: 1),
+            ]
+        }
+        return steps.map {
+            WorkoutPhaseItem(
+                id: $0.id,
+                duration: $0.durationLabel.replacingOccurrences(of: " min", with: "m"),
+                title: $0.label,
+                weight: max(1, CGFloat($0.durationSeconds) / 300)
+            )
+        }
+    }
+
+    private var currentCalibrationWorkout: CalibrationWorkoutDTO? {
+        guard personalizationStore.snapshot.calibration.status == .inProgress,
+              let kind = personalizationStore.snapshot.calibration.currentSession else { return nil }
+        return personalizationStore.snapshot.calibrationWorkouts.first { $0.kind == kind }
+    }
+
+    private func durationLabel(_ seconds: Int) -> String {
+        seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds / 60)m \(seconds % 60)s"
+    }
+
+    private func quickRunIntent(for title: String) -> SessionIntent {
+        switch title {
+        case "Distance":
+            return SessionIntent(
+                id: "quick-distance-5k",
+                sport: .run,
+                title: "5 km run",
+                detail: "Run · 5 km distance goal",
+                coachLine: "Run by feel and let the distance goal mark the finish.",
+                startLabel: "Start 5 km run",
+                targetDistanceMeters: 5_000
+            )
+        case "Time":
+            return SessionIntent(
+                id: "quick-time-30",
+                sport: .run,
+                title: "30 min run",
+                detail: "Run · 30 min time goal",
+                coachLine: "Choose an effort you can sustain for the full thirty minutes.",
+                startLabel: "Start 30 min run",
+                targetDurationSeconds: 30 * 60
+            )
+        default:
+            return .freestyleRun
+        }
     }
 }
 
@@ -193,6 +352,8 @@ private struct SimplifiedTogetherView: View {
 }
 
 private struct SimplifiedMeView: View {
+    @EnvironmentObject private var personalizationStore: PersonalizationStore
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -207,6 +368,32 @@ private struct SimplifiedMeView: View {
                             Text("3 runs per week")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                        }
+                    }
+                    if !personalizationStore.snapshot.insights.isEmpty {
+                        OutboundCard {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("WHAT I’VE LEARNED")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                ForEach(personalizationStore.snapshot.insights.prefix(3)) { insight in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text(insight.label).font(.subheadline.weight(.semibold))
+                                            Spacer()
+                                            Text(insight.confidence.title)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Text(insight.value)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if insight.id != personalizationStore.snapshot.insights.prefix(3).last?.id {
+                                        Divider()
+                                    }
+                                }
+                            }
                         }
                     }
                     OutboundCard {
@@ -237,6 +424,20 @@ private struct SimplifiedMeView: View {
     }
 }
 
+private extension RunnerConfidence {
+    var title: String {
+        switch self {
+        case .low: "Learning"
+        case .medium: "Some confidence"
+        case .high: "High confidence"
+        }
+    }
+}
+
 #Preview {
-    SimplifiedAppShell(onStartRun: {})
+    SimplifiedAppShell(onStartRun: { _ in })
+        .environmentObject(ActivityStore())
+        .environmentObject(DailyCheckInStore())
+        .environmentObject(PersonalizationStore())
+        .environmentObject(TrainingPlanStore())
 }
