@@ -19,7 +19,9 @@ struct SimplifiedAppShell: View {
                 .tag(SimplifiedAppTab.together)
                 .tabItem { Label("Together", systemImage: "person.2") }
 
-            SimplifiedTodayView(onStartRun: onStartRun)
+            SimplifiedTodayView(onStartRun: onStartRun) {
+                selection = .together
+            }
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label("Today", systemImage: "sparkles") }
 
@@ -42,7 +44,9 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     let onStartRun: (SessionIntent?) -> Void
+    let onOpenTogether: () -> Void
     @State private var showsReadinessCheckIn = false
+    @State private var showsCompanionExplanation = false
 
     var body: some View {
         NavigationStack {
@@ -73,9 +77,15 @@ private struct SimplifiedTodayView: View {
                                 showsReadinessCheckIn = true
                             }
                             HStack {
-                                quickAction("15 min", image: "clock")
-                                quickAction("Tired", image: "moon.zzz")
-                                quickAction("Ask", image: "sparkles")
+                                quickAction("15 min", image: "clock") {
+                                    onStartRun(shortRunIntent)
+                                }
+                                quickAction("Tired", image: "moon.zzz") {
+                                    Task { await personalizationStore.submitReadiness(.tired, workoutID: todayWorkoutID) }
+                                }
+                                quickAction("Why?", image: "sparkles") {
+                                    showsCompanionExplanation = true
+                                }
                             }
                             AIExplanationView(text: todayExplanation)
                         }
@@ -140,7 +150,7 @@ private struct SimplifiedTodayView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Invite") {}
+                            Button("Invite", action: onOpenTogether)
                                 .font(.subheadline.weight(.semibold))
                         }
                     }
@@ -161,10 +171,15 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
+            Button("Got it", role: .cancel) {}
+        } message: {
+            Text(todayExplanation)
+        }
     }
 
-    private func quickAction(_ title: String, image: String) -> some View {
-        Button {} label: {
+    private func quickAction(_ title: String, image: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             Label(title, systemImage: image)
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 38)
@@ -307,6 +322,18 @@ private struct SimplifiedTodayView: View {
         default:
             return .freestyleRun
         }
+    }
+
+    private var shortRunIntent: SessionIntent {
+        SessionIntent(
+            id: "quick-time-15",
+            sport: .run,
+            title: "15 min easy run",
+            detail: "Run · 15 min time goal",
+            coachLine: "Keep the effort easy. A short run still protects the habit.",
+            startLabel: "Start 15 min run",
+            targetDurationSeconds: 15 * 60
+        )
     }
 }
 

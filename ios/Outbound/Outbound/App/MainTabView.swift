@@ -179,9 +179,9 @@ struct MainTabView: View {
 
     private var usesSimplifiedShell: Bool {
 #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-OutboundSimplifiedShell")
+        !ProcessInfo.processInfo.arguments.contains("-OutboundLegacyShell")
 #else
-        false
+        true
 #endif
     }
 

@@ -82,9 +82,11 @@ Do not request multiple system permissions during initial signup.
 
 Age, height, weight, body profile, coach face, coach voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. They should not block the first useful plan.
 
-## Current Implementation Gap
+## Current Implementation
 
-The current implementation predates this simplified target and still includes longer free-text intake, body basics, a structured coach review, and first-session setup. Preserve the implementation notes below until the SwiftUI flow is replaced; do not treat them as the target product behavior.
+The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, editable understanding, and calibration. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
+
+The older `OnboardingFlowView` remains available only with the DEBUG `-OutboundLegacyShell` comparison launch argument. Its implementation notes remain below for regression work and should not guide new product development.
 
 ## Implementation
 

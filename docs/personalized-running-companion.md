@@ -254,6 +254,7 @@ The first shippable learning loop is complete when a new runner can finish intak
 - Tired, sore, short-on-time, and harder-than-expected signals can create bounded adjustment proposals.
 - The runner explicitly accepts or rejects changes; accepted duration changes update the owned planned workout.
 - Me displays up to three evidence-backed insights with confidence language.
+- The simplified shell is the release default. DEBUG builds may pass `-OutboundLegacyShell` for temporary regression comparison.
 
 Authenticated API surface:
 
