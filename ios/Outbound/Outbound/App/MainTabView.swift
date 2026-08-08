@@ -23,7 +23,7 @@ struct MainTabView: View {
         }
         .background(Color(.systemGroupedBackground))
         .overlay(alignment: .bottom) {
-            if !isActivityVisible {
+            if !isActivityVisible && !usesSimplifiedShell {
                 HStack(spacing: 10) {
                     AssistantLauncherButton(accentColor: assistantAccentColor) {
                         isAssistantPresented = true
@@ -114,6 +114,17 @@ struct MainTabView: View {
 
     @ViewBuilder
     private var currentContent: some View {
+        if usesSimplifiedShell {
+            SimplifiedAppShell {
+                presentActivity()
+            }
+        } else {
+            legacyContent
+        }
+    }
+
+    @ViewBuilder
+    private var legacyContent: some View {
 #if OUTBOUND_ENABLE_SOCIAL
         Group {
             switch selectedTab {
@@ -150,6 +161,14 @@ struct MainTabView: View {
                 presentActivity(intent: suggestion.intent)
             }
         )
+#endif
+    }
+
+    private var usesSimplifiedShell: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-OutboundSimplifiedShell")
+#else
+        false
 #endif
     }
 
@@ -204,6 +223,7 @@ struct MainTabView: View {
     }
 
     private func prepareOnboarding() {
+        guard !usesSimplifiedShell else { return }
         onboardingStore.prepareForAuthenticatedUser(identity: onboardingIdentity)
     }
 
