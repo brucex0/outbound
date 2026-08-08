@@ -358,3 +358,24 @@ Mitigate by shipping and validating complete vertical slices, using contract fix
 - Old plan/social/onboarding data and compatibility code are removed.
 - New feature roots have explicit dependencies and reusable UI components.
 - Old primary screens and legacy routes are deleted rather than indefinitely retained.
+
+## Implemented Product Cutover
+
+The production root now uses `Together · Today · Me`; the prior shell is not a release path. The current implementation includes:
+
+- editable runner intake, calibration sessions, readiness, workout feedback, learned insights, and explained adjustment decisions;
+- Today with plan-backed workouts, a vertical interval detail flow, quick Open/Distance/Time runs, readiness, and safe fallbacks;
+- the retained recorder, camera Moment capture, pause/resume/finish, local activity save, and post-run reflection/feedback;
+- Me with live plan/week progress, saved weekly totals, recent activity history, learned insights, settings, and cycle-aware coaching;
+- Together backed by authenticated connections, clubs, group runs, invitations, posts, reactions, comments, compatibility, and cached client state;
+- private-by-default Moment records with ownership checks and an explicit share transition;
+- raw cycle/wellbeing data stored on-device, with only `noAdjustment`, `offerFlexibleOption`, `reduceLoad`, or `recommendRest` sent to planning.
+
+The older SwiftUI feature files remain only as reusable secondary destinations or dormant code while production navigation no longer exposes the old primary shell. Remove them incrementally after retained utilities (history, detail, recorder, gear, and safety) are split into dedicated feature modules.
+
+Because the Prisma model changed before public launch, rebuild the development database rather than preserving old rows:
+
+```sh
+cd backend
+npx prisma db push --force-reset
+```

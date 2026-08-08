@@ -178,11 +178,7 @@ struct MainTabView: View {
     }
 
     private var usesSimplifiedShell: Bool {
-#if DEBUG
-        !ProcessInfo.processInfo.arguments.contains("-OutboundLegacyShell")
-#else
         true
-#endif
     }
 
     private var bottomChromeContentInset: CGFloat {

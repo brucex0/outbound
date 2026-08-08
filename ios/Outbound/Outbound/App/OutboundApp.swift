@@ -29,6 +29,8 @@ struct OutboundApp: App {
     @StateObject private var liveGroupStore = LiveGroupStore()
     @StateObject private var safetyContactStore = SafetyContactStore()
     @StateObject private var personalizationStore = PersonalizationStore()
+    @StateObject private var togetherStore = TogetherStore()
+    @StateObject private var cycleAwareStore = CycleAwareStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -47,6 +49,7 @@ struct OutboundApp: App {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
                 .environmentObject(personalizationStore)
+                .environmentObject(togetherStore)
         } else {
             authenticatedRoot
         }
@@ -83,6 +86,8 @@ struct OutboundApp: App {
                 .environmentObject(liveGroupStore)
                 .environmentObject(safetyContactStore)
                 .environmentObject(personalizationStore)
+                .environmentObject(togetherStore)
+                .environmentObject(cycleAwareStore)
                 .task {
                     await coachStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
@@ -90,6 +95,7 @@ struct OutboundApp: App {
                     await healthImportStore.refreshRecentWorkouts()
                     await musicStore.refresh()
                     await personalizationStore.refresh()
+                    await togetherStore.refresh()
                 }
                 .onOpenURL { url in
                     _ = authStore.handleOpenURL(url)

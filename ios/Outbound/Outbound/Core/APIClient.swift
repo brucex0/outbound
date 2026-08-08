@@ -104,6 +104,22 @@ final class APIClient {
         )
     }
 
+    func fetchTogether() async throws -> TogetherResponseDTO {
+        try await get("/social/together")
+    }
+
+    func createTogetherInvitation(runID: String) async throws -> TogetherInvitationResponseDTO {
+        try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: nil))
+    }
+
+    func reactToTogetherPost(postID: String, type: String) async throws -> TogetherReactionDTO {
+        try await post("/social/posts/\(postID)/reactions", body: TogetherReactionRequestDTO(type: type))
+    }
+
+    func submitCycleTrainingSignal(_ request: CycleTrainingSignalRequestDTO) async throws -> CycleTrainingSignalResponseDTO {
+        try await post("/personalization/cycle-signal", body: request)
+    }
+
     func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
         try await post("/safety/live-shares", body: request)
     }
@@ -258,7 +274,17 @@ final class APIClient {
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
+        d.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = fractional.date(from: value) { return date }
+            let standard = ISO8601DateFormatter()
+            standard.formatOptions = [.withInternetDateTime]
+            if let date = standard.date(from: value) { return date }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO-8601 date: \(value)")
+        }
         return d
     }()
 

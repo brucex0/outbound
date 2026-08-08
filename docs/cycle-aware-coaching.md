@@ -1,5 +1,9 @@
 # Cycle-Aware Coaching
 
+## Current implementation boundary
+
+The iOS `CycleAwareStore` keeps raw period, energy, and discomfort logs in local app storage. It derives one coarse training signal and sends only that signal, a day, workout identifier when available, and an idempotency key to `POST /v1/personalization/cycle-signal`. The response offers a generic keep, flexible, reduce, or rest action. Neither the social API nor shared Moment responses include raw health inputs or the private reason for an adjustment.
+
 Open this when designing menstrual-cycle logging, symptom check-ins, cycle-aware workout adjustments, HealthKit reproductive-health access, or related privacy safeguards.
 
 ## Product Principle
@@ -129,4 +133,3 @@ Defer:
 - automatic social disclosure of any kind.
 
 The clickable reference is `docs/prototypes/outbound-cycle-aware-flow.html`.
-

@@ -8,17 +8,17 @@ Outbound is an iOS fitness recording app. Login uses Firebase-backed Apple and G
 
 Primary flow:
 
-1. App launches directly into `MainTabView`.
-2. New authenticated accounts see the first-win onboarding flow before normal use; completed accounts skip it.
-3. Me tab is the first tab and now centers a compact coach-led `Now` moment: spark card, one main action card, Progress, and recent activity.
+1. App launches into the production `Together · Today · Me` shell, centered on Today.
+2. New authenticated accounts see the simplified runner intake, editable understanding, calibration, and first-plan onboarding; completed accounts skip it.
+3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Run, and a Together invitation.
 4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, PR history, race predictions, shoe mileage, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is created for the default trusted contact, server SMS/push delivery is stubbed, the system Share Sheet opens with the link, and updates stream from live location snapshots.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-10. Social is isolated behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition; default beta builds omit the Social tab, Social stores, Social recognition state, and Social assistant copy.
-11. Coach customization and shoe tracking live under Settings; the user can choose a predefined coach, tune voice/face/style/nudge frequency, and add or retire running shoes.
+10. Together is always available through authenticated, share-safe connections, clubs, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
+11. Me consolidates plan progress, weekly totals, learned runner insights, history, measurement settings, and optional cycle-aware coaching.
 
 ## Open Docs By Task
 

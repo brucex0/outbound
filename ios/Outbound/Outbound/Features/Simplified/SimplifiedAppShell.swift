@@ -10,6 +10,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
 
@@ -43,9 +44,11 @@ struct SimplifiedAppShell: View {
 private struct SimplifiedTodayView: View {
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsReadinessCheckIn = false
+    @State private var showsWorkoutDetail = false
     @State private var showsCompanionExplanation = false
 
     var body: some View {
@@ -74,7 +77,7 @@ private struct SimplifiedTodayView: View {
                                 .foregroundStyle(.secondary)
                             WorkoutPhaseSummary(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
-                                showsReadinessCheckIn = true
+                                showsWorkoutDetail = true
                             }
                             HStack {
                                 quickAction("15 min", image: "clock") {
@@ -88,6 +91,21 @@ private struct SimplifiedTodayView: View {
                                 }
                             }
                             AIExplanationView(text: todayExplanation)
+                        }
+                    }
+
+                    if cycleAwareStore.isEnabled, cycleAwareStore.currentSignal != .noAdjustment {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("A FLEXIBLE OPTION").font(.caption.weight(.semibold))
+                                Text(cycleAwareStore.currentSignal.title).font(.headline)
+                                Text("Choose what feels right; this does not change your long-term plan unless you accept it.")
+                                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                                HStack {
+                                    Button("Keep workout") { showsWorkoutDetail = true }.buttonStyle(.bordered)
+                                    Button("Choose gentler") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
+                                }
+                            }
                         }
                     }
 
@@ -170,6 +188,17 @@ private struct SimplifiedTodayView: View {
                 onStartRun(plannedRunIntent)
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showsWorkoutDetail) {
+            SimplifiedWorkoutDetailView(
+                title: todayTitle,
+                detail: todayDetail,
+                explanation: todayExplanation,
+                steps: plannedRunIntent.workoutSteps
+            ) {
+                showsWorkoutDetail = false
+                showsReadinessCheckIn = true
+            }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -337,36 +366,150 @@ private struct SimplifiedTodayView: View {
     }
 }
 
+private struct SimplifiedWorkoutDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let detail: String
+    let explanation: String
+    let steps: [SessionIntentStep]
+    let onStart: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                    Text(title).font(.title2.bold())
+                    Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                    OutboundCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                                HStack(alignment: .top, spacing: 14) {
+                                    VStack(spacing: 0) {
+                                        Circle().fill(OutboundPalette.companion).frame(width: 12, height: 12)
+                                        if index < steps.count - 1 {
+                                            Rectangle().fill(OutboundPalette.companion.opacity(0.25)).frame(width: 2, height: 50)
+                                        }
+                                    }
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(step.label).font(.headline)
+                                        Text(["\(step.durationSeconds / 60) min", step.detail].compactMap { $0 }.joined(separator: " · "))
+                                            .font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AIExplanationView(text: explanation)
+                    OutboundPrimaryButton(title: "Check readiness", systemImage: "sparkles", action: onStart)
+                }
+                .padding(OutboundSpacing.screen)
+            }
+            .background(OutboundPalette.background)
+            .navigationTitle("Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", action: dismiss.callAsFunction) } }
+        }
+    }
+}
+
 private struct SimplifiedTogetherView: View {
+    @EnvironmentObject private var togetherStore: TogetherStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    Text("UP NEXT")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("Run with family")
-                                .font(.headline)
-                            Text("Today after 6:30 · Easy 30 min")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            AIExplanationView(text: "Your workouts are compatible.")
-                        }
+                    if let message = togetherStore.errorMessage {
+                        Text(message).font(.caption).foregroundStyle(.secondary)
                     }
 
-                    Text("CLUBS")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("Saturday long run")
-                                .font(.headline)
-                            Text("8:00 AM · Three distance groups")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            AIExplanationView(text: "The middle-distance group matches your plan.")
+                    if togetherStore.state.upcomingRuns.isEmpty && togetherStore.state.posts.isEmpty {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("Running is better together")
+                                    .font(.headline)
+                                Text("Invite family or friends, or join a club run that fits your plan.")
+                                    .font(.subheadline)
+                                Button("Invite someone", systemImage: "person.badge.plus") {}
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    } else {
+                        if !togetherStore.state.upcomingRuns.isEmpty {
+                            Text("UP NEXT").sectionLabel()
+                        }
+                        ForEach(togetherStore.state.upcomingRuns.prefix(2)) { run in
+                            OutboundCard {
+                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                    Text(run.club?.name ?? run.creator.displayName)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Text(run.title).font(.headline)
+                                    Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                    if let compatibility = run.compatibility {
+                                        AIExplanationView(text: compatibility.explanation)
+                                    }
+                                    HStack {
+                                        if let invitationURL = togetherStore.latestInvitationURL {
+                                            ShareLink(item: invitationURL) { Label("Share invite", systemImage: "square.and.arrow.up") }
+                                                .buttonStyle(.borderedProminent)
+                                        } else {
+                                            Button("Invite", systemImage: "person.badge.plus") {
+                                                Task { await togetherStore.invite(to: run) }
+                                            }
+                                            .buttonStyle(.bordered)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !togetherStore.state.clubs.isEmpty {
+                            Text("YOUR CLUBS").sectionLabel()
+                            ForEach(togetherStore.state.clubs.prefix(3)) { club in
+                                OutboundCard {
+                                    HStack {
+                                        Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
+                                        VStack(alignment: .leading) {
+                                            Text(club.name).font(.headline)
+                                            Text([club.city, club.role?.capitalized].compactMap { $0 }.joined(separator: " · "))
+                                                .font(.subheadline).foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !togetherStore.state.posts.isEmpty {
+                            Text("RECENT").sectionLabel()
+                            ForEach(togetherStore.state.posts.prefix(5)) { post in
+                                OutboundCard {
+                                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                        HStack {
+                                            Image(systemName: "person.crop.circle.fill").font(.title2)
+                                            VStack(alignment: .leading) {
+                                                Text(post.user.displayName).font(.headline)
+                                                Text(post.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Text(post.activity?.title ?? "Run").font(.headline)
+                                        if let activity = post.activity {
+                                            HStack {
+                                                socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                                socialStat(activity.durationSecs.map { $0.formatted() } ?? "—", "Time")
+                                                socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                            }
+                                        }
+                                        if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
+                                        Button("Cheer · \(post.reactions.count)", systemImage: "heart") {
+                                            Task { await togetherStore.react(to: post) }
+                                        }
+                                        .buttonStyle(.bordered)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -374,12 +517,30 @@ private struct SimplifiedTogetherView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Together")
+            .refreshable { await togetherStore.refresh() }
         }
+    }
+
+    private func locationSuffix(_ location: String?) -> String { location.map { " · \($0)" } ?? "" }
+
+    private func socialStat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) { Text(value).font(.subheadline.monospacedDigit().weight(.semibold)); Text(label).font(.caption).foregroundStyle(.secondary) }
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private extension Text {
+    func sectionLabel() -> some View {
+        font(.caption.weight(.semibold)).foregroundStyle(.secondary)
     }
 }
 
 private struct SimplifiedMeView: View {
     @EnvironmentObject private var personalizationStore: PersonalizationStore
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
 
     var body: some View {
         NavigationStack {
@@ -390,9 +551,9 @@ private struct SimplifiedMeView: View {
                             Text("CURRENT FOCUS")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            Text("Run consistently · Week 3 of 8")
+                            Text(planTitle)
                                 .font(.headline)
-                            Text("3 runs per week")
+                            Text(planDetail)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -429,12 +590,52 @@ private struct SimplifiedMeView: View {
                                 Text("This week")
                                     .font(.headline)
                                 Spacer()
-                                Text("2 of 3")
+                                Text("\(weekRuns) of \(weekTarget)")
                                     .font(.headline)
                             }
-                            ProgressView(value: 2, total: 3)
+                            ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
                                 .tint(OutboundPalette.companion)
-                            AIExplanationView(text: "One easy run completes the week.")
+                            HStack {
+                                meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), "Distance")
+                                meStat(weekDuration.formatted(), "Time")
+                            }
+                            AIExplanationView(text: weekCoachLine)
+                        }
+                    }
+                    OutboundCard {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                            Text("PRIVATE TRAINING CONTEXT").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            NavigationLink {
+                                CycleAwareView()
+                            } label: {
+                                Label(cycleAwareStore.summary, systemImage: "heart.text.square")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                    OutboundCard {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                            HStack {
+                                Text("RECENT RUNS").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                Spacer()
+                                NavigationLink("See all") { ActivityHistoryView() }.font(.subheadline)
+                            }
+                            if activityStore.activities.isEmpty {
+                                Text("Your completed runs will appear here.").font(.subheadline).foregroundStyle(.secondary)
+                            } else {
+                                ForEach(activityStore.activities.prefix(3)) { activity in
+                                    NavigationLink(value: activity) {
+                                        HStack {
+                                            VStack(alignment: .leading) {
+                                                Text(activity.title).font(.subheadline.weight(.semibold))
+                                                Text(activity.startedAt.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
+                                            }
+                                            Spacer()
+                                            Text(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)).font(.subheadline.monospacedDigit())
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -442,12 +643,63 @@ private struct SimplifiedMeView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Me")
+            .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "gearshape") {}
+                    NavigationLink {
+                        SimplifiedSettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
                 }
             }
         }
+    }
+
+    private var planTitle: String {
+        guard let plan = trainingPlanStore.activePlan else { return "Building your running rhythm" }
+        let week = trainingPlanStore.currentWeek?.currentWeekIndex ?? 1
+        return "\(plan.title) · Week \(week) of \(plan.durationWeeks)"
+    }
+
+    private var planDetail: String { "\(weekTarget) runs per week" }
+    private var weekTarget: Int { trainingPlanStore.currentWeek?.targetSessions ?? trainingPlanStore.activePlan?.sessionsPerWeek ?? 3 }
+    private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? currentWeekActivities.count }
+    private var weekDistance: Double { currentWeekActivities.reduce(0) { $0 + $1.distanceM } }
+    private var weekDuration: Int { currentWeekActivities.reduce(0) { $0 + $1.durationSecs } }
+    private var weekCoachLine: String {
+        trainingPlanStore.currentWeek?.coachLine ?? (weekRuns >= weekTarget ? "You completed this week’s rhythm." : "\(max(0, weekTarget - weekRuns)) comfortable run\(weekTarget - weekRuns == 1 ? "" : "s") complete the week.")
+    }
+    private var currentWeekActivities: [SavedActivity] {
+        guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return [] }
+        return activityStore.activities.filter { interval.contains($0.startedAt) }
+    }
+    private func meStat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading) { Text(value).font(.headline.monospacedDigit()); Text(label).font(.caption).foregroundStyle(.secondary) }
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SimplifiedSettingsView: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+
+    var body: some View {
+        Form {
+            Section("Units") {
+                Picker("Measurement", selection: $measurementPreferences.unitSystem) {
+                    ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+            }
+            Section("Health & body") {
+                NavigationLink("Cycle-aware coaching") { CycleAwareView() }
+            }
+            Section {
+                Text("Outbound keeps private health details on this device and never shows them in Together.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Settings")
     }
 }
 
@@ -467,4 +719,7 @@ private extension RunnerConfidence {
         .environmentObject(DailyCheckInStore())
         .environmentObject(PersonalizationStore())
         .environmentObject(TrainingPlanStore())
+        .environmentObject(TogetherStore())
+        .environmentObject(MeasurementPreferences())
+        .environmentObject(CycleAwareStore())
 }
