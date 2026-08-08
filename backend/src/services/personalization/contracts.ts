@@ -9,6 +9,21 @@ export const calibrationSessionKindSchema = z.enum([
   "easyPickups",
   "longerRelaxedRun",
 ]);
+export type CalibrationSessionKind = z.infer<typeof calibrationSessionKindSchema>;
+
+export const calibrationWorkoutSchema = z.object({
+  id: z.string().min(1),
+  kind: calibrationSessionKindSchema,
+  title: z.string().min(1),
+  purpose: z.string().min(1),
+  durationSeconds: z.number().int().positive(),
+  steps: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    durationSeconds: z.number().int().positive(),
+    detail: z.string().min(1),
+  })).min(1),
+});
 
 export const calibrationSummarySchema = z.object({
   status: calibrationStatusSchema,
@@ -56,6 +71,7 @@ export const personalizationSnapshotSchema = z.object({
   modelVersion: z.string().min(1),
   generatedAt: z.string().datetime(),
   calibration: calibrationSummarySchema,
+  calibrationWorkouts: z.array(calibrationWorkoutSchema),
   insights: z.array(runnerInsightSchema),
   pendingAdjustment: adjustmentProposalSchema.nullable(),
 });
@@ -82,8 +98,27 @@ export const workoutFeedbackRequestSchema = z.object({
 });
 export type WorkoutFeedbackRequest = z.infer<typeof workoutFeedbackRequestSchema>;
 
+export const runnerProfileInputSchema = z.object({
+  goalSummary: z.string().min(1).max(500).nullable().optional(),
+  scheduleSummary: z.string().min(1).max(500).nullable().optional(),
+  comfortableDurationMinutes: z.number().int().min(5).max(360).nullable().optional(),
+  recentSessionsPerWeek: z.number().int().min(0).max(14).nullable().optional(),
+  targetSessionsPerWeek: z.number().int().min(1).max(7).optional(),
+  preferredLongRunDay: z.string().min(1).max(16).nullable().optional(),
+  coachingDetail: z.enum(["minimal", "balanced", "detailed"]).optional(),
+  constraints: z.record(z.unknown()).optional(),
+  complete: z.boolean().optional(),
+});
+export type RunnerProfileInput = z.infer<typeof runnerProfileInputSchema>;
+
+export const adjustmentDecisionSchema = z.object({
+  decision: z.enum(["accept", "reject"]),
+});
+
 export const personalizationContractSchemas = {
   snapshot: personalizationSnapshotSchema,
   readinessRequest: readinessCheckInRequestSchema,
   workoutFeedbackRequest: workoutFeedbackRequestSchema,
+  runnerProfileInput: runnerProfileInputSchema,
+  adjustmentDecision: adjustmentDecisionSchema,
 } as const;

@@ -31,6 +31,12 @@ model User {
   athleteTrainingStates AthleteTrainingState[]
   planningEvents PlanningEvent[]
   planAdjustmentEvents PlanAdjustmentEvent[]
+  runnerProfile RunnerProfile?
+  calibrationProgram CalibrationProgram?
+  runnerInsights RunnerInsight[]
+  runnerModelVersions RunnerModelVersion[]
+  workoutFeedback WorkoutFeedback[]
+  personalizationAdjustments PersonalizationAdjustment[]
   safetyLiveShares SafetyLiveShare[]
   liveGroupSessionsCreated LiveGroupSession[] @relation("LiveGroupSessionCreator")
   liveGroupParticipants LiveGroupParticipant[]
@@ -470,9 +476,108 @@ model ReadinessCheckIn {
   motivation    Int       @default(3)
   illnessOrPain Boolean   @default(false)
   notes         String?
+  clientRequestId String? @unique
+  choice        String?
   createdAt     DateTime  @default(now())
 
   @@index([userId, date])
+}
+
+model RunnerProfile {
+  id                         String   @id @default(cuid())
+  userId                     String   @unique
+  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalSummary                String?
+  scheduleSummary            String?
+  comfortableDurationMinutes Int?
+  recentSessionsPerWeek      Int?
+  targetSessionsPerWeek      Int      @default(3)
+  preferredLongRunDay        String?
+  coachingDetail             String   @default("balanced")
+  constraints                Json     @default("{}")
+  completedAt                DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+
+model CalibrationProgram {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                String   @default("notStarted")
+  completedSessionCount Int      @default(0)
+  targetSessionCount    Int      @default(3)
+  currentSession        String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model RunnerInsight {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stableKey     String
+  kind          String
+  label         String
+  value         String
+  confidence    String   @default("low")
+  evidenceCount Int      @default(0)
+  evidence      Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, stableKey])
+  @@index([userId, updatedAt])
+}
+
+model RunnerModelVersion {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versionNumber  Int
+  reason         String
+  snapshot       Json
+  policyVersion  String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, versionNumber])
+  @@index([userId, createdAt])
+}
+
+model WorkoutFeedback {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientRequestId      String   @unique
+  workoutId            String
+  activityId           String?
+  effort               String
+  continuationCapacity String?
+  note                 String?
+  recordedAt           DateTime
+  createdAt            DateTime @default(now())
+
+  @@index([userId, recordedAt])
+  @@index([userId, workoutId])
+}
+
+model PersonalizationAdjustment {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reasonCode           String
+  explanation          String
+  requiresConfirmation Boolean  @default(true)
+  changes              Json
+  status               String   @default("proposed")
+  policyVersion        String
+  decidedAt            DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId, status, createdAt])
 }
 
 model AthleteTrainingState {

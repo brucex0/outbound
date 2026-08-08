@@ -11,6 +11,7 @@ import media from "./routes/media.js";
 import auth from "./routes/auth.js";
 import live from "./routes/live.js";
 import planning from "./routes/planning.js";
+import personalization from "./routes/personalization.js";
 import safety, { liveShareViewer } from "./routes/safety.js";
 import type { AppEnv } from "./types/hono.js";
 
@@ -29,6 +30,7 @@ app.route("/v1/assistant", assistant);
 import transcribeRoutes from "./routes/transcribe.js";
 app.route("/v1/coach", coach);
 app.route("/v1/planning", planning);
+app.route("/v1/personalization", personalization);
 app.route("/v1/social", social);
 app.route("/v1/media", media);
 app.route("/v1/safety", safety);

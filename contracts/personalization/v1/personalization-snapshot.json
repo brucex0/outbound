@@ -8,6 +8,20 @@
     "targetSessionCount": 3,
     "currentSession": "comfortableRun"
   },
+  "calibrationWorkouts": [
+    {
+      "id": "calibration-comfortable-run",
+      "kind": "comfortableRun",
+      "title": "Comfortable run",
+      "purpose": "Learn your natural easy effort without testing your speed.",
+      "durationSeconds": 1800,
+      "steps": [
+        { "id": "settle", "label": "Settle in", "durationSeconds": 300, "detail": "Very easy" },
+        { "id": "main", "label": "Run naturally", "durationSeconds": 1200, "detail": "Conversational effort" },
+        { "id": "finish", "label": "Easy finish", "durationSeconds": 300, "detail": "Ease down" }
+      ]
+    }
+  ],
   "insights": [
     {
       "id": "comfortable-duration",

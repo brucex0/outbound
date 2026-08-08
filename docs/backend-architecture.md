@@ -41,6 +41,9 @@ Current gaps:
 ## Personalization Contracts
 
 - `backend/src/services/personalization/contracts.ts` owns runtime-validated V1 DTOs for calibration, confidence-bearing runner insights, readiness, workout feedback, and adjustment proposals.
+- `backend/src/services/personalization/calibrationTemplates.ts` owns the three reviewed, non-maximal calibration workouts and scales them from the runner's comfortable duration.
+- `backend/src/services/personalization/personalizationService.ts` persists runner facts, idempotent readiness and feedback, calibration progress, evidence-backed insights, immutable runner-model versions, and proposed adjustment decisions.
+- `backend/src/routes/personalization.ts` exposes authenticated snapshot, profile, readiness, feedback, and adjustment-decision routes under `/v1/personalization`.
 - `contracts/personalization/v1/` contains canonical JSON examples shared with the iOS Codable model in `Domains/Athlete/PersonalizationContracts.swift`.
 - Planning persistence and routes should adopt these contracts rather than extending the legacy free-form `CoachProfile.memorySnapshot`.
 

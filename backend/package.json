@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
+    "db:rebuild": "prisma db push --force-reset && prisma generate && npm run build && npm run seed:training-plans",
     "seed:training-plans": "node dist/scripts/seedTrainingPlanTemplates.js"
   },
   "dependencies": {
