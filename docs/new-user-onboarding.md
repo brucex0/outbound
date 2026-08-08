@@ -6,7 +6,7 @@ Outbound onboarding should create a first win, not teach the whole product.
 
 New authenticated users should reach a concrete success state in about 90 seconds:
 
-1. Understand that Outbound combines an adaptive running coach with people and clubs.
+1. Understand that Outbound combines an adaptive running companion with people and clubs.
 2. Authenticate with Apple or Google.
 3. Choose a goal, recent baseline, and realistic weekly capacity.
 4. See a credible first week with a concise AI explanation.
@@ -18,9 +18,11 @@ The flow should avoid feature tours, early permission prompts, mandatory essays,
 ## Target Flow
 
 1. Welcome and authentication
-   - Eyebrow: `Your AI running coach`.
+   - Eyebrow: `Your AI running companion`.
    - Promise: `Train with purpose. Run with your people.`
-   - Show people and club context visually so social is present from the first impression.
+   - Show a labeled orbit with `You` at the AI-assisted center and universal `Family`, `Friends`, and `Clubs` nodes.
+   - Add one small `Better together` cue so the illustration communicates the emotional benefit of connected training rather than a generic social graph.
+   - Do not use real names, initials, or club identities in the welcome illustration.
    - Show only Continue with Apple and Continue with Google. Each provider action handles both signup and login; do not add a redundant `Already have an account?` action.
    - Returning users bypass onboarding after provider authentication.
 

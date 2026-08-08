@@ -15,7 +15,7 @@ Outbound should help a runner:
 
 Positioning:
 
-> An AI running coach that learns how you train and helps you stay consistent with people who matter.
+> An AI running companion that learns how you train and helps you stay consistent with people who matter.
 
 AI should be visible through useful decisions, adaptations, explanations, coordination, and reflections. It should not require a chatbot-centric UI.
 

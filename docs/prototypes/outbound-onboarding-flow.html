@@ -915,6 +915,17 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-onboarding .oo-p2 { left:43px; top:92px; }
 #outbound-onboarding .oo-p3 { right:42px; top:99px; background:light-dark(#d8ddef,#353d5a); }
 #outbound-onboarding .oo-club { position:absolute; left:50%; bottom:0; transform:translateX(-50%); padding:9px 13px; border-radius:13px; background:light-dark(#fff,#1c2620); border:1px solid light-dark(#dbe2dc,#39453e); white-space:nowrap; }
+#outbound-onboarding .oo-people-scene { height:225px; }
+#outbound-onboarding .oo-p1 { left:50%; top:66px; }
+#outbound-onboarding .oo-p2 { left:35px; top:38px; }
+#outbound-onboarding .oo-p3 { right:34px; top:91px; }
+#outbound-onboarding .oo-p4 { left:58px; top:119px; background:light-dark(#e7dfcb,#4b4635); }
+#outbound-onboarding .oo-person svg { width:23px; height:23px; }
+#outbound-onboarding .oo-person small { position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%); white-space:nowrap; color:light-dark(#526057,#bdc7c0); font-weight:500; }
+#outbound-onboarding .oo-ai-core { position:absolute; right:-5px; top:-5px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; color:light-dark(#f7faf7,#172019); background:light-dark(#315f3f,#9ac2a4); border:3px solid light-dark(#f4f7f3,#111713); }
+#outbound-onboarding .oo-ai-core svg { width:13px; height:13px; }
+#outbound-onboarding .oo-aligned { position:absolute; left:50%; bottom:0; transform:translateX(-50%); display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:999px; color:light-dark(#315f3f,#b8d8c0); background:light-dark(#e5efe6,#26362c); white-space:nowrap; font-weight:500; }
+#outbound-onboarding .oo-aligned svg { width:14px; height:14px; }
 #outbound-onboarding .oo-auth { margin-top:auto; display:grid; gap:9px; }
 #outbound-onboarding .oo-primary { width:100%; border:0; border-radius:14px; padding:13px 15px; background:light-dark(#e46f49,#e98260); color:#fff; font-weight:500; cursor:pointer; }
 #outbound-onboarding .oo-authbtn { width:100%; border:1px solid light-dark(#d7ded8,#3a463f); border-radius:14px; padding:13px 15px; background:light-dark(#fff,#1c2520); color:inherit; font-weight:500; cursor:pointer; }
@@ -984,10 +995,15 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;main class=&quot;oo-screen&quot;&gt;
       &lt;section class=&quot;oo-page is-active oo-welcome&quot; data-page=&quot;welcome&quot;&gt;
         &lt;div class=&quot;oo-head&quot;&gt;&lt;strong&gt;OUTBOUND&lt;/strong&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;
-        &lt;div class=&quot;oo-people-scene&quot; aria-label=&quot;People and club social preview&quot;&gt;
-          &lt;div class=&quot;oo-orbit&quot;&gt;&lt;/div&gt;&lt;div class=&quot;oo-person oo-p1&quot;&gt;You&lt;/div&gt;&lt;div class=&quot;oo-person oo-p2&quot;&gt;X&lt;/div&gt;&lt;div class=&quot;oo-person oo-p3&quot;&gt;A&lt;/div&gt;&lt;div class=&quot;oo-club&quot;&gt;SU · Saturday Long Run&lt;/div&gt;
+        &lt;div class=&quot;oo-people-scene&quot; aria-label=&quot;Your AI coach aligns training with family, friends, and clubs&quot;&gt;
+          &lt;div class=&quot;oo-orbit&quot;&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-person oo-p1&quot;&gt;&lt;i data-lucide=&quot;circle-user-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;oo-ai-core&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;small&gt;You&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-person oo-p2&quot;&gt;&lt;i data-lucide=&quot;heart&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;small&gt;Family&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-person oo-p3&quot;&gt;&lt;i data-lucide=&quot;users-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;small&gt;Friends&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-person oo-p4&quot;&gt;&lt;i data-lucide=&quot;flag&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;small&gt;Clubs&lt;/small&gt;&lt;/div&gt;
+          &lt;div class=&quot;oo-aligned&quot;&gt;&lt;i data-lucide=&quot;sparkles&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Better together&lt;/div&gt;
         &lt;/div&gt;
-        &lt;p class=&quot;oo-label&quot;&gt;Your AI running coach&lt;/p&gt;
+        &lt;p class=&quot;oo-label&quot;&gt;Your AI running companion&lt;/p&gt;
         &lt;h2&gt;Train with purpose.&lt;br&gt;Run with your people.&lt;/h2&gt;
         &lt;div class=&quot;oo-auth&quot;&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;&lt;i data-lucide=&quot;apple&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Continue with Apple&lt;/button&gt;&lt;button class=&quot;oo-authbtn&quot; data-go=&quot;goal&quot;&gt;&lt;strong&gt;G&lt;/strong&gt;Continue with Google&lt;/button&gt;&lt;/div&gt;
       &lt;/section&gt;
