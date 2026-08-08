@@ -26,13 +26,18 @@ Primary flow:
 | --- | --- | --- |
 | App flow, Swift files, recording, camera, persistence, coach analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI coach shape |
 | New user onboarding, first-win setup, debug replay | `docs/new-user-onboarding.md` | Product flow, account-scoped persistence, SwiftUI surfaces, and Settings debug trigger |
+| Signup and onboarding flow prototype | `docs/prototypes/outbound-onboarding-flow.html` | Clickable welcome, authentication, intake, first-plan, social connection, and Today wireframe |
 | In-app AI assistant UX, prompt flows, and local response strategy | `docs/assistant.md` | Assistant goals, file map, persistence, capabilities, and extension ideas |
 | Backend deployment, Cloud Run setup, and assistant-server rollout | `docs/backend-deploy.md` | GCP project, required APIs, deploy command, and app base-URL wiring |
 | Backend architecture, server boundaries, auth model, and implementation sequencing | `docs/backend-architecture.md` | Current server assessment, target modular-monolith design, domain ownership, and phased implementation plan |
 | Coaching plans, multi-sport personalization, backend/client split, rollout plan | `docs/coaching-plans.md` | Product spec for adaptive plans, activity suggestions, plan APIs, domain model, and phased implementation |
 | Adaptive planning engine, activity suggestions, generated workouts, plan adjustment tables, sport adapters | `docs/adaptive-planning-engine.md` | Smart-planner architecture, activity-suggestion endpoint design, table design, adaptation loop, and multi-sport scalability model |
+| Menstrual-cycle logging, symptom-led workout adaptations, privacy, and health safeguards | `docs/cycle-aware-coaching.md` | Product and data rules for optional cycle-aware coaching without universal phase-based programming |
+| Cycle-aware coaching flow prototype | `docs/prototypes/outbound-cycle-aware-flow.html` | Clickable setup, logging, Today adjustment, learned-pattern, and weekly-plan wireframe |
 | Active-session voice commands, spoken coach Q&A, and workout conversation scope | `docs/session-voice-control.md` | Product and implementation spec for tap-to-talk commands, live stats Q&A, and coach replies during activities |
 | Product strategy, competitor scan, feature gaps, roadmap priorities | `docs/product-strategy.md` | Category landscape, Outbound strengths/weaknesses, recommended feature set, and phased roadmap |
+| Simplified product UX, primary navigation, AI role, plan presentation, and social model | `docs/simplified-product-ux.md` | Target direction for Together, Today, Me, coaching behavior, workout flows, and recent activity cards |
+| Simplified product flow prototype | `docs/prototypes/outbound-major-flow.html` | Clickable wireframe for Today, workout detail, live run, post-run, Together, club runs, and Me |
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
 | Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |

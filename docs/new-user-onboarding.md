@@ -4,54 +4,75 @@ Outbound onboarding should create a first win, not teach the whole product.
 
 ## Product Goal
 
-New authenticated users should reach a concrete success state in two to three minutes:
+New authenticated users should reach a concrete success state in about 90 seconds:
 
-1. Understand that Outbound is for coached endurance sessions.
-2. Tell the coach, in their own words, what they want help with.
-3. Provide body basics needed for calorie estimates and safer plan sizing.
-4. Describe their current baseline and realistic weekly availability.
-5. Review the coach's structured read of those answers.
-6. See a personalized plan path and first-session setup.
-7. Start that session or land on Me with momentum.
+1. Understand that Outbound combines an adaptive running coach with people and clubs.
+2. Authenticate with Apple or Google.
+3. Choose a goal, recent baseline, and realistic weekly capacity.
+4. See a credible first week with a concise AI explanation.
+5. Optionally invite a person or find a club.
+6. Land on Today with the first session ready.
 
-The flow should avoid feature tours, early permission prompts, and empty-dashboard handoffs. It should use free-text AI-style intake wherever personal context matters, with preset controls reserved for exact or constrained inputs such as units, body profile, and final plan intensity.
+The flow should avoid feature tours, early permission prompts, mandatory essays, body-profile intake, and empty-dashboard handoffs. AI should prove its value through the generated week and explanation rather than through a chatbot-centric setup.
 
-## Flow
+## Target Flow
 
-1. Welcome
-   - Brand signal: Outbound.
-   - Promise: tell the coach the real story, then start with a concrete first session.
-   - Actions: set up first win or skip.
+1. Welcome and authentication
+   - Eyebrow: `Your AI running coach`.
+   - Promise: `Train with purpose. Run with your people.`
+   - Show people and club context visually so social is present from the first impression.
+   - Show only Continue with Apple and Continue with Google. Each provider action handles both signup and login; do not add a redundant `Already have an account?` action.
+   - Returning users bypass onboarding after provider authentication.
 
 2. Goal
-   - Free-text prompt for what the user wants help with.
-   - Example chips fill the text box but do not constrain the answer.
-   - The local intake analyzer maps the prose to a plan focus such as first 5K, race preparation, run farther, run faster, fitness and weight support, safe return, or steady fitness.
+   - Choose run consistently, start running, return after a break, train for a race, or run faster.
+   - Offer optional free text for a different goal.
+   - Ask race distance and date only when race training is selected.
 
-3. Body basics
-   - Unit system.
-   - Age.
-   - Height.
-   - Weight.
-   - Optional body profile for calorie estimates.
-   - These fields are exact inputs rather than AI intake because calorie estimates and load heuristics need numeric values.
+3. Starting point
+   - Choose recent running frequency.
+   - Choose a comfortable run duration.
+   - Offer an explained, optional Apple Health import.
 
-4. Baseline and week
-   - Free-text starting-point prompt.
-   - Free-text realistic-week prompt.
-   - Example chips can seed common answers.
-   - The intake analyzer extracts sport, comfortable duration, recent weekly frequency, injury/recovery caution, weekly rhythm, first-session length, and effort preference.
+4. Realistic week
+   - Choose runs per week and typical time available.
+   - Ask preferred long-run day only when relevant.
+   - Offer one optional context field for injury, illness, travel, or schedule constraints.
 
-5. Coach review
-   - Shows the structured read back to the user.
-   - Lets the user choose easier, balanced, or harder before recommendation.
-   - Includes an edit path back to the free-text answers.
+5. First week
+   - Show the three-session week, total time, and one precise AI explanation.
+   - Offer easier, different days, or Ask Coach adjustments.
+   - Do not add a separate read-back screen.
 
-6. Recommendation
-   - Shows the recommended plan path.
-   - Shows the first session.
-   - Explains why it fits using goal, body basics, baseline, and availability.
-   - Offers Start first session as the primary action and Save plan and go to Me as the fast exit.
+6. Optional social connection
+   - Ask `Who helps you get out?`
+   - Offer invite someone, find a club, or do this later.
+   - Explain that private training context is not shared.
+
+7. Today
+   - Land on the real Today surface with the quote, first workout, and Start action.
+   - Keep the onboarding recommendation visually continuous with the product.
+
+The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`.
+
+## Permission Timing
+
+- Apple Health: optional on the Starting point screen.
+- Location and motion: when the first outdoor run starts.
+- Notifications: after the user accepts the plan.
+- Camera and photos: on first use.
+- Contacts: avoid when link-based invitations are sufficient.
+- Live location: when explicitly enabling trusted-person sharing.
+
+Do not request multiple system permissions during initial signup.
+
+## Deferred Profile Inputs
+
+Age, height, weight, body profile, coach face, coach voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. They should not block the first useful plan.
+
+## Current Implementation Gap
+
+The current implementation predates this simplified target and still includes longer free-text intake, body basics, a structured coach review, and first-session setup. Preserve the implementation notes below until the SwiftUI flow is replaced; do not treat them as the target product behavior.
 
 ## Implementation
 
