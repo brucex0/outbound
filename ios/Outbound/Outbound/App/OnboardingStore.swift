@@ -355,9 +355,12 @@ final class OnboardingStore: ObservableObject {
             step = .welcome
         }
 
-        if !hasCompletedOnboarding(for: resolvedIdentity), !isPresented {
-            begin()
+        if hasCompletedOnboarding(for: resolvedIdentity) {
+            isPresented = false
+            return
         }
+
+        if !isPresented { begin() }
     }
 
     func restartForDebug() {

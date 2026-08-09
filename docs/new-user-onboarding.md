@@ -4,6 +4,8 @@
 
 Firebase may retain credentials in the iOS Keychain after the app is deleted. Outbound stores a separate installation marker in `UserDefaults`. If that marker is missing on launch but Firebase restores a user, the app signs out that stale restored session and shows the provider login screen. Normal relaunches and app updates keep the authenticated session because the installation marker remains present.
 
+Onboarding completion is account-scoped and survives sign-out. Preparing a previously completed account must explicitly clear any onboarding presentation left behind while authentication transitioned through a signed-out/local identity.
+
 Outbound onboarding should create a first win, not teach the whole product.
 
 ## Product Goal
