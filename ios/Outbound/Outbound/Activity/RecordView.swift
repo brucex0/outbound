@@ -48,6 +48,9 @@ struct RecordView: View {
     @State private var isGroupJoinAlertPresented = false
     @State private var groupInviteText = ""
     @State private var isGroupParticipantsExpanded = false
+    @State private var isMusicSetupExpanded = false
+    @State private var isSessionOptionsExpanded = false
+    @State private var isAddShoePresented = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -217,6 +220,11 @@ struct RecordView: View {
             )
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isAddShoePresented) {
+            AddShoeView()
+                .environmentObject(gearStore)
+                .environmentObject(measurementPreferences)
         }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
             if customGoalKind == .distance {
@@ -487,8 +495,8 @@ struct RecordView: View {
 
     private var readyView: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                Spacer(minLength: 92)
+            VStack(spacing: 14) {
+                Spacer(minLength: 68)
                 confirmationView(for: plannedIntent ?? .freestyleRun)
             }
             .padding(.horizontal, 20)
@@ -501,7 +509,7 @@ struct RecordView: View {
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             VStack(spacing: 8) {
                 Text(intent.title)
                     .font(.system(.title, design: .rounded).weight(.bold))
@@ -526,9 +534,6 @@ struct RecordView: View {
             .background(Color.orange.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
-            musicSetupCard
-            sessionOptionsCard
-
             VStack(spacing: 14) {
                 sessionGoalCard(for: intent)
 
@@ -548,12 +553,16 @@ struct RecordView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
             }
+
+            musicSetupCard
+            sessionOptionsCard
         }
     }
 
     private var sessionOptionsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
+        DisclosureGroup(isExpanded: $isSessionOptionsExpanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
                 setupOptionButton(
                     title: "Live",
                     subtitle: liveShareStore.isArmedForNextActivity ? "Sharing" : "Off",
@@ -573,11 +582,11 @@ struct RecordView: View {
                     isIndoorSession.toggle()
                 }
                 .accessibilityLabel(isIndoorSession ? "Turn off treadmill mode" : "Turn on treadmill mode")
-            }
+                }
 
-            Divider()
+                Divider()
 
-            gearSetupMenu
+                gearSetupMenu
 
             if liveShareStore.isArmedForNextActivity {
                 Label(
@@ -592,15 +601,23 @@ struct RecordView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
             }
-            Divider()
-            liveGroupSetup
-            if let message = liveGroupStore.lastErrorMessage {
-                Text(message)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                Divider()
+                liveGroupSetup
+                if let message = liveGroupStore.lastErrorMessage {
+                    Text(message)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
             }
+            .padding(.top, 12)
+        } label: {
+            compactSetupLabel(
+                title: "Run options",
+                value: sessionOptionsSummary,
+                systemImage: "slider.horizontal.3"
+            )
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
@@ -762,11 +779,17 @@ struct RecordView: View {
         .frame(maxWidth: .infinity)
     }
 
+    @ViewBuilder
     private var gearSetupMenu: some View {
-        Menu {
-            if gearStore.activeShoes.isEmpty {
-                Text("Add shoes in Settings")
-            } else {
+        if gearStore.activeShoes.isEmpty {
+            Button {
+                isAddShoePresented = true
+            } label: {
+                compactSetupLabel(title: "Shoes", value: "Add shoes", systemImage: "shoeprints.fill")
+            }
+            .buttonStyle(.plain)
+        } else {
+            Menu {
                 ForEach(gearStore.activeShoes) { shoe in
                     Button {
                         selectedSessionShoeID = shoe.id
@@ -778,36 +801,12 @@ struct RecordView: View {
                         }
                     }
                 }
+            } label: {
+                compactSetupLabel(title: "Shoes", value: selectedSessionShoe?.displayName ?? "None", systemImage: "shoeprints.fill")
             }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "shoeprints.fill")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Shoes")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(selectedSessionShoe?.displayName ?? "Add shoes in Settings to track mileage")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .accessibilityLabel("Change shoes")
         }
-        .buttonStyle(.plain)
-        .disabled(gearStore.activeShoes.isEmpty)
-        .accessibilityLabel("Change shoes")
     }
 
     private var selectedSessionShoe: GearItem? {
@@ -1027,23 +1026,10 @@ struct RecordView: View {
 
     @ViewBuilder
     private var musicSetupCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Music", systemImage: "music.note.list")
-                    .font(.headline)
-                Spacer()
-                if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
+        DisclosureGroup(isExpanded: $isMusicSetupExpanded) {
+            VStack(alignment: .leading, spacing: 12) {
 
-            Text(musicStore.musicSummaryLine)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if musicStore.hasDeveloperTokenError {
+                if musicStore.hasDeveloperTokenError {
                 HStack(spacing: 10) {
                     Image(systemName: "music.note.slash")
                         .foregroundStyle(.secondary)
@@ -1055,20 +1041,20 @@ struct RecordView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            } else if let lastErrorMessage = musicStore.lastErrorMessage {
+                } else if let lastErrorMessage = musicStore.lastErrorMessage {
                 Text(lastErrorMessage)
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
 
-            if let troubleshootingLine = musicStore.troubleshootingLine {
+                if let troubleshootingLine = musicStore.troubleshootingLine {
                 Text(troubleshootingLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
+                if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
                 VStack(spacing: 10) {
                     ForEach(musicStore.quickPicks) { quickPick in
                         Button {
@@ -1098,7 +1084,7 @@ struct RecordView: View {
                         .accessibilityLabel("Select \(quickPick.title)")
                     }
                 }
-            } else {
+                } else {
                 Button {
                     Task { await musicStore.performPrimaryAction() }
                 } label: {
@@ -1115,15 +1101,41 @@ struct RecordView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!musicStore.isPrimaryActionEnabled)
+                }
             }
+            .padding(.top, 12)
+        } label: {
+            compactSetupLabel(title: "Music", value: musicStore.musicSummaryLine, systemImage: "music.note.list")
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
     private var startSetupCardCornerRadius: CGFloat { 20 }
+
+    private var sessionOptionsSummary: String {
+        let values = [
+            selectedSessionShoe?.displayName,
+            isIndoorSession ? "Treadmill" : nil,
+            liveShareStore.isArmedForNextActivity ? "Live sharing" : nil,
+            liveGroupStore.isSharing ? "Group run" : nil,
+        ].compactMap { $0 }.joined(separator: " · ")
+        return values.isEmpty ? "Outdoor · No extras" : values
+    }
+
+    private func compactSetupLabel(title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage).foregroundStyle(.orange).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                Text(value).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+        }
+        .contentShape(Rectangle())
+    }
 }
 
 private struct PendingFinishedActivity: Identifiable {

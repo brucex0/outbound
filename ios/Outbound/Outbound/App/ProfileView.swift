@@ -493,7 +493,7 @@ private struct AddSafetyContactView: View {
     }
 }
 
-private struct GearSettingsCard: View {
+struct GearSettingsCard: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
@@ -658,7 +658,7 @@ private struct GearSettingsCard: View {
     }
 }
 
-private struct AddShoeView: View {
+struct AddShoeView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences

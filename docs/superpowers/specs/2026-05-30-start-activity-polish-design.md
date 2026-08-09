@@ -16,6 +16,9 @@ Use the recommended polish pass:
 - Keep goal mode controls compact and stable with one-line labels.
 - Reduce oversized card radius and spacing so the screen reads as a focused setup tool rather than stacked oversized cards.
 - Make the Music card less visually heavy by using a lighter inline action row.
+- Keep the goal and primary Start action above optional setup so they are visible without scrolling on common phone sizes.
+- Collapse Music and Run options by default, showing only the selected value or concise default state.
+- Let runners add their first shoe directly from Run options; keep full shoe management under Me -> Settings.
 - Keep the orange Start button as the strongest visual action.
 - Increase top breathing room enough that the title does not visually compete with the close and assistant controls.
 

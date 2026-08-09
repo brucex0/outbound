@@ -50,6 +50,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsReadinessCheckIn = false
     @State private var showsWorkoutDetail = false
     @State private var showsCompanionExplanation = false
+    @State private var showsTiredOption = false
 
     var body: some View {
         NavigationStack {
@@ -84,6 +85,7 @@ private struct SimplifiedTodayView: View {
                                     onStartRun(shortRunIntent)
                                 }
                                 quickAction("Tired", image: "moon.zzz") {
+                                    showsTiredOption = true
                                     Task { await personalizationStore.submitReadiness(.tired, workoutID: todayWorkoutID) }
                                 }
                                 quickAction("Why?", image: "sparkles") {
@@ -92,6 +94,22 @@ private struct SimplifiedTodayView: View {
                             }
                             AIExplanationView(text: todayExplanation)
                         }
+                    }
+
+                    if showsTiredOption {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("LOW-ENERGY OPTION").font(.caption.weight(.semibold))
+                                Text("Make today 15 minutes easy?").font(.headline)
+                                Text("You’ll protect the habit without forcing the full workout.")
+                                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                                HStack {
+                                    Button("Keep original") { showsTiredOption = false }.buttonStyle(.bordered)
+                                    Button("Use 15 min") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
+                                }
+                            }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     if cycleAwareStore.isEnabled, cycleAwareStore.currentSignal != .noAdjustment {
@@ -431,8 +449,15 @@ private struct SimplifiedTogetherView: View {
                                     .font(.headline)
                                 Text("Invite family or friends, or join a club run that fits your plan.")
                                     .font(.subheadline)
-                                Button("Invite someone", systemImage: "person.badge.plus") {}
-                                    .buttonStyle(.bordered)
+                                ShareLink(
+                                    item: URL(string: "https://outbound.run")!,
+                                    subject: Text("Run with me on Outbound"),
+                                    message: Text("Join me for a run on Outbound."),
+                                    preview: SharePreview("Run with me on Outbound", image: Image(systemName: "figure.run"))
+                                ) {
+                                    Label("Invite someone", systemImage: "person.badge.plus")
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                     } else {
@@ -693,6 +718,9 @@ private struct SimplifiedSettingsView: View {
             }
             Section("Health & body") {
                 NavigationLink("Cycle-aware coaching") { CycleAwareView() }
+            }
+            Section("Gear") {
+                GearSettingsCard()
             }
             Section {
                 Text("Outbound keeps private health details on this device and never shows them in Together.")
