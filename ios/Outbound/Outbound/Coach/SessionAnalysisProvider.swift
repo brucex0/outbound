@@ -13,6 +13,7 @@ struct SessionAnalysisRequest {
     let recentSnapshots: [ActiveSessionSnapshot]
     let sessionIntent: SessionIntent?
     let recentNudges: [String]
+    let companionBrief: CompanionSessionBriefDTO?
 
     init(
         profile: CoachProfile?,
@@ -20,7 +21,8 @@ struct SessionAnalysisRequest {
         snapshot: ActiveSessionSnapshot,
         recentSnapshots: [ActiveSessionSnapshot],
         sessionIntent: SessionIntent? = nil,
-        recentNudges: [String] = []
+        recentNudges: [String] = [],
+        companionBrief: CompanionSessionBriefDTO? = nil
     ) {
         self.profile = profile
         self.persona = persona
@@ -28,6 +30,7 @@ struct SessionAnalysisRequest {
         self.recentSnapshots = recentSnapshots
         self.sessionIntent = sessionIntent
         self.recentNudges = recentNudges
+        self.companionBrief = companionBrief
     }
 }
 
@@ -132,7 +135,7 @@ extension SessionAnalysisRequest {
                 weeklyVolumeKm: profile?.athlete.weeklyVolumeKm,
                 preferredPaceSecondsPerKm: profile?.athlete.preferredPaceSecs,
                 goal: profile?.goals.first(where: { !$0.achieved })?.description,
-                recentPatterns: athletePatterns
+                recentPatterns: Array((athletePatterns + (companionBrief?.coachingPriorities ?? [])).prefix(8))
             ),
             coach: .init(
                 persona: persona?.template.personality ?? "supportive, concise",

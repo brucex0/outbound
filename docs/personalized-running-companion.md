@@ -278,4 +278,27 @@ The personalization schema intentionally does not preserve unpublished developme
 npm run db:rebuild
 ```
 
+## Implemented Coherent Companion Foundation
+
+- Profile, readiness, and workout feedback now append provenance-bearing runner evidence and project typed runner beliefs.
+- Beliefs distinguish confirmed runner facts from confidence-scored hypotheses and support correction, forgetting, expiry, contradictions, sensitivity, and consequence levels.
+- The Context Compiler assembles task-specific runner, plan, activity, memory, conversation, and situational context under explicit token budgets and persists a replayable manifest.
+- Weather, location-derived facts, schedule, travel, and recovery enter through typed expiring situational signals. Raw coordinates are stripped before model-facing context.
+- Deterministic candidate generation and policy validation sit between model reasoning and plan mutation.
+- Meaningful workout changes create permissioned agent actions and are not applied until the runner confirms them.
+- Today, assistant chat, memory controls, and live-session briefs use the shared runner-model version.
+
+Additional authenticated API surface:
+
+```text
+POST /v1/companion/turns
+GET  /v1/companion/snapshot
+GET  /v1/companion/memories
+PUT  /v1/companion/memories/:stableKey
+POST /v1/companion/memories/:stableKey/forget
+POST /v1/companion/signals
+POST /v1/companion/actions/:id/decision
+GET  /v1/companion/session-brief
+```
+
 This resets the configured development database, generates Prisma Client, builds the backend, and seeds the reviewed training-plan catalog. Do not run it against a database whose data must be retained.

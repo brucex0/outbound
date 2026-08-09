@@ -37,6 +37,14 @@ model User {
   runnerModelVersions RunnerModelVersion[]
   workoutFeedback WorkoutFeedback[]
   personalizationAdjustments PersonalizationAdjustment[]
+  runnerEvidence RunnerEvidence[]
+  runnerBeliefs RunnerBelief[]
+  companionEpisodes CompanionEpisode[]
+  companionConversationStates CompanionConversationState[]
+  contextManifests ContextManifest[]
+  situationalSignals SituationalSignal[]
+  agentActions AgentAction[]
+  agentOutcomes AgentOutcome[]
   safetyLiveShares SafetyLiveShare[]
   liveGroupSessionsCreated LiveGroupSession[] @relation("LiveGroupSessionCreator")
   liveGroupParticipants LiveGroupParticipant[]
@@ -589,6 +597,177 @@ model PersonalizationAdjustment {
   updatedAt            DateTime @updatedAt
 
   @@index([userId, status, createdAt])
+}
+
+model RunnerEvidence {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dedupeKey        String   @unique
+  type             String
+  source           String
+  subject          String
+  payload          Json
+  confidence       Float    @default(1)
+  sensitivity      String   @default("standard")
+  consequenceLevel String   @default("low")
+  observedAt       DateTime
+  expiresAt        DateTime?
+  supersededAt     DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, type, observedAt])
+  @@index([userId, subject, observedAt])
+  @@index([expiresAt])
+}
+
+model RunnerBelief {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stableKey            String
+  kind                 String
+  label                String
+  value                Json
+  summary              String
+  confidence           Float    @default(0.5)
+  status               String   @default("hypothesis")
+  source               String   @default("inferred")
+  supportingEvidenceIds String[] @default([])
+  contradictingEvidenceIds String[] @default([])
+  sensitivity          String   @default("standard")
+  consequenceLevel     String   @default("low")
+  firstSeenAt          DateTime @default(now())
+  refreshedAt          DateTime @default(now())
+  expiresAt            DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, stableKey])
+  @@index([userId, status, refreshedAt])
+  @@index([userId, kind])
+}
+
+model CompanionEpisode {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String
+  summary     String
+  entityRefs  String[] @default([])
+  evidenceIds String[] @default([])
+  salience    Float    @default(0.5)
+  outcome     Json?
+  occurredAt  DateTime
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([userId, kind])
+}
+
+model CompanionConversationState {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationKey   String
+  surface           String
+  objective         String?
+  decisions         Json     @default("[]")
+  openQuestions     Json     @default("[]")
+  promisedFollowUps Json     @default("[]")
+  compactSummary    String?
+  lastMessages      Json     @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, conversationKey])
+  @@index([userId, updatedAt])
+}
+
+model ContextManifest {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task               String
+  surface            String
+  runnerModelVersion String
+  planVersion         String?
+  tokenBudget         Int
+  estimatedTokens     Int
+  includedRefs        Json
+  omittedRefs         Json
+  sectionBudgets      Json
+  contextHash         String
+  createdAt           DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, task, createdAt])
+}
+
+model SituationalSignal {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey   String   @unique
+  type             String
+  value            Json
+  source           String
+  confidence       Float    @default(1)
+  privacy          String   @default("standard")
+  consequenceLevel String   @default("low")
+  possibleEffects  String[] @default([])
+  scope            Json     @default("{}")
+  observedAt       DateTime
+  freshUntil       DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([userId, type, freshUntil])
+  @@index([userId, freshUntil])
+}
+
+model AgentAction {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey        String   @unique
+  triggerType           String
+  task                  String
+  actionType            String
+  permissionTier        Int
+  requiresConfirmation  Boolean  @default(false)
+  status                String   @default("proposed")
+  evidenceIds           String[] @default([])
+  contextManifestId     String?
+  runnerModelVersion    String
+  modelVersion          String?
+  policyVersion         String
+  proposal              Json
+  validation            Json
+  beforeState           Json?
+  afterState            Json?
+  rollback              Json?
+  explanation           String
+  decidedAt             DateTime?
+  executedAt            DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, status, createdAt])
+  @@index([userId, actionType, createdAt])
+}
+
+model AgentOutcome {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionId    String
+  type        String
+  payload     Json      @default("{}")
+  observedAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId, actionId, observedAt])
 }
 
 model AthleteTrainingState {

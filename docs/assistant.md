@@ -75,6 +75,14 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Response Strategy
 
+### Unified companion path
+
+Authenticated builds now send assistant turns to `POST /v1/companion/turns`. The endpoint compiles bounded context from the shared runner model, current plan and activities, conversation state, and fresh situational signals. It returns a message, optional typed action and confirmation request, runner-model version, and context receipt. `AssistantStore` renders the confirmation and submits decisions through `POST /v1/companion/actions/:id/decision`.
+
+The legacy `POST /v1/assistant/chat` route remains a compatibility adapter. When authenticated database context is available, it delegates to the same companion orchestrator before falling back to the older assistant path.
+
+Conversation transcripts are not durable runner memory. The backend stores a bounded conversation checkpoint, while validated facts and hypotheses live in the versioned runner model. The iOS local and Foundation Models fallbacks remain available when companion or provider calls fail.
+
 - `AssistantStore` owns draft state, stored messages, quick suggestions, and response generation.
 - Messages persist in `UserDefaults` under `assistant_store_messages_v1`.
 - `AssistantContext` currently includes:

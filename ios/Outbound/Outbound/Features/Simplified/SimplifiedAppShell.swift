@@ -47,6 +47,7 @@ private struct SimplifiedTodayView: View {
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
+    @State private var companionTodayMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -87,6 +88,18 @@ private struct SimplifiedTodayView: View {
                         }
                     }
 
+                    if let companionTodayMessage {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Label("Your companion", systemImage: "sparkles")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(OutboundPalette.companion)
+                                Text(companionTodayMessage)
+                                    .font(.subheadline)
+                            }
+                        }
+                    }
+
                     Button {
                         onStartRun(.freestyleRun)
                     } label: {
@@ -120,6 +133,7 @@ private struct SimplifiedTodayView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
+            .task { await loadCompanionTodayMessage() }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -134,6 +148,23 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
+    }
+
+    private func loadCompanionTodayMessage() async {
+        guard companionTodayMessage == nil else { return }
+        let response = try? await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
+            task: .adaptToday,
+            surface: .today,
+            prompt: "What is the one most useful thing for me to know about today's training? Do not change anything.",
+            conversationKey: "ios-today",
+            recentMessages: [],
+            currentEntityIds: [todayWorkoutID],
+            clientCapabilities: ["read-only-intervention", "context-receipt"],
+            isOffline: false,
+            timeZoneIdentifier: TimeZone.current.identifier,
+            signals: []
+        ))
+        companionTodayMessage = response?.message
     }
 
     private var plannedRunIntent: SessionIntent {
@@ -654,6 +685,11 @@ private struct SimplifiedSettingsView: View {
                     SimplifiedProfileEditorView()
                 } label: {
                     Label("Name and running bio", systemImage: "person.crop.circle")
+                }
+                NavigationLink {
+                    CompanionMemoryView()
+                } label: {
+                    Label("What Outbound knows", systemImage: "brain.head.profile")
                 }
             }
             Section("Units") {

@@ -61,6 +61,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var profile: CoachProfile?
     private var persona: CoachPersona?
     private var sessionIntent: SessionIntent?
+    private var companionBrief: CompanionSessionBriefDTO?
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastAnalyzedElapsedSeconds: Int?
@@ -105,11 +106,13 @@ final class VirtualCoach: NSObject, ObservableObject {
     func activate(
         with profile: CoachProfile?,
         persona: CoachPersona? = nil,
-        sessionIntent: SessionIntent? = nil
+        sessionIntent: SessionIntent? = nil,
+        companionBrief: CompanionSessionBriefDTO? = nil
     ) {
         self.profile = profile
         self.persona = persona
         self.sessionIntent = sessionIntent
+        self.companionBrief = companionBrief
         isActive = true
         snapshotHistory = []
         lastAnalyzedElapsedSeconds = nil
@@ -132,6 +135,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         isActive = false
         persona = nil
         sessionIntent = nil
+        companionBrief = nil
         analysisTask?.cancel()
         analysisTask = nil
         isAnalyzing = false
@@ -180,7 +184,8 @@ final class VirtualCoach: NSObject, ObservableObject {
             snapshot: snapshot,
             recentSnapshots: snapshotHistory,
             sessionIntent: sessionIntent,
-            recentNudges: recentSpokenMessages
+            recentNudges: recentSpokenMessages,
+            companionBrief: companionBrief
         )
         isAnalyzing = true
 

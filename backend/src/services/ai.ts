@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
 import type { AssistantActivityToolContext } from "./assistantActivityTools.js";
+import type { CompiledContext, CompanionActionProposal } from "./companion/types.js";
 // Final-pass transcription and command parsing for short recorded utterances
 export async function runFinalTranscriptionAndParse({ audioUrl, language }: { audioUrl: string; language?: string }) {
   // 1. Run OpenAI gpt-4o-mini transcription
@@ -207,6 +208,59 @@ Respond in 2 to 4 short paragraphs. Keep it compact and actionable.`;
 
   const parsed = JSON.parse(content) as DeepSeekAssistantResponse;
   return parsed.message?.trim() || "";
+}
+
+export async function generateCompanionMessage(input: {
+  prompt: string;
+  context: CompiledContext;
+  proposal: CompanionActionProposal;
+  actionStatus?: string | null;
+}): Promise<string> {
+  const apiKey = process.env.APP_AI_KEY;
+  const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
+  const model = process.env.APP_AI_MODEL || "deepseek-chat";
+  if (!apiKey) throw new Error("APP_AI_KEY is not configured");
+
+  const systemPrompt = `You are Outbound's single running companion.
+Use only the compiled, provenance-bearing context supplied below.
+Never claim an action happened unless actionStatus is executed.
+Distinguish facts from hypotheses and mention uncertainty when it matters.
+Never diagnose pain or concerning symptoms. Recommend stopping or qualified care when appropriate.
+Be warm, concise, and practical. Return JSON only as {"message":"..."}.`;
+  const payload = {
+    task: input.context.task,
+    rules: input.context.systemRules,
+    runnerCore: input.context.runnerCore,
+    currentState: input.context.currentState,
+    beliefs: input.context.beliefs,
+    episodes: input.context.episodes,
+    situationalSignals: input.context.situationalSignals,
+    conversation: input.context.conversation,
+    proposal: input.proposal,
+    actionStatus: input.actionStatus ?? null,
+    userRequest: input.prompt,
+  };
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      max_tokens: 600,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: JSON.stringify(payload) },
+      ],
+    }),
+  });
+  if (!response.ok) throw new Error(`Companion model request failed: ${response.status}`);
+  const responsePayload = await response.json() as { choices?: Array<{ message?: { content?: string | null } }> };
+  const content = responsePayload.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("Companion model returned empty content");
+  const parsed = JSON.parse(content) as { message?: string };
+  if (!parsed.message?.trim()) throw new Error("Companion model returned an invalid message");
+  return parsed.message.trim();
 }
 
 function formatActivityContextForPrompt(context: AssistantActivityToolContext | null | undefined): string {

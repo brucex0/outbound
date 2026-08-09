@@ -1405,6 +1405,7 @@ final class AssistantStore: ObservableObject {
     @Published var draft = ""
     @Published private(set) var messages: [AssistantMessage]
     @Published private(set) var isResponding = false
+    @Published private(set) var pendingCompanionConfirmation: CompanionConfirmationDTO?
 
     let suggestions: [AssistantSuggestion] = [
         AssistantSuggestion(
@@ -1482,8 +1483,27 @@ final class AssistantStore: ObservableObject {
 
     func reset(context: AssistantContext) {
         messages = []
+        pendingCompanionConfirmation = nil
         persistMessages()
         ensureSeedMessage(context: context)
+    }
+
+    func decidePendingCompanionAction(accept: Bool) async {
+        guard let confirmation = pendingCompanionConfirmation else { return }
+        do {
+            let response = try await APIClient.shared.decideCompanionAction(id: confirmation.actionId, accept: accept)
+            let text = accept && response.action.status == "executed"
+                ? "Done. I applied the change to your plan."
+                : "Kept the original workout."
+            messages.append(AssistantMessage(author: .assistant, text: text, capability: .plan))
+            pendingCompanionConfirmation = nil
+            persistMessages()
+        } catch {
+            Self.logger.error("Companion action decision failed: \(error.localizedDescription, privacy: .public)")
+            messages.append(AssistantMessage(author: .assistant, text: "I couldn’t apply that change, so your original workout is unchanged.", capability: .plan))
+            pendingCompanionConfirmation = nil
+            persistMessages()
+        }
     }
 
     func recordPreparedActivityCommand(
@@ -1557,6 +1577,27 @@ final class AssistantStore: ObservableObject {
         context: AssistantContext
     ) async -> String {
         do {
+            let response = try await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
+                task: Self.companionTask(for: prompt, capability: capability, context: context),
+                surface: context.isRecordingActive ? .liveSession : .assistant,
+                prompt: prompt,
+                conversationKey: "ios-main-assistant",
+                recentMessages: recentMessagesForAPI().map {
+                    CompanionPriorMessageDTO(role: $0.role, text: $0.text)
+                },
+                currentEntityIds: [],
+                clientCapabilities: ["action-confirmation", "memory-controls", "context-receipt"],
+                isOffline: false,
+                timeZoneIdentifier: context.timeZoneIdentifier,
+                signals: []
+            ))
+            pendingCompanionConfirmation = response.confirmationRequest
+            let message = response.message.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !message.isEmpty { return message }
+        } catch {
+            Self.logger.warning("Companion turn unavailable; using legacy assistant fallback: \(error.localizedDescription, privacy: .public)")
+        }
+        do {
             let remote = try await APIClient.shared.chatWithAssistant(AssistantChatRequest(
                 prompt: prompt,
                 capability: capability.rawValue,
@@ -1590,6 +1631,23 @@ final class AssistantStore: ObservableObject {
         }
 
         return fallbackReply(for: prompt, capability: capability, context: context)
+    }
+
+    private static func companionTask(
+        for prompt: String,
+        capability: AssistantCapability,
+        context: AssistantContext
+    ) -> CompanionTask {
+        if context.isRecordingActive { return .liveCoaching }
+        let normalized = prompt.lowercased()
+        if normalized.contains("today") || normalized.contains("short on time") || normalized.contains("tired") || normalized.contains("sore") {
+            return .adaptToday
+        }
+        switch capability {
+        case .plan: return .prepareWeek
+        case .discover, .navigate, .support: return .productHelp
+        case .brainstorm: return .answerTrainingQuestion
+        }
     }
 
     private func fallbackReply(

@@ -36,6 +36,51 @@ final class APIClient {
         try await post("/assistant/chat", body: request)
     }
 
+    func sendCompanionTurn(_ request: CompanionTurnRequestDTO) async throws -> CompanionTurnResponseDTO {
+        try await post("/companion/turns", body: request)
+    }
+
+    func decideCompanionAction(id: String, accept: Bool) async throws -> CompanionActionDecisionResponseDTO {
+        try await post(
+            "/companion/actions/\(id)/decision",
+            body: CompanionActionDecisionRequestDTO(decision: accept ? "accept" : "reject")
+        )
+    }
+
+    func fetchCompanionMemories() async throws -> CompanionMemoriesResponseDTO {
+        try await get("/companion/memories")
+    }
+
+    func correctCompanionMemory(
+        stableKey: String,
+        summary: String,
+        label: String?
+    ) async throws -> CompanionMemoryCorrectionResponseDTO {
+        try await put(
+            "/companion/memories/\(stableKey)",
+            body: CompanionMemoryCorrectionRequestDTO(
+                value: summary,
+                summary: summary,
+                label: label,
+                idempotencyKey: UUID().uuidString
+            )
+        )
+    }
+
+    func forgetCompanionMemory(stableKey: String) async throws -> CompanionMemoryForgetResponseDTO {
+        try await post(
+            "/companion/memories/\(stableKey)/forget",
+            body: CompanionMemoryForgetRequestDTO(idempotencyKey: UUID().uuidString)
+        )
+    }
+
+    func fetchCompanionSessionBrief(workoutID: String?) async throws -> CompanionSessionBriefDTO {
+        try await get(
+            "/companion/session-brief",
+            queryItems: workoutID.map { [URLQueryItem(name: "workoutId", value: $0)] } ?? []
+        )
+    }
+
     func fetchTrainingPlanState(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await get("/planning/state")
         let activitySuggestion = try? await fetchActivitySuggestion()

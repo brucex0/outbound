@@ -6,6 +6,7 @@ import { getAuthenticatedAppUser, getAuthenticatedIdentity } from "../services/c
 import { getPrismaClient } from "../services/prisma.js";
 import { runAssistantActivityTools } from "../services/assistantActivityTools.js";
 import type { AppEnv } from "../types/hono.js";
+import { runCompanionTurn } from "../services/companion/companionOrchestrator.js";
 
 const router = new Hono<AppEnv>();
 
@@ -48,6 +49,34 @@ router.post(
   async (c) => {
     const body = c.req.valid("json");
     const auth = getAuthenticatedIdentity(c);
+    if (process.env.DATABASE_URL && auth) {
+      const user = await getAuthenticatedAppUser(c).catch(() => null);
+      if (user) {
+        const task = body.context.isRecordingActive
+          ? "live_coaching"
+          : body.capability === "plan"
+            ? "prepare_week"
+            : body.capability === "support" || body.capability === "navigate" || body.capability === "discover"
+              ? "product_help"
+              : "answer_training_question";
+        const companion = await runCompanionTurn(getPrismaClient(), user.id, {
+          task,
+          surface: body.context.isRecordingActive ? "live_session" : "assistant",
+          prompt: body.prompt,
+          conversationKey: "legacy-assistant",
+          recentMessages: body.messages.map((message) => ({ role: message.role, text: message.text })),
+          currentEntityIds: [],
+          clientCapabilities: ["legacy-message"],
+          isOffline: false,
+          timeZoneIdentifier: body.context.timeZoneIdentifier,
+          signals: [],
+        }).catch((error) => {
+          console.error("Companion adapter failed", error);
+          return null;
+        });
+        if (companion) return c.json({ message: companion.message });
+      }
+    }
     const activityTools =
       process.env.DATABASE_URL && auth
         ? await (async () => {

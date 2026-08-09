@@ -175,10 +175,13 @@ Rules:
 - derive user identity from auth, not request JSON
 - keep the endpoint stateless, but enrich output over time
 
-Recommended evolution:
+Implemented evolution:
 
-- V1: `{ message }`
-- V2: `{ message, suggestedActions, deepLinks, followUpPrompts }`
+- `POST /v1/companion/turns` is the authenticated orchestration boundary.
+- `ContextCompiler` retrieves bounded current state, runner beliefs, episodes, conversation checkpoint, and fresh situational signals, then persists a context manifest.
+- Typed candidate generation, policy validation, permission tiers, and the action ledger prevent the model from mutating plans directly.
+- `/v1/assistant/chat` remains a compatibility adapter and delegates to the companion kernel when authenticated database context is available.
+- Memory inspection, correction, forgetting, situational signal intake, action decisions, and compiled session briefs live under `/v1/companion`.
 
 ### Plans
 

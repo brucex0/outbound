@@ -275,6 +275,7 @@ struct RecordView: View {
         isStartingActivity = true
         Task { @MainActor in
             let intent = plannedIntent
+            let companionBrief = try? await APIClient.shared.fetchCompanionSessionBrief(workoutID: intent?.id)
             let liveSharePresentation = await liveShareStore.beginIfArmed(
                 intent: intent,
                 contact: safetyContactStore.defaultContact
@@ -283,16 +284,16 @@ struct RecordView: View {
                 isStartingActivity = false
                 await SystemSharePresenter.present(activityItems: liveSharePresentation.activityItems)
                 guard recorder.state == .idle, !isCountingDown else { return }
-                beginRecordingAfterLiveShareSetup()
+                beginRecordingAfterLiveShareSetup(companionBrief: companionBrief)
                 isStartingActivity = false
                 return
             }
-            beginRecordingAfterLiveShareSetup()
+            beginRecordingAfterLiveShareSetup(companionBrief: companionBrief)
             isStartingActivity = false
         }
     }
 
-    private func beginRecordingAfterLiveShareSetup() {
+    private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
         capturedPhotos = []
         pendingActivity = nil
         activePage = preferredSessionPage
@@ -301,7 +302,8 @@ struct RecordView: View {
         coach.activate(
             with: coachStore.profile,
             persona: coachCatalog.selectedPersona,
-            sessionIntent: activeIntent
+            sessionIntent: activeIntent,
+            companionBrief: companionBrief
         )
         showCamera = true
         beginStartCountdown()

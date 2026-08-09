@@ -8,6 +8,11 @@ import type {
   WorkoutFeedbackRequest,
 } from "./contracts.js";
 import { calibrationWorkouts } from "./calibrationTemplates.js";
+import {
+  recordFeedbackEvidence,
+  recordProfileEvidence,
+  recordReadinessEvidence,
+} from "../companion/runnerModelProjector.js";
 
 const contractVersion = 1 as const;
 const policyVersion = "personalization-v1";
@@ -69,6 +74,7 @@ export async function upsertRunnerProfile(userId: string, input: RunnerProfileIn
   await seedProfileInsights(userId, profile);
   await ensureCalibration(userId, input.complete === true);
   await persistModelVersion(userId, "profileUpdated");
+  await recordProfileEvidence(prisma, userId, profile);
   return { profile, personalization: await getPersonalizationSnapshot(userId) };
 }
 
@@ -88,6 +94,7 @@ export async function submitReadinessCheckIn(userId: string, input: ReadinessChe
         ...values,
       },
     });
+    await recordReadinessEvidence(prisma, userId, input);
   }
 
   const adjustment = await createReadinessAdjustment(userId, input);
@@ -116,6 +123,7 @@ export async function submitWorkoutFeedback(userId: string, input: WorkoutFeedba
       await advanceCalibration(userId);
     }
     await persistModelVersion(userId, "workoutFeedbackSubmitted");
+    await recordFeedbackEvidence(prisma, userId, input);
   }
 
   const adjustment = await createFeedbackAdjustment(userId, input);

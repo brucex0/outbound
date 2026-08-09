@@ -234,3 +234,4 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - The local backend can run assistant-only when `DATABASE_URL` is absent, or use the embedded Postgres workflow documented above.
 - The live Cloud Run service is connected to the `outbound` Cloud SQL database, so authenticated activity, planning, personalization, safety, social, and account-deletion routes can use durable storage.
 - After any Prisma schema change, deploy the API first, pin `outbound-db-push` to the new revision's exact image digest, and execute the job before relying on the changed route behavior.
+- The coherent companion schema adds evidence, belief, episode, conversation, context-manifest, situational-signal, action, and outcome tables. Deploy the service image and execute the pinned `outbound-db-push` job before enabling `/v1/companion` clients against that revision.

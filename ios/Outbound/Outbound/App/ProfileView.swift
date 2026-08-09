@@ -955,6 +955,29 @@ struct AssistantView: View {
                 .id(message.id)
             }
 
+            if let confirmation = assistantStore.pendingCompanionConfirmation {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(confirmation.title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(confirmation.explanation)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button(confirmation.rejectLabel) {
+                            Task { await assistantStore.decidePendingCompanionAction(accept: false) }
+                        }
+                        .buttonStyle(.bordered)
+                        Button(confirmation.acceptLabel) {
+                            Task { await assistantStore.decidePendingCompanionAction(accept: true) }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(personaAccentColor)
+                    }
+                }
+                .padding(12)
+                .background(personaAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+            }
+
             if assistantStore.isResponding {
                 HStack(spacing: 10) {
                     ProgressView()
