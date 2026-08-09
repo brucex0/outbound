@@ -48,7 +48,8 @@ private struct SimplifiedTodayView: View {
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
-    @State private var showsTiredOption = false
+    @State private var showsChangeReasons = false
+    @State private var changeReason: ReadinessChoice?
 
     var body: some View {
         NavigationStack {
@@ -79,12 +80,8 @@ private struct SimplifiedTodayView: View {
                                 onStartRun(plannedRunIntent)
                             }
                             HStack {
-                                quickAction("15 min", image: "clock") {
-                                    onStartRun(shortRunIntent)
-                                }
-                                quickAction("Tired", image: "moon.zzz") {
-                                    showsTiredOption = true
-                                    Task { await personalizationStore.submitReadiness(.tired, workoutID: todayWorkoutID) }
+                                quickAction("Change", image: "slider.horizontal.3") {
+                                    showsChangeReasons = true
                                 }
                                 quickAction("Why?", image: "sparkles") {
                                     showsCompanionExplanation = true
@@ -94,16 +91,16 @@ private struct SimplifiedTodayView: View {
                         }
                     }
 
-                    if showsTiredOption {
+                    if let changeReason {
                         OutboundCard(style: .companion) {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("LOW-ENERGY OPTION").font(.caption.weight(.semibold))
-                                Text("Make today 15 minutes easy?").font(.headline)
-                                Text("You’ll protect the habit without forcing the full workout.")
+                                Text("CHANGED FOR TODAY").font(.caption.weight(.semibold))
+                                Text(changeOptionTitle(for: changeReason)).font(.headline)
+                                Text(changeOptionExplanation(for: changeReason))
                                     .font(.subheadline).foregroundStyle(.white.opacity(0.8))
                                 HStack {
-                                    Button("Keep original") { showsTiredOption = false }.buttonStyle(.bordered)
-                                    Button("Use 15 min") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
+                                    Button("Keep original") { self.changeReason = nil }.buttonStyle(.bordered)
+                                    Button("Start changed run") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
                                 }
                             }
                         }
@@ -199,6 +196,12 @@ private struct SimplifiedTodayView: View {
             Button("Got it", role: .cancel) {}
         } message: {
             Text(todayExplanation)
+        }
+        .confirmationDialog("Why change today’s run?", isPresented: $showsChangeReasons, titleVisibility: .visible) {
+            Button("Low energy") { chooseChangeReason(.tired) }
+            Button("Feeling sore") { chooseChangeReason(.sore) }
+            Button("Short on time") { chooseChangeReason(.shortOnTime) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -358,6 +361,29 @@ private struct SimplifiedTodayView: View {
             startLabel: "Start 15 min run",
             targetDurationSeconds: 15 * 60
         )
+    }
+
+    private func chooseChangeReason(_ reason: ReadinessChoice) {
+        changeReason = reason
+        Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID) }
+    }
+
+    private func changeOptionTitle(for reason: ReadinessChoice) -> String {
+        switch reason {
+        case .tired: "15 minutes easy"
+        case .sore: "15 minutes very easy"
+        case .shortOnTime: "15-minute version"
+        case .good: todayTitle
+        }
+    }
+
+    private func changeOptionExplanation(for reason: ReadinessChoice) -> String {
+        switch reason {
+        case .tired: "Keep the habit without forcing the full workout."
+        case .sore: "Stay very easy and stop if discomfort becomes pain."
+        case .shortOnTime: "Keep the purpose of the run in the time you have."
+        case .good: "The original workout still fits today."
+        }
     }
 }
 

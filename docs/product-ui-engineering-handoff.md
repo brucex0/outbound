@@ -138,7 +138,7 @@ Primary tabs, left to right:
 
 Today is the initial tab after onboarding. Use icons with accessibility labels; the selected tab may reveal its text label. Persist the last selected tab for returning users only after they have completed onboarding.
 
-Keep the primary Today action direct: `Start run` opens run setup without an intermediate detail or readiness screen. Today itself carries the essential workout summary. Readiness is optional and contextual through actions such as `Tired`; it must not gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
+Keep the primary Today action direct: `Start run` opens run setup without an intermediate detail or readiness screen. Today itself carries the essential workout summary. A single optional `Change` action asks for a short reason such as low energy, soreness, or limited time, then offers one clear alternative; readiness terminology must not appear in the primary UI or gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
 
 ## Today Screen Contract
 
