@@ -120,6 +120,14 @@ final class APIClient {
         try await post("/personalization/cycle-signal", body: request)
     }
 
+    func fetchMyProfile() async throws -> AppUserProfileDTO {
+        try await get("/auth/me")
+    }
+
+    func updateMyProfile(_ request: AppUserProfileUpdateDTO) async throws -> AppUserProfileDTO {
+        try await patch("/auth/me", body: request)
+    }
+
     func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
         try await post("/safety/live-shares", body: request)
     }

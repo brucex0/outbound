@@ -64,6 +64,28 @@ router.get("/me", async (c) => {
   return c.json(userWithProfile);
 });
 
+router.patch(
+  "/me",
+  zValidator(
+    "json",
+    z.object({
+      displayName: z.string().trim().min(1).max(50),
+      bio: z.string().trim().max(160).nullable(),
+    })
+  ),
+  async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+    const user = await getAuthenticatedAppUser(c);
+    if (!user) return c.json({ error: "Authentication required." }, 401);
+    const body = c.req.valid("json");
+    return c.json(await getPrismaClient().user.update({
+      where: { id: user.id },
+      data: { displayName: body.displayName, bio: body.bio || null },
+    }));
+  }
+);
+
 router.get("/me/:firebaseUid", async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;

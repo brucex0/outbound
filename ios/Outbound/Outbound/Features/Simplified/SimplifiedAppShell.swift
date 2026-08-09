@@ -678,6 +678,13 @@ private struct SimplifiedSettingsView: View {
                     confirmsSignOut = true
                 }
             }
+            Section("Profile") {
+                NavigationLink {
+                    SimplifiedProfileEditorView()
+                } label: {
+                    Label("Name and running bio", systemImage: "person.crop.circle")
+                }
+            }
             Section("Units") {
                 Picker("Measurement", selection: $measurementPreferences.unitSystem) {
                     ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -698,6 +705,94 @@ private struct SimplifiedSettingsView: View {
         .confirmationDialog("Sign out of Outbound?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
             Button("Sign out", role: .destructive) { authStore.signOut() }
             Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+private struct SimplifiedProfileEditorView: View {
+    @EnvironmentObject private var authStore: AuthStore
+    @State private var displayName = ""
+    @State private var bio = ""
+    @State private var username = ""
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var message: String?
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(spacing: 14) {
+                    Circle()
+                        .fill(OutboundPalette.companion.opacity(0.16))
+                        .frame(width: 58, height: 58)
+                        .overlay {
+                            Text(initials).font(.headline.weight(.bold)).foregroundStyle(OutboundPalette.companion)
+                        }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
+                        if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+            Section {
+                TextField("Display name", text: $displayName)
+                    .textInputAutocapitalization(.words)
+                TextField("Running bio", text: $bio, axis: .vertical)
+                    .lineLimit(2...4)
+            } header: {
+                Text("About you")
+            } footer: {
+                Text("Your name and bio may appear to people you connect with in Together.")
+            }
+            if let message {
+                Section { Text(message).font(.footnote).foregroundStyle(.secondary) }
+            }
+        }
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
+                    .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .overlay { if isLoading { ProgressView() } }
+        .task { await load() }
+    }
+
+    private var initials: String {
+        let source = displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName
+        return source.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+    }
+
+    private func load() async {
+        defer { isLoading = false }
+        do {
+            let profile = try await APIClient.shared.fetchMyProfile()
+            displayName = profile.displayName
+            bio = profile.bio ?? ""
+            username = profile.username
+        } catch {
+            displayName = authStore.currentLoginLabel ?? ""
+            message = "Profile could not be loaded."
+        }
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let profile = try await APIClient.shared.updateMyProfile(
+                AppUserProfileUpdateDTO(
+                    displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    bio: bio.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : bio.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            )
+            displayName = profile.displayName
+            bio = profile.bio ?? ""
+            message = "Profile saved."
+        } catch {
+            message = "Could not save profile. Try again."
         }
     }
 }
