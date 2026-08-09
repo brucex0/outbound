@@ -65,18 +65,24 @@ private struct SimplifiedTodayView: View {
                                 Text(todayWorkoutName).font(.title3.weight(.semibold))
                                 Spacer()
                                 Text(todayTotalDuration).font(.headline.monospacedDigit())
+                                Button { showsChangeSheet = true } label: {
+                                    Image(systemName: "slider.horizontal.3")
+                                        .frame(width: 30, height: 30)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("Change today’s run")
+                                Button { showsCompanionExplanation = true } label: {
+                                    Image(systemName: "info.circle")
+                                        .frame(width: 30, height: 30)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("Why this workout")
                             }
                             CompactIntervalPreview(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
                                 onStartRun(plannedRunIntent)
-                            }
-                            HStack {
-                                quickAction("Change", image: "slider.horizontal.3") {
-                                    showsChangeSheet = true
-                                }
-                                quickAction("Why?", image: "info.circle") {
-                                    showsCompanionExplanation = true
-                                }
                             }
                         }
                     }
@@ -128,16 +134,6 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
-    }
-
-    private func quickAction(_ title: String, image: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: image)
-                .font(.caption.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 38)
-        }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
     }
 
     private var plannedRunIntent: SessionIntent {

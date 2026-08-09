@@ -145,7 +145,7 @@ Keep the primary Today action direct: `Start run` opens run setup without an int
 Required order:
 
 1. Compact inspirational quote.
-2. One workout recommendation showing workout name, total duration, equal-weight interval preview, Start, Change, and Why.
+2. One workout recommendation showing workout name, total duration, small header icons for Change and Why, an equal-weight interval preview, and Start as the only full-width card action.
 3. One `Quick start` button into freestyle setup.
 4. At most one compact social opportunity.
 
