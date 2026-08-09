@@ -30,6 +30,7 @@ final class AuthStore: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private var pendingFederatedCredential: AuthCredential?
     private var appleAuthorizationCoordinator: AppleAuthorizationCoordinator?
+    private static let installationMarkerKey = "outbound_installation_seen_v1"
 
     static var currentUserId: String? {
         guard FirebaseBootstrap.isConfigured else { return nil }
@@ -49,10 +50,27 @@ final class AuthStore: ObservableObject {
         isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
         backend = isFirebaseConfigured ? .firebase : .local
 
+        let defaults = UserDefaults.standard
+        let hasPriorOutboundData = defaults.dictionaryRepresentation().keys.contains { key in
+            key.hasPrefix("new_user_onboarding_")
+                || key.hasPrefix("training_plan_store_")
+                || key.hasPrefix("personalization_")
+                || key == "measurement_unit_system_v1"
+        }
+        let isFreshInstallation = !defaults.bool(forKey: Self.installationMarkerKey) && !hasPriorOutboundData
+        defaults.set(true, forKey: Self.installationMarkerKey)
+
         if !isFirebaseConfigured {
             isAuthenticated = false
             localSessionLabel = nil
             return
+        }
+
+        // Firebase Auth uses Keychain storage, which can survive deleting the app.
+        // A missing app-install marker means local app data was reset, so require
+        // an explicit provider sign-in instead of silently reviving that session.
+        if isFreshInstallation, Auth.auth().currentUser != nil {
+            try? Auth.auth().signOut()
         }
 
         user = Auth.auth().currentUser
