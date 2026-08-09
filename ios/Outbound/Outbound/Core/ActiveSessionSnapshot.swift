@@ -102,7 +102,7 @@ struct SessionIntent: Identifiable, Hashable {
 }
 
 enum SessionIntentGoalParser {
-    static func distanceMeters(from text: String) -> Double? {
+    nonisolated static func distanceMeters(from text: String) -> Double? {
         let lowercased = text.lowercased()
         guard !lowercased.contains("no preset") else { return nil }
         if lowercased.range(of: #"\b[0-9]+(?:\.[0-9]+)?\s*x\s*[0-9]"#, options: .regularExpression) != nil {
@@ -125,7 +125,7 @@ enum SessionIntentGoalParser {
         return nil
     }
 
-    static func durationSeconds(from text: String) -> Int? {
+    nonisolated static func durationSeconds(from text: String) -> Int? {
         let lowercased = text.lowercased()
         guard !lowercased.contains("no preset") else { return nil }
 
@@ -140,7 +140,7 @@ enum SessionIntentGoalParser {
         return nil
     }
 
-    private static func firstNumber(in text: String, pattern: String) -> Double? {
+    nonisolated private static func firstNumber(in text: String, pattern: String) -> Double? {
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         guard let match = regex.firstMatch(in: text, range: range),

@@ -8,6 +8,7 @@ import {
   getAuthenticatedIdentity,
 } from "../services/currentUser.js";
 import type { AppEnv } from "../types/hono.js";
+import { deleteFirebaseUser } from "../services/firebaseAuth.js";
 
 const router = new Hono<AppEnv>();
 
@@ -85,6 +86,34 @@ router.patch(
     }));
   }
 );
+
+router.delete("/me", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const auth = getAuthenticatedIdentity(c);
+  if (!auth) {
+    return c.json({ error: "Authentication required." }, 401);
+  }
+
+  const prisma = getPrismaClient();
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { firebaseUid: auth.firebaseUid },
+        { authIdentities: { some: { firebaseUid: auth.firebaseUid } } },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (user) {
+    await prisma.user.delete({ where: { id: user.id } });
+  }
+
+  await deleteFirebaseUser(auth.firebaseUid);
+  return c.json({ deleted: true });
+});
 
 router.get("/me/:firebaseUid", async (c) => {
   const unavailable = requireDatabase(c);

@@ -185,6 +185,46 @@ final class AuthStore: ObservableObject {
         APIClient.shared.setToken(nil)
     }
 
+    func deleteAccount() async {
+        guard isFirebaseConfigured, let currentUser = Auth.auth().currentUser else {
+            authError = "No Firebase account is available to delete."
+            return
+        }
+
+        do {
+            isBusy = true
+            authError = nil
+            defer { isBusy = false }
+
+            if isAppleLinked {
+                let appleCredential = try await makeAppleCredential()
+                _ = try await currentUser.reauthenticate(with: appleCredential.firebaseCredential)
+                guard let authorizationCode = appleCredential.authorizationCode else {
+                    throw AppleAuthorizationError.missingAuthorizationCode
+                }
+                try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
+            } else if isGoogleLinked {
+                _ = try await currentUser.reauthenticate(
+                    with: Self.makeGoogleProvider(),
+                    uiDelegate: nil
+                )
+            }
+
+            try await APIClient.shared.deleteMyAccount()
+            Self.deleteLocalAccountData()
+            try? Auth.auth().signOut()
+            backend = .firebase
+            isAuthenticated = false
+            user = nil
+            localSessionLabel = nil
+            pendingFederatedLink = nil
+            pendingFederatedCredential = nil
+            APIClient.shared.setToken(nil)
+        } catch {
+            authError = "Account deletion failed. \(Self.userFacingMessage(for: error))"
+        }
+    }
+
     func signInWithGoogle() async {
         guard isFirebaseConfigured else {
             authError = "Google sign-in is only available when Firebase is configured for this build."
@@ -231,7 +271,7 @@ final class AuthStore: ObservableObject {
             backend = .firebase
             print("[Outbound][Auth] Starting Apple sign-in flow.")
             let credential = try await makeAppleCredential()
-            let result = try await Auth.auth().signIn(with: credential)
+            let result = try await Auth.auth().signIn(with: credential.firebaseCredential)
             let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
             print("[Outbound][Auth] Apple sign-in completed for user: \(result.user.uid)")
             await completeSignIn(with: resolvedResult)
@@ -303,7 +343,7 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             let credential = try await makeAppleCredential()
-            let result = try await currentUser.link(with: credential)
+            let result = try await currentUser.link(with: credential.firebaseCredential)
             print("[Outbound][Auth] Apple linked for user: \(result.user.uid)")
             await completeSignIn(with: result, forcingTokenRefresh: true)
         } catch {
@@ -334,11 +374,19 @@ final class AuthStore: ObservableObject {
         #endif
     }
 
-    private func makeAppleCredential() async throws -> AuthCredential {
+    private func makeAppleCredential() async throws -> AppleCredentialResult {
         let coordinator = AppleAuthorizationCoordinator()
         appleAuthorizationCoordinator = coordinator
         defer { appleAuthorizationCoordinator = nil }
         return try await coordinator.credential()
+    }
+
+    private static func deleteLocalAccountData() {
+        try? LocalActivityStore.deleteAll()
+        let defaults = UserDefaults.standard
+        for key in defaults.dictionaryRepresentation().keys {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     private func completeSignIn(
@@ -535,6 +583,7 @@ private enum AppleAuthorizationError: LocalizedError {
     case missingIdentityToken
     case invalidIdentityToken
     case missingNonce
+    case missingAuthorizationCode
     case randomNonceGenerationFailed
 
     var errorDescription: String? {
@@ -545,17 +594,24 @@ private enum AppleAuthorizationError: LocalizedError {
             return "Apple returned an identity token Outbound could not read."
         case .missingNonce:
             return "Apple sign-in could not verify the request."
+        case .missingAuthorizationCode:
+            return "Apple did not return the authorization needed to disconnect the account."
         case .randomNonceGenerationFailed:
             return "Apple sign-in could not create a secure request."
         }
     }
 }
 
+private struct AppleCredentialResult {
+    let firebaseCredential: AuthCredential
+    let authorizationCode: String?
+}
+
 private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    private var continuation: CheckedContinuation<AuthCredential, Error>?
+    private var continuation: CheckedContinuation<AppleCredentialResult, Error>?
     private var currentNonce: String?
 
-    func credential() async throws -> AuthCredential {
+    func credential() async throws -> AppleCredentialResult {
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
 
@@ -614,14 +670,19 @@ private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationCont
             idToken: idTokenString,
             rawNonce: nonce
         )
-        resume(returning: credential)
+        let authorizationCode = appleIDCredential.authorizationCode
+            .flatMap { String(data: $0, encoding: .utf8) }
+        resume(returning: AppleCredentialResult(
+            firebaseCredential: credential,
+            authorizationCode: authorizationCode
+        ))
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         resume(throwing: error)
     }
 
-    private func resume(returning credential: AuthCredential) {
+    private func resume(returning credential: AppleCredentialResult) {
         continuation?.resume(returning: credential)
         continuation = nil
         currentNonce = nil

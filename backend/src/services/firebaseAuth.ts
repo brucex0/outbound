@@ -18,3 +18,7 @@ function getFirebaseApp() {
 export async function verifyBearerToken(token: string) {
   return getAuth(getFirebaseApp()).verifyIdToken(token);
 }
+
+export async function deleteFirebaseUser(firebaseUid: string) {
+  return getAuth(getFirebaseApp()).deleteUser(firebaseUid);
+}

@@ -92,6 +92,13 @@ enum LocalActivityStore {
         try saveManifest(activities)
     }
 
+    static func deleteAll() throws {
+        let directory = try activitiesDirectory()
+        if FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.removeItem(at: directory)
+        }
+    }
+
     static func imageURL(for photo: SavedPhoto) throws -> URL {
         try activitiesDirectory().appendingPathComponent(photo.relativePath)
     }

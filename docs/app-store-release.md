@@ -1,0 +1,65 @@
+# App Store Release
+
+Open this when preparing a TestFlight or App Store build.
+
+## Repository Readiness
+
+- App bundle ID: `plainstride.outbound`.
+- Live Activity extension bundle ID: `plainstride.outbound.liveactivity`.
+- Version 1 supports iPhone only. `TARGETED_DEVICE_FAMILY` is `1` for every target and the plist has no iPad orientation declaration.
+- Version and build number come from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the Xcode project. Increment the build number before every upload.
+- Release uses the Plainstride Labs Inc. team (`WT54K7D7VH`) and automatic signing.
+- `PrivacyInfo.xcprivacy` declares the app's `UserDefaults` required-reason API use. Keep it current when adding covered APIs.
+- `ITSAppUsesNonExemptEncryption` is `false` because the app relies on exempt operating-system and HTTPS encryption and does not implement proprietary cryptography. Reassess this if cryptography is added.
+- Production uses `https://outbound-api-186140050970.us-central1.run.app/v1` and the bundled Firebase configuration.
+- The app icon is a 1024-by-1024 opaque PNG.
+
+## Before Archiving
+
+1. Confirm the Apple Developer identifiers have Sign in with Apple, HealthKit, WeatherKit, and the Live Activity extension configured for distribution.
+2. Confirm the distribution profiles cover both bundle IDs and that agreements in App Store Connect are current.
+3. Confirm the production backend is deployed, monitored, and compatible with this client build.
+4. Exercise authentication, onboarding, activity recording in foreground/background, saving, HealthKit read/write, voice permissions, Apple Music, Live Activities, and account deletion on a physical iPhone.
+5. Increment `CURRENT_PROJECT_VERSION` for the app and extension together.
+6. Run an unsigned Release compile check:
+
+   ```sh
+   xcodebuild -quiet \
+     -project ios/Outbound/Outbound.xcodeproj \
+     -scheme Outbound \
+     -configuration Release \
+     -destination 'generic/platform=iOS' \
+     CODE_SIGNING_ALLOWED=NO \
+     build
+   ```
+
+7. In Xcode, select **Any iOS Device (arm64)**, choose **Product > Archive**, then use Organizer to validate and upload the archive.
+
+## App Store Connect Checklist
+
+- Create the app record with bundle ID `plainstride.outbound`, version `1.0`, primary category **Health & Fitness**, and the final availability/price.
+- Supply the name, subtitle, description, keywords, support URL, marketing URL if available, copyright, and privacy policy URL.
+- Upload truthful iPhone screenshots captured from the release build.
+- Complete age rating, content-rights, advertising-identifier, accessibility, and export-compliance questions.
+- Complete App Privacy from actual production behavior, including Firebase and backend handling. Audit at least: account identifiers and contact information, user content, health/fitness data, precise location, diagnostics, and any photos uploaded off device. Local-only data is not “collected” for the label merely because it is stored on device.
+- Provide App Review contact details and concise review notes explaining why background location, HealthKit, microphone/speech, camera, Apple Music, WeatherKit, and Live Activities are used. Include a working review account only if Apple/Google sign-in cannot give review access.
+- Select the processed build, answer the encryption question consistently with the plist, add it to the submission, and submit for review.
+
+## Owner Decisions Still Required
+
+- Final product-page copy, URLs, screenshots, territories, price, age rating, and release method.
+- The authoritative privacy-label answers and public privacy policy. These must match production server retention, deletion, diagnostics, and third-party processing—not only the iOS source.
+- Final hands-on device acceptance and permission-path review before upload.
+
+## Account Deletion
+
+- Settings exposes **Delete Account** with a destructive confirmation.
+- Apple-linked users reauthorize and the app revokes the Apple authorization token before deletion. Google-only users reauthenticate with Google.
+- `DELETE /v1/auth/me` deletes the user's relational data through database cascades and then deletes the Firebase Auth identity.
+- After the server confirms deletion, the app removes local activities and all Outbound `UserDefaults`, signs out, and returns to authentication.
+- Deploy the backend schema change before reviewing this flow. Because the project is pre-publication and has no migration history, use the documented database rebuild command when resetting the current environment:
+
+  ```sh
+  cd backend
+  npm run db:rebuild
+  ```

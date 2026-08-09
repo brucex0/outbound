@@ -12,6 +12,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
 - Hosted Postgres currently lives on the shared Cloud SQL instance `boatshare-20260214-zxia:us-central1:boatshare-db`.
 - The Outbound database on that instance is `outbound`.
+- The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
 
 ## Local Backend Run
 
@@ -228,8 +229,8 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - `ios/Outbound/SupportFiles/Info.plist` is the place to point the app at a Cloud Run URL for testing.
 - Default fallback remains `https://api.outbound.run/v1`, but that hostname is not currently live.
 
-## Assistant-Only Reality Check
+## Environment Reality Check
 
-- Current local backend env has `APP_AI_KEY`.
-- Current local backend env does not define `DATABASE_URL`.
-- That means the first useful cloud deployment is assistant-focused, not full social/activity sync yet.
+- The local backend can run assistant-only when `DATABASE_URL` is absent, or use the embedded Postgres workflow documented above.
+- The live Cloud Run service is connected to the `outbound` Cloud SQL database, so authenticated activity, planning, personalization, safety, social, and account-deletion routes can use durable storage.
+- After any Prisma schema change, deploy the API first, pin `outbound-db-push` to the new revision's exact image digest, and execute the job before relying on the changed route behavior.

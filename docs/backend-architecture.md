@@ -100,12 +100,14 @@ Responsibilities:
 - verify Firebase bearer tokens
 - map `firebaseUid` to an internal `User`
 - provide authenticated `me` endpoints
+- delete the authenticated user's relational data and Firebase identity through `DELETE /v1/auth/me`
 
 Rules:
 
 - do not trust `userId` from request bodies when auth is present
 - derive current user from verified token
 - support local-only app mode by letting the client skip backend sync entirely when not signed in with Firebase
+- keep user-owned relations cascade-safe so account deletion removes associated activities, plans, personalization, safety, and social records
 
 ### Activities
 

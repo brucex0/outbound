@@ -44,6 +44,7 @@ model User {
   following     Follow[]  @relation("follower")
   followers     Follow[]  @relation("following")
   reactions     Reaction[]
+  comments      Comment[]
   connectionsRequested Connection[] @relation("ConnectionRequester")
   connectionsReceived Connection[] @relation("ConnectionAddressee")
   circlesOwned Circle[] @relation("CircleOwner")
@@ -85,7 +86,7 @@ model AuthIdentity {
 model CoachProfile {
   id              String    @id @default(cuid())
   userId          String    @unique
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Coach identity
   coachName       String    @default("Coach")
@@ -119,7 +120,7 @@ model CoachProfile {
 model Activity {
   id            String    @id @default(cuid())
   userId        String
-  user          User      @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientActivityId String?
   syncSource    String?   // ios-local-store, watch-import, manual
 
@@ -654,7 +655,7 @@ model PlanAdjustmentEvent {
 model Photo {
   id          String    @id @default(cuid())
   activityId  String
-  activity    Activity  @relation(fields: [activityId], references: [id])
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
   url         String
   takenAt     DateTime
   // Stats at moment of capture
@@ -690,9 +691,9 @@ model Moment {
 model Post {
   id          String     @id @default(cuid())
   userId      String
-  user        User       @relation(fields: [userId], references: [id])
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   activityId  String?
-  activity    Activity?  @relation(fields: [activityId], references: [id])
+  activity    Activity?  @relation(fields: [activityId], references: [id], onDelete: Cascade)
   caption     String?
   createdAt   DateTime   @default(now())
   reactions   Reaction[]
@@ -819,8 +820,8 @@ model Invitation {
 model Follow {
   followerId  String
   followingId String
-  follower    User   @relation("follower", fields: [followerId], references: [id])
-  following   User   @relation("following", fields: [followingId], references: [id])
+  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
   @@id([followerId, followingId])
@@ -830,8 +831,8 @@ model Reaction {
   id        String   @id @default(cuid())
   userId    String
   postId    String
-  user      User     @relation(fields: [userId], references: [id])
-  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   type      String   // fire | clap | heart | strong
   createdAt DateTime @default(now())
 
@@ -841,8 +842,9 @@ model Reaction {
 model Comment {
   id        String   @id @default(cuid())
   postId    String
-  post      Post     @relation(fields: [postId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
   createdAt DateTime @default(now())
 }

@@ -45,6 +45,8 @@
 
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Outbound tracks your route during activities, even in the background.</string>
@@ -84,8 +86,6 @@
     <key>UIBackgroundModes</key>
     <array>
         <string>location</string>
-        <string>fetch</string>
-        <string>remote-notification</string>
         <string>audio</string>
     </array>
 
@@ -105,12 +105,5 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
 </dict>
 </plist>

@@ -128,6 +128,10 @@ final class APIClient {
         try await patch("/auth/me", body: request)
     }
 
+    func deleteMyAccount() async throws {
+        let _: AccountDeletionResponse = try await delete("/auth/me")
+    }
+
     func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
         try await post("/safety/live-shares", body: request)
     }
@@ -318,6 +322,10 @@ enum APIError: LocalizedError {
 
 private struct APIErrorPayload: Decodable {
     let error: String
+}
+
+private struct AccountDeletionResponse: Decodable {
+    let deleted: Bool
 }
 
 private extension PlanningAPIStateResponse {

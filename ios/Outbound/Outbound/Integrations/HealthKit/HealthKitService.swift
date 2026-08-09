@@ -315,24 +315,44 @@ private extension HealthKitService {
             "com.plainstride.outbound.activity-title": activity.title,
             "com.plainstride.outbound.source": activity.source.displayName
         ]
-        let distance = activity.distanceM > 0
-            ? HKQuantity(unit: .meter(), doubleValue: activity.distanceM)
-            : nil
-        let energy = energyKilocalories.flatMap { value in
-            value > 0 ? HKQuantity(unit: .kilocalorie(), doubleValue: value) : nil
-        }
-        let workout = HKWorkout(
-            activityType: sport == .bike ? .cycling : .running,
-            start: activity.startedAt,
-            end: activity.endedAt,
-            workoutEvents: nil,
-            totalEnergyBurned: energy,
-            totalDistance: distance,
-            device: .local(),
-            metadata: metadata
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = sport == .bike ? .cycling : .running
+        configuration.locationType = activity.indoor?.isIndoor == true ? .indoor : .outdoor
+        let workoutBuilder = HKWorkoutBuilder(
+            healthStore: healthStore,
+            configuration: configuration,
+            device: .local()
         )
 
-        try await save(workout)
+        try await begin(workoutBuilder, at: activity.startedAt)
+        try await add(metadata, to: workoutBuilder)
+
+        var samples: [HKSample] = []
+        if activity.distanceM > 0,
+           let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+            samples.append(HKQuantitySample(
+                type: distanceType,
+                quantity: HKQuantity(unit: .meter(), doubleValue: activity.distanceM),
+                start: activity.startedAt,
+                end: activity.endedAt
+            ))
+        }
+        if let energyKilocalories,
+           energyKilocalories > 0,
+           let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+            samples.append(HKQuantitySample(
+                type: energyType,
+                quantity: HKQuantity(unit: .kilocalorie(), doubleValue: energyKilocalories),
+                start: activity.startedAt,
+                end: activity.endedAt
+            ))
+        }
+        if !samples.isEmpty {
+            try await add(samples, to: workoutBuilder)
+        }
+
+        try await end(workoutBuilder, at: activity.endedAt)
+        let workout = try await finish(workoutBuilder)
 
         let locations = activity.routePoints.map { point in
             CLLocation(
@@ -350,13 +370,69 @@ private extension HealthKitService {
         try await finish(routeBuilder, workout: workout, metadata: metadata)
     }
 
-    func save(_ workout: HKWorkout) async throws {
+    func begin(_ builder: HKWorkoutBuilder, at date: Date) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            healthStore.save(workout) { success, error in
+            builder.beginCollection(withStart: date) { success, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else if success {
                     continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not start the workout save."))
+                }
+            }
+        }
+    }
+
+    func add(_ metadata: [String: Any], to builder: HKWorkoutBuilder) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.addMetadata(metadata) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not save workout metadata."))
+                }
+            }
+        }
+    }
+
+    func add(_ samples: [HKSample], to builder: HKWorkoutBuilder) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.add(samples) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not save workout totals."))
+                }
+            }
+        }
+    }
+
+    func end(_ builder: HKWorkoutBuilder, at date: Date) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.endCollection(withEnd: date) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not finish collecting the workout."))
+                }
+            }
+        }
+    }
+
+    func finish(_ builder: HKWorkoutBuilder) async throws -> HKWorkout {
+        try await withCheckedThrowingContinuation { continuation in
+            builder.finishWorkout { workout, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let workout {
+                    continuation.resume(returning: workout)
                 } else {
                     continuation.resume(throwing: HealthKitServiceError.requestFailed("Apple Health did not save the workout."))
                 }

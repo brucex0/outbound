@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Combine
 import Speech
 import SwiftUI
@@ -154,6 +154,7 @@ private struct SettingsView: View {
     @EnvironmentObject var safetyContactStore: SafetyContactStore
 
     let initialFocusSection: SettingsFocusSection?
+    @State private var isConfirmingAccountDeletion = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -271,6 +272,13 @@ private struct SettingsView: View {
                     Button("Sign Out", role: .destructive) {
                         authStore.signOut()
                     }
+
+                    if authStore.user != nil {
+                        Button("Delete Account", role: .destructive) {
+                            isConfirmingAccountDeletion = true
+                        }
+                        .disabled(authStore.isBusy)
+                    }
                 }
             }
             .task(id: initialFocusSection) {
@@ -282,6 +290,18 @@ private struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(
+                "Permanently delete your account?",
+                isPresented: $isConfirmingAccountDeletion,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Account and Data", role: .destructive) {
+                    Task { await authStore.deleteAccount() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes your Outbound account, synced activities, plans, profile, social data, and locally stored Outbound data. This cannot be undone.")
+            }
         }
     }
 }

@@ -130,7 +130,7 @@ final class CameraController: ObservableObject {
     }
 }
 
-private final class PhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
+nonisolated private final class PhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private let completion: (UIImage?) -> Void
     init(completion: @escaping (UIImage?) -> Void) { self.completion = completion }
 

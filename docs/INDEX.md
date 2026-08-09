@@ -59,6 +59,7 @@ Primary flow:
 | Coach moment director implementation steps | `docs/superpowers/plans/2026-05-30-coach-moment-director.md` | Scoped plan for the in-place `VirtualCoach` moment-direction pass |
 | Firebase Auth, Google project setup, Firebase plist, REST inspection | `docs/firebase.md` | Project IDs, app IDs, callback scheme, auth/provider notes, REST pattern |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
+| TestFlight, App Store archive, metadata, privacy, submission | `docs/app-store-release.md` | Release build checklist, App Store Connect inputs, privacy review, and owner decisions |
 
 ## Documentation Rules
 

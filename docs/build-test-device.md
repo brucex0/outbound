@@ -7,6 +7,7 @@ Open this when validating changes, installing on device, editing signing setting
 - Bundle ID: `plainstride.outbound`.
 - Development team in the project: Plainstride Labs Inc. (`WT54K7D7VH`).
 - Current iOS deployment target in Xcode: `18.0`.
+- Version 1 targets iPhone only (`TARGETED_DEVICE_FAMILY = 1`).
 - Debug device builds use `ios/Outbound/SupportFiles/OutboundDebug.entitlements`, and Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`.
 - Both configurations include Sign in with Apple, HealthKit, and WeatherKit for the paid Plainstride Labs team.
 - Use a paid Apple Developer team before validating Apple provider sign-in on device or shipping.
