@@ -494,7 +494,9 @@ private struct AddSafetyContactView: View {
 }
 
 private struct GearSettingsCard: View {
+    @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var gearStore: GearStore
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @State private var isAddShoePresented = false
     @State private var isExpanded = false
 
@@ -552,41 +554,58 @@ private struct GearSettingsCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     VStack(spacing: 8) {
-                        ForEach(gearStore.shoes) { shoe in
-                            HStack(spacing: 10) {
-                                Image(systemName: "shoeprints.fill")
-                                    .foregroundStyle(shoe.retiredAt == nil ? .orange : .secondary)
-                                    .frame(width: 26)
+                        ForEach(mileageSummaries) { summary in
+                            let shoe = summary.item
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "shoeprints.fill")
+                                        .foregroundStyle(shoe.retiredAt == nil ? .orange : .secondary)
+                                        .frame(width: 26)
 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(shoe.displayName)
-                                        .font(.subheadline.weight(.semibold))
-                                    Text(shoeStatusText(shoe))
-                                        .font(.caption)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(shoe.displayName)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(shoeStatusText(summary))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    if gearStore.defaultShoeID == shoe.id {
+                                        Text("Default")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(.orange)
+                                    } else if shoe.retiredAt == nil {
+                                        Button("Use") { gearStore.setDefault(shoe) }
+                                            .font(.caption.weight(.semibold))
+                                    }
+
+                                    if shoe.retiredAt == nil {
+                                        Button {
+                                            gearStore.retire(shoe)
+                                        } label: {
+                                            Image(systemName: "archivebox")
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityLabel("Retire shoe")
+                                    }
+                                }
+
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(mileageText(summary))
+                                        .font(.caption.weight(.semibold).monospacedDigit())
+                                    Spacer()
+                                    Text("\(retirementPercent(summary))%")
+                                        .font(.caption.monospacedDigit())
                                         .foregroundStyle(.secondary)
                                 }
 
-                                Spacer()
-
-                                if gearStore.defaultShoeID == shoe.id {
-                                    Text("Default")
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(.orange)
-                                } else if shoe.retiredAt == nil {
-                                    Button("Use") { gearStore.setDefault(shoe) }
-                                        .font(.caption.weight(.semibold))
-                                }
-
-                                if shoe.retiredAt == nil {
-                                    Button {
-                                        gearStore.retire(shoe)
-                                    } label: {
-                                        Image(systemName: "archivebox")
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityLabel("Retire shoe")
-                                }
+                                ProgressView(value: summary.usageFraction)
+                                    .tint(shoe.retiredAt == nil ? .orange : .secondary)
+                                    .accessibilityLabel("Shoe mileage")
+                                    .accessibilityValue(mileageText(summary))
                             }
                             .padding(10)
                             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
@@ -604,6 +623,10 @@ private struct GearSettingsCard: View {
         }
     }
 
+    private var mileageSummaries: [GearMileageSummary] {
+        gearStore.mileageSummaries(from: activityStore.activities)
+    }
+
     private var selectedShoeSummary: String {
         if let defaultShoe = gearStore.defaultShoe {
             return "Selected: \(defaultShoe.displayName)"
@@ -611,13 +634,27 @@ private struct GearSettingsCard: View {
         return gearStore.shoes.isEmpty ? "No shoe selected" : "\(gearStore.activeShoes.count) active"
     }
 
-    private func shoeStatusText(_ shoe: GearItem) -> String {
-        let addDate = shoe.startedAt.formatted(date: .abbreviated, time: .omitted)
+    private func shoeStatusText(_ summary: GearMileageSummary) -> String {
+        let shoe = summary.item
         if let retiredAt = shoe.retiredAt {
             let retiredDate = retiredAt.formatted(date: .abbreviated, time: .omitted)
-            return "Added \(addDate) • Retired \(retiredDate)"
+            return "Retired \(retiredDate)"
         }
-        return "Added \(addDate) • Mileage tracked on saved runs"
+        if let lastUsedAt = summary.lastUsedAt {
+            let lastUsedDate = lastUsedAt.formatted(date: .abbreviated, time: .omitted)
+            return "Last used \(lastUsedDate)"
+        }
+        return "No saved runs yet"
+    }
+
+    private func mileageText(_ summary: GearMileageSummary) -> String {
+        let tracked = measurementPreferences.unitSystem.distanceString(meters: summary.distanceMeters, fractionDigits: 1)
+        let recommended = measurementPreferences.unitSystem.distanceString(meters: summary.item.distanceLimitM, fractionDigits: 0)
+        return "\(tracked) / \(recommended)"
+    }
+
+    private func retirementPercent(_ summary: GearMileageSummary) -> Int {
+        Int((summary.usageFraction * 100).rounded())
     }
 }
 
