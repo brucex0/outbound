@@ -52,7 +52,11 @@ After a relevant workout, ask:
 - one context-sensitive follow-up, such as whether the runner could have continued;
 - an optional voice or text note.
 
-Do not ask the same generic questions after every run.
+Do not ask the same generic questions after every run. Always request feedback after calibration,
+changed, and structured quality workouts; skip very short routine activities; and sample every
+fourth ordinary session. `About right` and `Too hard` are one-tap answers. Ask continuation capacity
+only after `Easy`, where it adds useful duration-reserve evidence. A skipped continuation answer
+must not be interpreted as having no reserve.
 
 ## Living Runner Model
 

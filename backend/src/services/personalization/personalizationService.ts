@@ -178,6 +178,11 @@ async function advanceCalibration(userId: string) {
 }
 
 async function projectFeedback(userId: string, input: WorkoutFeedbackRequest) {
+  // Effort alone is useful for load adjustment, but it cannot tell us how much
+  // duration reserve the runner had. Do not turn a skipped follow-up into a
+  // false "near today's limit" endurance observation.
+  if (!input.continuationCapacity) return;
+
   const prisma = getPrismaClient();
   const feedbackCount = await prisma.workoutFeedback.count({ where: { userId } });
   const confidence = feedbackCount >= 5 ? "high" : feedbackCount >= 3 ? "medium" : "low";
