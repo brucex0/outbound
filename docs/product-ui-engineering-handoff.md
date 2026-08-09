@@ -138,7 +138,7 @@ Primary tabs, left to right:
 
 Today is the initial tab after onboarding. Use icons with accessibility labels; the selected tab may reveal its text label. Persist the last selected tab for returning users only after they have completed onboarding.
 
-Push or present workout detail from Today. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
+Keep the primary Today action direct: `Start run` opens run setup without an intermediate detail or readiness screen. Today itself carries the essential workout summary. Readiness is optional and contextual through actions such as `Tired`; it must not gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
 
 ## Today Screen Contract
 
@@ -327,4 +327,3 @@ Recommended events:
 - Includes unit coverage for recommendation-state mapping, privacy-safe payload construction, plan rescheduling rules, and onboarding persistence.
 - Includes UI previews for default, loading, empty, error, completed, and accessibility-size states.
 - Does not introduce new primary navigation or a generic assistant destination.
-

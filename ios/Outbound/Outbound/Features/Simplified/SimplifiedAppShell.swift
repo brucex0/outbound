@@ -47,8 +47,6 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
-    @State private var showsReadinessCheckIn = false
-    @State private var showsWorkoutDetail = false
     @State private var showsCompanionExplanation = false
     @State private var showsTiredOption = false
 
@@ -78,7 +76,7 @@ private struct SimplifiedTodayView: View {
                                 .foregroundStyle(.secondary)
                             WorkoutPhaseSummary(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
-                                showsWorkoutDetail = true
+                                onStartRun(plannedRunIntent)
                             }
                             HStack {
                                 quickAction("15 min", image: "clock") {
@@ -120,7 +118,7 @@ private struct SimplifiedTodayView: View {
                                 Text("Choose what feels right; this does not change your long-term plan unless you accept it.")
                                     .font(.subheadline).foregroundStyle(.white.opacity(0.8))
                                 HStack {
-                                    Button("Keep workout") { showsWorkoutDetail = true }.buttonStyle(.bordered)
+                                    Button("Keep workout") { onStartRun(plannedRunIntent) }.buttonStyle(.bordered)
                                     Button("Choose gentler") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
                                 }
                             }
@@ -196,27 +194,6 @@ private struct SimplifiedTodayView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
-        }
-        .sheet(isPresented: $showsReadinessCheckIn) {
-            ReadinessCheckInView(workoutTitle: todayTitle) { choice in
-                if let choice {
-                    Task { await personalizationStore.submitReadiness(choice, workoutID: todayWorkoutID) }
-                }
-                showsReadinessCheckIn = false
-                onStartRun(plannedRunIntent)
-            }
-            .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showsWorkoutDetail) {
-            SimplifiedWorkoutDetailView(
-                title: todayTitle,
-                detail: todayDetail,
-                explanation: todayExplanation,
-                steps: plannedRunIntent.workoutSteps
-            ) {
-                showsWorkoutDetail = false
-                showsReadinessCheckIn = true
-            }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -381,52 +358,6 @@ private struct SimplifiedTodayView: View {
             startLabel: "Start 15 min run",
             targetDurationSeconds: 15 * 60
         )
-    }
-}
-
-private struct SimplifiedWorkoutDetailView: View {
-    @Environment(\.dismiss) private var dismiss
-    let title: String
-    let detail: String
-    let explanation: String
-    let steps: [SessionIntentStep]
-    let onStart: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    Text(title).font(.title2.bold())
-                    Text(detail).font(.subheadline).foregroundStyle(.secondary)
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                                HStack(alignment: .top, spacing: 14) {
-                                    VStack(spacing: 0) {
-                                        Circle().fill(OutboundPalette.companion).frame(width: 12, height: 12)
-                                        if index < steps.count - 1 {
-                                            Rectangle().fill(OutboundPalette.companion.opacity(0.25)).frame(width: 2, height: 50)
-                                        }
-                                    }
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(step.label).font(.headline)
-                                        Text(["\(step.durationSeconds / 60) min", step.detail].compactMap { $0 }.joined(separator: " · "))
-                                            .font(.subheadline).foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    AIExplanationView(text: explanation)
-                    OutboundPrimaryButton(title: "Check readiness", systemImage: "sparkles", action: onStart)
-                }
-                .padding(OutboundSpacing.screen)
-            }
-            .background(OutboundPalette.background)
-            .navigationTitle("Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", action: dismiss.callAsFunction) } }
-        }
     }
 }
 

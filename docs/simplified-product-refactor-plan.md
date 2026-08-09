@@ -364,7 +364,7 @@ Mitigate by shipping and validating complete vertical slices, using contract fix
 The production root now uses `Together · Today · Me`; the prior shell is not a release path. The current implementation includes:
 
 - editable runner intake, calibration sessions, readiness, workout feedback, learned insights, and explained adjustment decisions;
-- Today with plan-backed workouts, a vertical interval detail flow, quick Open/Distance/Time runs, readiness, and safe fallbacks;
+- Today with plan-backed interval summaries, a direct path into run setup, quick Open/Distance/Time runs, optional readiness actions, and safe fallbacks;
 - the retained recorder, camera Moment capture, pause/resume/finish, local activity save, and post-run reflection/feedback;
 - Me with live plan/week progress, saved weekly totals, recent activity history, learned insights, settings, and cycle-aware coaching;
 - Together backed by authenticated connections, clubs, group runs, invitations, posts, reactions, comments, compatibility, and cached client state;
