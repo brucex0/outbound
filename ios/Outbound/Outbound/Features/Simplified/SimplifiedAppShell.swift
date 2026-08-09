@@ -665,9 +665,19 @@ private struct SimplifiedMeView: View {
 
 private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var authStore: AuthStore
+    @State private var confirmsSignOut = false
 
     var body: some View {
         Form {
+            Section("Account") {
+                if let label = authStore.currentLoginLabel {
+                    LabeledContent("Signed in as", value: label)
+                }
+                Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                    confirmsSignOut = true
+                }
+            }
             Section("Units") {
                 Picker("Measurement", selection: $measurementPreferences.unitSystem) {
                     ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -685,6 +695,10 @@ private struct SimplifiedSettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .confirmationDialog("Sign out of Outbound?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { authStore.signOut() }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 }
 
