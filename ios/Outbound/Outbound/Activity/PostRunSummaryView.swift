@@ -10,6 +10,7 @@ struct PostRunSummaryView: View {
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
     let workoutID: String
+    let requestsFeedback: Bool
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) -> Void
     let onDiscard: () -> Void
     @State private var selectedPhotoIndices: Set<Int>
@@ -23,6 +24,7 @@ struct PostRunSummaryView: View {
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
         workoutID: String = "freestyle-run",
+        requestsFeedback: Bool = true,
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) -> Void,
         onDiscard: @escaping () -> Void
     ) {
@@ -31,6 +33,7 @@ struct PostRunSummaryView: View {
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
         self.workoutID = workoutID
+        self.requestsFeedback = requestsFeedback
         self.onSave = onSave
         self.onDiscard = onDiscard
         _selectedPhotoIndices = State(initialValue: Set(photos.indices))
@@ -47,7 +50,7 @@ struct PostRunSummaryView: View {
                         recognitionSection(primaryRecognition)
                     }
                     statsSection
-                    feedbackSection
+                    if requestsFeedback { feedbackSection }
                     if summary.trackPoints.count > 1 { routeMap }
                     motivationSection
                 }
@@ -193,8 +196,8 @@ struct PostRunSummaryView: View {
                 effortButton(.aboutRight, title: "About right")
                 effortButton(.tooHard, title: "Too hard")
             }
-            if selectedEffort != nil {
-                Text("Could you have continued?")
+            if selectedEffort == .easy {
+                Text("Could you comfortably have continued?")
                     .font(.subheadline.weight(.semibold))
                 HStack {
                     capacityButton(.none, title: "No")
@@ -202,7 +205,7 @@ struct PostRunSummaryView: View {
                     capacityButton(.muchLonger, title: "Much longer")
                 }
             }
-            Text("Optional. This helps your companion learn what the run data cannot show.")
+            Text("Optional. Outbound asks after workouts where your answer can improve the plan.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -214,7 +217,10 @@ struct PostRunSummaryView: View {
     }
 
     private func effortButton(_ effort: RunEffort, title: String) -> some View {
-        Button(title) { selectedEffort = effort }
+        Button(title) {
+            selectedEffort = effort
+            if effort != .easy { continuationCapacity = nil }
+        }
             .buttonStyle(.bordered)
             .tint(selectedEffort == effort ? .orange : .secondary)
             .frame(maxWidth: .infinity)

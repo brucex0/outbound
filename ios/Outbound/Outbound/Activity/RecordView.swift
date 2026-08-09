@@ -209,6 +209,11 @@ struct RecordView: View {
                 reflection: activity.reflection,
                 recognitionPreviews: activity.recognitionPreviews,
                 workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
+                requestsFeedback: PostWorkoutFeedbackPolicy.shouldRequestFeedback(
+                    summary: activity.summary,
+                    intent: activeIntent ?? plannedIntent,
+                    priorActivityCount: activityStore.activities.count
+                ),
                 onSave: { selectedPhotos, reflection in savePendingActivity(activity, photos: selectedPhotos, reflection: reflection) },
                 onDiscard: discardPendingActivity
             )

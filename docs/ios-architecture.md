@@ -26,7 +26,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Domains/Athlete/PersonalizationStore.swift`: cached API-backed personalization state with idempotent offline queues for readiness and post-run feedback, plus adjustment decisions.
 - `Features/Onboarding/SimplifiedOnboardingFlow.swift`: five-step target intake for goal, baseline, realistic week, editable understanding, and low-pressure calibration. Completing it persists runner facts and starts the recommended plan.
 - `Features/Personalization/PersonalizationViews.swift`: calibration progress and pre-run readiness surfaces for the first personalized-companion vertical slice.
-- `Activity/PostRunSummaryView.swift`: includes optional effort and continuation feedback; Save never waits for the network, and feedback is queued when offline.
+- `Activity/PostRunSummaryView.swift`: includes optional, selectively shown effort feedback. Calibration, changed, and structured workouts request it; routine sessions are sampled every fourth activity, and sessions under ten minutes are skipped. Continuation capacity appears only after `Easy`. Save never waits for the network, and feedback is queued when offline.
 - `App/OnboardingStore.swift` and `App/OnboardingFlowView.swift`: local-first new-user onboarding. The store tracks account-scoped completion/profile state in `UserDefaults`; the view gathers free-text goal, baseline, and realistic-week intake, exact body basics for calorie estimates, and a coach-review summary, then can launch the personalized first session through `MainTabView`.
 - `OutboundLiveActivityExtension/`: WidgetKit extension that renders the active-session Live Activity for the lock screen and Dynamic Island.
 
