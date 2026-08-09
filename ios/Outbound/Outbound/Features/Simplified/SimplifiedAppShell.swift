@@ -10,7 +10,6 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
-    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
 
@@ -44,129 +43,53 @@ struct SimplifiedAppShell: View {
 private struct SimplifiedTodayView: View {
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
-    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
-    @State private var showsChangeReasons = false
-    @State private var changeReason: ReadinessChoice?
+    @State private var showsChangeSheet = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     OutboundCard(style: .companion) {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                             Text("“You don’t need a perfect run. You need a beginning.”")
                                 .font(.title3.weight(.semibold))
-                            Text("One relaxed run completes your week.")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.78))
                         }
                     }
 
                     OutboundCard {
                         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                            Text("TODAY · AI ADJUSTED")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text(todayTitle)
-                                .font(.title3.weight(.semibold))
-                            Text(todayDetail)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            WorkoutPhaseSummary(phases: todayPhases)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(todayWorkoutName).font(.title3.weight(.semibold))
+                                Spacer()
+                                Text(todayTotalDuration).font(.headline.monospacedDigit())
+                            }
+                            CompactIntervalPreview(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
                                 onStartRun(plannedRunIntent)
                             }
                             HStack {
                                 quickAction("Change", image: "slider.horizontal.3") {
-                                    showsChangeReasons = true
+                                    showsChangeSheet = true
                                 }
-                                quickAction("Why?", image: "sparkles") {
+                                quickAction("Why?", image: "info.circle") {
                                     showsCompanionExplanation = true
                                 }
                             }
-                            AIExplanationView(text: todayExplanation)
                         }
                     }
 
-                    if let changeReason {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("CHANGED FOR TODAY").font(.caption.weight(.semibold))
-                                Text(changeOptionTitle(for: changeReason)).font(.headline)
-                                Text(changeOptionExplanation(for: changeReason))
-                                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
-                                HStack {
-                                    Button("Keep original") { self.changeReason = nil }.buttonStyle(.bordered)
-                                    Button("Start changed run") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
-                                }
-                            }
-                        }
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    Button {
+                        onStartRun(.freestyleRun)
+                    } label: {
+                        Label("Quick start", systemImage: "bolt.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 46)
                     }
-
-                    if cycleAwareStore.isEnabled, cycleAwareStore.currentSignal != .noAdjustment {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("A FLEXIBLE OPTION").font(.caption.weight(.semibold))
-                                Text(cycleAwareStore.currentSignal.title).font(.headline)
-                                Text("Choose what feels right; this does not change your long-term plan unless you accept it.")
-                                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
-                                HStack {
-                                    Button("Keep workout") { onStartRun(plannedRunIntent) }.buttonStyle(.bordered)
-                                    Button("Choose gentler") { onStartRun(shortRunIntent) }.buttonStyle(.borderedProminent)
-                                }
-                            }
-                        }
-                    }
-
-                    OutboundCard {
-                        CalibrationProgressBanner(summary: personalizationStore.snapshot.calibration)
-                    }
-
-                    if let adjustment = personalizationStore.snapshot.pendingAdjustment {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("A BETTER FIT FOR TODAY")
-                                    .font(.caption.weight(.semibold))
-                                Text(adjustment.explanation)
-                                    .font(.subheadline)
-                                ForEach(adjustment.changes, id: \.workoutId) { change in
-                                    Text("\(change.beforeTitle) → \(change.afterTitle)")
-                                        .font(.subheadline.weight(.semibold))
-                                }
-                                HStack {
-                                    Button("Keep original") {
-                                        Task { await personalizationStore.decideAdjustment(accept: false) }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    Button("Use change") {
-                                        Task { await personalizationStore.decideAdjustment(accept: true) }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                }
-                                .tint(OutboundPalette.companion)
-                            }
-                        }
-                    }
-
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("QUICK RUN")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text("Run without today’s workout")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            HStack {
-                                quickRunAction("Open", image: "infinity")
-                                quickRunAction("Distance", image: "ruler")
-                                quickRunAction("Time", image: "timer")
-                            }
-                        }
-                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
 
                     OutboundCard {
                         HStack(spacing: OutboundSpacing.standard) {
@@ -197,11 +120,13 @@ private struct SimplifiedTodayView: View {
         } message: {
             Text(todayExplanation)
         }
-        .confirmationDialog("Why change today’s run?", isPresented: $showsChangeReasons, titleVisibility: .visible) {
-            Button("Low energy") { chooseChangeReason(.tired) }
-            Button("Feeling sore") { chooseChangeReason(.sore) }
-            Button("Short on time") { chooseChangeReason(.shortOnTime) }
-            Button("Cancel", role: .cancel) {}
+        .sheet(isPresented: $showsChangeSheet) {
+            TodayChangeSheet(originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)") { reason, note, minutes, startsRun in
+                Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID, note: note) }
+                showsChangeSheet = false
+                if startsRun { onStartRun(changedRunIntent(minutes: minutes, reason: reason)) }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -210,18 +135,6 @@ private struct SimplifiedTodayView: View {
             Label(title, systemImage: image)
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 38)
-        }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-    }
-
-    private func quickRunAction(_ title: String, image: String) -> some View {
-        Button {
-            onStartRun(quickRunIntent(for: title))
-        } label: {
-            Label(title, systemImage: image)
-                .font(.caption.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
@@ -265,17 +178,14 @@ private struct SimplifiedTodayView: View {
         currentCalibrationWorkout?.id ?? trainingPlanStore.todaySuggestion?.workout.id ?? plannedRunIntent.id
     }
 
-    private var todayTitle: String {
-        if let workout = currentCalibrationWorkout {
-            return "\(workout.title) · \(durationLabel(workout.durationSeconds))"
-        }
-        guard let suggestion = trainingPlanStore.todaySuggestion else { return "Easy run · 30 min" }
-        return "\(suggestion.workout.title) · \(suggestion.workout.durationLabel)"
+    private var todayWorkoutName: String {
+        let rawName = currentCalibrationWorkout?.title ?? trainingPlanStore.todaySuggestion?.workout.title ?? "Easy run"
+        return rawName.components(separatedBy: " · ").first ?? rawName
     }
 
-    private var todayDetail: String {
-        if currentCalibrationWorkout != nil { return "Run naturally at a conversational effort" }
-        return trainingPlanStore.todaySuggestion?.workout.effortLabel ?? "Conversational effort"
+    private var todayTotalDuration: String {
+        let stepSeconds = plannedRunIntent.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
+        return durationLabel(stepSeconds > 0 ? stepSeconds : plannedRunIntent.targetDurationSeconds ?? 30 * 60)
     }
 
     private var todayExplanation: String {
@@ -324,67 +234,132 @@ private struct SimplifiedTodayView: View {
         seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds / 60)m \(seconds % 60)s"
     }
 
-    private func quickRunIntent(for title: String) -> SessionIntent {
-        switch title {
-        case "Distance":
-            return SessionIntent(
-                id: "quick-distance-5k",
-                sport: .run,
-                title: "5 km run",
-                detail: "Run · 5 km distance goal",
-                coachLine: "Run by feel and let the distance goal mark the finish.",
-                startLabel: "Start 5 km run",
-                targetDistanceMeters: 5_000
-            )
-        case "Time":
-            return SessionIntent(
-                id: "quick-time-30",
-                sport: .run,
-                title: "30 min run",
-                detail: "Run · 30 min time goal",
-                coachLine: "Choose an effort you can sustain for the full thirty minutes.",
-                startLabel: "Start 30 min run",
-                targetDurationSeconds: 30 * 60
-            )
-        default:
-            return .freestyleRun
-        }
-    }
-
-    private var shortRunIntent: SessionIntent {
+    private func changedRunIntent(minutes: Int, reason: ReadinessChoice) -> SessionIntent {
         SessionIntent(
-            id: "quick-time-15",
+            id: "changed-\(reason.rawValue)-\(minutes)",
             sport: .run,
-            title: "15 min easy run",
-            detail: "Run · 15 min time goal",
-            coachLine: "Keep the effort easy. A short run still protects the habit.",
-            startLabel: "Start 15 min run",
-            targetDurationSeconds: 15 * 60
+            title: "\(minutes) min easy run",
+            detail: "Run · \(minutes) min · very easy",
+            coachLine: reason == .sore
+                ? "Keep this very easy and stop if discomfort becomes pain."
+                : "Keep the effort easy. A shorter run still protects the habit.",
+            startLabel: "Start changed run",
+            targetDurationSeconds: minutes * 60
         )
     }
+}
 
-    private func chooseChangeReason(_ reason: ReadinessChoice) {
-        changeReason = reason
-        Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID) }
+private struct CompactIntervalPreview: View {
+    let phases: [WorkoutPhaseItem]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(phases.prefix(3).enumerated()), id: \.element.id) { index, phase in
+                VStack(spacing: 3) {
+                    Text(expandedDuration(phase.duration))
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                    Text(phase.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(maxWidth: .infinity)
+                if index < min(phases.count, 3) - 1 {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            if phases.count > 3 {
+                Text("+\(phases.count - 3)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 
-    private func changeOptionTitle(for reason: ReadinessChoice) -> String {
-        switch reason {
-        case .tired: "15 minutes easy"
-        case .sore: "15 minutes very easy"
-        case .shortOnTime: "15-minute version"
-        case .good: todayTitle
+    private func expandedDuration(_ value: String) -> String {
+        value.replacingOccurrences(of: "m", with: " min")
+    }
+}
+
+private struct TodayChangeSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let originalTitle: String
+    let onApply: (ReadinessChoice, String?, Int, Bool) -> Void
+    @State private var reason: ReadinessChoice?
+    @State private var note = ""
+    @State private var availableMinutes = 15
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                if let reason {
+                    Text(reasonHeading(reason)).font(.title2.weight(.semibold))
+                    Text(recommendationText(reason)).font(.subheadline).foregroundStyle(.secondary)
+
+                    if reason == .shortOnTime {
+                        Picker("Available time", selection: $availableMinutes) {
+                            ForEach([10, 15, 20], id: \.self) { Text("\($0) min").tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    TextField("Anything else? (optional)", text: $note, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...3)
+
+                    Spacer()
+
+                    OutboundPrimaryButton(title: primaryTitle(reason), systemImage: primaryIcon(reason)) {
+                        onApply(reason, cleanedNote, recommendedMinutes(reason), reason != .sore)
+                    }
+                    Button("Keep original") { dismiss() }
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("What needs to change?").font(.title2.weight(.semibold))
+                    Text(originalTitle).font(.subheadline).foregroundStyle(.secondary)
+                    changeReasonButton("Less time", icon: "clock", reason: .shortOnTime)
+                    changeReasonButton("Low energy", icon: "battery.25percent", reason: .tired)
+                    changeReasonButton("Sore or uncomfortable", icon: "bandage", reason: .sore)
+                    Spacer()
+                }
+            }
+            .padding(OutboundSpacing.screen)
+            .navigationTitle("Change today’s run")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
 
-    private func changeOptionExplanation(for reason: ReadinessChoice) -> String {
+    private func changeReasonButton(_ title: String, icon: String, reason: ReadinessChoice) -> some View {
+        Button { self.reason = reason } label: {
+            HStack { Label(title, systemImage: icon); Spacer(); Image(systemName: "chevron.right") }
+                .frame(maxWidth: .infinity, minHeight: 48)
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private var cleanedNote: String? {
+        let value = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func recommendedMinutes(_ reason: ReadinessChoice) -> Int { reason == .shortOnTime ? availableMinutes : 15 }
+    private func reasonHeading(_ reason: ReadinessChoice) -> String {
+        switch reason { case .tired: "Try 15 minutes easy"; case .sore: "Rest today"; case .shortOnTime: "Fit the time you have"; case .good: "Keep today’s run" }
+    }
+    private func recommendationText(_ reason: ReadinessChoice) -> String {
         switch reason {
-        case .tired: "Keep the habit without forcing the full workout."
-        case .sore: "Stay very easy and stop if discomfort becomes pain."
-        case .shortOnTime: "Keep the purpose of the run in the time you have."
-        case .good: "The original workout still fits today."
+        case .tired: "A short easy run keeps the rhythm without forcing the full workout."
+        case .sore: "Skipping one run is better than turning discomfort into an injury."
+        case .shortOnTime: "Outbound will keep this easy and end it at your selected time."
+        case .good: "The original workout still fits."
         }
     }
+    private func primaryTitle(_ reason: ReadinessChoice) -> String { reason == .sore ? "Use rest day" : "Start changed run" }
+    private func primaryIcon(_ reason: ReadinessChoice) -> String { reason == .sore ? "bed.double" : "figure.run" }
 }
 
 private struct SimplifiedTogetherView: View {

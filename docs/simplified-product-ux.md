@@ -40,7 +40,7 @@ Keep the inspirational quote as the emotional opening. Pair it with a factual, p
 Keep two clear paths:
 
 - `Start workout` launches the companion-prescribed session with its existing time, distance, and interval structure.
-- `Quick run` preserves runner control with compact `Open`, `Distance`, and `Time` goal choices.
+- `Quick start` launches freestyle run setup immediately. Open, distance, and time goals remain available on that setup screen rather than competing for space on Today.
 
 Workout type (`easy`, `long`, `tempo`, `intervals`, or `recovery`) and recording goal (`open`, `distance`, or `time`) are separate concepts. The companion recommends the workout type; the runner may choose the recording goal.
 
@@ -48,18 +48,18 @@ Workout type (`easy`, `long`, `tempo`, `intervals`, or `recovery`) and recording
 
 Today participates in the learning loop defined in `docs/personalized-running-companion.md`:
 
-- request a one-tap readiness check only when it could change the recommendation;
-- show calibration progress compactly during the first 7-10 days;
-- explain meaningful adaptations and preserve `Keep original` or undo;
+- keep readiness and calibration state out of the default Today hierarchy;
+- place constraint-driven changes in one self-contained sheet and preserve `Keep original`;
+- explain meaningful adaptations only when the runner opens `Change` or `Why?`;
 - avoid claiming a new insight until supported by observable evidence and confidence.
 
 Information order:
 
-1. Inspirational quote and personalized context.
-2. One concrete workout recommendation.
-3. Fast adjustments such as `15 min`, `Feeling tired`, and `Ask`.
-4. At most one relevant social opportunity.
-5. Compact weekly progress.
+1. Compact inspirational quote.
+2. One concrete workout recommendation with total duration and a brief equal-weight interval preview.
+3. Direct Start plus small `Change` and `Why?` actions.
+4. One `Quick start` button.
+5. At most one compact social opportunity.
 
 The workout must answer:
 

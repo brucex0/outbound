@@ -144,11 +144,10 @@ Keep the primary Today action direct: `Start run` opens run setup without an int
 
 Required order:
 
-1. Inspirational quote with personalized factual context.
-2. One workout recommendation.
-3. Quick adjustment actions.
-4. At most one relevant social opportunity.
-5. Weekly progress.
+1. Compact inspirational quote.
+2. One workout recommendation showing workout name, total duration, equal-weight interval preview, Start, Change, and Why.
+3. One `Quick start` button into freestyle setup.
+4. At most one compact social opportunity.
 
 States:
 
@@ -159,7 +158,7 @@ States:
 - No active plan: show one reviewed standalone recommendation and a secondary plan setup path.
 - Active live session: replace Start with Return to run.
 
-Quick actions must produce structured results: shorten, soften, reschedule, explain, or ask.
+`Change` stays in a sheet: ask for the constraint, show one recommendation, and either apply it or keep the original. It must never inject a new card into Today. `Quick start` has no mode chooser on Today.
 
 ## Workout Detail and Live Session
 

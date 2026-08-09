@@ -41,13 +41,13 @@ final class PersonalizationStore: ObservableObject {
         }
     }
 
-    func submitReadiness(_ choice: ReadinessChoice, workoutID: String) async {
+    func submitReadiness(_ choice: ReadinessChoice, workoutID: String, note: String? = nil) async {
         let request = ReadinessCheckInRequestDTO(
             idempotencyKey: UUID().uuidString,
             workoutId: workoutID,
             recordedAt: Date(),
             choice: choice,
-            note: nil
+            note: note
         )
         do {
             apply(try await api.submitPersonalizationReadiness(request))
