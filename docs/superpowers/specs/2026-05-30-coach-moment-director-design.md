@@ -18,6 +18,9 @@ The behavior should:
 - decide whether the spoken announcement should include a progress recap
 - avoid repeating the same role too many times in a row when another useful role is available
 - keep fixed progress announcements as one role in the system, not the wrapper around every coach message
+- delay the first spoken analysis until the athlete has had enough time to settle in
+- suppress tiny-distance startup recaps such as "17 meters in"
+- keep a shared speech gap across progress and analysis nudges so they do not overlap or stack
 
 ## V1 Scope
 
@@ -28,6 +31,9 @@ V1 should:
 - remove the unconditional `progressAnnouncement + analysis.message` composition
 - keep `lastNudge` as the visual HUD message
 - use progress recap only for progress-like roles
+- require meaningful elapsed time and movement before a generic progress recap speaks
+- let goal and distance milestones speak when the raw milestone is actually reached
+- skip non-urgent speech while another coach utterance is already playing
 - let most AI/rule coaching messages speak as natural coach lines
 - track recent spoken roles alongside text fingerprints
 

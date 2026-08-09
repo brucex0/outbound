@@ -67,19 +67,23 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var lastProgressAnnouncementElapsedSeconds: Int?
     private var lastProgressTimeMilestone = 0
     private var lastProgressDistanceMilestone = 0
+    private var lastCoachSpeechElapsedSeconds: Int?
     private var isActive = false
     private var recentSpokenFingerprints: [String] = []
     private var recentSpokenMessages: [String] = []
     private var recentSpokenRoles: [CoachingMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
 
-    private let firstAnalysisAfterSeconds = 20
+    private let firstAnalysisAfterSeconds = 75
     private let maxSnapshotHistory = 20
     private let maxRecentSpokenFingerprints = 4
     private let maxRecentSpokenMessages = 4
     private let maxRecentSpokenRoles = 4
     private let minimumProgressAnnouncementGapSeconds = 30
     private let minimumDistanceProgressElapsedSeconds = 30
+    private let minimumProgressAnnouncementElapsedSeconds = 300
+    private let minimumProgressAnnouncementDistanceMeters: Double = 400
+    private let minimumCoachSpeechGapSeconds = 75
     private let maximumRunningProgressAverageSpeedMetersPerSecond: Double = 10
     private let maximumCyclingProgressAverageSpeedMetersPerSecond: Double = 25
     var speechEventHandler: ((CoachSpeechEvent) -> Void)?
@@ -112,6 +116,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressAnnouncementElapsedSeconds = nil
         lastProgressTimeMilestone = 0
         lastProgressDistanceMilestone = 0
+        lastCoachSpeechElapsedSeconds = nil
         recentSpokenFingerprints = []
         recentSpokenMessages = []
         recentSpokenRoles = []
@@ -214,6 +219,7 @@ final class VirtualCoach: NSObject, ObservableObject {
 
         let fingerprint = normalizedFingerprint(for: message)
         guard !recentSpokenFingerprints.contains(fingerprint) else { return }
+        guard canSpeakCoachMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else { return }
 
         recentSpokenFingerprints.append(fingerprint)
         if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
@@ -225,21 +231,26 @@ final class VirtualCoach: NSObject, ObservableObject {
         }
 
         let moment = coachingMoment(for: snapshot, analysis: analysis)
-        speak(
+        if speak(
             coachingAnnouncement(for: snapshot, message: message, moment: moment),
             urgency: analysis.urgency,
             role: moment.role
-        )
+        ) {
+            rememberCoachSpeech(at: snapshot.elapsedSeconds)
+        }
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
         if let goalMilestone = nextGoalMilestone(for: snapshot) {
             guard canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
+            guard canSpeakCoachMoment(at: snapshot.elapsedSeconds) else { return }
 
-            spokenGoalMilestones.insert(goalMilestone)
-            rememberProgressMilestones(for: snapshot)
-            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-            speak(goalProgressAnnouncement(for: goalMilestone), role: .progress)
+            if speak(goalProgressAnnouncement(for: goalMilestone), role: .progress) {
+                spokenGoalMilestones.insert(goalMilestone)
+                rememberProgressMilestones(for: snapshot)
+                lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+                rememberCoachSpeech(at: snapshot.elapsedSeconds)
+            }
             return
         }
 
@@ -257,16 +268,35 @@ final class VirtualCoach: NSObject, ObservableObject {
         guard reachedTimeMilestone || reachedDistanceMilestone else { return }
 
         guard canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
+        guard shouldSpeakProgressAnnouncement(for: snapshot, reachedDistanceMilestone: reachedDistanceMilestone) else {
+            lastProgressTimeMilestone = max(lastProgressTimeMilestone, nextTimeMilestone)
+            return
+        }
 
         lastProgressTimeMilestone = nextTimeMilestone
         lastProgressDistanceMilestone = nextDistanceMilestone
-        lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-        speak(progressAnnouncement(for: snapshot), role: .progress)
+        if speak(progressAnnouncement(for: snapshot), role: .progress) {
+            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+            rememberCoachSpeech(at: snapshot.elapsedSeconds)
+        }
     }
 
     private func canAnnounceProgress(at elapsedSeconds: Int) -> Bool {
         guard let lastProgressAnnouncementElapsedSeconds else { return true }
         return elapsedSeconds - lastProgressAnnouncementElapsedSeconds >= minimumProgressAnnouncementGapSeconds
+    }
+
+    private func shouldSpeakProgressAnnouncement(
+        for snapshot: ActiveSessionSnapshot,
+        reachedDistanceMilestone: Bool
+    ) -> Bool {
+        if reachedDistanceMilestone {
+            return canSpeakCoachMoment(at: snapshot.elapsedSeconds)
+        }
+
+        guard snapshot.elapsedSeconds >= minimumProgressAnnouncementElapsedSeconds else { return false }
+        guard snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters else { return false }
+        return canSpeakCoachMoment(at: snapshot.elapsedSeconds)
     }
 
     private func rememberProgressMilestones(for snapshot: ActiveSessionSnapshot) {
@@ -387,9 +417,13 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
-        var parts = ["\(snapshot.elapsedSeconds.conversationalDurationString)."]
+        var parts: [String] = []
 
-        if snapshot.distanceMeters > 0 {
+        if snapshot.elapsedSeconds >= 60 {
+            parts.append("\(snapshot.elapsedSeconds.conversationalDurationString).")
+        }
+
+        if snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters {
             parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
         }
 
@@ -399,7 +433,7 @@ final class VirtualCoach: NSObject, ObservableObject {
             parts.append("Pace still settling.")
         }
 
-        return parts.joined(separator: " ")
+        return parts.isEmpty ? "Settle in and keep it easy." : parts.joined(separator: " ")
     }
 
     private func coachingAnnouncement(
@@ -411,17 +445,23 @@ final class VirtualCoach: NSObject, ObservableObject {
         return "\(progressAnnouncement(for: snapshot)) \(message)"
     }
 
+    @discardableResult
     private func speak(
         _ text: String,
         urgency: SessionAnalysisUrgency = .steady,
         role: CoachingMomentRole? = nil
-    ) {
+    ) -> Bool {
         let announcement = spokenText(for: text)
+        if speechEnabled, synthesizer.isSpeaking {
+            guard urgency == .caution else { return false }
+            synthesizer.stopSpeaking(at: .word)
+        }
+
         lastSpokenAnnouncement = announcement
         if let role {
             rememberSpokenRole(role)
         }
-        guard speechEnabled else { return }
+        guard speechEnabled else { return true }
 
         let utterance = AVSpeechUtterance(string: announcement)
         if let voice = persona?.voice {
@@ -437,6 +477,20 @@ final class VirtualCoach: NSObject, ObservableObject {
         utterance.preUtteranceDelay = 0.06
         utterance.postUtteranceDelay = 0.12
         synthesizer.speak(utterance)
+        return true
+    }
+
+    private func canSpeakCoachMoment(
+        at elapsedSeconds: Int,
+        urgency: SessionAnalysisUrgency = .steady
+    ) -> Bool {
+        guard urgency != .caution else { return true }
+        guard let lastCoachSpeechElapsedSeconds else { return true }
+        return elapsedSeconds - lastCoachSpeechElapsedSeconds >= minimumCoachSpeechGapSeconds
+    }
+
+    private func rememberCoachSpeech(at elapsedSeconds: Int) {
+        lastCoachSpeechElapsedSeconds = elapsedSeconds
     }
 
     private func coachingMoment(

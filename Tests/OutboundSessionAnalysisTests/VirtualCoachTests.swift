@@ -8,13 +8,13 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 19, distanceMeters: 80, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 74, distanceMeters: 260, paceSecsPerKm: 320))
         try await waitForMainActor()
 
         XCTAssertNil(coach.latestAnalysis)
         XCTAssertEqual(provider.requests.count, 0)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 90, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 75, distanceMeters: 270, paceSecsPerKm: 320))
         try await waitUntil { coach.latestAnalysis != nil }
 
         XCTAssertEqual(provider.requests.count, 1)
@@ -30,14 +30,14 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 90, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 75, distanceMeters: 270, paceSecsPerKm: 320))
         try await waitUntil { provider.requests.count == 1 }
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 94, distanceMeters: 400, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 149, distanceMeters: 650, paceSecsPerKm: 320))
         try await waitForMainActor()
         XCTAssertEqual(provider.requests.count, 1)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 95, distanceMeters: 410, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 150, distanceMeters: 660, paceSecsPerKm: 320))
         try await waitUntil { provider.requests.count == 2 }
 
         coach.deactivate()
@@ -48,7 +48,7 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider)
         coach.activate(with: makeProfile(preferredPaceSecs: 300))
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 100, paceSecsPerKm: 330))
+        coach.ingest(makeSnapshot(elapsedSeconds: 75, distanceMeters: 260, paceSecsPerKm: 330))
         try await waitUntil { coach.latestAnalysis != nil }
 
         XCTAssertEqual(provider.requests.count, 1)
@@ -63,7 +63,7 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 90, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 75, distanceMeters: 270, paceSecsPerKm: 320))
         try await waitUntil { coach.latestAnalysis != nil }
 
         XCTAssertEqual(coach.lastNudge, "Hold steady.")
@@ -77,7 +77,7 @@ final class VirtualCoachTests: XCTestCase {
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 20, distanceMeters: 130, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 75, distanceMeters: 130, paceSecsPerKm: 320))
         try await waitUntil { coach.latestAnalysis != nil }
 
         XCTAssertEqual(coach.lastNudge, "130 meters in. Stay smooth.")
@@ -87,31 +87,30 @@ final class VirtualCoachTests: XCTestCase {
         coach.deactivate()
     }
 
-    func testProgressMomentKeepsProgressContext() async throws {
+    func testProgressAndAnalysisDoNotBothSpeakOnSameTick() async throws {
         let provider = FakeSessionAnalysisProvider(shouldSpeak: true)
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 180, distanceMeters: 1_000, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 300, distanceMeters: 1_000, paceSecsPerKm: 320))
         try await waitUntil { coach.latestAnalysis != nil }
 
-        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("3 minutes in."))
+        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("5 minutes in."))
         XCTAssertTrue(coach.lastSpokenAnnouncement.contains("1 kilometer."))
-        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Hold steady."))
+        XCTAssertFalse(coach.lastSpokenAnnouncement.contains("Hold steady."))
 
         coach.deactivate()
     }
 
-    func testEarlyProgressAnnouncementSpeaksMetersNotFirstKilometer() async throws {
+    func testEarlyProgressAnnouncementSuppressesTinyDistanceRecap() async throws {
         let provider = FakeSessionAnalysisProvider(shouldSpeak: false)
         let coach = VirtualCoach(provider: provider, speechEnabled: false)
         coach.activate(with: nil)
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 180, distanceMeters: 20, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 300, distanceMeters: 20, paceSecsPerKm: 320))
         try await waitForMainActor()
 
-        XCTAssertTrue(coach.lastSpokenAnnouncement.contains("20 meters."))
-        XCTAssertFalse(coach.lastSpokenAnnouncement.localizedCaseInsensitiveContains("1 kilometer."))
+        XCTAssertEqual(coach.lastSpokenAnnouncement, "")
 
         coach.deactivate()
     }
