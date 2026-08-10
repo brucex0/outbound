@@ -43,6 +43,7 @@ let package = Package(
                 "Core/ActiveSessionSnapshot.swift",
                 "Core/ElevationGainCalculator.swift",
                 "Core/SessionFormatting.swift",
+                "Domains/Athlete/CompanionContracts.swift",
                 "Progress/ProgressStatsEngine.swift",
                 "Coach/CoachProfile.swift",
                 "Coach/CoachTemplate.swift",

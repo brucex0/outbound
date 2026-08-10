@@ -161,7 +161,7 @@ final class VirtualCoachTests: XCTestCase {
         try await waitForMainActor()
         XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Halfway through your distance goal."))
 
-        coach.ingest(makeSnapshot(elapsedSeconds: 360, distanceMeters: 3_300, paceSecsPerKm: 320))
+        coach.ingest(makeSnapshot(elapsedSeconds: 375, distanceMeters: 3_300, paceSecsPerKm: 320))
         try await waitForMainActor()
         XCTAssertTrue(coach.lastSpokenAnnouncement.contains("Last mile"))
 

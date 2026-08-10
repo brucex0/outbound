@@ -60,8 +60,8 @@ struct OutboundTests {
         )
 
         #expect(store.needsPlaybackSetup)
-        #expect(store.primaryActionTitle == "Refresh Apple Music access")
-        #expect(store.musicSummaryLine == "Apple Music permission is granted, but catalog playback is unavailable.")
+        #expect(store.primaryActionTitle == "Load workout mixes")
+        #expect(store.musicSummaryLine == "Pick a mix now. Playback may still fail until Apple Music playback access is fully available.")
         #expect(store.troubleshootingLine != nil)
     }
 

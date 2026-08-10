@@ -87,6 +87,8 @@ private struct MockHealthKitService: HealthKitServing {
         }
         return Array(recentWorkouts.prefix(limit))
     }
+
+    func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {}
 }
 
 private enum MockError: LocalizedError {
