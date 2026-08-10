@@ -52,7 +52,7 @@
     <string>Outbound tracks your route during activities, even in the background.</string>
 
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Outbound needs your location to track your run.</string>
+    <string>Outbound uses your approximate location for local running conditions and precise location when tracking a run.</string>
 
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Outbound tracks your route during activities, even in the background.</string>

@@ -43,11 +43,15 @@ struct SimplifiedAppShell: View {
 private struct SimplifiedTodayView: View {
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var weatherStore: SituationalWeatherStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
+    @State private var showsWeatherSheet = false
     @State private var companionTodayMessage: String?
+    @State private var companionWeatherFetchDate: Date?
 
     var body: some View {
         NavigationStack {
@@ -81,6 +85,15 @@ private struct SimplifiedTodayView: View {
                                 .foregroundStyle(.secondary)
                                 .accessibilityLabel("Why this workout")
                             }
+                            TodayWeatherRow(
+                                snapshot: weatherStore.snapshot,
+                                errorMessage: weatherStore.errorMessage,
+                                isEnabled: weatherStore.isEnabled,
+                                isLoading: weatherStore.isLoading,
+                                unitSystem: measurementPreferences.unitSystem,
+                                onEnable: weatherStore.enableAndRefresh,
+                                onOpen: { showsWeatherSheet = true }
+                            )
                             CompactIntervalPreview(phases: todayPhases)
                             OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
                                 onStartRun(plannedRunIntent)
@@ -133,7 +146,13 @@ private struct SimplifiedTodayView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
-            .task { await loadCompanionTodayMessage() }
+            .task {
+                weatherStore.refreshIfEnabled()
+                await loadCompanionTodayMessage()
+            }
+            .onChange(of: weatherStore.snapshot) { _, _ in
+                Task { await loadCompanionTodayMessage() }
+            }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -148,21 +167,32 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showsWeatherSheet) {
+            WeatherDetailSheet(
+                snapshot: weatherStore.snapshot,
+                errorMessage: weatherStore.errorMessage,
+                unitSystem: measurementPreferences.unitSystem,
+                onRefresh: { weatherStore.refresh(force: true) }
+            )
+            .presentationDetents([.medium])
+        }
     }
 
     private func loadCompanionTodayMessage() async {
-        guard companionTodayMessage == nil else { return }
+        let weatherFetchDate = weatherStore.snapshot?.fetchedAt
+        guard companionTodayMessage == nil || companionWeatherFetchDate != weatherFetchDate else { return }
+        companionWeatherFetchDate = weatherFetchDate
         let response = try? await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
             task: .adaptToday,
             surface: .today,
-            prompt: "What is the one most useful thing for me to know about today's training? Do not change anything.",
+            prompt: "What is the one most useful thing for me to know about today's training? If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan.",
             conversationKey: "ios-today",
             recentMessages: [],
             currentEntityIds: [todayWorkoutID],
             clientCapabilities: ["read-only-intervention", "context-receipt"],
             isOffline: false,
             timeZoneIdentifier: TimeZone.current.identifier,
-            signals: []
+            signals: weatherStore.snapshot.map { [$0.companionSignal] } ?? []
         ))
         companionTodayMessage = response?.message
     }
@@ -273,6 +303,144 @@ private struct SimplifiedTodayView: View {
             startLabel: "Start changed run",
             targetDurationSeconds: minutes * 60
         )
+    }
+}
+
+private struct TodayWeatherRow: View {
+    let snapshot: RunningWeatherSnapshot?
+    let errorMessage: String?
+    let isEnabled: Bool
+    let isLoading: Bool
+    let unitSystem: MeasurementUnitSystem
+    let onEnable: () -> Void
+    let onOpen: () -> Void
+
+    var body: some View {
+        if isLoading && snapshot == nil {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Checking local conditions…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+        } else if let snapshot {
+            Button(action: onOpen) {
+                HStack(spacing: 8) {
+                    Image(systemName: snapshot.symbolName)
+                        .foregroundStyle(weatherColor(snapshot.impact))
+                    Text(snapshot.temperatureLabel(unitSystem: unitSystem))
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                    Text(snapshot.headline)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Local conditions, \(snapshot.temperatureLabel(unitSystem: unitSystem)), \(snapshot.headline)")
+        } else if isEnabled, errorMessage != nil {
+            Button(action: onOpen) {
+                Label("Local conditions unavailable", systemImage: "location.slash")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button(action: onEnable) {
+                Label("Add local running conditions", systemImage: "location.circle")
+                    .font(.subheadline.weight(.medium))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func weatherColor(_ impact: RunningWeatherSnapshot.Impact) -> Color {
+        switch impact {
+        case .none: OutboundPalette.companion
+        case .advisory: .orange
+        case .caution, .unsafe: .red
+        }
+    }
+}
+
+private struct WeatherDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let snapshot: RunningWeatherSnapshot?
+    let errorMessage: String?
+    let unitSystem: MeasurementUnitSystem
+    let onRefresh: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                if let snapshot {
+                    HStack(spacing: 12) {
+                        Image(systemName: snapshot.symbolName)
+                            .font(.largeTitle)
+                            .foregroundStyle(OutboundPalette.companion)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(snapshot.headline).font(.headline)
+                            Text(conditionLine(snapshot))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if let guidance = snapshot.guidance {
+                        Label(guidance, systemImage: "figure.run")
+                            .font(.subheadline)
+                    } else {
+                        Label("No workout change is suggested.", systemImage: "checkmark.circle")
+                            .font(.subheadline)
+                    }
+
+                    if let bestWindow = snapshot.bestWindow {
+                        Label(bestWindow, systemImage: "clock")
+                            .font(.subheadline)
+                    }
+
+                    Text("Outbound uses approximate location for this forecast. Weather advice does not automatically change your plan.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Link("Weather data by Apple Weather", destination: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!)
+                        .font(.caption)
+
+                    Spacer()
+                    Button("Refresh conditions", action: onRefresh)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.bordered)
+                } else {
+                    ContentUnavailableView(
+                        "Conditions unavailable",
+                        systemImage: "cloud.slash",
+                        description: Text(errorMessage ?? "Try again in a moment. Your workout is unchanged.")
+                    )
+                    Button("Try again", action: onRefresh)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(OutboundSpacing.screen)
+            .navigationTitle(snapshot?.placeName ?? "Local conditions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func conditionLine(_ snapshot: RunningWeatherSnapshot) -> String {
+        let precipitation = Int((snapshot.precipitationChance * 100).rounded())
+        return "\(snapshot.temperatureLabel(unitSystem: unitSystem)) · Wind \(snapshot.windLabel(unitSystem: unitSystem)) · \(precipitation)% rain"
     }
 }
 

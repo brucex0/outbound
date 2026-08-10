@@ -31,6 +31,7 @@ struct OutboundApp: App {
     @StateObject private var personalizationStore = PersonalizationStore()
     @StateObject private var togetherStore = TogetherStore()
     @StateObject private var cycleAwareStore = CycleAwareStore()
+    @StateObject private var situationalWeatherStore = SituationalWeatherStore()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -88,6 +89,7 @@ struct OutboundApp: App {
                 .environmentObject(personalizationStore)
                 .environmentObject(togetherStore)
                 .environmentObject(cycleAwareStore)
+                .environmentObject(situationalWeatherStore)
                 .task {
                     await coachStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
