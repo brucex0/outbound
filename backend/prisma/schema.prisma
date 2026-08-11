@@ -8,83 +8,85 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  firebaseUid   String    @unique
+  id              String   @id @default(cuid())
+  firebaseUid     String   @unique
   normalizedEmail String?
   normalizedPhone String?
-  username      String    @unique
-  displayName   String
-  avatarUrl     String?
-  bio           String?
-  verified      Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  username        String   @unique
+  displayName     String
+  avatarUrl       String?
+  bio             String?
+  verified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  activities    Activity[]
-  authIdentities AuthIdentity[]
-  coachProfile  CoachProfile?
-  trainingGoals TrainingGoal[]
-  trainingPlans TrainingPlan[]
-  plannedWorkouts PlannedWorkout[]
-  workoutCompletions WorkoutCompletion[]
-  readinessCheckIns ReadinessCheckIn[]
-  athleteTrainingStates AthleteTrainingState[]
-  planningEvents PlanningEvent[]
-  planAdjustmentEvents PlanAdjustmentEvent[]
-  runnerProfile RunnerProfile?
-  calibrationProgram CalibrationProgram?
-  runnerInsights RunnerInsight[]
-  runnerModelVersions RunnerModelVersion[]
-  workoutFeedback WorkoutFeedback[]
-  personalizationAdjustments PersonalizationAdjustment[]
-  runnerEvidence RunnerEvidence[]
-  runnerBeliefs RunnerBelief[]
-  companionEpisodes CompanionEpisode[]
+  activities                  Activity[]
+  authIdentities              AuthIdentity[]
+  coachProfile                CoachProfile?
+  trainingGoals               TrainingGoal[]
+  trainingPlans               TrainingPlan[]
+  plannedWorkouts             PlannedWorkout[]
+  workoutCompletions          WorkoutCompletion[]
+  readinessCheckIns           ReadinessCheckIn[]
+  athleteTrainingStates       AthleteTrainingState[]
+  planningEvents              PlanningEvent[]
+  planAdjustmentEvents        PlanAdjustmentEvent[]
+  runnerProfile               RunnerProfile?
+  calibrationProgram          CalibrationProgram?
+  runnerInsights              RunnerInsight[]
+  runnerModelVersions         RunnerModelVersion[]
+  workoutFeedback             WorkoutFeedback[]
+  personalizationAdjustments  PersonalizationAdjustment[]
+  runnerEvidence              RunnerEvidence[]
+  runnerBeliefs               RunnerBelief[]
+  companionEpisodes           CompanionEpisode[]
   companionConversationStates CompanionConversationState[]
-  contextManifests ContextManifest[]
-  situationalSignals SituationalSignal[]
-  agentActions AgentAction[]
-  agentOutcomes AgentOutcome[]
-  safetyLiveShares SafetyLiveShare[]
-  liveGroupSessionsCreated LiveGroupSession[] @relation("LiveGroupSessionCreator")
-  liveGroupParticipants LiveGroupParticipant[]
-  posts         Post[]
-  following     Follow[]  @relation("follower")
-  followers     Follow[]  @relation("following")
-  reactions     Reaction[]
-  comments      Comment[]
-  connectionsRequested Connection[] @relation("ConnectionRequester")
-  connectionsReceived Connection[] @relation("ConnectionAddressee")
-  circlesOwned Circle[] @relation("CircleOwner")
-  circleMemberships CircleMember[]
-  clubMemberships ClubMembership[]
-  groupRunsCreated GroupRun[] @relation("GroupRunCreator")
-  invitationsSent Invitation[] @relation("InvitationSender")
-  invitationsReceived Invitation[] @relation("InvitationRecipient")
-  moments       Moment[]
+  contextManifests            ContextManifest[]
+  situationalSignals          SituationalSignal[]
+  agentActions                AgentAction[]
+  agentOutcomes               AgentOutcome[]
+  safetyLiveShares            SafetyLiveShare[]
+  liveGroupSessionsCreated    LiveGroupSession[]           @relation("LiveGroupSessionCreator")
+  liveGroupParticipants       LiveGroupParticipant[]
+  posts                       Post[]
+  following                   Follow[]                     @relation("follower")
+  followers                   Follow[]                     @relation("following")
+  reactions                   Reaction[]
+  comments                    Comment[]
+  connectionsRequested        Connection[]                 @relation("ConnectionRequester")
+  connectionsReceived         Connection[]                 @relation("ConnectionAddressee")
+  circlesOwned                Circle[]                     @relation("CircleOwner")
+  circleMemberships           CircleMember[]
+  clubMemberships             ClubMembership[]
+  groupRunsCreated            GroupRun[]                   @relation("GroupRunCreator")
+  invitationsSent             Invitation[]                 @relation("InvitationSender")
+  invitationsReceived         Invitation[]                 @relation("InvitationRecipient")
+  referralLink                ReferralLink?                @relation("ReferralCreator")
+  referralClaim               ReferralClaim?               @relation("ReferralClaimant")
+  moments                     Moment[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
 }
 
 model AuthIdentity {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firebaseUid     String    @unique
-  providerId      String
-  signInProvider  String?
-  providerIds     String[]  @default([])
+  firebaseUid    String   @unique
+  providerId     String
+  signInProvider String?
+  providerIds    String[] @default([])
 
   email           String?
   normalizedEmail String?
-  emailVerified   Boolean   @default(false)
+  emailVerified   Boolean @default(false)
   phoneNumber     String?
   normalizedPhone String?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([normalizedEmail])
@@ -92,112 +94,112 @@ model AuthIdentity {
 }
 
 model CoachProfile {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Coach identity
-  coachName       String    @default("Coach")
-  personality     String    @default("encouraging")  // encouraging | data-driven | direct | zen
-  voiceId         String    @default("default")
+  coachName   String @default("Coach")
+  personality String @default("encouraging") // encouraging | data-driven | direct | zen
+  voiceId     String @default("default")
 
   // Athlete snapshot (rebuilt after each activity)
-  fitnessLevel    String    @default("beginner")     // beginner | intermediate | advanced | elite
-  weeklyVolumeKm  Float     @default(0)
-  preferredPace   Float?    // seconds per km
-  strengths       String[]  @default([])
-  weaknesses      String[]  @default([])
+  fitnessLevel   String   @default("beginner") // beginner | intermediate | advanced | elite
+  weeklyVolumeKm Float    @default(0)
+  preferredPace  Float? // seconds per km
+  strengths      String[] @default([])
+  weaknesses     String[] @default([])
 
   // Goals
-  goals           Json      @default("[]")           // GoalItem[]
+  goals Json @default("[]") // GoalItem[]
 
   // Personal records
-  records         Json      @default("{}")           // { "5k": seconds, "10k": seconds, ... }
+  records Json @default("{}") // { "5k": seconds, "10k": seconds, ... }
 
   // Coaching memory — compressed history for on-device context
-  memorySnapshot  Json      @default("{}")           // last 30 days summary
-  lastBuiltAt     DateTime?
+  memorySnapshot Json      @default("{}") // last 30 days summary
+  lastBuiltAt    DateTime?
 
   // Downloadable artifact version
-  version         Int       @default(0)
+  version Int @default(0)
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Activity {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String  @id @default(cuid())
+  userId           String
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientActivityId String?
-  syncSource    String?   // ios-local-store, watch-import, manual
+  syncSource       String? // ios-local-store, watch-import, manual
 
-  type          String    // running | cycling | hiking | swimming
-  title         String?
-  startedAt     DateTime
-  endedAt       DateTime?
-  durationSecs  Int?
-  distanceM     Float?
-  elevationM    Float?
-  avgPace       Float?    // secs/km
-  avgHeartRate  Int?
-  calories      Int?
+  type         String // running | cycling | hiking | swimming
+  title        String?
+  startedAt    DateTime
+  endedAt      DateTime?
+  durationSecs Int?
+  distanceM    Float?
+  elevationM   Float?
+  avgPace      Float? // secs/km
+  avgHeartRate Int?
+  calories     Int?
 
-  route         Json?     // GeoJSON Feature with LineString geometry
-  splits        Json?     // Split[]
-  reflection    Json?     // post-activity finish reflection saved by the client
-  photos        Photo[]
-  posts         Post[]
+  route              Json? // GeoJSON Feature with LineString geometry
+  splits             Json? // Split[]
+  reflection         Json? // post-activity finish reflection saved by the client
+  photos             Photo[]
+  posts              Post[]
   workoutCompletions WorkoutCompletion[]
-  moments       Moment[]
+  moments            Moment[]
 
   // AI coach analysis generated after activity
   coachAnalysis Json?
 
-  createdAt     DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([userId, clientActivityId])
 }
 
 model SafetyLiveShare {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId      String?
-  tokenHash       String    @unique
-  status          String    @default("active")
-  recipientLabel  String?
-  sport           String?
-  title           String?
-  startedAt       DateTime  @default(now())
-  expiresAt       DateTime
-  endedAt         DateTime?
-  lastLocationAt  DateTime?
-  lastLocation    Json?
-  routePreview    Json      @default("[]")
-  elapsedSeconds  Int       @default(0)
-  distanceM       Float     @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId     String?
+  tokenHash      String    @unique
+  status         String    @default("active")
+  recipientLabel String?
+  sport          String?
+  title          String?
+  startedAt      DateTime  @default(now())
+  expiresAt      DateTime
+  endedAt        DateTime?
+  lastLocationAt DateTime?
+  lastLocation   Json?
+  routePreview   Json      @default("[]")
+  elapsedSeconds Int       @default(0)
+  distanceM      Float     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  points          SafetyLiveSharePoint[]
+  points SafetyLiveSharePoint[]
 
   @@index([userId, status])
   @@index([expiresAt])
 }
 
 model SafetyLiveSharePoint {
-  id              String    @id @default(cuid())
-  shareId         String
-  share           SafetyLiveShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
-  recordedAt      DateTime
-  latitude        Float
-  longitude       Float
-  altitudeM       Float?
-  accuracyM       Float?
-  elapsedSeconds  Int
-  distanceM       Float
-  createdAt       DateTime  @default(now())
+  id             String          @id @default(cuid())
+  shareId        String
+  share          SafetyLiveShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  recordedAt     DateTime
+  latitude       Float
+  longitude      Float
+  altitudeM      Float?
+  accuracyM      Float?
+  elapsedSeconds Int
+  distanceM      Float
+  createdAt      DateTime        @default(now())
 
   @@index([shareId, recordedAt])
 }
@@ -217,27 +219,27 @@ model LiveGroupSession {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  participants    LiveGroupParticipant[]
+  participants LiveGroupParticipant[]
 
   @@index([creatorUserId, status])
   @@index([expiresAt])
 }
 
 model LiveGroupParticipant {
-  id                   String    @id @default(cuid())
+  id                   String           @id @default(cuid())
   sessionId            String
   session              LiveGroupSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId               String
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName          String
-  status               String    @default("active")
-  joinedAt             DateTime  @default(now())
+  status               String           @default("active")
+  joinedAt             DateTime         @default(now())
   leftAt               DateTime?
   lastLocationAt       DateTime?
   lastLocation         Json?
   lastActivitySnapshot Json?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@unique([sessionId, userId])
   @@index([sessionId, status])
@@ -246,7 +248,7 @@ model LiveGroupParticipant {
 }
 
 model TrainingPlanTemplate {
-  id                     String    @id
+  id                     String   @id
   focus                  String
   sport                  String
   title                  String
@@ -257,30 +259,30 @@ model TrainingPlanTemplate {
   baseWeeklyMinutes      Int
   baseLongSessionMinutes Int
   summary                String
-  highlights             String[]  @default([])
+  highlights             String[] @default([])
   source                 Json?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  weeks                  TrainingPlanWeek[]
+  weeks TrainingPlanWeek[]
 
   @@index([focus])
   @@index([sport])
 }
 
 model TrainingPlanWeek {
-  id          String    @id @default(cuid())
-  templateId  String
-  template    TrainingPlanTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  sourceId    String
-  weekIndex   Int
-  focus       String
-  summary     String
-  notes       String[]  @default([])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String               @id @default(cuid())
+  templateId String
+  template   TrainingPlanTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sourceId   String
+  weekIndex  Int
+  focus      String
+  summary    String
+  notes      String[]             @default([])
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 
-  workouts    TrainingPlanWorkout[]
+  workouts TrainingPlanWorkout[]
 
   @@unique([templateId, sourceId])
   @@unique([templateId, weekIndex])
@@ -288,7 +290,7 @@ model TrainingPlanWeek {
 }
 
 model TrainingPlanWorkout {
-  id              String    @id @default(cuid())
+  id              String           @id @default(cuid())
   weekId          String
   week            TrainingPlanWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
   sourceId        String
@@ -302,18 +304,18 @@ model TrainingPlanWorkout {
   effortLabel     String
   durationSeconds Int
   distanceLabel   String?
-  isOptional      Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isOptional      Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  steps           TrainingPlanWorkoutStep[]
+  steps TrainingPlanWorkoutStep[]
 
   @@unique([weekId, sourceId])
   @@index([weekId, sortOrder])
 }
 
 model TrainingPlanWorkoutStep {
-  id              String    @id @default(cuid())
+  id              String              @id @default(cuid())
   workoutId       String
   workout         TrainingPlanWorkout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
   sourceId        String
@@ -322,8 +324,8 @@ model TrainingPlanWorkoutStep {
   label           String
   durationSeconds Int
   detail          String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@unique([workoutId, sourceId])
   @@index([workoutId, sortOrder])
@@ -348,56 +350,56 @@ model TrainingGoal {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  plans                TrainingPlan[]
+  plans TrainingPlan[]
 
   @@index([userId, status])
 }
 
 model TrainingPlan {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goalId         String
-  goal           TrainingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  status         String    @default("active")
-  currentPhase   String    @default("base")
-  source         String    @default("generated")
-  startedAt      DateTime  @default(now())
-  endedAt        DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId       String
+  goal         TrainingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  status       String       @default("active")
+  currentPhase String       @default("base")
+  source       String       @default("generated")
+  startedAt    DateTime     @default(now())
+  endedAt      DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
-  versions       TrainingPlanVersion[]
+  versions TrainingPlanVersion[]
 
   @@index([userId, status])
   @@index([goalId])
 }
 
 model TrainingPlanVersion {
-  id              String    @id @default(cuid())
-  planId          String
-  plan            TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  versionNumber   Int
-  reason          String
-  effectiveFrom   DateTime  @default(now())
-  effectiveUntil  DateTime?
-  summary         String
-  engineInputs    Json      @default("{}")
-  engineDecision  Json      @default("{}")
-  createdAt       DateTime  @default(now())
+  id             String       @id @default(cuid())
+  planId         String
+  plan           TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  versionNumber  Int
+  reason         String
+  effectiveFrom  DateTime     @default(now())
+  effectiveUntil DateTime?
+  summary        String
+  engineInputs   Json         @default("{}")
+  engineDecision Json         @default("{}")
+  createdAt      DateTime     @default(now())
 
-  workouts        PlannedWorkout[]
+  workouts PlannedWorkout[]
 
   @@unique([planId, versionNumber])
   @@index([planId, createdAt])
 }
 
 model PlannedWorkout {
-  id                String    @id @default(cuid())
+  id                String              @id @default(cuid())
   planVersionId     String
   planVersion       TrainingPlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   scheduledDate     DateTime
   modality          String
   stimulus          String
@@ -406,15 +408,15 @@ model PlannedWorkout {
   distanceMeters    Float?
   intensityModel    String
   intensityTarget   Json?
-  prescription      Json      @default("{}")
-  isKeyWorkout      Boolean   @default(false)
-  status            String    @default("planned")
+  prescription      Json                @default("{}")
+  isKeyWorkout      Boolean             @default(false)
+  status            String              @default("planned")
   replacesWorkoutId String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  blocks            WorkoutBlock[]
-  completions       WorkoutCompletion[]
+  blocks      WorkoutBlock[]
+  completions WorkoutCompletion[]
 
   @@index([userId, scheduledDate])
   @@index([planVersionId, scheduledDate])
@@ -422,7 +424,7 @@ model PlannedWorkout {
 }
 
 model WorkoutBlock {
-  id               String    @id @default(cuid())
+  id               String         @id @default(cuid())
   plannedWorkoutId String
   plannedWorkout   PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
   sortOrder        Int
@@ -433,17 +435,17 @@ model WorkoutBlock {
   distanceMeters   Float?
   repeats          Int?
   restSeconds      Int?
-  metadata         Json      @default("{}")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  metadata         Json           @default("{}")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  steps            WorkoutStep[]
+  steps WorkoutStep[]
 
   @@index([plannedWorkoutId, sortOrder])
 }
 
 model WorkoutStep {
-  id              String    @id @default(cuid())
+  id              String       @id @default(cuid())
   blockId         String
   block           WorkoutBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
   sortOrder       Int
@@ -453,30 +455,30 @@ model WorkoutStep {
   distanceMeters  Float?
   target          Json?
   detail          String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([blockId, sortOrder])
 }
 
 model WorkoutCompletion {
-  id                String    @id @default(cuid())
+  id                String         @id @default(cuid())
   plannedWorkoutId  String
   plannedWorkout    PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   activityId        String?
-  activity          Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  completedAt       DateTime  @default(now())
+  activity          Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  completedAt       DateTime       @default(now())
   durationSeconds   Int?
   distanceMeters    Float?
   avgPace           Float?
   avgHeartRate      Int?
   avgPower          Float?
   perceivedEffort   Int?
-  completionQuality String    @default("completed")
+  completionQuality String         @default("completed")
   notes             String?
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime       @default(now())
 
   @@index([userId, completedAt])
   @@index([plannedWorkoutId])
@@ -484,53 +486,53 @@ model WorkoutCompletion {
 }
 
 model ReadinessCheckIn {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date          DateTime
-  energy        Int       @default(3)
-  soreness      Int       @default(1)
-  sleepQuality  Int       @default(3)
-  stress        Int       @default(1)
-  motivation    Int       @default(3)
-  illnessOrPain Boolean   @default(false)
-  notes         String?
-  clientRequestId String? @unique
-  choice        String?
-  createdAt     DateTime  @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime
+  energy          Int      @default(3)
+  soreness        Int      @default(1)
+  sleepQuality    Int      @default(3)
+  stress          Int      @default(1)
+  motivation      Int      @default(3)
+  illnessOrPain   Boolean  @default(false)
+  notes           String?
+  clientRequestId String?  @unique
+  choice          String?
+  createdAt       DateTime @default(now())
 
   @@index([userId, date])
 }
 
 model RunnerProfile {
-  id                         String   @id @default(cuid())
-  userId                     String   @unique
-  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                         String    @id @default(cuid())
+  userId                     String    @unique
+  user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   goalSummary                String?
   scheduleSummary            String?
   comfortableDurationMinutes Int?
   recentSessionsPerWeek      Int?
-  targetSessionsPerWeek      Int      @default(3)
+  targetSessionsPerWeek      Int       @default(3)
   preferredLongRunDay        String?
-  coachingDetail             String   @default("balanced")
-  constraints                Json     @default("{}")
+  coachingDetail             String    @default("balanced")
+  constraints                Json      @default("{}")
   completedAt                DateTime?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 }
 
 model CalibrationProgram {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status                String   @default("notStarted")
-  completedSessionCount Int      @default(0)
-  targetSessionCount    Int      @default(3)
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                String    @default("notStarted")
+  completedSessionCount Int       @default(0)
+  targetSessionCount    Int       @default(3)
   currentSession        String?
   startedAt             DateTime?
   completedAt           DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 }
 
 model RunnerInsight {
@@ -552,14 +554,14 @@ model RunnerInsight {
 }
 
 model RunnerModelVersion {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versionNumber  Int
-  reason         String
-  snapshot       Json
-  policyVersion  String
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  reason        String
+  snapshot      Json
+  policyVersion String
+  createdAt     DateTime @default(now())
 
   @@unique([userId, versionNumber])
   @@index([userId, createdAt])
@@ -583,38 +585,38 @@ model WorkoutFeedback {
 }
 
 model PersonalizationAdjustment {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   reasonCode           String
   explanation          String
-  requiresConfirmation Boolean  @default(true)
+  requiresConfirmation Boolean   @default(true)
   changes              Json
-  status               String   @default("proposed")
+  status               String    @default("proposed")
   policyVersion        String
   decidedAt            DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([userId, status, createdAt])
 }
 
 model RunnerEvidence {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dedupeKey        String   @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dedupeKey        String    @unique
   type             String
   source           String
   subject          String
   payload          Json
-  confidence       Float    @default(1)
-  sensitivity      String   @default("standard")
-  consequenceLevel String   @default("low")
+  confidence       Float     @default(1)
+  sensitivity      String    @default("standard")
+  consequenceLevel String    @default("low")
   observedAt       DateTime
   expiresAt        DateTime?
   supersededAt     DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   @@index([userId, type, observedAt])
   @@index([userId, subject, observedAt])
@@ -622,26 +624,26 @@ model RunnerEvidence {
 }
 
 model RunnerBelief {
-  id                   String   @id @default(cuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stableKey            String
-  kind                 String
-  label                String
-  value                Json
-  summary              String
-  confidence           Float    @default(0.5)
-  status               String   @default("hypothesis")
-  source               String   @default("inferred")
-  supportingEvidenceIds String[] @default([])
-  contradictingEvidenceIds String[] @default([])
-  sensitivity          String   @default("standard")
-  consequenceLevel     String   @default("low")
-  firstSeenAt          DateTime @default(now())
-  refreshedAt          DateTime @default(now())
-  expiresAt            DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                       String    @id @default(cuid())
+  userId                   String
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stableKey                String
+  kind                     String
+  label                    String
+  value                    Json
+  summary                  String
+  confidence               Float     @default(0.5)
+  status                   String    @default("hypothesis")
+  source                   String    @default("inferred")
+  supportingEvidenceIds    String[]  @default([])
+  contradictingEvidenceIds String[]  @default([])
+  sensitivity              String    @default("standard")
+  consequenceLevel         String    @default("low")
+  firstSeenAt              DateTime  @default(now())
+  refreshedAt              DateTime  @default(now())
+  expiresAt                DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   @@unique([userId, stableKey])
   @@index([userId, status, refreshedAt])
@@ -649,18 +651,18 @@ model RunnerBelief {
 }
 
 model CompanionEpisode {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   kind        String
   summary     String
-  entityRefs  String[] @default([])
-  evidenceIds String[] @default([])
-  salience    Float    @default(0.5)
+  entityRefs  String[]  @default([])
+  evidenceIds String[]  @default([])
+  salience    Float     @default(0.5)
   outcome     Json?
   occurredAt  DateTime
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([userId, occurredAt])
   @@index([userId, kind])
@@ -692,14 +694,14 @@ model ContextManifest {
   task               String
   surface            String
   runnerModelVersion String
-  planVersion         String?
-  tokenBudget         Int
-  estimatedTokens     Int
-  includedRefs        Json
-  omittedRefs         Json
-  sectionBudgets      Json
-  contextHash         String
-  createdAt           DateTime @default(now())
+  planVersion        String?
+  tokenBudget        Int
+  estimatedTokens    Int
+  includedRefs       Json
+  omittedRefs        Json
+  sectionBudgets     Json
+  contextHash        String
+  createdAt          DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, task, createdAt])
@@ -727,45 +729,45 @@ model SituationalSignal {
 }
 
 model AgentAction {
-  id                    String   @id @default(cuid())
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  idempotencyKey        String   @unique
-  triggerType           String
-  task                  String
-  actionType            String
-  permissionTier        Int
-  requiresConfirmation  Boolean  @default(false)
-  status                String   @default("proposed")
-  evidenceIds           String[] @default([])
-  contextManifestId     String?
-  runnerModelVersion    String
-  modelVersion          String?
-  policyVersion         String
-  proposal              Json
-  validation            Json
-  beforeState           Json?
-  afterState            Json?
-  rollback              Json?
-  explanation           String
-  decidedAt             DateTime?
-  executedAt            DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idempotencyKey       String    @unique
+  triggerType          String
+  task                 String
+  actionType           String
+  permissionTier       Int
+  requiresConfirmation Boolean   @default(false)
+  status               String    @default("proposed")
+  evidenceIds          String[]  @default([])
+  contextManifestId    String?
+  runnerModelVersion   String
+  modelVersion         String?
+  policyVersion        String
+  proposal             Json
+  validation           Json
+  beforeState          Json?
+  afterState           Json?
+  rollback             Json?
+  explanation          String
+  decidedAt            DateTime?
+  executedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([userId, status, createdAt])
   @@index([userId, actionType, createdAt])
 }
 
 model AgentOutcome {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  actionId    String
-  type        String
-  payload     Json      @default("{}")
-  observedAt  DateTime
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionId   String
+  type       String
+  payload    Json     @default("{}")
+  observedAt DateTime
+  createdAt  DateTime @default(now())
 
   @@index([userId, actionId, observedAt])
 }
@@ -814,36 +816,36 @@ model PlanningEvent {
 }
 
 model PlanAdjustmentEvent {
-  id                String    @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   planId            String
   fromVersionId     String?
   toVersionId       String?
   eventType         String
   message           String
-  changedWorkoutIds String[]  @default([])
-  engineInputs      Json      @default("{}")
-  engineDecision    Json      @default("{}")
-  createdAt         DateTime  @default(now())
+  changedWorkoutIds String[] @default([])
+  engineInputs      Json     @default("{}")
+  engineDecision    Json     @default("{}")
+  createdAt         DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([planId, createdAt])
 }
 
 model Photo {
-  id          String    @id @default(cuid())
-  activityId  String
-  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  url         String
-  takenAt     DateTime
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  url        String
+  takenAt    DateTime
   // Stats at moment of capture
-  paceAtShot  Float?
-  hrAtShot    Int?
-  distAtShot  Float?
-  lat         Float?
-  lng         Float?
-  createdAt   DateTime  @default(now())
+  paceAtShot Float?
+  hrAtShot   Int?
+  distAtShot Float?
+  lat        Float?
+  lng        Float?
+  createdAt  DateTime @default(now())
 }
 
 model Moment {
@@ -868,16 +870,16 @@ model Moment {
 }
 
 model Post {
-  id          String     @id @default(cuid())
-  userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId  String?
-  activity    Activity?  @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  caption     String?
-  createdAt   DateTime   @default(now())
-  reactions   Reaction[]
-  comments    Comment[]
-  visibility  String     @default("connections")
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity?  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  caption    String?
+  createdAt  DateTime   @default(now())
+  reactions  Reaction[]
+  comments   Comment[]
+  visibility String     @default("connections")
 }
 
 model Connection {
@@ -895,13 +897,13 @@ model Connection {
 }
 
 model Circle {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   ownerId   String
-  owner     User     @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User           @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   name      String
   kind      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   members   CircleMember[]
 
   @@index([ownerId])
@@ -920,15 +922,15 @@ model CircleMember {
 }
 
 model Club {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  city        String?
-  isDiscoverable Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  memberships ClubMembership[]
-  runs        GroupRun[]
+  id             String           @id @default(cuid())
+  name           String
+  description    String?
+  city           String?
+  isDiscoverable Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  memberships    ClubMembership[]
+  runs           GroupRun[]
 }
 
 model ClubMembership {
@@ -945,18 +947,18 @@ model ClubMembership {
 }
 
 model GroupRun {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   clubId       String?
-  club         Club?    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  club         Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
   creatorId    String
-  creator      User     @relation("GroupRunCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  creator      User             @relation("GroupRunCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   title        String
   startsAt     DateTime
   locationName String?
   paceNote     String?
-  status       String   @default("scheduled")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status       String           @default("scheduled")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   groups       GroupRunOption[]
   invitations  Invitation[]
 
@@ -979,28 +981,51 @@ model GroupRunOption {
 }
 
 model Invitation {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   senderId    String
-  sender      User     @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sender      User      @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId String?
-  recipient   User?    @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  recipient   User?     @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
   groupRunId  String?
   groupRun    GroupRun? @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
   kind        String
-  tokenHash   String?  @unique
-  status      String   @default("pending")
-  createdAt   DateTime @default(now())
+  tokenHash   String?   @unique
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
   expiresAt   DateTime?
 
   @@index([recipientId, status])
   @@index([senderId, status])
 }
 
+model ReferralLink {
+  id            String          @id @default(cuid())
+  creatorId     String          @unique
+  creator       User            @relation("ReferralCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  code          String          @unique
+  clickCount    Int             @default(0)
+  claimCount    Int             @default(0)
+  lastClickedAt DateTime?
+  createdAt     DateTime        @default(now())
+  claims        ReferralClaim[]
+}
+
+model ReferralClaim {
+  id             String       @id @default(cuid())
+  referralLinkId String
+  referralLink   ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  claimantId     String       @unique
+  claimant       User         @relation("ReferralClaimant", fields: [claimantId], references: [id], onDelete: Cascade)
+  claimedAt      DateTime     @default(now())
+
+  @@index([referralLinkId, claimedAt])
+}
+
 model Follow {
   followerId  String
   followingId String
-  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
   @@id([followerId, followingId])
@@ -1012,7 +1037,7 @@ model Reaction {
   postId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  type      String   // fire | clap | heart | strong
+  type      String // fire | clap | heart | strong
   createdAt DateTime @default(now())
 
   @@unique([userId, postId])

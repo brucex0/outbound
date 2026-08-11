@@ -24,6 +24,7 @@ struct MainTabView: View {
             currentContent
         }
         .background(Color(.systemGroupedBackground))
+        .feedbackReporter()
         .overlay(alignment: .bottom) {
             if !isActivityVisible && !usesSimplifiedShell {
                 HStack(spacing: 10) {

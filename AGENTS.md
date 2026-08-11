@@ -4,6 +4,13 @@ This is a personal project. All Snap/Snapchat-related security guardrails and co
 
 Do not run the test suite unless the user explicitly asks. A build-only compile check is acceptable when needed to validate code changes.
 
+## Completion And Commits
+
+- After completing repository changes, run a basic verification appropriate to the affected scope without running the test suite unless the user explicitly requested tests.
+- If the basic verification succeeds, commit the completed changes before handing the task back to the user.
+- Keep unrelated user files, generated artifacts, temporary directories, and agent metadata out of the commit.
+- If verification or committing is blocked, report the blocker instead of claiming the task is complete.
+
 ## Pre-Publish Data Policy
 
 Outbound has not shipped publicly yet. Do not preserve awkward backward compatibility for training plans, seed data, or local/backend database rows when a cleaner model is better. It is acceptable to reset, reseed, or rebuild the local/backend database when plan IDs, template shape, or seed content changes, as long as the change is documented and the required rebuild command is clear.

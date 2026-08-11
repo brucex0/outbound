@@ -698,12 +698,15 @@ private struct SimplifiedTogetherView: View {
                                     .font(.headline)
                                 Text("Invite family or friends, or join a club run that fits your plan.")
                                     .font(.subheadline)
-                                ShareLink(
-                                    item: URL(string: "https://outbound.run")!,
-                                    subject: Text("Run with me on Plainstride"),
-                                    message: Text("Join me for a run on Plainstride."),
-                                    preview: SharePreview("Run with me on Plainstride", image: Image(systemName: "figure.run"))
-                                ) {
+                                Button {
+                                    Task {
+                                        guard let url = await togetherStore.referralInvitationURL() else { return }
+                                        await SystemSharePresenter.present(activityItems: [
+                                            "Join me for a run on Plainstride: \(url.absoluteString)",
+                                            url,
+                                        ])
+                                    }
+                                } label: {
                                     Label("Invite someone", systemImage: "person.badge.plus")
                                 }
                                 .buttonStyle(.bordered)
@@ -989,6 +992,17 @@ private struct SimplifiedSettingsView: View {
             }
             Section("Health & body") {
                 NavigationLink("Cycle-aware coaching") { CycleAwareView() }
+            }
+            Section {
+                Button {
+                    FeedbackTrigger.present()
+                } label: {
+                    Label("Send feedback", systemImage: "ladybug")
+                }
+            } header: {
+                Text("Help")
+            } footer: {
+                Text("You can also shake your iPhone anywhere in the app to report a bug or share a suggestion.")
             }
             Section("Gear") {
                 GearSettingsCard()

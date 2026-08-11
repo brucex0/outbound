@@ -14,6 +14,7 @@ import planning from "./routes/planning.js";
 import personalization from "./routes/personalization.js";
 import companion from "./routes/companion.js";
 import safety, { liveShareViewer } from "./routes/safety.js";
+import invites from "./routes/invites.js";
 import type { AppEnv } from "./types/hono.js";
 
 const app = new Hono<AppEnv>();
@@ -24,6 +25,7 @@ app.use("/v1/*", authMiddleware);
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
 app.get("/live/:token", liveShareViewer);
+app.route("/", invites);
 
 app.route("/v1/auth", auth);
 app.route("/v1/activities", activities);

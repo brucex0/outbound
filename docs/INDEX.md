@@ -62,6 +62,7 @@ Primary flow:
 | Firebase Auth, Google project setup, Firebase plist, REST inspection | `docs/firebase.md` | Project IDs, app IDs, callback scheme, auth/provider notes, REST pattern |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
 | TestFlight, App Store archive, metadata, privacy, submission | `docs/app-store-release.md` | Release build checklist, App Store Connect inputs, privacy review, and owner decisions |
+| TestFlight 1.0 submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, test instructions, review notes, privacy draft, and upload checklist |
 
 ## Documentation Rules
 

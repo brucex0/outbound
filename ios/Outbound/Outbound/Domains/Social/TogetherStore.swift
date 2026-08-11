@@ -36,10 +36,21 @@ final class TogetherStore: ObservableObject {
     func invite(to run: TogetherGroupRunDTO) async {
         do {
             let invitation = try await api.createTogetherInvitation(runID: run.id)
-            latestInvitationURL = URL(string: "https://outbound.run/invite/\(invitation.token)")
+            latestInvitationURL = PlainstrideLinks.scheduledRunInvitation(token: invitation.token)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func referralInvitationURL() async -> URL? {
+        do {
+            let referral = try await api.createReferralLink()
+            errorMessage = nil
+            return referral.url
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
         }
     }
 
@@ -64,4 +75,16 @@ final class TogetherStore: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(type, from: data)
     }
+}
+
+struct ReferralLinkResponseDTO: Decodable {
+    let code: String
+    let url: URL
+    let clickCount: Int
+    let claimCount: Int
+}
+
+struct ReferralClaimResponseDTO: Decodable {
+    let claimed: Bool
+    let reason: String?
 }

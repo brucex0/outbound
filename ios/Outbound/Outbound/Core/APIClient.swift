@@ -157,6 +157,14 @@ final class APIClient {
         try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: nil))
     }
 
+    func createReferralLink() async throws -> ReferralLinkResponseDTO {
+        try await post("/social/referrals", body: EmptyBody())
+    }
+
+    func claimReferral(code: String) async throws -> ReferralClaimResponseDTO {
+        try await post("/social/referrals/\(code)/claim", body: EmptyBody())
+    }
+
     func reactToTogetherPost(postID: String, type: String) async throws -> TogetherReactionDTO {
         try await post("/social/posts/\(postID)/reactions", body: TogetherReactionRequestDTO(type: type))
     }

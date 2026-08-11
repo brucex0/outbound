@@ -90,6 +90,36 @@ router.post("/group-runs/:id/invitations", zValidator("json", z.object({ recipie
   return c.json({ id: invitation.id, token, status: invitation.status }, 201);
 });
 
+router.post("/referrals", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const existing = await getPrismaClient().referralLink.findUnique({ where: { creatorId: user.id } });
+  const referral = existing ?? await getPrismaClient().referralLink.create({
+    data: { creatorId: user.id, code: randomBytes(12).toString("base64url") },
+  });
+  return c.json({
+    code: referral.code,
+    url: `${publicWebBaseURL()}/invite/r/${referral.code}`,
+    clickCount: referral.clickCount,
+    claimCount: referral.claimCount,
+  }, existing ? 200 : 201);
+});
+
+router.post("/referrals/:code/claim", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const referral = await getPrismaClient().referralLink.findUnique({ where: { code: c.req.param("code") } });
+  if (!referral) return c.json({ error: "Referral not found." }, 404);
+  if (referral.creatorId === user.id) return c.json({ claimed: false, reason: "self" });
+  const existing = await getPrismaClient().referralClaim.findUnique({ where: { claimantId: user.id } });
+  if (existing) return c.json({ claimed: existing.referralLinkId === referral.id, reason: "already_claimed" });
+  await getPrismaClient().$transaction([
+    getPrismaClient().referralClaim.create({ data: { referralLinkId: referral.id, claimantId: user.id } }),
+    getPrismaClient().referralLink.update({ where: { id: referral.id }, data: { claimCount: { increment: 1 } } }),
+  ]);
+  return c.json({ claimed: true });
+});
+
 router.post("/activity-shares", zValidator("json", z.object({ activityId: z.string().min(1), caption: z.string().trim().max(1000).nullable().optional(), visibility: z.enum(["connections", "public"]).default("connections") })), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -138,6 +168,10 @@ function shareSafeCompatibility(groups: Array<{ id: string; label: string; dista
 function isAcceptableText(text: string) {
   const normalized = text.toLowerCase();
   return !["kill yourself", "racial slur", "sexual violence"].some((term) => normalized.includes(term));
+}
+
+function publicWebBaseURL() {
+  return (process.env.PUBLIC_WEB_BASE_URL?.trim() || "https://run.plainstride.com").replace(/\/$/, "");
 }
 
 export default router;

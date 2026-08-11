@@ -98,17 +98,54 @@ struct OutboundApp: App {
                     await musicStore.refresh()
                     await personalizationStore.refresh()
                     await togetherStore.refresh()
+                    await consumePendingInviteIfPossible()
                 }
                 .onOpenURL { url in
-                    _ = authStore.handleOpenURL(url)
+                    handleIncomingURL(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL else { return }
+                    handleIncomingURL(url)
                 }
         } else {
             AuthView()
                 .environmentObject(authStore)
                 .onOpenURL { url in
-                    _ = authStore.handleOpenURL(url)
+                    handleIncomingURL(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL else { return }
+                    handleIncomingURL(url)
                 }
         }
+    }
+
+    private func handleIncomingURL(_ url: URL) {
+        if authStore.handleOpenURL(url) { return }
+        guard PlainstrideLinks.liveGroupToken(from: url) != nil
+                || PlainstrideLinks.referralCode(from: url) != nil else { return }
+        UserDefaults.standard.set(url.absoluteString, forKey: "pending_plainstride_invite_v1")
+        guard authStore.isAuthenticated else { return }
+        Task { await consumePendingInviteIfPossible() }
+    }
+
+    private func consumePendingInviteIfPossible() async {
+        guard authStore.isAuthenticated,
+              let rawURL = UserDefaults.standard.string(forKey: "pending_plainstride_invite_v1"),
+              let url = URL(string: rawURL) else { return }
+        if let token = PlainstrideLinks.liveGroupToken(from: url) {
+            await liveGroupStore.joinGroup(invite: token)
+            guard liveGroupStore.activeSession != nil else { return }
+        } else if let referralCode = PlainstrideLinks.referralCode(from: url) {
+            do {
+                _ = try await APIClient.shared.claimReferral(code: referralCode)
+            } catch {
+                return
+            }
+        } else {
+            return
+        }
+        UserDefaults.standard.removeObject(forKey: "pending_plainstride_invite_v1")
     }
 }
 
