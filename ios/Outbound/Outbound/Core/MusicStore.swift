@@ -79,7 +79,7 @@ final class MusicStore: ObservableObject {
     var troubleshootingLine: String? {
         guard !hasDeveloperTokenError else { return nil }
         guard needsPlaybackSetup else { return nil }
-        return "If you're testing on a real device, make sure the device is signed into an active Apple Music subscription and that MusicKit is enabled for Outbound's App ID in the Apple Developer portal."
+        return "If you're testing on a real device, make sure the device is signed into an active Apple Music subscription and that MusicKit is enabled for Plainstride's App ID in the Apple Developer portal."
     }
 
     var musicKitSetupBannerText: String? {

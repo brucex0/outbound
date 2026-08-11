@@ -1,5 +1,6 @@
 import Combine
 import CoreLocation
+import OSLog
 import WeatherKit
 
 struct RunningWeatherSnapshot: Codable, Equatable {
@@ -62,6 +63,8 @@ struct RunningWeatherSnapshot: Codable, Equatable {
 
 @MainActor
 final class SituationalWeatherStore: NSObject, ObservableObject {
+    nonisolated private static let logger = Logger(subsystem: "plainstride.outbound", category: "Weather")
+
     @Published private(set) var snapshot: RunningWeatherSnapshot?
     @Published private(set) var isLoading = false
     @Published private(set) var authorizationStatus: CLAuthorizationStatus
@@ -72,6 +75,7 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
     private let defaults: UserDefaults
     private let enabledKey = "situational_weather_enabled_v1"
     private let snapshotKey = "situational_weather_snapshot_v1"
+    private let diagnosticKey = "situational_weather_last_diagnostic_v1"
     private var pendingRefresh = false
 
     init(defaults: UserDefaults = .standard) {
@@ -81,6 +85,9 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyReduced
+        Self.logger.info(
+            "Weather store initialized. authorization=\(String(describing: self.authorizationStatus), privacy: .public) cachedSnapshot=\(self.snapshot != nil) enabled=\(self.isEnabled)"
+        )
     }
 
     var isEnabled: Bool {
@@ -88,6 +95,7 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
     }
 
     func enableAndRefresh() {
+        Self.logger.info("Local weather enabled by the user.")
         defaults.set(true, forKey: enabledKey)
         refresh(force: true)
     }
@@ -98,26 +106,39 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
     }
 
     func refresh(force: Bool) {
-        if !force, snapshot?.isFresh == true { return }
+        if !force, snapshot?.isFresh == true {
+            Self.logger.debug("Weather refresh skipped because the cached snapshot is fresh.")
+            return
+        }
         errorMessage = nil
         pendingRefresh = true
+        Self.logger.info(
+            "Weather refresh requested. force=\(force) authorization=\(String(describing: self.locationManager.authorizationStatus), privacy: .public) hasCachedSnapshot=\(self.snapshot != nil)"
+        )
 
         switch locationManager.authorizationStatus {
         case .notDetermined:
+            Self.logger.info("Requesting when-in-use location authorization for local weather.")
             locationManager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
             isLoading = true
+            Self.logger.debug("Requesting a one-shot reduced-accuracy location for WeatherKit.")
             locationManager.requestLocation()
         case .denied, .restricted:
             pendingRefresh = false
+            Self.logger.warning("Weather refresh stopped because location authorization is denied or restricted.")
             errorMessage = "Location access is off. You can enable it in Settings to see local conditions."
         @unknown default:
             pendingRefresh = false
+            Self.logger.error("Weather refresh stopped for an unknown location authorization status.")
             errorMessage = "Local conditions are temporarily unavailable."
         }
     }
 
     private func loadWeather(for location: CLLocation) async {
+        Self.logger.info(
+            "Starting WeatherKit request. horizontalAccuracyMeters=\(location.horizontalAccuracy, format: .fixed(precision: 1)) locationAgeSeconds=\(abs(location.timestamp.timeIntervalSinceNow), format: .fixed(precision: 1))"
+        )
         do {
             async let weatherRequest = weatherService.weather(for: location)
             async let placeRequest = CLGeocoder().reverseGeocodeLocation(location)
@@ -127,14 +148,29 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
             let normalized = Self.normalize(weather: weather, placeName: place)
             snapshot = normalized
             defaults.set(try? JSONEncoder().encode(normalized), forKey: snapshotKey)
+            defaults.removeObject(forKey: diagnosticKey)
             errorMessage = nil
+            Self.logger.info(
+                "WeatherKit request succeeded. condition=\(normalized.condition, privacy: .public) impact=\(normalized.impact.rawValue, privacy: .public) hourlyWindowAvailable=\(normalized.bestWindow != nil)"
+            )
         } catch {
+            let diagnostic = Self.describe(error)
+            defaults.set(diagnostic, forKey: diagnosticKey)
+            Self.logger.error("WeatherKit request failed. \(diagnostic, privacy: .public)")
+            #if DEBUG
+            print("[Weather] WeatherKit request failed. \(diagnostic)")
+            #endif
             errorMessage = snapshot == nil
                 ? "Weather is temporarily unavailable. Your workout is unchanged."
                 : "Conditions could not be refreshed. Showing the last update."
         }
         isLoading = false
         pendingRefresh = false
+    }
+
+    private static func describe(_ error: Error) -> String {
+        let nsError = error as NSError
+        return "type=\(String(reflecting: type(of: error))) domain=\(nsError.domain) code=\(nsError.code) localizedDescription=\(nsError.localizedDescription) debug=\(String(reflecting: error))"
     }
 
     private static func normalize(weather: Weather, placeName: String?) -> RunningWeatherSnapshot {
@@ -227,13 +263,18 @@ extension SituationalWeatherStore: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             authorizationStatus = manager.authorizationStatus
+            Self.logger.info(
+                "Location authorization changed for weather. authorization=\(String(describing: manager.authorizationStatus), privacy: .public) pendingRefresh=\(self.pendingRefresh)"
+            )
             guard pendingRefresh else { return }
             switch manager.authorizationStatus {
             case .authorizedAlways, .authorizedWhenInUse:
                 isLoading = true
+                Self.logger.debug("Authorization granted; requesting location for WeatherKit.")
                 locationManager.requestLocation()
             case .denied, .restricted:
                 pendingRefresh = false
+                Self.logger.warning("Location authorization was denied or restricted during weather refresh.")
                 errorMessage = "Location access is off. You can enable it in Settings to see local conditions."
             case .notDetermined:
                 break
@@ -244,14 +285,24 @@ extension SituationalWeatherStore: CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard let location = locations.last else {
+            Self.logger.error("Location manager returned an empty location update for weather.")
+            return
+        }
         Task { @MainActor in
+            Self.logger.debug("Received location update for weather without retaining or logging coordinates.")
             await loadWeather(for: location)
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
+            let diagnostic = Self.describe(error)
+            defaults.set(diagnostic, forKey: diagnosticKey)
+            Self.logger.error("Location request for weather failed. \(diagnostic, privacy: .public)")
+            #if DEBUG
+            print("[Weather] Location request failed. \(diagnostic)")
+            #endif
             isLoading = false
             pendingRefresh = false
             errorMessage = "Couldn’t determine local conditions. Your workout is unchanged."

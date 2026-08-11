@@ -2,11 +2,11 @@ import Foundation
 
 enum TrainingPlanLibrary {
     static let outboundPlanStandardsSource = TrainingPlanSource(
-        name: "Outbound plan standards",
+        name: "Plainstride plan standards",
         license: "Original",
-        attribution: "Outbound-authored plans benchmarked against established road-running coaching patterns",
+        attribution: "Plainstride-authored plans benchmarked against established road-running coaching patterns",
         url: "https://www.halhigdon.com/",
-        importNotes: "Uses original Outbound workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans."
+        importNotes: "Uses original Plainstride workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans."
     )
 
     static let importedC25KSource = TrainingPlanSource(
@@ -14,7 +14,7 @@ enum TrainingPlanLibrary {
         license: "MIT",
         attribution: "Luke Murchison's c25k-web Couch-to-5K plan data",
         url: "https://github.com/lmorchard/c25k-web",
-        importNotes: "Imported from the open-source `src/data/c25k.json` plan and translated into Outbound's workout model."
+        importNotes: "Imported from the open-source `src/data/c25k.json` plan and translated into Plainstride's workout model."
     )
 
     static let workoutTaxonomySource = TrainingPlanSource(
@@ -30,7 +30,7 @@ enum TrainingPlanLibrary {
         license: "MIT",
         attribution: "Cody Hoover's time-to-run built-in plan library",
         url: "https://github.com/hoovercj/time-to-run",
-        importNotes: "Imported from the open-source `src/workouts/plans` built-in plans and translated into Outbound's structured week and workout model."
+        importNotes: "Imported from the open-source `src/workouts/plans` built-in plans and translated into Plainstride's structured week and workout model."
     )
 
     static let templates: [TrainingPlanTemplate] = [

@@ -188,7 +188,7 @@ final class LiveGroupStore: ObservableObject {
         do {
             let response = try await api.createLiveGroupRun(
                 LiveGroupCreateRequest(
-                    title: intent?.title ?? "Outbound group run",
+                    title: intent?.title ?? "Plainstride group run",
                     sport: intent?.sport.rawValue,
                     expiresInSeconds: 4 * 60 * 60
                 )
@@ -417,8 +417,8 @@ final class LiveGroupStore: ObservableObject {
         let sport = intent?.sport.rawValue ?? "run"
         let name = title?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let name, !name.isEmpty {
-            return "Join \(name) on Outbound: \(url.absoluteString)"
+            return "Join \(name) on Plainstride: \(url.absoluteString)"
         }
-        return "Join my Outbound group \(sport): \(url.absoluteString)"
+        return "Join my Plainstride group \(sport): \(url.absoluteString)"
     }
 }

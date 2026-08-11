@@ -377,7 +377,7 @@ nonisolated struct ActivitySourceMetadata: Codable, Hashable {
 
     nonisolated static let outboundRecorded = ActivitySourceMetadata(
         kind: .outbound,
-        displayName: "Outbound",
+        displayName: "Plainstride",
         deviceName: nil,
         externalID: nil,
         importedAt: nil
@@ -607,7 +607,7 @@ nonisolated enum RouteFileExporter {
 
         return """
         <?xml version="1.0" encoding="UTF-8"?>
-        <gpx version="1.1" creator="Outbound" xmlns="http://www.topografix.com/GPX/1/1">
+        <gpx version="1.1" creator="Plainstride" xmlns="http://www.topografix.com/GPX/1/1">
           <metadata>
             <name>\(escapedXML(activity.title))</name>
             <time>\(formatter.string(from: activity.startedAt))</time>

@@ -49,7 +49,7 @@ struct HealthAuthorizationSnapshot: Equatable {
 
         switch workoutShareState {
         case .authorized:
-            return "Outbound can request workout write-back once HealthKit entitlements are enabled for this app."
+            return "Plainstride can request workout write-back once HealthKit entitlements are enabled for this app."
         case .denied:
             return "Health permissions were previously reviewed. You can reopen the system sheet to adjust access."
         case .notDetermined:

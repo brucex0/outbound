@@ -131,7 +131,7 @@ private struct WelcomeOrbit: View {
                 orbitPerson("Friends", systemImage: "person.2.fill", fill: Color(red: 0.84, green: 0.86, blue: 0.94))
                     .position(x: center.x + 108, y: 66)
 
-                orbitPerson("Clubs", systemImage: "flag.fill", fill: Color(red: 0.91, green: 0.88, blue: 0.80))
+                orbitPerson("Groups", systemImage: "person.3.fill", fill: Color(red: 0.91, green: 0.88, blue: 0.80))
                     .position(x: center.x - 99, y: 142)
 
                 ZStack(alignment: .topTrailing) {

@@ -11,7 +11,7 @@ struct CycleAwareView: View {
             Section {
                 Toggle("Use cycle-aware coaching", isOn: $store.isEnabled)
             } footer: {
-                Text("Optional and private. Outbound stores these entries only on this device and sends only a generic training signal when adaptation is requested.")
+                Text("Optional and private. Plainstride stores these entries only on this device and sends only a generic training signal when adaptation is requested.")
             }
             if store.isEnabled {
                 Section("How are you today?") {

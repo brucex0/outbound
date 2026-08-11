@@ -77,11 +77,11 @@ struct ReadinessCheckInView: View {
     private var explanation: String {
         switch selection {
         case .tired:
-            "If this is more than ordinary tiredness, Outbound can offer a shorter easy option before you start."
+            "If this is more than ordinary tiredness, Plainstride can offer a shorter easy option before you start."
         case .sore:
             "Soreness can change today's recommendation. Pain should not be treated as a training signal to push through."
         case .shortOnTime:
-            "Outbound can preserve the purpose of this run in a shorter version."
+            "Plainstride can preserve the purpose of this run in a shorter version."
         case .good, .none:
             "Your recent load supports the planned easy run. Nothing changes unless you want it to."
         }
@@ -98,7 +98,7 @@ struct CompanionMemoryView: View {
     var body: some View {
         List {
             Section {
-                Text("These are the facts and patterns Outbound may use when adapting training. You can correct or forget any item.")
+                Text("These are the facts and patterns Plainstride may use when adapting training. You can correct or forget any item.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -146,14 +146,14 @@ struct CompanionMemoryView: View {
                 Section { Text(errorMessage).font(.footnote).foregroundStyle(.secondary) }
             }
         }
-        .navigationTitle("What Outbound knows")
+        .navigationTitle("What Plainstride knows")
         .task { await refresh() }
         .refreshable { await refresh() }
         .sheet(item: $editingMemory) { memory in
             NavigationStack {
                 Form {
                     Section(memory.label) {
-                        TextField("What should Outbound remember?", text: $editedSummary, axis: .vertical)
+                        TextField("What should Plainstride remember?", text: $editedSummary, axis: .vertical)
                             .lineLimit(2...6)
                     }
                     Section {
@@ -213,7 +213,7 @@ struct CompanionMemoryView: View {
     }
 
     private func provenanceLine(_ memory: CompanionMemoryDTO) -> String {
-        let source = memory.source == "runner" ? "You told Outbound" : "Inferred from training"
+        let source = memory.source == "runner" ? "You told Plainstride" : "Inferred from training"
         return "\(source) · \(memory.evidenceCount) evidence point\(memory.evidenceCount == 1 ? "" : "s")"
     }
 }

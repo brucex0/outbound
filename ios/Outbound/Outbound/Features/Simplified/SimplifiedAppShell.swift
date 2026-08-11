@@ -307,7 +307,7 @@ private struct SimplifiedTodayView: View {
         if let workout = currentCalibrationWorkout { return workout.purpose }
         return trainingPlanStore.todaySuggestion?.adjustmentLine
             ?? trainingPlanStore.todaySuggestion?.coachLine
-            ?? "This approachable run builds consistency while Outbound learns your natural easy effort."
+            ?? "This approachable run builds consistency while Plainstride learns your natural easy effort."
     }
 
     private var todayPhases: [WorkoutPhaseItem] {
@@ -527,7 +527,7 @@ private struct WeatherDetailSheet: View {
                             .font(.subheadline)
                     }
 
-                    Text("Outbound uses approximate location for this forecast. Weather advice does not automatically change your plan.")
+                    Text("Plainstride uses approximate location for this forecast. Weather advice does not automatically change your plan.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -671,7 +671,7 @@ private struct TodayChangeSheet: View {
         switch reason {
         case .tired: "A short easy run keeps the rhythm without forcing the full workout."
         case .sore: "Skipping one run is better than turning discomfort into an injury."
-        case .shortOnTime: "Outbound will keep this easy and end it at your selected time."
+        case .shortOnTime: "Plainstride will keep this easy and end it at your selected time."
         case .good: "The original workout still fits."
         }
     }
@@ -700,9 +700,9 @@ private struct SimplifiedTogetherView: View {
                                     .font(.subheadline)
                                 ShareLink(
                                     item: URL(string: "https://outbound.run")!,
-                                    subject: Text("Run with me on Outbound"),
-                                    message: Text("Join me for a run on Outbound."),
-                                    preview: SharePreview("Run with me on Outbound", image: Image(systemName: "figure.run"))
+                                    subject: Text("Run with me on Plainstride"),
+                                    message: Text("Join me for a run on Plainstride."),
+                                    preview: SharePreview("Run with me on Plainstride", image: Image(systemName: "figure.run"))
                                 ) {
                                     Label("Invite someone", systemImage: "person.badge.plus")
                                 }
@@ -979,7 +979,7 @@ private struct SimplifiedSettingsView: View {
                 NavigationLink {
                     CompanionMemoryView()
                 } label: {
-                    Label("What Outbound knows", systemImage: "brain.head.profile")
+                    Label("What Plainstride knows", systemImage: "brain.head.profile")
                 }
             }
             Section("Units") {
@@ -994,12 +994,12 @@ private struct SimplifiedSettingsView: View {
                 GearSettingsCard()
             }
             Section {
-                Text("Outbound keeps private health details on this device and never shows them in Together.")
+                Text("Plainstride keeps private health details on this device and never shows them in Together.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Settings")
-        .confirmationDialog("Sign out of Outbound?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
+        .confirmationDialog("Sign out of Plainstride?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
             Button("Sign out", role: .destructive) { authStore.signOut() }
             Button("Cancel", role: .cancel) {}
         }

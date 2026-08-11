@@ -76,7 +76,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 
     private static func instructions(for profile: CoachProfile?, persona: CoachPersona?) -> String {
         var lines = [
-            "You are Outbound's on-device live session analyst.",
+            "You are Plainstride's on-device live session analyst.",
             "Analyze only the active workout data supplied in each prompt.",
             "Return concise, actionable coaching for the athlete during the session.",
             "Sound like a real coach speaking naturally, not a dashboard reading stats.",

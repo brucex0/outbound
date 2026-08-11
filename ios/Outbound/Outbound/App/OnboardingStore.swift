@@ -138,7 +138,7 @@ struct OnboardingIntakeSummary: Codable, Equatable {
             parts.append("comfortable around \(comfortableDurationMinutes) min")
         }
         if parts.isEmpty {
-            return "Starting conservatively until Outbound learns from your first sessions."
+            return "Starting conservatively until Plainstride learns from your first sessions."
         }
         return parts.joined(separator: " · ")
     }

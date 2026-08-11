@@ -267,7 +267,7 @@ struct RecordView: View {
                 groupInviteText = ""
             }
         } message: {
-            Text("Paste the Outbound group run invite from another runner.")
+            Text("Paste the Plainstride group run invite from another runner.")
         }
     }
 
@@ -1301,7 +1301,7 @@ private struct ActivityStartCountdownOverlay: View {
                 .frame(width: 188, height: 188)
                 .shadow(color: .black.opacity(0.26), radius: 20, y: 8)
 
-                Text("Outbound")
+                Text("Plainstride")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(1)

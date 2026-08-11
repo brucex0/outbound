@@ -465,7 +465,7 @@ final class AuthStore: ObservableObject {
         pendingFederatedCredential = credential
         let providerName = Self.providerName(for: credential.provider)
         pendingFederatedLink = PendingFederatedLink(email: email, providerName: providerName)
-        self.authError = "\(providerName) matches an existing Outbound account for \(email). Continue with the existing provider once to connect both sign-in methods."
+        self.authError = "\(providerName) matches an existing Plainstride account for \(email). Continue with the existing provider once to connect both sign-in methods."
         return true
     }
 
@@ -550,7 +550,7 @@ final class AuthStore: ObservableObject {
             case .providerAlreadyLinked:
                 return "That sign-in method is already connected to this account."
             case .credentialAlreadyInUse:
-                return "That sign-in method is already connected to another Outbound account."
+                return "That sign-in method is already connected to another Plainstride account."
             default:
                 break
             }
@@ -591,7 +591,7 @@ private enum AppleAuthorizationError: LocalizedError {
         case .missingIdentityToken:
             return "Apple did not return an identity token."
         case .invalidIdentityToken:
-            return "Apple returned an identity token Outbound could not read."
+            return "Apple returned an identity token Plainstride could not read."
         case .missingNonce:
             return "Apple sign-in could not verify the request."
         case .missingAuthorizationCode:

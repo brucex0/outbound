@@ -67,7 +67,7 @@ private enum OutboundActivityIntentWriter {
 
 struct PrepareDistanceRunIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Distance Run"
-    static let description = IntentDescription("Prepare an Outbound run with a distance goal.")
+    static let description = IntentDescription("Prepare a Plainstride run with a distance goal.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -92,7 +92,7 @@ struct PrepareDistanceRunIntent: AppIntent {
 
 struct PrepareTimedRunIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Timed Run"
-    static let description = IntentDescription("Prepare an Outbound run with a time goal.")
+    static let description = IntentDescription("Prepare a Plainstride run with a time goal.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -117,7 +117,7 @@ struct PrepareTimedRunIntent: AppIntent {
 
 struct PrepareFreestyleRunIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Run"
-    static let description = IntentDescription("Prepare an open-ended Outbound run.")
+    static let description = IntentDescription("Prepare an open-ended Plainstride run.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -134,7 +134,7 @@ struct PrepareFreestyleRunIntent: AppIntent {
 
 struct PrepareDistanceBikeIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Distance Bike"
-    static let description = IntentDescription("Prepare an Outbound bike activity with a distance goal.")
+    static let description = IntentDescription("Prepare a Plainstride bike activity with a distance goal.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -159,7 +159,7 @@ struct PrepareDistanceBikeIntent: AppIntent {
 
 struct PrepareTimedBikeIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Timed Bike"
-    static let description = IntentDescription("Prepare an Outbound bike activity with a time goal.")
+    static let description = IntentDescription("Prepare a Plainstride bike activity with a time goal.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
@@ -184,7 +184,7 @@ struct PrepareTimedBikeIntent: AppIntent {
 
 struct PrepareFreestyleBikeIntent: AppIntent {
     static let title: LocalizedStringResource = "Prepare Bike"
-    static let description = IntentDescription("Prepare an open-ended Outbound bike activity.")
+    static let description = IntentDescription("Prepare an open-ended Plainstride bike activity.")
     static let openAppWhenRun = true
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 

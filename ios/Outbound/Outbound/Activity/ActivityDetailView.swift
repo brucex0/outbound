@@ -416,7 +416,7 @@ struct ActivityDetailView: View {
             return edits.editedFields.joined(separator: ", ")
         }
         switch currentActivity.source.kind {
-        case .outbound: return "Recorded in Outbound"
+        case .outbound: return "Recorded in Plainstride"
         case .appleHealth: return "Imported from Apple Health"
         case .garminViaHealth: return "Garmin via Apple Health"
         case .manual: return "Manual entry"

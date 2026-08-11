@@ -300,7 +300,7 @@ private struct SettingsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This permanently deletes your Outbound account, synced activities, plans, profile, social data, and locally stored Outbound data. This cannot be undone.")
+                Text("This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.")
             }
         }
     }
@@ -394,7 +394,7 @@ private struct SafetyContactsSettingsCard: View {
             }
 
             if safetyContactStore.contacts.isEmpty {
-                Text("Add someone you trust. Outbound will use them as the default recipient when you turn on Share live run.")
+                Text("Add someone you trust. Plainstride will use them as the default recipient when you turn on Share live run.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -490,7 +490,7 @@ private struct AddSafetyContactView: View {
                 }
 
                 Section {
-                    Text("SMS and push delivery are stubbed on the server for now. Outbound will still open the system Share Sheet when a live run starts.")
+                    Text("SMS and push delivery are stubbed on the server for now. Plainstride will still open the system Share Sheet when a live run starts.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -568,7 +568,7 @@ struct GearSettingsCard: View {
                 .accessibilityLabel("Add shoe")
 
                 if gearStore.shoes.isEmpty {
-                    Text("Add your current pair and Outbound will attach it to new runs by default.")
+                    Text("Add your current pair and Plainstride will attach it to new runs by default.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

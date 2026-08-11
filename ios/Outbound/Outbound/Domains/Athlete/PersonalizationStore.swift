@@ -53,7 +53,7 @@ final class PersonalizationStore: ObservableObject {
             apply(try await api.submitPersonalizationReadiness(request))
         } catch {
             enqueue(request, key: readinessQueueKey)
-            lastError = "Saved offline. Outbound will sync this check-in later."
+            lastError = "Saved offline. Plainstride will sync this check-in later."
         }
     }
 
@@ -76,7 +76,7 @@ final class PersonalizationStore: ObservableObject {
             apply(try await api.submitWorkoutFeedback(request))
         } catch {
             enqueue(request, key: feedbackQueueKey)
-            lastError = "Saved offline. Outbound will learn from this run after syncing."
+            lastError = "Saved offline. Plainstride will learn from this run after syncing."
         }
     }
 

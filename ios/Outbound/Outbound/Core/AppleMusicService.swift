@@ -46,7 +46,7 @@ final class AppleMusicService: MusicService {
                 MusicQuickPick(
                     id: "continue-current",
                     title: "Continue last mix",
-                    subtitle: "Resume your last Outbound queue.",
+                    subtitle: "Resume your last Plainstride queue.",
                     symbolName: "play.circle.fill",
                     kind: .continueCurrent,
                     query: nil
@@ -223,8 +223,8 @@ final class AppleMusicService: MusicService {
                 connectionState: .connected,
                 statusTitle: canPlayCatalogContent ? "Connected" : "Connected, playback unavailable",
                 statusDetail: canPlayCatalogContent
-                    ? "Play Apple Music mixes during workouts and control them inside Outbound."
-                    : "Apple Music permission is granted, but catalog playback is unavailable. Check that this device has Apple Music playback access and that MusicKit is enabled for Outbound's App ID.",
+                    ? "Play Apple Music mixes during workouts and control them inside Plainstride."
+                    : "Apple Music permission is granted, but catalog playback is unavailable. Check that this device has Apple Music playback access and that MusicKit is enabled for Plainstride's App ID.",
                 canPlayCatalogContent: canPlayCatalogContent
             )
         case .denied:
@@ -232,7 +232,7 @@ final class AppleMusicService: MusicService {
                 providerName: "Apple Music",
                 connectionState: .denied,
                 statusTitle: "Access denied",
-                statusDetail: "Allow Apple Music access in Settings to choose a run mix inside Outbound.",
+                statusDetail: "Allow Apple Music access in Settings to choose a run mix inside Plainstride.",
                 canPlayCatalogContent: false
             )
         case .notDetermined:
@@ -314,7 +314,7 @@ final class AppleMusicService: MusicService {
 
         if combined.contains("developer token") {
             return NSError(domain: "OutboundMusic", code: 101, userInfo: [
-                NSLocalizedDescriptionKey: "Apple Music setup is incomplete. Outbound could not get a MusicKit developer token. Enable MusicKit for Outbound's App ID in the Apple Developer portal, then reinstall or relaunch the app."
+                NSLocalizedDescriptionKey: "Apple Music setup is incomplete. Plainstride could not get a MusicKit developer token. Enable MusicKit for Plainstride's App ID in the Apple Developer portal, then reinstall or relaunch the app."
             ])
         }
 

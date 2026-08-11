@@ -222,7 +222,7 @@ struct CameraHUDView: View {
                 .font(.largeTitle)
             Text("Camera access is off")
                 .font(.headline)
-            Text("Enable Camera for Outbound in Settings to record with the live preview.")
+            Text("Enable Camera for Plainstride in Settings to record with the live preview.")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
@@ -490,7 +490,7 @@ private enum UITestSampleCameraPhoto {
             UIColor.white.withAlphaComponent(0.95).setFill()
             context.cgContext.fillEllipse(in: CGRect(x: 96, y: 124, width: 220, height: 220))
 
-            let text = "Outbound\nPhoto \(index)"
+            let text = "Plainstride\nPhoto \(index)"
             let paragraph = NSMutableParagraphStyle()
             paragraph.alignment = .center
             let attributes: [NSAttributedString.Key: Any] = [

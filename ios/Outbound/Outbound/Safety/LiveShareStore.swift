@@ -185,8 +185,8 @@ final class LiveShareStore: ObservableObject {
     private func shareMessage(url: URL, intent: SessionIntent?, contact: SafetyContact?) -> String {
         let sport = intent?.sport.rawValue ?? "run"
         if let contact {
-            return "Hi \(contact.name), follow my live \(sport) on Outbound: \(url.absoluteString)"
+            return "Hi \(contact.name), follow my live \(sport) on Plainstride: \(url.absoluteString)"
         }
-        return "Follow my live \(sport) on Outbound: \(url.absoluteString)"
+        return "Follow my live \(sport) on Plainstride: \(url.absoluteString)"
     }
 }

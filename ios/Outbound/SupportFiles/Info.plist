@@ -6,7 +6,7 @@
     <string>$(DEVELOPMENT_LANGUAGE)</string>
 
     <key>CFBundleDisplayName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>Plainstride</string>
 
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
@@ -49,33 +49,33 @@
     <false/>
 
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Outbound tracks your route during activities, even in the background.</string>
+    <string>Plainstride tracks your route during activities, even in the background.</string>
 
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Outbound uses your approximate location for local running conditions and precise location when tracking a run.</string>
+    <string>Plainstride uses your approximate location for local running conditions and precise location when tracking a run.</string>
 
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>Outbound tracks your route during activities, even in the background.</string>
+    <string>Plainstride tracks your route during activities, even in the background.</string>
 
     <key>NSCameraUsageDescription</key>
-    <string>Outbound keeps the camera ready so you can capture moments during your run without leaving the app.</string>
+    <string>Plainstride keeps the camera ready so you can capture moments during your run without leaving the app.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>Outbound uses the microphone for voice activity commands and coach audio during workouts.</string>
+    <string>Plainstride uses the microphone for voice activity commands and coach audio during workouts.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Outbound uses speech recognition to turn short voice commands into prepared activities.</string>
+    <string>Plainstride uses speech recognition to turn short voice commands into prepared activities.</string>
 
     <key>NSAppleMusicUsageDescription</key>
-    <string>Outbound uses Apple Music to play music during workouts and keep your coach experience in one place.</string>
+    <string>Plainstride uses Apple Music to play music during workouts and keep your coach experience in one place.</string>
 
     <key>NSMotionUsageDescription</key>
-    <string>Outbound uses motion sensors to improve pace and cadence tracking.</string>
+    <string>Plainstride uses motion sensors to improve pace and cadence tracking.</string>
 
     <key>NSHealthShareUsageDescription</key>
-    <string>Outbound reads heart rate and workout data from Apple Health.</string>
+    <string>Plainstride reads heart rate and workout data from Apple Health.</string>
 
     <key>NSHealthUpdateUsageDescription</key>
-    <string>Outbound saves your workouts to Apple Health.</string>
+    <string>Plainstride saves your workouts to Apple Health.</string>
 
     <key>NSSupportsLiveActivities</key>
     <true/>

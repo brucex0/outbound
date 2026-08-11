@@ -1285,7 +1285,7 @@ enum AssistantCapability: String, CaseIterable, Codable, Identifiable {
     var subtitle: String {
         switch self {
         case .discover:
-            "Learn what Outbound can do for you."
+            "Learn what Plainstride can do for you."
         case .navigate:
             "Find the right tab, flow, or setting fast."
         case .support:
@@ -1414,7 +1414,7 @@ final class AssistantStore: ObservableObject {
             id: "discover-best-parts",
             capability: .discover,
             title: "What should I try first?",
-            prompt: "I’m new here. What should I try first in Outbound?"
+            prompt: "I’m new here. What should I try first in Plainstride?"
         ),
         AssistantSuggestion(
             id: "navigate-where-to-go",
@@ -1659,7 +1659,7 @@ final class AssistantStore: ObservableObject {
     ) -> String {
         if Self.looksLikeExternalDiscoveryRequest(prompt) {
             return """
-            I cannot browse or show live outside listings from inside Outbound yet.
+            I cannot browse or show live outside listings from inside Plainstride yet.
 
             If you are planning time around Vancouver, I can still help turn that into an active outing: pick a walk, run, or ride window, then use the orange activity button when you are ready to record it.
             """
@@ -1882,7 +1882,7 @@ private final class AssistantFoundationModelSession {
     ) async throws -> String {
         let session = LanguageModelSession(model: model) {
             """
-            You are Outbound's in-app assistant.
+            You are Plainstride's in-app assistant.
             Help with product discovery, app navigation, user support, brainstorming, and planning.
             Be concise, specific to the app, and action-oriented.
             Avoid mentioning internal implementation details.

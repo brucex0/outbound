@@ -206,7 +206,7 @@ struct PostRunSummaryView: View {
                     capacityButton(.muchLonger, title: "Much longer")
                 }
             }
-            Text("Optional. Outbound asks after workouts where your answer can improve the plan.")
+            Text("Optional. Plainstride asks after workouts where your answer can improve the plan.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

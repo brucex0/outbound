@@ -2,17 +2,17 @@
 
 ## Fresh-install authentication
 
-Firebase may retain credentials in the iOS Keychain after the app is deleted. Outbound stores a separate installation marker in `UserDefaults`. If that marker is missing on launch but Firebase restores a user, the app signs out that stale restored session and shows the provider login screen. Normal relaunches and app updates keep the authenticated session because the installation marker remains present.
+Firebase may retain credentials in the iOS Keychain after the app is deleted. Plainstride stores a separate installation marker in `UserDefaults`. If that marker is missing on launch but Firebase restores a user, the app signs out that stale restored session and shows the provider login screen. Normal relaunches and app updates keep the authenticated session because the installation marker remains present.
 
 Onboarding completion is account-scoped and survives sign-out. Preparing a previously completed account must explicitly clear any onboarding presentation left behind while authentication transitioned through a signed-out/local identity.
 
-Outbound onboarding should create a first win, not teach the whole product.
+Plainstride onboarding should create a first win, not teach the whole product.
 
 ## Product Goal
 
 New authenticated users should reach a concrete success state in about 90 seconds:
 
-1. Understand that Outbound combines an adaptive running companion with people and clubs.
+1. Understand that Plainstride combines an adaptive running companion with people and running groups.
 2. Authenticate with Apple or Google.
 3. Choose a goal, recent baseline, and realistic weekly capacity.
 4. Review and correct the companion's understanding.
@@ -28,7 +28,7 @@ The flow should avoid feature tours, early permission prompts, mandatory essays,
 1. Welcome and authentication
    - Eyebrow: `Your AI running companion`.
    - Promise: `Train with purpose. Run with your people.`
-   - Show a labeled orbit with `You` at the AI-assisted center and universal `Family`, `Friends`, and `Clubs` nodes.
+   - Show a labeled orbit with `You` at the AI-assisted center and universal `Family`, `Friends`, and `Groups` nodes. Groups include formal running clubs and casual running groups.
    - Add one small `Better together` cue so the illustration communicates the emotional benefit of connected training rather than a generic social graph.
    - Do not use real names, initials, or club identities in the welcome illustration.
    - Show only Continue with Apple and Continue with Google. Each provider action handles both signup and login; do not add a redundant `Already have an account?` action.

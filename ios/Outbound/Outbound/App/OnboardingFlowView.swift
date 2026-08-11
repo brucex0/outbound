@@ -92,7 +92,7 @@ struct OnboardingFlowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Outbound")
+                Text("Plainstride")
                     .font(.largeTitle.bold())
                 Text("Tell your coach the real story. We will turn it into a first session and a plan that fits.")
                     .font(.title3.weight(.semibold))

@@ -1906,7 +1906,7 @@ struct TrainingPlanCard: View {
     }
 
     private func planQualityBadge(for recommendation: TrainingPlanRecommendation) -> some View {
-        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Curated plan" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+        Label(recommendation.template.source?.name == "Plainstride plan standards" ? "Curated plan" : "Reviewed plan", systemImage: "checkmark.seal.fill")
             .font(.caption.weight(.semibold))
             .foregroundStyle(accentColor)
     }
@@ -1962,7 +1962,7 @@ private struct TrainingPlanPickerView: View {
                             pill("\(recommendation.targetWeeklyMinutes) min")
                         }
 
-                        Label(recommendation.template.source?.name == "Outbound plan standards" ? "Curated" : "Reviewed plan", systemImage: "checkmark.seal.fill")
+                        Label(recommendation.template.source?.name == "Plainstride plan standards" ? "Curated" : "Reviewed plan", systemImage: "checkmark.seal.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(accentColor)
 
@@ -2172,10 +2172,10 @@ private struct TrainingPlanRecommendationDetailView: View {
     }
 
     private var planStandardText: String {
-        if recommendation.template.source?.name == "Outbound plan standards" {
-            return "Outbound-authored and benchmarked against established road-running structure: mostly easy running, controlled quality, cutback weeks, and event-specific tapering."
+        if recommendation.template.source?.name == "Plainstride plan standards" {
+            return "Plainstride-authored and benchmarked against established road-running structure: mostly easy running, controlled quality, cutback weeks, and event-specific tapering."
         }
-        return "Reviewed against Outbound's coaching standards for safe progression, clear recovery, and practical workout purpose."
+        return "Reviewed against Plainstride's coaching standards for safe progression, clear recovery, and practical workout purpose."
     }
 }
 

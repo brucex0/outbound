@@ -61,7 +61,7 @@ struct SimplifiedOnboardingFlow: View {
             Stepper("About \(availableMinutes) min on weekdays", value: $availableMinutes, in: 15...90, step: 5)
                 .padding().background(.background, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
         case .understanding:
-            heading("Here’s what I understand", "Correct anything by going back. Outbound will keep learning after setup.")
+            heading("Here’s what I understand", "Correct anything by going back. Plainstride will keep learning after setup.")
             summaryRow("Goal", goal.title)
             summaryRow("Starting point", "\(frequency.title) · \(comfortableMinutes) min comfortable")
             summaryRow("Realistic week", "\(runsPerWeek) runs · about \(availableMinutes) min")
@@ -71,7 +71,7 @@ struct SimplifiedOnboardingFlow: View {
             calibrationRow(1, "Comfortable run", "Learn your natural easy effort")
             calibrationRow(2, "Easy + pickups", "Observe controlled faster running")
             calibrationRow(3, "Longer relaxed run", "Learn endurance and recovery")
-            AIExplanationView(text: "After each run, one optional tap tells Outbound what the numbers alone cannot.")
+            AIExplanationView(text: "After each run, one optional tap tells Plainstride what the numbers alone cannot.")
         }
     }
 
