@@ -3,6 +3,19 @@ import MapKit
 import SwiftUI
 import UIKit
 
+private actor ActivityShareCardPersistence {
+    static let shared = ActivityShareCardPersistence()
+
+    func export(image: UIImage, fileName: String) throws -> URL {
+        guard let data = image.pngData() else {
+            throw ActivityShareCardError.renderFailed
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+}
+
 enum ActivityShareCardRenderer {
     private static let cardSize = CGSize(width: 1080, height: 1920)
 
@@ -14,15 +27,13 @@ enum ActivityShareCardRenderer {
 
         let renderer = ImageRenderer(content: card)
         renderer.scale = 1
-        guard let image = renderer.uiImage,
-              let data = image.pngData() else {
+        guard let image = renderer.uiImage else {
             throw ActivityShareCardError.renderFailed
         }
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(fileName(for: activity))
-        try data.write(to: url, options: .atomic)
-        return url
+        return try await ActivityShareCardPersistence.shared.export(
+            image: image,
+            fileName: fileName(for: activity)
+        )
     }
 
     private static func fileName(for activity: SavedActivity) -> String {

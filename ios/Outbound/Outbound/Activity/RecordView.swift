@@ -214,7 +214,9 @@ struct RecordView: View {
                     intent: activeIntent ?? plannedIntent,
                     priorActivityCount: activityStore.activities.count
                 ),
-                onSave: { selectedPhotos, reflection in savePendingActivity(activity, photos: selectedPhotos, reflection: reflection) },
+                onSave: { selectedPhotos, reflection in
+                    await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
+                },
                 onDiscard: discardPendingActivity
             )
         }
@@ -413,11 +415,15 @@ struct RecordView: View {
         )
     }
 
-    private func savePendingActivity(_ activity: PendingFinishedActivity, photos: [(UIImage, PhotoMetadata)], reflection: FinishReflection) {
+    private func savePendingActivity(
+        _ activity: PendingFinishedActivity,
+        photos: [(UIImage, PhotoMetadata)],
+        reflection: FinishReflection
+    ) async -> Bool {
         let priorActivities = activityStore.activities
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
 
-        guard let savedActivity = try? activityStore.save(
+        guard let savedActivity = try? await activityStore.save(
             summary: activity.summary,
             photos: photos,
             reflection: reflection,
@@ -427,7 +433,7 @@ struct RecordView: View {
             indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
             heartRateZones: heartRateZones(from: activity.summary)
         ) else {
-            return
+            return false
         }
 
         let savedSport = activeIntent?.sport ?? .run
@@ -457,6 +463,7 @@ struct RecordView: View {
         )
         clearPending()
         onCloseRequest?(false)
+        return true
     }
 
     private func estimatedEnergyKilocalories(

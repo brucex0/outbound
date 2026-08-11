@@ -11,12 +11,13 @@ struct PostRunSummaryView: View {
     let recognitionPreviews: [RecognitionPreview]
     let workoutID: String
     let requestsFeedback: Bool
-    let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) -> Void
+    let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var selectedPhotoIndices: Set<Int>
     @State private var isPhotoSelectionPresented = false
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
+    @State private var isSubmitting = false
 
     init(
         summary: ActivitySummary,
@@ -25,7 +26,7 @@ struct PostRunSummaryView: View {
         recognitionPreviews: [RecognitionPreview],
         workoutID: String = "freestyle-run",
         requestsFeedback: Bool = true,
-        onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) -> Void,
+        onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
         self.summary = summary
@@ -325,6 +326,7 @@ struct PostRunSummaryView: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 24))
             }
+            .disabled(isSubmitting)
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
             .frame(width: 44, height: 44)
@@ -332,6 +334,8 @@ struct PostRunSummaryView: View {
             .clipShape(Circle())
 
             Button {
+                guard !isSubmitting else { return }
+                isSubmitting = true
                 if let selectedEffort {
                     Task {
                         await personalizationStore.submitFeedback(
@@ -342,12 +346,26 @@ struct PostRunSummaryView: View {
                         )
                     }
                 }
-                onSave(selectedPhotos, reflection)
+                Task {
+                    let didSave = await onSave(selectedPhotos, reflection)
+                    if !didSave {
+                        isSubmitting = false
+                    }
+                }
             } label: {
-                Image(systemName: "square.and.arrow.down")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.white)
+                Group {
+                    if isSubmitting {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 44, height: 44)
             }
+            .disabled(isSubmitting)
             .buttonStyle(.borderless)
             .frame(width: 64, height: 64)
             .background(Color.orange)
@@ -501,7 +519,10 @@ struct DebugPostRunSummaryHarness: View {
                 progressNote: nil
             ),
             recognitionPreviews: [],
-            onSave: { selectedPhotos, _ in savedPhotoCount = selectedPhotos.count },
+            onSave: { selectedPhotos, _ in
+                savedPhotoCount = selectedPhotos.count
+                return true
+            },
             onDiscard: {}
         )
         .overlay(alignment: .topTrailing) {

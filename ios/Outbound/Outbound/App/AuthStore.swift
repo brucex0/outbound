@@ -211,7 +211,7 @@ final class AuthStore: ObservableObject {
             }
 
             try await APIClient.shared.deleteMyAccount()
-            Self.deleteLocalAccountData()
+            await Self.deleteLocalAccountData()
             try? Auth.auth().signOut()
             backend = .firebase
             isAuthenticated = false
@@ -381,8 +381,8 @@ final class AuthStore: ObservableObject {
         return try await coordinator.credential()
     }
 
-    private static func deleteLocalAccountData() {
-        try? LocalActivityStore.deleteAll()
+    private static func deleteLocalAccountData() async {
+        try? await ActivityPersistence.shared.deleteAll()
         let defaults = UserDefaults.standard
         for key in defaults.dictionaryRepresentation().keys {
             defaults.removeObject(forKey: key)

@@ -2,7 +2,65 @@ import CoreLocation
 import Foundation
 import UIKit
 
-enum LocalActivityStore {
+actor ActivityPersistence {
+    static let shared = ActivityPersistence()
+
+    nonisolated static func imageURL(for photo: SavedPhoto) -> URL {
+        LocalActivityStore.imageURL(for: photo)
+    }
+
+    func save(
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        title: String,
+        coachNudge: String,
+        reflection: FinishReflection?,
+        goal: ActivityGoal?,
+        source: ActivitySourceMetadata,
+        gear: ActivityGearAttachment?,
+        manualEdits: ActivityManualEdits?,
+        indoor: ActivityIndoorMetadata?,
+        cadence: ActivityCadenceSummary?,
+        heartRateZones: ActivityHeartRateZoneSummary?
+    ) throws -> SavedActivity {
+        try LocalActivityStore.save(
+            summary: summary,
+            photos: photos,
+            title: title,
+            coachNudge: coachNudge,
+            reflection: reflection,
+            goal: goal,
+            source: source,
+            gear: gear,
+            manualEdits: manualEdits,
+            indoor: indoor,
+            cadence: cadence,
+            heartRateZones: heartRateZones
+        )
+    }
+
+    func load() throws -> [SavedActivity] {
+        try LocalActivityStore.load()
+    }
+
+    func delete(_ activity: SavedActivity) throws {
+        try LocalActivityStore.delete(activity)
+    }
+
+    func replace(_ activity: SavedActivity) throws {
+        try LocalActivityStore.replace(activity)
+    }
+
+    func deleteAll() throws {
+        try LocalActivityStore.deleteAll()
+    }
+
+    func exportRoute(for activity: SavedActivity, format: RouteExportFormat) throws -> URL {
+        try RouteFileExporter.export(activity: activity, format: format)
+    }
+}
+
+private nonisolated enum LocalActivityStore {
     private static let manifestFileName = "activities.json"
 
     @discardableResult
@@ -99,8 +157,10 @@ enum LocalActivityStore {
         }
     }
 
-    static func imageURL(for photo: SavedPhoto) throws -> URL {
-        try activitiesDirectory().appendingPathComponent(photo.relativePath)
+    static func imageURL(for photo: SavedPhoto) -> URL {
+        URL.applicationSupportDirectory
+            .appendingPathComponent("Outbound/Activities", isDirectory: true)
+            .appendingPathComponent(photo.relativePath)
     }
 
     private static func saveManifest(_ activities: [SavedActivity]) throws {
@@ -144,7 +204,7 @@ enum LocalActivityStore {
     }()
 }
 
-struct SavedActivity: Codable, Identifiable, Hashable {
+nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
@@ -300,7 +360,7 @@ struct SavedActivity: Codable, Identifiable, Hashable {
     }
 }
 
-struct ActivitySourceMetadata: Codable, Hashable {
+nonisolated struct ActivitySourceMetadata: Codable, Hashable {
     enum Kind: String, Codable, Hashable {
         case outbound
         case appleHealth
@@ -326,32 +386,32 @@ struct ActivitySourceMetadata: Codable, Hashable {
     var isManual: Bool { kind == .manual }
 }
 
-struct ActivityGearAttachment: Codable, Hashable {
+nonisolated struct ActivityGearAttachment: Codable, Hashable {
     let shoeID: UUID
     let shoeName: String
 }
 
-struct ActivityManualEdits: Codable, Hashable {
+nonisolated struct ActivityManualEdits: Codable, Hashable {
     let editedAt: Date
     let editedFields: [String]
 }
 
-struct ActivityIndoorMetadata: Codable, Hashable {
+nonisolated struct ActivityIndoorMetadata: Codable, Hashable {
     let isIndoor: Bool
     let mode: String?
 }
 
-struct ActivityCadenceSummary: Codable, Hashable {
+nonisolated struct ActivityCadenceSummary: Codable, Hashable {
     let averageStepsPerMinute: Int?
     let maxStepsPerMinute: Int?
 }
 
-struct ActivityHeartRateZoneSummary: Codable, Hashable {
+nonisolated struct ActivityHeartRateZoneSummary: Codable, Hashable {
     let estimatedMaxHeartRate: Int
     let zones: [ActivityHeartRateZone]
 }
 
-struct ActivityHeartRateZone: Codable, Hashable, Identifiable {
+nonisolated struct ActivityHeartRateZone: Codable, Hashable, Identifiable {
     let index: Int
     let lowerBoundBPM: Int
     let upperBoundBPM: Int?
@@ -360,7 +420,7 @@ struct ActivityHeartRateZone: Codable, Hashable, Identifiable {
     var id: Int { index }
 }
 
-struct SavedActivitySyncState: Codable, Hashable {
+nonisolated struct SavedActivitySyncState: Codable, Hashable {
     let clientActivityId: String
     let serverActivityId: String?
     let lastAttemptAt: Date?
@@ -370,7 +430,7 @@ struct SavedActivitySyncState: Codable, Hashable {
     var isSynced: Bool { syncedAt != nil }
 }
 
-struct SavedRoute: Codable, Hashable {
+nonisolated struct SavedRoute: Codable, Hashable {
     let points: [SavedRoutePoint]
 
     init(points: [SavedRoutePoint]) {
@@ -397,7 +457,7 @@ struct SavedRoute: Codable, Hashable {
     }
 }
 
-struct SavedRoutePoint: Codable, Hashable {
+nonisolated struct SavedRoutePoint: Codable, Hashable {
     let timestamp: Date
     let latitude: Double
     let longitude: Double
@@ -480,7 +540,7 @@ struct SavedRoutePoint: Codable, Hashable {
     }
 }
 
-struct SavedTrackPoint: Codable {
+nonisolated struct SavedTrackPoint: Codable {
     let timestamp: Date
     let latitude: Double
     let longitude: Double
@@ -489,7 +549,7 @@ struct SavedTrackPoint: Codable {
     let speed: Double
 }
 
-enum RouteExportFormat: String, CaseIterable, Identifiable {
+nonisolated enum RouteExportFormat: String, CaseIterable, Identifiable {
     case gpx
     case geoJSON
 
@@ -510,7 +570,7 @@ enum RouteExportFormat: String, CaseIterable, Identifiable {
     }
 }
 
-enum RouteFileExporter {
+nonisolated enum RouteFileExporter {
     static func export(activity: SavedActivity, format: RouteExportFormat) throws -> URL {
         guard activity.hasRoute else { throw RouteExportError.missingRoute }
 
@@ -623,7 +683,7 @@ enum RouteFileExporter {
     }
 }
 
-enum RouteExportError: LocalizedError {
+nonisolated enum RouteExportError: LocalizedError {
     case missingRoute
 
     var errorDescription: String? {
@@ -634,7 +694,7 @@ enum RouteExportError: LocalizedError {
     }
 }
 
-struct SavedPhoto: Codable, Identifiable {
+nonisolated struct SavedPhoto: Codable, Identifiable {
     let id: UUID
     let takenAt: Date
     let paceAtShot: Double?
@@ -668,7 +728,7 @@ struct SavedPhoto: Codable, Identifiable {
     }
 }
 
-struct SavedCoordinate: Codable {
+nonisolated struct SavedCoordinate: Codable {
     let latitude: Double
     let longitude: Double
 

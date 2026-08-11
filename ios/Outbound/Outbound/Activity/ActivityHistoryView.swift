@@ -30,8 +30,13 @@ struct ActivityHistoryView: View {
                     .listRowBackground(Color.clear)
             }
             .onDelete { indexSet in
-                for i in indexSet {
-                    try? activityStore.delete(activityStore.activities[i])
+                let activitiesToDelete = indexSet.compactMap { index in
+                    activityStore.activities.indices.contains(index) ? activityStore.activities[index] : nil
+                }
+                Task {
+                    for activity in activitiesToDelete {
+                        try? await activityStore.delete(activity)
+                    }
                 }
             }
         }

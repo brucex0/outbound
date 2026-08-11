@@ -664,10 +664,12 @@ struct ActivityDetailView: View {
     }
 
     private func shareRoute(_ format: RouteExportFormat) {
-        do {
-            shareURL = try activityStore.exportRoute(for: currentActivity, format: format)
-        } catch {
-            shareError = ShareRouteError(message: error.localizedDescription)
+        Task {
+            do {
+                shareURL = try await activityStore.exportRoute(for: currentActivity, format: format)
+            } catch {
+                shareError = ShareRouteError(message: error.localizedDescription)
+            }
         }
     }
 }
@@ -1111,6 +1113,8 @@ private struct EditActivityView: View {
     @State private var distanceText: String
     @State private var durationMinutesText: String
     @State private var shoeID: UUID?
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     init(activity: SavedActivity) {
         self.activity = activity
@@ -1149,26 +1153,44 @@ private struct EditActivityView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button(isSaving ? "Saving…" : "Save") {
+                        Task { await save() }
+                    }
+                        .disabled(isSaving)
                         .fontWeight(.semibold)
                 }
             }
         }
+        .alert("Couldn’t save activity", isPresented: Binding(
+            get: { saveError != nil },
+            set: { if !$0 { saveError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveError ?? "Try again.")
+        }
     }
 
-    private func save() {
+    private func save() async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000
         let durationSecs = max(1, Int((Double(durationMinutesText) ?? Double(activity.durationSecs) / 60) * 60))
         let selectedShoe = shoeID.flatMap { id in gearStore.shoes.first { $0.id == id } }
-        try? activityStore.updateActivity(
-            activity,
-            title: title,
-            startedAt: startedAt,
-            distanceM: distanceM,
-            durationSecs: durationSecs,
-            gear: gearStore.attachment(for: selectedShoe)
-        )
-        dismiss()
+        do {
+            try await activityStore.updateActivity(
+                activity,
+                title: title,
+                startedAt: startedAt,
+                distanceM: distanceM,
+                durationSecs: durationSecs,
+                gear: gearStore.attachment(for: selectedShoe)
+            )
+            dismiss()
+        } catch {
+            saveError = error.localizedDescription
+        }
     }
 }
 

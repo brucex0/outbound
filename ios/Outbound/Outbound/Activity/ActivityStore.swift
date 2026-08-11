@@ -7,8 +7,12 @@ import UIKit
 final class ActivityStore: ObservableObject {
     @Published private(set) var activities: [SavedActivity] = []
     private let api = APIClient.shared
+    private let persistence = ActivityPersistence.shared
+    private var activityRevision = 0
 
-    init() { refresh() }
+    init() {
+        Task { await loadActivities() }
+    }
 
     @discardableResult
     func save(
@@ -23,11 +27,12 @@ final class ActivityStore: ObservableObject {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil
-    ) throws -> SavedActivity {
-        let activity = try LocalActivityStore.save(
+    ) async throws -> SavedActivity {
+        let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
+        let activity = try await persistence.save(
             summary: summary,
             photos: photos,
-            title: title ?? autoTitle(for: summary.startedAt),
+            title: resolvedTitle,
             coachNudge: "",
             reflection: reflection,
             goal: goal,
@@ -38,28 +43,30 @@ final class ActivityStore: ObservableObject {
             cadence: cadence,
             heartRateZones: heartRateZones
         )
-        refresh()
+        activityRevision += 1
+        activities.insert(activity, at: 0)
         Task {
             await syncActivityIfPossible(id: activity.id)
         }
         return activity
     }
 
-    func delete(_ activity: SavedActivity) throws {
-        try LocalActivityStore.delete(activity)
-        refresh()
+    func delete(_ activity: SavedActivity) async throws {
+        try await persistence.delete(activity)
+        activityRevision += 1
+        activities.removeAll { $0.id == activity.id }
     }
 
     func imageURL(for photo: SavedPhoto) -> URL? {
-        try? LocalActivityStore.imageURL(for: photo)
+        ActivityPersistence.imageURL(for: photo)
     }
 
     func activity(id: UUID) -> SavedActivity? {
         activities.first { $0.id == id }
     }
 
-    func exportRoute(for activity: SavedActivity, format: RouteExportFormat) throws -> URL {
-        try RouteFileExporter.export(activity: self.activity(id: activity.id) ?? activity, format: format)
+    func exportRoute(for activity: SavedActivity, format: RouteExportFormat) async throws -> URL {
+        try await persistence.exportRoute(for: self.activity(id: activity.id) ?? activity, format: format)
     }
 
     func updateActivity(
@@ -69,7 +76,7 @@ final class ActivityStore: ObservableObject {
         distanceM: Double,
         durationSecs: Int,
         gear: ActivityGearAttachment?
-    ) throws {
+    ) async throws {
         let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         var editedFields: [String] = []
         if cleanedTitle != activity.title { editedFields.append("title") }
@@ -116,8 +123,11 @@ final class ActivityStore: ObservableObject {
             sync: activity.sync
         )
 
-        try LocalActivityStore.replace(updated)
-        refresh()
+        try await persistence.replace(updated)
+        activityRevision += 1
+        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+            activities[index] = updated
+        }
     }
 
     func syncPendingActivitiesIfNeeded() async {
@@ -131,12 +141,15 @@ final class ActivityStore: ObservableObject {
         }
     }
 
-    private func refresh() {
+    private func loadActivities() async {
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity") {
             activities = [Self.uiTestActivityFixture]
             return
         }
-        activities = (try? LocalActivityStore.load()) ?? []
+        let revisionAtStart = activityRevision
+        let loadedActivities = (try? await persistence.load()) ?? []
+        guard activityRevision == revisionAtStart else { return }
+        activities = loadedActivities
     }
 
     private func syncActivityIfPossible(id: UUID) async {
@@ -158,7 +171,7 @@ final class ActivityStore: ObservableObject {
             syncedAt: priorState.syncedAt,
             lastError: nil
         )
-        persistSyncState(attemptState, for: activity.id)
+        await persistSyncState(attemptState, for: activity.id)
 
         do {
             let response = try await api.uploadActivity(
@@ -186,7 +199,7 @@ final class ActivityStore: ObservableObject {
                 syncedAt: response.uploadedAt,
                 lastError: nil
             )
-            persistSyncState(syncedState, for: activity.id)
+            await persistSyncState(syncedState, for: activity.id)
         } catch {
             let failedState = SavedActivitySyncState(
                 clientActivityId: priorState.clientActivityId,
@@ -195,12 +208,12 @@ final class ActivityStore: ObservableObject {
                 syncedAt: priorState.syncedAt,
                 lastError: error.localizedDescription
             )
-            persistSyncState(failedState, for: activity.id)
+            await persistSyncState(failedState, for: activity.id)
             print("[ActivityStore] activity sync failed: \(error.localizedDescription)")
         }
     }
 
-    private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID) {
+    private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID) async {
         guard let current = activity(id: activityID) else { return }
         let updated = SavedActivity(
             id: current.id,
@@ -226,8 +239,11 @@ final class ActivityStore: ObservableObject {
             photos: current.photos,
             sync: syncState
         )
-        try? LocalActivityStore.replace(updated)
-        refresh()
+        guard (try? await persistence.replace(updated)) != nil else { return }
+        activityRevision += 1
+        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+            activities[index] = updated
+        }
     }
 
     private func autoTitle(for date: Date) -> String {
