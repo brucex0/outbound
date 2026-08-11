@@ -41,6 +41,7 @@ struct SimplifiedAppShell: View {
 }
 
 private struct SimplifiedTodayView: View {
+    @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
@@ -48,6 +49,7 @@ private struct SimplifiedTodayView: View {
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
+    @State private var showsCompanionInsight = false
     @State private var showsChangeSheet = false
     @State private var showsWeatherSheet = false
     @State private var companionTodayMessage: String?
@@ -64,53 +66,29 @@ private struct SimplifiedTodayView: View {
                         }
                     }
 
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(todayWorkoutName).font(.title3.weight(.semibold))
-                                Spacer()
-                                Text(todayTotalDuration).font(.headline.monospacedDigit())
-                                Button { showsChangeSheet = true } label: {
-                                    Image(systemName: "slider.horizontal.3")
-                                        .frame(width: 30, height: 30)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.secondary)
-                                .accessibilityLabel("Change today’s run")
-                                Button { showsCompanionExplanation = true } label: {
-                                    Image(systemName: "info.circle")
-                                        .frame(width: 30, height: 30)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.secondary)
-                                .accessibilityLabel("Why this workout")
-                            }
-                            TodayWeatherRow(
-                                snapshot: weatherStore.snapshot,
-                                errorMessage: weatherStore.errorMessage,
-                                isEnabled: weatherStore.isEnabled,
-                                isLoading: weatherStore.isLoading,
-                                unitSystem: measurementPreferences.unitSystem,
-                                onEnable: weatherStore.enableAndRefresh,
-                                onOpen: { showsWeatherSheet = true }
-                            )
-                            CompactIntervalPreview(phases: todayPhases)
-                            OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
-                                onStartRun(plannedRunIntent)
-                            }
+                    if let completedActivityToday {
+                        completedTodayCard(completedActivityToday)
+                    } else {
+                        plannedWorkoutCard
+                    }
+
+                    if completedActivityToday != nil {
+                        Button {
+                            onStartRun(plannedRunIntent)
+                        } label: {
+                            Label("Run again", systemImage: "arrow.clockwise")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 46)
                         }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     }
 
                     if let companionTodayMessage {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Label("Your companion", systemImage: "sparkles")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(OutboundPalette.companion)
-                                Text(companionTodayMessage)
-                                    .font(.subheadline)
-                            }
+                        CompanionInsightRow {
+                            showsCompanionInsight = true
                         }
+                        .accessibilityHint(companionTodayMessage)
                     }
 
                     Button {
@@ -146,6 +124,7 @@ private struct SimplifiedTodayView: View {
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
+            .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .task {
                 weatherStore.refreshIfEnabled()
                 await loadCompanionTodayMessage()
@@ -176,6 +155,85 @@ private struct SimplifiedTodayView: View {
             )
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showsCompanionInsight) {
+            CompanionInsightSheet(message: companionTodayMessage ?? "No companion insight is available right now.")
+                .presentationDetents([.medium])
+        }
+    }
+
+    private var plannedWorkoutCard: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(todayWorkoutName).font(.title3.weight(.semibold))
+                    Spacer()
+                    Text(todayTotalDuration).font(.headline.monospacedDigit())
+                    Button { showsChangeSheet = true } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Change today’s run")
+                    Button { showsCompanionExplanation = true } label: {
+                        Image(systemName: "info.circle")
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Why this workout")
+                }
+                TodayWeatherRow(
+                    snapshot: weatherStore.snapshot,
+                    errorMessage: weatherStore.errorMessage,
+                    isEnabled: weatherStore.isEnabled,
+                    isLoading: weatherStore.isLoading,
+                    unitSystem: measurementPreferences.unitSystem,
+                    onEnable: weatherStore.enableAndRefresh,
+                    onOpen: { showsWeatherSheet = true }
+                )
+                CompactIntervalPreview(phases: todayPhases)
+                OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
+                    onStartRun(plannedRunIntent)
+                }
+            }
+        }
+    }
+
+    private func completedTodayCard(_ activity: SavedActivity) -> some View {
+        OutboundCard(style: .companion) {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                Label("Today’s run is done", systemImage: "checkmark.circle.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(OutboundPalette.companion)
+                Text("Nice work. Recover well and let this one count.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    todayStat(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1), "Distance")
+                    todayStat(durationLabel(activity.durationSecs), "Time")
+                }
+                NavigationLink(value: activity) {
+                    Label("View today’s activity", systemImage: "clock.arrow.circlepath")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(OutboundPalette.companion)
+            }
+        }
+    }
+
+    private func todayStat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.headline.monospacedDigit())
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var completedActivityToday: SavedActivity? {
+        activityStore.activities.first { Calendar.current.isDateInToday($0.startedAt) }
     }
 
     private func loadCompanionTodayMessage() async {
@@ -303,6 +361,70 @@ private struct SimplifiedTodayView: View {
             startLabel: "Start changed run",
             targetDurationSeconds: minutes * 60
         )
+    }
+}
+
+private struct CompanionInsightRow: View {
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(OutboundPalette.companion.gradient, in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Companion insight")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Tap for today’s guidance")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, OutboundSpacing.standard)
+            .frame(minHeight: 58)
+            .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Companion insight. Tap for today’s guidance.")
+    }
+}
+
+private struct CompanionInsightSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let message: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                    Label("Today’s guidance", systemImage: "sparkles")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(OutboundPalette.companion)
+                    Text(message)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(OutboundSpacing.screen)
+            }
+            .navigationTitle("Your companion")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 

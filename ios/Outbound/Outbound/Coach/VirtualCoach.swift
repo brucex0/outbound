@@ -35,6 +35,8 @@ private enum GoalMilestone: Hashable {
     case distanceHalfway
     case distanceTwoThirds
     case distanceLastUnit
+    case distance300MetersRemaining
+    case distance100MetersRemaining
     case distanceComplete
     case durationOneThird
     case durationHalfway
@@ -42,6 +44,16 @@ private enum GoalMilestone: Hashable {
     case durationLastFiveMinutes
     case durationLastMinute
     case durationComplete
+
+    var isFinishCue: Bool {
+        switch self {
+        case .distance300MetersRemaining, .distance100MetersRemaining, .distanceComplete,
+             .durationComplete:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 // On-device real-time coach that analyzes active session snapshots and speaks
@@ -74,6 +86,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var recentSpokenMessages: [String] = []
     private var recentSpokenRoles: [CoachingMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
+    private var spokenTimedBoundaryCues: Set<String> = []
 
     private let firstAnalysisAfterSeconds = 75
     private let maxSnapshotHistory = 20
@@ -124,6 +137,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         recentSpokenMessages = []
         recentSpokenRoles = []
         spokenGoalMilestones = []
+        spokenTimedBoundaryCues = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
@@ -246,11 +260,16 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
-        if let goalMilestone = nextGoalMilestone(for: snapshot) {
-            guard canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
-            guard canSpeakCoachMoment(at: snapshot.elapsedSeconds) else { return }
+        if announceTimedBoundaryIfNeeded(for: snapshot) {
+            return
+        }
 
-            if speak(goalProgressAnnouncement(for: goalMilestone), role: .progress) {
+        if let goalMilestone = nextGoalMilestone(for: snapshot) {
+            let isFinishCue = goalMilestone.isFinishCue
+            guard isFinishCue || canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
+            guard isFinishCue || canSpeakCoachMoment(at: snapshot.elapsedSeconds) else { return }
+
+            if speakPriorityIfNeeded(goalProgressAnnouncement(for: goalMilestone), isPriority: isFinishCue) {
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
                 lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
@@ -330,6 +349,8 @@ final class VirtualCoach: NSObject, ObservableObject {
         let lastUnitMeters = preferredLastDistanceUnitMeters(for: targetDistance)
         let candidates: [(GoalMilestone, Bool)] = [
             (.distanceComplete, progress >= 1),
+            (.distance100MetersRemaining, targetDistance > 400 && remaining > 0 && remaining <= 100),
+            (.distance300MetersRemaining, targetDistance > 600 && remaining > 100 && remaining <= 300),
             (.distanceLastUnit, targetDistance > lastUnitMeters * 1.5 && remaining > 0 && remaining <= lastUnitMeters),
             (.distanceTwoThirds, progress >= 2.0 / 3.0),
             (.distanceHalfway, progress >= 0.5),
@@ -373,6 +394,10 @@ final class VirtualCoach: NSObject, ObservableObject {
         case .distanceLastUnit:
             let unitName = isMileBasedDistanceGoal(sessionIntent?.resolvedTargetDistanceMeters ?? 0) ? "mile" : "kilometer"
             return "Last \(unitName) of the distance goal. Stay tall."
+        case .distance300MetersRemaining:
+            return "300 meters to go."
+        case .distance100MetersRemaining:
+            return "100 meters to go."
         case .distanceComplete:
             return "Distance goal covered. Ease through the finish."
         case .durationOneThird:
@@ -388,6 +413,62 @@ final class VirtualCoach: NSObject, ObservableObject {
         case .durationComplete:
             return "Time goal covered. Bring it down smoothly."
         }
+    }
+
+    private func announceTimedBoundaryIfNeeded(for snapshot: ActiveSessionSnapshot) -> Bool {
+        guard let cue = nextTimedBoundaryCue(at: snapshot.elapsedSeconds) else { return false }
+        synthesizer.stopSpeaking(at: .immediate)
+        guard speak(cue.text, urgency: .opportunity, role: cue.isCompletion ? .finish : .segment) else {
+            return false
+        }
+        spokenTimedBoundaryCues.insert(cue.id)
+        lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+        rememberCoachSpeech(at: snapshot.elapsedSeconds)
+        if cue.isCompletion {
+            spokenGoalMilestones.insert(.durationComplete)
+        }
+        return true
+    }
+
+    private func nextTimedBoundaryCue(at elapsedSeconds: Int) -> (id: String, text: String, isCompletion: Bool)? {
+        guard let sessionIntent else { return nil }
+        let steps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
+        let boundaries: [(seconds: Int, nextLabel: String?)]
+        if steps.isEmpty {
+            guard let duration = sessionIntent.resolvedTargetDurationSeconds, duration > 0 else { return nil }
+            boundaries = [(duration, nil)]
+        } else {
+            var cumulative = 0
+            boundaries = steps.enumerated().map { index, step in
+                cumulative += step.durationSeconds
+                return (cumulative, index + 1 < steps.count ? steps[index + 1].label : nil)
+            }
+        }
+
+        for (index, boundary) in boundaries.enumerated() {
+            let remaining = boundary.seconds - elapsedSeconds
+            if (1...5).contains(remaining) {
+                let id = "boundary-\(index)-count-\(remaining)"
+                if !spokenTimedBoundaryCues.contains(id) {
+                    return (id, "\(remaining)", false)
+                }
+            } else if remaining <= 0 {
+                let id = "boundary-\(index)-complete"
+                guard !spokenTimedBoundaryCues.contains(id) else { continue }
+                if let nextLabel = boundary.nextLabel {
+                    return (id, "Go. \(nextLabel).", false)
+                }
+                return (id, "Workout complete.", true)
+            }
+        }
+        return nil
+    }
+
+    private func speakPriorityIfNeeded(_ text: String, isPriority: Bool) -> Bool {
+        if isPriority {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        return speak(text, urgency: isPriority ? .opportunity : .steady, role: isPriority ? .finish : .progress)
     }
 
     private func preferredLastDistanceUnitMeters(for targetDistance: Double) -> Double {
