@@ -43,7 +43,7 @@ enum ActivityShareCardRenderer {
             .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted)
             .joined()
         let title = rawTitle.isEmpty ? "activity-\(activity.id.uuidString.prefix(8))" : rawTitle
-        return "\(title)-outbound-card.png"
+        return "\(title)-plainstride-card.png"
     }
 }
 
@@ -133,7 +133,7 @@ private struct ActivityShareCardView: View {
 
                 Spacer()
 
-                Text("OUTBOUND")
+                Text("PLAINSTRIDE")
                     .font(.system(size: 44, weight: .black))
                     .tracking(1.5)
                     .foregroundStyle(.white)

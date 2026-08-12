@@ -13,7 +13,7 @@ struct AuthView: View {
             let storyCenter = storyTop + max(storyHeight / 2, (storyBottom - storyTop) / 2)
 
             ZStack(alignment: .top) {
-                Text("OUTBOUND")
+                Text("PLAINSTRIDE")
                     .font(.subheadline.weight(.medium))
                     .tracking(1.5)
                     .frame(maxWidth: .infinity, alignment: .leading)

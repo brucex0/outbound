@@ -44,6 +44,6 @@ app.route("/v1/live", live);
 app.route("/v1/transcribe", transcribeRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
-console.log(`Outbound API running on port ${port}`);
+console.log(`Plainstride API running on port ${port}`);
 
 serve({ fetch: app.fetch, port });

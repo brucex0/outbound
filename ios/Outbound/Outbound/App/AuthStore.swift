@@ -237,14 +237,14 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             backend = .firebase
-            print("[Outbound][Auth] Starting Google sign-in flow.")
+            print("[Plainstride][Auth] Starting Google sign-in flow.")
             let provider = Self.makeGoogleProvider()
             let result = try await Auth.auth().signIn(with: provider, uiDelegate: nil)
             let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
-            print("[Outbound][Auth] Google sign-in completed for user: \(result.user.uid)")
+            print("[Plainstride][Auth] Google sign-in completed for user: \(result.user.uid)")
             await completeSignIn(with: resolvedResult)
         } catch {
-            print("[Outbound][Auth] Google sign-in failed: \(error.localizedDescription)")
+            print("[Plainstride][Auth] Google sign-in failed: \(error.localizedDescription)")
             if !storePendingFederatedLink(from: error) {
                 resetFirebaseSessionPreservingPendingLinkIfNeeded()
                 authError = Self.userFacingMessage(for: error)
@@ -269,14 +269,14 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             backend = .firebase
-            print("[Outbound][Auth] Starting Apple sign-in flow.")
+            print("[Plainstride][Auth] Starting Apple sign-in flow.")
             let credential = try await makeAppleCredential()
             let result = try await Auth.auth().signIn(with: credential.firebaseCredential)
             let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
-            print("[Outbound][Auth] Apple sign-in completed for user: \(result.user.uid)")
+            print("[Plainstride][Auth] Apple sign-in completed for user: \(result.user.uid)")
             await completeSignIn(with: resolvedResult)
         } catch {
-            print("[Outbound][Auth] Apple sign-in failed: \(error.localizedDescription)")
+            print("[Plainstride][Auth] Apple sign-in failed: \(error.localizedDescription)")
             if !storePendingFederatedLink(from: error) {
                 resetFirebaseSessionPreservingPendingLinkIfNeeded()
                 authError = Self.userFacingMessage(for: error)
@@ -307,10 +307,10 @@ final class AuthStore: ObservableObject {
             defer { isBusy = false }
 
             let result = try await currentUser.link(with: Self.makeGoogleProvider(), uiDelegate: nil)
-            print("[Outbound][Auth] Google linked for user: \(result.user.uid)")
+            print("[Plainstride][Auth] Google linked for user: \(result.user.uid)")
             await completeSignIn(with: result, forcingTokenRefresh: true)
         } catch {
-            print("[Outbound][Auth] Google link failed: \(error.localizedDescription)")
+            print("[Plainstride][Auth] Google link failed: \(error.localizedDescription)")
             authError = Self.userFacingMessage(for: error)
         }
     }
@@ -344,10 +344,10 @@ final class AuthStore: ObservableObject {
 
             let credential = try await makeAppleCredential()
             let result = try await currentUser.link(with: credential.firebaseCredential)
-            print("[Outbound][Auth] Apple linked for user: \(result.user.uid)")
+            print("[Plainstride][Auth] Apple linked for user: \(result.user.uid)")
             await completeSignIn(with: result, forcingTokenRefresh: true)
         } catch {
-            print("[Outbound][Auth] Apple link failed: \(error.localizedDescription)")
+            print("[Plainstride][Auth] Apple link failed: \(error.localizedDescription)")
             authError = Self.userFacingMessage(for: error)
         }
     }
@@ -355,7 +355,7 @@ final class AuthStore: ObservableObject {
     func handleOpenURL(_ url: URL) -> Bool {
         guard isFirebaseConfigured else { return false }
         let handled = Auth.auth().canHandle(url)
-        print("[Outbound][Auth] handleOpenURL handled=\(handled) url=\(url.absoluteString)")
+        print("[Plainstride][Auth] handleOpenURL handled=\(handled) url=\(url.absoluteString)")
         return handled
     }
 

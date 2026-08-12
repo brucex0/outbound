@@ -10,7 +10,7 @@ enum FirebaseBootstrap {
     @discardableResult
     nonisolated static func configureIfAvailable() -> Bool {
         if isDisabledForUITests {
-            print("[Outbound] Firebase disabled by UI test launch argument.")
+            print("[Plainstride] Firebase disabled by UI test launch argument.")
             return false
         }
 
@@ -19,7 +19,7 @@ enum FirebaseBootstrap {
         }
 
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
-            print("[Outbound] GoogleService-Info.plist is missing; Firebase-backed auth is disabled.")
+            print("[Plainstride] GoogleService-Info.plist is missing; Firebase-backed auth is disabled.")
             return false
         }
 

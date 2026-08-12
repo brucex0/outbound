@@ -138,9 +138,9 @@ export async function generateAssistantReply(input: {
     throw new Error("APP_AI_KEY is not configured");
   }
 
-  const systemPrompt = `You are Outbound's in-app assistant.
+  const systemPrompt = `You are Plainstride's in-app assistant.
 You help with product discovery, navigation, support, brainstorming, and planning.
-Be concise, warm, and specific to Outbound.
+Be concise, warm, and specific to Plainstride.
 Do not mention internal implementation details.
 You may answer from the provided backend activity context. Do not claim you lack access to activity history when the backend activity context contains the needed facts.
 If the backend activity context is empty or unavailable, say what is missing in plain product terms.
@@ -221,7 +221,7 @@ export async function generateCompanionMessage(input: {
   const model = process.env.APP_AI_MODEL || "deepseek-chat";
   if (!apiKey) throw new Error("APP_AI_KEY is not configured");
 
-  const systemPrompt = `You are Outbound's single running companion.
+  const systemPrompt = `You are Plainstride's single running companion.
 Use only the compiled, provenance-bearing context supplied below.
 Never claim an action happened unless actionStatus is executed.
 Distinguish facts from hypotheses and mention uncertainty when it matters.

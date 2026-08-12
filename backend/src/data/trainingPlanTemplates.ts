@@ -15,7 +15,7 @@ export const trainingPlanTemplates = [
     "minSessionsPerWeek" : 3,
     "source" : {
       "attribution" : "Cody Hoover's time-to-run built-in plan library",
-      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Outbound's structured week and workout model.",
+      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Plainstride's structured week and workout model.",
       "license" : "MIT",
       "name" : "time-to-run",
       "url" : "https://github.com/hoovercj/time-to-run"
@@ -4009,7 +4009,7 @@ export const trainingPlanTemplates = [
     "minSessionsPerWeek" : 3,
     "source" : {
       "attribution" : "Luke Murchison's c25k-web Couch-to-5K plan data",
-      "importNotes" : "Imported from the open-source `src/data/c25k.json` plan and translated into Outbound's workout model.",
+      "importNotes" : "Imported from the open-source `src/data/c25k.json` plan and translated into Plainstride's workout model.",
       "license" : "MIT",
       "name" : "c25k-web",
       "url" : "https://github.com/lmorchard/c25k-web"
@@ -10732,7 +10732,7 @@ export const trainingPlanTemplates = [
     "minSessionsPerWeek" : 3,
     "source" : {
       "attribution" : "Cody Hoover's time-to-run built-in plan library",
-      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Outbound's structured week and workout model.",
+      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Plainstride's structured week and workout model.",
       "license" : "MIT",
       "name" : "time-to-run",
       "url" : "https://github.com/hoovercj/time-to-run"
@@ -15027,7 +15027,7 @@ export const trainingPlanTemplates = [
     "minSessionsPerWeek" : 5,
     "source" : {
       "attribution" : "Cody Hoover's time-to-run built-in plan library",
-      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Outbound's structured week and workout model.",
+      "importNotes" : "Imported from the open-source `src/workouts/plans` built-in plans and translated into Plainstride's structured week and workout model.",
       "license" : "MIT",
       "name" : "time-to-run",
       "url" : "https://github.com/hoovercj/time-to-run"

@@ -301,7 +301,7 @@ function liveShareHTML(token: string, initialPayload: unknown) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Outbound Live Run</title>
+  <title>Plainstride Live Run</title>
   <style>
     :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -348,7 +348,7 @@ function liveShareHTML(token: string, initialPayload: unknown) {
     <section class="hero">
       <div class="topbar">
         <div>
-          <h1 id="title">Outbound live run</h1>
+          <h1 id="title">Plainstride live run</h1>
           <div class="muted" id="subtitle">Waiting for the first location update.</div>
         </div>
         <div class="status" id="status">Live</div>
@@ -443,7 +443,7 @@ function liveShareHTML(token: string, initialPayload: unknown) {
     }
     function render(next) {
       state = next;
-      document.getElementById("title").textContent = state.title || "Outbound live run";
+      document.getElementById("title").textContent = state.title || "Plainstride live run";
       document.getElementById("distance").textContent = ((state.distanceM || 0) / 1000).toFixed(2) + " km";
       document.getElementById("elapsed").textContent = formatElapsed(state.elapsedSeconds || 0);
       document.getElementById("updated").textContent = formatAgo(state.lastLocationAt);

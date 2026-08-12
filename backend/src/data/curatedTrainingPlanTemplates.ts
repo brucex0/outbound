@@ -4,12 +4,12 @@ type RawTemplate = Record<string, any>;
 type RawWorkout = Record<string, any>;
 
 const outboundPlanStandardsSource = {
-  name: "Outbound plan standards",
+  name: "Plainstride plan standards",
   license: "Original",
-  attribution: "Outbound-authored plans benchmarked against established road-running coaching patterns",
+  attribution: "Plainstride-authored plans benchmarked against established road-running coaching patterns",
   url: "https://www.halhigdon.com/",
   importNotes:
-    "Uses original Outbound workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans.",
+    "Uses original Plainstride workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans.",
 };
 
 const coachBuiltTemplateIds = new Set([
