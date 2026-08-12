@@ -32,6 +32,17 @@ final class APIClient {
         try await post("/activities", body: request)
     }
 
+    func fetchActivities(offset: Int = 0) async throws -> ActivitySyncListResponse {
+        try await get("/activities", queryItems: [
+            URLQueryItem(name: "limit", value: "200"),
+            URLQueryItem(name: "offset", value: String(offset))
+        ])
+    }
+
+    func deleteActivity(id: String) async throws -> ActivityDeleteResponse {
+        try await delete("/activities/\(id)")
+    }
+
     func chatWithAssistant(_ request: AssistantChatRequest) async throws -> AssistantChatResponse {
         try await post("/assistant/chat", body: request)
     }
@@ -1171,6 +1182,8 @@ struct ActivityUploadRequest: Encodable {
     let avgHeartRate: Int?
     let route: SavedRoute?
     let reflection: FinishReflection?
+    let clientData: SavedActivity
+    let clientUpdatedAt: Date
 }
 
 struct ActivityUploadResponse: Decodable {
@@ -1178,6 +1191,28 @@ struct ActivityUploadResponse: Decodable {
     let clientActivityId: String?
     let status: String
     let uploadedAt: Date
+    let serverUpdatedAt: Date
+}
+
+struct ActivitySyncListResponse: Decodable {
+    let activities: [RemoteActivityRecord]
+    let hasMore: Bool
+}
+
+struct RemoteActivityRecord: Decodable {
+    let id: String
+    let clientActivityId: String?
+    let clientData: SavedActivity?
+    let clientUpdatedAt: Date?
+    let deletedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct ActivityDeleteResponse: Decodable {
+    let status: String
+    let id: String?
+    let deletedAt: Date?
 }
 
 struct LiveShareCreateRequest: Encodable {

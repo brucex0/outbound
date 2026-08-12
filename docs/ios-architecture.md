@@ -51,7 +51,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Local Persistence
 
-- `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`. Manifest reads/writes, photo compression, deletion, replacement, and route export are serialized by `ActivityPersistence` off the main actor; `ActivityStore` returns to the main actor only to publish UI state.
+- `Core/LocalActivityStore.swift`: saves finished activities under Application Support at `Outbound/Activities`. Manifest reads/writes, photo compression, deletion, replacement/upsert, and route export are serialized by `ActivityPersistence` off the main actor; `ActivityStore` returns to the main actor only to publish UI state.
+- `Activity/ActivityStore.swift`: keeps history local-first, then performs authenticated two-way synchronization after sign-in and whenever the app becomes active. It pulls paginated server snapshots and deletion tombstones, restores missing activities, preserves device-local photos, upgrades legacy uploads, uploads new/edited local records using client modification timestamps, and sends server deletes before removing local data. Server snapshots intentionally omit photo files and photo metadata; photos remain on the device that captured them.
 - `activities.json`: manifest containing `SavedActivity` entries, source attribution, optional gear/indoor/manual-edit/cadence/heart-rate-zone metadata, optional per-session goal metadata, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests with raw `trackPoints` and legacy coach nudges still load through backward-compatibility paths.
 - Per-activity photo files are stored as JPEGs under `<activity-id>/photos/photo-XX.jpg`.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
@@ -100,7 +101,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Network And Placeholders
 
-- `Core/APIClient.swift`: placeholder backend client for coach profile and future activity upload.
+- `Core/APIClient.swift`: authenticated backend client for coach profile, paginated activity restore/upload/delete synchronization, planning, personalization, assistant, and live features.
 - `Social/ActivityFeedView.swift`: optional local-first social hub compiled only when `OUTBOUND_ENABLE_SOCIAL` is defined, with Squad, Clubs, Relays, and Rivals scopes, seeded feed cards, latest-run sharing from `ActivityStore`, local comments, route prompts, report/block controls, privacy visibility, club joins, challenge joins, relay composition, and rivalry rows.
 - `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift`: Social-only models, seed data, local interaction state, and Social-only recognition awards. Default beta builds omit these code paths and related assistant copy for App Review safety. See `docs/social.md` before changing social product loops.
 - `App/ProfileView.swift`: combined Me-tab home surface. It embeds the simplified motivation dashboard above a compact recent-activity card, and adds a top-right Settings entry point that now owns account deletion/sign-out, coach customization, shoe tracking, Apple Health, Apple Music, and DEBUG-only onboarding replay.

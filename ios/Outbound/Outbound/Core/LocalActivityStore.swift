@@ -51,6 +51,10 @@ actor ActivityPersistence {
         try LocalActivityStore.replace(activity)
     }
 
+    func replaceOrInsert(_ activity: SavedActivity) throws {
+        try LocalActivityStore.replaceOrInsert(activity)
+    }
+
     func deleteAll() throws {
         try LocalActivityStore.deleteAll()
     }
@@ -118,7 +122,8 @@ private nonisolated enum LocalActivityStore {
                 serverActivityId: nil,
                 lastAttemptAt: nil,
                 syncedAt: nil,
-                lastError: nil
+                lastError: nil,
+                localUpdatedAt: Date()
             )
         )
 
@@ -147,6 +152,17 @@ private nonisolated enum LocalActivityStore {
         var activities = try load()
         guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
         activities[index] = activity
+        try saveManifest(activities)
+    }
+
+    static func replaceOrInsert(_ activity: SavedActivity) throws {
+        var activities = try load()
+        if let index = activities.firstIndex(where: { $0.id == activity.id }) {
+            activities[index] = activity
+        } else {
+            activities.append(activity)
+        }
+        activities.sort { $0.startedAt > $1.startedAt }
         try saveManifest(activities)
     }
 
@@ -426,6 +442,7 @@ nonisolated struct SavedActivitySyncState: Codable, Hashable {
     let lastAttemptAt: Date?
     let syncedAt: Date?
     let lastError: String?
+    let localUpdatedAt: Date?
 
     var isSynced: Bool { syncedAt != nil }
 }

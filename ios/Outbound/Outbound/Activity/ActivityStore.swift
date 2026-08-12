@@ -9,6 +9,7 @@ final class ActivityStore: ObservableObject {
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
     private var activityRevision = 0
+    private var isSyncing = false
 
     init() {
         Task { await loadActivities() }
@@ -52,6 +53,10 @@ final class ActivityStore: ObservableObject {
     }
 
     func delete(_ activity: SavedActivity) async throws {
+        if AuthStore.currentUserId != nil {
+            let remoteID = activity.sync?.serverActivityId ?? activity.sync?.clientActivityId ?? activity.id.uuidString
+            _ = try await api.deleteActivity(id: remoteID)
+        }
         try await persistence.delete(activity)
         activityRevision += 1
         activities.removeAll { $0.id == activity.id }
@@ -120,7 +125,14 @@ final class ActivityStore: ObservableObject {
             heartRateZones: activity.heartRateZones,
             route: activity.route,
             photos: activity.photos,
-            sync: activity.sync
+            sync: SavedActivitySyncState(
+                clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
+                serverActivityId: activity.sync?.serverActivityId,
+                lastAttemptAt: activity.sync?.lastAttemptAt,
+                syncedAt: nil,
+                lastError: nil,
+                localUpdatedAt: Date()
+            )
         )
 
         try await persistence.replace(updated)
@@ -132,6 +144,11 @@ final class ActivityStore: ObservableObject {
 
     func syncPendingActivitiesIfNeeded() async {
         guard AuthStore.currentUserId != nil else { return }
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+        await loadActivities()
+        await pullRemoteActivities()
         let pendingIDs = activities
             .filter { !($0.sync?.isSynced ?? false) }
             .map(\.id)
@@ -161,7 +178,8 @@ final class ActivityStore: ObservableObject {
             serverActivityId: nil,
             lastAttemptAt: nil,
             syncedAt: nil,
-            lastError: nil
+            lastError: nil,
+            localUpdatedAt: activity.createdAt
         )
 
         let attemptState = SavedActivitySyncState(
@@ -169,7 +187,8 @@ final class ActivityStore: ObservableObject {
             serverActivityId: priorState.serverActivityId,
             lastAttemptAt: Date(),
             syncedAt: priorState.syncedAt,
-            lastError: nil
+            lastError: nil,
+            localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
         )
         await persistSyncState(attemptState, for: activity.id)
 
@@ -188,7 +207,9 @@ final class ActivityStore: ObservableObject {
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
                     route: activity.route,
-                    reflection: activity.reflection
+                    reflection: activity.reflection,
+                    clientData: syncSnapshot(for: activity),
+                    clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt
                 )
             )
 
@@ -196,8 +217,9 @@ final class ActivityStore: ObservableObject {
                 clientActivityId: priorState.clientActivityId,
                 serverActivityId: response.id,
                 lastAttemptAt: attemptState.lastAttemptAt,
-                syncedAt: response.uploadedAt,
-                lastError: nil
+                syncedAt: response.serverUpdatedAt,
+                lastError: nil,
+                localUpdatedAt: attemptState.localUpdatedAt
             )
             await persistSyncState(syncedState, for: activity.id)
         } catch {
@@ -206,7 +228,8 @@ final class ActivityStore: ObservableObject {
                 serverActivityId: priorState.serverActivityId,
                 lastAttemptAt: attemptState.lastAttemptAt,
                 syncedAt: priorState.syncedAt,
-                lastError: error.localizedDescription
+                lastError: error.localizedDescription,
+                localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
             )
             await persistSyncState(failedState, for: activity.id)
             print("[ActivityStore] activity sync failed: \(error.localizedDescription)")
@@ -244,6 +267,111 @@ final class ActivityStore: ObservableObject {
         if let index = activities.firstIndex(where: { $0.id == updated.id }) {
             activities[index] = updated
         }
+    }
+
+    private func pullRemoteActivities() async {
+        do {
+            var offset = 0
+            var hasMore = true
+            while hasMore {
+                let response = try await api.fetchActivities(offset: offset)
+                for remote in response.activities {
+                guard let clientID = remote.clientActivityId,
+                      let activityID = UUID(uuidString: clientID) else { continue }
+
+                if remote.deletedAt != nil {
+                    if let local = activity(id: activityID) {
+                        try? await persistence.delete(local)
+                        activities.removeAll { $0.id == activityID }
+                        activityRevision += 1
+                    }
+                    continue
+                }
+
+                guard let snapshot = remote.clientData else { continue }
+                let local = activity(id: activityID)
+                if let local, remote.clientUpdatedAt == nil {
+                    let upgradeState = SavedActivitySyncState(
+                        clientActivityId: clientID,
+                        serverActivityId: remote.id,
+                        lastAttemptAt: local.sync?.lastAttemptAt,
+                        syncedAt: nil,
+                        lastError: nil,
+                        localUpdatedAt: local.sync?.localUpdatedAt ?? local.createdAt
+                    )
+                    await persistSyncState(upgradeState, for: activityID)
+                    continue
+                }
+                let localUpdatedAt = local?.sync?.localUpdatedAt ?? local?.createdAt
+                if local?.sync?.isSynced == false,
+                   let localUpdatedAt,
+                   let remoteClientUpdatedAt = remote.clientUpdatedAt,
+                   localUpdatedAt > remoteClientUpdatedAt {
+                    continue
+                }
+
+                let synced = SavedActivitySyncState(
+                    clientActivityId: clientID,
+                    serverActivityId: remote.id,
+                    lastAttemptAt: local?.sync?.lastAttemptAt,
+                    syncedAt: remote.updatedAt,
+                    lastError: nil,
+                    localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
+                )
+                let restored = copy(
+                    snapshot,
+                    photos: local?.photos ?? [],
+                    sync: synced
+                )
+                try await persistence.replaceOrInsert(restored)
+                if let index = activities.firstIndex(where: { $0.id == activityID }) {
+                    activities[index] = restored
+                } else {
+                    activities.append(restored)
+                }
+                }
+                offset += response.activities.count
+                hasMore = response.hasMore && !response.activities.isEmpty
+            }
+            activities.sort { $0.startedAt > $1.startedAt }
+        } catch {
+            print("[ActivityStore] activity restore failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
+        copy(activity, photos: [], sync: nil)
+    }
+
+    private func copy(
+        _ activity: SavedActivity,
+        photos: [SavedPhoto],
+        sync: SavedActivitySyncState?
+    ) -> SavedActivity {
+        SavedActivity(
+            id: activity.id,
+            title: activity.title,
+            coachNudge: activity.coachNudge,
+            reflection: activity.reflection,
+            createdAt: activity.createdAt,
+            startedAt: activity.startedAt,
+            endedAt: activity.endedAt,
+            durationSecs: activity.durationSecs,
+            distanceM: activity.distanceM,
+            avgPace: activity.avgPace,
+            elevationGainM: activity.elevationGainM,
+            healthMetrics: activity.healthMetrics,
+            goal: activity.goal,
+            source: activity.source,
+            gear: activity.gear,
+            manualEdits: activity.manualEdits,
+            indoor: activity.indoor,
+            cadence: activity.cadence,
+            heartRateZones: activity.heartRateZones,
+            route: activity.route,
+            photos: photos,
+            sync: sync
+        )
     }
 
     private func autoTitle(for date: Date) -> String {

@@ -148,6 +148,9 @@ model Activity {
   route              Json? // GeoJSON Feature with LineString geometry
   splits             Json? // Split[]
   reflection         Json? // post-activity finish reflection saved by the client
+  clientData         Json? // lossless client snapshot used to restore local-first history
+  clientUpdatedAt    DateTime?
+  deletedAt          DateTime?
   photos             Photo[]
   posts              Post[]
   workoutCompletions WorkoutCompletion[]
@@ -157,6 +160,7 @@ model Activity {
   coachAnalysis Json?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, clientActivityId])
 }

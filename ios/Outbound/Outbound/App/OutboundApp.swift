@@ -100,6 +100,9 @@ struct OutboundApp: App {
                     await togetherStore.refresh()
                     await consumePendingInviteIfPossible()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    Task { await activityStore.syncPendingActivitiesIfNeeded() }
+                }
                 .onOpenURL { url in
                     handleIncomingURL(url)
                 }
