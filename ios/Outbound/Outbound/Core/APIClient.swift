@@ -43,6 +43,20 @@ final class APIClient {
         try await delete("/activities/\(id)")
     }
 
+    func uploadActivityPhoto(_ request: ActivityPhotoUploadRequest) async throws -> RemoteActivityPhoto {
+        try await post("/media/activity-photos", body: request)
+    }
+
+    func downloadActivityPhoto(id: String) async throws -> Data {
+        var req = URLRequest(url: url(for: "/media/activity-photos/\(id)/content"))
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try validate(response: response, data: data)
+        return data
+    }
+
     func chatWithAssistant(_ request: AssistantChatRequest) async throws -> AssistantChatResponse {
         try await post("/assistant/chat", body: request)
     }
@@ -1212,6 +1226,36 @@ struct RemoteActivityRecord: Decodable {
     let clientData: SavedActivity?
     let clientUpdatedAt: Date?
     let deletedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
+    let photos: [RemoteActivityPhoto]?
+}
+
+struct ActivityPhotoUploadRequest: Encodable {
+    let activityId: String
+    let clientPhotoId: String
+    let base64: String
+    let takenAt: Date
+    let paceAtShot: Double?
+    let hrAtShot: Int?
+    let distAtShot: Double
+    let latitude: Double?
+    let longitude: Double?
+    let captureContext: String
+}
+
+struct RemoteActivityPhoto: Decodable {
+    let id: String
+    let clientPhotoId: String
+    let takenAt: Date
+    let paceAtShot: Double?
+    let hrAtShot: Int?
+    let distAtShot: Double?
+    let latitude: Double?
+    let longitude: Double?
+    let captureContext: String?
+    let byteSize: Int
+    let sha256: String
     let createdAt: Date
     let updatedAt: Date
 }

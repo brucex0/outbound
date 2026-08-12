@@ -13,7 +13,8 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Hosted Postgres currently lives on the shared Cloud SQL instance `boatshare-20260214-zxia:us-central1:boatshare-db`.
 - The Outbound database on that instance is `outbound`.
 - The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
-- User-uploaded avatars are stored in Firebase Storage. Set `AVATAR_STORAGE_BUCKET` to the bucket name if it differs from the default `<project-id>.firebasestorage.app`; the Cloud Run service account needs object create, read, and delete access.
+- User-uploaded avatars and private activity photos are stored in the same Firebase Storage/GCS bucket. Set `AVATAR_STORAGE_BUCKET` for avatars and optionally `MEDIA_STORAGE_BUCKET` for activity photos; both fall back to `<project-id>.firebasestorage.app`. The Cloud Run service account needs object create, read, and delete access.
+- Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, and proxies authenticated downloads; bucket objects must not be made public.
 
 ## Local Backend Run
 
@@ -246,4 +247,5 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - The live Cloud Run service is connected to the `outbound` Cloud SQL database, so authenticated activity, planning, personalization, safety, social, and account-deletion routes can use durable storage.
 - After any Prisma schema change, deploy the API first, pin `outbound-db-push` to the new revision's exact image digest, and execute the job before relying on the changed route behavior.
 - Activity history sync requires the nullable `Activity.clientData`, `clientUpdatedAt`, `deletedAt`, and `updatedAt` fields. After deploying this change, run the pinned schema job before distributing the matching iOS build. Existing activity rows are restored through the route's legacy-field adapter and are upgraded to lossless client snapshots the next time a device with a local copy synchronizes.
+- Activity photo sync requires the current `Photo` columns and uniqueness constraints. Deploy the API and run the pinned schema job before distributing the matching iOS build. Uploads are idempotent by `(activityId, clientPhotoId)`; the iOS client keeps local JPEGs, retries missing uploads at launch/foreground, and downloads authenticated copies when restoring history on another device.
 - The coherent companion schema adds evidence, belief, episode, conversation, context-manifest, situational-signal, action, and outcome tables. Deploy the service image and execute the pinned `outbound-db-push` job before enabling `/v1/companion` clients against that revision.

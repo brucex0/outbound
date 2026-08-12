@@ -838,18 +838,28 @@ model PlanAdjustmentEvent {
 }
 
 model Photo {
-  id         String   @id @default(cuid())
-  activityId String
-  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  url        String
-  takenAt    DateTime
+  id            String   @id @default(cuid())
+  activityId    String
+  activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  clientPhotoId String
+  storageKey    String   @unique
+  contentType   String   @default("image/jpeg")
+  byteSize      Int
+  sha256        String
+  url           String
+  takenAt       DateTime
   // Stats at moment of capture
   paceAtShot Float?
   hrAtShot   Int?
   distAtShot Float?
   lat        Float?
   lng        Float?
+  captureContext String?
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([activityId, clientPhotoId])
+  @@index([activityId, takenAt])
 }
 
 model Moment {

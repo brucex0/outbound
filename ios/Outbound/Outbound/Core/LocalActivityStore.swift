@@ -62,6 +62,14 @@ actor ActivityPersistence {
     func exportRoute(for activity: SavedActivity, format: RouteExportFormat) throws -> URL {
         try RouteFileExporter.export(activity: activity, format: format)
     }
+
+    func uploadData(for photo: SavedPhoto) throws -> Data {
+        try LocalActivityStore.uploadData(for: photo)
+    }
+
+    func saveDownloadedPhoto(_ data: Data, remote: RemoteActivityPhoto, activityID: UUID) throws -> SavedPhoto {
+        try LocalActivityStore.saveDownloadedPhoto(data, remote: remote, activityID: activityID)
+    }
 }
 
 private nonisolated enum LocalActivityStore {
@@ -177,6 +185,41 @@ private nonisolated enum LocalActivityStore {
         URL.applicationSupportDirectory
             .appendingPathComponent("Outbound/Activities", isDirectory: true)
             .appendingPathComponent(photo.relativePath)
+    }
+
+    static func uploadData(for photo: SavedPhoto) throws -> Data {
+        let data = try Data(contentsOf: imageURL(for: photo))
+        let maximumBytes = 5 * 1024 * 1024
+        if data.count <= maximumBytes { return data }
+        guard let image = UIImage(data: data) else { throw ActivityPhotoPersistenceError.invalidImage }
+        for quality in [0.75, 0.6, 0.45, 0.3] {
+            if let compressed = image.jpegData(compressionQuality: quality), compressed.count <= maximumBytes {
+                return compressed
+            }
+        }
+        throw ActivityPhotoPersistenceError.imageTooLarge
+    }
+
+    static func saveDownloadedPhoto(_ data: Data, remote: RemoteActivityPhoto, activityID: UUID) throws -> SavedPhoto {
+        guard !data.isEmpty, UIImage(data: data) != nil else { throw ActivityPhotoPersistenceError.invalidImage }
+        let photoDirectory = try directory(for: activityID).appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: photoDirectory, withIntermediateDirectories: true)
+        let fileName = "photo-\(remote.clientPhotoId).jpg"
+        try data.write(to: photoDirectory.appendingPathComponent(fileName), options: .atomic)
+        return SavedPhoto(
+            id: UUID(uuidString: remote.clientPhotoId) ?? UUID(),
+            takenAt: remote.takenAt,
+            paceAtShot: remote.paceAtShot,
+            hrAtShot: remote.hrAtShot,
+            distAtShot: remote.distAtShot ?? 0,
+            coordinate: remote.latitude.flatMap { latitude in
+                remote.longitude.map { SavedCoordinate(latitude: latitude, longitude: $0) }
+            },
+            captureContext: remote.captureContext.flatMap(PhotoCaptureContext.init(rawValue:)) ?? .active,
+            relativePath: "\(activityID.uuidString)/photos/\(fileName)",
+            remotePhotoId: remote.id,
+            remoteUploadedAt: remote.updatedAt
+        )
     }
 
     private static func saveManifest(_ activities: [SavedActivity]) throws {
@@ -720,6 +763,8 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
     let coordinate: SavedCoordinate?
     let captureContext: PhotoCaptureContext
     let relativePath: String
+    let remotePhotoId: String?
+    let remoteUploadedAt: Date?
 
     nonisolated init(metadata: PhotoMetadata, relativePath: String) {
         id = UUID()
@@ -730,6 +775,25 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         coordinate = metadata.coordinate.map { SavedCoordinate(coordinate: $0) }
         captureContext = metadata.captureContext
         self.relativePath = relativePath
+        remotePhotoId = nil
+        remoteUploadedAt = nil
+    }
+
+    nonisolated init(
+        id: UUID, takenAt: Date, paceAtShot: Double?, hrAtShot: Int?, distAtShot: Double,
+        coordinate: SavedCoordinate?, captureContext: PhotoCaptureContext, relativePath: String,
+        remotePhotoId: String?, remoteUploadedAt: Date?
+    ) {
+        self.id = id
+        self.takenAt = takenAt
+        self.paceAtShot = paceAtShot
+        self.hrAtShot = hrAtShot
+        self.distAtShot = distAtShot
+        self.coordinate = coordinate
+        self.captureContext = captureContext
+        self.relativePath = relativePath
+        self.remotePhotoId = remotePhotoId
+        self.remoteUploadedAt = remoteUploadedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -742,6 +806,8 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         coordinate = try c.decodeIfPresent(SavedCoordinate.self, forKey: .coordinate)
         captureContext = (try? c.decode(PhotoCaptureContext.self, forKey: .captureContext)) ?? .active
         relativePath = try c.decode(String.self, forKey: .relativePath)
+        remotePhotoId = try c.decodeIfPresent(String.self, forKey: .remotePhotoId)
+        remoteUploadedAt = try c.decodeIfPresent(Date.self, forKey: .remoteUploadedAt)
     }
 }
 
@@ -752,5 +818,22 @@ nonisolated struct SavedCoordinate: Codable {
     nonisolated init(coordinate: CLLocationCoordinate2D) {
         latitude = coordinate.latitude
         longitude = coordinate.longitude
+    }
+
+    nonisolated init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
+nonisolated enum ActivityPhotoPersistenceError: LocalizedError {
+    case invalidImage
+    case imageTooLarge
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidImage: "The saved activity photo is not a valid image."
+        case .imageTooLarge: "The activity photo could not be compressed below 5 MB."
+        }
     }
 }

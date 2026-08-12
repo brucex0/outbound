@@ -10,6 +10,7 @@ import {
 import type { AppEnv } from "../types/hono.js";
 import { deleteFirebaseUser } from "../services/firebaseAuth.js";
 import { deleteAvatar, readAvatar, saveAvatar } from "../services/avatarStorage.js";
+import { deleteUserActivityPhotos } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 
@@ -160,9 +161,9 @@ router.delete("/me", async (c) => {
 
   if (user) {
     try {
-      await deleteAvatar(user.id);
+      await Promise.all([deleteAvatar(user.id), deleteUserActivityPhotos(user.id)]);
     } catch (error) {
-      console.error("[avatar] cleanup failed", error);
+      console.error("[user-media] cleanup failed", error);
     }
     await prisma.user.delete({ where: { id: user.id } });
   }

@@ -156,6 +156,9 @@ final class ActivityStore: ObservableObject {
         for activityID in pendingIDs {
             await syncActivityIfPossible(id: activityID)
         }
+        for activity in activities where activity.sync?.serverActivityId != nil {
+            await syncPhotosIfPossible(activityID: activity.id)
+        }
     }
 
     private func loadActivities() async {
@@ -222,6 +225,7 @@ final class ActivityStore: ObservableObject {
                 localUpdatedAt: attemptState.localUpdatedAt
             )
             await persistSyncState(syncedState, for: activity.id)
+            await syncPhotosIfPossible(activityID: activity.id)
         } catch {
             let failedState = SavedActivitySyncState(
                 clientActivityId: priorState.clientActivityId,
@@ -329,6 +333,7 @@ final class ActivityStore: ObservableObject {
                 } else {
                     activities.append(restored)
                 }
+                await restoreRemotePhotos(remote.photos ?? [], activityID: activityID)
                 }
                 offset += response.activities.count
                 hasMore = response.hasMore && !response.activities.isEmpty
@@ -337,6 +342,90 @@ final class ActivityStore: ObservableObject {
         } catch {
             print("[ActivityStore] activity restore failed: \(error.localizedDescription)")
         }
+    }
+
+    private func syncPhotosIfPossible(activityID: UUID) async {
+        guard let activity = activity(id: activityID),
+              let serverActivityID = activity.sync?.serverActivityId else { return }
+        for photo in activity.photos where photo.remotePhotoId == nil {
+            do {
+                let data = try await persistence.uploadData(for: photo)
+                let remote = try await api.uploadActivityPhoto(
+                    ActivityPhotoUploadRequest(
+                        activityId: serverActivityID,
+                        clientPhotoId: photo.id.uuidString,
+                        base64: data.base64EncodedString(),
+                        takenAt: photo.takenAt,
+                        paceAtShot: photo.paceAtShot,
+                        hrAtShot: photo.hrAtShot,
+                        distAtShot: photo.distAtShot,
+                        latitude: photo.coordinate?.latitude,
+                        longitude: photo.coordinate?.longitude,
+                        captureContext: photo.captureContext.rawValue
+                    )
+                )
+                await markPhotoUploaded(photo.id, remote: remote, activityID: activityID)
+            } catch {
+                print("[ActivityStore] photo sync failed for \(photo.id): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID) async {
+        guard var current = activity(id: activityID) else { return }
+        var photos = current.photos
+        var changed = false
+        for remote in remotePhotos {
+            if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
+                let local = photos[index]
+                if local.remotePhotoId != remote.id {
+                    photos[index] = copy(local, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt)
+                    changed = true
+                }
+                continue
+            }
+            do {
+                let data = try await api.downloadActivityPhoto(id: remote.id)
+                photos.append(try await persistence.saveDownloadedPhoto(data, remote: remote, activityID: activityID))
+                changed = true
+            } catch {
+                print("[ActivityStore] photo restore failed for \(remote.id): \(error.localizedDescription)")
+            }
+        }
+        guard changed else { return }
+        photos.sort { $0.takenAt < $1.takenAt }
+        current = copy(current, photos: photos, sync: current.sync)
+        try? await persistence.replace(current)
+        activityRevision += 1
+        if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = current }
+    }
+
+    private func markPhotoUploaded(_ photoID: UUID, remote: RemoteActivityPhoto, activityID: UUID) async {
+        guard let current = activity(id: activityID) else { return }
+        let photos = current.photos.map { photo in
+            photo.id == photoID
+                ? copy(photo, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt)
+                : photo
+        }
+        let updated = copy(current, photos: photos, sync: current.sync)
+        guard (try? await persistence.replace(updated)) != nil else { return }
+        activityRevision += 1
+        if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = updated }
+    }
+
+    private func copy(_ photo: SavedPhoto, remotePhotoId: String?, remoteUploadedAt: Date?) -> SavedPhoto {
+        SavedPhoto(
+            id: photo.id,
+            takenAt: photo.takenAt,
+            paceAtShot: photo.paceAtShot,
+            hrAtShot: photo.hrAtShot,
+            distAtShot: photo.distAtShot,
+            coordinate: photo.coordinate,
+            captureContext: photo.captureContext,
+            relativePath: photo.relativePath,
+            remotePhotoId: remotePhotoId,
+            remoteUploadedAt: remoteUploadedAt
+        )
     }
 
     private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {

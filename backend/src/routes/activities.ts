@@ -9,6 +9,7 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { enqueueActivityCompletedEvent } from "../services/planning/planningService.js";
 import type { AppEnv } from "../types/hono.js";
 import { Prisma } from "@prisma/client";
+import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 
@@ -23,6 +24,7 @@ router.get("/", async (c) => {
   const offset = Number(c.req.query("offset") ?? 0);
   const activities = await prisma.activity.findMany({
     where: { userId: user.id },
+    include: { photos: { orderBy: { takenAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
     take: limit,
     skip: offset,
@@ -36,6 +38,21 @@ router.get("/", async (c) => {
       deletedAt: activity.deletedAt,
       createdAt: activity.createdAt,
       updatedAt: activity.updatedAt,
+      photos: activity.photos.map((photo) => ({
+        id: photo.id,
+        clientPhotoId: photo.clientPhotoId,
+        takenAt: photo.takenAt,
+        paceAtShot: photo.paceAtShot,
+        hrAtShot: photo.hrAtShot,
+        distAtShot: photo.distAtShot,
+        latitude: photo.lat,
+        longitude: photo.lng,
+        captureContext: photo.captureContext,
+        byteSize: photo.byteSize,
+        sha256: photo.sha256,
+        createdAt: photo.createdAt,
+        updatedAt: photo.updatedAt,
+      })),
     })),
     hasMore: activities.length === limit,
   });
@@ -294,6 +311,10 @@ router.delete("/:id", async (c) => {
     },
   });
   if (!activity) return c.json({ status: "deleted" });
+
+  const photos = await prisma.photo.findMany({ where: { activityId: activity.id }, select: { storageKey: true } });
+  await deleteActivityPhotos(photos.map((photo) => photo.storageKey));
+  await prisma.photo.deleteMany({ where: { activityId: activity.id } });
 
   const deleted = await prisma.activity.update({
     where: { id: activity.id },
