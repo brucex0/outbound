@@ -192,6 +192,13 @@ final class APIClient {
         try await patch("/auth/me", body: request)
     }
 
+    func uploadMyAvatar(jpegData: Data) async throws -> AppUserProfileDTO {
+        try await patch(
+            "/auth/me/avatar",
+            body: AppUserAvatarUploadDTO(base64: jpegData.base64EncodedString(), contentType: "image/jpeg")
+        )
+    }
+
     func deleteMyAccount() async throws {
         let _: AccountDeletionResponse = try await delete("/auth/me")
     }

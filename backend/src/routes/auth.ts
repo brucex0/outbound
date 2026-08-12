@@ -9,8 +9,25 @@ import {
 } from "../services/currentUser.js";
 import type { AppEnv } from "../types/hono.js";
 import { deleteFirebaseUser } from "../services/firebaseAuth.js";
+import { deleteAvatar, readAvatar, saveAvatar } from "../services/avatarStorage.js";
 
 const router = new Hono<AppEnv>();
+
+router.get("/avatars/:userId", async (c) => {
+  try {
+    const avatar = await readAvatar(c.req.param("userId"));
+    if (!avatar) return c.json({ error: "Avatar not found." }, 404);
+    return new Response(new Uint8Array(avatar.data), {
+      headers: {
+        "Content-Type": avatar.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  } catch (error) {
+    console.error("[avatar] read failed", error);
+    return c.json({ error: "Avatar is unavailable." }, 503);
+  }
+});
 
 // Called after Firebase Auth sign-up to create or attach the app user record.
 router.post(
@@ -87,6 +104,40 @@ router.patch(
   }
 );
 
+router.patch(
+  "/me/avatar",
+  zValidator(
+    "json",
+    z.object({
+      base64: z.string().min(1).max(3_000_000),
+      contentType: z.enum(["image/jpeg", "image/png"]),
+    })
+  ),
+  async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+    const user = await getAuthenticatedAppUser(c);
+    if (!user) return c.json({ error: "Authentication required." }, 401);
+    const body = c.req.valid("json");
+    const data = Buffer.from(body.base64, "base64");
+    if (data.length === 0 || data.toString("base64").replace(/=+$/, "") !== body.base64.replace(/=+$/, "")) {
+      return c.json({ error: "Avatar data is invalid." }, 400);
+    }
+    try {
+      await saveAvatar(user.id, data, body.contentType);
+      const origin = new URL(c.req.url).origin;
+      const avatarUrl = `${origin}/v1/auth/avatars/${user.id}?v=${Date.now()}`;
+      return c.json(await getPrismaClient().user.update({
+        where: { id: user.id },
+        data: { avatarUrl },
+      }));
+    } catch (error) {
+      console.error("[avatar] upload failed", error);
+      return c.json({ error: error instanceof Error ? error.message : "Avatar upload failed." }, 503);
+    }
+  }
+);
+
 router.delete("/me", async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;
@@ -108,6 +159,11 @@ router.delete("/me", async (c) => {
   });
 
   if (user) {
+    try {
+      await deleteAvatar(user.id);
+    } catch (error) {
+      console.error("[avatar] cleanup failed", error);
+    }
     await prisma.user.delete({ where: { id: user.id } });
   }
 

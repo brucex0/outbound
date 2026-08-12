@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 enum SimplifiedAppTab: Hashable {
     case together
@@ -826,7 +828,7 @@ private struct SimplifiedMeView: View {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     NavigationLink {
-                        SimplifiedProfileEditorView()
+                        SimplifiedProfileEditorView { profile = $0 }
                     } label: {
                         OutboundCard {
                             HStack(spacing: 14) {
@@ -1057,10 +1059,13 @@ private struct SimplifiedSettingsView: View {
 
 private struct SimplifiedProfileEditorView: View {
     @EnvironmentObject private var authStore: AuthStore
+    var onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
     @State private var displayName = ""
     @State private var bio = ""
     @State private var username = ""
     @State private var avatarUrl: String?
+    @State private var selectedAvatarItem: PhotosPickerItem?
+    @State private var isUploadingAvatar = false
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var message: String?
@@ -1074,6 +1079,12 @@ private struct SimplifiedProfileEditorView: View {
                         Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
                     }
+                    Spacer()
+                    PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
+                        Text(isUploadingAvatar ? "Uploading…" : "Change photo")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .disabled(isUploadingAvatar)
                 }
             }
             Section {
@@ -1100,6 +1111,10 @@ private struct SimplifiedProfileEditorView: View {
         }
         .overlay { if isLoading { ProgressView() } }
         .task { await load() }
+        .onChange(of: selectedAvatarItem) { _, item in
+            guard let item else { return }
+            Task { await uploadAvatar(from: item) }
+        }
     }
 
     private func load() async {
@@ -1129,10 +1144,42 @@ private struct SimplifiedProfileEditorView: View {
             displayName = profile.displayName
             bio = profile.bio ?? ""
             avatarUrl = profile.avatarUrl
+            onProfileUpdated?(profile)
             message = "Profile saved."
         } catch {
             message = "Could not save profile. Try again."
         }
+    }
+
+    private func uploadAvatar(from item: PhotosPickerItem) async {
+        isUploadingAvatar = true
+        defer {
+            isUploadingAvatar = false
+            selectedAvatarItem = nil
+        }
+        do {
+            guard let sourceData = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: sourceData),
+                  let jpegData = resizedAvatarData(from: image) else {
+                message = "That photo could not be used."
+                return
+            }
+            let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
+            avatarUrl = profile.avatarUrl
+            onProfileUpdated?(profile)
+            message = "Profile photo updated."
+        } catch {
+            message = "Could not upload photo. Try again."
+        }
+    }
+
+    private func resizedAvatarData(from image: UIImage) -> Data? {
+        let maximumDimension: CGFloat = 1_024
+        let scale = min(1, maximumDimension / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+        return resized.jpegData(compressionQuality: 0.82)
     }
 }
 

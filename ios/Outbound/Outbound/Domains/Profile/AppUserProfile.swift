@@ -12,3 +12,8 @@ struct AppUserProfileUpdateDTO: Codable, Sendable {
     let displayName: String
     let bio: String?
 }
+
+struct AppUserAvatarUploadDTO: Codable, Sendable {
+    let base64: String
+    let contentType: String
+}

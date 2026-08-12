@@ -1,7 +1,7 @@
 import { applicationDefault, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
-function getFirebaseApp() {
+export function getFirebaseApp() {
   if (getApps().length > 0) {
     return getApps()[0]!;
   }

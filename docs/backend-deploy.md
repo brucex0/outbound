@@ -13,6 +13,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Hosted Postgres currently lives on the shared Cloud SQL instance `boatshare-20260214-zxia:us-central1:boatshare-db`.
 - The Outbound database on that instance is `outbound`.
 - The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
+- User-uploaded avatars are stored in Firebase Storage. Set `AVATAR_STORAGE_BUCKET` to the bucket name if it differs from the default `<project-id>.firebasestorage.app`; the Cloud Run service account needs object create, read, and delete access.
 
 ## Local Backend Run
 
