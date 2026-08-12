@@ -119,12 +119,12 @@ Plainstride provides fitness guidance, not medical advice. Availability of Apple
 
 The following must be publicly reachable before App Store submission. They are not needed for the first internal TestFlight build.
 
-- Support URL: `[PUBLIC_SUPPORT_URL]`
-- Privacy policy URL: `[PUBLIC_PRIVACY_POLICY_URL]`
+- Support URL: `https://run.plainstride.com/support`
+- Privacy policy URL: `https://run.plainstride.com/privacy`
 - Marketing URL (optional): `[PUBLIC_MARKETING_URL]`
 - Privacy choices/account deletion URL (optional): `[PUBLIC_PRIVACY_CHOICES_URL]`
 
-`run.plainstride.com` currently serves live/invitation functionality and should not be used as the support or privacy URL unless dedicated public pages are deployed there.
+The support and privacy pages are served by the same Cloud Run service as the marketing homepage and live/invitation functionality. Deploy the current backend before entering these URLs in App Store Connect.
 
 ## App Privacy Working Draft
 

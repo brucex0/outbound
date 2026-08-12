@@ -38,18 +38,21 @@ async function inviteLanding(c: Context<AppEnv>) {
   const storeURL = process.env.IOS_APP_STORE_URL?.trim() || DEFAULT_IOS_STORE_URL;
   const userAgent = c.req.header("user-agent") ?? "";
   const showLanding = c.req.query("landing") === "1";
-
-  if (!showLanding && /iPhone|iPad|iPod/i.test(userAgent)) {
-    return c.redirect(storeURL, 302);
-  }
-
   const requestedURL = new URL(c.req.url);
   const referralCode = referralCodeFromPath(requestedURL.pathname);
   if (referralCode && process.env.DATABASE_URL) {
-    await getPrismaClient().referralLink.updateMany({
-      where: { code: referralCode },
-      data: { clickCount: { increment: 1 }, lastClickedAt: new Date() },
-    });
+    try {
+      await getPrismaClient().referralLink.updateMany({
+        where: { code: referralCode },
+        data: { clickCount: { increment: 1 }, lastClickedAt: new Date() },
+      });
+    } catch (error) {
+      console.error("Plainstride referral click tracking failed; continuing to destination.", error);
+    }
+  }
+
+  if (!showLanding && /iPhone|iPad|iPod/i.test(userAgent)) {
+    return c.redirect(storeURL, 302);
   }
   const canonicalURL = `https://run.plainstride.com${requestedURL.pathname}`;
   const escapedCanonicalURL = escapeHTML(canonicalURL);
