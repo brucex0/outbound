@@ -813,16 +813,46 @@ private extension Text {
 }
 
 private struct SimplifiedMeView: View {
+    @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
+    @State private var profile: AppUserProfileDTO?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
+                    NavigationLink {
+                        SimplifiedProfileEditorView()
+                    } label: {
+                        OutboundCard {
+                            HStack(spacing: 14) {
+                                UserAvatarView(
+                                    url: profile?.avatarUrl,
+                                    name: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
+                                    size: 58
+                                )
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(profile?.displayName ?? authStore.currentLoginLabel ?? "Your profile")
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    if let username = profile?.username {
+                                        Text("@\(username)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                     OutboundCard {
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                             Text("CURRENT FOCUS")
@@ -921,6 +951,7 @@ private struct SimplifiedMeView: View {
             .background(OutboundPalette.background)
             .navigationTitle("Me")
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
+            .task { await loadProfile() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -932,6 +963,10 @@ private struct SimplifiedMeView: View {
                 }
             }
         }
+    }
+
+    private func loadProfile() async {
+        profile = try? await APIClient.shared.fetchMyProfile()
     }
 
     private var planTitle: String {
@@ -1025,6 +1060,7 @@ private struct SimplifiedProfileEditorView: View {
     @State private var displayName = ""
     @State private var bio = ""
     @State private var username = ""
+    @State private var avatarUrl: String?
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var message: String?
@@ -1033,12 +1069,7 @@ private struct SimplifiedProfileEditorView: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    Circle()
-                        .fill(OutboundPalette.companion.opacity(0.16))
-                        .frame(width: 58, height: 58)
-                        .overlay {
-                            Text(initials).font(.headline.weight(.bold)).foregroundStyle(OutboundPalette.companion)
-                        }
+                    UserAvatarView(url: avatarUrl, name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName, size: 58)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
@@ -1071,11 +1102,6 @@ private struct SimplifiedProfileEditorView: View {
         .task { await load() }
     }
 
-    private var initials: String {
-        let source = displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName
-        return source.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-    }
-
     private func load() async {
         defer { isLoading = false }
         do {
@@ -1083,6 +1109,7 @@ private struct SimplifiedProfileEditorView: View {
             displayName = profile.displayName
             bio = profile.bio ?? ""
             username = profile.username
+            avatarUrl = profile.avatarUrl
         } catch {
             displayName = authStore.currentLoginLabel ?? ""
             message = "Profile could not be loaded."
@@ -1101,10 +1128,41 @@ private struct SimplifiedProfileEditorView: View {
             )
             displayName = profile.displayName
             bio = profile.bio ?? ""
+            avatarUrl = profile.avatarUrl
             message = "Profile saved."
         } catch {
             message = "Could not save profile. Try again."
         }
+    }
+}
+
+private struct UserAvatarView: View {
+    let url: String?
+    let name: String
+    let size: CGFloat
+
+    var body: some View {
+        AsyncImage(url: url.flatMap(URL.init(string:))) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().scaledToFill()
+            default:
+                Circle()
+                    .fill(OutboundPalette.companion.opacity(0.16))
+                    .overlay {
+                        Text(initials)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(OutboundPalette.companion)
+                    }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityLabel("\(name) profile photo")
+    }
+
+    private var initials: String {
+        name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
     }
 }
 
