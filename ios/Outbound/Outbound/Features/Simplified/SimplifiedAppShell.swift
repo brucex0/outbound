@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import Combine
 
 enum SimplifiedAppTab: Hashable {
     case together
@@ -977,6 +978,7 @@ private struct SimplifiedMeView: View {
 
     private func loadProfile() async {
         profile = try? await APIClient.shared.fetchMyProfile()
+        UserAvatarPersistence.save(profile?.avatarUrl, for: AuthStore.currentUserId)
     }
 
     private var planTitle: String {
@@ -1071,7 +1073,7 @@ private struct SimplifiedProfileEditorView: View {
     @State private var displayName = ""
     @State private var bio = ""
     @State private var username = ""
-    @State private var avatarUrl: String?
+    @State private var avatarUrl = UserAvatarPersistence.url(for: AuthStore.currentUserId)
     @State private var selectedAvatarItem: PhotosPickerItem?
     @State private var isUploadingAvatar = false
     @State private var isLoading = true
@@ -1138,6 +1140,7 @@ private struct SimplifiedProfileEditorView: View {
             bio = profile.bio ?? ""
             username = profile.username
             avatarUrl = profile.avatarUrl
+            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
         } catch {
             displayName = authStore.currentLoginLabel ?? ""
             message = "Profile could not be loaded."
@@ -1157,6 +1160,7 @@ private struct SimplifiedProfileEditorView: View {
             displayName = profile.displayName
             bio = profile.bio ?? ""
             avatarUrl = profile.avatarUrl
+            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
             onProfileUpdated?(profile)
             message = "Profile saved."
         } catch {
@@ -1179,6 +1183,10 @@ private struct SimplifiedProfileEditorView: View {
             }
             let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
             avatarUrl = profile.avatarUrl
+            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
+            if let avatarUrl = profile.avatarUrl, let uploadedImage = UIImage(data: jpegData) {
+                UserAvatarImageLoader.store(uploadedImage, for: avatarUrl)
+            }
             onProfileUpdated?(profile)
             message = "Profile photo updated."
         } catch {
@@ -1200,18 +1208,26 @@ private struct UserAvatarView: View {
     let url: String?
     let name: String
     let size: CGFloat
-    var isProfileLoading = false
+    let isProfileLoading: Bool
+    @StateObject private var loader: UserAvatarImageLoader
+
+    init(url: String?, name: String, size: CGFloat, isProfileLoading: Bool = false) {
+        self.url = url
+        self.name = name
+        self.size = size
+        self.isProfileLoading = isProfileLoading
+        _loader = StateObject(wrappedValue: UserAvatarImageLoader(url: url))
+    }
 
     var body: some View {
-        AsyncImage(url: url.flatMap(URL.init(string:))) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFill()
-            case .empty where isProfileLoading || url != nil:
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else if isProfileLoading || url != nil {
                 Circle()
                     .fill(OutboundPalette.companion.opacity(0.1))
                     .overlay { ProgressView().controlSize(.small) }
-            case .empty, .failure:
+            } else {
                 Circle()
                     .fill(OutboundPalette.companion.opacity(0.16))
                     .overlay {
@@ -1219,17 +1235,71 @@ private struct UserAvatarView: View {
                             .font(.headline.weight(.bold))
                             .foregroundStyle(OutboundPalette.companion)
                     }
-            @unknown default:
-                Circle().fill(OutboundPalette.companion.opacity(0.1))
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel("\(name) profile photo")
+        .task(id: url) { loader.load(url: url) }
     }
 
     private var initials: String {
         name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+    }
+}
+
+@MainActor
+private final class UserAvatarImageLoader: ObservableObject {
+    @Published private(set) var image: UIImage?
+    private var currentURL: String?
+    private static let cache = NSCache<NSString, UIImage>()
+
+    init(url: String?) {
+        currentURL = url
+        image = url.flatMap { Self.cache.object(forKey: $0 as NSString) }
+    }
+
+    static func store(_ image: UIImage, for url: String) {
+        cache.setObject(image, forKey: url as NSString)
+    }
+
+    func load(url: String?) {
+        guard currentURL != url || image == nil else { return }
+        currentURL = url
+        guard let url, let remoteURL = URL(string: url) else {
+            image = nil
+            return
+        }
+        if let cached = Self.cache.object(forKey: url as NSString) {
+            image = cached
+            return
+        }
+
+        Task {
+            var request = URLRequest(url: remoteURL)
+            request.cachePolicy = .returnCacheDataElseLoad
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode),
+                  let downloadedImage = UIImage(data: data),
+                  currentURL == url else { return }
+            Self.store(downloadedImage, for: url)
+            image = downloadedImage
+        }
+    }
+}
+
+private enum UserAvatarPersistence {
+    private static let keyPrefix = "cached_user_avatar_url_v1_"
+
+    static func url(for userID: String?) -> String? {
+        guard let userID else { return nil }
+        return UserDefaults.standard.string(forKey: keyPrefix + userID)
+    }
+
+    static func save(_ url: String?, for userID: String?) {
+        guard let userID else { return }
+        UserDefaults.standard.set(url, forKey: keyPrefix + userID)
     }
 }
 
