@@ -128,7 +128,7 @@ private struct SimplifiedTodayView: View {
             .navigationTitle("Today")
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .task {
-                weatherStore.refreshIfEnabled()
+                weatherStore.refreshForToday()
                 await loadCompanionTodayMessage()
             }
             .onChange(of: weatherStore.snapshot) { _, _ in
@@ -188,10 +188,8 @@ private struct SimplifiedTodayView: View {
                 TodayWeatherRow(
                     snapshot: weatherStore.snapshot,
                     errorMessage: weatherStore.errorMessage,
-                    isEnabled: weatherStore.isEnabled,
                     isLoading: weatherStore.isLoading,
                     unitSystem: measurementPreferences.unitSystem,
-                    onEnable: weatherStore.enableAndRefresh,
                     onOpen: { showsWeatherSheet = true }
                 )
                 CompactIntervalPreview(phases: todayPhases)
@@ -433,10 +431,8 @@ private struct CompanionInsightSheet: View {
 private struct TodayWeatherRow: View {
     let snapshot: RunningWeatherSnapshot?
     let errorMessage: String?
-    let isEnabled: Bool
     let isLoading: Bool
     let unitSystem: MeasurementUnitSystem
-    let onEnable: () -> Void
     let onOpen: () -> Void
 
     var body: some View {
@@ -468,19 +464,29 @@ private struct TodayWeatherRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Local conditions, \(snapshot.temperatureLabel(unitSystem: unitSystem)), \(snapshot.headline)")
-        } else if isEnabled, errorMessage != nil {
+        } else if let errorMessage {
             Button(action: onOpen) {
-                Label("Local conditions unavailable", systemImage: "location.slash")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "location.slash")
+                    Text(errorMessage)
+                        .lineLimit(2)
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         } else {
-            Button(action: onEnable) {
-                Label("Add local running conditions", systemImage: "location.circle")
-                    .font(.subheadline.weight(.medium))
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Checking local conditions…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
         }
     }
 

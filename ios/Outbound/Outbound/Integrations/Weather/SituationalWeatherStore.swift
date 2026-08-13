@@ -73,7 +73,6 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     private let weatherService = WeatherService.shared
     private let defaults: UserDefaults
-    private let enabledKey = "situational_weather_enabled_v1"
     private let snapshotKey = "situational_weather_snapshot_v1"
     private let diagnosticKey = "situational_weather_last_diagnostic_v1"
     private var pendingRefresh = false
@@ -86,22 +85,11 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyReduced
         Self.logger.info(
-            "Weather store initialized. authorization=\(String(describing: self.authorizationStatus), privacy: .public) cachedSnapshot=\(self.snapshot != nil) enabled=\(self.isEnabled)"
+            "Weather store initialized. authorization=\(String(describing: self.authorizationStatus), privacy: .public) cachedSnapshot=\(self.snapshot != nil)"
         )
     }
 
-    var isEnabled: Bool {
-        defaults.bool(forKey: enabledKey)
-    }
-
-    func enableAndRefresh() {
-        Self.logger.info("Local weather enabled by the user.")
-        defaults.set(true, forKey: enabledKey)
-        refresh(force: true)
-    }
-
-    func refreshIfEnabled() {
-        guard isEnabled else { return }
+    func refreshForToday() {
         refresh(force: false)
     }
 

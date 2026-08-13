@@ -359,8 +359,8 @@ struct PostRunSummaryView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 22, weight: .bold))
+                        Image(systemName: "tray.and.arrow.down.fill")
+                            .font(.system(size: 21, weight: .semibold))
                             .foregroundStyle(.white)
                     }
                 }

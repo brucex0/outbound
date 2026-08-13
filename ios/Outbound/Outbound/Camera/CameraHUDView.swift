@@ -596,7 +596,7 @@ struct SessionStatusCard: View {
 
     private var compactFinishControl: some View {
         Button(action: onFinish) {
-            Image(systemName: "flag.checkered")
+            Image(systemName: "stop.fill")
                 .font(.callout.weight(.bold))
         }
         .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 40))
@@ -628,7 +628,7 @@ struct SessionStatusCard: View {
 
             if state == .paused {
                 Button(action: onFinish) {
-                    Label("Finish", systemImage: "flag.checkered")
+                    Label("Finish", systemImage: "stop.fill")
                 }
                 .buttonStyle(SessionMiniCapsuleButtonStyle(background: .black, foreground: .white))
             }
