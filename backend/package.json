@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:rebuild": "prisma db push --force-reset && prisma generate && npm run build && npm run seed:training-plans",
-    "seed:training-plans": "node dist/scripts/seedTrainingPlanTemplates.js"
+    "seed:training-plans": "node dist/scripts/seedTrainingPlanTemplates.js",
+    "seed:e2e": "npm run build && node dist/scripts/seedTestPersonas.js"
   },
   "dependencies": {
     "node-fetch": "^3.3.2",

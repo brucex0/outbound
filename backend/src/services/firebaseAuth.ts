@@ -6,13 +6,16 @@ export function getFirebaseApp() {
     return getApps()[0]!;
   }
 
-  return initializeApp({
-    credential: applicationDefault(),
-    projectId:
-      process.env.FIREBASE_PROJECT_ID ??
-      process.env.GOOGLE_CLOUD_PROJECT ??
-      process.env.GCLOUD_PROJECT,
-  });
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID ??
+    process.env.GOOGLE_CLOUD_PROJECT ??
+    process.env.GCLOUD_PROJECT;
+
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    return initializeApp({ projectId });
+  }
+
+  return initializeApp({ credential: applicationDefault(), projectId });
 }
 
 export async function verifyBearerToken(token: string) {

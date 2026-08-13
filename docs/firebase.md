@@ -89,6 +89,26 @@ FIREBASE_PROJECT_ID=outbound-494602 \
 npm run start:local
 ```
 
+Seed or reset the three reserved personas from a third terminal after the local backend has initialized its database:
+
+```sh
+cd backend
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+FIREBASE_PROJECT_ID=outbound-494602 \
+DATABASE_URL=postgresql://outbound:outbound@127.0.0.1:54329/outbound?schema=public \
+npm run seed:e2e
+```
+
+The command refuses non-local Auth Emulator and database hosts. It deletes and recreates only the reserved test identities before inserting deterministic data:
+
+- New Runner: authenticated account with no onboarding or activity history.
+- Active Runner: completed runner profile, calibration, three activities, and learned insights.
+- Social Runner: completed runner profile, an accepted connection to Active Runner, club membership, an upcoming group run, and feed interaction.
+
+The Debug persona picker also resets the account-scoped onboarding marker: New Runner always enters onboarding, while Active Runner and Social Runner skip it. Server-backed activity and social data still come from the local API.
+
+Run `seed:e2e` before a local E2E session whenever a clean baseline is needed. Do not use Delete Account inside a test that expects a later test to reuse that persona; reseed afterward if account deletion is the behavior under test.
+
 In the Debug scheme's Run arguments, add:
 
 ```text

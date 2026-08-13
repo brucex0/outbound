@@ -296,9 +296,23 @@ final class AuthStore: ObservableObject {
             {
                 result = try await Auth.auth().createUser(withEmail: persona.email, password: password)
             }
+            prepareLocalState(for: persona, firebaseUID: result.user.uid)
             await completeSignIn(with: result)
         } catch {
             authError = "Test persona sign-in failed. \(Self.userFacingMessage(for: error))"
+        }
+    }
+
+    private func prepareLocalState(for persona: TestPersona, firebaseUID: String) {
+        let defaults = UserDefaults.standard
+        let completedKey = "new_user_onboarding_completed_v2.\(firebaseUID)"
+        let profileKey = "new_user_onboarding_profile_v2.\(firebaseUID)"
+        switch persona {
+        case .newRunner:
+            defaults.removeObject(forKey: completedKey)
+            defaults.removeObject(forKey: profileKey)
+        case .activeRunner, .socialRunner:
+            defaults.set(true, forKey: completedKey)
         }
     }
     #endif
