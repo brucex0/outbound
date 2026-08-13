@@ -8,7 +8,7 @@ Open this for the first internal or external TestFlight upload. Product behavior
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.0`
-- Build: `2`
+- Build: `3`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -155,6 +155,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.0 (2)`, validate, and upload from Xcode Organizer.
+- Archive `1.0 (3)`, validate, and upload from Xcode Organizer.
 - After processing, answer export compliance and add the build to an internal group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review.
