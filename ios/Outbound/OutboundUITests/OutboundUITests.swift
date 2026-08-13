@@ -31,9 +31,13 @@ final class OutboundUITests: XCTestCase {
 
         app.tabBars.buttons["Together"].tap()
         XCTAssertTrue(app.navigationBars["Together"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
+        XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
+        XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
 
         app.tabBars.buttons["Me"].tap()
         XCTAssertTrue(app.navigationBars["Me"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Golden Gate Easy Run"].waitForExistence(timeout: 5))
         let settingsButton = app.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.tap()
@@ -96,7 +100,7 @@ final class OutboundUITests: XCTestCase {
     @MainActor
     private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase", "-OutboundSkipOnboarding"]
+        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase", "-OutboundSkipOnboarding", "-OutboundUITestSeedData"]
         app.launchArguments += extraArguments
         app.launch()
         return app

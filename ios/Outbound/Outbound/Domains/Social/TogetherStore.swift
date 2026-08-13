@@ -15,11 +15,18 @@ final class TogetherStore: ObservableObject {
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
         self.defaults = defaults
-        state = Self.decode(TogetherResponseDTO.self, from: defaults.data(forKey: cacheKey))
-            ?? TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
+        state = ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+            ? Self.uiTestFixture
+            : Self.decode(TogetherResponseDTO.self, from: defaults.data(forKey: cacheKey))
+                ?? TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
     }
 
     func refresh() async {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
+            state = Self.uiTestFixture
+            errorMessage = nil
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -74,6 +81,44 @@ final class TogetherStore: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(type, from: data)
+    }
+
+    private static var uiTestFixture: TogetherResponseDTO {
+        let club = TogetherClubDTO(
+            id: "ui-test-club",
+            name: "Golden Gate Run Club",
+            description: "Friendly local miles for every pace.",
+            city: "San Francisco",
+            role: "member"
+        )
+        let maya = TogetherPersonDTO(id: "ui-test-maya", displayName: "Maya Chen", avatarUrl: nil)
+        return TogetherResponseDTO(
+            upcomingRuns: [
+                TogetherGroupRunDTO(
+                    id: "ui-test-saturday-5k",
+                    title: "Saturday waterfront 5K",
+                    startsAt: Date().addingTimeInterval(86_400),
+                    locationName: "Crissy Field",
+                    paceNote: "Conversational pace",
+                    club: club,
+                    creator: maya,
+                    groups: [TogetherRunGroupDTO(id: "ui-test-social", label: "Social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 390)],
+                    compatibility: TogetherCompatibilityDTO(groupId: "ui-test-social", explanation: "This easy group matches your current training week.")
+                ),
+            ],
+            clubs: [club],
+            posts: [
+                TogetherPostDTO(
+                    id: "ui-test-post",
+                    caption: "Easy miles and good company this morning.",
+                    createdAt: Date().addingTimeInterval(-3_600),
+                    user: maya,
+                    activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352),
+                    reactions: [TogetherReactionDTO(id: "ui-test-heart-1", type: "heart"), TogetherReactionDTO(id: "ui-test-heart-2", type: "heart")],
+                    comments: [TogetherCommentDTO(id: "ui-test-comment", body: "See you next time!")]
+                ),
+            ]
+        )
     }
 }
 

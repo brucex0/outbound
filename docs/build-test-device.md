@@ -49,7 +49,7 @@ Run the complete deterministic app UI regression suite. It selects the first ava
 ./scripts/run-app-tests.sh 'id=SIMULATOR_UUID'
 ```
 
-This suite covers the primary shell and navigation, Settings, recording and post-run lifecycle, and launch performance. It uses local UI-test authentication and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
+This suite covers the primary shell and navigation, seeded Together and activity-history states, Settings, recording and post-run lifecycle, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
 
 Run the automated local server E2E test with one seeded persona. The runner starts and stops Firebase Auth, the local API, and embedded PostgreSQL; resets deterministic seed data; obtains a real emulator ID token; then verifies authenticated account, activity, and social API state:
 

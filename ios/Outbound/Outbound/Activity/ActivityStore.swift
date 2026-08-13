@@ -162,8 +162,10 @@ final class ActivityStore: ObservableObject {
     }
 
     private func loadActivities() async {
-        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity") {
-            activities = [Self.uiTestActivityFixture]
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+            || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
+        {
+            activities = Self.uiTestActivityFixtures
             return
         }
         let revisionAtStart = activityRevision
@@ -475,8 +477,49 @@ final class ActivityStore: ObservableObject {
         }
     }
 
-    private static var uiTestActivityFixture: SavedActivity {
-        let startedAt = Date(timeIntervalSince1970: 1_714_368_400)
+    private static var uiTestActivityFixtures: [SavedActivity] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return [
+            uiTestActivityFixture(
+                id: "11111111-2222-3333-4444-555555555555",
+                title: "Golden Gate Easy Run",
+                startedAt: calendar.date(byAdding: .hour, value: 7, to: today) ?? today,
+                durationSecs: 1_845,
+                distanceM: 5_420,
+                avgPace: 340,
+                elevationGainM: 74
+            ),
+            uiTestActivityFixture(
+                id: "22222222-3333-4444-5555-666666666666",
+                title: "Tuesday Tempo Session",
+                startedAt: calendar.date(byAdding: .day, value: -2, to: today) ?? today,
+                durationSecs: 2_280,
+                distanceM: 7_100,
+                avgPace: 321,
+                elevationGainM: 41
+            ),
+            uiTestActivityFixture(
+                id: "33333333-4444-5555-6666-777777777777",
+                title: "Saturday Long Run",
+                startedAt: calendar.date(byAdding: .day, value: -5, to: today) ?? today,
+                durationSecs: 4_260,
+                distanceM: 12_300,
+                avgPace: 346,
+                elevationGainM: 128
+            ),
+        ]
+    }
+
+    private static func uiTestActivityFixture(
+        id: String,
+        title: String,
+        startedAt: Date,
+        durationSecs: Int,
+        distanceM: Double,
+        avgPace: Double,
+        elevationGainM: Double
+    ) -> SavedActivity {
         let points = [
             SavedRoutePoint(location: CLLocation(latitude: 37.7749, longitude: -122.4194)),
             SavedRoutePoint(location: CLLocation(latitude: 37.7758, longitude: -122.4179)),
@@ -484,17 +527,17 @@ final class ActivityStore: ObservableObject {
         ]
 
         return SavedActivity(
-            id: UUID(uuidString: "11111111-2222-3333-4444-555555555555") ?? UUID(),
-            title: "UI Test Route Activity",
+            id: UUID(uuidString: id) ?? UUID(),
+            title: title,
             coachNudge: "Keep your cadence steady.",
             reflection: nil,
             createdAt: startedAt,
             startedAt: startedAt,
-            endedAt: startedAt.addingTimeInterval(1_845),
-            durationSecs: 1_845,
-            distanceM: 5_420,
-            avgPace: 340,
-            elevationGainM: 74,
+            endedAt: startedAt.addingTimeInterval(TimeInterval(durationSecs)),
+            durationSecs: durationSecs,
+            distanceM: distanceM,
+            avgPace: avgPace,
+            elevationGainM: elevationGainM,
             healthMetrics: ActivityHealthMetrics(
                 averageHeartRateBPM: 146,
                 maxHeartRateBPM: 162,
