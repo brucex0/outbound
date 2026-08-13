@@ -535,10 +535,7 @@ struct RecordView: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("A note for this run")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading) {
                 Text("“\(intent.coachLine)”")
                     .font(.title3.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)

@@ -11,16 +11,6 @@
         }
       }
     },
-    "A note for this run" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A note for this run"
-          }
-        }
-      }
-    },
     "Companion" : {
       "localizations" : {
         "en" : {
