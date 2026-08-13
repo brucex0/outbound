@@ -323,15 +323,16 @@ struct PostRunSummaryView: View {
     private var actionButtons: some View {
         HStack(spacing: 16) {
             Button(role: .destructive, action: onDiscard) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
+                Image(systemName: "xmark")
+                    .font(.system(size: 20, weight: .semibold))
             }
             .disabled(isSubmitting)
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
-            .frame(width: 44, height: 44)
+            .frame(width: 56, height: 56)
             .background(Color(.tertiarySystemBackground))
             .clipShape(Circle())
+            .accessibilityLabel("Discard activity")
 
             Button {
                 guard !isSubmitting else { return }
@@ -358,18 +359,19 @@ struct PostRunSummaryView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Image(systemName: "square.and.arrow.down")
-                            .font(.system(size: 36))
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(.white)
                     }
                 }
-                .frame(width: 44, height: 44)
+                .frame(width: 56, height: 56)
             }
             .disabled(isSubmitting)
             .buttonStyle(.borderless)
-            .frame(width: 64, height: 64)
+            .frame(width: 56, height: 56)
             .background(Color.orange)
             .clipShape(Circle())
+            .accessibilityLabel("Save activity")
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
