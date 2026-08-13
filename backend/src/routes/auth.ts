@@ -89,7 +89,7 @@ router.patch(
     "json",
     z.object({
       displayName: z.string().trim().min(1).max(50),
-      bio: z.string().trim().max(160).nullable(),
+      bio: z.string().trim().max(160).nullish(),
     })
   ),
   async (c) => {
