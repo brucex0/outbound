@@ -42,6 +42,16 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 swift test
 ```
 
+Run the automated local server E2E test with one seeded persona. The runner starts and stops Firebase Auth, the local API, and embedded PostgreSQL; resets deterministic seed data; obtains a real emulator ID token; then verifies authenticated account, activity, and social API state:
+
+```sh
+./scripts/run-local-e2e.sh new
+./scripts/run-local-e2e.sh active
+./scripts/run-local-e2e.sh social
+```
+
+API and database ports can be overridden with `OUTBOUND_E2E_API_PORT` and `OUTBOUND_E2E_DATABASE_PORT`; Firebase Auth uses the repository's configured emulator port `9099`. The script refuses occupied ports and prints its temporary log directory on completion. This command tests the real local authentication and server boundary; simulator UI tests remain separate.
+
 The simulator ID above is the current available `iPhone 17` simulator used for stable UI test runs. If that simulator disappears, rerun `xcodebuild` once to inspect the available destination list and refresh this doc.
 
 ## Device Build And Install
