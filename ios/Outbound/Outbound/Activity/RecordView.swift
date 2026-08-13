@@ -25,9 +25,9 @@ struct RecordView: View {
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
-    @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.camera.rawValue
+    @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @State private var showCamera = false
-    @State private var activePage: SessionPage = .camera
+    @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
@@ -504,7 +504,7 @@ struct RecordView: View {
     }
 
     private var preferredSessionPage: SessionPage {
-        SessionPage(rawValue: preferredSessionPageRawValue) ?? .camera
+        SessionPage(rawValue: preferredSessionPageRawValue) ?? .map
     }
 
     private var readyView: some View {

@@ -5,13 +5,25 @@ import UIKit
 final class CameraController: ObservableObject {
     let session = AVCaptureSession()
     @Published private(set) var authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
-    @Published private(set) var cameraPosition: AVCaptureDevice.Position = .back
+    @Published private(set) var cameraPosition: AVCaptureDevice.Position
 
+    private static let preferredCameraPositionKey = "preferred_camera_position_v1"
+    private let userDefaults: UserDefaults
+    private var selectedCameraPosition: AVCaptureDevice.Position
     private var photoOutput = AVCapturePhotoOutput()
     private var captureCallbacks: [Int64: (UIImage?) -> Void] = [:]
     private var captureDelegates: [Int64: PhotoDelegate] = [:]
     private let sessionQueue = DispatchQueue(label: "outbound.camera.session")
     private var isConfigured = false
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        let position: AVCaptureDevice.Position = userDefaults.string(forKey: Self.preferredCameraPositionKey) == "back"
+            ? .back
+            : .front
+        self.cameraPosition = position
+        self.selectedCameraPosition = position
+    }
 
     func start() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
@@ -83,7 +95,7 @@ final class CameraController: ObservableObject {
             self.configureSessionIfNeeded()
             guard self.isConfigured else { return }
 
-            let newPosition: AVCaptureDevice.Position = self.cameraPosition == .back ? .front : .back
+            let newPosition: AVCaptureDevice.Position = self.selectedCameraPosition == .back ? .front : .back
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition),
                   let input = try? AVCaptureDeviceInput(device: device) else {
                 return
@@ -96,7 +108,11 @@ final class CameraController: ObservableObject {
 
             if self.session.canAddInput(input) {
                 self.session.addInput(input)
-                self.cameraPosition = newPosition
+                self.selectedCameraPosition = newPosition
+                self.userDefaults.set(newPosition == .back ? "back" : "front", forKey: Self.preferredCameraPositionKey)
+                DispatchQueue.main.async {
+                    self.cameraPosition = newPosition
+                }
             }
             self.session.commitConfiguration()
         }
@@ -106,7 +122,7 @@ final class CameraController: ObservableObject {
         guard !isConfigured else { return }
         session.beginConfiguration()
         session.sessionPreset = .photo
-        let defaultPosition = cameraPosition
+        let defaultPosition = selectedCameraPosition
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: defaultPosition),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {

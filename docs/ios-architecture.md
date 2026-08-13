@@ -45,7 +45,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Camera
 
-- `Camera/CameraController.swift`: AVFoundation capture session, camera authorization, session queue, retained photo-capture delegates, and still-photo capture.
+- `Camera/CameraController.swift`: AVFoundation capture session, camera authorization, session queue, retained photo-capture delegates, still-photo capture, and the persisted front/back camera preference (front on first use).
 - `Camera/CameraPreviewLayer.swift`: SwiftUI wrapper for `AVCaptureVideoPreviewLayer`.
 - `Camera/CameraHUDView.swift`: full-screen camera plus a Strava-style bottom state card and a right-edge control rail during an active session. While recording, the bottom card shows live stats, the latest coach message, music state, and Pause; while paused, it expands into Resume and Finish. When local live sharing is active, the rail shows a stop-sharing control. Captured photos are returned to `RecordView` with `PhotoMetadata`, including whether the shot was taken while active or paused.
 
