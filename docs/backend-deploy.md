@@ -13,7 +13,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Hosted Postgres currently lives on the shared Cloud SQL instance `boatshare-20260214-zxia:us-central1:boatshare-db`.
 - The Outbound database on that instance is `outbound`.
 - The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
-- User-uploaded avatars and private activity photos are stored in the same Firebase Storage/GCS bucket. Set `AVATAR_STORAGE_BUCKET` for avatars and optionally `MEDIA_STORAGE_BUCKET` for activity photos; both fall back to `<project-id>.firebasestorage.app`. The Cloud Run service account needs object create, read, and delete access.
+- User-uploaded avatars use the `outbound-494602-avatars` GCS bucket in `us-central1`; Cloud Run sets `AVATAR_STORAGE_BUCKET=outbound-494602-avatars` and its runtime service account has object access there. Private activity photos use `MEDIA_STORAGE_BUCKET` when set and otherwise fall back to `<project-id>.firebasestorage.app`.
 - Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, and proxies authenticated downloads; bucket objects must not be made public.
 
 ## Local Backend Run
