@@ -86,12 +86,10 @@ private struct SimplifiedTodayView: View {
                         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     }
 
-                    if let companionTodayMessage {
-                        CompanionInsightRow {
-                            showsCompanionInsight = true
-                        }
-                        .accessibilityHint(companionTodayMessage)
+                    CompanionInsightRow {
+                        showsCompanionInsight = true
                     }
+                    .accessibilityHint(companionInsightMessage)
 
                     Button {
                         onStartRun(.freestyleRun)
@@ -158,7 +156,7 @@ private struct SimplifiedTodayView: View {
             .presentationDetents([.medium])
         }
         .sheet(isPresented: $showsCompanionInsight) {
-            CompanionInsightSheet(message: companionTodayMessage ?? "No companion insight is available right now.")
+            CompanionInsightSheet(message: companionInsightMessage)
                 .presentationDetents([.medium])
         }
     }
@@ -253,6 +251,10 @@ private struct SimplifiedTodayView: View {
             signals: weatherStore.snapshot.map { [$0.companionSignal] } ?? []
         ))
         companionTodayMessage = response?.message
+    }
+
+    private var companionInsightMessage: String {
+        companionTodayMessage ?? todayExplanation
     }
 
     private var plannedRunIntent: SessionIntent {
