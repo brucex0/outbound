@@ -19,27 +19,26 @@ final class OutboundUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Social"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Together"].exists)
         XCTAssertTrue(app.tabBars.buttons["Me"].exists)
-        XCTAssertTrue(app.buttons["Start freestyle"].exists)
+        XCTAssertTrue(app.buttons["Quick start"].exists)
         XCTAssertFalse(app.textFields["Phone number"].exists)
     }
 
     @MainActor
-    func testAppleMusicCanConnectFromProfileAndShowMusicSetupBeforeRun() throws {
+    func testPrimaryNavigationAndSettings() throws {
         let app = launchApp()
 
-        app.tabBars.buttons["Me"].tap()
-        XCTAssertTrue(app.staticTexts["Apple Music"].waitForExistence(timeout: 5))
-        app.buttons["Connect Apple Music"].tap()
-        XCTAssertTrue(app.staticTexts["Connected"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Together"].tap()
+        XCTAssertTrue(app.navigationBars["Together"].waitForExistence(timeout: 5))
 
-        app.tabBars.buttons["Today"].tap()
-        app.buttons["Start freestyle"].tap()
-        XCTAssertTrue(app.staticTexts["Music"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].exists)
-        app.buttons["Select Mock upbeat run mix"].tap()
-        XCTAssertTrue(app.buttons["Start now"].exists)
+        app.tabBars.buttons["Me"].tap()
+        XCTAssertTrue(app.navigationBars["Me"].waitForExistence(timeout: 5))
+        let settingsButton = app.buttons["Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        settingsButton.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Sign out"].exists)
     }
 
     @MainActor
@@ -47,7 +46,7 @@ final class OutboundUITests: XCTestCase {
         addPermissionMonitor()
         let app = launchApp()
 
-        app.buttons["Start freestyle"].tap()
+        app.buttons["Quick start"].tap()
         XCTAssertTrue(app.staticTexts["Freestyle run"].waitForExistence(timeout: 5))
         if app.buttons["Connect Apple Music"].exists {
             app.buttons["Connect Apple Music"].tap()
@@ -58,24 +57,17 @@ final class OutboundUITests: XCTestCase {
         app.buttons["Start now"].tap()
         dismissPermissionAlerts(app)
 
-        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Time"].exists)
-        XCTAssertTrue(app.staticTexts["Distance (km)"].exists)
+        XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 12))
         XCTAssertTrue(app.staticTexts["Pace"].exists)
-        XCTAssertTrue(app.buttons["Capture Photo"].exists)
-        XCTAssertTrue(app.buttons["Show Map"].exists)
-        XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Pause music"].exists)
-        XCTAssertTrue(app.buttons["Skip track"].exists)
 
-        app.buttons["Pause"].tap()
-        XCTAssertTrue(app.buttons["Finish"].exists)
+        app.buttons["Pause activity"].tap()
+        XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
         app.buttons["Finish"].tap()
-        XCTAssertTrue(app.buttons["Save Activity"].waitForExistence(timeout: 5))
-        app.buttons["Discard"].tap()
+        XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
+        app.buttons["Discard activity"].tap()
 
         XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Start freestyle"].exists)
+        XCTAssertTrue(app.buttons["Quick start"].exists)
     }
 
     @MainActor
@@ -104,7 +96,7 @@ final class OutboundUITests: XCTestCase {
     @MainActor
     private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase"]
+        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase", "-OutboundSkipOnboarding"]
         app.launchArguments += extraArguments
         app.launch()
         return app

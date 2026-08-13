@@ -42,6 +42,15 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 swift test
 ```
 
+Run the complete deterministic app UI regression suite. It selects the first available iPhone simulator unless an explicit Xcode destination is supplied:
+
+```sh
+./scripts/run-app-tests.sh
+./scripts/run-app-tests.sh 'id=SIMULATOR_UUID'
+```
+
+This suite covers the primary shell and navigation, Settings, recording and post-run lifecycle, and launch performance. It uses local UI-test authentication and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
+
 Run the automated local server E2E test with one seeded persona. The runner starts and stops Firebase Auth, the local API, and embedded PostgreSQL; resets deterministic seed data; obtains a real emulator ID token; then verifies authenticated account, activity, and social API state:
 
 ```sh

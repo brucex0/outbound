@@ -347,6 +347,16 @@ final class OnboardingStore: ObservableObject {
     }
 
     func prepareForAuthenticatedUser(identity: String?) {
+        #if DEBUG
+        if (Bundle.main.object(forInfoDictionaryKey: "OutboundAppTestMode") as? String) == "YES"
+            || ProcessInfo.processInfo.arguments.contains("-OutboundSkipOnboarding")
+            || ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase")
+        {
+            isPresented = false
+            return
+        }
+        #endif
+
         let resolvedIdentity = identity?.isEmpty == false ? identity! : "local"
         if resolvedIdentity != activeIdentity {
             activeIdentity = resolvedIdentity

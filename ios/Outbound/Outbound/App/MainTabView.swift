@@ -74,7 +74,7 @@ struct MainTabView: View {
             .presentationDetents([.fraction(0.58), .large])
             .presentationDragIndicator(.visible)
         }
-        .fullScreenCover(isPresented: $onboardingStore.isPresented) {
+        .fullScreenCover(isPresented: onboardingPresentation) {
             Group {
                 if usesSimplifiedShell {
                     SimplifiedOnboardingFlow { profile in
@@ -124,6 +124,16 @@ struct MainTabView: View {
 
     private var onboardingIdentity: String {
         authStore.user?.uid ?? authStore.localSessionLabel ?? "local"
+    }
+
+    private var onboardingPresentation: Binding<Bool> {
+        Binding(
+            get: {
+                let isAppTestMode = (Bundle.main.object(forInfoDictionaryKey: "OutboundAppTestMode") as? String) == "YES"
+                return onboardingStore.isPresented && !isAppTestMode
+            },
+            set: { onboardingStore.isPresented = $0 }
+        )
     }
 
     @ViewBuilder
