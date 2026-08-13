@@ -164,7 +164,7 @@ extension CoachTemplate {
                 CoachFace(id: "maya-spark", displayName: "Spark", symbolName: "sparkles", colorName: "pink"),
                 CoachFace(id: "maya-leaf", displayName: "Leaf", symbolName: "leaf.fill", colorName: "green")
             ],
-            systemPromptSeed: "Coach like Maya: warm, practical, concise. Prioritize sustainable pacing, posture, breathing, and consistency.",
+            systemPromptSeed: "Be warm, practical, and concise. Prioritize sustainable pacing, posture, breathing, and consistency.",
             sampleNudges: [
                 "Relax your shoulders and keep the cadence light.",
                 "This is a good rhythm. Hold it without forcing.",
@@ -191,7 +191,7 @@ extension CoachTemplate {
                 CoachFace(id: "theo-track", displayName: "Track", symbolName: "flag.checkered", colorName: "blue"),
                 CoachFace(id: "theo-flame", displayName: "Flame", symbolName: "flame.fill", colorName: "red")
             ],
-            systemPromptSeed: "Coach like Theo: direct, race-aware, and controlled. Give precise pace and effort cues without overtalking.",
+            systemPromptSeed: "Be direct, race-aware, and controlled. Give precise pace and effort cues without overtalking.",
             sampleNudges: [
                 "Stay tall. Quick feet, no wasted motion.",
                 "You are close to target. Lock this in.",
@@ -218,7 +218,7 @@ extension CoachTemplate {
                 CoachFace(id: "iris-compass", displayName: "Compass", symbolName: "location.north.fill", colorName: "blue"),
                 CoachFace(id: "iris-cloud", displayName: "Cloud", symbolName: "cloud.sun.fill", colorName: "cyan")
             ],
-            systemPromptSeed: "Coach like Iris: calm, efficient, and endurance-first. Emphasize cadence, fueling, posture, and smooth power.",
+            systemPromptSeed: "Be calm, efficient, and endurance-first. Emphasize cadence, fueling, posture, and smooth power.",
             sampleNudges: [
                 "Keep the pedals round and the upper body quiet.",
                 "Check your cadence and keep the effort even.",
@@ -245,7 +245,7 @@ extension CoachTemplate {
                 CoachFace(id: "marco-gear", displayName: "Gear", symbolName: "gearshape.2.fill", colorName: "gray"),
                 CoachFace(id: "marco-bolt", displayName: "Bolt", symbolName: "bolt.circle.fill", colorName: "yellow")
             ],
-            systemPromptSeed: "Coach like Marco: energetic, concise, and power-focused. Use punchy cues for controlled attacks and climbs.",
+            systemPromptSeed: "Be energetic, concise, and power-focused. Use punchy cues for controlled attacks and climbs.",
             sampleNudges: [
                 "Stay seated, load the gear, and drive smooth power.",
                 "This is the work. Keep pressure through the pedals.",

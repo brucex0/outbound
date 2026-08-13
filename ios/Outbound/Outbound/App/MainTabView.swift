@@ -597,7 +597,7 @@ struct MotivationDashboardView: View {
                         HStack(spacing: 8) {
                             Image(systemName: highlight.symbolName)
                                 .font(.caption.weight(.bold))
-                            Text("Coach noticed: \(highlight.title)")
+                            Text("Worth noticing: \(highlight.title)")
                                 .font(.caption.weight(.semibold))
                                 .lineLimit(2)
                         }
@@ -1443,7 +1443,7 @@ enum DailyMotivationEngine {
         case .completedToday:
             return CoachSpark(
                 headline: "Session logged.",
-                message: "Coach \(coachFirstName(from: persona)) sees the follow-through. Let that win be enough for today.",
+                message: "You followed through. Let that win be enough for today.",
                 primaryCTA: "Start another light session",
                 secondaryCTA: "Review today"
             )
@@ -1466,7 +1466,7 @@ enum DailyMotivationEngine {
         case .firstSession:
             return CoachSpark(
                 headline: "You do not need a perfect session.",
-                message: "You need a beginning. Coach \(coachFirstName(from: persona)) can take it from there.",
+                message: "You need a beginning. Your companion can take it from there.",
                 primaryCTA: "Start a first session",
                 secondaryCTA: "Other ideas"
             )
@@ -1640,9 +1640,6 @@ enum DailyMotivationEngine {
         return daysSince(date: latest.startedAt, now: now, calendar: calendar) >= 2
     }
 
-    private static func coachFirstName(from persona: CoachPersona) -> String {
-        persona.template.displayName.split(separator: " ").first.map(String.init) ?? "your coach"
-    }
 }
 
 private extension CoachFace {
@@ -1827,7 +1824,7 @@ struct TrainingPlanCard: View {
 
     private var recommendationCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Coach plan picks")
+            Text("Recommended plans")
                 .font(.headline)
 
             if let lead = trainingPlanStore.recommendations.first {

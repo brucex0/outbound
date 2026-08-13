@@ -66,7 +66,7 @@
     <string>Plainstride uses speech recognition to turn short voice commands into prepared activities.</string>
 
     <key>NSAppleMusicUsageDescription</key>
-    <string>Plainstride uses Apple Music to play music during workouts and keep your coach experience in one place.</string>
+    <string>Plainstride uses Apple Music to play music during workouts and keep your running experience in one place.</string>
 
     <key>NSMotionUsageDescription</key>
     <string>Plainstride uses motion sensors to improve pace and cadence tracking.</string>

@@ -64,14 +64,14 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `App/ProfileView.swift`: embeds `ProgressSummaryCard` between the motivation dashboard and recent activity so Progress is reachable without adding a new tab.
 - `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, best weekly distance, PR history, race predictions, and momentum notes.
 
-## Coach And Session Analysis
+## Companion And Session Analysis
 
-- `Coach/CoachTemplate.swift`: predefined coach catalog model. Current fixtures include one female and one male coach for Run and Bike. Each template defines sport, persona traits, sample nudges, voice options, face options, and a prompt seed.
-- `Coach/CoachCatalogStore.swift`: local catalog and selected coach customization. Persists selected template, voice, face, coaching intensity, and nudge frequency in `UserDefaults`.
-- `Coach/CoachSelectionView.swift`: Me-tab coach picker and customization UI. Coach update frequency controls both AI nudge cadence and spoken progress recaps.
+- `Coach/CoachTemplate.swift`: internal communication-profile catalog. Current fixtures provide voice, visual style, guidance tone, sample nudges, and prompt seeds for Run and Bike without exposing separate named coaches in the product.
+- `Coach/CoachCatalogStore.swift`: internal catalog for companion communication customization. Persists the selected voice, visual style, guidance intensity, and nudge frequency in `UserDefaults`. Named templates are implementation details and are not presented as separate intelligences.
+- `Coach/CoachSelectionView.swift`: Me-tab companion style customization UI. Update frequency controls both AI nudge cadence and spoken progress recaps.
 - `Coach/VirtualCoach.swift`: consumes `ActiveSessionSnapshot` values while active, keeps a rolling history, requests analysis after the initial coaching delay and then at the selected persona's nudge frequency, seeds the first message from the selected session intent when present, displays `lastNudge`, suppresses recently repeated spoken lines, prefixes spoken coaching with humanized live time/distance/pace context when appropriate, periodically announces live checkpoints and distance/time goal milestones, counts down the final five seconds of timed workouts and each timed step, announces 300 m, 100 m, and completion for distance goals, and speaks nudges with `AVSpeechSynthesizer` while coordinating the spoken-audio `AVAudioSession` lifecycle.
 - `Coach/SessionAnalysisProvider.swift`: provider protocol plus rule-based fallback implementation. `SessionAnalysisRequest` carries live snapshots, selected session intent, recent spoken nudges, and a structured `SessionNudgePacket` schema for AI-friendly prompting.
-- `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. It now prompts from the structured nudge packet instead of only an ad hoc prose snapshot, while still using selected coach persona, style, intensity, and athlete context.
+- `Coach/AppleFoundationModelSessionAnalysisProvider.swift`: preferred provider when FoundationModels is available on iOS 26/macOS 26. It prompts from the structured nudge packet while using the companion communication style, intensity, and athlete context.
 - `Coach/CoachProfile.swift`: athlete/coach profile model used to contextualize analysis.
 - `Coach/CoachStore.swift`: loads/syncs coach profile through `APIClient`; remote sync depends on a Firebase-authenticated user ID, while local-account and local-session auth keep coach data local-only.
 

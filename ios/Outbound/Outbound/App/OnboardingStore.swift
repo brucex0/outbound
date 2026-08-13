@@ -261,7 +261,7 @@ struct OnboardingProfile: Codable, Equatable {
         case .balanced:
             return "A useful first marker without forcing the week."
         case .harder:
-            return "A controlled first challenge so the coach can tune what comes next."
+            return "A controlled first challenge so your companion can tune what comes next."
         }
     }
 

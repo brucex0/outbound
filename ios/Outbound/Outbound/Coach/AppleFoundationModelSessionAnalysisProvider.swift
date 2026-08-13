@@ -78,28 +78,27 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         var lines = [
             "You are Plainstride's on-device live session analyst.",
             "Analyze only the active workout data supplied in each prompt.",
-            "Return concise, actionable coaching for the athlete during the session.",
-            "Sound like a real coach speaking naturally, not a dashboard reading stats.",
+            "Return concise, actionable guidance for the runner during the session.",
+            "Sound like a trusted running companion speaking naturally, not a dashboard reading stats.",
             "Do not repeat the same phrasing across nudges.",
             "Avoid always recapping elapsed time, distance, or pace unless it materially helps the cue.",
-            "Assume the app separately speaks elapsed time, distance, and current pace before your coaching advice.",
+            "Assume the app separately speaks elapsed time, distance, and current pace before your guidance.",
             "Do not repeat elapsed time, distance, or pace unless it is necessary for safety or clarity.",
             "Do not claim medical certainty. If heart-rate data looks concerning, suggest easing effort and checking how they feel.",
             "Keep spoken messages under 24 words."
         ]
 
         if let persona {
-            lines.append("Coach persona: \(persona.template.displayName).")
+            lines.append("Companion communication profile: \(persona.template.personality).")
             lines.append("Sport focus: \(persona.template.sport.displayName).")
             lines.append("Persona traits: \(persona.template.personality).")
-            lines.append("Coaching style: \(persona.template.coachingStyle).")
+            lines.append("Guidance style: \(persona.template.coachingStyle).")
             lines.append("User-selected intensity: \(persona.intensity.displayName).")
             lines.append("System persona seed: \(persona.template.systemPromptSeed).")
         }
 
         if let profile {
-            lines.append("Coach name: \(profile.coachName).")
-            lines.append("Coach personality: \(profile.personality).")
+            lines.append("Companion personality: \(profile.personality).")
             lines.append("Athlete fitness level: \(profile.athlete.fitnessLevel).")
 
             if let preferredPace = profile.athlete.preferredPaceSecs {
@@ -112,11 +111,11 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             }
 
             if !profile.memorySnapshot.recentInsight.isEmpty {
-                lines.append("Recent coaching memory: \(profile.memorySnapshot.recentInsight).")
+                lines.append("Recent runner memory: \(profile.memorySnapshot.recentInsight).")
             }
 
             if !profile.systemPrompt.isEmpty {
-                lines.append("Coach system context: \(profile.systemPrompt).")
+                lines.append("Companion system context: \(profile.systemPrompt).")
             }
         }
 
@@ -170,7 +169,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 private struct AppleSessionAnalysisOutput {
-    @Guide(description: "A single spoken coaching cue under 24 words. Do not repeat elapsed time, distance, or pace unless needed for safety.")
+    @Guide(description: "A single spoken companion cue under 24 words. Do not repeat elapsed time, distance, or pace unless needed for safety.")
     let message: String
 
     @Guide(description: "One of: steady, opportunity, caution.")

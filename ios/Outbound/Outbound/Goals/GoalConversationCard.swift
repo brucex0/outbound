@@ -64,7 +64,7 @@ struct GoalConversationCard: View {
 
     private var chooseFocusCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Coach wants to help with this week.")
+            Text("What should we focus on this week?")
                 .font(.headline)
 
             Text(promptForPhase)

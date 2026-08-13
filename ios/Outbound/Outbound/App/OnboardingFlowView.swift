@@ -94,7 +94,7 @@ struct OnboardingFlowView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Plainstride")
                     .font(.largeTitle.bold())
-                Text("Tell your coach the real story. We will turn it into a first session and a plan that fits.")
+                Text("Tell us the real story. Your companion will turn it into a first session and a plan that fits.")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -109,7 +109,7 @@ struct OnboardingFlowView: View {
                 onboardingPromiseRow(
                     systemImage: "figure.run.circle.fill",
                     title: "Start with today",
-                    detail: "Your coach recommends one concrete session you can begin right away."
+                    detail: "Your companion recommends one concrete session you can begin right away."
                 )
                 onboardingPromiseRow(
                     systemImage: "flame.fill",
@@ -123,7 +123,7 @@ struct OnboardingFlowView: View {
     private var goalStep: some View {
         VStack(alignment: .leading, spacing: 18) {
             stepTitle(
-                "What should your coach help you do first?",
+                "What should your running companion help you do first?",
                 subtitle: "Write it naturally. A race, weight goal, comeback, faster pace, or just feeling fitter all work."
             )
 
@@ -215,8 +215,8 @@ struct OnboardingFlowView: View {
     private var baselineStep: some View {
         VStack(alignment: .leading, spacing: 22) {
             stepTitle(
-                "Tell your coach where you are starting.",
-                subtitle: "Use plain language. Include what you can comfortably do and anything your coach should be careful with."
+                "Tell us where you are starting.",
+                subtitle: "Use plain language. Include what you can comfortably do and anything your companion should be careful with."
             )
 
             IntakeTextEditor(
@@ -262,7 +262,7 @@ struct OnboardingFlowView: View {
 
         return VStack(alignment: .leading, spacing: 20) {
             stepTitle(
-                "Here is what your coach understood.",
+                "Here is what your companion understood.",
                 subtitle: "Adjust the effort if this read feels too gentle or too spicy."
             )
 
@@ -357,8 +357,8 @@ struct OnboardingFlowView: View {
                 )
                 setupRow(
                     systemImage: coachCatalog.selectedPersona.face.symbolName,
-                    title: "Coach",
-                    detail: coachCatalog.selectedPersona.template.displayName
+                    title: "Companion style",
+                    detail: coachCatalog.selectedPersona.template.tagline
                 )
             }
             .padding(18)
@@ -412,7 +412,7 @@ struct OnboardingFlowView: View {
 
     private var primaryButtonTitle: String {
         switch onboardingStore.step {
-        case .welcome: return "Set up my coach"
+        case .welcome: return "Set up my companion"
         case .goal, .body, .baseline: return "Continue"
         case .review: return "Build recommendation"
         case .setup: return "Start first session"

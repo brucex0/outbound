@@ -536,7 +536,7 @@ struct RecordView: View {
             }
 
             VStack(alignment: .leading, spacing: 14) {
-                Text("Coach \(coachCatalog.selectedPersona.template.displayName) says:")
+                Text("A note for this run")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text("“\(intent.coachLine)”")

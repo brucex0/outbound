@@ -1,0 +1,166 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "A moment worth noticing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A moment worth noticing"
+          }
+        }
+      }
+    },
+    "A note for this run" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A note for this run"
+          }
+        }
+      }
+    },
+    "Companion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Companion"
+          }
+        }
+      }
+    },
+    "Companion style" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Companion style"
+          }
+        }
+      }
+    },
+    "Here is what your companion understood." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Here is what your companion understood."
+          }
+        }
+      }
+    },
+    "Recommended plans" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommended plans"
+          }
+        }
+      }
+    },
+    "Set up my companion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up my companion"
+          }
+        }
+      }
+    },
+    "Spoken Updates" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spoken Updates"
+          }
+        }
+      }
+    },
+    "Tell us the real story. Your companion will turn it into a first session and a plan that fits." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell us the real story. Your companion will turn it into a first session and a plan that fits."
+          }
+        }
+      }
+    },
+    "Tell us where you are starting." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tell us where you are starting."
+          }
+        }
+      }
+    },
+    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity."
+          }
+        }
+      }
+    },
+    "Voice, style, and spoken update frequency" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice, style, and spoken update frequency"
+          }
+        }
+      }
+    },
+    "What should we focus on this week?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What should we focus on this week?"
+          }
+        }
+      }
+    },
+    "What should your running companion help you do first?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What should your running companion help you do first?"
+          }
+        }
+      }
+    },
+    "Your companion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your companion"
+          }
+        }
+      }
+    },
+    "Your companion recommends one concrete session you can begin right away." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your companion recommends one concrete session you can begin right away."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

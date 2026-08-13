@@ -5,7 +5,7 @@ struct CoachSelectionView: View {
 
     var body: some View {
         Form {
-            Section("Selected Coach") {
+            Section("Companion style") {
                 CoachTemplateSummaryView(persona: coachCatalog.selectedPersona)
             }
 
@@ -43,7 +43,7 @@ struct CoachSelectionView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Picker("Coach Updates", selection: nudgeFrequencyBinding) {
+                Picker("Spoken Updates", selection: nudgeFrequencyBinding) {
                     ForEach(NudgeFrequency.allCases) { frequency in
                         Text(frequency.displayName).tag(frequency)
                     }
@@ -59,12 +59,12 @@ struct CoachSelectionView: View {
             }
 
             Section {
-                Text("Coach update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.")
+                Text("Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Coach")
+        .navigationTitle("Companion")
     }
 
     private var voiceBinding: Binding<String> {
@@ -113,12 +113,8 @@ struct CoachTemplateSummaryView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text(persona.template.displayName)
-                    .font(.headline)
-
                 Text(persona.template.tagline)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.headline)
 
                 HStack(spacing: 10) {
                     CoachPreferencePill(title: persona.voice.displayName, icon: "speaker.wave.2.fill")
@@ -163,12 +159,9 @@ private struct CoachTemplateButton: View {
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(template.displayName)
+                    Text(template.personality.capitalized)
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text(template.personality.capitalized)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     Text(template.tagline)
                         .font(.caption)
                         .foregroundStyle(.secondary)

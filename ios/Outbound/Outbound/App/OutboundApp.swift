@@ -1462,9 +1462,9 @@ final class AssistantStore: ObservableObject {
             title: "Where do I go?",
             prompt: {
 #if OUTBOUND_ENABLE_SOCIAL
-                "Where do I go for activities, coach settings, and social?"
+                "Where do I go for activities, companion settings, and social?"
 #else
-                "Where do I go for activities, coach settings, and activity history?"
+                "Where do I go for activities, companion settings, and activity history?"
 #endif
             }()
         ),
@@ -1711,20 +1711,20 @@ final class AssistantStore: ObservableObject {
             return """
             Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and Social for squad energy.
 
-            If you want the best first experience, check your coach style, try one suggested session, and save one activity so the app has momentum to build on.
+            If you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.
             """
 #else
             return """
             Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and your saved activity history.
 
-            If you want the best first experience, check your coach style, try one suggested session, and save one activity so the app has momentum to build on.
+            If you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.
             """
 #endif
         case .navigate:
 #if OUTBOUND_ENABLE_SOCIAL
             return """
             Here’s the fastest map:
-            Me is where you check motivation, tune your coach, review activities, and open Settings.
+            Me is where you check motivation, tune your companion, review activities, and open Settings.
             Social is for squad, clubs, rivals, and lightweight community loops.
             The floating orange activity button starts or resumes a live session from either tab.
 
@@ -1733,7 +1733,7 @@ final class AssistantStore: ObservableObject {
 #else
             return """
             Here’s the fastest map:
-            Me is where you check motivation, tune your coach, review activities, and open Settings.
+            Me is where you check motivation, tune your companion, review activities, and open Settings.
             Activity history lives on Me, and the floating orange activity button starts or resumes a live session.
 
             If you tell me what you want to do, I can point to the exact screen.
@@ -1820,7 +1820,7 @@ final class AssistantStore: ObservableObject {
         case .settingsAppleHealth:
             return "Opening Apple Health settings."
         case .coachSettings:
-            return "Opening coach settings."
+            return "Opening companion settings."
         case .activityHistory:
             return "Opening your activity history."
         }
@@ -1932,13 +1932,13 @@ private final class AssistantFoundationModelSession {
         let appMap: String
 #if OUTBOUND_ENABLE_SOCIAL
         appMap = """
-        - Me: motivation, coach settings, highlights, activity history, settings
+        - Me: motivation, companion settings, highlights, activity history, settings
         - Social: squad, clubs, rivals
         - Floating orange button: start or resume a live session
         """
 #else
         appMap = """
-        - Me: motivation, coach settings, highlights, activity history, settings
+        - Me: motivation, companion settings, highlights, activity history, settings
         - Floating orange button: start or resume a live session
         """
 #endif

@@ -151,7 +151,7 @@ Return only valid JSON in the shape {"message":"..."} with no markdown fencing.`
   const userPrompt = `Assistant capability: ${input.capability}
 Current screen: ${input.context.currentScreen ?? "unknown"}
 Recording active: ${input.context.isRecordingActive ? "yes" : "no"}
-Coach name: ${input.context.coachName}
+Companion style: ${input.context.coachName}
 Saved activities: ${input.context.activityCount}
 Weekly distance: ${input.context.weeklyDistanceKilometers.toFixed(1)} km
 Goal summary: ${input.context.currentGoalSummary ?? "No active goal"}
@@ -165,7 +165,7 @@ Recent conversation:
 ${input.messages.slice(-10).map((message) => `${message.role}: ${message.text}`).join("\n") || "No prior conversation."}
 
 App map:
-- Me: motivation, coach settings, activity history, settings
+- Me: motivation, companion settings, activity history, settings
 - Social: squad, clubs, rivals
 - Floating orange button: start or resume a live session
 - Assistant: planning, navigation, support, brainstorming

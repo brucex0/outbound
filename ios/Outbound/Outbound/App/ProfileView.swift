@@ -202,15 +202,15 @@ private struct SettingsView: View {
                     }
                 }
 
-                Section("Coach") {
+                Section("Companion") {
                     NavigationLink {
                         CoachSelectionView()
                             .environmentObject(coachCatalog)
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(coachCatalog.selectedPersona.template.displayName)
+                            Text(coachCatalog.selectedPersona.template.tagline)
                                 .font(.subheadline.weight(.semibold))
-                            Text("Voice, style, and coach tuning")
+                            Text("Voice, style, and spoken update frequency")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

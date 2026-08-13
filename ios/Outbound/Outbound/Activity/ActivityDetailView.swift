@@ -518,7 +518,7 @@ struct ActivityDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(reflection.title)
                         .font(.subheadline.weight(.semibold))
-                    Text("Your Coach")
+                    Text("Your companion")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

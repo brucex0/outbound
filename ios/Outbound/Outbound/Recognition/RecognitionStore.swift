@@ -428,7 +428,7 @@ struct RecognitionHeroBadge: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(preview.title)
                         .font(.headline)
-                    Text("Coach noticed this")
+                    Text("A moment worth noticing")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.orange)
                 }

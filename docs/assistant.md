@@ -4,9 +4,9 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Product Intent
 
-- Position the assistant as a concierge for understanding and using Outbound, not only as a workout coach.
+- Position the assistant as Plainstride's persistent running companion, not as a separate named coach or generic chatbot.
 - Keep the first version local-first so the feature still works without backend dependencies.
-- Reuse existing app context such as selected coach, saved activities, and current goal progress to make responses feel grounded.
+- Reuse existing app context such as companion communication style, saved activities, and current goal progress to make responses feel grounded.
 - Make the assistant always reachable across the app, but quiet by default.
 
 ## UX Principles
@@ -86,7 +86,7 @@ Conversation transcripts are not durable runner memory. The backend stores a bou
 - `AssistantStore` owns draft state, stored messages, quick suggestions, and response generation.
 - Messages persist in `UserDefaults` under `assistant_store_messages_v1`.
 - `AssistantContext` currently includes:
-  - selected coach display name
+  - selected companion communication profile
   - saved activity count
   - current week distance
   - current goal summary line, when present
@@ -269,7 +269,7 @@ Useful references:
 ## Extension Ideas
 
 - Expand typed assistant actions beyond activity prep into settings, goals, history, or social destinations.
-- Add deep links from assistant replies into specific screens such as coach settings, activity history, or social sections.
+- Add deep links from assistant replies into specific screens such as companion settings, activity history, or social sections.
 - Expand planning to generate structured weekly cards instead of plain text.
 - Add support-specific diagnostics for auth setup, permissions, and imports.
 - Add richer screen-aware quick prompts instead of one global prompt set.
