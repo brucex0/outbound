@@ -536,7 +536,7 @@ struct RecordView: View {
             }
 
             VStack(alignment: .leading) {
-                Text("“\(intent.coachLine)”")
+                Text(intent.coachLine)
                     .font(.title3.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
