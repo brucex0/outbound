@@ -1078,7 +1078,7 @@ private struct SimplifiedProfileEditorView: View {
     @State private var isUploadingAvatar = false
     @State private var isLoading = true
     @State private var isSaving = false
-    @State private var message: String?
+    @State private var toast: ProfileToast?
 
     var body: some View {
         Form {
@@ -1112,9 +1112,6 @@ private struct SimplifiedProfileEditorView: View {
             } footer: {
                 Text("Your name and bio may appear to people you connect with in Together.")
             }
-            if let message {
-                Section { Text(message).font(.footnote).foregroundStyle(.secondary) }
-            }
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
@@ -1124,7 +1121,24 @@ private struct SimplifiedProfileEditorView: View {
                     .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .overlay { if isLoading { ProgressView() } }
+        .overlay {
+            if isLoading { ProgressView() }
+        }
+        .overlay(alignment: .top) {
+            if let toast {
+                ProfileToastView(toast: toast)
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.top, OutboundSpacing.compact)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: toast)
+        .task(id: toast?.id) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            toast = nil
+        }
         .task { await load() }
         .onChange(of: selectedAvatarItem) { _, item in
             guard let item else { return }
@@ -1143,7 +1157,7 @@ private struct SimplifiedProfileEditorView: View {
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
         } catch {
             displayName = authStore.currentLoginLabel ?? ""
-            message = "Profile could not be loaded."
+            showToast("Profile could not be loaded.", style: .error)
         }
     }
 
@@ -1162,9 +1176,9 @@ private struct SimplifiedProfileEditorView: View {
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
             onProfileUpdated?(profile)
-            message = "Profile saved."
+            showToast("Profile saved", style: .success)
         } catch {
-            message = "Could not save profile. Try again."
+            showToast("Could not save profile. Try again.", style: .error)
         }
     }
 
@@ -1178,7 +1192,7 @@ private struct SimplifiedProfileEditorView: View {
             guard let sourceData = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: sourceData),
                   let jpegData = resizedAvatarData(from: image) else {
-                message = "That photo could not be used."
+                showToast("That photo could not be used.", style: .error)
                 return
             }
             let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
@@ -1188,10 +1202,14 @@ private struct SimplifiedProfileEditorView: View {
                 UserAvatarImageLoader.store(uploadedImage, for: avatarUrl)
             }
             onProfileUpdated?(profile)
-            message = "Profile photo updated."
+            showToast("Profile photo updated", style: .success)
         } catch {
-            message = "Could not upload photo. Try again."
+            showToast("Could not upload photo. Try again.", style: .error)
         }
+    }
+
+    private func showToast(_ text: String, style: ProfileToast.Style) {
+        toast = ProfileToast(text: text, style: style)
     }
 
     private func resizedAvatarData(from image: UIImage) -> Data? {
@@ -1201,6 +1219,35 @@ private struct SimplifiedProfileEditorView: View {
         let renderer = UIGraphicsImageRenderer(size: size)
         let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         return resized.jpegData(compressionQuality: 0.82)
+    }
+}
+
+private struct ProfileToast: Identifiable, Equatable {
+    enum Style: Equatable {
+        case success
+        case error
+    }
+
+    let id = UUID()
+    let text: String
+    let style: Style
+}
+
+private struct ProfileToastView: View {
+    let toast: ProfileToast
+
+    var body: some View {
+        Label(toast.text, systemImage: toast.style == .success ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(Color.primary.opacity(0.08))
+            }
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+            .accessibilityElement(children: .combine)
     }
 }
 
