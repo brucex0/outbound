@@ -1080,7 +1080,12 @@ private struct SimplifiedProfileEditorView: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    UserAvatarView(url: avatarUrl, name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName, size: 58)
+                    UserAvatarView(
+                        url: avatarUrl,
+                        name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
+                        size: 58,
+                        isProfileLoading: isLoading
+                    )
                     VStack(alignment: .leading, spacing: 3) {
                         Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
@@ -1193,13 +1198,18 @@ private struct UserAvatarView: View {
     let url: String?
     let name: String
     let size: CGFloat
+    var isProfileLoading = false
 
     var body: some View {
         AsyncImage(url: url.flatMap(URL.init(string:))) { phase in
             switch phase {
             case .success(let image):
                 image.resizable().scaledToFill()
-            default:
+            case .empty where isProfileLoading || url != nil:
+                Circle()
+                    .fill(OutboundPalette.companion.opacity(0.1))
+                    .overlay { ProgressView().controlSize(.small) }
+            case .empty, .failure:
                 Circle()
                     .fill(OutboundPalette.companion.opacity(0.16))
                     .overlay {
@@ -1207,6 +1217,8 @@ private struct UserAvatarView: View {
                             .font(.headline.weight(.bold))
                             .foregroundStyle(OutboundPalette.companion)
                     }
+            @unknown default:
+                Circle().fill(OutboundPalette.companion.opacity(0.1))
             }
         }
         .frame(width: size, height: size)
