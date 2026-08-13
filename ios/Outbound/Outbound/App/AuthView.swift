@@ -54,6 +54,25 @@ struct AuthView: View {
                     })
                     .disabled(!authStore.isFirebaseConfigured || authStore.isBusy)
 
+                    #if DEBUG
+                    if authStore.isUsingAuthEmulator {
+                        Menu {
+                            ForEach(AuthStore.TestPersona.allCases) { persona in
+                                Button(persona.rawValue) {
+                                    Task { await authStore.signIn(as: persona) }
+                                }
+                            }
+                        } label: {
+                            Label("Use Test Persona", systemImage: "person.crop.circle.badge.checkmark")
+                                .font(.subheadline.weight(.medium))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(authStore.isBusy)
+                        .accessibilityHint("Signs in with a local Firebase Emulator account")
+                    }
+                    #endif
+
                     if authStore.isBusy {
                         ProgressView()
                             .tint(OutboundPalette.companion)

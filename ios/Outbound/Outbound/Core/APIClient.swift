@@ -7,10 +7,22 @@ final class APIClient {
     private var authToken: String?
 
     private init() {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        let debugBaseURL: String? = {
+            guard let index = arguments.firstIndex(of: "-OutboundAPIBaseURL"),
+                  arguments.indices.contains(index + 1)
+            else { return nil }
+            return arguments[index + 1]
+        }()
+        #else
+        let debugBaseURL: String? = nil
+        #endif
         let configuredBaseURL =
             Bundle.main.object(forInfoDictionaryKey: "OutboundAPIBaseURL") as? String
         let baseURLString = configuredBaseURL?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedBaseURL = (baseURLString?.isEmpty == false ? baseURLString : nil)
+        let resolvedBaseURL = debugBaseURL
+            ?? (baseURLString?.isEmpty == false ? baseURLString : nil)
             ?? "https://api.outbound.run/v1"
         guard let url = URL(string: resolvedBaseURL) else {
             fatalError("Invalid OutboundAPIBaseURL: \(resolvedBaseURL)")

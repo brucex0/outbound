@@ -69,3 +69,34 @@ plutil -extract BUNDLE_ID raw ~/Library/Developer/Xcode/DerivedData/Outbound-gni
 ```
 
 Expected values: app ID `1:186140050970:ios:9dcd3698a906d4cca033a3`, project ID `outbound-494602`, bundle ID `plainstride.outbound`.
+
+## Debug Test Personas
+
+Debug builds can use local, repeatable Firebase Auth Emulator accounts without adding a password login to the release app. The login screen exposes New Runner, Active Runner, and Social Runner only when the emulator launch argument is present. Selecting a persona creates its emulator account on first use and signs into it afterward.
+
+Start the Auth Emulator from the repository root:
+
+```sh
+npx --yes firebase-tools emulators:start --only auth --project outbound-494602
+```
+
+Start the local backend in a second terminal. Firebase Admin accepts emulator tokens only when `FIREBASE_AUTH_EMULATOR_HOST` is set:
+
+```sh
+cd backend
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+FIREBASE_PROJECT_ID=outbound-494602 \
+npm run start:local
+```
+
+In the Debug scheme's Run arguments, add:
+
+```text
+-OutboundUseFirebaseAuthEmulator
+-OutboundAPIBaseURL
+http://127.0.0.1:3000/v1
+```
+
+The defaults target an iOS Simulator on the same Mac. For a physical iPhone, also pass `-OutboundFirebaseAuthEmulatorHost` followed by the Mac's LAN address, use that address in `-OutboundAPIBaseURL`, and configure the emulator/backend to listen on a reachable interface.
+
+Stopping the emulator clears its accounts unless import/export persistence is added. Production and Release builds never expose persona login or honor these Debug-only routing arguments.

@@ -8,6 +8,23 @@ import UIKit
 
 @MainActor
 final class AuthStore: ObservableObject {
+    #if DEBUG
+    enum TestPersona: String, CaseIterable, Identifiable {
+        case newRunner = "New Runner"
+        case activeRunner = "Active Runner"
+        case socialRunner = "Social Runner"
+
+        var id: String { rawValue }
+        var email: String {
+            switch self {
+            case .newRunner: "new-runner@plainstride.test"
+            case .activeRunner: "active-runner@plainstride.test"
+            case .socialRunner: "social-runner@plainstride.test"
+            }
+        }
+    }
+    #endif
+
     enum Backend {
         case firebase
         case local
@@ -141,6 +158,10 @@ final class AuthStore: ObservableObject {
         isFirebaseConfigured && Self.hasAppleSignInEntitlement()
     }
 
+    var isUsingAuthEmulator: Bool {
+        FirebaseBootstrap.isUsingAuthEmulator
+    }
+
     var backendDescription: String {
         switch backend {
         case .firebase:
@@ -251,6 +272,36 @@ final class AuthStore: ObservableObject {
             }
         }
     }
+
+    #if DEBUG
+    func signIn(as persona: TestPersona) async {
+        guard isFirebaseConfigured, isUsingAuthEmulator else {
+            authError = "Test personas require the Firebase Auth Emulator launch argument."
+            return
+        }
+
+        do {
+            isBusy = true
+            authError = nil
+            defer { isBusy = false }
+
+            backend = .firebase
+            let password = "plainstride-test-persona"
+            let result: AuthDataResult
+            do {
+                result = try await Auth.auth().signIn(withEmail: persona.email, password: password)
+            } catch let error as NSError where
+                error.code == AuthErrorCode.userNotFound.rawValue
+                    || error.code == AuthErrorCode.invalidCredential.rawValue
+            {
+                result = try await Auth.auth().createUser(withEmail: persona.email, password: password)
+            }
+            await completeSignIn(with: result)
+        } catch {
+            authError = "Test persona sign-in failed. \(Self.userFacingMessage(for: error))"
+        }
+    }
+    #endif
 
     func signInWithApple() async {
         guard isFirebaseConfigured else {
