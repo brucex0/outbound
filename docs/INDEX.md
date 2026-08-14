@@ -26,6 +26,7 @@ Primary flow:
 | --- | --- | --- |
 | App flow, Swift files, recording, camera, persistence, coach analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI coach shape |
 | App localization, translations, formatting, backend locale, speech | `docs/localization.md` | English, Simplified Chinese, and Spanish localization architecture, rollout, and acceptance criteria |
+| Rendered localization QA findings and release blockers | `docs/localization-qa.md` | Screen coverage, mixed-language defects, terminology issues, and remaining verification matrix |
 | New user onboarding, first-win setup, debug replay | `docs/new-user-onboarding.md` | Product flow, account-scoped persistence, SwiftUI surfaces, and Settings debug trigger |
 | Signup and onboarding flow prototype | `docs/prototypes/outbound-onboarding-flow.html` | Clickable welcome, authentication, intake, editable understanding, calibration, first-plan, social connection, and Today wireframe |
 | In-app AI assistant UX, prompt flows, and local response strategy | `docs/assistant.md` | Assistant goals, file map, persistence, capabilities, and extension ideas |
