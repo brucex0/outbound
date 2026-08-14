@@ -25,6 +25,12 @@ const personas = {
     username: "test-social-runner",
     displayName: "Sage Runner",
   },
+  blockedRunner: {
+    uid: "plainstride-test-blocked-runner",
+    email: "blocked-runner@plainstride.test",
+    username: "test-blocked-runner",
+    displayName: "Blocked Runner",
+  },
 } as const;
 
 async function seedTestPersonas() {
@@ -34,6 +40,7 @@ async function seedTestPersonas() {
 
   await prisma.user.deleteMany({ where: { firebaseUid: { in: values.map((persona) => persona.uid) } } });
   await prisma.club.deleteMany({ where: { name: "Plainstride E2E Run Club" } });
+  await prisma.club.deleteMany({ where: { name: "Sunset E2E Striders" } });
 
   for (const persona of values) {
     try {
@@ -53,6 +60,7 @@ async function seedTestPersonas() {
   const newRunner = await createAppUser(personas.newRunner);
   const activeRunner = await createAppUser(personas.activeRunner);
   const socialRunner = await createAppUser(personas.socialRunner);
+  const blockedRunner = await createAppUser(personas.blockedRunner);
   const now = new Date();
 
   await prisma.runnerProfile.create({
@@ -87,6 +95,7 @@ async function seedTestPersonas() {
     data: { userId: socialRunner.id, goalSummary: "Run consistently with friends", scheduleSummary: "Three flexible runs each week", comfortableDurationMinutes: 35, recentSessionsPerWeek: 2, targetSessionsPerWeek: 3, completedAt: daysAgo(now, 18) },
   });
   await prisma.connection.create({ data: { requesterId: socialRunner.id, addresseeId: activeRunner.id, status: "accepted" } });
+  await prisma.connection.create({ data: { requesterId: newRunner.id, addresseeId: socialRunner.id, status: "pending" } });
   const club = await prisma.club.create({
     data: {
       name: "Plainstride E2E Run Club",
@@ -95,7 +104,7 @@ async function seedTestPersonas() {
       memberships: { create: [{ userId: socialRunner.id, role: "organizer" }, { userId: activeRunner.id, role: "member" }] },
     },
   });
-  await prisma.groupRun.create({
+  const groupRun = await prisma.groupRun.create({
     data: {
       clubId: club.id,
       creatorId: socialRunner.id,
@@ -106,13 +115,33 @@ async function seedTestPersonas() {
       groups: { create: [{ label: "5K social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 450, capacity: 20, sortOrder: 0 }] },
     },
   });
+  await prisma.club.create({
+    data: {
+      name: "Sunset E2E Striders",
+      description: "A discoverable group the social persona has not joined.",
+      city: "San Francisco",
+    },
+  });
+  await prisma.groupRunRSVP.create({ data: { groupRunId: groupRun.id, userId: socialRunner.id, status: "going" } });
   const post = await prisma.post.create({
     data: { userId: activeRunner.id, activityId: activeActivities[0].id, caption: "Easy miles and good energy today.", visibility: "connections" },
   });
   await prisma.reaction.create({ data: { userId: socialRunner.id, postId: post.id, type: "clap" } });
   await prisma.comment.create({ data: { authorId: socialRunner.id, postId: post.id, body: "Nice work — see you Saturday!" } });
 
-  return { users: [newRunner, activeRunner, socialRunner].length, activities: activeActivities.length, clubs: 1 };
+  const runInvitation = await prisma.invitation.create({
+    data: { senderId: activeRunner.id, recipientId: socialRunner.id, groupRunId: groupRun.id, kind: "groupRun", status: "pending", expiresAt: daysFromNow(now, 7) },
+  });
+  await prisma.socialNotification.createMany({
+    data: [
+      { recipientId: socialRunner.id, actorId: newRunner.id, type: "connectionRequest", message: "New Runner wants to connect." },
+      { recipientId: socialRunner.id, actorId: activeRunner.id, type: "cheer", objectId: post.id, message: "Avery Runner cheered your run." },
+      { recipientId: socialRunner.id, actorId: activeRunner.id, type: "runInvitation", objectId: runInvitation.id, message: "Avery Runner invited you to Saturday social 5K." },
+    ],
+  });
+  await prisma.socialBlock.create({ data: { blockerId: socialRunner.id, blockedId: blockedRunner.id } });
+
+  return { users: values.length, activities: activeActivities.length, clubs: 2 };
 }
 
 async function createAppUser(persona: (typeof personas)[keyof typeof personas]) {
@@ -160,7 +189,7 @@ function assertLocalOnly() {
 
 try {
   const result = await seedTestPersonas();
-  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, and ${result.clubs} club.`);
+  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, and ${result.clubs} clubs.`);
 } finally {
   await prisma.$disconnect();
 }

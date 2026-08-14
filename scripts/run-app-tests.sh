@@ -38,6 +38,8 @@ xcodebuild -quiet \
   -parallel-testing-enabled NO \
   -only-testing:OutboundUITests/OutboundUITests/testLaunchSkipsLoginAndShowsPrimaryTabs \
   -only-testing:OutboundUITests/OutboundUITests/testPrimaryNavigationAndSettings \
+  -only-testing:OutboundUITests/OutboundUITests/testSeededSocialFeedRunAndComments \
+  -only-testing:OutboundUITests/OutboundUITests/testSeededSocialConnectionsGroupsNotificationsAndSharing \
   -only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish \
   -only-testing:OutboundUITests/OutboundUITests/testLaunchPerformance \
   test

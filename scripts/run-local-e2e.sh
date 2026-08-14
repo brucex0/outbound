@@ -102,7 +102,7 @@ curl --silent --show-error --fail-with-body \
 
 token=$(node -e 'const fs=require("fs"); const value=JSON.parse(fs.readFileSync(process.argv[1])); if (!value.idToken) process.exit(1); process.stdout.write(value.idToken)' "$log_dir/auth.json")
 api_base="http://127.0.0.1:$api_port/v1"
-for endpoint in auth/me activities social/together; do
+for endpoint in auth/me activities social/home social/connections social/groups social/notifications social/blocks; do
   file_name=${endpoint//\//-}
   curl --silent --show-error --fail-with-body \
     -H "Authorization: Bearer $token" \
@@ -110,13 +110,17 @@ for endpoint in auth/me activities social/together; do
 done
 
 print "Asserting '$persona' server state..."
-node - "$persona" "$log_dir/auth-me.json" "$log_dir/activities.json" "$log_dir/social-together.json" <<'NODE'
+node - "$persona" "$log_dir/auth-me.json" "$log_dir/activities.json" "$log_dir/social-home.json" "$log_dir/social-connections.json" "$log_dir/social-groups.json" "$log_dir/social-notifications.json" "$log_dir/social-blocks.json" <<'NODE'
 const fs = require("fs");
-const [persona, mePath, activitiesPath, togetherPath] = process.argv.slice(2);
+const [persona, mePath, activitiesPath, socialPath, connectionsPath, groupsPath, notificationsPath, blocksPath] = process.argv.slice(2);
 const read = path => JSON.parse(fs.readFileSync(path, "utf8"));
 const me = read(mePath);
 const activities = read(activitiesPath).activities ?? [];
-const together = read(togetherPath);
+const social = read(socialPath);
+const connections = read(connectionsPath).connections ?? [];
+const groups = read(groupsPath).groups ?? [];
+const notifications = read(notificationsPath).notifications ?? [];
+const blocks = read(blocksPath).blocks ?? [];
 const fail = message => { throw new Error(`[${persona}] ${message}`); };
 
 const expectedNames = { new: "New Runner", active: "Avery Runner", social: "Sage Runner" };
@@ -125,7 +129,7 @@ if (!me.id || !me.firebaseUid) fail("missing backend user identity");
 
 if (persona === "new") {
   if (activities.length !== 0) fail(`expected 0 activities, got ${activities.length}`);
-  if ((together.clubs ?? []).length !== 0) fail("expected no club memberships");
+  if ((social.clubs ?? []).length !== 0) fail("expected no group memberships");
 }
 if (persona === "active") {
   if (activities.length !== 3) fail(`expected 3 activities, got ${activities.length}`);
@@ -133,9 +137,16 @@ if (persona === "active") {
   if (!ids.includes("e2e-active-easy") || !ids.includes("e2e-active-long")) fail("seeded activity IDs are missing");
 }
 if (persona === "social") {
-  if (!(together.clubs ?? []).some(club => club.name === "Plainstride E2E Run Club")) fail("seeded club is missing");
-  if (!(together.upcomingRuns ?? []).some(run => run.title === "Saturday social 5K")) fail("seeded group run is missing");
-  if (!(together.posts ?? []).some(post => post.caption === "Easy miles and good energy today.")) fail("connected feed post is missing");
+  if (!(social.clubs ?? []).some(club => club.name === "Plainstride E2E Run Club")) fail("seeded joined group is missing");
+  if (!(social.upcomingRuns ?? []).some(run => run.title === "Saturday social 5K")) fail("seeded group run is missing");
+  if (!(social.posts ?? []).some(post => post.caption === "Easy miles and good energy today.")) fail("connected feed post is missing");
+  if (!connections.some(connection => connection.status === "accepted" && connection.person?.displayName === "Avery Runner")) fail("accepted connection is missing");
+  if (!connections.some(connection => connection.status === "pending" && connection.direction === "incoming" && connection.person?.displayName === "New Runner")) fail("incoming connection request is missing");
+  if (!groups.some(group => group.name === "Plainstride E2E Run Club" && group.membershipRole === "organizer")) fail("joined group discovery state is missing");
+  if (!groups.some(group => group.name === "Sunset E2E Striders" && group.membershipRole == null)) fail("discoverable unjoined group is missing");
+  if (!notifications.some(notification => notification.type === "runInvitation")) fail("run invitation notification is missing");
+  if (!notifications.some(notification => notification.type === "connectionRequest")) fail("connection request notification is missing");
+  if (!blocks.some(block => block.person?.displayName === "Blocked Runner")) fail("block-list seed is missing");
 }
 console.log(`[e2e] ${persona}: authenticated user and seeded API state verified.`);
 NODE

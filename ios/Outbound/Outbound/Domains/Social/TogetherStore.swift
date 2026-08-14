@@ -27,6 +27,12 @@ final class TogetherStore: ObservableObject {
             ? Self.uiTestFixture
             : Self.decode(TogetherResponseDTO.self, from: defaults.data(forKey: cacheKey))
                 ?? TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
+        if isUITestSeedData {
+            connections = Self.uiTestConnections
+            notifications = Self.uiTestNotifications
+            discoverableGroups = Self.uiTestGroups
+            blocks = Self.uiTestBlocks
+        }
     }
 
     func refresh() async {
@@ -49,6 +55,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func invite(to run: TogetherGroupRunDTO) async {
+        if isUITestSeedData {
+            latestInvitationURL = URL(string: "https://plainstride.app/invite/ui-test-run")
+            return
+        }
         do {
             let invitation = try await api.createTogetherInvitation(runID: run.id)
             latestInvitationURL = PlainstrideLinks.scheduledRunInvitation(token: invitation.token)
@@ -59,6 +69,7 @@ final class TogetherStore: ObservableObject {
     }
 
     func invite(_ connection: SocialConnectionDTO, to run: TogetherGroupRunDTO) async -> Bool {
+        if isUITestSeedData { return true }
         do {
             _ = try await api.createTogetherInvitation(runID: run.id, recipientUserID: connection.person.id)
             await refreshNotifications()
@@ -87,6 +98,10 @@ final class TogetherStore: ObservableObject {
 
     func toggleCheer(on post: TogetherPostDTO) async {
         guard !isSocialMutationPending else { return }
+        if isUITestSeedData {
+            state = replacing(post: post, cheered: !post.currentUserCheered)
+            return
+        }
         isSocialMutationPending = true
         defer { isSocialMutationPending = false }
         do {
@@ -102,6 +117,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func loadComments(for post: TogetherPostDTO) async {
+        if isUITestSeedData {
+            commentsByPostID[post.id] = post.comments
+            return
+        }
         do {
             commentsByPostID[post.id] = try await api.fetchSocialComments(postID: post.id).comments
             errorMessage = nil
@@ -113,6 +132,12 @@ final class TogetherStore: ObservableObject {
     func addComment(_ body: String, to post: TogetherPostDTO) async {
         let cleaned = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
+        if isUITestSeedData {
+            var comments = commentsByPostID[post.id] ?? post.comments
+            comments.append(Self.uiTestComment(body: cleaned))
+            commentsByPostID[post.id] = comments
+            return
+        }
         do {
             _ = try await api.commentOnSocialPost(postID: post.id, body: cleaned)
             await loadComments(for: post)
@@ -133,6 +158,7 @@ final class TogetherStore: ObservableObject {
     }
 
     func shareActivity(_ activity: SavedActivity, caption: String?) async -> Bool {
+        if isUITestSeedData { return true }
         guard let serverActivityID = activity.sync?.serverActivityId else {
             errorMessage = "This activity is still syncing. Try sharing again shortly."
             return false
@@ -149,6 +175,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshConnections() async {
+        if isUITestSeedData {
+            connections = connections.isEmpty ? Self.uiTestConnections : connections
+            return
+        }
         isConnectionsLoading = true
         defer { isConnectionsLoading = false }
         do {
@@ -163,6 +193,13 @@ final class TogetherStore: ObservableObject {
         let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard cleaned.count >= 2 else {
             peopleResults = []
+            return
+        }
+        if isUITestSeedData {
+            peopleResults = Self.uiTestPeople.filter {
+                $0.displayName.localizedCaseInsensitiveContains(cleaned)
+                    || $0.username.localizedCaseInsensitiveContains(cleaned)
+            }
             return
         }
         do {
@@ -184,6 +221,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func acceptConnection(_ connection: SocialConnectionDTO) async {
+        if isUITestSeedData {
+            replaceConnection(connection, status: "accepted", direction: "incoming")
+            return
+        }
         do {
             _ = try await api.acceptSocialConnection(id: connection.id)
             await refreshConnections()
@@ -194,6 +235,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func removeConnection(_ connection: SocialConnectionDTO) async {
+        if isUITestSeedData {
+            connections.removeAll { $0.id == connection.id }
+            return
+        }
         do {
             _ = try await api.removeSocialConnection(id: connection.id)
             await refreshConnections()
@@ -214,6 +259,10 @@ final class TogetherStore: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(type, from: data)
+    }
+
+    private var isUITestSeedData: Bool {
+        ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
     }
 
     private static var uiTestFixture: TogetherResponseDTO {
@@ -266,6 +315,10 @@ final class TogetherStore: ObservableObject {
     var unreadNotificationCount: Int { notifications.filter { $0.readAt == nil }.count }
 
     func refreshNotifications() async {
+        if isUITestSeedData {
+            notifications = notifications.isEmpty ? Self.uiTestNotifications : notifications
+            return
+        }
         do {
             notifications = try await api.fetchSocialNotifications().notifications
             errorMessage = nil
@@ -275,6 +328,12 @@ final class TogetherStore: ObservableObject {
     }
 
     func markNotificationsRead() async {
+        if isUITestSeedData {
+            notifications = notifications.map {
+                SocialNotificationDTO(id: $0.id, type: $0.type, objectId: $0.objectId, message: $0.message, readAt: $0.readAt ?? Date(), createdAt: $0.createdAt, actor: $0.actor)
+            }
+            return
+        }
         do {
             _ = try await api.markSocialNotificationsRead()
             await refreshNotifications()
@@ -304,6 +363,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshGroups() async {
+        if isUITestSeedData {
+            discoverableGroups = discoverableGroups.isEmpty ? Self.uiTestGroups : discoverableGroups
+            return
+        }
         do {
             discoverableGroups = try await api.fetchSocialGroups().groups
             errorMessage = nil
@@ -313,6 +376,13 @@ final class TogetherStore: ObservableObject {
     }
 
     func toggleMembership(in group: SocialGroupDTO) async {
+        if isUITestSeedData {
+            discoverableGroups = discoverableGroups.map {
+                guard $0.id == group.id else { return $0 }
+                return SocialGroupDTO(id: $0.id, name: $0.name, description: $0.description, city: $0.city, memberCount: max(0, $0.memberCount + ($0.membershipRole == nil ? 1 : -1)), membershipRole: $0.membershipRole == nil ? "member" : nil)
+            }
+            return
+        }
         do {
             if group.membershipRole == nil {
                 _ = try await api.joinSocialGroup(id: group.id)
@@ -327,6 +397,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func groupRunDetail(id: String) async -> SocialGroupRunDetailDTO? {
+        if isUITestSeedData {
+            guard let run = state.upcomingRuns.first(where: { $0.id == id }) else { return nil }
+            return Self.uiTestRunDetail(run: run, isGoing: false)
+        }
         do {
             let detail = try await api.fetchSocialGroupRun(id: id)
             errorMessage = nil
@@ -338,6 +412,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func toggleRSVP(for run: SocialGroupRunDetailDTO) async -> SocialGroupRunDetailDTO? {
+        if isUITestSeedData {
+            guard let fixture = state.upcomingRuns.first(where: { $0.id == run.id }) else { return nil }
+            return Self.uiTestRunDetail(run: fixture, isGoing: !run.currentUserGoing)
+        }
         do {
             if run.currentUserGoing {
                 _ = try await api.leaveSocialGroupRun(id: run.id)
@@ -353,6 +431,10 @@ final class TogetherStore: ObservableObject {
 
     func acceptRunInvitation(_ notification: SocialNotificationDTO) async {
         guard let invitationID = notification.objectId else { return }
+        if isUITestSeedData {
+            notifications.removeAll { $0.id == notification.id }
+            return
+        }
         do {
             _ = try await api.acceptSocialRunInvitation(id: invitationID)
             await refreshNotifications()
@@ -381,6 +463,10 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshBlocks() async {
+        if isUITestSeedData {
+            blocks = blocks.isEmpty ? Self.uiTestBlocks : blocks
+            return
+        }
         do {
             blocks = try await api.fetchSocialBlocks().blocks
         } catch {
@@ -389,12 +475,77 @@ final class TogetherStore: ObservableObject {
     }
 
     func unblock(_ block: SocialBlockDTO) async {
+        if isUITestSeedData {
+            blocks.removeAll { $0.id == block.id }
+            return
+        }
         do {
             _ = try await api.unblockSocialUser(id: block.person.id)
             await refreshBlocks()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func replacing(post: TogetherPostDTO, cheered: Bool) -> TogetherResponseDTO {
+        let posts = state.posts.map { current in
+            guard current.id == post.id else { return current }
+            return TogetherPostDTO(
+                id: current.id,
+                caption: current.caption,
+                createdAt: current.createdAt,
+                isCurrentUser: current.isCurrentUser,
+                user: current.user,
+                activity: current.activity,
+                reactionCount: max(0, current.reactionCount + (cheered ? 1 : -1)),
+                currentUserCheered: cheered,
+                commentCount: current.commentCount,
+                comments: current.comments
+            )
+        }
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, clubs: state.clubs, posts: posts)
+    }
+
+    private func replaceConnection(_ connection: SocialConnectionDTO, status: String, direction: String) {
+        connections = connections.map {
+            $0.id == connection.id
+                ? SocialConnectionDTO(id: $0.id, status: status, direction: direction, person: $0.person)
+                : $0
+        }
+    }
+
+    private static let uiTestConnections = [
+        SocialConnectionDTO(id: "ui-connection-maya", status: "accepted", direction: "incoming", person: SocialPersonDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)),
+        SocialConnectionDTO(id: "ui-connection-leo", status: "pending", direction: "incoming", person: SocialPersonDTO(id: "ui-leo", username: "leo.runs", displayName: "Leo Martinez", avatarUrl: nil)),
+        SocialConnectionDTO(id: "ui-connection-priya", status: "pending", direction: "outgoing", person: SocialPersonDTO(id: "ui-priya", username: "priya.trails", displayName: "Priya Shah", avatarUrl: nil)),
+    ]
+
+    private static let uiTestPeople = [
+        SocialPersonSearchResultDTO(id: "ui-jordan", username: "jordan.miles", displayName: "Jordan Miles", avatarUrl: nil, relationship: nil),
+        SocialPersonSearchResultDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil, relationship: SocialRelationshipDTO(id: "ui-connection-maya", status: "accepted", direction: "incoming")),
+    ]
+
+    private static let uiTestGroups = [
+        SocialGroupDTO(id: "ui-test-club", name: "Golden Gate Run Club", description: "Friendly local miles for every pace.", city: "San Francisco", memberCount: 128, membershipRole: "member"),
+        SocialGroupDTO(id: "ui-sunset-group", name: "Sunset Striders", description: "Easy evening runs by the ocean.", city: "San Francisco", memberCount: 42, membershipRole: nil),
+    ]
+
+    private static let uiTestNotifications = [
+        SocialNotificationDTO(id: "ui-notification-request", type: "connectionRequest", objectId: "ui-connection-leo", message: "Leo Martinez wants to connect.", readAt: nil, createdAt: Date().addingTimeInterval(-600), actor: SocialPersonDTO(id: "ui-leo", username: "leo.runs", displayName: "Leo Martinez", avatarUrl: nil)),
+        SocialNotificationDTO(id: "ui-notification-cheer", type: "cheer", objectId: "ui-test-post", message: "Maya Chen cheered your run.", readAt: nil, createdAt: Date().addingTimeInterval(-1_200), actor: SocialPersonDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)),
+        SocialNotificationDTO(id: "ui-notification-run", type: "runInvitation", objectId: "ui-invitation-run", message: "Maya Chen invited you to Saturday waterfront 5K.", readAt: nil, createdAt: Date().addingTimeInterval(-1_800), actor: SocialPersonDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)),
+    ]
+
+    private static let uiTestBlocks = [
+        SocialBlockDTO(id: "ui-block", person: SocialPersonDTO(id: "ui-blocked", username: "blocked.runner", displayName: "Blocked Runner", avatarUrl: nil)),
+    ]
+
+    private static func uiTestRunDetail(run: TogetherGroupRunDTO, isGoing: Bool) -> SocialGroupRunDetailDTO {
+        SocialGroupRunDetailDTO(id: run.id, title: run.title, startsAt: run.startsAt, locationName: run.locationName, paceNote: run.paceNote, club: run.club, creator: run.creator, groups: run.groups, attendeeCount: isGoing ? 19 : 18, currentUserGoing: isGoing, compatibility: run.compatibility)
+    }
+
+    private static func uiTestComment(body: String) -> TogetherCommentDTO {
+        TogetherCommentDTO(id: "ui-comment-\(UUID().uuidString)", body: body, createdAt: Date(), author: SocialPersonDTO(id: "ui-current", username: "ui.tester", displayName: "UI Test Runner", avatarUrl: nil), canDelete: true)
     }
 }
 

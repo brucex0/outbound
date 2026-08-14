@@ -89,7 +89,7 @@ FIREBASE_PROJECT_ID=outbound-494602 \
 npm run start:local
 ```
 
-Seed or reset the three reserved personas from a third terminal after the local backend has initialized its database:
+Seed or reset the four reserved personas from a third terminal after the local backend has initialized its database:
 
 ```sh
 cd backend
@@ -103,7 +103,8 @@ The command refuses non-local Auth Emulator and database hosts. It deletes and r
 
 - New Runner: authenticated account with no onboarding or activity history.
 - Active Runner: completed runner profile, calibration, three activities, and learned insights.
-- Social Runner: completed runner profile, an accepted connection to Active Runner, club membership, an upcoming group run, and feed interaction.
+- Social Runner: completed runner profile, accepted and pending connections, joined and discoverable groups, an upcoming group run with RSVP, feed interaction, notifications, an invitation, and a blocked runner.
+- Blocked Runner: completed runner profile reserved as the deterministic block-list target for Social Runner.
 
 The Debug persona picker also resets the account-scoped onboarding marker: New Runner always enters onboarding, while Active Runner and Social Runner skip it. Server-backed activity and social data still come from the local API.
 

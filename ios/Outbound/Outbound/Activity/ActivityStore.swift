@@ -488,7 +488,8 @@ final class ActivityStore: ObservableObject {
                 durationSecs: 1_845,
                 distanceM: 5_420,
                 avgPace: 340,
-                elevationGainM: 74
+                elevationGainM: 74,
+                serverActivityID: "ui-test-server-activity"
             ),
             uiTestActivityFixture(
                 id: "22222222-3333-4444-5555-666666666666",
@@ -518,7 +519,8 @@ final class ActivityStore: ObservableObject {
         durationSecs: Int,
         distanceM: Double,
         avgPace: Double,
-        elevationGainM: Double
+        elevationGainM: Double,
+        serverActivityID: String? = nil
     ) -> SavedActivity {
         let points = [
             SavedRoutePoint(location: CLLocation(latitude: 37.7749, longitude: -122.4194)),
@@ -546,7 +548,16 @@ final class ActivityStore: ObservableObject {
             goal: .distanceMeters(5_000),
             route: SavedRoute(points: points),
             photos: [],
-            sync: nil
+            sync: serverActivityID.map {
+                SavedActivitySyncState(
+                    clientActivityId: id,
+                    serverActivityId: $0,
+                    lastAttemptAt: startedAt,
+                    syncedAt: startedAt,
+                    lastError: nil,
+                    localUpdatedAt: startedAt
+                )
+            }
         )
     }
 }

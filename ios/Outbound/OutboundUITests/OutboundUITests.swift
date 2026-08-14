@@ -19,7 +19,7 @@ final class OutboundUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Together"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Social"].exists)
         XCTAssertTrue(app.tabBars.buttons["Me"].exists)
         XCTAssertTrue(app.buttons["Quick start"].exists)
         XCTAssertFalse(app.textFields["Phone number"].exists)
@@ -29,8 +29,8 @@ final class OutboundUITests: XCTestCase {
     func testPrimaryNavigationAndSettings() throws {
         let app = launchApp()
 
-        app.tabBars.buttons["Together"].tap()
-        XCTAssertTrue(app.navigationBars["Together"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
         XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
         XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
@@ -43,6 +43,72 @@ final class OutboundUITests: XCTestCase {
         settingsButton.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Sign out"].exists)
+    }
+
+    @MainActor
+    func testSeededSocialFeedRunAndComments() throws {
+        let app = launchApp()
+
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Share your latest run"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
+        XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
+
+        let cheerButton = app.buttons["Cheer · 2"]
+        XCTAssertTrue(cheerButton.waitForExistence(timeout: 5))
+        cheerButton.tap()
+        XCTAssertTrue(app.buttons["Cheered · 3"].waitForExistence(timeout: 5))
+
+        app.buttons["Comment · 1"].tap()
+        XCTAssertTrue(app.navigationBars["Comments"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["See you next time!"].exists)
+        app.buttons["Done"].tap()
+
+        app.buttons["View run"].tap()
+        XCTAssertTrue(app.navigationBars["Saturday waterfront 5K"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Going"].waitForExistence(timeout: 5))
+        app.buttons["I'm going"].tap()
+        XCTAssertTrue(app.buttons["Leave run"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSeededSocialConnectionsGroupsNotificationsAndSharing() throws {
+        let app = launchApp()
+
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+
+        app.buttons["Connections"].tap()
+        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Maya Chen"].exists)
+        XCTAssertTrue(app.staticTexts["Leo Martinez"].exists)
+        XCTAssertTrue(app.staticTexts["Priya Shah"].exists)
+        XCTAssertTrue(app.staticTexts["Blocked Runner"].exists)
+        app.buttons["Accept"].tap()
+        XCTAssertTrue(app.buttons["Accept"].waitForNonExistence(timeout: 5))
+
+        app.navigationBars["Connections"].buttons.firstMatch.tap()
+        app.buttons["Groups"].tap()
+        XCTAssertTrue(app.navigationBars["Groups"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
+        XCTAssertTrue(app.staticTexts["Sunset Striders"].exists)
+        app.buttons["Join"].tap()
+        XCTAssertEqual(app.buttons.matching(identifier: "Leave").count, 2)
+
+        app.navigationBars["Groups"].buttons.firstMatch.tap()
+        app.buttons["Social notifications"].tap()
+        XCTAssertTrue(app.navigationBars["Notifications"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Maya Chen cheered your run."].exists)
+        XCTAssertTrue(app.staticTexts["Maya Chen invited you to Saturday waterfront 5K."].exists)
+        app.buttons["Accept invitation"].tap()
+        XCTAssertTrue(app.buttons["Accept invitation"].waitForNonExistence(timeout: 5))
+
+        app.navigationBars["Notifications"].buttons.firstMatch.tap()
+        app.buttons["Share"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Share activity"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Share with connections"].exists)
+        app.buttons["Cancel"].tap()
     }
 
     @MainActor
