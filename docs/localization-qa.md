@@ -11,6 +11,29 @@ Open this for rendered-app localization findings and release blockers. The suppo
 - Data mode: offline UI-test session with one saved activity. Authentication was separately inspected without the test-session bypass.
 - Remaining coverage: authenticated onboarding, full activity-history and Progress screens, cycle-aware coaching, gear, safety/live sharing, music, assistant sheets, Dynamic Island, App Intents UI, and on-device speech recognition/synthesis.
 
+## 2026-08-13 Simplified Chinese Rerun
+
+- Revision: `fbc88f0`, including terminology refinement `b955b5f`.
+- Build: `OutboundAppTests` compiled successfully with the app and embedded Live Activity extension.
+- Rechecked: authentication, Today completed state, populated Together, Me with seeded history, and activity setup.
+
+Confirmed improvements:
+
+- The authentication slogan now reads `在训练中找到自我。和伙伴一起奔跑。` and renders naturally without clipping.
+- `Companion insight` now renders as `同伴洞察` instead of `同伴洞察力`.
+- Invite actions now use the concise `邀请`.
+- The selected Chinese product name `平步青云` renders consistently on the sign-in screen.
+
+Remaining blockers:
+
+- Authentication buttons remain `Continue with Apple` and `Continue with Google`.
+- Authentication orbit labels remain `Family`, `Friends`, `You`, and `Groups`.
+- Today, Me, Together, and activity setup still contain the English model/helper strings listed under L10N-001.
+- Together translates `UP NEXT` as `上一个`, which means “previous” and reverses the schedule meaning. Use a product-reviewed equivalent such as `接下来`.
+- Together headings `你的俱乐部` and `最近的` are understandable but read like literal fragments and need native UX review.
+- `Quick start` remains `快速启动`, which still reads like starting software or a device.
+- The location permission prompt still appears in English when only process launch arguments select Chinese; device/per-app language verification remains required.
+
 ## Release Blockers
 
 ### L10N-001 — Primary journeys contain mixed English
@@ -68,7 +91,7 @@ Severity: High
 Severity: High
 
 - `Quick start` becomes `快速启动`, a software/device-start phrase.
-- `Companion insight` becomes the unnatural `同伴洞察力`.
+- `Companion insight` was improved from `同伴洞察力` to `同伴洞察` in `b955b5f`.
 - Confirm whether profile-tab `我` should use a profile-specific label.
 - Chinese accessibility sentences contain English workout fragments.
 
