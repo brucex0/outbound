@@ -224,7 +224,7 @@ private struct SimplifiedTodayView: View {
                     onOpen: { showsWeatherSheet = true }
                 )
                 CompactIntervalPreview(phases: todayPhases)
-                OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
+                OutboundPrimaryButton(title: String(localized: "Start run"), systemImage: "figure.run") {
                     onStartRun(activeRunIntent)
                 }
             }
@@ -275,7 +275,7 @@ private struct SimplifiedTodayView: View {
         .accessibilityHint("Get guidance or customize the activity conversationally")
     }
 
-    private func todayStat(_ value: String, _ label: String) -> some View {
+    private func todayStat(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.headline.monospacedDigit())
             Text(label).font(.caption).foregroundStyle(.secondary)
@@ -377,7 +377,7 @@ private struct SimplifiedTodayView: View {
     private var companionInsightMessage: String {
         if let companionTodayMessage { return companionTodayMessage }
         if let activity = completedActivityToday {
-            return "You completed today’s \(durationLabel(activity.durationSecs)) activity. Let that work count and prioritize recovery now."
+            return String(localized: "You completed today’s \(durationLabel(activity.durationSecs)) activity. Let that work count and prioritize recovery now.")
         }
         return todayExplanation
     }
@@ -388,9 +388,9 @@ private struct SimplifiedTodayView: View {
                 id: workout.id,
                 sport: .run,
                 title: workout.title,
-                detail: "Run · \(durationLabel(workout.durationSeconds)) · conversational effort",
+                detail: String(localized: "Run · \(durationLabel(workout.durationSeconds)) · conversational effort"),
                 coachLine: workout.purpose,
-                startLabel: "Start workout",
+                startLabel: String(localized: "Start workout"),
                 targetDurationSeconds: workout.durationSeconds,
                 workoutSteps: workout.steps.map {
                     SessionIntentStep(id: $0.id, label: $0.label, durationSeconds: $0.durationSeconds, detail: $0.detail)
@@ -403,15 +403,15 @@ private struct SimplifiedTodayView: View {
         return SessionIntent(
             id: "today-comfortable-run",
             sport: .run,
-            title: "Easy run",
-            detail: "Run · 30 min · conversational effort",
-            coachLine: "Settle into a conversational effort and keep this one comfortable.",
-            startLabel: "Start workout",
+            title: String(localized: "Easy run"),
+            detail: String(localized: "Run · 30 min · conversational effort"),
+            coachLine: String(localized: "Settle into a conversational effort and keep this one comfortable."),
+            startLabel: String(localized: "Start workout"),
             targetDurationSeconds: 30 * 60,
             workoutSteps: [
-                SessionIntentStep(id: "warmup", label: "Warm-up", durationSeconds: 5 * 60, detail: "Very easy"),
-                SessionIntentStep(id: "relaxed", label: "Relaxed", durationSeconds: 20 * 60, detail: "Conversational effort"),
-                SessionIntentStep(id: "cooldown", label: "Cool-down", durationSeconds: 5 * 60, detail: "Ease down"),
+                SessionIntentStep(id: "warmup", label: String(localized: "Warm-up"), durationSeconds: 5 * 60, detail: String(localized: "Very easy")),
+                SessionIntentStep(id: "relaxed", label: String(localized: "Relaxed"), durationSeconds: 20 * 60, detail: String(localized: "Conversational effort")),
+                SessionIntentStep(id: "cooldown", label: String(localized: "Cool-down"), durationSeconds: 5 * 60, detail: String(localized: "Ease down")),
             ]
         )
     }
@@ -425,9 +425,9 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayWorkoutName: String {
-        if let customizedRunIntent { return customizedRunIntent.title }
+        if let customizedRunIntent { return localizedAppCopy(customizedRunIntent.title) }
         let rawName = currentCalibrationWorkout?.title ?? trainingPlanStore.todaySuggestion?.workout.title ?? "Easy run"
-        return rawName.components(separatedBy: " · ").first ?? rawName
+        return localizedAppCopy(rawName.components(separatedBy: " · ").first ?? rawName)
     }
 
     private var todayTotalDuration: String {
@@ -436,10 +436,11 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayExplanation: String {
-        if let workout = currentCalibrationWorkout { return workout.purpose }
-        return trainingPlanStore.todaySuggestion?.adjustmentLine
+        if let workout = currentCalibrationWorkout { return localizedAppCopy(workout.purpose) }
+        let copy = trainingPlanStore.todaySuggestion?.adjustmentLine
             ?? trainingPlanStore.todaySuggestion?.coachLine
             ?? "This approachable run builds consistency while Plainstride learns your natural easy effort."
+        return localizedAppCopy(copy)
     }
 
     private var todayPhases: [WorkoutPhaseItem] {
@@ -457,7 +458,7 @@ private struct SimplifiedTodayView: View {
                 WorkoutPhaseItem(
                     id: $0.id,
                     duration: durationLabel($0.durationSeconds).replacingOccurrences(of: " min", with: "m"),
-                    title: $0.label,
+                    title: localizedAppCopy($0.label),
                     weight: max(1, CGFloat($0.durationSeconds) / 300)
                 )
             }
@@ -465,19 +466,25 @@ private struct SimplifiedTodayView: View {
         let steps = trainingPlanStore.todaySuggestion?.workout.steps ?? []
         guard !steps.isEmpty else {
             return [
-                WorkoutPhaseItem(id: "warmup", duration: "5m", title: "Warm-up", weight: 1),
-                WorkoutPhaseItem(id: "relaxed", duration: "20m", title: "Relaxed", weight: 3),
-                WorkoutPhaseItem(id: "cooldown", duration: "5m", title: "Cool-down", weight: 1),
+                WorkoutPhaseItem(id: "warmup", duration: "5m", title: String(localized: "Warm-up"), weight: 1),
+                WorkoutPhaseItem(id: "relaxed", duration: "20m", title: String(localized: "Relaxed"), weight: 3),
+                WorkoutPhaseItem(id: "cooldown", duration: "5m", title: String(localized: "Cool-down"), weight: 1),
             ]
         }
         return steps.map {
             WorkoutPhaseItem(
                 id: $0.id,
                 duration: $0.durationLabel.replacingOccurrences(of: " min", with: "m"),
-                title: $0.label,
+                title: localizedAppCopy($0.label),
                 weight: max(1, CGFloat($0.durationSeconds) / 300)
             )
         }
+    }
+
+    /// Model and fallback copy uses English semantic values; catalog lookup localizes
+    /// app-authored values while preserving unknown user- or server-authored prose.
+    private func localizedAppCopy(_ value: String) -> String {
+        String(localized: String.LocalizationValue(value))
     }
 
     private var currentCalibrationWorkout: CalibrationWorkoutDTO? {
@@ -826,7 +833,7 @@ private struct WeatherDetailSheet: View {
 
     private func conditionLine(_ snapshot: RunningWeatherSnapshot) -> String {
         let precipitation = Int((snapshot.precipitationChance * 100).rounded())
-        return "\(snapshot.temperatureLabel(unitSystem: unitSystem)) · Wind \(snapshot.windLabel(unitSystem: unitSystem)) · \(precipitation)% rain"
+        return String(localized: "\(snapshot.temperatureLabel(unitSystem: unitSystem)) · Wind \(snapshot.windLabel(unitSystem: unitSystem)) · \(precipitation)% rain")
     }
 }
 
@@ -914,7 +921,7 @@ private struct TodayChangeSheet: View {
         }
     }
 
-    private func changeReasonButton(_ title: String, icon: String, reason: ReadinessChoice) -> some View {
+    private func changeReasonButton(_ title: LocalizedStringKey, icon: String, reason: ReadinessChoice) -> some View {
         Button { self.reason = reason } label: {
             HStack { Label(title, systemImage: icon); Spacer(); Image(systemName: "chevron.right") }
                 .frame(maxWidth: .infinity, minHeight: 48)
@@ -929,17 +936,24 @@ private struct TodayChangeSheet: View {
 
     private func recommendedMinutes(_ reason: ReadinessChoice) -> Int { reason == .shortOnTime ? availableMinutes : 15 }
     private func reasonHeading(_ reason: ReadinessChoice) -> String {
-        switch reason { case .tired: "Try 15 minutes easy"; case .sore: "Rest today"; case .shortOnTime: "Fit the time you have"; case .good: "Keep today’s run" }
+        switch reason {
+        case .tired: String(localized: "Try 15 minutes easy")
+        case .sore: String(localized: "Rest today")
+        case .shortOnTime: String(localized: "Fit the time you have")
+        case .good: String(localized: "Keep today’s run")
+        }
     }
     private func recommendationText(_ reason: ReadinessChoice) -> String {
         switch reason {
-        case .tired: "A short easy run keeps the rhythm without forcing the full workout."
-        case .sore: "Skipping one run is better than turning discomfort into an injury."
-        case .shortOnTime: "Plainstride will keep this easy and end it at your selected time."
-        case .good: "The original workout still fits."
+        case .tired: String(localized: "A short easy run keeps the rhythm without forcing the full workout.")
+        case .sore: String(localized: "Skipping one run is better than turning discomfort into an injury.")
+        case .shortOnTime: String(localized: "Plainstride will keep this easy and end it at your selected time.")
+        case .good: String(localized: "The original workout still fits.")
         }
     }
-    private func primaryTitle(_ reason: ReadinessChoice) -> String { reason == .sore ? "Use rest day" : "Start changed run" }
+    private func primaryTitle(_ reason: ReadinessChoice) -> String {
+        reason == .sore ? String(localized: "Use rest day") : String(localized: "Start changed run")
+    }
     private func primaryIcon(_ reason: ReadinessChoice) -> String { reason == .sore ? "bed.double" : "figure.run" }
 }
 
@@ -1102,18 +1116,23 @@ private struct SimplifiedMeView: View {
     }
 
     private var planTitle: String {
-        guard let plan = trainingPlanStore.activePlan else { return "Building your running rhythm" }
+        guard let plan = trainingPlanStore.activePlan else { return String(localized: "Building your running rhythm") }
         let week = trainingPlanStore.currentWeek?.currentWeekIndex ?? 1
-        return "\(plan.title) · Week \(week) of \(plan.durationWeeks)"
+        return String(localized: "\(plan.title) · Week \(week) of \(plan.durationWeeks)")
     }
 
-    private var planDetail: String { "\(weekTarget) runs per week" }
+    private var planDetail: String { String(localized: "\(weekTarget) runs per week") }
     private var weekTarget: Int { trainingPlanStore.currentWeek?.targetSessions ?? trainingPlanStore.activePlan?.sessionsPerWeek ?? 3 }
     private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? currentWeekActivities.count }
     private var weekDistance: Double { currentWeekActivities.reduce(0) { $0 + $1.distanceM } }
     private var weekDuration: Int { currentWeekActivities.reduce(0) { $0 + $1.durationSecs } }
     private var weekCoachLine: String {
-        trainingPlanStore.currentWeek?.coachLine ?? (weekRuns >= weekTarget ? "You completed this week’s rhythm." : "\(max(0, weekTarget - weekRuns)) comfortable run\(weekTarget - weekRuns == 1 ? "" : "s") complete the week.")
+        if let line = trainingPlanStore.currentWeek?.coachLine { return line }
+        if weekRuns >= weekTarget { return String(localized: "You completed this week’s rhythm.") }
+        let remaining = max(0, weekTarget - weekRuns)
+        return remaining == 1
+            ? String(localized: "One comfortable run completes the week.")
+            : String(localized: "\(remaining) comfortable runs complete the week.")
     }
     private var currentWeekActivities: [SavedActivity] {
         guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return [] }
@@ -1473,9 +1492,9 @@ private enum UserAvatarPersistence {
 private extension RunnerConfidence {
     var title: String {
         switch self {
-        case .low: "Learning"
-        case .medium: "Some confidence"
-        case .high: "High confidence"
+        case .low: String(localized: "Learning")
+        case .medium: String(localized: "Some confidence")
+        case .high: String(localized: "High confidence")
         }
     }
 }

@@ -34,6 +34,15 @@ Remaining blockers:
 - `Quick start` remains `快速启动`, which still reads like starting software or a device.
 - The location permission prompt still appears in English when only process launch arguments select Chinese; device/per-app language verification remains required.
 
+## 2026-08-14 Today Runtime-String Fix
+
+- Routed the rotating Today inspiration headline and message through the String Catalog.
+- Localized the Today primary `Start run` action and the built-in easy-run title, explanation, and phase labels.
+- Added a catalog lookup boundary for app-authored workout titles, explanations, and phase labels arriving through Today models. Unknown server- or user-authored text remains unchanged.
+- Changed the completed-activity stat labels to use localized keys instead of display-ready `String` values.
+- Added reviewed Simplified Chinese and Spanish translations for every Today phrase activated by this change.
+- Build-only simulator compilation passed. Rendered device verification remains required.
+
 ## Release Blockers
 
 ### L10N-001 — Primary journeys contain mixed English
@@ -42,7 +51,7 @@ Severity: Blocker
 
 Both translations render English app-authored content inside localized screens.
 
-- Today: `Comfortable run`, `Start run`, `Location access is off...`, workout-step names, and the companion accessibility hint.
+- Today: the reported rotating inspiration, `Start run`, built-in easy-run card, and fallback workout-step names are fixed in code. Remaining risk is backend-generated workout prose, `Location access is off...`, and uncataloged accessibility content.
 - Together: offline error, generated compatibility explanation, club-role value, `Distance`, `Time`, and `Pace`.
 - Me: plan title/detail, learned-insight values, `Distance`, `Time`, and the weekly companion sentence.
 - Profile editor: `Profile could not be loaded.`

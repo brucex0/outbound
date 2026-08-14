@@ -1451,27 +1451,27 @@ enum DailyMotivationEngine {
         switch phase {
         case .completedToday:
             variants = [
-                CoachSpark(headline: "Session logged.", message: "You followed through. Let that win be enough for today.", primaryCTA: "Start another light session", secondaryCTA: "Review today"),
-                CoachSpark(headline: "Today already counts.", message: "The work is in. Anything else is optional.", primaryCTA: "Start another light session", secondaryCTA: "Review today"),
-                CoachSpark(headline: "You kept the promise.", message: "Take the win. Consistency grows from days like this.", primaryCTA: "Start another light session", secondaryCTA: "Review today")
+                CoachSpark(headline: String(localized: "Session logged."), message: String(localized: "You followed through. Let that win be enough for today."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
+                CoachSpark(headline: String(localized: "Today already counts."), message: String(localized: "The work is in. Anything else is optional."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
+                CoachSpark(headline: String(localized: "You kept the promise."), message: String(localized: "Take the win. Consistency grows from days like this."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today"))
             ]
         case .comeback:
             variants = [
-                CoachSpark(headline: "Fresh start today?", message: "No catching up. Just reconnect with something small and real.", primaryCTA: "Start easy", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Start from where you are.", message: "The gap does not matter. One comfortable session does.", primaryCTA: "Start easy", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Come back gently.", message: "Skip the payback workout. Make today easy to repeat.", primaryCTA: "Start easy", secondaryCTA: "Other ideas")
+                CoachSpark(headline: String(localized: "Fresh start today?"), message: String(localized: "No catching up. Just reconnect with something small and real."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Start from where you are."), message: String(localized: "The gap does not matter. One comfortable session does."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Come back gently."), message: String(localized: "Skip the payback workout. Make today easy to repeat."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .momentum:
             variants = [
-                CoachSpark(headline: "You are building something steady.", message: readiness == .ready ? "Energy is there today. Keep the rhythm going without forcing it." : "Protect the rhythm with a session you can actually enjoy.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Keep the streak sustainable.", message: "Momentum comes from another controlled day, not a heroic one.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Your rhythm is working.", message: "Stay patient and add one more honest session.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas")
+                CoachSpark(headline: String(localized: "You are building something steady."), message: readiness == .ready ? String(localized: "Energy is there today. Keep the rhythm going without forcing it.") : String(localized: "Protect the rhythm with a session you can actually enjoy."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Keep the streak sustainable."), message: String(localized: "Momentum comes from another controlled day, not a heroic one."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Your rhythm is working."), message: String(localized: "Stay patient and add one more honest session."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .firstSession:
             variants = [
-                CoachSpark(headline: "You do not need a perfect session.", message: "You need a beginning. Your companion can take it from there.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Make the first one simple.", message: "A short, comfortable start is enough to learn from.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas"),
-                CoachSpark(headline: "Begin before you feel ready.", message: "Keep it small. Today is about showing up, not proving anything.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas")
+                CoachSpark(headline: String(localized: "You do not need a perfect session."), message: String(localized: "You need a beginning. Your companion can take it from there."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Make the first one simple."), message: String(localized: "A short, comfortable start is enough to learn from."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
+                CoachSpark(headline: String(localized: "Begin before you feel ready."), message: String(localized: "Keep it small. Today is about showing up, not proving anything."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .steady:
             variants = steadySparkVariants(for: readiness)
@@ -1489,9 +1489,9 @@ enum DailyMotivationEngine {
         let headline = defaultHeadline(for: readiness)
         let message = defaultMessage(for: readiness)
         return [
-            CoachSpark(headline: headline, message: message, primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas"),
-            CoachSpark(headline: "One useful session is enough.", message: readiness == .ready ? "Put the energy somewhere purposeful, then finish in control." : "Choose the version that fits the day you actually have.", primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas"),
-            CoachSpark(headline: "Give today a little motion.", message: readiness == .stressed ? "Let the session create space, not more pressure." : "Small and repeatable beats ambitious and skipped.", primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas")
+            CoachSpark(headline: headline, message: message, primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
+            CoachSpark(headline: String(localized: "One useful session is enough."), message: readiness == .ready ? String(localized: "Put the energy somewhere purposeful, then finish in control.") : String(localized: "Choose the version that fits the day you actually have."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
+            CoachSpark(headline: String(localized: "Give today a little motion."), message: readiness == .stressed ? String(localized: "Let the session create space, not more pressure.") : String(localized: "Small and repeatable beats ambitious and skipped."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas"))
         ]
     }
 
@@ -1615,26 +1615,26 @@ enum DailyMotivationEngine {
     private static func defaultHeadline(for readiness: DailyReadiness?) -> String {
         switch readiness {
         case .lowEnergy:
-            "Keep it light today."
+            String(localized: "Keep it light today.")
         case .ready:
-            "Good day to get in motion."
+            String(localized: "Good day to get in motion.")
         case .stressed:
-            "A short reset is enough."
+            String(localized: "A short reset is enough.")
         default:
-            "You do not need a big day."
+            String(localized: "You do not need a big day.")
         }
     }
 
     private static func defaultMessage(for readiness: DailyReadiness?) -> String {
         switch readiness {
         case .lowEnergy:
-            "A small session still moves the day forward."
+            String(localized: "A small session still moves the day forward.")
         case .ready:
-            "Use the energy, but keep the effort clean."
+            String(localized: "Use the energy, but keep the effort clean.")
         case .stressed:
-            "No heroics. Just give your head and body somewhere to settle."
+            String(localized: "No heroics. Just give your head and body somewhere to settle.")
         default:
-            "You need a real one. Something small still counts."
+            String(localized: "You need a real one. Something small still counts.")
         }
     }
 

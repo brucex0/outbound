@@ -2,21 +2,7 @@
   "sourceLanguage": "en",
   "strings": {
     "": {},
-    "A moment worth noticing": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Un momento que vale la pena destacar"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"值得留意的一刻"}}}},
-    "Companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"跑步伙伴"}}}},
-    "Companion style": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Estilo del compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"伙伴风格"}}}},
-    "Here is what your companion understood.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Esto es lo que ha entendido tu compañero."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这是你的伙伴所理解的内容。"}}}},
-    "Recommended plans": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Planes recomendados"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"推荐计划"}}}},
-    "Set up my companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Configurar compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"设置跑步伙伴"}}}},
-    "Spoken Updates": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Indicaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音播报"}}}},
-    "Tell us the real story. Your companion will turn it into a first session and a plan that fits.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos tu situación real. Tu compañero la convertirá en una primera sesión y un plan a tu medida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你的真实情况。你的伙伴会据此制定适合你的首次训练和计划。"}}}},
-    "Tell us where you are starting.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos cuál es tu punto de partida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你目前的跑步状态。"}}}},
-    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"La frecuencia determina cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en directo de ritmo, tiempo y distancia durante una actividad."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"播报频率决定跑步伙伴在训练中提供语音提示，以及播报配速、时间和距离的频率。"}}}},
-    "Voice, style, and spoken update frequency": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Voz, estilo y frecuencia de las indicaciones"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音、风格和播报频率"}}}},
-    "What should we focus on this week?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿En qué deberíamos centrarnos esta semana?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"本周重点是什么？"}}}},
-    "What should your running companion help you do first?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿Qué debería ayudarte a hacer primero tu compañero de running?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你希望跑步伙伴先帮助你做什么？"}}}},
-    "Your companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的跑步伙伴"}}}},
-    "Your companion recommends one concrete session you can begin right away.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero te recomienda una sesión concreta que puedes empezar de inmediato."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的伙伴会推荐一项可以立即开始的具体训练。"}}}},
+    " · activity avg": {},
     "“%@”": {
       "localizations": {
         "es": {
@@ -34,6 +20,7 @@
       }
     },
     "“You don’t need a perfect run. You need a beginning.”": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -61,6 +48,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "@%@"
+          }
+        }
+      }
+    },
+    "%@ · Week %lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · Week %2$lld of %3$lld"
+          }
+        }
+      }
+    },
+    "%@ · Wind %@ · %lld%% rain": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · Wind %2$@ · %3$lld%% rain"
           }
         }
       }
@@ -109,6 +116,17 @@
         }
       }
     },
+    "%@ • %@ goal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ • %2$@ goal"
+          }
+        }
+      }
+    },
+    "%@ • no preset target": {},
     "%@ before suggested retirement": {
       "localizations": {
         "es": {
@@ -157,6 +175,24 @@
         }
       }
     },
+    "%@ says:": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dice:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 说："
+          }
+        }
+      }
+    },
+    "%@ wants to connect": {},
     "%@, %@": {
       "localizations": {
         "en": {
@@ -239,6 +275,7 @@
         }
       }
     },
+    "%lld comfortable runs complete the week.": {},
     "%lld enabled": {
       "localizations": {
         "es": {
@@ -271,6 +308,7 @@
         }
       }
     },
+    "%lld more sessions would give this week the shape this plan is aiming for.": {},
     "%lld of %lld": {
       "localizations": {
         "en": {
@@ -293,6 +331,17 @@
         }
       }
     },
+    "%lld of %lld selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld selected"
+          }
+        }
+      }
+    },
+    "%lld runners": {},
     "%lld runs per week": {
       "localizations": {
         "es": {
@@ -309,6 +358,7 @@
         }
       }
     },
+    "%lld selected": {},
     "%lld%%": {
       "localizations": {
         "es": {
@@ -341,6 +391,7 @@
         }
       }
     },
+    "%lldx per week with one slightly more focused day.": {},
     "+%lld": {
       "localizations": {
         "es": {
@@ -379,6 +430,7 @@
         }
       }
     },
+    "1 runner": {},
     "1–2 times a week": {
       "localizations": {
         "es": {
@@ -443,6 +495,7 @@
         }
       }
     },
+    "10 mile": {},
     "10K": {
       "localizations": {
         "es": {
@@ -507,6 +560,7 @@
         }
       }
     },
+    "A 5K block is specific enough to feel motivating, but still realistic for your current base.": {},
     "A family member has a compatible easy run.": {
       "localizations": {
         "es": {
@@ -519,6 +573,73 @@
           "stringUnit": {
             "state": "translated",
             "value": "有家人的轻松跑训练与你相配。"
+          }
+        }
+      }
+    },
+    "A few more saved activities will unlock stronger trends.": {},
+    "A moment worth noticing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un momento que vale la pena destacar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "值得留意的一刻"
+          }
+        }
+      }
+    },
+    "A real endurance build with bigger long-run expectations.": {},
+    "A short easy run keeps the rhythm without forcing the full workout.": {},
+    "A short reset is enough.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un breve reinicio es suficiente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短暂调整一下就好。"
+          }
+        }
+      }
+    },
+    "A short, comfortable start is enough to learn from.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un comienzo corto y cómodo basta para aprender."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次短暂、舒服的开始，就足以让我们有所了解。"
+          }
+        }
+      }
+    },
+    "A small session still moves the day forward.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión pequeña también hace avanzar el día."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短暂的训练也能让今天向前一步。"
           }
         }
       }
@@ -571,6 +692,8 @@
         }
       }
     },
+    "Accept": {},
+    "Accept invitation": {},
     "Account": {
       "localizations": {
         "es": {
@@ -805,6 +928,8 @@
         }
       }
     },
+    "Add an optional caption": {},
+    "Add encouragement": {},
     "Add shoe": {
       "localizations": {
         "es": {
@@ -869,6 +994,7 @@
         }
       }
     },
+    "Add the first bit of encouragement.": {},
     "Add trusted contact": {
       "localizations": {
         "es": {
@@ -917,6 +1043,7 @@
         }
       }
     },
+    "Adjust with companion": {},
     "After each run, one optional tap tells Plainstride what the numbers alone cannot.": {
       "localizations": {
         "es": {
@@ -997,6 +1124,7 @@
         }
       }
     },
+    "Apple Health access could not be updated in this build.": {},
     "Apple Music": {
       "localizations": {
         "es": {
@@ -1013,6 +1141,8 @@
         }
       }
     },
+    "Apple sign-in is unavailable. Continue with Google.": {},
+    "Ask companion about this activity": {},
     "Ask for a plan, a quick explanation, or help getting unstuck.": {
       "localizations": {
         "es": {
@@ -1083,6 +1213,7 @@
         }
       }
     },
+    "Audience": {},
     "Available time": {
       "localizations": {
         "es": {
@@ -1115,6 +1246,7 @@
         }
       }
     },
+    "Back In Motion": {},
     "Balanced": {
       "localizations": {
         "es": {
@@ -1163,6 +1295,25 @@
         }
       }
     },
+    "Begin before you feel ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza antes de sentirte listo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不用等到准备万全。"
+          }
+        }
+      }
+    },
+    "Best for habit, not race specificity.": {},
+    "Best for re-entry, but slower if you want fast progression.": {},
+    "Best Week": {},
     "Better together": {
       "localizations": {
         "es": {
@@ -1195,6 +1346,8 @@
         }
       }
     },
+    "Block %@": {},
+    "Blocked": {},
     "Body profile": {
       "localizations": {
         "es": {
@@ -1211,6 +1364,7 @@
         }
       }
     },
+    "Brainstorm": {},
     "Build consistency": {
       "localizations": {
         "es": {
@@ -1243,6 +1397,7 @@
         }
       }
     },
+    "Building your running rhythm": {},
     "Camera access is off": {
       "localizations": {
         "es": {
@@ -1275,6 +1430,7 @@
         }
       }
     },
+    "Caption": {},
     "Capture Photo": {
       "localizations": {
         "es": {
@@ -1387,6 +1543,7 @@
         }
       }
     },
+    "Check Access": {},
     "Checking local conditions…": {
       "localizations": {
         "es": {
@@ -1419,6 +1576,8 @@
         }
       }
     },
+    "Cheered · %lld": {},
+    "Choose a different activity": {},
     "Choose Mail, Messages, or another app to send the report to the Plainstride team.": {
       "localizations": {
         "es": {
@@ -1447,6 +1606,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择照片"
+          }
+        }
+      }
+    },
+    "Choose the version that fits the day you actually have.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige la opción que encaje con el día que realmente tienes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据今天的真实状态，选择合适的训练。"
           }
         }
       }
@@ -1483,6 +1658,7 @@
         }
       }
     },
+    "Clear search": {},
     "Close": {
       "localizations": {
         "es": {
@@ -1495,134 +1671,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭"
-          }
-        }
-      }
-    },
-    "%@ says:": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ dice:"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 说："
-          }
-        }
-      }
-    },
-    "Your companion noticed this": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu compañero notó esto."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "跑步伙伴发现了这一点"
-          }
-        }
-      }
-    },
-    "Your companion noticed: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu compañero observó: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "跑步伙伴发现：%@"
-          }
-        }
-      }
-    },
-    "Companion pick": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elección del compañero"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伙伴推荐"
-          }
-        }
-      }
-    },
-    "Companion plan picks": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Planes elegidos por tu compañero"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伙伴推荐计划"
-          }
-        }
-      }
-    },
-    "Companion update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La frecuencia de actualización del compañero controla las indicaciones de voz de la IA y los resúmenes de ritmo, tiempo y distancia durante una actividad."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伙伴播报频率决定训练期间 AI 语音提示，以及配速、时间和距离回顾的频率。"
-          }
-        }
-      }
-    },
-    "Companion Updates": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Actualizaciones del compañero"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "伙伴播报"
-          }
-        }
-      }
-    },
-    "Your companion wants to help with this week.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu compañero quiere ayudarte esta semana."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "跑步伙伴希望帮助你完成本周重点。"
           }
         }
       }
@@ -1659,6 +1707,23 @@
         }
       }
     },
+    "Come back gently.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve poco a poco."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松回归。"
+          }
+        }
+      }
+    },
+    "Comeback": {},
     "Comfortable run": {
       "localizations": {
         "es": {
@@ -1691,7 +1756,27 @@
         }
       }
     },
+    "Comment · %lld": {},
+    "Comment actions": {},
+    "Comments": {},
+    "Companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步伙伴"
+          }
+        }
+      }
+    },
     "Companion insight": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -1724,6 +1809,7 @@
       }
     },
     "Companion insight. Tap for today’s guidance.": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -1735,6 +1821,89 @@
           "stringUnit": {
             "state": "translated",
             "value": "伙伴有了新发现。轻点查看今日建议。"
+          }
+        }
+      }
+    },
+    "Companion pick": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elección del compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伙伴推荐"
+          }
+        }
+      }
+    },
+    "Companion plan picks": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planes elegidos por tu compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伙伴推荐计划"
+          }
+        }
+      }
+    },
+    "Companion style": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estilo del compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伙伴风格"
+          }
+        }
+      }
+    },
+    "Companion update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La frecuencia de actualización del compañero controla las indicaciones de voz de la IA y los resúmenes de ritmo, tiempo y distancia durante una actividad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伙伴播报频率决定训练期间 AI 语音提示，以及配速、时间和距离回顾的频率。"
+          }
+        }
+      }
+    },
+    "Companion Updates": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizaciones del compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伙伴播报"
           }
         }
       }
@@ -1771,6 +1940,7 @@
         }
       }
     },
+    "Connect": {},
     "Connect Apple": {
       "localizations": {
         "es": {
@@ -1787,6 +1957,7 @@
         }
       }
     },
+    "Connect Apple Health": {},
     "Connect Google": {
       "localizations": {
         "es": {
@@ -1803,6 +1974,12 @@
         }
       }
     },
+    "Connect with friends, share selected runs, and make plans to run together.": {},
+    "Connected": {},
+    "Connection actions": {},
+    "Connection requests, Cheers, comments, and run invitations appear here.": {},
+    "Connections": {},
+    "Consistency": {},
     "Contact": {
       "localizations": {
         "es": {
@@ -1831,6 +2008,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "继续"
+          }
+        }
+      }
+    },
+    "Continue with Apple": {},
+    "Continue with Google": {},
+    "Conversational effort": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo conversacional"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以轻松交谈的强度"
+          }
+        }
+      }
+    },
+    "Cool-down": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelta a la calma"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松整理"
           }
         }
       }
@@ -1947,6 +2158,7 @@
         }
       }
     },
+    "Cross-train": {},
     "Curated": {
       "localizations": {
         "es": {
@@ -1995,6 +2207,7 @@
         }
       }
     },
+    "Cushioned recovery shoes usually last about": {},
     "Customize": {
       "localizations": {
         "es": {
@@ -2043,6 +2256,7 @@
         }
       }
     },
+    "Daily trainer": {},
     "Date": {
       "localizations": {
         "es": {
@@ -2059,6 +2273,7 @@
         }
       }
     },
+    "Decline": {},
     "Default": {
       "localizations": {
         "es": {
@@ -2107,6 +2322,7 @@
         }
       }
     },
+    "Delete comment": {},
     "Delete cycle data": {
       "localizations": {
         "es": {
@@ -2123,6 +2339,7 @@
         }
       }
     },
+    "Delete post": {},
     "Delivery": {
       "localizations": {
         "es": {
@@ -2187,6 +2404,9 @@
         }
       }
     },
+    "Discover": {},
+    "Discover groups": {},
+    "Discoverable running groups will appear here.": {},
     "Display name": {
       "localizations": {
         "es": {
@@ -2299,6 +2519,22 @@
         }
       }
     },
+    "Ease down": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐渐放慢"
+          }
+        }
+      }
+    },
     "Easier": {
       "localizations": {
         "es": {
@@ -2327,6 +2563,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻松跑 + 加速跑"
+          }
+        }
+      }
+    },
+    "Easy run": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑"
           }
         }
       }
@@ -2379,6 +2631,7 @@
         }
       }
     },
+    "Edited": {},
     "Elev": {
       "localizations": {
         "es": {
@@ -2475,6 +2728,23 @@
         }
       }
     },
+    "Ended": {},
+    "Energy is there today. Keep the rhythm going without forcing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy tienes energía. Mantén el ritmo sin forzar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天状态不错。保持节奏，不必勉强加码。"
+          }
+        }
+      }
+    },
     "Energy: %lld of 5": {
       "localizations": {
         "es": {
@@ -2524,6 +2794,7 @@
       }
     },
     "Export %@": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -2555,6 +2826,11 @@
         }
       }
     },
+    "Family": {},
+    "Fartlek": {},
+    "Fastest 1K": {},
+    "Fastest 5K": {},
+    "Fastest Mile": {},
     "Feedback type": {
       "localizations": {
         "es": {
@@ -2587,6 +2863,8 @@
         }
       }
     },
+    "Find people": {},
+    "Find the right tab, flow, or setting fast.": {},
     "Finish": {
       "localizations": {
         "es": {
@@ -2635,6 +2913,7 @@
         }
       }
     },
+    "Finished What You Started": {},
     "First 5K": {
       "localizations": {
         "es": {
@@ -2651,6 +2930,9 @@
         }
       }
     },
+    "First Step": {},
+    "Fit": {},
+    "Fit the time you have": {},
     "Fitness and weight support": {
       "localizations": {
         "es": {
@@ -2699,6 +2981,7 @@
         }
       }
     },
+    "Freestyle %@": {},
     "Freestyle run": {
       "localizations": {
         "es": {
@@ -2715,6 +2998,23 @@
         }
       }
     },
+    "Fresh start today?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Empezamos de nuevo hoy?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天，重新出发？"
+          }
+        }
+      }
+    },
+    "Friends": {},
     "G": {
       "localizations": {
         "es": {
@@ -2779,6 +3079,8 @@
         }
       }
     },
+    "Get guidance or customize the activity conversationally": {},
+    "Get help with setup and stuck moments.": {},
     "Getting to know your running": {
       "localizations": {
         "es": {
@@ -2795,6 +3097,22 @@
         }
       }
     },
+    "Give today a little motion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pon hoy un poco de movimiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让今天动起来。"
+          }
+        }
+      }
+    },
     "Goal": {
       "localizations": {
         "es": {
@@ -2807,6 +3125,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "目标"
+          }
+        }
+      }
+    },
+    "Going": {},
+    "Good day to get in motion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buen día para ponerse en marcha."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天适合动起来。"
           }
         }
       }
@@ -2843,6 +3178,8 @@
         }
       }
     },
+    "Groups": {},
+    "Half marathon": {},
     "Harder": {
       "localizations": {
         "es": {
@@ -2923,6 +3260,23 @@
         }
       }
     },
+    "Here is what your companion understood.": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto es lo que ha entendido tu compañero."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是你的伙伴所理解的内容。"
+          }
+        }
+      }
+    },
     "Here’s what I understand": {
       "localizations": {
         "es": {
@@ -2940,6 +3294,7 @@
       }
     },
     "Hide activity": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -2955,6 +3310,10 @@
         }
       }
     },
+    "High": {},
+    "High confidence": {},
+    "Highest commitment: long-run progression, fueling practice, and honest recovery matter.": {},
+    "Hills": {},
     "How are you arriving today?": {
       "localizations": {
         "es": {
@@ -3003,6 +3362,7 @@
         }
       }
     },
+    "I'm going": {},
     "Include app and device details": {
       "localizations": {
         "es": {
@@ -3019,6 +3379,7 @@
         }
       }
     },
+    "Indoor": {},
     "Integrations": {
       "localizations": {
         "es": {
@@ -3035,6 +3396,7 @@
         }
       }
     },
+    "Intervals": {},
     "Invite": {
       "localizations": {
         "es": {
@@ -3051,7 +3413,9 @@
         }
       }
     },
+    "Invite connections": {},
     "Invite family or friends, or join a club run that fits your plan.": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -3084,6 +3448,7 @@
       }
     },
     "Invite someone": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -3099,6 +3464,7 @@
         }
       }
     },
+    "Invite someone by link": {},
     "Join": {
       "localizations": {
         "es": {
@@ -3131,6 +3497,7 @@
         }
       }
     },
+    "Joined - waiting for location": {},
     "Joining...": {
       "localizations": {
         "es": {
@@ -3143,6 +3510,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在加入…"
+          }
+        }
+      }
+    },
+    "Keep it light today.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy tómatelo con calma."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天轻松一点。"
+          }
+        }
+      }
+    },
+    "Keep it small. Today is about showing up, not proving anything.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz algo pequeño. Hoy se trata de presentarte, no de demostrar nada."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从小目标开始。今天只管行动，不必证明什么。"
           }
         }
       }
@@ -3163,6 +3562,41 @@
         }
       }
     },
+    "Keep the rhythm going": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener el ritmo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持节奏"
+          }
+        }
+      }
+    },
+    "Keep the streak sustainable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz que la racha sea sostenible."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让坚持更长久。"
+          }
+        }
+      }
+    },
+    "Keep today’s run": {},
+    "Kept It Easy": {},
+    "Last seen": {},
     "Learn endurance and recovery": {
       "localizations": {
         "es": {
@@ -3179,6 +3613,7 @@
         }
       }
     },
+    "Learn what Plainstride can do for you.": {},
     "Learn your natural easy effort": {
       "localizations": {
         "es": {
@@ -3195,6 +3630,7 @@
         }
       }
     },
+    "Learning": {},
     "Leave": {
       "localizations": {
         "es": {
@@ -3223,6 +3659,25 @@
           "stringUnit": {
             "state": "translated",
             "value": "退出团体分享"
+          }
+        }
+      }
+    },
+    "Leave run": {},
+    "Left": {},
+    "Less time": {},
+    "Let the session create space, not more pressure.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deja que la sesión te dé espacio, no más presión."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让训练帮你释放压力，而不是增加负担。"
           }
         }
       }
@@ -3291,6 +3746,7 @@
         }
       }
     },
+    "Live": {},
     "Loading plans...": {
       "localizations": {
         "es": {
@@ -3377,6 +3833,7 @@
         }
       }
     },
+    "Long run": {},
     "Longer relaxed run": {
       "localizations": {
         "es": {
@@ -3409,6 +3866,11 @@
         }
       }
     },
+    "Longest Run": {},
+    "Longest run to beat: %lld meters.": {},
+    "Looking at today’s activity…": {},
+    "Low": {},
+    "Low energy": {},
     "Make it easier": {
       "localizations": {
         "es": {
@@ -3421,6 +3883,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "调轻松一些"
+          }
+        }
+      }
+    },
+    "Make the first one simple.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz que la primera sea sencilla."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第一次，简单一点就好。"
           }
         }
       }
@@ -3457,6 +3935,7 @@
         }
       }
     },
+    "Marathon": {},
     "Mark up screenshot": {
       "localizations": {
         "es": {
@@ -3625,6 +4104,24 @@
         }
       }
     },
+    "Medium": {},
+    "Mixed": {},
+    "Momentum comes from another controlled day, not a heroic one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El impulso nace de otro día controlado, no de una hazaña."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "势头来自又一个稳稳完成的日子，不是一次逞强。"
+          }
+        }
+      }
+    },
     "More challenge": {
       "localizations": {
         "es": {
@@ -3689,6 +4186,9 @@
         }
       }
     },
+    "More steady work each week, but still manageable for a normal schedule.": {},
+    "Most Elevation": {},
+    "Most road trainers last about": {},
     "Move by time": {
       "localizations": {
         "es": {
@@ -3785,6 +4285,8 @@
         }
       }
     },
+    "Navigate": {},
+    "Needs honest recovery and a real long-run slot.": {},
     "Nice work. Recover well and let this one count.": {
       "localizations": {
         "es": {
@@ -3865,6 +4367,22 @@
         }
       }
     },
+    "No catching up. Just reconnect with something small and real.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tienes que recuperar nada. Solo vuelve con algo pequeño y real."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不用追赶进度，从一件简单、踏实的小事重新开始。"
+          }
+        }
+      }
+    },
     "No change needed": {
       "localizations": {
         "es": {
@@ -3881,6 +4399,25 @@
         }
       }
     },
+    "No comments yet": {},
+    "No groups yet": {},
+    "No heroics. Just give your head and body somewhere to settle.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada de heroicidades. Dale a tu mente y a tu cuerpo un espacio para calmarse."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不用逞强，给身心一点安定下来的空间。"
+          }
+        }
+      }
+    },
+    "No notifications": {},
     "No preset target. Tap Start and move by feel.": {
       "localizations": {
         "es": {
@@ -3961,6 +4498,7 @@
         }
       }
     },
+    "None selected": {},
     "Not now": {
       "localizations": {
         "es": {
@@ -4025,6 +4563,7 @@
         }
       }
     },
+    "Notifications": {},
     "Now": {
       "localizations": {
         "es": {
@@ -4073,6 +4612,7 @@
         }
       }
     },
+    "Off": {},
     "Offer flexibility": {
       "localizations": {
         "es": {
@@ -4105,6 +4645,8 @@
         }
       }
     },
+    "One comfortable run completes the week.": {},
+    "One more honest session would round out this week well.": {},
     "One tap helps your companion fit %@ to today.": {
       "localizations": {
         "es": {
@@ -4117,6 +4659,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "轻点一下，跑步伙伴就能根据你今天的状态调整 %@。"
+          }
+        }
+      }
+    },
+    "One useful session is enough.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión útil es suficiente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次有效的训练就够了。"
           }
         }
       }
@@ -4213,6 +4771,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "此功能可选。只有当你的回答有助于改进计划时，平步青云才会在训练后询问。"
+          }
+        }
+      }
+    },
+    "Options": {},
+    "Other ideas": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otras opciones"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他选择"
           }
         }
       }
@@ -4329,6 +4904,7 @@
         }
       }
     },
+    "People": {},
     "Period today": {
       "localizations": {
         "es": {
@@ -4409,6 +4985,22 @@
         }
       }
     },
+    "Pick a simple session": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir una sesión sencilla"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择简单训练"
+          }
+        }
+      }
+    },
     "Plainstride": {
       "localizations": {
         "es": {
@@ -4473,6 +5065,8 @@
         }
       }
     },
+    "Plainstride will keep this easy and end it at your selected time.": {},
+    "Plan": {},
     "Plan actions": {
       "localizations": {
         "es": {
@@ -4569,6 +5163,8 @@
         }
       }
     },
+    "Post": {},
+    "Post actions": {},
     "Prepare a ${distance} bike ride": {
       "localizations": {
         "es": {
@@ -4937,6 +5533,22 @@
         }
       }
     },
+    "Protect the rhythm with a session you can actually enjoy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuida el ritmo con una sesión que puedas disfrutar de verdad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选一次真正享受的训练，把节奏保持下去。"
+          }
+        }
+      }
+    },
     "Purpose": {
       "localizations": {
         "es": {
@@ -4969,6 +5581,22 @@
         }
       }
     },
+    "Put the energy somewhere purposeful, then finish in control.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pon esa energía en algo útil y termina con control."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把精力用在有意义的训练上，全程保持从容。"
+          }
+        }
+      }
+    },
     "Quick start": {
       "localizations": {
         "es": {
@@ -4985,6 +5613,9 @@
         }
       }
     },
+    "Race": {},
+    "Race day": {},
+    "Race prep": {},
     "Race preparation": {
       "localizations": {
         "es": {
@@ -5001,6 +5632,8 @@
         }
       }
     },
+    "Race shoe": {},
+    "Race shoes usually feel best for about": {},
     "Realistic week": {
       "localizations": {
         "es": {
@@ -5167,6 +5800,26 @@
         }
       }
     },
+    "Recommended plans": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planes recomendados"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推荐计划"
+          }
+        }
+      }
+    },
+    "Records": {},
+    "Recovery": {},
+    "Recovery run": {},
+    "Recovery shoe": {},
     "Refresh conditions": {
       "localizations": {
         "es": {
@@ -5199,6 +5852,22 @@
         }
       }
     },
+    "Relaxed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo relajado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松跑"
+          }
+        }
+      }
+    },
     "Remove": {
       "localizations": {
         "es": {
@@ -5215,6 +5884,7 @@
         }
       }
     },
+    "Remove connection": {},
     "Remove trusted contact": {
       "localizations": {
         "es": {
@@ -5231,6 +5901,10 @@
         }
       }
     },
+    "Report comment": {},
+    "Report post": {},
+    "Requested": {},
+    "Requests": {},
     "Required": {
       "localizations": {
         "es": {
@@ -5279,6 +5953,7 @@
         }
       }
     },
+    "Rest today": {},
     "Resume activity": {
       "localizations": {
         "es": {
@@ -5343,6 +6018,24 @@
         }
       }
     },
+    "Review": {},
+    "Review Access": {},
+    "Review today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver la actividad de hoy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看今天的训练"
+          }
+        }
+      }
+    },
     "Reviewed plan": {
       "localizations": {
         "es": {
@@ -5371,6 +6064,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "跑步"
+          }
+        }
+      }
+    },
+    "Run · %@ · conversational effort": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera · %@ · ritmo conversacional"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · %@ · 可以轻松交谈的强度"
+          }
+        }
+      }
+    },
+    "Run · 30 min · conversational effort": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera · 30 min · ritmo conversacional"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 30 分钟 · 可以轻松交谈的强度"
           }
         }
       }
@@ -5461,6 +6186,7 @@
         }
       }
     },
+    "RUN WITH ME": {},
     "Running bio": {
       "localizations": {
         "es": {
@@ -5478,6 +6204,7 @@
       }
     },
     "Running is better together": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -5493,6 +6220,7 @@
         }
       }
     },
+    "Running is better with people who matter": {},
     "Safe return": {
       "localizations": {
         "es": {
@@ -5685,6 +6413,7 @@
         }
       }
     },
+    "Search name or username": {},
     "See all": {
       "localizations": {
         "es": {
@@ -5782,6 +6511,7 @@
       }
     },
     "Selected companion": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -5809,6 +6539,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "发送反馈"
+          }
+        }
+      }
+    },
+    "Sent": {},
+    "Session logged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión registrada."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次训练已记录。"
           }
         }
       }
@@ -5845,6 +6592,23 @@
         }
       }
     },
+    "Set up my companion": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurar compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置跑步伙伴"
+          }
+        }
+      }
+    },
     "Settings": {
       "localizations": {
         "es": {
@@ -5861,6 +6625,23 @@
         }
       }
     },
+    "Settle into a conversational effort and keep this one comfortable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra un ritmo que te permita conversar y mantén la sesión cómoda."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持能轻松交谈的强度，让这次训练全程舒适。"
+          }
+        }
+      }
+    },
+    "Shape ideas for training and motivation loops.": {},
     "Share": {
       "localizations": {
         "es": {
@@ -5877,6 +6658,7 @@
         }
       }
     },
+    "Share activity": {},
     "Share Activity Card": {
       "localizations": {
         "es": {
@@ -5909,7 +6691,9 @@
         }
       }
     },
+    "Share invitation": {},
     "Share invite": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -5957,6 +6741,8 @@
         }
       }
     },
+    "Share with connections": {},
+    "Share your latest run": {},
     "Shoe mileage": {
       "localizations": {
         "es": {
@@ -5989,6 +6775,7 @@
         }
       }
     },
+    "Short Counts": {},
     "Show Camera": {
       "localizations": {
         "es": {
@@ -6037,6 +6824,7 @@
         }
       }
     },
+    "Sign in is unavailable in this build.": {},
     "Sign out": {
       "localizations": {
         "es": {
@@ -6165,6 +6953,22 @@
         }
       }
     },
+    "Skip the payback workout. Make today easy to repeat.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No intentes compensar. Haz que lo de hoy sea fácil de repetir."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "别用高强度补偿，让今天的训练轻松到愿意再来一次。"
+          }
+        }
+      }
+    },
     "Skip track": {
       "localizations": {
         "es": {
@@ -6177,6 +6981,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "下一首"
+          }
+        }
+      }
+    },
+    "Skipping one run is better than turning discomfort into an injury.": {},
+    "Small and repeatable beats ambitious and skipped.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algo pequeño y repetible vale más que algo ambicioso que no haces."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小而持续，胜过目标远大却没有行动。"
           }
         }
       }
@@ -6197,6 +7018,11 @@
         }
       }
     },
+    "Social": {},
+    "Social community": {},
+    "Social notifications": {},
+    "Some confidence": {},
+    "Sore or uncomfortable": {},
     "Speak activity command": {
       "localizations": {
         "es": {
@@ -6225,6 +7051,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "分段"
+          }
+        }
+      }
+    },
+    "Spoken Updates": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicaciones por voz"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音播报"
+          }
+        }
+      }
+    },
+    "Start a first session": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar la primera sesión"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始第一次训练"
           }
         }
       }
@@ -6261,6 +7119,55 @@
         }
       }
     },
+    "Start another light session": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar otra sesión suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再进行一次轻松训练"
+          }
+        }
+      }
+    },
+    "Start changed run": {},
+    "Start easy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松开始"
+          }
+        }
+      }
+    },
+    "Start from where you are.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza desde donde estás."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从当下开始。"
+          }
+        }
+      }
+    },
     "Start now": {
       "localizations": {
         "es": {
@@ -6273,6 +7180,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "现在开始"
+          }
+        }
+      }
+    },
+    "Start run": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即开始"
           }
         }
       }
@@ -6309,6 +7232,22 @@
         }
       }
     },
+    "Start workout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即开始"
+          }
+        }
+      }
+    },
     "Starting point": {
       "localizations": {
         "es": {
@@ -6325,6 +7264,7 @@
         }
       }
     },
+    "Starts the prepared activity": {},
     "Starts with: %@": {
       "localizations": {
         "es": {
@@ -6337,6 +7277,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "从这里开始：%@"
+          }
+        }
+      }
+    },
+    "Stay patient and add one more honest session.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten paciencia y suma una sesión más, sin engañarte."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持耐心，再踏实完成一次训练。"
           }
         }
       }
@@ -6357,6 +7313,7 @@
         }
       }
     },
+    "Steady Return": {},
     "Stop listening": {
       "localizations": {
         "es": {
@@ -6405,6 +7362,7 @@
         }
       }
     },
+    "Support": {},
     "Syncing today's session": {
       "localizations": {
         "es": {
@@ -6421,7 +7379,24 @@
         }
       }
     },
+    "Take the win. Consistency grows from days like this.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disfruta el logro. La constancia se construye con días como este."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为自己喝彩。坚持就是由这样的每一天积累而来。"
+          }
+        }
+      }
+    },
     "Tap for today’s guidance": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -6453,7 +7428,41 @@
         }
       }
     },
+    "Tell us the real story. Your companion will turn it into a first session and a plan that fits.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuéntanos tu situación real. Tu compañero la convertirá en una primera sesión y un plan a tu medida."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告诉我们你的真实情况。你的伙伴会据此制定适合你的首次训练和计划。"
+          }
+        }
+      }
+    },
+    "Tell us where you are starting.": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuéntanos cuál es tu punto de partida."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告诉我们你目前的跑步状态。"
+          }
+        }
+      }
+    },
     "Tell your companion the real story. We will turn it into a first session and a plan that fits.": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -6469,6 +7478,7 @@
         }
       }
     },
+    "Tempo": {},
     "The active plan is set. The week schedule will appear here as soon as the latest plan snapshot finishes syncing.": {
       "localizations": {
         "es": {
@@ -6497,6 +7507,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "这项训练建议来自当前计划。最新计划加载完成后，完整内容会显示在这里。"
+          }
+        }
+      }
+    },
+    "The gap does not matter. One comfortable session does.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La pausa no importa. Una sesión cómoda sí."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中断多久并不重要，完成一次舒服的训练就好。"
+          }
+        }
+      }
+    },
+    "The original workout still fits.": {},
+    "The work is in. Anything else is optional.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El trabajo ya está hecho. Todo lo demás es opcional."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该做的已经完成，其他都是额外收获。"
           }
         }
       }
@@ -6533,6 +7576,22 @@
         }
       }
     },
+    "This approachable run builds consistency while Plainstride learns your natural easy effort.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta carrera asequible refuerza la constancia mientras Plainstride aprende cuál es tu esfuerzo suave natural."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这次轻松跑能帮你养成规律，也让平步青云逐渐了解最适合你的轻松强度。"
+          }
+        }
+      }
+    },
     "This includes the app version, device type, and iOS version. It does not include health, location, or account data.": {
       "localizations": {
         "es": {
@@ -6549,6 +7608,8 @@
         }
       }
     },
+    "This is your strongest week in the last month.": {},
+    "This isn't a one-off anymore. You're building your way back.": {},
     "This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.": {
       "localizations": {
         "es": {
@@ -6613,6 +7674,7 @@
         }
       }
     },
+    "Three This Week": {},
     "Time": {
       "localizations": {
         "es": {
@@ -6709,7 +7771,24 @@
         }
       }
     },
+    "Today already counts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy ya cuenta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天已经很棒了。"
+          }
+        }
+      }
+    },
     "Today’s guidance": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -6774,6 +7853,7 @@
       }
     },
     "Together": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -6789,6 +7869,9 @@
         }
       }
     },
+    "Trail": {},
+    "Trail shoe": {},
+    "Trail shoes often last about": {},
     "Train for a race": {
       "localizations": {
         "es": {
@@ -6837,6 +7920,7 @@
         }
       }
     },
+    "Trends": {},
     "Trusted Contact": {
       "localizations": {
         "es": {
@@ -6885,6 +7969,8 @@
         }
       }
     },
+    "Try “Make it 20 minutes and easy”": {},
+    "Try 15 minutes easy": {},
     "Try again": {
       "localizations": {
         "es": {
@@ -6901,6 +7987,7 @@
         }
       }
     },
+    "Turn loose goals into a doable week.": {},
     "Turn off live sharing": {
       "localizations": {
         "es": {
@@ -6981,6 +8068,8 @@
         }
       }
     },
+    "Unavailable": {},
+    "Unblock": {},
     "Undo": {
       "localizations": {
         "es": {
@@ -7014,6 +8103,7 @@
       }
     },
     "UP NEXT": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -7025,6 +8115,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "接下来"
+          }
+        }
+      }
+    },
+    "UPCOMING TOGETHER": {},
+    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La frecuencia determina cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en directo de ritmo, tiempo y distancia durante una actividad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播报频率决定跑步伙伴在训练中提供语音提示，以及播报配速、时间和距离的频率。"
           }
         }
       }
@@ -7109,6 +8216,23 @@
         }
       }
     },
+    "Use rest day": {},
+    "Use the energy, but keep the effort clean.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovecha la energía, pero mantén el esfuerzo controlado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用好今天的精力，但别把强度拉得太高。"
+          }
+        }
+      }
+    },
     "Use the week schedule below, or change/end the plan from the Now card menu.": {
       "localizations": {
         "es": {
@@ -7157,6 +8281,22 @@
         }
       }
     },
+    "Very easy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muy suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常轻松"
+          }
+        }
+      }
+    },
     "View recommended plan details": {
       "localizations": {
         "es": {
@@ -7173,6 +8313,7 @@
         }
       }
     },
+    "View run": {},
     "View today’s activity": {
       "localizations": {
         "es": {
@@ -7206,6 +8347,7 @@
       }
     },
     "Voice, style, and companion tuning": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -7217,6 +8359,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "语音、风格和伙伴设置"
+          }
+        }
+      }
+    },
+    "Voice, style, and spoken update frequency": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz, estilo y frecuencia de las indicaciones"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音、风格和播报频率"
+          }
+        }
+      }
+    },
+    "Walk": {},
+    "Walk-run": {},
+    "Warm-up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "热身"
           }
         }
       }
@@ -7313,6 +8489,7 @@
         }
       }
     },
+    "Week Closed Well": {},
     "Week Preview": {
       "localizations": {
         "es": {
@@ -7505,6 +8682,39 @@
         }
       }
     },
+    "What should we focus on this week?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿En qué deberíamos centrarnos esta semana?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周重点是什么？"
+          }
+        }
+      }
+    },
+    "What should your running companion help you do first?": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué debería ayudarte a hacer primero tu compañero de running?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你希望跑步伙伴先帮助你做什么？"
+          }
+        }
+      }
+    },
     "What went wrong?": {
       "localizations": {
         "es": {
@@ -7537,6 +8747,8 @@
         }
       }
     },
+    "When": {},
+    "Where": {},
     "Why this workout": {
       "localizations": {
         "es": {
@@ -7569,6 +8781,11 @@
         }
       }
     },
+    "Workout plan": {},
+    "Worth noticing: %@": {},
+    "You": {},
+    "You - sharing": {},
+    "You already have a base. A 5K block can sharpen it without needing a heavy schedule.": {},
     "You always choose whether to use a gentler option or keep the planned workout.": {
       "localizations": {
         "es": {
@@ -7585,6 +8802,23 @@
         }
       }
     },
+    "You are building something steady.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estás construyendo una buena constancia."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你正在建立稳定的节奏。"
+          }
+        }
+      }
+    },
+    "You came back before it felt perfect. That's real momentum.": {},
     "You can also shake your iPhone anywhere in the app to report a bug or share a suggestion.": {
       "localizations": {
         "es": {
@@ -7601,6 +8835,116 @@
         }
       }
     },
+    "You completed this week’s rhythm.": {},
+    "You completed today’s %@ activity. Let that work count and prioritize recovery now.": {},
+    "You covered this week's core work. Anything extra can stay easy.": {},
+    "You didn't wait for a bigger window. You used the one you had.": {},
+    "You do not need a big day.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No necesitas hacer un gran día."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天不必做太多。"
+          }
+        }
+      }
+    },
+    "You do not need a perfect session.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No necesitas una sesión perfecta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你不需要一次完美的训练。"
+          }
+        }
+      }
+    },
+    "You followed through on the week you were trying to build.": {},
+    "You followed through. Let that win be enough for today.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cumpliste. Deja que ese logro sea suficiente por hoy."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你完成了今天的训练。好好享受这份成就感。"
+          }
+        }
+      }
+    },
+    "You gave the week a clean finish instead of letting it drift.": {},
+    "You have a solid rhythm going this week.": {},
+    "You have enough baseline to start a half build, but the plan still needs to stay grounded in your current routine.": {},
+    "You kept the effort honest. That kind of restraint builds trust.": {},
+    "You kept the pattern alive long enough for it to feel like rhythm.": {},
+    "You kept the promise.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cumpliste contigo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你兑现了对自己的承诺。"
+          }
+        }
+      }
+    },
+    "You need a beginning. Your companion can take it from there.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo necesitas empezar. Tu compañero te ayudará con el resto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你只需要迈出第一步，剩下的交给跑步伙伴。"
+          }
+        }
+      }
+    },
+    "You need a real one. Something small still counts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesitas una sesión real. Algo pequeño también cuenta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来一次踏实的训练，哪怕很短也算数。"
+          }
+        }
+      }
+    },
+    "You turned the first session into something real.": {},
+    "You've built enough baseline work that a longer endurance focus can be realistic if the week stays controlled.": {},
+    "You've had enough gap or variability that a softer re-entry will stick better than a harder block.": {},
+    "You've shown enough movement to support a simple weekly rhythm of %lld runs without adding too much pressure.": {},
     "YOUR AI RUNNING COMPANION": {
       "localizations": {
         "es": {
@@ -7634,6 +8978,7 @@
       }
     },
     "YOUR CLUBS": {
+      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -7645,6 +8990,90 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的跑团"
+          }
+        }
+      }
+    },
+    "Your companion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的跑步伙伴"
+          }
+        }
+      }
+    },
+    "Your companion noticed this": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero notó esto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步伙伴发现了这一点"
+          }
+        }
+      }
+    },
+    "Your companion noticed: %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero observó: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步伙伴发现：%@"
+          }
+        }
+      }
+    },
+    "Your companion recommends one concrete session you can begin right away.": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero te recomienda una sesión concreta que puedes empezar de inmediato."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的伙伴会推荐一项可以立即开始的具体训练。"
+          }
+        }
+      }
+    },
+    "Your companion wants to help with this week.": {
+      "extractionState": "stale",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero quiere ayudarte esta semana."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步伙伴希望帮助你完成本周重点。"
           }
         }
       }
@@ -7713,6 +9142,7 @@
         }
       }
     },
+    "YOUR GROUPS": {},
     "Your name and bio may appear to people you connect with in Together.": {
       "localizations": {
         "es": {
@@ -7725,6 +9155,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的姓名和个人简介可能会向“跑圈”中与你建立联系的人显示。"
+          }
+        }
+      }
+    },
+    "Your private reflection and coaching context are never included.": {},
+    "Your recent long-run pattern is strong enough to consider a marathon build, with cutbacks and taper weeks protecting the risk.": {},
+    "Your recent rhythm supports a half build, so long as the week keeps adapting around fatigue.": {},
+    "Your recent volume suggests you can handle a steadier endurance block that points toward a 10K.": {},
+    "Your rhythm is working.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ritmo está funcionando."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的节奏很有效。"
           }
         }
       }
