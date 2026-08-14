@@ -44,19 +44,22 @@ struct SocialHomeView: View {
             .navigationTitle("Social")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    NavigationLink {
-                        SocialGroupsView()
-                    } label: {
-                        Image(systemName: "person.3")
-                    }
-                    .accessibilityLabel("Groups")
+                    Menu {
+                        NavigationLink {
+                            SocialConnectionsView()
+                        } label: {
+                            Label("Connections", systemImage: "person.2")
+                        }
 
-                    NavigationLink {
-                        SocialConnectionsView()
+                        NavigationLink {
+                            SocialGroupsView()
+                        } label: {
+                            Label("Groups", systemImage: "person.3")
+                        }
                     } label: {
-                        Image(systemName: "person.2")
+                        Image(systemName: "person.2.circle")
                     }
-                    .accessibilityLabel("Connections")
+                    .accessibilityLabel("Social community")
 
                     NavigationLink {
                         SocialNotificationsView()
@@ -570,6 +573,27 @@ private struct SocialConnectionsView: View {
 
     var body: some View {
         List {
+            Section {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search name or username", text: $searchQuery)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                    if !searchQuery.isEmpty {
+                        Button {
+                            searchQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
+                }
+            }
+
             if !incomingRequests.isEmpty {
                 Section("Requests") {
                     ForEach(incomingRequests) { connection in
@@ -662,7 +686,6 @@ private struct SocialConnectionsView: View {
             }
         }
         .navigationTitle("Connections")
-        .searchable(text: $searchQuery, prompt: "Search name or username")
         .task {
             await socialStore.refreshConnections()
             await socialStore.refreshBlocks()

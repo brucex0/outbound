@@ -6,6 +6,8 @@ Social is the production social surface. `GET /v1/social/home` returns only the 
 
 The production Social header has a persistent Connections entry. Connections supports authenticated listing, name/username search, requests, acceptance, decline/cancel, and removal. Pending incoming requests also appear as contextual shortcuts on Social home. Referrals remain invitation links and do not silently create a connection.
 
+The header keeps only two compact actions: a community menu for Connections and Groups, plus Notifications. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
+
 The support loop is API-backed: a runner can share the latest synced activity with Connections, Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are not included in activity-share requests.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
@@ -69,6 +71,7 @@ npm run db:push -- --accept-data-loss
 ```
 
 The deployment schema job described in `docs/backend-deploy.md` remains the production path.
+Until that job runs, read-only Social home, block-list, and notification-list calls degrade to empty safety data when Prisma reports that the new tables do not exist; mutation features still require the schema.
 
 ## Deferred
 
