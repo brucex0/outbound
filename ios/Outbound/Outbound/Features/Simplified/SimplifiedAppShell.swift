@@ -57,6 +57,9 @@ private struct SimplifiedTodayView: View {
     @State private var showsWeatherSheet = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
+    @State private var companionActivityID: UUID?
+    @State private var isCompanionInsightLoading = false
+    @State private var companionRequestID: UUID?
 
     var body: some View {
         NavigationStack {
@@ -89,6 +92,7 @@ private struct SimplifiedTodayView: View {
 
                     CompanionInsightRow {
                         showsCompanionInsight = true
+                        Task { await loadCompanionTodayMessage(force: true) }
                     }
                     .accessibilityHint(companionInsightMessage)
 
@@ -133,6 +137,9 @@ private struct SimplifiedTodayView: View {
             .onChange(of: weatherStore.snapshot) { _, _ in
                 Task { await loadCompanionTodayMessage() }
             }
+            .onChange(of: completedActivityToday?.id) { _, _ in
+                Task { await loadCompanionTodayMessage(force: true) }
+            }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -157,7 +164,10 @@ private struct SimplifiedTodayView: View {
             .presentationDetents([.medium])
         }
         .sheet(isPresented: $showsCompanionInsight) {
-            CompanionInsightSheet(message: companionInsightMessage)
+            CompanionInsightSheet(
+                message: companionInsightMessage,
+                isLoading: isCompanionInsightLoading
+            )
                 .presentationDetents([.medium])
         }
     }
@@ -235,27 +245,86 @@ private struct SimplifiedTodayView: View {
         activityStore.activities.first { Calendar.current.isDateInToday($0.startedAt) }
     }
 
-    private func loadCompanionTodayMessage() async {
+    private func loadCompanionTodayMessage(force: Bool = false) async {
         let weatherFetchDate = weatherStore.snapshot?.fetchedAt
-        guard companionTodayMessage == nil || companionWeatherFetchDate != weatherFetchDate else { return }
+        let activity = completedActivityToday
+        let didActivityChange = companionActivityID != activity?.id
+        guard force
+                || companionTodayMessage == nil
+                || companionWeatherFetchDate != weatherFetchDate
+                || didActivityChange
+        else { return }
+
+        if didActivityChange {
+            companionTodayMessage = nil
+        }
         companionWeatherFetchDate = weatherFetchDate
+        companionActivityID = activity?.id
+        let requestID = UUID()
+        companionRequestID = requestID
+        isCompanionInsightLoading = true
+
+        var signals = weatherStore.snapshot.map { [$0.companionSignal] } ?? []
+        if let activity {
+            signals.append(completedActivitySignal(activity))
+        }
+
         let response = try? await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
             task: .adaptToday,
             surface: .today,
-            prompt: "What is the one most useful thing for me to know about today's training? If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan.",
+            prompt: companionTodayPrompt(activity: activity),
             conversationKey: "ios-today",
             recentMessages: [],
-            currentEntityIds: [todayWorkoutID],
+            currentEntityIds: [todayWorkoutID] + (activity.map { [$0.id.uuidString] } ?? []),
             clientCapabilities: ["read-only-intervention", "context-receipt"],
             isOffline: false,
             timeZoneIdentifier: TimeZone.current.identifier,
-            signals: weatherStore.snapshot.map { [$0.companionSignal] } ?? []
+            signals: signals
         ))
-        companionTodayMessage = response?.message
+        guard companionRequestID == requestID else { return }
+        isCompanionInsightLoading = false
+        if let message = response?.message {
+            companionTodayMessage = message
+        }
+    }
+
+    private func companionTodayPrompt(activity: SavedActivity?) -> String {
+        let base = "What is the one most useful thing for me to know about today's training? If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan."
+        guard let activity else { return base }
+        let distance = measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)
+        return """
+        \(base)
+        The local activity store confirms that today's workout is complete: \(activity.title), \(durationLabel(activity.durationSecs)), \(distance). Do not describe today as a rest day or recommend another workout as though the planned activity is still pending. Focus on recovery, reflection, or the next useful step.
+        """
+    }
+
+    private func completedActivitySignal(_ activity: SavedActivity) -> CompanionSituationalSignalDTO {
+        let tomorrow = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: Calendar.current.startOfDay(for: activity.endedAt)
+        ) ?? activity.endedAt.addingTimeInterval(24 * 60 * 60)
+        return CompanionSituationalSignalDTO(
+            idempotencyKey: "ios-activity-completed-\(activity.id.uuidString)",
+            type: "activity_completed",
+            value: "title=\(activity.title);duration_seconds=\(activity.durationSecs);distance_meters=\(Int(activity.distanceM.rounded()))",
+            source: "ios_local_activity_store",
+            confidence: 1,
+            privacy: "standard",
+            consequenceLevel: "low",
+            possibleEffects: ["update_today_status", "shift_to_recovery_guidance"],
+            scope: ["activity_id": activity.id.uuidString],
+            observedAt: activity.endedAt,
+            freshUntil: tomorrow
+        )
     }
 
     private var companionInsightMessage: String {
-        companionTodayMessage ?? todayExplanation
+        if let companionTodayMessage { return companionTodayMessage }
+        if let activity = completedActivityToday {
+            return "You completed today’s \(durationLabel(activity.durationSecs)) activity. Let that work count and prioritize recovery now."
+        }
+        return todayExplanation
     }
 
     private var plannedRunIntent: SessionIntent {
@@ -406,6 +475,7 @@ private struct CompanionInsightRow: View {
 private struct CompanionInsightSheet: View {
     @Environment(\.dismiss) private var dismiss
     let message: String
+    let isLoading: Bool
 
     var body: some View {
         NavigationStack {
@@ -414,9 +484,18 @@ private struct CompanionInsightSheet: View {
                     Label("Today’s guidance", systemImage: "sparkles")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(OutboundPalette.companion)
-                    Text(message)
-                        .font(.body)
+                    if isLoading {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            ProgressView()
+                            Text("Updating with your latest activity…")
+                                .foregroundStyle(.secondary)
+                        }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Text(message)
+                            .font(.body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 .padding(OutboundSpacing.screen)
             }
