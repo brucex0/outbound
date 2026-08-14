@@ -608,17 +608,6 @@ struct ActivityDetailView: View {
                     Label("Share Activity Card", systemImage: "photo.on.rectangle.angled")
                 }
                 .disabled(isPreparingShareCard)
-
-                Divider()
-
-                ForEach(RouteExportFormat.allCases) { format in
-                    Button {
-                        shareRoute(format)
-                    } label: {
-                        Label("Export \(format.title)", systemImage: "square.and.arrow.up")
-                    }
-                    .disabled(!currentActivity.hasRoute)
-                }
             } label: {
                 if isPreparingShareCard {
                     Label("Preparing", systemImage: "hourglass")

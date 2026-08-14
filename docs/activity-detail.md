@@ -13,7 +13,7 @@ The current view is a Strava-style layered detail page:
 3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
 4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
-6. **Route controls** — privacy badge + share/export menu
+6. **Route controls** — privacy badge + activity-card share menu; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Coach reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — horizontal story strip
 
