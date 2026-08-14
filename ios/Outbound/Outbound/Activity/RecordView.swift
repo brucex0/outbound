@@ -508,18 +508,42 @@ struct RecordView: View {
     }
 
     private var readyView: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                Spacer(minLength: 68)
-                confirmationView(for: plannedIntent ?? .freestyleRun)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(spacing: 14) {
+                    Spacer(minLength: 68)
+                    confirmationView(for: plannedIntent ?? .freestyleRun)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 116)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 36)
+
+            pinnedStartButton
         }
         .onAppear {
             applySmartGoalDefaultIfNeeded()
             applyDefaultSessionShoeIfNeeded()
         }
+    }
+
+    private var pinnedStartButton: some View {
+        Button(action: startRecording) {
+            Label(
+                isStartingActivity ? "Preparing..." : (plannedIntent ?? .freestyleRun).startLabel,
+                systemImage: "record.circle.fill"
+            )
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Capsule().fill(.orange))
+            .foregroundStyle(.white)
+        }
+        .disabled(isStartingActivity)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(.ultraThinMaterial)
+        .accessibilityHint("Starts the prepared activity")
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -551,16 +575,6 @@ struct RecordView: View {
                 } else {
                     plannedWorkoutCard(for: intent)
                 }
-
-                Button(action: startRecording) {
-                    Label(isStartingActivity ? "Preparing..." : (plannedIntent ?? intent).startLabel, systemImage: "record.circle.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Capsule().fill(.orange))
-                        .foregroundStyle(.white)
-                }
-                .disabled(isStartingActivity)
 
                 Button(intent.workoutSteps.isEmpty ? "Change activity" : "Choose a different activity") {
                     onCloseRequest?(false)
