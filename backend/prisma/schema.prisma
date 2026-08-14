@@ -64,6 +64,12 @@ model User {
   referralLink                ReferralLink?                @relation("ReferralCreator")
   referralClaim               ReferralClaim?               @relation("ReferralClaimant")
   moments                     Moment[]
+  socialBlocksCreated         SocialBlock[]                @relation("SocialBlocker")
+  socialBlocksReceived        SocialBlock[]                @relation("SocialBlocked")
+  socialReports               SocialReport[]
+  socialNotifications         SocialNotification[]         @relation("SocialNotificationRecipient")
+  socialNotificationsActed    SocialNotification[]         @relation("SocialNotificationActor")
+  groupRunRSVPs               GroupRunRSVP[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -975,9 +981,24 @@ model GroupRun {
   updatedAt    DateTime         @updatedAt
   groups       GroupRunOption[]
   invitations  Invitation[]
+  rsvps        GroupRunRSVP[]
 
   @@index([startsAt, status])
   @@index([clubId, startsAt])
+}
+
+model GroupRunRSVP {
+  id         String   @id @default(cuid())
+  groupRunId String
+  groupRun   GroupRun @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     String   @default("going")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([groupRunId, userId])
+  @@index([userId, status])
 }
 
 model GroupRunOption {
@@ -1065,4 +1086,47 @@ model Comment {
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
   createdAt DateTime @default(now())
+}
+
+model SocialBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker   User     @relation("SocialBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("SocialBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model SocialReport {
+  id         String   @id @default(cuid())
+  reporterId String
+  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType String
+  targetId   String
+  reason     String
+  details    String?
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+}
+
+model SocialNotification {
+  id          String    @id @default(cuid())
+  recipientId String
+  recipient   User      @relation("SocialNotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?     @relation("SocialNotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type        String
+  objectId    String?
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, readAt])
 }

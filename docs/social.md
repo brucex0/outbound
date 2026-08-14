@@ -8,6 +8,12 @@ The production Social header has a persistent Connections entry. Connections sup
 
 The support loop is API-backed: a runner can share the latest synced activity with Connections, Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are not included in activity-share requests.
 
+Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
+
+The in-app notification inbox covers connection requests and acceptance, Cheers, comments, targeted group-run invitations, and invitation acceptance. Opening the inbox marks current notifications read.
+
+Groups are the user-facing product term. Discovery, membership, and group runs use `Group` in UI copy; the existing Prisma `Club` and `ClubMembership` names remain internal. Runners can discover and join/leave Groups, open a group-run detail, RSVP, invite a specific accepted connection, share a link, and accept targeted invitations from Notifications.
+
 Together referral and group-run invitations are shared as a single plain-text message containing the canonical URL. Do not add a separate `URL` activity item: some messaging apps serialize that secondary clipboard representation as an extensionless Apple binary property-list attachment.
 
 Open this when changing the Social tab, social graph concepts, feed cards, clubs, relays, challenges, or rivalry loops.
@@ -19,7 +25,7 @@ Social is the app's network-effect surface. It should make runs feel shared, tim
 Core loops:
 
 - `Squad`: friends' runs, live relays, cheers, comments, and route prompts.
-- `Clubs`: opt-in groups around time, place, identity, and recurring runs.
+- `Groups`: opt-in communities around time, place, identity, and recurring runs.
 - `Rivals`: lightweight weekly competition and segment ownership.
 - `Share latest run`: converts a saved local activity into a social object.
 
@@ -32,7 +38,7 @@ Core loops:
 - `Social/ActivityFeedView.swift` owns the local social hub UI.
 - `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift` own Social-only models, seed data, interaction state, and Social-only recognition awards.
 - The Social module is behind the `OUTBOUND_ENABLE_SOCIAL` Swift compilation condition.
-- Beta/App Review builds should leave that flag unset until server moderation, developer response ownership, user contact, and backend social ownership are ready.
+- The legacy prototype flag should remain unset; production Social is independent of it.
 - The current implementation is local/seeded UI state. It does not call a backend yet.
 - It reads `ActivityStore.activities.first` to offer the latest saved activity as a share card.
 - Squad feed cards use route previews, cheers, local comments, route prompts, report, and block controls.
@@ -53,11 +59,20 @@ Apple treats apps with user-generated content or social networking services as n
 - Published in-app contact information and matching App Store metadata/privacy policy links.
 - Privacy controls for activity visibility, route/photo sharing, and live presence.
 
-## Backend Contracts To Add Later
+## Backend Schema Rollout
 
-- Social identity and friend graph.
-- Feed post creation from `SavedActivity` plus optional photos.
-- Cheer/comment mutations.
-- Club membership and club run schedule.
-- Live relay presence and route invitations.
-- Weekly rivalry leaderboard and segment claims.
+This slice adds `SocialBlock`, `SocialReport`, `SocialNotification`, and `GroupRunRSVP`. Apply it to the intended environment before deploying the new API:
+
+```sh
+cd backend
+npm run db:push -- --accept-data-loss
+```
+
+The deployment schema job described in `docs/backend-deploy.md` remains the production path.
+
+## Deferred
+
+- Push notification delivery; the inbox is complete without APNs.
+- Group creation and administration; launch Groups are managed/seeded.
+- Public following, public feed ranking, direct messages, circles, rivals, challenges, and relays.
+- Automated moderation classification and an operator review console; reports are persisted but still require response ownership.

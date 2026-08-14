@@ -10,6 +10,12 @@ import type { AppEnv } from "../types/hono.js";
 const router = new Hono<AppEnv>();
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
+const reportSchema = z.object({
+  targetType: z.enum(["post", "comment", "user"]),
+  targetId: z.string().min(1),
+  reason: z.enum(["spam", "harassment", "hate", "sexual", "violence", "privacy", "other"]),
+  details: z.string().trim().max(500).optional(),
+});
 
 router.get("/home", socialHome);
 router.get("/together", socialHome);
@@ -73,9 +79,10 @@ router.get("/people/search", async (c) => {
   if (user instanceof Response) return user;
   const query = c.req.query("q")?.trim();
   if (!query || query.length < 2) return c.json({ people: [] });
+  const blocked = await blockedUserIDs(user.id);
   const people = await getPrismaClient().user.findMany({
     where: {
-      id: { not: user.id },
+      id: { notIn: [user.id, ...blocked] },
       OR: [
         { displayName: { contains: query, mode: "insensitive" } },
         { username: { contains: query, mode: "insensitive" } },
@@ -122,6 +129,9 @@ router.post("/connections", zValidator("json", z.object({ userId: z.string().min
     select: { id: true },
   });
   if (!addressee) return c.json({ error: "Person not found." }, 404);
+  if ((await blockedUserIDs(user.id)).includes(addresseeId)) {
+    return c.json({ error: "Person not found." }, 404);
+  }
   const existing = await getPrismaClient().connection.findFirst({
     where: {
       OR: [
@@ -134,6 +144,7 @@ router.post("/connections", zValidator("json", z.object({ userId: z.string().min
   const connection = await getPrismaClient().connection.create({
     data: { requesterId: user.id, addresseeId },
   });
+  await createSocialNotification(addresseeId, user.id, "connectionRequest", connection.id, `${user.displayName} wants to connect.`);
   return c.json(connection, 201);
 });
 
@@ -142,6 +153,78 @@ router.post("/connections/:id/accept", async (c) => {
   if (user instanceof Response) return user;
   const result = await getPrismaClient().connection.updateMany({ where: { id: c.req.param("id"), addresseeId: user.id, status: "pending" }, data: { status: "accepted" } });
   if (!result.count) return c.json({ error: "Connection request not found." }, 404);
+  const connection = await getPrismaClient().connection.findUnique({ where: { id: c.req.param("id") } });
+  if (connection) await createSocialNotification(connection.requesterId, user.id, "connectionAccepted", connection.id, `${user.displayName} accepted your connection request.`);
+  return c.json({ ok: true });
+});
+
+router.post("/users/:id/block", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const blockedId = c.req.param("id");
+  if (blockedId === user.id) return c.json({ error: "You cannot block yourself." }, 400);
+  const target = await getPrismaClient().user.findUnique({ where: { id: blockedId }, select: { id: true } });
+  if (!target) return c.json({ error: "Person not found." }, 404);
+  await getPrismaClient().$transaction([
+    getPrismaClient().socialBlock.upsert({
+      where: { blockerId_blockedId: { blockerId: user.id, blockedId } },
+      create: { blockerId: user.id, blockedId },
+      update: {},
+    }),
+    getPrismaClient().connection.deleteMany({
+      where: { OR: [{ requesterId: user.id, addresseeId: blockedId }, { requesterId: blockedId, addresseeId: user.id }] },
+    }),
+  ]);
+  return c.json({ ok: true });
+});
+
+router.delete("/users/:id/block", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  await getPrismaClient().socialBlock.deleteMany({ where: { blockerId: user.id, blockedId: c.req.param("id") } });
+  return c.json({ ok: true });
+});
+
+router.get("/blocks", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const blocks = await getPrismaClient().socialBlock.findMany({
+    where: { blockerId: user.id },
+    include: { blocked: { select: socialPersonSelect } },
+    orderBy: { createdAt: "desc" },
+  });
+  return c.json({ blocks: blocks.map((block) => ({ id: block.id, person: block.blocked })) });
+});
+
+router.post("/reports", zValidator("json", reportSchema), async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const input = c.req.valid("json");
+  const report = await getPrismaClient().socialReport.create({
+    data: { reporterId: user.id, ...input, details: input.details || null },
+  });
+  return c.json({ id: report.id, status: report.status }, 201);
+});
+
+router.get("/notifications", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const notifications = await getPrismaClient().socialNotification.findMany({
+    where: { recipientId: user.id },
+    include: { actor: { select: socialPersonSelect } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return c.json({ notifications });
+});
+
+router.post("/notifications/read-all", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  await getPrismaClient().socialNotification.updateMany({
+    where: { recipientId: user.id, readAt: null },
+    data: { readAt: new Date() },
+  });
   return c.json({ ok: true });
 });
 
@@ -165,6 +248,48 @@ router.get("/clubs", async (c) => {
   return c.json({ clubs });
 });
 
+router.get("/groups", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const groups = await getPrismaClient().club.findMany({
+    where: { isDiscoverable: true },
+    include: {
+      _count: { select: { memberships: true } },
+      memberships: { where: { userId: user.id }, select: { role: true } },
+    },
+    orderBy: { name: "asc" },
+    take: 50,
+  });
+  return c.json({
+    groups: groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      city: group.city,
+      memberCount: group._count.memberships,
+      membershipRole: group.memberships[0]?.role ?? null,
+    })),
+  });
+});
+
+router.post("/groups/:id/membership", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const membership = await getPrismaClient().clubMembership.upsert({
+    where: { clubId_userId: { clubId: c.req.param("id"), userId: user.id } },
+    create: { clubId: c.req.param("id"), userId: user.id },
+    update: {},
+  });
+  return c.json(membership, 201);
+});
+
+router.delete("/groups/:id/membership", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  await getPrismaClient().clubMembership.deleteMany({ where: { clubId: c.req.param("id"), userId: user.id } });
+  return c.json({ ok: true });
+});
+
 router.post("/clubs/:id/join", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -185,17 +310,61 @@ router.delete("/clubs/:id/membership", async (c) => {
 router.get("/group-runs/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const run = await getPrismaClient().groupRun.findUnique({ where: { id: c.req.param("id") }, include: { club: true, creator: true, groups: { orderBy: { sortOrder: "asc" } } } });
+  const run = await getPrismaClient().groupRun.findUnique({ where: { id: c.req.param("id") }, include: { club: true, creator: true, groups: { orderBy: { sortOrder: "asc" } }, rsvps: { select: { userId: true, status: true } } } });
   if (!run) return c.json({ error: "Group run not found." }, 404);
-  return c.json({ ...run, compatibility: shareSafeCompatibility(run.groups) });
+  return c.json({ ...run, attendeeCount: run.rsvps.filter((rsvp) => rsvp.status === "going").length, currentUserGoing: run.rsvps.some((rsvp) => rsvp.userId === user.id && rsvp.status === "going"), compatibility: shareSafeCompatibility(run.groups) });
+});
+
+router.post("/group-runs/:id/rsvp", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const run = await getPrismaClient().groupRun.findUnique({ where: { id: c.req.param("id") }, select: { id: true } });
+  if (!run) return c.json({ error: "Group run not found." }, 404);
+  const rsvp = await getPrismaClient().groupRunRSVP.upsert({
+    where: { groupRunId_userId: { groupRunId: run.id, userId: user.id } },
+    create: { groupRunId: run.id, userId: user.id, status: "going" },
+    update: { status: "going" },
+  });
+  return c.json(rsvp);
+});
+
+router.delete("/group-runs/:id/rsvp", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  await getPrismaClient().groupRunRSVP.deleteMany({ where: { groupRunId: c.req.param("id"), userId: user.id } });
+  return c.json({ ok: true });
 });
 
 router.post("/group-runs/:id/invitations", zValidator("json", z.object({ recipientUserId: z.string().optional() })), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const token = randomBytes(24).toString("base64url");
-  const invitation = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId: c.req.valid("json").recipientUserId, groupRunId: c.req.param("id"), kind: "groupRun", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+  const recipientId = c.req.valid("json").recipientUserId;
+  if (recipientId && !(await acceptedConnectionIDs(user.id)).includes(recipientId)) {
+    return c.json({ error: "Connect with this person before inviting them." }, 403);
+  }
+  const invitation = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, groupRunId: c.req.param("id"), kind: "groupRun", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+  if (recipientId) await createSocialNotification(recipientId, user.id, "runInvitation", invitation.id, `${user.displayName} invited you to a group run.`);
   return c.json({ id: invitation.id, token, status: invitation.status }, 201);
+});
+
+router.post("/invitations/:id/accept", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const invitation = await getPrismaClient().invitation.findFirst({
+    where: { id: c.req.param("id"), recipientId: user.id, status: "pending" },
+  });
+  if (!invitation || !invitation.groupRunId) return c.json({ error: "Invitation not found." }, 404);
+  await getPrismaClient().$transaction([
+    getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "accepted" } }),
+    getPrismaClient().groupRunRSVP.upsert({
+      where: { groupRunId_userId: { groupRunId: invitation.groupRunId, userId: user.id } },
+      create: { groupRunId: invitation.groupRunId, userId: user.id, status: "going" },
+      update: { status: "going" },
+    }),
+  ]);
+  await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.groupRunId, `${user.displayName} accepted your run invitation.`);
+  return c.json({ ok: true });
 });
 
 router.post("/referrals", async (c) => {
@@ -248,6 +417,7 @@ router.put("/posts/:id/cheer", async (c) => {
   const post = await visiblePost(c.req.param("id"), user.id);
   if (!post) return c.json({ error: "Post not found." }, 404);
   const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: post.id } }, create: { userId: user.id, postId: post.id, type: "heart" }, update: { type: "heart" } });
+  if (post.userId !== user.id) await createSocialNotification(post.userId, user.id, "cheer", post.id, `${user.displayName} cheered your activity.`);
   return c.json(reaction);
 });
 
@@ -279,7 +449,7 @@ router.get("/posts/:id/comments", async (c) => {
     include: { author: { select: socialPersonSelect } },
     orderBy: { createdAt: "asc" },
   });
-  return c.json({ comments });
+  return c.json({ comments: comments.map((comment) => commentPayload(comment, user.id, post.userId)) });
 });
 
 router.post("/posts/:id/comments", zValidator("json", commentSchema), async (c) => {
@@ -293,7 +463,8 @@ router.post("/posts/:id/comments", zValidator("json", commentSchema), async (c) 
     data: { postId: post.id, authorId: user.id, body },
     include: { author: { select: socialPersonSelect } },
   });
-  return c.json(comment, 201);
+  if (post.userId !== user.id) await createSocialNotification(post.userId, user.id, "comment", post.id, `${user.displayName} commented on your activity.`);
+  return c.json(commentPayload(comment, user.id, post.userId), 201);
 });
 
 router.delete("/comments/:id", async (c) => {
@@ -329,8 +500,27 @@ async function requireSocialUser(c: Context<AppEnv>) {
 }
 
 async function acceptedConnectionIDs(userId: string) {
-  const connections = await getPrismaClient().connection.findMany({ where: { status: "accepted", OR: [{ requesterId: userId }, { addresseeId: userId }] } });
-  return connections.map((connection) => connection.requesterId === userId ? connection.addresseeId : connection.requesterId);
+  const [connections, blocked] = await Promise.all([
+    getPrismaClient().connection.findMany({ where: { status: "accepted", OR: [{ requesterId: userId }, { addresseeId: userId }] } }),
+    blockedUserIDs(userId),
+  ]);
+  return connections
+    .map((connection) => connection.requesterId === userId ? connection.addresseeId : connection.requesterId)
+    .filter((id) => !blocked.includes(id));
+}
+
+async function blockedUserIDs(userId: string) {
+  const blocks = await getPrismaClient().socialBlock.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  return blocks.map((block) => block.blockerId === userId ? block.blockedId : block.blockerId);
+}
+
+async function createSocialNotification(recipientId: string, actorId: string, type: string, objectId: string, message: string) {
+  await getPrismaClient().socialNotification.create({
+    data: { recipientId, actorId, type, objectId, message },
+  });
 }
 
 const socialPersonSelect = {
@@ -377,12 +567,23 @@ function postPayload(post: any, currentUserId: string) {
     caption: post.caption,
     createdAt: post.createdAt,
     visibility: post.visibility,
+    isCurrentUser: post.userId === currentUserId,
     user: post.user,
     activity: post.activity,
     reactionCount: post.reactions.length,
     currentUserCheered: post.reactions.some((reaction: { userId: string }) => reaction.userId === currentUserId),
     commentCount: post._count.comments,
-    comments: post.comments,
+    comments: post.comments.map((comment: any) => commentPayload(comment, currentUserId, post.userId)),
+  };
+}
+
+function commentPayload(comment: any, currentUserId: string, postOwnerId: string) {
+  return {
+    id: comment.id,
+    body: comment.body,
+    createdAt: comment.createdAt,
+    author: comment.author,
+    canDelete: comment.authorId === currentUserId || postOwnerId === currentUserId,
   };
 }
 

@@ -66,6 +66,17 @@ struct TogetherClubDTO: Codable, Identifiable, Sendable {
     let role: String?
 }
 
+struct SocialGroupDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let name: String
+    let description: String?
+    let city: String?
+    let memberCount: Int
+    let membershipRole: String?
+}
+
+struct SocialGroupsResponseDTO: Codable, Sendable { let groups: [SocialGroupDTO] }
+
 struct TogetherRunGroupDTO: Codable, Identifiable, Sendable {
     let id: String
     let label: String
@@ -91,6 +102,20 @@ struct TogetherGroupRunDTO: Codable, Identifiable, Sendable {
     let compatibility: TogetherCompatibilityDTO?
 }
 
+struct SocialGroupRunDetailDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let startsAt: Date
+    let locationName: String?
+    let paceNote: String?
+    let club: TogetherClubDTO?
+    let creator: TogetherPersonDTO
+    let groups: [TogetherRunGroupDTO]
+    let attendeeCount: Int
+    let currentUserGoing: Bool
+    let compatibility: TogetherCompatibilityDTO?
+}
+
 struct TogetherActivityDTO: Codable, Sendable {
     let id: String
     let title: String?
@@ -103,6 +128,7 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let id: String
     let caption: String?
     let createdAt: Date
+    let isCurrentUser: Bool
     let user: TogetherPersonDTO
     let activity: TogetherActivityDTO?
     let reactionCount: Int
@@ -110,6 +136,39 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let commentCount: Int
     let comments: [TogetherCommentDTO]
 }
+
+struct SocialReportRequestDTO: Codable, Sendable {
+    let targetType: String
+    let targetId: String
+    let reason: String
+    let details: String?
+}
+
+struct SocialReportResponseDTO: Codable, Sendable {
+    let id: String
+    let status: String
+}
+
+struct SocialNotificationDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let type: String
+    let objectId: String?
+    let message: String
+    let readAt: Date?
+    let createdAt: Date
+    let actor: SocialPersonDTO?
+}
+
+struct SocialNotificationsResponseDTO: Codable, Sendable {
+    let notifications: [SocialNotificationDTO]
+}
+
+struct SocialBlockDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let person: SocialPersonDTO
+}
+
+struct SocialBlocksResponseDTO: Codable, Sendable { let blocks: [SocialBlockDTO] }
 
 struct TogetherReactionDTO: Codable, Identifiable, Sendable {
     let id: String
@@ -121,6 +180,7 @@ struct TogetherCommentDTO: Codable, Identifiable, Sendable {
     let body: String
     let createdAt: Date
     let author: SocialPersonDTO
+    let canDelete: Bool
 }
 
 struct TogetherReactionRequestDTO: Codable, Sendable { let type: String }

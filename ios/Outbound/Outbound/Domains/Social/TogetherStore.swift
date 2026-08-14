@@ -12,6 +12,9 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var isConnectionsLoading = false
     @Published private(set) var commentsByPostID: [String: [TogetherCommentDTO]] = [:]
     @Published private(set) var isSocialMutationPending = false
+    @Published private(set) var notifications: [SocialNotificationDTO] = []
+    @Published private(set) var discoverableGroups: [SocialGroupDTO] = []
+    @Published private(set) var blocks: [SocialBlockDTO] = []
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -52,6 +55,18 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func invite(_ connection: SocialConnectionDTO, to run: TogetherGroupRunDTO) async -> Bool {
+        do {
+            _ = try await api.createTogetherInvitation(runID: run.id, recipientUserID: connection.person.id)
+            await refreshNotifications()
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -230,6 +245,7 @@ final class TogetherStore: ObservableObject {
                     id: "ui-test-post",
                     caption: "Easy miles and good company this morning.",
                     createdAt: Date().addingTimeInterval(-3_600),
+                    isCurrentUser: false,
                     user: maya,
                     activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352),
                     reactionCount: 2,
@@ -239,11 +255,146 @@ final class TogetherStore: ObservableObject {
                         id: "ui-test-comment",
                         body: "See you next time!",
                         createdAt: Date().addingTimeInterval(-1_800),
-                        author: SocialPersonDTO(id: "ui-test-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)
+                        author: SocialPersonDTO(id: "ui-test-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil),
+                        canDelete: false
                     )]
                 ),
             ]
         )
+    }
+
+    var unreadNotificationCount: Int { notifications.filter { $0.readAt == nil }.count }
+
+    func refreshNotifications() async {
+        do {
+            notifications = try await api.fetchSocialNotifications().notifications
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func markNotificationsRead() async {
+        do {
+            _ = try await api.markSocialNotificationsRead()
+            await refreshNotifications()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func reportPost(_ post: TogetherPostDTO, reason: String) async {
+        do {
+            _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "post", targetId: post.id, reason: reason, details: nil))
+            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id })
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func blockAuthor(of post: TogetherPostDTO) async {
+        do {
+            _ = try await api.blockSocialUser(id: post.user.id)
+            await refreshConnections()
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshGroups() async {
+        do {
+            discoverableGroups = try await api.fetchSocialGroups().groups
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func toggleMembership(in group: SocialGroupDTO) async {
+        do {
+            if group.membershipRole == nil {
+                _ = try await api.joinSocialGroup(id: group.id)
+            } else {
+                _ = try await api.leaveSocialGroup(id: group.id)
+            }
+            await refreshGroups()
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func groupRunDetail(id: String) async -> SocialGroupRunDetailDTO? {
+        do {
+            let detail = try await api.fetchSocialGroupRun(id: id)
+            errorMessage = nil
+            return detail
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func toggleRSVP(for run: SocialGroupRunDetailDTO) async -> SocialGroupRunDetailDTO? {
+        do {
+            if run.currentUserGoing {
+                _ = try await api.leaveSocialGroupRun(id: run.id)
+            } else {
+                _ = try await api.joinSocialGroupRun(id: run.id)
+            }
+            return await groupRunDetail(id: run.id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func acceptRunInvitation(_ notification: SocialNotificationDTO) async {
+        guard let invitationID = notification.objectId else { return }
+        do {
+            _ = try await api.acceptSocialRunInvitation(id: invitationID)
+            await refreshNotifications()
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deletePost(_ post: TogetherPostDTO) async {
+        do {
+            _ = try await api.deleteSocialPost(id: post.id)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func reportComment(_ comment: TogetherCommentDTO) async {
+        do {
+            _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "comment", targetId: comment.id, reason: "other", details: nil))
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshBlocks() async {
+        do {
+            blocks = try await api.fetchSocialBlocks().blocks
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func unblock(_ block: SocialBlockDTO) async {
+        do {
+            _ = try await api.unblockSocialUser(id: block.person.id)
+            await refreshBlocks()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

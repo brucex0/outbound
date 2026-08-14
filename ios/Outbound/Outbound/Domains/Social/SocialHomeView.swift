@@ -43,13 +43,27 @@ struct SocialHomeView: View {
             .background(OutboundPalette.background)
             .navigationTitle("Social")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SocialGroupsView()
+                    } label: {
+                        Image(systemName: "person.3")
+                    }
+                    .accessibilityLabel("Groups")
+
                     NavigationLink {
                         SocialConnectionsView()
                     } label: {
                         Image(systemName: "person.2")
                     }
                     .accessibilityLabel("Connections")
+
+                    NavigationLink {
+                        SocialNotificationsView()
+                    } label: {
+                        Image(systemName: socialStore.unreadNotificationCount > 0 ? "bell.badge.fill" : "bell")
+                    }
+                    .accessibilityLabel("Social notifications")
                 }
             }
             .refreshable {
@@ -61,6 +75,7 @@ struct SocialHomeView: View {
                 if socialStore.connections.isEmpty {
                     await socialStore.refreshConnections()
                 }
+                await socialStore.refreshNotifications()
             }
             .sheet(item: $selectedCommentPost) { post in
                 SocialCommentsView(post: post)
@@ -151,16 +166,23 @@ struct SocialHomeView: View {
                         if let compatibility = run.compatibility {
                             AIExplanationView(text: compatibility.explanation)
                         }
-                        if let invitationURL = socialStore.latestInvitationURL {
-                            ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
-                                Label("Share invite", systemImage: "square.and.arrow.up")
+                        HStack {
+                            NavigationLink("View run") {
+                                SocialGroupRunView(run: run)
                             }
                             .buttonStyle(.borderedProminent)
-                        } else {
-                            Button("Invite", systemImage: "person.badge.plus") {
-                                Task { await socialStore.invite(to: run) }
+
+                            if let invitationURL = socialStore.latestInvitationURL {
+                                ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                                .buttonStyle(.bordered)
+                            } else {
+                                Button("Invite", systemImage: "person.badge.plus") {
+                                    Task { await socialStore.invite(to: run) }
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
                         }
                     }
                 }
@@ -185,6 +207,12 @@ struct SocialHomeView: View {
                     }
                 }
             }
+            NavigationLink {
+                SocialGroupsView()
+            } label: {
+                Label("Discover groups", systemImage: "person.3")
+            }
+            .buttonStyle(.bordered)
         }
     }
 
@@ -203,6 +231,24 @@ struct SocialHomeView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                            Spacer()
+                            Menu {
+                                if post.isCurrentUser {
+                                    Button("Delete post", role: .destructive) {
+                                        Task { await socialStore.deletePost(post) }
+                                    }
+                                } else {
+                                    Button("Report post", role: .destructive) {
+                                        Task { await socialStore.reportPost(post, reason: "other") }
+                                    }
+                                    Button("Block \(post.user.displayName)", role: .destructive) {
+                                        Task { await socialStore.blockAuthor(of: post) }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                            }
+                            .accessibilityLabel("Post actions")
                         }
                         Text(post.activity?.title ?? "Run").font(.headline)
                         if let activity = post.activity {
@@ -253,6 +299,153 @@ struct SocialHomeView: View {
     }
 }
 
+private struct SocialGroupsView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+
+    var body: some View {
+        List(socialStore.discoverableGroups) { group in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(group.name).font(.headline)
+                        Text([group.city, "\(group.memberCount) members"].compactMap { $0 }.joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(group.membershipRole == nil ? "Join" : "Leave") {
+                        Task { await socialStore.toggleMembership(in: group) }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                if let description = group.description { Text(description).font(.subheadline) }
+            }
+            .padding(.vertical, 4)
+        }
+        .navigationTitle("Groups")
+        .overlay {
+            if socialStore.discoverableGroups.isEmpty {
+                ContentUnavailableView("No groups yet", systemImage: "person.3", description: Text("Discoverable running groups will appear here."))
+            }
+        }
+        .task { await socialStore.refreshGroups() }
+        .refreshable { await socialStore.refreshGroups() }
+    }
+}
+
+private struct SocialGroupRunView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    let run: TogetherGroupRunDTO
+    @State private var detail: SocialGroupRunDetailDTO?
+    @State private var isConnectionPickerPresented = false
+
+    var body: some View {
+        List {
+            Section {
+                LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
+                if let location = run.locationName { LabeledContent("Where", value: location) }
+                if let pace = run.paceNote { LabeledContent("Pace", value: pace) }
+                if let detail { LabeledContent("Going", value: "\(detail.attendeeCount)") }
+            }
+            if let compatibility = run.compatibility {
+                Section("Fit") { AIExplanationView(text: compatibility.explanation) }
+            }
+            Section("Options") {
+                ForEach(run.groups) { option in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(option.label).font(.headline)
+                        if let distance = option.distanceMeters {
+                            Text(MeasurementUnitSystem.metric.distanceString(meters: distance, fractionDigits: 1))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            Section {
+                Button(detail?.currentUserGoing == true ? "Leave run" : "I'm going") {
+                    guard let detail else { return }
+                    Task { self.detail = await socialStore.toggleRSVP(for: detail) }
+                }
+                .disabled(detail == nil)
+
+                Button("Invite connections") {
+                    isConnectionPickerPresented = true
+                }
+                if let invitationURL = socialStore.latestInvitationURL {
+                    ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
+                        Label("Share invitation", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+        .navigationTitle(run.title)
+        .task { detail = await socialStore.groupRunDetail(id: run.id) }
+        .sheet(isPresented: $isConnectionPickerPresented) {
+            NavigationStack {
+                List(socialStore.connections.filter { $0.status == "accepted" }) { connection in
+                    Button {
+                        Task {
+                            if await socialStore.invite(connection, to: run) {
+                                isConnectionPickerPresented = false
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
+                            VStack(alignment: .leading) {
+                                Text(connection.person.displayName)
+                                Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text("Invite")
+                        }
+                    }
+                }
+                .navigationTitle("Invite connections")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isConnectionPickerPresented = false } } }
+                .task { await socialStore.refreshConnections() }
+            }
+        }
+    }
+}
+
+private struct SocialNotificationsView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+
+    var body: some View {
+        List {
+            if socialStore.notifications.isEmpty {
+                ContentUnavailableView("No notifications", systemImage: "bell", description: Text("Connection requests, Cheers, comments, and run invitations appear here."))
+            } else {
+                ForEach(socialStore.notifications) { notification in
+                    HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                        SocialAvatar(name: notification.actor?.displayName ?? "Plainstride", avatarURL: notification.actor?.avatarUrl)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(notification.message)
+                                .font(notification.readAt == nil ? .body.weight(.semibold) : .body)
+                            Text(notification.createdAt.formatted(.relative(presentation: .named)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if notification.type == "runInvitation" {
+                                Button("Accept invitation") {
+                                    Task { await socialStore.acceptRunInvitation(notification) }
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Notifications")
+        .task {
+            await socialStore.refreshNotifications()
+            await socialStore.markNotificationsRead()
+        }
+        .refreshable { await socialStore.refreshNotifications() }
+    }
+}
+
 private struct SocialCommentsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.dismiss) private var dismiss
@@ -270,12 +463,28 @@ private struct SocialCommentsView: View {
                     ContentUnavailableView("No comments yet", systemImage: "bubble.left", description: Text("Add the first bit of encouragement."))
                 } else {
                     ForEach(comments) { comment in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(comment.author.displayName).font(.headline)
-                            Text(comment.body)
-                            Text(comment.createdAt.formatted(.relative(presentation: .named)))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(comment.author.displayName).font(.headline)
+                                Text(comment.body)
+                                Text(comment.createdAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Menu {
+                                Button("Report comment", role: .destructive) {
+                                    Task { await socialStore.reportComment(comment) }
+                                }
+                                if comment.canDelete {
+                                    Button("Delete comment", role: .destructive) {
+                                        Task { await socialStore.deleteComment(comment, from: post) }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                            }
+                            .accessibilityLabel("Comment actions")
                         }
                     }
                 }
@@ -407,6 +616,19 @@ private struct SocialConnectionsView: View {
                 }
             }
 
+            if !socialStore.blocks.isEmpty {
+                Section("Blocked") {
+                    ForEach(socialStore.blocks) { block in
+                        HStack {
+                            SocialAvatar(name: block.person.displayName, avatarURL: block.person.avatarUrl)
+                            Text(block.person.displayName)
+                            Spacer()
+                            Button("Unblock") { Task { await socialStore.unblock(block) } }
+                        }
+                    }
+                }
+            }
+
             if !socialStore.peopleResults.isEmpty {
                 Section("People") {
                     ForEach(socialStore.peopleResults) { person in
@@ -441,7 +663,10 @@ private struct SocialConnectionsView: View {
         }
         .navigationTitle("Connections")
         .searchable(text: $searchQuery, prompt: "Search name or username")
-        .task { await socialStore.refreshConnections() }
+        .task {
+            await socialStore.refreshConnections()
+            await socialStore.refreshBlocks()
+        }
         .task(id: searchQuery) {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }

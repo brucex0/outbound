@@ -213,8 +213,8 @@ final class APIClient {
         try await delete("/social/connections/\(id)")
     }
 
-    func createTogetherInvitation(runID: String) async throws -> TogetherInvitationResponseDTO {
-        try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: nil))
+    func createTogetherInvitation(runID: String, recipientUserID: String? = nil) async throws -> TogetherInvitationResponseDTO {
+        try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: recipientUserID))
     }
 
     func createReferralLink() async throws -> ReferralLinkResponseDTO {
@@ -258,6 +258,58 @@ final class APIClient {
 
     func deleteSocialPost(id: String) async throws -> SocialConnectionMutationDTO {
         try await delete("/social/posts/\(id)")
+    }
+
+    func reportSocialContent(_ request: SocialReportRequestDTO) async throws -> SocialReportResponseDTO {
+        try await post("/social/reports", body: request)
+    }
+
+    func blockSocialUser(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/users/\(id)/block", body: EmptyBody())
+    }
+
+    func fetchSocialBlocks() async throws -> SocialBlocksResponseDTO {
+        try await get("/social/blocks")
+    }
+
+    func unblockSocialUser(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/users/\(id)/block")
+    }
+
+    func fetchSocialNotifications() async throws -> SocialNotificationsResponseDTO {
+        try await get("/social/notifications")
+    }
+
+    func markSocialNotificationsRead() async throws -> SocialConnectionMutationDTO {
+        try await post("/social/notifications/read-all", body: EmptyBody())
+    }
+
+    func fetchSocialGroups() async throws -> SocialGroupsResponseDTO {
+        try await get("/social/groups")
+    }
+
+    func joinSocialGroup(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/groups/\(id)/membership", body: EmptyBody())
+    }
+
+    func leaveSocialGroup(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/groups/\(id)/membership")
+    }
+
+    func fetchSocialGroupRun(id: String) async throws -> SocialGroupRunDetailDTO {
+        try await get("/social/group-runs/\(id)")
+    }
+
+    func joinSocialGroupRun(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/group-runs/\(id)/rsvp", body: EmptyBody())
+    }
+
+    func leaveSocialGroupRun(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/group-runs/\(id)/rsvp")
+    }
+
+    func acceptSocialRunInvitation(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/invitations/\(id)/accept", body: EmptyBody())
     }
 
     func submitCycleTrainingSignal(_ request: CycleTrainingSignalRequestDTO) async throws -> CycleTrainingSignalResponseDTO {
