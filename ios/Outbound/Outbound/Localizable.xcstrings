@@ -1862,7 +1862,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正确的"
+            "value": "修改"
           }
         }
       }
@@ -1894,7 +1894,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正确记忆"
+            "value": "修改记忆"
           }
         }
       }
@@ -2710,7 +2710,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "忘记"
+            "value": "删除"
           }
         }
       }
@@ -4996,7 +4996,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "快速启动"
+            "value": "立即开始"
           }
         }
       }
@@ -5108,7 +5108,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近的跑步"
+            "value": "历史记录"
           }
         }
       }
@@ -5424,7 +5424,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "再次跑步"
+            "value": "再跑一次"
           }
         }
       }
@@ -5568,7 +5568,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "节省"
+            "value": "保存"
           }
         }
       }
@@ -6128,7 +6128,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登录身份"
+            "value": "账号"
           }
         }
       }
@@ -6528,7 +6528,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这些是平步青云在调整训练时可能使用的事实和模式。您可以更正或忘记任何项目。"
+            "value": "这些是平步青云在调整训练时可能使用的信息和规律。你可以修改或删除任何一项。"
           }
         }
       }
@@ -6592,7 +6592,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本星期"
+            "value": "本周"
           }
         }
       }
@@ -6608,7 +6608,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本星期"
+            "value": "本周"
           }
         }
       }
@@ -7200,7 +7200,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "查看今天的活动"
+            "value": "查看详情"
           }
         }
       }
