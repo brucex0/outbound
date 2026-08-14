@@ -45,6 +45,8 @@ struct SimplifiedAppShell: View {
 
 private struct SimplifiedTodayView: View {
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
@@ -62,14 +64,25 @@ private struct SimplifiedTodayView: View {
     @State private var companionRequestID: UUID?
     @State private var customizedRunIntent: SessionIntent?
 
+    private var dailySpark: CoachSpark {
+        DailyMotivationEngine.makeSnapshot(
+            activities: activityStore.activities,
+            readiness: dailyCheckInStore.readiness,
+            persona: coachCatalog.selectedPersona
+        ).spark
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     OutboundCard(style: .companion) {
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("“You don’t need a perfect run. You need a beginning.”")
+                            Text("“\(dailySpark.headline)”")
                                 .font(.title3.weight(.semibold))
+                            Text(dailySpark.message)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
                     }
 

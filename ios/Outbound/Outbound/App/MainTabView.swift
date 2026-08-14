@@ -1336,7 +1336,13 @@ enum DailyMotivationEngine {
         let phase = determinePhase(activities: activities, now: now, calendar: calendar)
         return DailyMotivationSnapshot(
             phase: phase,
-            spark: makeSpark(phase: phase, readiness: readiness, persona: persona),
+            spark: makeSpark(
+                phase: phase,
+                readiness: readiness,
+                persona: persona,
+                now: now,
+                calendar: calendar
+            ),
             suggestions: makeSuggestions(phase: phase, readiness: readiness, persona: persona)
         )
     }
@@ -1437,47 +1443,67 @@ enum DailyMotivationEngine {
     private static func makeSpark(
         phase: MotivationPhase,
         readiness: DailyReadiness?,
-        persona: CoachPersona
+        persona: CoachPersona,
+        now: Date,
+        calendar: Calendar
     ) -> CoachSpark {
+        let variants: [CoachSpark]
         switch phase {
         case .completedToday:
-            return CoachSpark(
-                headline: "Session logged.",
-                message: "You followed through. Let that win be enough for today.",
-                primaryCTA: "Start another light session",
-                secondaryCTA: "Review today"
-            )
+            variants = [
+                CoachSpark(headline: "Session logged.", message: "You followed through. Let that win be enough for today.", primaryCTA: "Start another light session", secondaryCTA: "Review today"),
+                CoachSpark(headline: "Today already counts.", message: "The work is in. Anything else is optional.", primaryCTA: "Start another light session", secondaryCTA: "Review today"),
+                CoachSpark(headline: "You kept the promise.", message: "Take the win. Consistency grows from days like this.", primaryCTA: "Start another light session", secondaryCTA: "Review today")
+            ]
         case .comeback:
-            return CoachSpark(
-                headline: "Fresh start today?",
-                message: "No catching up. Just reconnect with something small and real.",
-                primaryCTA: "Start easy",
-                secondaryCTA: "Other ideas"
-            )
+            variants = [
+                CoachSpark(headline: "Fresh start today?", message: "No catching up. Just reconnect with something small and real.", primaryCTA: "Start easy", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Start from where you are.", message: "The gap does not matter. One comfortable session does.", primaryCTA: "Start easy", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Come back gently.", message: "Skip the payback workout. Make today easy to repeat.", primaryCTA: "Start easy", secondaryCTA: "Other ideas")
+            ]
         case .momentum:
-            return CoachSpark(
-                headline: "You are building something steady.",
-                message: readiness == .ready
-                    ? "Energy is there today. Keep the rhythm going without forcing it."
-                    : "Protect the rhythm with a session you can actually enjoy.",
-                primaryCTA: "Keep the rhythm going",
-                secondaryCTA: "Other ideas"
-            )
+            variants = [
+                CoachSpark(headline: "You are building something steady.", message: readiness == .ready ? "Energy is there today. Keep the rhythm going without forcing it." : "Protect the rhythm with a session you can actually enjoy.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Keep the streak sustainable.", message: "Momentum comes from another controlled day, not a heroic one.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Your rhythm is working.", message: "Stay patient and add one more honest session.", primaryCTA: "Keep the rhythm going", secondaryCTA: "Other ideas")
+            ]
         case .firstSession:
-            return CoachSpark(
-                headline: "You do not need a perfect session.",
-                message: "You need a beginning. Your companion can take it from there.",
-                primaryCTA: "Start a first session",
-                secondaryCTA: "Other ideas"
-            )
+            variants = [
+                CoachSpark(headline: "You do not need a perfect session.", message: "You need a beginning. Your companion can take it from there.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Make the first one simple.", message: "A short, comfortable start is enough to learn from.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas"),
+                CoachSpark(headline: "Begin before you feel ready.", message: "Keep it small. Today is about showing up, not proving anything.", primaryCTA: "Start a first session", secondaryCTA: "Other ideas")
+            ]
         case .steady:
-            return CoachSpark(
-                headline: defaultHeadline(for: readiness),
-                message: defaultMessage(for: readiness),
-                primaryCTA: "Pick a simple session",
-                secondaryCTA: "Other ideas"
-            )
+            variants = steadySparkVariants(for: readiness)
         }
+
+        return variants[dailyVariantIndex(
+            count: variants.count,
+            personaID: persona.template.id,
+            now: now,
+            calendar: calendar
+        )]
+    }
+
+    private static func steadySparkVariants(for readiness: DailyReadiness?) -> [CoachSpark] {
+        let headline = defaultHeadline(for: readiness)
+        let message = defaultMessage(for: readiness)
+        return [
+            CoachSpark(headline: headline, message: message, primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas"),
+            CoachSpark(headline: "One useful session is enough.", message: readiness == .ready ? "Put the energy somewhere purposeful, then finish in control." : "Choose the version that fits the day you actually have.", primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas"),
+            CoachSpark(headline: "Give today a little motion.", message: readiness == .stressed ? "Let the session create space, not more pressure." : "Small and repeatable beats ambitious and skipped.", primaryCTA: "Pick a simple session", secondaryCTA: "Other ideas")
+        ]
+    }
+
+    private static func dailyVariantIndex(
+        count: Int,
+        personaID: String,
+        now: Date,
+        calendar: Calendar
+    ) -> Int {
+        let day = calendar.ordinality(of: .day, in: .era, for: now) ?? 0
+        let personaOffset = personaID.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return (day + personaOffset) % count
     }
 
     private static func makeSuggestions(

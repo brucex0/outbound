@@ -234,6 +234,8 @@ Example:
 
 Behavior:
 - refresh once per day
+- select the day's copy deterministically from the local calendar date and selected companion, so it stays stable during the day without requiring seeded backend data
+- adapt the copy pool to first-session, steady, comeback, momentum, readiness, and completed-today state
 - tone reflects selected coach persona
 - if the user already completed an activity today, swap to a congratulatory version
 
