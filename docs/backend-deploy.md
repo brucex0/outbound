@@ -237,9 +237,11 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - Map that host to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://run.plainstride.com`.
 - The same service serves the Plainstride marketing homepage at `/`, beta support at `/support`, and the public privacy policy at `/privacy`.
 - Set `IOS_APP_STORE_URL` to the final App Store listing URL when App Store Connect assigns the numeric app ID. Until then, the checked-in default opens an App Store search for Plainstride.
-- The backend serves `/.well-known/apple-app-site-association`, `/invite`, `/invite/*`, and `/live/group/:token` without API authentication.
+- Set `ANDROID_PLAY_STORE_URL` to the production Play Store listing. Set `IOS_BETA_URL` and `ANDROID_BETA_URL` to TestFlight and Google Play testing enrollment links when those programs are active; omitted beta URLs are not shown.
+- For Android App Links, set `ANDROID_PACKAGE_NAME` and comma-separated `ANDROID_SHA256_CERT_FINGERPRINTS` for every beta/production signing certificate that may open the canonical host.
+- The backend serves `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, `/invite`, `/invite/*`, and `/live/group/:token` without API authentication.
 - The iOS app declares `applinks:run.plainstride.com` and accepts live-group invitations immediately when authenticated or after the recipient signs in.
-- Android App Links and Play Store fallback are intentionally deferred.
+- The referral URL stays canonical across platforms and release channels. Installed apps claim it through Universal Links/App Links; otherwise the landing page shows the matching production store and any configured beta enrollment destination.
 
 ## Environment Reality Check
 
