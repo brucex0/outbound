@@ -22,7 +22,7 @@ export async function compileCompanionContext(
 ): Promise<CompiledContext> {
   const tokenBudget = TASK_BUDGETS[request.task];
   const [state, beliefs, episodes, signals, conversation] = await Promise.all([
-    loadAuthoritativeRunnerState(prisma, userId),
+    loadAuthoritativeRunnerState(prisma, userId, request.timeZoneIdentifier),
     prisma.runnerBelief.findMany({
       where: {
         userId,
@@ -131,4 +131,3 @@ export async function compileCompanionContext(
     includedRefs,
   };
 }
-

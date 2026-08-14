@@ -156,7 +156,7 @@ function formatDuration(totalSeconds: number): string {
   return `${seconds}s`;
 }
 
-function safeTimeZoneIdentifier(timeZoneIdentifier: string | null | undefined): string {
+export function safeTimeZoneIdentifier(timeZoneIdentifier: string | null | undefined): string {
   if (!timeZoneIdentifier) {
     return DEFAULT_TIME_ZONE;
   }
@@ -168,7 +168,7 @@ function safeTimeZoneIdentifier(timeZoneIdentifier: string | null | undefined): 
   }
 }
 
-function relativeDayWindow(now: Date, offsetDays: number, timeZoneIdentifier: string) {
+export function relativeDayWindow(now: Date, offsetDays: number, timeZoneIdentifier: string) {
   const parts = zonedDateParts(now, timeZoneIdentifier);
   const shifted = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + offsetDays));
   const start = zonedLocalTimeToUtc(
@@ -220,7 +220,7 @@ function timeZoneOffsetMilliseconds(date: Date, timeZoneIdentifier: string): num
   return zonedAsUtc - date.getTime();
 }
 
-function zonedDateParts(date: Date, timeZoneIdentifier: string) {
+export function zonedDateParts(date: Date, timeZoneIdentifier: string) {
   const parts = zonedDateTimeParts(date, timeZoneIdentifier);
   return { year: parts.year, month: parts.month, day: parts.day };
 }

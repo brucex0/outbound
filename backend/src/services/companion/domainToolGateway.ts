@@ -1,16 +1,23 @@
 import type { PrismaClient } from "@prisma/client";
+import { relativeDayWindow, safeTimeZoneIdentifier, zonedDateParts } from "../assistantActivityTools.js";
 
-export async function loadAuthoritativeRunnerState(prisma: PrismaClient, userId: string) {
+export async function loadAuthoritativeRunnerState(
+  prisma: PrismaClient,
+  userId: string,
+  timeZoneIdentifier?: string | null
+) {
   const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
-  startOfWeek.setUTCHours(0, 0, 0, 0);
+  const timeZone = safeTimeZoneIdentifier(timeZoneIdentifier);
+  const localDate = zonedDateParts(now, timeZone);
+  const localWeekday = new Date(Date.UTC(localDate.year, localDate.month - 1, localDate.day)).getUTCDay();
+  const startOfWeek = relativeDayWindow(now, -((localWeekday + 6) % 7), timeZone).start;
+  const startOfToday = relativeDayWindow(now, 0, timeZone).start;
 
   const [profile, activePlan, nextWorkouts, latestReadiness, recentActivities, weeklyAggregate, latestModel] = await Promise.all([
     prisma.runnerProfile.findUnique({ where: { userId } }),
     prisma.trainingPlan.findFirst({ where: { userId, status: "active" }, orderBy: { updatedAt: "desc" } }),
     prisma.plannedWorkout.findMany({
-      where: { userId, status: "planned", scheduledDate: { gte: new Date(now.setHours(0, 0, 0, 0)) } },
+      where: { userId, status: "planned", scheduledDate: { gte: startOfToday } },
       orderBy: { scheduledDate: "asc" },
       take: 8,
     }),
@@ -39,4 +46,3 @@ export async function loadAuthoritativeRunnerState(prisma: PrismaClient, userId:
     runnerModelVersion: latestModel?.id ?? "runner-model-empty",
   };
 }
-

@@ -44,6 +44,7 @@ struct SimplifiedAppShell: View {
 }
 
 private struct SimplifiedTodayView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var coachCatalog: CoachCatalogStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
@@ -63,6 +64,7 @@ private struct SimplifiedTodayView: View {
     @State private var isCompanionInsightLoading = false
     @State private var companionRequestID: UUID?
     @State private var customizedRunIntent: SessionIntent?
+    @State private var currentDay = Calendar.current.startOfDay(for: Date())
 
     private var dailySpark: CoachSpark {
         DailyMotivationEngine.makeSnapshot(
@@ -147,6 +149,12 @@ private struct SimplifiedTodayView: View {
             }
             .onChange(of: completedActivityToday?.id) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { refreshCurrentDayIfNeeded() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                refreshCurrentDayIfNeeded()
             }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
@@ -273,7 +281,20 @@ private struct SimplifiedTodayView: View {
     }
 
     private var completedActivityToday: SavedActivity? {
-        activityStore.activities.first { Calendar.current.isDateInToday($0.startedAt) }
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: currentDay)
+            ?? currentDay.addingTimeInterval(24 * 60 * 60)
+        return activityStore.activities.first {
+            $0.startedAt >= currentDay && $0.startedAt < tomorrow
+        }
+    }
+
+    private func refreshCurrentDayIfNeeded() {
+        let day = Calendar.current.startOfDay(for: Date())
+        guard day != currentDay else { return }
+        currentDay = day
+        companionTodayMessage = nil
+        companionActivityID = nil
+        Task { await loadCompanionTodayMessage(force: true) }
     }
 
     private func loadCompanionTodayMessage(force: Bool = false) async {
