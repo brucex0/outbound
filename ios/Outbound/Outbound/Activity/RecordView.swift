@@ -174,7 +174,7 @@ struct RecordView: View {
                         onCloseRequest(recorder.state != .idle || pendingActivity != nil)
                     }
                 } label: {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: activityCloseSystemImage)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(showCamera ? .white : .primary)
                         .frame(width: 40, height: 40)
@@ -182,7 +182,7 @@ struct RecordView: View {
                 }
                 .padding(.top, showCamera ? 18 : 14)
                 .padding(.leading, 16)
-                .accessibilityLabel("Hide activity")
+                .accessibilityLabel(activityCloseAccessibilityLabel)
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -504,6 +504,16 @@ struct RecordView: View {
 
     private var preferredSessionPage: SessionPage {
         SessionPage(rawValue: preferredSessionPageRawValue) ?? .map
+    }
+
+    private var activityCloseSystemImage: String {
+        recorder.state == .idle && pendingActivity == nil ? "xmark" : "chevron.down"
+    }
+
+    private var activityCloseAccessibilityLabel: String {
+        if isCountingDown { return "Cancel activity start" }
+        if recorder.state == .idle && pendingActivity == nil { return "Close activity setup" }
+        return "Hide activity"
     }
 
     private var readyView: some View {
