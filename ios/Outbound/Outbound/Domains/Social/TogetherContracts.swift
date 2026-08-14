@@ -105,7 +105,9 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let createdAt: Date
     let user: TogetherPersonDTO
     let activity: TogetherActivityDTO?
-    let reactions: [TogetherReactionDTO]
+    let reactionCount: Int
+    let currentUserCheered: Bool
+    let commentCount: Int
     let comments: [TogetherCommentDTO]
 }
 
@@ -117,10 +119,18 @@ struct TogetherReactionDTO: Codable, Identifiable, Sendable {
 struct TogetherCommentDTO: Codable, Identifiable, Sendable {
     let id: String
     let body: String
+    let createdAt: Date
+    let author: SocialPersonDTO
 }
 
 struct TogetherReactionRequestDTO: Codable, Sendable { let type: String }
 struct TogetherCommentRequestDTO: Codable, Sendable { let body: String }
+struct TogetherCommentsResponseDTO: Codable, Sendable { let comments: [TogetherCommentDTO] }
+struct SocialActivityShareRequestDTO: Codable, Sendable {
+    let activityId: String
+    let caption: String?
+    let visibility: String
+}
 struct TogetherInvitationRequestDTO: Codable, Sendable { let recipientUserId: String? }
 
 struct TogetherInvitationResponseDTO: Codable, Sendable {

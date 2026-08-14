@@ -10,6 +10,8 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var connections: [SocialConnectionDTO] = []
     @Published private(set) var peopleResults: [SocialPersonSearchResultDTO] = []
     @Published private(set) var isConnectionsLoading = false
+    @Published private(set) var commentsByPostID: [String: [TogetherCommentDTO]] = [:]
+    @Published private(set) var isSocialMutationPending = false
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -65,11 +67,69 @@ final class TogetherStore: ObservableObject {
     }
 
     func react(to post: TogetherPostDTO) async {
+        await toggleCheer(on: post)
+    }
+
+    func toggleCheer(on post: TogetherPostDTO) async {
+        guard !isSocialMutationPending else { return }
+        isSocialMutationPending = true
+        defer { isSocialMutationPending = false }
         do {
-            _ = try await api.reactToTogetherPost(postID: post.id, type: "heart")
+            if post.currentUserCheered {
+                _ = try await api.removeCheerFromSocialPost(postID: post.id)
+            } else {
+                _ = try await api.cheerSocialPost(postID: post.id)
+            }
             await refresh()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadComments(for post: TogetherPostDTO) async {
+        do {
+            commentsByPostID[post.id] = try await api.fetchSocialComments(postID: post.id).comments
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func addComment(_ body: String, to post: TogetherPostDTO) async {
+        let cleaned = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        do {
+            _ = try await api.commentOnSocialPost(postID: post.id, body: cleaned)
+            await loadComments(for: post)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteComment(_ comment: TogetherCommentDTO, from post: TogetherPostDTO) async {
+        do {
+            _ = try await api.deleteSocialComment(id: comment.id)
+            await loadComments(for: post)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func shareActivity(_ activity: SavedActivity, caption: String?) async -> Bool {
+        guard let serverActivityID = activity.sync?.serverActivityId else {
+            errorMessage = "This activity is still syncing. Try sharing again shortly."
+            return false
+        }
+        do {
+            _ = try await api.shareSocialActivity(activityID: serverActivityID, caption: caption)
+            await refresh()
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -172,8 +232,15 @@ final class TogetherStore: ObservableObject {
                     createdAt: Date().addingTimeInterval(-3_600),
                     user: maya,
                     activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352),
-                    reactions: [TogetherReactionDTO(id: "ui-test-heart-1", type: "heart"), TogetherReactionDTO(id: "ui-test-heart-2", type: "heart")],
-                    comments: [TogetherCommentDTO(id: "ui-test-comment", body: "See you next time!")]
+                    reactionCount: 2,
+                    currentUserCheered: false,
+                    commentCount: 1,
+                    comments: [TogetherCommentDTO(
+                        id: "ui-test-comment",
+                        body: "See you next time!",
+                        createdAt: Date().addingTimeInterval(-1_800),
+                        author: SocialPersonDTO(id: "ui-test-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)
+                    )]
                 ),
             ]
         )

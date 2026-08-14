@@ -3,6 +3,9 @@ import SwiftUI
 struct SocialHomeView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var activityStore: ActivityStore
+    @State private var selectedCommentPost: TogetherPostDTO?
+    @State private var selectedShareActivity: SavedActivity?
 
     var body: some View {
         NavigationStack {
@@ -18,6 +21,11 @@ struct SocialHomeView: View {
                         $0.status == "pending" && $0.direction == "incoming"
                     }) {
                         incomingRequestCard(incomingRequest)
+                    }
+
+                    if let latestActivity = activityStore.activities.first,
+                       latestActivity.sync?.serverActivityId != nil {
+                        shareLatestActivityCard(latestActivity)
                     }
 
                     if socialStore.state.upcomingRuns.isEmpty
@@ -53,6 +61,29 @@ struct SocialHomeView: View {
                 if socialStore.connections.isEmpty {
                     await socialStore.refreshConnections()
                 }
+            }
+            .sheet(item: $selectedCommentPost) { post in
+                SocialCommentsView(post: post)
+            }
+            .sheet(item: $selectedShareActivity) { activity in
+                SocialActivityShareView(activity: activity)
+            }
+        }
+    }
+
+    private func shareLatestActivityCard(_ activity: SavedActivity) -> some View {
+        OutboundCard {
+            HStack(spacing: OutboundSpacing.standard) {
+                Image(systemName: "square.and.arrow.up.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(OutboundPalette.companion)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Share your latest run").font(.headline)
+                    Text(activity.title).font(.subheadline).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Share") { selectedShareActivity = activity }
+                    .buttonStyle(.bordered)
             }
         }
     }
@@ -140,7 +171,7 @@ struct SocialHomeView: View {
     @ViewBuilder
     private var joinedClubs: some View {
         if !socialStore.state.clubs.isEmpty {
-            Text("YOUR CLUBS").socialSectionLabel()
+            Text("YOUR GROUPS").socialSectionLabel()
             ForEach(socialStore.state.clubs.prefix(3)) { club in
                 OutboundCard {
                     HStack {
@@ -184,10 +215,18 @@ struct SocialHomeView: View {
                         if let caption = post.caption, !caption.isEmpty {
                             Text(caption).font(.subheadline)
                         }
-                        Button("Cheer · \(post.reactions.count)", systemImage: "heart") {
-                            Task { await socialStore.react(to: post) }
+                        HStack {
+                            Button(post.currentUserCheered ? "Cheered · \(post.reactionCount)" : "Cheer · \(post.reactionCount)", systemImage: post.currentUserCheered ? "heart.fill" : "heart") {
+                                Task { await socialStore.toggleCheer(on: post) }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(socialStore.isSocialMutationPending)
+
+                            Button("Comment · \(post.commentCount)", systemImage: "bubble.left") {
+                                selectedCommentPost = post
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.bordered)
                     }
                 }
             }
@@ -211,6 +250,96 @@ struct SocialHomeView: View {
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SocialCommentsView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    @Environment(\.dismiss) private var dismiss
+    let post: TogetherPostDTO
+    @State private var draft = ""
+
+    private var comments: [TogetherCommentDTO] {
+        socialStore.commentsByPostID[post.id] ?? post.comments
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if comments.isEmpty {
+                    ContentUnavailableView("No comments yet", systemImage: "bubble.left", description: Text("Add the first bit of encouragement."))
+                } else {
+                    ForEach(comments) { comment in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(comment.author.displayName).font(.headline)
+                            Text(comment.body)
+                            Text(comment.createdAt.formatted(.relative(presentation: .named)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    TextField("Add encouragement", text: $draft)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Post") {
+                        let body = draft
+                        draft = ""
+                        Task { await socialStore.addComment(body, to: post) }
+                    }
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding()
+                .background(.bar)
+            }
+            .navigationTitle("Comments")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .task { await socialStore.loadComments(for: post) }
+        }
+    }
+}
+
+private struct SocialActivityShareView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    @Environment(\.dismiss) private var dismiss
+    let activity: SavedActivity
+    @State private var caption = ""
+    @State private var isSharing = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Activity") {
+                    Text(activity.title)
+                    LabeledContent("Audience", value: "Connections")
+                }
+                Section("Caption") {
+                    TextField("Add an optional caption", text: $caption, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+                Section {
+                    Button {
+                        isSharing = true
+                        Task {
+                            let shared = await socialStore.shareActivity(activity, caption: caption.isEmpty ? nil : caption)
+                            isSharing = false
+                            if shared { dismiss() }
+                        }
+                    } label: {
+                        if isSharing { ProgressView() } else { Label("Share with connections", systemImage: "person.2.fill") }
+                    }
+                    .disabled(isSharing)
+                } footer: {
+                    Text("Your private reflection and coaching context are never included.")
+                }
+            }
+            .navigationTitle("Share activity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
     }
 }
 

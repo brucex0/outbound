@@ -17,7 +17,7 @@ Primary flow:
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-10. Social is always available through authenticated, share-safe connections, clubs, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
+10. Social is always available through authenticated, share-safe connections, groups, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
 11. Me consolidates plan progress, weekly totals, learned runner insights, history, measurement settings, and optional cycle-aware coaching.
 
 ## Open Docs By Task

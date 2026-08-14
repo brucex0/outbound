@@ -229,6 +229,37 @@ final class APIClient {
         try await post("/social/posts/\(postID)/reactions", body: TogetherReactionRequestDTO(type: type))
     }
 
+    func cheerSocialPost(postID: String) async throws -> TogetherReactionDTO {
+        try await put("/social/posts/\(postID)/cheer", body: EmptyBody())
+    }
+
+    func removeCheerFromSocialPost(postID: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/posts/\(postID)/cheer")
+    }
+
+    func fetchSocialComments(postID: String) async throws -> TogetherCommentsResponseDTO {
+        try await get("/social/posts/\(postID)/comments")
+    }
+
+    func commentOnSocialPost(postID: String, body: String) async throws -> TogetherCommentDTO {
+        try await post("/social/posts/\(postID)/comments", body: TogetherCommentRequestDTO(body: body))
+    }
+
+    func deleteSocialComment(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/comments/\(id)")
+    }
+
+    func shareSocialActivity(activityID: String, caption: String?) async throws -> TogetherPostDTO {
+        try await post(
+            "/social/activity-shares",
+            body: SocialActivityShareRequestDTO(activityId: activityID, caption: caption, visibility: "connections")
+        )
+    }
+
+    func deleteSocialPost(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/posts/\(id)")
+    }
+
     func submitCycleTrainingSignal(_ request: CycleTrainingSignalRequestDTO) async throws -> CycleTrainingSignalResponseDTO {
         try await post("/personalization/cycle-signal", body: request)
     }

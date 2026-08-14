@@ -29,7 +29,17 @@ async function socialHome(c: Context<AppEnv>) {
     prisma.clubMembership.findMany({ where: { userId: user.id }, include: { club: true } }),
     prisma.post.findMany({
       where: { userId: { in: [user.id, ...connections] }, visibility: { in: ["connections", "public"] } },
-      include: { user: true, activity: { include: { photos: true } }, reactions: true, comments: true },
+      include: {
+        user: { select: socialPersonSelect },
+        activity: true,
+        reactions: { select: { id: true, userId: true, type: true } },
+        comments: {
+          include: { author: { select: socialPersonSelect } },
+          orderBy: { createdAt: "asc" },
+          take: 2,
+        },
+        _count: { select: { comments: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 12,
     }),
@@ -38,7 +48,7 @@ async function socialHome(c: Context<AppEnv>) {
   return c.json({
     upcomingRuns: upcomingRuns.map((run) => ({ ...run, compatibility: shareSafeCompatibility(run.groups) })),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
-    posts,
+    posts: posts.map((post) => postPayload(post, user.id)),
   });
 }
 
@@ -162,6 +172,16 @@ router.post("/clubs/:id/join", async (c) => {
   return c.json(membership, 201);
 });
 
+router.delete("/clubs/:id/membership", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const result = await getPrismaClient().clubMembership.deleteMany({
+    where: { clubId: c.req.param("id"), userId: user.id },
+  });
+  if (!result.count) return c.json({ error: "Club membership not found." }, 404);
+  return c.json({ ok: true });
+});
+
 router.get("/group-runs/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -215,24 +235,89 @@ router.post("/activity-shares", zValidator("json", z.object({ activityId: z.stri
   if (input.caption && !isAcceptableText(input.caption)) return c.json({ error: "Please revise the caption before sharing." }, 422);
   const activity = await getPrismaClient().activity.findFirst({ where: { id: input.activityId, userId: user.id } });
   if (!activity) return c.json({ error: "Activity not found." }, 404);
-  const post = await getPrismaClient().post.create({ data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility } });
-  return c.json(post, 201);
+  const post = await getPrismaClient().post.create({
+    data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility },
+    include: socialPostInclude,
+  });
+  return c.json(postPayload(post, user.id), 201);
+});
+
+router.put("/posts/:id/cheer", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const post = await visiblePost(c.req.param("id"), user.id);
+  if (!post) return c.json({ error: "Post not found." }, 404);
+  const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: post.id } }, create: { userId: user.id, postId: post.id, type: "heart" }, update: { type: "heart" } });
+  return c.json(reaction);
+});
+
+router.delete("/posts/:id/cheer", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const post = await visiblePost(c.req.param("id"), user.id);
+  if (!post) return c.json({ error: "Post not found." }, 404);
+  await getPrismaClient().reaction.deleteMany({ where: { userId: user.id, postId: post.id } });
+  return c.json({ ok: true });
 });
 
 router.post("/posts/:id/reactions", zValidator("json", reactionSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: c.req.param("id") } }, create: { userId: user.id, postId: c.req.param("id"), type: c.req.valid("json").type }, update: { type: c.req.valid("json").type } });
+  const post = await visiblePost(c.req.param("id"), user.id);
+  if (!post) return c.json({ error: "Post not found." }, 404);
+  const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: post.id } }, create: { userId: user.id, postId: post.id, type: c.req.valid("json").type }, update: { type: c.req.valid("json").type } });
   return c.json(reaction);
+});
+
+router.get("/posts/:id/comments", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const post = await visiblePost(c.req.param("id"), user.id);
+  if (!post) return c.json({ error: "Post not found." }, 404);
+  const comments = await getPrismaClient().comment.findMany({
+    where: { postId: post.id },
+    include: { author: { select: socialPersonSelect } },
+    orderBy: { createdAt: "asc" },
+  });
+  return c.json({ comments });
 });
 
 router.post("/posts/:id/comments", zValidator("json", commentSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
+  const post = await visiblePost(c.req.param("id"), user.id);
+  if (!post) return c.json({ error: "Post not found." }, 404);
   const body = c.req.valid("json").body;
   if (!isAcceptableText(body)) return c.json({ error: "Please revise the comment before posting." }, 422);
-  const comment = await getPrismaClient().comment.create({ data: { postId: c.req.param("id"), authorId: user.id, body } });
+  const comment = await getPrismaClient().comment.create({
+    data: { postId: post.id, authorId: user.id, body },
+    include: { author: { select: socialPersonSelect } },
+  });
   return c.json(comment, 201);
+});
+
+router.delete("/comments/:id", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const comment = await getPrismaClient().comment.findUnique({
+    where: { id: c.req.param("id") },
+    include: { post: { select: { userId: true } } },
+  });
+  if (!comment || (comment.authorId !== user.id && comment.post.userId !== user.id)) {
+    return c.json({ error: "Comment not found." }, 404);
+  }
+  await getPrismaClient().comment.delete({ where: { id: comment.id } });
+  return c.json({ ok: true });
+});
+
+router.delete("/posts/:id", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const result = await getPrismaClient().post.deleteMany({
+    where: { id: c.req.param("id"), userId: user.id },
+  });
+  if (!result.count) return c.json({ error: "Post not found." }, 404);
+  return c.json({ ok: true });
 });
 
 async function requireSocialUser(c: Context<AppEnv>) {
@@ -272,6 +357,47 @@ function connectionPayload(
     direction: isOutgoing ? "outgoing" : "incoming",
     person: isOutgoing ? connection.addressee : connection.requester,
   };
+}
+
+const socialPostInclude = {
+  user: { select: socialPersonSelect },
+  activity: true,
+  reactions: { select: { id: true, userId: true, type: true } },
+  comments: {
+    include: { author: { select: socialPersonSelect } },
+    orderBy: { createdAt: "asc" as const },
+    take: 2,
+  },
+  _count: { select: { comments: true } },
+} as const;
+
+function postPayload(post: any, currentUserId: string) {
+  return {
+    id: post.id,
+    caption: post.caption,
+    createdAt: post.createdAt,
+    visibility: post.visibility,
+    user: post.user,
+    activity: post.activity,
+    reactionCount: post.reactions.length,
+    currentUserCheered: post.reactions.some((reaction: { userId: string }) => reaction.userId === currentUserId),
+    commentCount: post._count.comments,
+    comments: post.comments,
+  };
+}
+
+async function visiblePost(postId: string, userId: string) {
+  const connections = await acceptedConnectionIDs(userId);
+  return getPrismaClient().post.findFirst({
+    where: {
+      id: postId,
+      OR: [
+        { userId },
+        { userId: { in: connections }, visibility: { in: ["connections", "public"] } },
+      ],
+    },
+    select: { id: true, userId: true },
+  });
 }
 
 function shareSafeCompatibility(groups: Array<{ id: string; label: string; distanceMeters: number | null }>) {
