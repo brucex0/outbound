@@ -864,7 +864,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加您信任的人。当您打开共享实时跑步时，Plainstride 会将它们用作默认收件人。"
+            "value": "添加您信任的人。当您打开共享实时跑步时，平步青云会将它们用作默认收件人。"
           }
         }
       }
@@ -896,7 +896,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加您当前的配对，Plainstride 默认会将其附加到新的跑步中。"
+            "value": "添加您当前的配对，平步青云默认会将其附加到新的跑步中。"
           }
         }
       }
@@ -928,7 +928,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每次跑步后，一个可选的点击会告诉 Plainstride 仅靠数字无法做到的事情。"
+            "value": "每次跑步后，一个可选的点击会告诉平步青云仅靠数字无法做到的事情。"
           }
         }
       }
@@ -1430,7 +1430,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择邮件、消息或其他应用程序将报告发送给 Plainstride 团队。"
+            "value": "选择邮件、消息或其他应用程序将报告发送给平步青云团队。"
           }
         }
       }
@@ -1878,7 +1878,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通过返回来纠正任何事情。 Plainstride 在设置后将继续学习。"
+            "value": "通过返回来纠正任何事情。平步青云在设置后将继续学习。"
           }
         }
       }
@@ -2438,7 +2438,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在“设置”中启用“Plainstride 相机”以通过实时预览进行录制。"
+            "value": "在“设置”中启用“平步青云相机”以通过实时预览进行录制。"
           }
         }
       }
@@ -3110,7 +3110,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "邀请某人"
+            "value": "邀请"
           }
         }
       }
@@ -4212,7 +4212,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "可选且私有。 Plainstride 仅将这些条目存储在此设备上，并在请求适应时仅发送通用训练信号。"
+            "value": "可选且私有。平步青云仅将这些条目存储在此设备上，并在请求适应时仅发送通用训练信号。"
           }
         }
       }
@@ -4228,7 +4228,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "可选。Plainstride 只会在你的回答有助于改进计划时于训练后询问。"
+            "value": "可选。平步青云只会在你的回答有助于改进计划时于训练后询问。"
           }
         }
       }
@@ -4292,7 +4292,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘贴来自其他跑步者的 Plainstride 团体跑步邀请。"
+            "value": "粘贴来自其他跑步者的平步青云团体跑步邀请。"
           }
         }
       }
@@ -4436,7 +4436,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride前进"
+            "value": "平步青云"
           }
         }
       }
@@ -4452,7 +4452,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride青云"
+            "value": "平步青云"
           }
         }
       }
@@ -4468,7 +4468,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride 在此设备上保留私人健康详细信息，并且从不在 Together 中显示它们。"
+            "value": "平步青云在此设备上保留私人健康详细信息，并且从不在 Together 中显示它们。"
           }
         }
       }
@@ -4484,7 +4484,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride 使用近似位置进行此预测。天气建议不会自动改变您的计划。"
+            "value": "平步青云使用近似位置进行此预测。天气建议不会自动改变您的计划。"
           }
         }
       }
@@ -4660,7 +4660,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项具有距离目标的Plainstride自行车活动。"
+            "value": "准备一项具有距离目标的平步青云自行车活动。"
           }
         }
       }
@@ -4676,7 +4676,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项有时间目标的Plainstride自行车活动。"
+            "value": "准备一项有时间目标的平步青云自行车活动。"
           }
         }
       }
@@ -4692,7 +4692,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备以距离为目标的Plainstride跑。"
+            "value": "准备以距离为目标的平步青云跑。"
           }
         }
       }
@@ -4708,7 +4708,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一个有时间目标的Plainstride跑。"
+            "value": "准备一个有时间目标的平步青云跑。"
           }
         }
       }
@@ -4724,7 +4724,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项开放式的Plainstride自行车活动。"
+            "value": "准备一项开放式的平步青云自行车活动。"
           }
         }
       }
@@ -4740,7 +4740,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一次开放式Plainstride跑。"
+            "value": "准备一次开放式平步青云跑。"
           }
         }
       }
@@ -6096,7 +6096,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "退出 Plainstride？"
+            "value": "退出平步青云？"
           }
         }
       }
@@ -6208,7 +6208,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "SMS 和推送传送目前已在服务器上存根。当实时跑步开始时，Plainstride 仍会打开系统共享菜单。"
+            "value": "SMS 和推送传送目前已在服务器上存根。当实时跑步开始时，平步青云仍会打开系统共享菜单。"
           }
         }
       }
@@ -6528,7 +6528,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这些是 Plainstride 在调整训练时可能使用的事实和模式。您可以更正或忘记任何项目。"
+            "value": "这些是平步青云在调整训练时可能使用的事实和模式。您可以更正或忘记任何项目。"
           }
         }
       }
@@ -6576,7 +6576,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这将永久删除您的 Plainstride 帐户、同步活动、计划、个人资料、社交数据和本地存储的 Plainstride 数据。此操作无法撤消。"
+            "value": "这将永久删除您的平步青云帐户、同步活动、计划、个人资料、社交数据和本地存储的平步青云数据。此操作无法撤消。"
           }
         }
       }
@@ -6832,7 +6832,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "有目的地训练。\n和你的人一起奔跑。"
+            "value": "在训练中找到自我。\n大家一起跑。"
           }
         }
       }
@@ -7500,7 +7500,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride知道什么"
+            "value": "平步青云知道什么"
           }
         }
       }
@@ -7516,7 +7516,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride应记住什么？"
+            "value": "平步青云应记住什么？"
           }
         }
       }
@@ -7548,7 +7548,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "什么会让 Plainstride 变得更好？"
+            "value": "什么会让平步青云变得更好？"
           }
         }
       }
@@ -7628,7 +7628,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的AI跑步伴侣"
+            "value": "您的AI跑步伙伴"
           }
         }
       }
@@ -7644,7 +7644,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的AI跑步伴侣将您与家人、朋友和俱乐部一起进行训练。"
+            "value": "您的AI跑步伙伴将您与家人、朋友和俱乐部一起进行训练。"
           }
         }
       }

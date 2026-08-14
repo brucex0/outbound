@@ -20,7 +20,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride"
+            "value" : "平步青云"
           }
         }
       }
@@ -67,7 +67,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 使用 Apple Music 在训练期间播放音乐，让你的跑步体验集中在一处。"
+            "value" : "平步青云使用 Apple Music 在训练期间播放音乐，让你的跑步体验集中在一处。"
           }
         }
       }
@@ -90,7 +90,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 会准备好相机，让你无需离开应用即可记录跑步中的精彩时刻。"
+            "value" : "平步青云会准备好相机，让你无需离开应用即可记录跑步中的精彩时刻。"
           }
         }
       }
@@ -113,7 +113,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 会从 Apple 健康读取心率和训练数据。"
+            "value" : "平步青云会从 Apple 健康读取心率和训练数据。"
           }
         }
       }
@@ -136,7 +136,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 会将你的训练存储到 Apple 健康。"
+            "value" : "平步青云会将你的训练存储到 Apple 健康。"
           }
         }
       }
@@ -159,7 +159,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 会在活动期间记录你的路线，即使应用在后台运行也是如此。"
+            "value" : "平步青云会在活动期间记录你的路线，即使应用在后台运行也是如此。"
           }
         }
       }
@@ -182,7 +182,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 会在活动期间记录你的路线，即使应用在后台运行也是如此。"
+            "value" : "平步青云会在活动期间记录你的路线，即使应用在后台运行也是如此。"
           }
         }
       }
@@ -205,7 +205,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 使用你的大致位置提供本地跑步条件，并在记录跑步时使用精确位置。"
+            "value" : "平步青云使用你的大致位置提供本地跑步条件，并在记录跑步时使用精确位置。"
           }
         }
       }
@@ -228,7 +228,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 使用麦克风接收语音活动指令，并在训练期间播放教练音频。"
+            "value" : "平步青云使用麦克风接收语音活动指令，并在训练期间播放教练音频。"
           }
         }
       }
@@ -251,7 +251,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 使用运动传感器来提高配速和步频记录的准确性。"
+            "value" : "平步青云使用运动传感器来提高配速和步频记录的准确性。"
           }
         }
       }
@@ -274,7 +274,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride 使用语音识别将简短的语音指令转换为准备好的活动。"
+            "value" : "平步青云使用语音识别将简短的语音指令转换为准备好的活动。"
           }
         }
       }
