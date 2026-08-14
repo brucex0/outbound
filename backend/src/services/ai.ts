@@ -4,6 +4,7 @@ import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
 import type { AssistantActivityToolContext } from "./assistantActivityTools.js";
 import type { CompiledContext, CompanionActionProposal } from "./companion/types.js";
+import { localeInstruction, type SupportedLocale } from "../middleware/locale.js";
 // Final-pass transcription and command parsing for short recorded utterances
 export async function runFinalTranscriptionAndParse({ audioUrl, language }: { audioUrl: string; language?: string }) {
   // 1. Run OpenAI gpt-4o-mini transcription
@@ -129,6 +130,7 @@ export async function generateAssistantReply(input: {
   messages: AssistantChatMessage[];
   firebaseUid?: string;
   activityContext?: AssistantActivityToolContext | null;
+  locale: SupportedLocale;
 }): Promise<string> {
   const apiKey = process.env.APP_AI_KEY;
   const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
@@ -146,6 +148,7 @@ You may answer from the provided backend activity context. Do not claim you lack
 If the backend activity context is empty or unavailable, say what is missing in plain product terms.
 Prefer short, practical answers with a clear next step when useful.
 If the user is in an active recording flow, keep the answer extra brief and non-distracting.
+${localeInstruction(input.locale)}
 Return only valid JSON in the shape {"message":"..."} with no markdown fencing.`;
 
   const userPrompt = `Assistant capability: ${input.capability}
@@ -215,6 +218,7 @@ export async function generateCompanionMessage(input: {
   context: CompiledContext;
   proposal: CompanionActionProposal;
   actionStatus?: string | null;
+  locale: SupportedLocale;
 }): Promise<string> {
   const apiKey = process.env.APP_AI_KEY;
   const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
@@ -226,7 +230,7 @@ Use only the compiled, provenance-bearing context supplied below.
 Never claim an action happened unless actionStatus is executed.
 Distinguish facts from hypotheses and mention uncertainty when it matters.
 Never diagnose pain or concerning symptoms. Recommend stopping or qualified care when appropriate.
-Be warm, concise, and practical. Return JSON only as {"message":"..."}.`;
+Be warm, concise, and practical. ${localeInstruction(input.locale)} Return JSON only as {"message":"..."}.`;
   const payload = {
     task: input.context.task,
     rules: input.context.systemRules,

@@ -78,6 +78,7 @@ struct CompanionContextReceiptDTO: Codable, Sendable {
 
 struct CompanionTurnResponseDTO: Codable, Sendable {
     let message: String
+    let locale: String?
     let action: CompanionActionDTO?
     let confirmationRequest: CompanionConfirmationDTO?
     let suggestedReplies: [String]
@@ -162,4 +163,3 @@ struct CompanionSessionReadinessDTO: Codable, Sendable {
     let soreness: Int
     let illnessOrPain: Bool
 }
-

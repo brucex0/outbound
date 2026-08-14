@@ -502,6 +502,7 @@ final class TrainingPlanStore: ObservableObject {
     private let activePlanKey = "training_plan_store_active_plan_v1"
     private let stateCacheKey = "training_plan_store_state_v2"
     private let recommendationCacheKey = "training_plan_store_recommendations_cache_v1"
+    private let cacheLocaleKey = "training_plan_store_cache_locale_v1"
     private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
     private let readinessSyncKey = "training_plan_store_readiness_sync_v1"
     private var dismissedRecommendationWeekStart: Date?
@@ -523,8 +524,12 @@ final class TrainingPlanStore: ObservableObject {
         self.dismissedRecommendationWeekStart = Self.decode(Date.self, from: defaults.data(forKey: dismissedWeekKey))
         self.lastSubmittedReadinessSignature = defaults.string(forKey: readinessSyncKey)
 
-        let persistedActivePlan = Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
-        if let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
+        let cacheMatchesLocale = defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier
+        let persistedActivePlan = cacheMatchesLocale
+            ? Self.decode(ActiveTrainingPlan.self, from: defaults.data(forKey: activePlanKey))
+            : nil
+        if cacheMatchesLocale,
+           let cachedState = Self.decode(TrainingPlanStateResponse.self, from: defaults.data(forKey: stateCacheKey)) {
             let cachedActivitySuggestion = cachedState.activitySuggestion?.isValid(now: Date()) == true
                 ? cachedState.activitySuggestion
                 : nil
@@ -761,6 +766,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     private func persistState() {
+        defaults.set(AppLanguage.currentIdentifier, forKey: cacheLocaleKey)
         let state = TrainingPlanStateResponse(
             activePlan: activePlan,
             recommendations: recommendations,
@@ -843,6 +849,7 @@ final class TrainingPlanStore: ObservableObject {
     }
 
     private func cachedPlanRecommendations(now: Date) -> [TrainingPlanRecommendation] {
+        guard defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier else { return [] }
         guard let response = Self.decode(
             PlanRecommendationsResponse.self,
             from: defaults.data(forKey: recommendationCacheKey)

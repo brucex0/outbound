@@ -10,13 +10,17 @@ final class PersonalizationStore: ObservableObject {
     private let api: APIClient
     private let defaults: UserDefaults
     private let cacheKey = "personalization_snapshot_v1"
+    private let cacheLocaleKey = "personalization_snapshot_locale_v1"
     private let readinessQueueKey = "personalization_readiness_queue_v1"
     private let feedbackQueueKey = "personalization_feedback_queue_v1"
 
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
         self.defaults = defaults
-        snapshot = Self.decode(PersonalizationSnapshotDTO.self, from: defaults.data(forKey: cacheKey)) ?? .preview
+        let cacheMatchesLocale = defaults.string(forKey: cacheLocaleKey) == AppLanguage.currentIdentifier
+        snapshot = cacheMatchesLocale
+            ? Self.decode(PersonalizationSnapshotDTO.self, from: defaults.data(forKey: cacheKey)) ?? .preview
+            : .preview
     }
 
     func refresh() async {
@@ -153,6 +157,7 @@ final class PersonalizationStore: ObservableObject {
 
     private func persistSnapshot() {
         defaults.set(try? Self.encoder.encode(snapshot), forKey: cacheKey)
+        defaults.set(AppLanguage.currentIdentifier, forKey: cacheLocaleKey)
     }
 
     private static let encoder: JSONEncoder = {

@@ -21,22 +21,22 @@ enum GoalFocusTheme: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .consistency:
-            return "Build consistency"
+            return String(localized: "Build consistency")
         case .comeback:
-            return "Get back into rhythm"
+            return String(localized: "Get back into rhythm")
         case .lightMovement:
-            return "Move by time"
+            return String(localized: "Move by time")
         }
     }
 
     var coachPrompt: String {
         switch self {
         case .consistency:
-            return "Let's build something you can repeat."
+            return String(localized: "Let's build something you can repeat.")
         case .comeback:
-            return "Let's make the return feel low-pressure and real."
+            return String(localized: "Let's make the return feel low-pressure and real.")
         case .lightMovement:
-            return "Let's keep the week about time on your feet, not pressure."
+            return String(localized: "Let's keep the week about time on your feet, not pressure.")
         }
     }
 }

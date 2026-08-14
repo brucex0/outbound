@@ -17,11 +17,13 @@ import safety, { liveShareViewer } from "./routes/safety.js";
 import invites from "./routes/invites.js";
 import marketing from "./routes/marketing.js";
 import type { AppEnv } from "./types/hono.js";
+import { localeMiddleware } from "./middleware/locale.js";
 
 const app = new Hono<AppEnv>();
 
 app.use("*", logger());
 app.use("*", cors({ origin: "*" }));
+app.use("*", localeMiddleware);
 app.use("/v1/*", authMiddleware);
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));

@@ -9,10 +9,10 @@ enum CycleTrainingSignal: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
-        case .noAdjustment: "No change needed"
-        case .offerFlexibleOption: "Offer flexibility"
-        case .reduceLoad: "Gentler workout suggested"
-        case .recommendRest: "Rest suggested"
+        case .noAdjustment: String(localized: "No change needed")
+        case .offerFlexibleOption: String(localized: "Offer flexibility")
+        case .reduceLoad: String(localized: "Gentler workout suggested")
+        case .recommendRest: String(localized: "Rest suggested")
         }
     }
 }
@@ -52,7 +52,7 @@ final class CycleAwareStore: ObservableObject {
         return .noAdjustment
     }
 
-    var summary: String { isEnabled ? currentSignal.title : "Cycle-aware coaching is off" }
+    var summary: String { isEnabled ? currentSignal.title : String(localized: "Cycle-aware coaching is off") }
 
     func log(bleeding: Bool, energy: Int, discomfort: Int) {
         logs.insert(CycleWellbeingLog(id: UUID(), date: Date(), bleeding: bleeding, energy: energy, discomfort: discomfort), at: 0)

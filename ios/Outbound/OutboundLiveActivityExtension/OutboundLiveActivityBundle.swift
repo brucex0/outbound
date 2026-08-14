@@ -52,9 +52,10 @@ struct OutboundSessionLiveActivityWidget: Widget {
             .background(state.isPaused ? Color.orange.opacity(0.85) : Color.green.opacity(0.85), in: Capsule())
     }
 
-    private func metric(title: String, value: some View) -> some View {
+    private func metric(title: LocalizedStringResource, value: some View) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased())
+            Text(title)
+                .textCase(.uppercase)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.68))
             value
@@ -119,9 +120,10 @@ private struct LockScreenSessionView: View {
         .padding(.vertical, 6)
     }
 
-    private func metric(title: String, value: some View) -> some View {
+    private func metric(title: LocalizedStringResource, value: some View) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased())
+            Text(title)
+                .textCase(.uppercase)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.68))
             value

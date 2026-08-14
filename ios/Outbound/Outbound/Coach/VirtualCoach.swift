@@ -684,6 +684,10 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private func selectedSpeechVoice(for voice: CoachVoice) -> AVSpeechSynthesisVoice? {
+        if AppLanguage.current != .english {
+            let locale = AppLanguage.speechLocale.identifier.replacingOccurrences(of: "_", with: "-")
+            return preferredVoice(for: locale) ?? AVSpeechSynthesisVoice(language: locale)
+        }
         if let identifier = voice.avFoundationIdentifier,
            let selectedVoice = AVSpeechSynthesisVoice(identifier: identifier) {
             return selectedVoice

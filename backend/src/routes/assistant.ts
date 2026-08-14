@@ -70,11 +70,11 @@ router.post(
           isOffline: false,
           timeZoneIdentifier: body.context.timeZoneIdentifier,
           signals: [],
-        }).catch((error) => {
+        }, c.get("locale")).catch((error) => {
           console.error("Companion adapter failed", error);
           return null;
         });
-        if (companion) return c.json({ message: companion.message });
+        if (companion) return c.json({ message: companion.message, locale: companion.locale });
       }
     }
     const activityTools =
@@ -105,8 +105,9 @@ router.post(
       messages: body.messages,
       firebaseUid: auth?.firebaseUid ?? body.firebaseUid ?? undefined,
       activityContext: activityTools?.context,
+      locale: c.get("locale"),
     });
-    return c.json({ message: reply });
+    return c.json({ message: reply, locale: c.get("locale") });
   }
 );
 

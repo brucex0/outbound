@@ -8,8 +8,8 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
 
     var title: String {
         switch self {
-        case .metric: return "Metric"
-        case .imperial: return "Imperial"
+        case .metric: return String(localized: "measurement.system.metric", defaultValue: "Metric")
+        case .imperial: return String(localized: "measurement.system.imperial", defaultValue: "Imperial")
         }
     }
 
@@ -21,7 +21,11 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
     }
 
     var distanceLabel: String {
-        "Dist (\(distanceUnit))"
+        String(
+            format: String(localized: "measurement.distance.label.format", defaultValue: "Dist (%@)"),
+            locale: Locale.autoupdatingCurrent,
+            distanceUnit
+        )
     }
 
     var elevationUnit: String {
@@ -32,7 +36,11 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
     }
 
     var elevationLabel: String {
-        "Elev (\(elevationUnit))"
+        String(
+            format: String(localized: "measurement.elevation.label.format", defaultValue: "Elev (%@)"),
+            locale: Locale.autoupdatingCurrent,
+            elevationUnit
+        )
     }
 
     var paceUnitSuffix: String {
@@ -97,8 +105,12 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
     }
 
     private func decimalString(_ value: Double, fractionDigits: Int) -> String {
-        let format = "%.\(fractionDigits)f"
-        return String(format: format, value)
+        value.formatted(
+            .number
+                .locale(Locale.autoupdatingCurrent)
+                .precision(.fractionLength(fractionDigits))
+                .grouping(.automatic)
+        )
     }
 }
 
@@ -122,7 +134,14 @@ extension Double {
     var spokenPaceString: String {
         let minutes = Int(self) / 60
         let seconds = Int(self) % 60
-        return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per kilometer"
+        switch AppLanguage.current {
+        case .english:
+            return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per kilometer"
+        case .spanish:
+            return "\(minutes) \(minutes == 1 ? "minuto" : "minutos") \(seconds) \(seconds == 1 ? "segundo" : "segundos") por kilómetro"
+        case .simplifiedChinese:
+            return "每公里 \(minutes) 分 \(seconds) 秒"
+        }
     }
 
     var spokenDistanceString: String {
@@ -130,17 +149,29 @@ extension Double {
         let meters = Int(distanceMeters.rounded())
 
         if distanceMeters < 995 {
-            return meters == 1 ? "1 meter" : "\(meters) meters"
+            switch AppLanguage.current {
+            case .english: return meters == 1 ? "1 meter" : "\(meters) meters"
+            case .spanish: return meters == 1 ? "1 metro" : "\(meters) metros"
+            case .simplifiedChinese: return "\(meters) 米"
+            }
         }
 
         let roundedHundredths = ((distanceMeters / 1000) * 100).rounded() / 100
         let roundedWhole = roundedHundredths.rounded()
         if abs(roundedHundredths - roundedWhole) < 0.005 {
             let wholeKilometers = Int(roundedWhole)
-            return wholeKilometers == 1 ? "1 kilometer" : "\(wholeKilometers) kilometers"
+            switch AppLanguage.current {
+            case .english: return wholeKilometers == 1 ? "1 kilometer" : "\(wholeKilometers) kilometers"
+            case .spanish: return wholeKilometers == 1 ? "1 kilómetro" : "\(wholeKilometers) kilómetros"
+            case .simplifiedChinese: return "\(wholeKilometers) 公里"
+            }
         }
-
-        return String(format: "%.2f kilometers", roundedHundredths)
+        let value = roundedHundredths.formatted(.number.locale(.autoupdatingCurrent).precision(.fractionLength(2)))
+        switch AppLanguage.current {
+        case .english: return "\(value) kilometers"
+        case .spanish: return "\(value) kilómetros"
+        case .simplifiedChinese: return "\(value) 公里"
+        }
     }
 }
 
@@ -230,18 +261,27 @@ extension Int {
         let hours = self / 3600
         let minutes = (self % 3600) / 60
         let seconds = self % 60
+        if AppLanguage.current == .simplifiedChinese {
+            var result = ""
+            if hours > 0 { result += "\(hours) 小时" }
+            if minutes > 0 { result += "\(minutes) 分钟" }
+            if result.isEmpty || (seconds > 0 && hours == 0) { result += "\(seconds) 秒" }
+            return result
+        }
+
+        let spanish = AppLanguage.current == .spanish
         var parts: [String] = []
 
         if hours > 0 {
-            parts.append("\(hours) \(hours == 1 ? "hour" : "hours")")
+            parts.append("\(hours) \(spanish ? (hours == 1 ? "hora" : "horas") : (hours == 1 ? "hour" : "hours"))")
         }
 
         if minutes > 0 {
-            parts.append("\(minutes) \(minutes == 1 ? "minute" : "minutes")")
+            parts.append("\(minutes) \(spanish ? (minutes == 1 ? "minuto" : "minutos") : (minutes == 1 ? "minute" : "minutes"))")
         }
 
         if parts.isEmpty || (seconds > 0 && hours == 0) {
-            parts.append("\(seconds) \(seconds == 1 ? "second" : "seconds")")
+            parts.append("\(seconds) \(spanish ? (seconds == 1 ? "segundo" : "segundos") : (seconds == 1 ? "second" : "seconds"))")
         }
 
         return parts.joined(separator: " ")

@@ -23,7 +23,7 @@ const router = new Hono<AppEnv>();
 router.post("/turns", zValidator("json", companionTurnRequestSchema), async (c) => {
   const user = await requireUser(c);
   if (user instanceof Response) return user;
-  return c.json(await runCompanionTurn(getPrismaClient(), user.id, c.req.valid("json")));
+  return c.json(await runCompanionTurn(getPrismaClient(), user.id, c.req.valid("json"), c.get("locale")));
 });
 
 router.get("/snapshot", async (c) => {
@@ -112,4 +112,3 @@ async function requireUser(c: Context<AppEnv>) {
 }
 
 export default router;
-

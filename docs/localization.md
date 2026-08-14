@@ -14,16 +14,20 @@ Traditional Chinese is a separate future localization (`zh-Hant`), not an automa
 
 Localization covers every user-facing surface, including accessibility, system permission prompts, Live Activities, share text, generated plans, assistant and coach responses, speech recognition, and spoken coaching. User-authored content such as activity titles, biographies, and messages must remain unchanged.
 
-## Current State
+## Implemented Foundation
 
-- The Xcode project declares only English and Base regions.
-- The project already enables String Catalog preference and Swift string extraction for the app targets.
-- There are no `.xcstrings` catalogs or localized `.lproj` resources.
-- The SwiftUI source contains roughly 440 direct text literals, plus user-facing strings produced by enum properties, formatting helpers, fixtures, and domain models.
-- `Info.plist` permission explanations are English-only.
-- Some counts, measurements, and sentences are assembled manually with English word order and plural rules.
-- Training plans, offline fixtures, weather guidance, recognition, assistant replies, and coaching may carry display-ready English prose across client and backend boundaries.
-- Voice command parsing is English-oriented even though speech recognition can select a supported locale.
+- The Xcode project declares English, Spanish, and Simplified Chinese regions.
+- `Localizable.xcstrings` contains the extracted SwiftUI and App Intent surface with Spanish and Simplified Chinese translations. Product, health, safety, coaching, and running terminology received an explicit review after machine seeding.
+- `InfoPlist.xcstrings` localizes every privacy usage description.
+- The Live Activity extension owns a target-specific catalog for its compact metric labels; activity names and status values are localized before entering ActivityKit state.
+- `AppLanguage` provides canonical API (`en`, `es`, `zh-Hans`) and speech (`en_US`, `es_ES`, `zh_CN`) locale mappings based on the active iOS app language.
+- Every API request sends `Accept-Language` and `X-Plainstride-Locale`. Backend middleware normalizes unsupported or regional variants to one supported locale.
+- Assistant and companion AI prompts require the requested language. Their responses identify the locale used, and deterministic companion and cycle-aware fallbacks are available in all three languages.
+- Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
+- Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
+- Speech recognition, speech-analysis assets, spoken coaching voices, command hints, and deterministic activity parsing support English, Spanish, and Mandarin, including localized duration and distance units.
+
+The catalogs are product-authored translations and still require native-speaker release review, as described below. User-authored content remains unchanged.
 
 ## Resource Strategy
 

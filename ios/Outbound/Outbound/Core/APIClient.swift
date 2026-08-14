@@ -61,6 +61,7 @@ final class APIClient {
 
     func downloadActivityPhoto(id: String) async throws -> Data {
         var req = URLRequest(url: url(for: "/media/activity-photos/\(id)/content"))
+        configureLocale(on: &req)
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -282,6 +283,7 @@ final class APIClient {
         queryItems: [URLQueryItem] = []
     ) async throws -> T {
         var req = URLRequest(url: url(for: path, queryItems: queryItems))
+        configureLocale(on: &req)
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -293,6 +295,7 @@ final class APIClient {
     private func post<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         var req = URLRequest(url: url(for: path))
         req.httpMethod = "POST"
+        configureLocale(on: &req)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -306,6 +309,7 @@ final class APIClient {
     private func patch<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         var req = URLRequest(url: url(for: path))
         req.httpMethod = "PATCH"
+        configureLocale(on: &req)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -319,6 +323,7 @@ final class APIClient {
     private func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         var req = URLRequest(url: url(for: path))
         req.httpMethod = "PUT"
+        configureLocale(on: &req)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -335,6 +340,7 @@ final class APIClient {
     ) async throws -> T {
         var req = URLRequest(url: url(for: path, queryItems: queryItems))
         req.httpMethod = "DELETE"
+        configureLocale(on: &req)
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -365,6 +371,11 @@ final class APIClient {
         }
 
         return authToken
+    }
+
+    private func configureLocale(on request: inout URLRequest) {
+        request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "Accept-Language")
+        request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "X-Plainstride-Locale")
     }
 
     private func validate(response: URLResponse, data: Data) throws {
@@ -891,6 +902,7 @@ struct AssistantChatAPIPriorMessage: Encodable {
 
 struct AssistantChatResponse: Decodable {
     let message: String
+    let locale: String?
 }
 
 struct TrainingPlanStateResponse: Codable {

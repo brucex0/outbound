@@ -1,0 +1,198 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Start a ${distance} bike ride in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a ${distance} bike ride in ${applicationName}",
+              "Set up a ${distance} bike ride in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia un recorrido en bicicleta de ${distance} en ${applicationName}",
+              "Prepara un recorrido en bicicleta de ${distance} en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始 ${distance} 骑行",
+              "在 ${applicationName} 中准备 ${distance} 骑行"
+            ]
+          }
+        }
+      }
+    },
+    "Start a ${distance} run in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a ${distance} run in ${applicationName}",
+              "Set up a ${distance} run in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia una carrera de ${distance} en ${applicationName}",
+              "Prepara una carrera de ${distance} en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始 ${distance} 跑步",
+              "在 ${applicationName} 中准备 ${distance} 跑步"
+            ]
+          }
+        }
+      }
+    },
+    "Start a ${duration} bike ride in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a ${duration} bike ride in ${applicationName}",
+              "Set up a ${duration} bike ride in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia un recorrido en bicicleta de ${duration} en ${applicationName}",
+              "Prepara un recorrido en bicicleta de ${duration} en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始 ${duration} 骑行",
+              "在 ${applicationName} 中准备 ${duration} 骑行"
+            ]
+          }
+        }
+      }
+    },
+    "Start a ${duration} run in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a ${duration} run in ${applicationName}",
+              "Set up a ${duration} run in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia una carrera de ${duration} en ${applicationName}",
+              "Prepara una carrera de ${duration} en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始 ${duration} 跑步",
+              "在 ${applicationName} 中准备 ${duration} 跑步"
+            ]
+          }
+        }
+      }
+    },
+    "Start a bike ride in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a bike ride in ${applicationName}",
+              "Set up a bike ride in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia un recorrido en bicicleta en ${applicationName}",
+              "Prepara un recorrido en bicicleta en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始骑行",
+              "在 ${applicationName} 中准备骑行"
+            ]
+          }
+        }
+      }
+    },
+    "Start a run in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "Start a run in ${applicationName}",
+              "Set up a run in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Inicia una carrera en ${applicationName}",
+              "Prepara una carrera en ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "在 ${applicationName} 中开始跑步",
+              "在 ${applicationName} 中准备跑步"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.2"
+}

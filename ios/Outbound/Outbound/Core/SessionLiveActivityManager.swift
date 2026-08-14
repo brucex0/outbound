@@ -17,8 +17,8 @@ final class SessionLiveActivityManager: ObservableObject {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let attributes = OutboundLiveActivityAttributes(
-            activityName: intent?.title ?? "Freestyle run",
-            sportName: intent?.sport.displayName ?? "Run",
+            activityName: intent?.title ?? String(localized: "Freestyle run"),
+            sportName: intent?.sport.displayName ?? String(localized: "Run"),
             sportSystemImageName: intent?.sport.systemImage ?? "figure.run"
         )
         let content = ActivityContent(
@@ -58,7 +58,7 @@ final class SessionLiveActivityManager: ObservableObject {
             elapsedReferenceDate: nil,
             distanceText: unitSystem.distanceString(meters: 0),
             paceText: "--",
-            statusText: "Finished",
+            statusText: String(localized: "Finished"),
             isPaused: true
         )
         lastContentState = nil
@@ -92,7 +92,7 @@ final class SessionLiveActivityManager: ObservableObject {
                 : nil,
             distanceText: unitSystem.distanceString(meters: snapshot.distanceMeters),
             paceText: paceText,
-            statusText: state == .paused ? "Paused" : "Active",
+            statusText: state == .paused ? String(localized: "Paused") : String(localized: "Active"),
             isPaused: state == .paused
         )
     }
