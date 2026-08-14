@@ -546,7 +546,11 @@ struct RecordView: View {
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
             VStack(spacing: 14) {
-                sessionGoalCard(for: intent)
+                if intent.workoutSteps.isEmpty {
+                    sessionGoalCard(for: intent)
+                } else {
+                    plannedWorkoutCard(for: intent)
+                }
 
                 Button(action: startRecording) {
                     Label(isStartingActivity ? "Preparing..." : (plannedIntent ?? intent).startLabel, systemImage: "record.circle.fill")
@@ -558,7 +562,7 @@ struct RecordView: View {
                 }
                 .disabled(isStartingActivity)
 
-                Button("Change activity") {
+                Button(intent.workoutSteps.isEmpty ? "Change activity" : "Choose a different activity") {
                     onCloseRequest?(false)
                 }
                 .font(.subheadline.weight(.semibold))
@@ -907,6 +911,73 @@ struct RecordView: View {
         .onAppear {
             selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
         }
+    }
+
+    private func plannedWorkoutCard(for intent: SessionIntent) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Workout plan", systemImage: "list.bullet.clipboard")
+                    .font(.headline)
+                Spacer()
+                Text(plannedWorkoutDurationLabel(for: intent))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(intent.workoutSteps.enumerated()), id: \.element.id) { index, step in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(index + 1)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 24, height: 24)
+                            .background(Color.orange, in: Circle())
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(step.label)
+                                .font(.subheadline.weight(.semibold))
+                            if let detail = step.detail, !detail.isEmpty {
+                                Text(detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Text(workoutStepDurationLabel(step.durationSeconds))
+                            .font(.subheadline.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 10)
+
+                    if index < intent.workoutSteps.count - 1 {
+                        Divider()
+                            .padding(.leading, 36)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func plannedWorkoutDurationLabel(for intent: SessionIntent) -> String {
+        let stepDuration = intent.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
+        return workoutStepDurationLabel(stepDuration > 0 ? stepDuration : intent.resolvedTargetDurationSeconds ?? 0)
+    }
+
+    private func workoutStepDurationLabel(_ seconds: Int) -> String {
+        guard seconds > 0 else { return "Open" }
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        if minutes == 0 { return "\(remainingSeconds)s" }
+        if remainingSeconds == 0 { return "\(minutes) min" }
+        return "\(minutes)m \(remainingSeconds)s"
     }
 
     private func goalModeButton(_ mode: SessionGoalMode) -> some View {
