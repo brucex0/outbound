@@ -78,7 +78,7 @@ private struct SimplifiedTodayView: View {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     OutboundCard(style: .companion) {
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("“\(dailySpark.headline)”")
+                            Text(dailySpark.headline)
                                 .font(.title3.weight(.semibold))
                             Text(dailySpark.message)
                                 .font(.subheadline)
