@@ -188,7 +188,29 @@ final class APIClient {
     }
 
     func fetchTogether() async throws -> TogetherResponseDTO {
-        try await get("/social/together")
+        try await get("/social/home")
+    }
+
+    func fetchSocialConnections() async throws -> SocialConnectionsResponseDTO {
+        try await get("/social/connections")
+    }
+
+    func searchSocialPeople(query: String) async throws -> SocialPeopleSearchResponseDTO {
+        try await get("/social/people/search", queryItems: [
+            URLQueryItem(name: "q", value: query)
+        ])
+    }
+
+    func requestSocialConnection(userID: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/connections", body: SocialConnectionRequestDTO(userId: userID))
+    }
+
+    func acceptSocialConnection(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/connections/\(id)/accept", body: EmptyBody())
+    }
+
+    func removeSocialConnection(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/connections/\(id)")
     }
 
     func createTogetherInvitation(runID: String) async throws -> TogetherInvitationResponseDTO {

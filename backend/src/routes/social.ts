@@ -11,7 +11,10 @@ const router = new Hono<AppEnv>();
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 
-router.get("/together", async (c) => {
+router.get("/home", socialHome);
+router.get("/together", socialHome);
+
+async function socialHome(c: Context<AppEnv>) {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
@@ -37,6 +40,66 @@ router.get("/together", async (c) => {
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
     posts,
   });
+}
+
+router.get("/connections", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const connections = await getPrismaClient().connection.findMany({
+    where: { OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
+    include: {
+      requester: { select: socialPersonSelect },
+      addressee: { select: socialPersonSelect },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  return c.json({
+    connections: connections.map((connection) => connectionPayload(connection, user.id)),
+  });
+});
+
+router.get("/people/search", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const query = c.req.query("q")?.trim();
+  if (!query || query.length < 2) return c.json({ people: [] });
+  const people = await getPrismaClient().user.findMany({
+    where: {
+      id: { not: user.id },
+      OR: [
+        { displayName: { contains: query, mode: "insensitive" } },
+        { username: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    select: socialPersonSelect,
+    orderBy: [{ displayName: "asc" }, { username: "asc" }],
+    take: 20,
+  });
+  const relationships = await getPrismaClient().connection.findMany({
+    where: {
+      OR: [
+        { requesterId: user.id, addresseeId: { in: people.map((person) => person.id) } },
+        { addresseeId: user.id, requesterId: { in: people.map((person) => person.id) } },
+      ],
+    },
+  });
+  return c.json({
+    people: people.map((person) => {
+      const relationship = relationships.find((candidate) =>
+        candidate.requesterId === person.id || candidate.addresseeId === person.id
+      );
+      return {
+        ...person,
+        relationship: relationship
+          ? {
+              id: relationship.id,
+              status: relationship.status,
+              direction: relationship.requesterId === user.id ? "outgoing" : "incoming",
+            }
+          : null,
+      };
+    }),
+  });
 });
 
 router.post("/connections", zValidator("json", z.object({ userId: z.string().min(1) })), async (c) => {
@@ -44,10 +107,22 @@ router.post("/connections", zValidator("json", z.object({ userId: z.string().min
   if (user instanceof Response) return user;
   const addresseeId = c.req.valid("json").userId;
   if (addresseeId === user.id) return c.json({ error: "You cannot connect to yourself." }, 400);
-  const connection = await getPrismaClient().connection.upsert({
-    where: { requesterId_addresseeId: { requesterId: user.id, addresseeId } },
-    create: { requesterId: user.id, addresseeId },
-    update: { status: "pending" },
+  const addressee = await getPrismaClient().user.findUnique({
+    where: { id: addresseeId },
+    select: { id: true },
+  });
+  if (!addressee) return c.json({ error: "Person not found." }, 404);
+  const existing = await getPrismaClient().connection.findFirst({
+    where: {
+      OR: [
+        { requesterId: user.id, addresseeId },
+        { requesterId: addresseeId, addresseeId: user.id },
+      ],
+    },
+  });
+  if (existing) return c.json(existing, 200);
+  const connection = await getPrismaClient().connection.create({
+    data: { requesterId: user.id, addresseeId },
   });
   return c.json(connection, 201);
 });
@@ -57,6 +132,19 @@ router.post("/connections/:id/accept", async (c) => {
   if (user instanceof Response) return user;
   const result = await getPrismaClient().connection.updateMany({ where: { id: c.req.param("id"), addresseeId: user.id, status: "pending" }, data: { status: "accepted" } });
   if (!result.count) return c.json({ error: "Connection request not found." }, 404);
+  return c.json({ ok: true });
+});
+
+router.delete("/connections/:id", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const result = await getPrismaClient().connection.deleteMany({
+    where: {
+      id: c.req.param("id"),
+      OR: [{ requesterId: user.id }, { addresseeId: user.id }],
+    },
+  });
+  if (!result.count) return c.json({ error: "Connection not found." }, 404);
   return c.json({ ok: true });
 });
 
@@ -158,6 +246,32 @@ async function requireSocialUser(c: Context<AppEnv>) {
 async function acceptedConnectionIDs(userId: string) {
   const connections = await getPrismaClient().connection.findMany({ where: { status: "accepted", OR: [{ requesterId: userId }, { addresseeId: userId }] } });
   return connections.map((connection) => connection.requesterId === userId ? connection.addresseeId : connection.requesterId);
+}
+
+const socialPersonSelect = {
+  id: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+} as const;
+
+function connectionPayload(
+  connection: {
+    id: string;
+    status: string;
+    requesterId: string;
+    requester: { id: string; username: string; displayName: string; avatarUrl: string | null };
+    addressee: { id: string; username: string; displayName: string; avatarUrl: string | null };
+  },
+  userId: string,
+) {
+  const isOutgoing = connection.requesterId === userId;
+  return {
+    id: connection.id,
+    status: connection.status,
+    direction: isOutgoing ? "outgoing" : "incoming",
+    person: isOutgoing ? connection.addressee : connection.requester,
+  };
 }
 
 function shareSafeCompatibility(groups: Array<{ id: string; label: string; distanceMeters: number | null }>) {

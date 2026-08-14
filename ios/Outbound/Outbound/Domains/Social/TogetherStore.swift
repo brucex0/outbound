@@ -7,6 +7,9 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var latestInvitationURL: URL?
+    @Published private(set) var connections: [SocialConnectionDTO] = []
+    @Published private(set) var peopleResults: [SocialPersonSearchResultDTO] = []
+    @Published private(set) var isConnectionsLoading = false
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -64,6 +67,61 @@ final class TogetherStore: ObservableObject {
     func react(to post: TogetherPostDTO) async {
         do {
             _ = try await api.reactToTogetherPost(postID: post.id, type: "heart")
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshConnections() async {
+        isConnectionsLoading = true
+        defer { isConnectionsLoading = false }
+        do {
+            connections = try await api.fetchSocialConnections().connections
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func searchPeople(_ query: String) async {
+        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count >= 2 else {
+            peopleResults = []
+            return
+        }
+        do {
+            peopleResults = try await api.searchSocialPeople(query: cleaned).people
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func requestConnection(to person: SocialPersonSearchResultDTO) async {
+        do {
+            _ = try await api.requestSocialConnection(userID: person.id)
+            await refreshConnections()
+            await searchPeople(person.username)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func acceptConnection(_ connection: SocialConnectionDTO) async {
+        do {
+            _ = try await api.acceptSocialConnection(id: connection.id)
+            await refreshConnections()
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removeConnection(_ connection: SocialConnectionDTO) async {
+        do {
+            _ = try await api.removeSocialConnection(id: connection.id)
+            await refreshConnections()
             await refresh()
         } catch {
             errorMessage = error.localizedDescription

@@ -12,6 +12,52 @@ struct TogetherPersonDTO: Codable, Identifiable, Sendable {
     let avatarUrl: String?
 }
 
+struct SocialPersonDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let username: String
+    let displayName: String
+    let avatarUrl: String?
+}
+
+struct SocialRelationshipDTO: Codable, Sendable {
+    let id: String
+    let status: String
+    let direction: String
+}
+
+struct SocialConnectionDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let status: String
+    let direction: String
+    let person: SocialPersonDTO
+}
+
+struct SocialConnectionsResponseDTO: Codable, Sendable {
+    let connections: [SocialConnectionDTO]
+}
+
+struct SocialPersonSearchResultDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let username: String
+    let displayName: String
+    let avatarUrl: String?
+    let relationship: SocialRelationshipDTO?
+}
+
+struct SocialPeopleSearchResponseDTO: Codable, Sendable {
+    let people: [SocialPersonSearchResultDTO]
+}
+
+struct SocialConnectionRequestDTO: Codable, Sendable {
+    let userId: String
+}
+
+struct SocialConnectionMutationDTO: Codable, Sendable {
+    let id: String?
+    let status: String?
+    let ok: Bool?
+}
+
 struct TogetherClubDTO: Codable, Identifiable, Sendable {
     let id: String
     let name: String

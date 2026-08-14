@@ -8,7 +8,7 @@ Plainstride (internally still named Outbound in targets and source paths) is an 
 
 Primary flow:
 
-1. App launches into the production `Together · Today · Me` shell, centered on Today.
+1. App launches into the production `Social · Today · Me` shell, centered on Today.
 2. New authenticated accounts see the simplified runner intake, editable understanding, calibration, and first-plan onboarding; completed accounts skip it.
 3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Run, and a Together invitation.
 4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, PR history, race predictions, shoe mileage, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
@@ -17,7 +17,7 @@ Primary flow:
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
 8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-10. Together is always available through authenticated, share-safe connections, clubs, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
+10. Social is always available through authenticated, share-safe connections, clubs, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
 11. Me consolidates plan progress, weekly totals, learned runner insights, history, measurement settings, and optional cycle-aware coaching.
 
 ## Open Docs By Task

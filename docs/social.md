@@ -1,8 +1,10 @@
 # Social
 
-## Current Together implementation
+## Current Social implementation
 
-Together is the production social surface. `GET /v1/social/together` returns only the signed-in runner's accepted connections, joined clubs, compatible upcoming group runs, and connection-visible posts. The client caches the last successful response for a useful offline state. Invitations, reactions, comments, club joins, and activity sharing are authenticated mutations. Compatibility explanations are share-safe and never expose private plan inputs or health reasons.
+Social is the production social surface. `GET /v1/social/home` returns only the signed-in runner's accepted connections, joined clubs, compatible upcoming group runs, and connection-visible posts. The previous `/v1/social/together` path remains as a temporary backend alias. The client caches the last successful response for a useful offline state. Invitations, reactions, comments, club joins, and activity sharing are authenticated mutations. Compatibility explanations are share-safe and never expose private plan inputs or health reasons.
+
+The production Social header has a persistent Connections entry. Connections supports authenticated listing, name/username search, requests, acceptance, decline/cancel, and removal. Pending incoming requests also appear as contextual shortcuts on Social home. Referrals remain invitation links and do not silently create a connection.
 
 Together referral and group-run invitations are shared as a single plain-text message containing the canonical URL. Do not add a separate `URL` activity item: some messaging apps serialize that secondary clipboard representation as an extensionless Apple binary property-list attachment.
 
@@ -21,6 +23,10 @@ Core loops:
 
 ## Current iOS Shape
 
+- `Domains/Social/SocialHomeView.swift` owns the production Social home and Connections UI.
+- `Domains/Social/TogetherStore.swift` and `TogetherContracts.swift` still retain their earlier internal names while owning API-backed Social home, connection, invitation, referral, and Cheer state; rename these after external behavior stabilizes rather than maintaining a second store.
+- `Features/Simplified/SimplifiedAppShell.swift` owns the `Social · Today · Me` tab shell and routes Today's social invitation into Social.
+
 - `Social/ActivityFeedView.swift` owns the local social hub UI.
 - `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift` own Social-only models, seed data, interaction state, and Social-only recognition awards.
 - The Social module is behind the `OUTBOUND_ENABLE_SOCIAL` Swift compilation condition.
@@ -32,6 +38,8 @@ Core loops:
 - Relays can be locally composed from route, time window, and audience choices, then appear in Squad.
 - Rivals show a weekly leaderboard and a local edge-claim action.
 - Social assistant copy and Social-only recognition state are also gated behind `OUTBOUND_ENABLE_SOCIAL`; no-social build artifacts should not contain Social/Squad/Rival/Relay/Cheer strings.
+
+The feature-flagged files above are a legacy prototype, not the production Social implementation. Port useful interaction patterns into `Domains/Social` and then delete the legacy module; do not connect its local store to the backend.
 
 ## App Review Readiness
 

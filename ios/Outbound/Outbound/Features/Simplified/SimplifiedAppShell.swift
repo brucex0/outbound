@@ -4,7 +4,7 @@ import UIKit
 import Combine
 
 enum SimplifiedAppTab: Hashable {
-    case together
+    case social
     case today
     case me
 }
@@ -18,12 +18,12 @@ struct SimplifiedAppShell: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            SimplifiedTogetherView()
-                .tag(SimplifiedAppTab.together)
-                .tabItem { Label("Together", systemImage: "person.2") }
+            SocialHomeView()
+                .tag(SimplifiedAppTab.social)
+                .tabItem { Label("Social", systemImage: "person.2") }
 
             SimplifiedTodayView(onStartRun: onStartRun) {
-                selection = .together
+                selection = .social
             }
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label("Today", systemImage: "sparkles") }
@@ -904,140 +904,6 @@ private struct TodayChangeSheet: View {
     }
     private func primaryTitle(_ reason: ReadinessChoice) -> String { reason == .sore ? "Use rest day" : "Start changed run" }
     private func primaryIcon(_ reason: ReadinessChoice) -> String { reason == .sore ? "bed.double" : "figure.run" }
-}
-
-private struct SimplifiedTogetherView: View {
-    @EnvironmentObject private var togetherStore: TogetherStore
-    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    if let message = togetherStore.errorMessage {
-                        Text(message).font(.caption).foregroundStyle(.secondary)
-                    }
-
-                    if togetherStore.state.upcomingRuns.isEmpty && togetherStore.state.posts.isEmpty {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("Running is better together")
-                                    .font(.headline)
-                                Text("Invite family or friends, or join a club run that fits your plan.")
-                                    .font(.subheadline)
-                                Button {
-                                    Task {
-                                        guard let url = await togetherStore.referralInvitationURL() else { return }
-                                        await SystemSharePresenter.present(activityItems: [
-                                            "Join me for a run on Plainstride: \(url.absoluteString)",
-                                        ])
-                                    }
-                                } label: {
-                                    Label("Invite someone", systemImage: "person.badge.plus")
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                    } else {
-                        if !togetherStore.state.upcomingRuns.isEmpty {
-                            Text("UP NEXT").sectionLabel()
-                        }
-                        ForEach(togetherStore.state.upcomingRuns.prefix(2)) { run in
-                            OutboundCard {
-                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                    Text(run.club?.name ?? run.creator.displayName)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                    Text(run.title).font(.headline)
-                                    Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
-                                        .font(.subheadline).foregroundStyle(.secondary)
-                                    if let compatibility = run.compatibility {
-                                        AIExplanationView(text: compatibility.explanation)
-                                    }
-                                    HStack {
-                                        if let invitationURL = togetherStore.latestInvitationURL {
-                                            ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
-                                                Label("Share invite", systemImage: "square.and.arrow.up")
-                                            }
-                                                .buttonStyle(.borderedProminent)
-                                        } else {
-                                            Button("Invite", systemImage: "person.badge.plus") {
-                                                Task { await togetherStore.invite(to: run) }
-                                            }
-                                            .buttonStyle(.bordered)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if !togetherStore.state.clubs.isEmpty {
-                            Text("YOUR CLUBS").sectionLabel()
-                            ForEach(togetherStore.state.clubs.prefix(3)) { club in
-                                OutboundCard {
-                                    HStack {
-                                        Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
-                                        VStack(alignment: .leading) {
-                                            Text(club.name).font(.headline)
-                                            Text([club.city, club.role?.capitalized].compactMap { $0 }.joined(separator: " · "))
-                                                .font(.subheadline).foregroundStyle(.secondary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if !togetherStore.state.posts.isEmpty {
-                            Text("RECENT").sectionLabel()
-                            ForEach(togetherStore.state.posts.prefix(5)) { post in
-                                OutboundCard {
-                                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                        HStack {
-                                            Image(systemName: "person.crop.circle.fill").font(.title2)
-                                            VStack(alignment: .leading) {
-                                                Text(post.user.displayName).font(.headline)
-                                                Text(post.createdAt.formatted(.relative(presentation: .named))).font(.caption).foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        Text(post.activity?.title ?? "Run").font(.headline)
-                                        if let activity = post.activity {
-                                            HStack {
-                                                socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                                socialStat(activity.durationSecs.map { $0.formatted() } ?? "—", "Time")
-                                                socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
-                                            }
-                                        }
-                                        if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
-                                        Button("Cheer · \(post.reactions.count)", systemImage: "heart") {
-                                            Task { await togetherStore.react(to: post) }
-                                        }
-                                        .buttonStyle(.bordered)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(OutboundSpacing.screen)
-            }
-            .background(OutboundPalette.background)
-            .navigationTitle("Together")
-            .refreshable { await togetherStore.refresh() }
-        }
-    }
-
-    private func locationSuffix(_ location: String?) -> String { location.map { " · \($0)" } ?? "" }
-
-    private func socialStat(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) { Text(value).font(.subheadline.monospacedDigit().weight(.semibold)); Text(label).font(.caption).foregroundStyle(.secondary) }
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private extension Text {
-    func sectionLabel() -> some View {
-        font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-    }
 }
 
 private struct SimplifiedMeView: View {
