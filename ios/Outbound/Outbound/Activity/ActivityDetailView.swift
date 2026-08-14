@@ -11,6 +11,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
     @State private var shareURL: URL?
+    @State private var sharedReferralURL: URL?
     @State private var shareError: ShareRouteError?
     @State private var isPreparingShareCard = false
     @State private var showSplits = false
@@ -107,7 +108,7 @@ struct ActivityDetailView: View {
         .toolbar(sheetDetent == .expanded ? .hidden : .visible, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
             if let shareURL {
-                ShareSheet(activityItems: [shareURL])
+                ShareSheet(activityItems: [shareURL] + (sharedReferralURL.map { [$0] } ?? []))
             }
         }
         .alert(item: $shareError) { error in
@@ -643,7 +644,10 @@ struct ActivityDetailView: View {
         Binding(
             get: { shareURL != nil },
             set: { isPresented in
-                if !isPresented { shareURL = nil }
+                if !isPresented {
+                    shareURL = nil
+                    sharedReferralURL = nil
+                }
             }
         )
     }
@@ -653,10 +657,15 @@ struct ActivityDetailView: View {
         Task { @MainActor in
             defer { isPreparingShareCard = false }
             do {
-                shareURL = try await ActivityShareCardRenderer.exportCard(
+                let referralURL = (try? await APIClient.shared.createReferralLink())?.url
+                    ?? PlainstrideLinks.appInvitation
+                let cardURL = try await ActivityShareCardRenderer.exportCard(
                     activity: currentActivity,
-                    unitSystem: unitSystem
+                    unitSystem: unitSystem,
+                    referralURL: referralURL
                 )
+                sharedReferralURL = referralURL
+                shareURL = cardURL
             } catch {
                 shareError = ShareRouteError(message: error.localizedDescription)
             }
@@ -666,6 +675,7 @@ struct ActivityDetailView: View {
     private func shareRoute(_ format: RouteExportFormat) {
         Task {
             do {
+                sharedReferralURL = nil
                 shareURL = try await activityStore.exportRoute(for: currentActivity, format: format)
             } catch {
                 shareError = ShareRouteError(message: error.localizedDescription)

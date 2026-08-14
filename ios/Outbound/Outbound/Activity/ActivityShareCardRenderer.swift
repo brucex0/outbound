@@ -1,4 +1,5 @@
 import CoreLocation
+import CoreImage
 import MapKit
 import SwiftUI
 import UIKit
@@ -20,9 +21,19 @@ enum ActivityShareCardRenderer {
     private static let cardSize = CGSize(width: 1080, height: 1920)
 
     @MainActor
-    static func exportCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem) async throws -> URL {
+    static func exportCard(
+        activity: SavedActivity,
+        unitSystem: MeasurementUnitSystem,
+        referralURL: URL
+    ) async throws -> URL {
         let mapImage = try? await ActivityShareMapSnapshotRenderer.snapshot(for: activity, size: cardSize)
-        let card = ActivityShareCardView(activity: activity, unitSystem: unitSystem, mapImage: mapImage)
+        let qrCodeImage = makeQRCode(for: referralURL)
+        let card = ActivityShareCardView(
+            activity: activity,
+            unitSystem: unitSystem,
+            mapImage: mapImage,
+            qrCodeImage: qrCodeImage
+        )
             .frame(width: cardSize.width, height: cardSize.height)
 
         let renderer = ImageRenderer(content: card)
@@ -45,6 +56,18 @@ enum ActivityShareCardRenderer {
         let title = rawTitle.isEmpty ? "activity-\(activity.id.uuidString.prefix(8))" : rawTitle
         return "\(title)-plainstride-card.png"
     }
+
+    private static func makeQRCode(for url: URL) -> UIImage? {
+        guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(Data(url.absoluteString.utf8), forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let outputImage = filter.outputImage else { return nil }
+
+        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
 }
 
 enum ActivityShareCardError: LocalizedError {
@@ -62,6 +85,7 @@ private struct ActivityShareCardView: View {
     let activity: SavedActivity
     let unitSystem: MeasurementUnitSystem
     let mapImage: UIImage?
+    let qrCodeImage: UIImage?
 
     private var dateText: String {
         activity.startedAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year())
@@ -133,11 +157,28 @@ private struct ActivityShareCardView: View {
 
                 Spacer()
 
-                Text("PLAINSTRIDE")
-                    .font(.system(size: 44, weight: .black))
-                    .tracking(1.5)
-                    .foregroundStyle(.white)
-                    .padding(.bottom, 252)
+                VStack(alignment: .trailing, spacing: 20) {
+                    if let qrCodeImage {
+                        Image(uiImage: qrCodeImage)
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 210, height: 210)
+                            .padding(20)
+                            .background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
+                        Text("RUN WITH ME")
+                            .font(.system(size: 24, weight: .bold))
+                            .tracking(1.2)
+                            .foregroundStyle(.white.opacity(0.88))
+                    }
+
+                    Text("PLAINSTRIDE")
+                        .font(.system(size: 44, weight: .black))
+                        .tracking(1.5)
+                        .foregroundStyle(.white)
+                }
+                .padding(.bottom, 168)
             }
             .padding(.horizontal, 104)
             .padding(.bottom, 128)
