@@ -930,7 +930,6 @@ private struct SimplifiedTogetherView: View {
                                         guard let url = await togetherStore.referralInvitationURL() else { return }
                                         await SystemSharePresenter.present(activityItems: [
                                             "Join me for a run on Plainstride: \(url.absoluteString)",
-                                            url,
                                         ])
                                     }
                                 } label: {
@@ -957,7 +956,9 @@ private struct SimplifiedTogetherView: View {
                                     }
                                     HStack {
                                         if let invitationURL = togetherStore.latestInvitationURL {
-                                            ShareLink(item: invitationURL) { Label("Share invite", systemImage: "square.and.arrow.up") }
+                                            ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
+                                                Label("Share invite", systemImage: "square.and.arrow.up")
+                                            }
                                                 .buttonStyle(.borderedProminent)
                                         } else {
                                             Button("Invite", systemImage: "person.badge.plus") {

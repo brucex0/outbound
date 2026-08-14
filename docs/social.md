@@ -4,6 +4,8 @@
 
 Together is the production social surface. `GET /v1/social/together` returns only the signed-in runner's accepted connections, joined clubs, compatible upcoming group runs, and connection-visible posts. The client caches the last successful response for a useful offline state. Invitations, reactions, comments, club joins, and activity sharing are authenticated mutations. Compatibility explanations are share-safe and never expose private plan inputs or health reasons.
 
+Together referral and group-run invitations are shared as a single plain-text message containing the canonical URL. Do not add a separate `URL` activity item: some messaging apps serialize that secondary clipboard representation as an extensionless Apple binary property-list attachment.
+
 Open this when changing the Social tab, social graph concepts, feed cards, clubs, relays, challenges, or rivalry loops.
 
 ## Product Direction
