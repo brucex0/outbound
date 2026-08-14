@@ -557,6 +557,7 @@ struct RecordView: View {
                     .font(.headline)
                     .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 48)
 
             VStack(alignment: .leading) {
                 Text(intent.coachLine)
