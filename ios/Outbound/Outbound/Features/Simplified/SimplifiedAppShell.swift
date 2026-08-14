@@ -150,6 +150,9 @@ private struct SimplifiedTodayView: View {
             .onChange(of: completedActivityToday?.id) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
             }
+            .onChange(of: todayWorkoutID) { _, _ in
+                Task { await loadCompanionTodayMessage(force: true) }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { refreshCurrentDayIfNeeded() }
             }
@@ -341,7 +344,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private func companionTodayPrompt(activity: SavedActivity?) -> String {
-        let base = "What is the one most useful thing for me to know about today's training? If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan."
+        let base = "What is the one most useful thing for me to know about today's training? The workout currently displayed in the app is \(todayWorkoutName), \(todayTotalDuration), with workout ID \(todayWorkoutID). Refer to that workout, not an earlier cached plan day. If a situational signal matters, recommend the smallest safe adjustment, but do not mutate the plan."
         guard let activity else { return base }
         let distance = measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)
         return """
