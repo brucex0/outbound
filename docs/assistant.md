@@ -43,7 +43,9 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ### Activity-adjacent surfaces
 
 - Record start / pre-activity:
-  - primary jobs: suggested-session help, simple planning
+  - primary jobs: suggested-session help, simple planning, and conversational activity customization
+  - Today places the passive sparkles entry point on the activity card instead of showing a separate insight section
+  - concrete duration and effort requests update the card and its launch intent immediately
 - Live recording:
   - compact-only mode
   - primary jobs: lightweight help only

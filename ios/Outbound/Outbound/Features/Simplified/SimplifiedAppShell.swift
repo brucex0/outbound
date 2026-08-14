@@ -52,7 +52,7 @@ private struct SimplifiedTodayView: View {
     let onStartRun: (SessionIntent?) -> Void
     let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
-    @State private var showsCompanionInsight = false
+    @State private var showsActivityCompanion = false
     @State private var showsChangeSheet = false
     @State private var showsWeatherSheet = false
     @State private var companionTodayMessage: String?
@@ -60,6 +60,7 @@ private struct SimplifiedTodayView: View {
     @State private var companionActivityID: UUID?
     @State private var isCompanionInsightLoading = false
     @State private var companionRequestID: UUID?
+    @State private var customizedRunIntent: SessionIntent?
 
     var body: some View {
         NavigationStack {
@@ -80,7 +81,7 @@ private struct SimplifiedTodayView: View {
 
                     if completedActivityToday != nil {
                         Button {
-                            onStartRun(plannedRunIntent)
+                            onStartRun(activeRunIntent)
                         } label: {
                             Label("Run again", systemImage: "arrow.clockwise")
                                 .font(.subheadline.weight(.semibold))
@@ -89,12 +90,6 @@ private struct SimplifiedTodayView: View {
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
                     }
-
-                    CompanionInsightRow {
-                        showsCompanionInsight = true
-                        Task { await loadCompanionTodayMessage(force: true) }
-                    }
-                    .accessibilityHint(companionInsightMessage)
 
                     Button {
                         onStartRun(.freestyleRun)
@@ -163,12 +158,14 @@ private struct SimplifiedTodayView: View {
             )
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $showsCompanionInsight) {
-            CompanionInsightSheet(
+        .sheet(isPresented: $showsActivityCompanion) {
+            TodayActivityCompanionSheet(
                 message: companionInsightMessage,
-                isLoading: isCompanionInsightLoading
+                isLoading: isCompanionInsightLoading,
+                activity: activeRunIntent,
+                onApply: { customizedRunIntent = $0 }
             )
-                .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -179,6 +176,7 @@ private struct SimplifiedTodayView: View {
                     Text(todayWorkoutName).font(.title3.weight(.semibold))
                     Spacer()
                     Text(todayTotalDuration).font(.headline.monospacedDigit())
+                    companionButton
                     Button { showsChangeSheet = true } label: {
                         Image(systemName: "slider.horizontal.3")
                             .frame(width: 30, height: 30)
@@ -203,7 +201,7 @@ private struct SimplifiedTodayView: View {
                 )
                 CompactIntervalPreview(phases: todayPhases)
                 OutboundPrimaryButton(title: "Start run", systemImage: "figure.run") {
-                    onStartRun(plannedRunIntent)
+                    onStartRun(activeRunIntent)
                 }
             }
         }
@@ -215,9 +213,13 @@ private struct SimplifiedTodayView: View {
                 Label("Today’s run is done", systemImage: "checkmark.circle.fill")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(OutboundPalette.companion)
-                Text("Nice work. Recover well and let this one count.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Nice work. Recover well and let this one count.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    companionButton
+                }
                 HStack {
                     todayStat(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1), "Distance")
                     todayStat(durationLabel(activity.durationSecs), "Time")
@@ -231,6 +233,22 @@ private struct SimplifiedTodayView: View {
                 .tint(OutboundPalette.companion)
             }
         }
+    }
+
+    private var companionButton: some View {
+        Button {
+            showsActivityCompanion = true
+            Task { await loadCompanionTodayMessage(force: true) }
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(OutboundPalette.companion.gradient, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Ask companion about this activity")
+        .accessibilityHint("Get guidance or customize the activity conversationally")
     }
 
     private func todayStat(_ value: String, _ label: String) -> some View {
@@ -361,18 +379,23 @@ private struct SimplifiedTodayView: View {
         )
     }
 
+    private var activeRunIntent: SessionIntent {
+        customizedRunIntent ?? plannedRunIntent
+    }
+
     private var todayWorkoutID: String {
         currentCalibrationWorkout?.id ?? trainingPlanStore.todaySuggestion?.workout.id ?? plannedRunIntent.id
     }
 
     private var todayWorkoutName: String {
+        if let customizedRunIntent { return customizedRunIntent.title }
         let rawName = currentCalibrationWorkout?.title ?? trainingPlanStore.todaySuggestion?.workout.title ?? "Easy run"
         return rawName.components(separatedBy: " · ").first ?? rawName
     }
 
     private var todayTotalDuration: String {
-        let stepSeconds = plannedRunIntent.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
-        return durationLabel(stepSeconds > 0 ? stepSeconds : plannedRunIntent.targetDurationSeconds ?? 30 * 60)
+        let stepSeconds = activeRunIntent.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
+        return durationLabel(stepSeconds > 0 ? stepSeconds : activeRunIntent.targetDurationSeconds ?? 30 * 60)
     }
 
     private var todayExplanation: String {
@@ -383,6 +406,15 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPhases: [WorkoutPhaseItem] {
+        if let customizedRunIntent {
+            let seconds = customizedRunIntent.targetDurationSeconds ?? 0
+            return [WorkoutPhaseItem(
+                id: customizedRunIntent.id,
+                duration: durationLabel(seconds).replacingOccurrences(of: " min", with: "m"),
+                title: customizedRunIntent.title,
+                weight: max(1, CGFloat(seconds) / 300)
+            )]
+        }
         if let workout = currentCalibrationWorkout {
             return workout.steps.map {
                 WorkoutPhaseItem(
@@ -436,70 +468,71 @@ private struct SimplifiedTodayView: View {
     }
 }
 
-private struct CompanionInsightRow: View {
-    let onOpen: () -> Void
-
-    var body: some View {
-        Button(action: onOpen) {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
-                    .background(OutboundPalette.companion.gradient, in: Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Companion insight")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Tap for today’s guidance")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, OutboundSpacing.standard)
-            .frame(minHeight: 58)
-            .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Companion insight. Tap for today’s guidance.")
-    }
-}
-
-private struct CompanionInsightSheet: View {
+private struct TodayActivityCompanionSheet: View {
     @Environment(\.dismiss) private var dismiss
     let message: String
     let isLoading: Bool
+    let activity: SessionIntent
+    let onApply: (SessionIntent) -> Void
+    @State private var draft = ""
+    @State private var conversation: [TodayCompanionLine] = []
+    @State private var currentActivity: SessionIntent
+    @State private var isResponding = false
+
+    init(message: String, isLoading: Bool, activity: SessionIntent, onApply: @escaping (SessionIntent) -> Void) {
+        self.message = message
+        self.isLoading = isLoading
+        self.activity = activity
+        self.onApply = onApply
+        _currentActivity = State(initialValue: activity)
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    Label("Today’s guidance", systemImage: "sparkles")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(OutboundPalette.companion)
+                    activitySummary
                     if isLoading {
                         HStack(spacing: OutboundSpacing.compact) {
                             ProgressView()
-                            Text("Updating with your latest activity…")
+                            Text("Looking at today’s activity…")
                                 .foregroundStyle(.secondary)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Text(message)
-                            .font(.body)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(OutboundPalette.companion.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+                    }
+
+                    ForEach(conversation) { line in
+                        Text(line.text)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: line.isUser ? .trailing : .leading)
+                            .background(
+                                line.isUser ? OutboundPalette.companion.opacity(0.18) : Color(.secondarySystemBackground),
+                                in: RoundedRectangle(cornerRadius: 14)
+                            )
+                    }
+                    if isResponding {
+                        ProgressView().controlSize(.small)
                     }
                 }
                 .padding(OutboundSpacing.screen)
             }
-            .navigationTitle("Your companion")
+            .safeAreaInset(edge: .bottom) {
+                HStack(alignment: .bottom, spacing: 10) {
+                    TextField("Try “Make it 20 minutes and easy”", text: $draft, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(1...3)
+                    Button(action: send) {
+                        Image(systemName: "arrow.up.circle.fill").font(.system(size: 30))
+                    }
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding)
+                }
+                .padding()
+                .background(.thinMaterial)
+            }
+            .navigationTitle("Adjust with companion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -508,6 +541,110 @@ private struct CompanionInsightSheet: View {
             }
         }
     }
+
+    private var activitySummary: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(OutboundPalette.companion.gradient, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(currentActivity.title).font(.headline)
+                Text(currentActivity.detail).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: currentActivity.id)
+    }
+
+    private func send() {
+        let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else { return }
+        draft = ""
+        conversation.append(TodayCompanionLine(text: prompt, isUser: true))
+
+        if let adjusted = adjustedActivity(for: prompt) {
+            currentActivity = adjusted
+            onApply(adjusted)
+            conversation.append(TodayCompanionLine(
+                text: "Done — I updated the activity card to \(adjusted.title). You can keep refining it here or start when ready.",
+                isUser: false
+            ))
+        }
+
+        isResponding = true
+        Task {
+            let response = try? await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
+                task: .adaptToday,
+                surface: .today,
+                prompt: "The user is customizing today's activity conversationally. Current activity: \(currentActivity.title), \(currentActivity.detail). Request: \(prompt). Give a concise, useful response.",
+                conversationKey: "ios-today-activity-customization",
+                recentMessages: conversation.suffix(6).map {
+                    CompanionPriorMessageDTO(role: $0.isUser ? "user" : "assistant", text: $0.text)
+                },
+                currentEntityIds: [currentActivity.id],
+                clientCapabilities: ["activity-ui-customization", "plan-adjustment-confirmation", "context-receipt"],
+                isOffline: false,
+                timeZoneIdentifier: TimeZone.current.identifier,
+                signals: []
+            ))
+            if adjustedActivity(for: prompt) == nil {
+                conversation.append(TodayCompanionLine(
+                    text: response?.message ?? "Tell me a duration or effort—like “25 minutes,” “easy,” or “tempo”—and I’ll update the card.",
+                    isUser: false
+                ))
+            }
+            isResponding = false
+        }
+    }
+
+    private func adjustedActivity(for prompt: String) -> SessionIntent? {
+        let normalized = prompt.lowercased()
+        let minutes = firstNumber(in: normalized).flatMap { (5...240).contains($0) ? $0 : nil }
+        let effort: (title: String, detail: String, coach: String)? = {
+            if normalized.contains("recovery") || normalized.contains("very easy") {
+                return ("Recovery run", "very easy", "Keep this restorative and finish feeling better than you started.")
+            }
+            if normalized.contains("easy") || normalized.contains("easier") {
+                return ("Easy run", "conversational effort", "Relax the pace and keep the effort conversational.")
+            }
+            if normalized.contains("tempo") || normalized.contains("harder") {
+                return ("Tempo run", "comfortably hard", "Stay controlled; this should feel strong, not all-out.")
+            }
+            return nil
+        }()
+        guard minutes != nil || effort != nil else { return nil }
+
+        let totalSeconds = (minutes ?? currentMinutes) * 60
+        let title = effort?.title ?? currentActivity.title
+        return SessionIntent(
+            id: "companion-\(UUID().uuidString)",
+            sport: currentActivity.sport,
+            title: title,
+            detail: "\(currentActivity.sport.displayName) · \(totalSeconds / 60) min · \(effort?.detail ?? "customized")",
+            coachLine: effort?.coach ?? currentActivity.coachLine,
+            startLabel: "Start activity",
+            targetDistanceMeters: currentActivity.targetDistanceMeters,
+            targetDurationSeconds: totalSeconds,
+            routeName: currentActivity.routeName,
+            workoutSteps: []
+        )
+    }
+
+    private var currentMinutes: Int {
+        let seconds = currentActivity.targetDurationSeconds
+            ?? currentActivity.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
+        return max(5, seconds / 60)
+    }
+
+    private func firstNumber(in text: String) -> Int? {
+        text.split { !$0.isNumber }.compactMap { Int($0) }.first
+    }
+}
+
+private struct TodayCompanionLine: Identifiable {
+    let id = UUID()
+    let text: String
+    let isUser: Bool
 }
 
 private struct TodayWeatherRow: View {
