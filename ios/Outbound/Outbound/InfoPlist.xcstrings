@@ -222,7 +222,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride usa el micrófono para comandos de actividad por voz y el audio del compañero durante los entrenamientos."
+            "value" : "Plainstride usa el micrófono para los comandos de voz y las indicaciones de tu compañero durante los entrenamientos."
           }
         },
         "zh-Hans" : {
@@ -268,7 +268,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride usa el reconocimiento de voz para convertir comandos breves en actividades preparadas."
+            "value" : "Plainstride usa el reconocimiento de voz para convertir comandos breves en actividades listas para empezar."
           }
         },
         "zh-Hans" : {

@@ -2,17 +2,17 @@
   "sourceLanguage": "en",
   "strings": {
     "": {},
-    "A moment worth noticing": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Un momento digno de atención"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"值得留意的一刻"}}}},
+    "A moment worth noticing": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Un momento que vale la pena destacar"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"值得留意的一刻"}}}},
     "Companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"跑步伙伴"}}}},
     "Companion style": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Estilo del compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"伙伴风格"}}}},
-    "Here is what your companion understood.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Esto es lo que entendió tu compañero."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这是你的伙伴所理解的内容。"}}}},
+    "Here is what your companion understood.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Esto es lo que ha entendido tu compañero."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这是你的伙伴所理解的内容。"}}}},
     "Recommended plans": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Planes recomendados"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"推荐计划"}}}},
-    "Set up my companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Configurar mi compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"设置跑步伙伴"}}}},
-    "Spoken Updates": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Actualizaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音播报"}}}},
+    "Set up my companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Configurar compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"设置跑步伙伴"}}}},
+    "Spoken Updates": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Indicaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音播报"}}}},
     "Tell us the real story. Your companion will turn it into a first session and a plan that fits.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos tu situación real. Tu compañero la convertirá en una primera sesión y un plan a tu medida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你的真实情况。你的伙伴会据此制定适合你的首次训练和计划。"}}}},
-    "Tell us where you are starting.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos desde dónde empiezas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你目前的跑步状态。"}}}},
-    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"La frecuencia de actualización controla cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en vivo del ritmo, el tiempo y la distancia durante una actividad."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"播报频率决定跑步伙伴在训练中提供语音提示，以及播报配速、时间和距离的频率。"}}}},
-    "Voice, style, and spoken update frequency": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Voz, estilo y frecuencia de actualizaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音、风格和播报频率"}}}},
+    "Tell us where you are starting.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos cuál es tu punto de partida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你目前的跑步状态。"}}}},
+    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"La frecuencia determina cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en directo de ritmo, tiempo y distancia durante una actividad."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"播报频率决定跑步伙伴在训练中提供语音提示，以及播报配速、时间和距离的频率。"}}}},
+    "Voice, style, and spoken update frequency": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Voz, estilo y frecuencia de las indicaciones"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音、风格和播报频率"}}}},
     "What should we focus on this week?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿En qué deberíamos centrarnos esta semana?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"本周重点是什么？"}}}},
     "What should your running companion help you do first?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿Qué debería ayudarte a hacer primero tu compañero de running?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你希望跑步伙伴先帮助你做什么？"}}}},
     "Your companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的跑步伙伴"}}}},
@@ -114,7 +114,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ antes de la retirada recomendada"
+            "value": "%@ hasta la retirada recomendada"
           }
         },
         "zh-Hans": {
@@ -130,7 +130,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "confianza %@"
+            "value": "Confianza: %@"
           }
         },
         "zh-Hans": {
@@ -146,7 +146,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Foto de perfil %@"
+            "value": "Foto de perfil de %@"
           }
         },
         "zh-Hans": {
@@ -244,7 +244,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld habilitado"
+            "value": "%lld activos"
           }
         },
         "zh-Hans": {
@@ -330,7 +330,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lldx / semana"
+            "value": "%lld veces por semana"
           }
         },
         "zh-Hans": {
@@ -368,7 +368,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "+%1$lld más reconocimiento%2$@ listo cuando guardas."
+            "value": "Al guardar tendrás %1$lld reconocimiento%2$@ más."
           }
         },
         "zh-Hans": {
@@ -400,7 +400,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "3+ veces por semana"
+            "value": "3 o más veces por semana"
           }
         },
         "zh-Hans": {
@@ -512,7 +512,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un miembro de la familia tiene una carrera fácil compatible."
+            "value": "Un familiar tiene una carrera suave compatible con la tuya."
           }
         },
         "zh-Hans": {
@@ -528,7 +528,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una estimación inicial es suficiente. Tus carreras lo harán más preciso."
+            "value": "Una estimación inicial es suficiente. Tus carreras ayudarán a mejorarla."
           }
         },
         "zh-Hans": {
@@ -544,7 +544,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acerca de %lld min de lunes a viernes"
+            "value": "Unos %lld min entre semana"
           }
         },
         "zh-Hans": {
@@ -608,7 +608,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "plan activo"
+            "value": "Plan activo"
           }
         },
         "zh-Hans": {
@@ -794,7 +794,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agregar"
+            "value": "Añadir"
           }
         },
         "zh-Hans": {
@@ -842,7 +842,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agregue zapatillas en Configuración para realizar un seguimiento del kilometraje por par."
+            "value": "Añade zapatillas en Ajustes para registrar el kilometraje de cada par."
           }
         },
         "zh-Hans": {
@@ -858,7 +858,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agrega a alguien en quien confíes. Plainstride los usará como destinatario predeterminado cuando active Compartir carrera en vivo."
+            "value": "Añade a alguien de confianza. Plainstride será quien reciba por defecto tus carreras en directo."
           }
         },
         "zh-Hans": {
@@ -874,7 +874,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agregar contacto de confianza"
+            "value": "Añadir contacto de confianza"
           }
         },
         "zh-Hans": {
@@ -890,7 +890,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agregue su par actual y Plainstride lo adjuntará a nuevas carreras de forma predeterminada."
+            "value": "Añade tu par actual y Plainstride lo asociará por defecto a las carreras nuevas."
           }
         },
         "zh-Hans": {
@@ -922,7 +922,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Después de cada carrera, un toque opcional le dice a Plainstride lo que los números por sí solos no pueden."
+            "value": "Después de cada carrera, un toque opcional le cuenta a Plainstride lo que los números no pueden expresar."
           }
         },
         "zh-Hans": {
@@ -1002,7 +1002,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "música de manzana"
+            "value": "Apple Music"
           }
         },
         "zh-Hans": {
@@ -1018,7 +1018,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pida un plan, una explicación rápida o ayuda para salir del estancamiento."
+            "value": "Pide un plan, una explicación breve o ayuda para avanzar."
           }
         },
         "zh-Hans": {
@@ -1034,7 +1034,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "pide ayuda"
+            "value": "Pedir ayuda"
           }
         },
         "zh-Hans": {
@@ -1120,7 +1120,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Equilibrado"
+            "value": "Moderado"
           }
         },
         "zh-Hans": {
@@ -1136,7 +1136,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Base"
+            "value": "Nivel inicial"
           }
         },
         "zh-Hans": {
@@ -1152,7 +1152,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "antes de correr"
+            "value": "Antes de correr"
           }
         },
         "zh-Hans": {
@@ -1168,7 +1168,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mejor juntos"
+            "value": "Juntos llegamos más lejos"
           }
         },
         "zh-Hans": {
@@ -1184,7 +1184,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bicicleta"
+            "value": "Ciclismo"
           }
         },
         "zh-Hans": {
@@ -1200,7 +1200,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "perfil corporal"
+            "value": "Datos físicos"
           }
         },
         "zh-Hans": {
@@ -1216,7 +1216,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crear constancia"
+            "value": "Ganar constancia"
           }
         },
         "zh-Hans": {
@@ -1232,7 +1232,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Construir mi primera semana"
+            "value": "Crear mi primera semana"
           }
         },
         "zh-Hans": {
@@ -1280,7 +1280,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Capturar foto"
+            "value": "Tomar foto"
           }
         },
         "zh-Hans": {
@@ -1328,7 +1328,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "cambiarlo"
+            "value": "Cambiarlo"
           }
         },
         "zh-Hans": {
@@ -1360,7 +1360,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "cambiarse de zapatillas"
+            "value": "Cambiar zapatillas"
           }
         },
         "zh-Hans": {
@@ -1424,7 +1424,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elija Correo, Mensajes u otra aplicación para enviar el informe al equipo de Plainstride."
+            "value": "Elige Mail, Mensajes u otra app para enviar el informe al equipo de Plainstride."
           }
         },
         "zh-Hans": {
@@ -1456,7 +1456,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elija lo que parezca realista, no ideal."
+            "value": "Elige lo que sea realista, no lo ideal."
           }
         },
         "zh-Hans": {
@@ -1472,7 +1472,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claro"
+            "value": "Borrar"
           }
         },
         "zh-Hans": {
@@ -1488,7 +1488,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca"
+            "value": "Cerrar"
           }
         },
         "zh-Hans": {
@@ -1632,7 +1632,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Contraer carrera de grupo"
+            "value": "Contraer carrera en grupo"
           }
         },
         "zh-Hans": {
@@ -1664,7 +1664,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "carrera cómoda"
+            "value": "Carrera suave"
           }
         },
         "zh-Hans": {
@@ -1680,7 +1680,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carrera cómoda · %lld min"
+            "value": "Carrera suave · %lld min"
           }
         },
         "zh-Hans": {
@@ -1696,7 +1696,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Información complementaria"
+            "value": "Observación del compañero"
           }
         },
         "zh-Hans": {
@@ -1712,7 +1712,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Información complementaria: %@"
+            "value": "Observación del compañero: %@"
           }
         },
         "zh-Hans": {
@@ -1728,7 +1728,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Información complementaria. Toque para obtener orientación de hoy."
+            "value": "Tu compañero ha detectado algo. Toca para ver la recomendación de hoy."
           }
         },
         "zh-Hans": {
@@ -1744,7 +1744,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Complete su perfil y algunas carreras para construir un modelo de corredor transparente."
+            "value": "Completa tu perfil y algunas carreras para crear un modelo de corredor claro y transparente."
           }
         },
         "zh-Hans": {
@@ -1760,7 +1760,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Condiciones no disponibles"
+            "value": "Condiciones no disponibles por ahora"
           }
         },
         "zh-Hans": {
@@ -1776,7 +1776,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conectar Apple"
+            "value": "Continuar con Apple"
           }
         },
         "zh-Hans": {
@@ -1792,7 +1792,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conecta Google"
+            "value": "Continuar con Google"
           }
         },
         "zh-Hans": {
@@ -1840,7 +1840,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Correcto"
+            "value": "Corregir"
           }
         },
         "zh-Hans": {
@@ -1856,7 +1856,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corrija cualquier cosa volviendo atrás. Plainstride seguirá aprendiendo después de la configuración."
+            "value": "Vuelve atrás para corregir lo que necesites. Plainstride seguirá aprendiendo después de la configuración."
           }
         },
         "zh-Hans": {
@@ -1872,7 +1872,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Memoria correcta"
+            "value": "Corregir información"
           }
         },
         "zh-Hans": {
@@ -1952,7 +1952,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Curado"
+            "value": "Seleccionado"
           }
         },
         "zh-Hans": {
@@ -1968,7 +1968,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan curado"
+            "value": "Plan seleccionado"
           }
         },
         "zh-Hans": {
@@ -2016,7 +2016,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Orientación adaptada al ciclo"
+            "value": "Orientación según el ciclo"
           }
         },
         "zh-Hans": {
@@ -2032,7 +2032,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La orientación adaptada al ciclo está desactivada"
+            "value": "La orientación según el ciclo está desactivada"
           }
         },
         "zh-Hans": {
@@ -2128,7 +2128,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrega"
+            "value": "Método de envío"
           }
         },
         "zh-Hans": {
@@ -2224,7 +2224,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bicicleta de distancia"
+            "value": "Ciclismo por distancia"
           }
         },
         "zh-Hans": {
@@ -2272,7 +2272,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hecho"
+            "value": "Listo"
           }
         },
         "zh-Hans": {
@@ -2288,7 +2288,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Duración en minutos"
+            "value": "Duración (minutos)"
           }
         },
         "zh-Hans": {
@@ -2304,7 +2304,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Más fácil"
+            "value": "Más suave"
           }
         },
         "zh-Hans": {
@@ -2320,7 +2320,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fácil + recogidas"
+            "value": "Carrera suave + aceleraciones"
           }
         },
         "zh-Hans": {
@@ -2416,7 +2416,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Habilite la cámara para Plainstride en Configuración para grabar con la vista previa en vivo."
+            "value": "Activa la cámara para Plainstride en Ajustes para grabar con la vista previa en directo."
           }
         },
         "zh-Hans": {
@@ -2464,7 +2464,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "plano final"
+            "value": "Finalizar plan"
           }
         },
         "zh-Hans": {
@@ -2496,7 +2496,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ampliar carrera grupal"
+            "value": "Expandir carrera en grupo"
           }
         },
         "zh-Hans": {
@@ -2512,7 +2512,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ampliar la configuración del calzado"
+            "value": "Expandir ajustes de zapatillas"
           }
         },
         "zh-Hans": {
@@ -2544,7 +2544,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rostro"
+            "value": "Apariencia"
           }
         },
         "zh-Hans": {
@@ -2560,7 +2560,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tipo de retroalimentación"
+            "value": "Tipo de comentario"
           }
         },
         "zh-Hans": {
@@ -2608,7 +2608,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Terminar actividad"
+            "value": "Finalizar actividad"
           }
         },
         "zh-Hans": {
@@ -2688,7 +2688,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Olvidar"
+            "value": "Eliminar"
           }
         },
         "zh-Hans": {
@@ -2720,7 +2720,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "GRAMO"
+            "value": "G"
           }
         },
         "zh-Hans": {
@@ -2736,7 +2736,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Engranaje"
+            "value": "Equipo"
           }
         },
         "zh-Hans": {
@@ -2752,7 +2752,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se sugiere un entrenamiento más suave."
+            "value": "Se recomienda un entrenamiento más suave"
           }
         },
         "zh-Hans": {
@@ -2784,7 +2784,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conociendo tu carrera"
+            "value": "Conociendo cómo corres"
           }
         },
         "zh-Hans": {
@@ -2800,7 +2800,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Meta"
+            "value": "Objetivo"
           }
         },
         "zh-Hans": {
@@ -2832,7 +2832,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "carrera en grupo"
+            "value": "Carrera en grupo"
           }
         },
         "zh-Hans": {
@@ -2848,7 +2848,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Más difícil"
+            "value": "Más exigente"
           }
         },
         "zh-Hans": {
@@ -2992,7 +2992,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Cómo se sintió eso?"
+            "value": "¿Cómo te sentiste?"
           }
         },
         "zh-Hans": {
@@ -3008,7 +3008,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Incluir detalles de la aplicación y el dispositivo"
+            "value": "Incluir información de la app y el dispositivo"
           }
         },
         "zh-Hans": {
@@ -3024,7 +3024,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Integraciones"
+            "value": "Servicios conectados"
           }
         },
         "zh-Hans": {
@@ -3072,7 +3072,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enlace o token de invitación"
+            "value": "Enlace o código de invitación"
           }
         },
         "zh-Hans": {
@@ -3088,7 +3088,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "invitar a alguien"
+            "value": "Invitar a alguien"
           }
         },
         "zh-Hans": {
@@ -3120,7 +3120,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unirse a la carrera grupal"
+            "value": "Unirse a la carrera en grupo"
           }
         },
         "zh-Hans": {
@@ -3136,7 +3136,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unión..."
+            "value": "Uniéndote…"
           }
         },
         "zh-Hans": {
@@ -3152,7 +3152,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantener original"
+            "value": "Mantener el plan original"
           }
         },
         "zh-Hans": {
@@ -3168,7 +3168,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aprende resistencia y recuperación."
+            "value": "Conocer tu resistencia y recuperación"
           }
         },
         "zh-Hans": {
@@ -3184,7 +3184,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aprende tu esfuerzo fácil y natural"
+            "value": "Conocer tu intensidad suave natural"
           }
         },
         "zh-Hans": {
@@ -3200,7 +3200,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dejar"
+            "value": "Salir"
           }
         },
         "zh-Hans": {
@@ -3216,7 +3216,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dejar compartir grupo"
+            "value": "Dejar de compartir con el grupo"
           }
         },
         "zh-Hans": {
@@ -3232,7 +3232,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Construyamos algo que puedas repetir."
+            "value": "Creemos algo que puedas repetir."
           }
         },
         "zh-Hans": {
@@ -3248,7 +3248,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hagamos que la semana sea tiempo de pie, no presión."
+            "value": "Esta semana, céntrate en sumar tiempo corriendo, no presión."
           }
         },
         "zh-Hans": {
@@ -3296,7 +3296,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando planos..."
+            "value": "Cargando planes…"
           }
         },
         "zh-Hans": {
@@ -3312,7 +3312,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando entrenamientos recientes..."
+            "value": "Cargando entrenamientos recientes…"
           }
         },
         "zh-Hans": {
@@ -3328,7 +3328,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando tu modelo de corredor..."
+            "value": "Cargando tu modelo de corredor…"
           }
         },
         "zh-Hans": {
@@ -3366,7 +3366,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ciérrelo"
+            "value": "Confirmar"
           }
         },
         "zh-Hans": {
@@ -3382,7 +3382,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carrera relajada más larga"
+            "value": "Carrera suave más larga"
           }
         },
         "zh-Hans": {
@@ -3398,7 +3398,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las carreras guardadas más largas desbloquean más distancias PR."
+            "value": "Las carreras más largas desbloquean más distancias para tus marcas personales."
           }
         },
         "zh-Hans": {
@@ -3414,7 +3414,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hazlo más fácil"
+            "value": "Hazlo más suave"
           }
         },
         "zh-Hans": {
@@ -3462,7 +3462,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Marcar captura de pantalla"
+            "value": "Anotar captura de pantalla"
           }
         },
         "zh-Hans": {
@@ -3478,7 +3478,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Max %lld"
+            "value": "Máx. %lld"
           }
         },
         "zh-Hans": {
@@ -3494,7 +3494,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A mí"
+            "value": "Perfil"
           }
         },
         "zh-Hans": {
@@ -3510,7 +3510,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Medición"
+            "value": "Unidades"
           }
         },
         "zh-Hans": {
@@ -3630,7 +3630,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Más desafío"
+            "value": "Más exigencia"
           }
         },
         "zh-Hans": {
@@ -3694,7 +3694,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Moverse por tiempo"
+            "value": "Entrenar por tiempo"
           }
         },
         "zh-Hans": {
@@ -3774,7 +3774,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nombre y biografía de carrera"
+            "value": "Nombre y perfil de running"
           }
         },
         "zh-Hans": {
@@ -3790,7 +3790,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buen trabajo. Recuperate bien y deja que este cuente."
+            "value": "Buen trabajo. Recupérate bien y deja que esta sesión cuente."
           }
         },
         "zh-Hans": {
@@ -3838,7 +3838,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se requiere ninguna prueba total. Estas son carreras de entrenamiento normales."
+            "value": "No hace falta ninguna prueba al máximo. Son carreras de entrenamiento normales."
           }
         },
         "zh-Hans": {
@@ -3870,7 +3870,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se necesita cambio"
+            "value": "No hace falta cambiar nada"
           }
         },
         "zh-Hans": {
@@ -3886,7 +3886,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin objetivo preestablecido. Toca Iniciar y muévete sintiendo."
+            "value": "Sin objetivo preestablecido. Toca «Iniciar» y muévete por sensaciones."
           }
         },
         "zh-Hans": {
@@ -3918,7 +3918,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay sesión programada para hoy"
+            "value": "No hay entrenamiento programado para hoy"
           }
         },
         "zh-Hans": {
@@ -3982,7 +3982,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no corro"
+            "value": "Aún no has empezado a correr"
           }
         },
         "zh-Hans": {
@@ -4014,7 +4014,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada aprendido todavía"
+            "value": "Aún no hay información"
           }
         },
         "zh-Hans": {
@@ -4046,7 +4046,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Observar correr más rápido y controlado"
+            "value": "Conocer tu ritmo rápido controlado"
           }
         },
         "zh-Hans": {
@@ -4110,7 +4110,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un toque ayuda a su compañero a adaptar %@ al día de hoy."
+            "value": "Un toque ayuda a tu compañero a adaptar %@ a cómo te sientes hoy."
           }
         },
         "zh-Hans": {
@@ -4126,7 +4126,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "asistente abierto"
+            "value": "Abrir asistente"
           }
         },
         "zh-Hans": {
@@ -4142,7 +4142,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Detalles del plan abierto"
+            "value": "Abrir detalles del plan"
           }
         },
         "zh-Hans": {
@@ -4158,7 +4158,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abriendo %@. Toque Iniciar cuando esté listo."
+            "value": "Abriendo %@. Toca «Iniciar» cuando estés listo."
           }
         },
         "zh-Hans": {
@@ -4190,7 +4190,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opcional y privado. Plainstride almacena estas entradas solo en este dispositivo y envía solo una señal de entrenamiento genérica cuando se solicita la adaptación."
+            "value": "Opcional y privado. Plainstride guarda estos datos solo en este dispositivo y, al solicitar un ajuste, envía únicamente una señal genérica de entrenamiento."
           }
         },
         "zh-Hans": {
@@ -4206,7 +4206,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opcional. Plainstride pregunta después de los entrenamientos cuando tu respuesta puede mejorar el plan."
+            "value": "Opcional. Plainstride solo pregunta después de un entrenamiento cuando tu respuesta puede mejorar el plan."
           }
         },
         "zh-Hans": {
@@ -4270,7 +4270,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pegue la invitación a correr en grupo Plainstride de otro corredor."
+            "value": "Pega la invitación de Plainstride a una carrera en grupo que te haya enviado otro corredor."
           }
         },
         "zh-Hans": {
@@ -4302,7 +4302,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "pausar la música"
+            "value": "Pausar música"
           }
         },
         "zh-Hans": {
@@ -4334,7 +4334,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Período hoy"
+            "value": "Hoy tienes el periodo"
           }
         },
         "zh-Hans": {
@@ -4414,7 +4414,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "zancada llana"
+            "value": "Plainstride"
           }
         },
         "zh-Hans": {
@@ -4430,7 +4430,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "PASO LLANO"
+            "value": "PLAINSTRIDE"
           }
         },
         "zh-Hans": {
@@ -4446,7 +4446,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride mantiene datos de salud privados en este dispositivo y nunca los muestra en Together."
+            "value": "Plainstride mantiene tus datos de salud privados en este dispositivo y nunca los muestra en Comunidad."
           }
         },
         "zh-Hans": {
@@ -4462,7 +4462,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride utiliza la ubicación aproximada para este pronóstico. Los consejos meteorológicos no cambian automáticamente su plan."
+            "value": "Plainstride usa tu ubicación aproximada para este pronóstico. Las recomendaciones meteorológicas no cambian automáticamente tu plan."
           }
         },
         "zh-Hans": {
@@ -4478,7 +4478,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Planificar acciones"
+            "value": "Acciones del plan"
           }
         },
         "zh-Hans": {
@@ -4526,7 +4526,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los detalles del plan se están sincronizando"
+            "value": "Sincronizando los detalles del plan"
           }
         },
         "zh-Hans": {
@@ -4542,7 +4542,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forma del plano"
+            "value": "Estructura del plan"
           }
         },
         "zh-Hans": {
@@ -4558,7 +4558,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tocar música"
+            "value": "Reproducir música"
           }
         },
         "zh-Hans": {
@@ -4574,7 +4574,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara un paseo en bicicleta ${distance}"
+            "value": "Preparar un recorrido en bicicleta de ${distance}"
           }
         },
         "zh-Hans": {
@@ -4606,7 +4606,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara un paseo en bicicleta ${duration}"
+            "value": "Preparar un recorrido en bicicleta de ${duration}"
           }
         },
         "zh-Hans": {
@@ -4638,7 +4638,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara una actividad en bicicleta Plainstride con un objetivo de distancia."
+            "value": "Preparar en Plainstride una actividad de ciclismo con objetivo de distancia."
           }
         },
         "zh-Hans": {
@@ -4654,7 +4654,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepare una actividad en bicicleta Plainstride con un objetivo de tiempo."
+            "value": "Preparar en Plainstride una actividad de ciclismo con objetivo de tiempo."
           }
         },
         "zh-Hans": {
@@ -4670,7 +4670,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara una carrera Plainstride con un objetivo de distancia."
+            "value": "Preparar en Plainstride una carrera con objetivo de distancia."
           }
         },
         "zh-Hans": {
@@ -4686,7 +4686,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara una carrera Plainstride con un objetivo de tiempo."
+            "value": "Preparar en Plainstride una carrera con objetivo de tiempo."
           }
         },
         "zh-Hans": {
@@ -4702,7 +4702,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepare una actividad abierta en bicicleta Plainstride."
+            "value": "Preparar en Plainstride una actividad de ciclismo sin objetivo."
           }
         },
         "zh-Hans": {
@@ -4718,7 +4718,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prepara una carrera abierta de Plainstride."
+            "value": "Preparar en Plainstride una carrera sin objetivo."
           }
         },
         "zh-Hans": {
@@ -4734,7 +4734,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "preparar bicicleta"
+            "value": "Preparar ciclismo"
           }
         },
         "zh-Hans": {
@@ -4750,7 +4750,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar bicicleta de distancia"
+            "value": "Preparar ciclismo por distancia"
           }
         },
         "zh-Hans": {
@@ -4766,7 +4766,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar carrera de distancia"
+            "value": "Preparar carrera por distancia"
           }
         },
         "zh-Hans": {
@@ -4798,7 +4798,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar bicicleta cronometrada"
+            "value": "Preparar ciclismo por tiempo"
           }
         },
         "zh-Hans": {
@@ -4814,7 +4814,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparar carrera cronometrada"
+            "value": "Preparar carrera por tiempo"
           }
         },
         "zh-Hans": {
@@ -4830,7 +4830,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparante"
+            "value": "Preparando"
           }
         },
         "zh-Hans": {
@@ -4958,7 +4958,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirección push o etiqueta del dispositivo"
+            "value": "Dirección de notificaciones push o nombre del dispositivo"
           }
         },
         "zh-Hans": {
@@ -5054,7 +5054,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "FRECUENCIA RECIENTE"
+            "value": "FRECUENCIA RECIENTE DE CARRERA"
           }
         },
         "zh-Hans": {
@@ -5086,7 +5086,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "carreras RECIENTES"
+            "value": "CARRERAS RECIENTES"
           }
         },
         "zh-Hans": {
@@ -5102,7 +5102,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mapa reciente"
+            "value": "Centrar mapa"
           }
         },
         "zh-Hans": {
@@ -5124,7 +5124,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Destinatario: %1$@ (talón %2$@ + hoja de compartir)"
+            "value": "Destinatario: %1$@ (%2$@ aún no disponible; se abrirá el menú Compartir)"
           }
         },
         "zh-Hans": {
@@ -5140,7 +5140,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Destinatario: elegir en hoja de compartir"
+            "value": "Destinatario: elegir en el menú Compartir"
           }
         },
         "zh-Hans": {
@@ -5172,7 +5172,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualizar condiciones"
+            "value": "Actualizar condiciones locales"
           }
         },
         "zh-Hans": {
@@ -5188,7 +5188,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Planes refrescantes"
+            "value": "Actualizando planes"
           }
         },
         "zh-Hans": {
@@ -5252,7 +5252,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reiniciar"
+            "value": "Restablecer"
           }
         },
         "zh-Hans": {
@@ -5300,7 +5300,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirar alrededor de"
+            "value": "Distancia de retirada"
           }
         },
         "zh-Hans": {
@@ -5316,7 +5316,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirar zapatilla"
+            "value": "Retirar zapatillas"
           }
         },
         "zh-Hans": {
@@ -5402,7 +5402,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Corre de nuevo"
+            "value": "Volver a correr"
           }
         },
         "zh-Hans": {
@@ -5482,7 +5482,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Correr es mejor juntos"
+            "value": "Juntos llegamos más lejos"
           }
         },
         "zh-Hans": {
@@ -5498,7 +5498,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Regreso seguro"
+            "value": "Volver con seguridad"
           }
         },
         "zh-Hans": {
@@ -5530,7 +5530,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Empujones de muestra"
+            "value": "Ejemplos de indicaciones"
           }
         },
         "zh-Hans": {
@@ -5546,7 +5546,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ahorrar"
+            "value": "Guardar"
           }
         },
         "zh-Hans": {
@@ -5562,7 +5562,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guarde algunas carreras con distancias limpias para estimar los rangos de carrera."
+            "value": "Guarda varias carreras con distancias completas para estimar tus posibles marcas."
           }
         },
         "zh-Hans": {
@@ -5594,7 +5594,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guardar plan y ve a Mi"
+            "value": "Guardar plan e ir a Perfil"
           }
         },
         "zh-Hans": {
@@ -5626,7 +5626,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guarde su primera actividad para comenzar a crear estadísticas."
+            "value": "Guarda tu primera actividad para empezar a crear estadísticas."
           }
         },
         "zh-Hans": {
@@ -5642,7 +5642,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ahorro…"
+            "value": "Guardando…"
           }
         },
         "zh-Hans": {
@@ -5738,7 +5738,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seleccione %@"
+            "value": "Seleccionar %@"
           }
         },
         "zh-Hans": {
@@ -5818,7 +5818,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Colocar"
+            "value": "Establecer"
           }
         },
         "zh-Hans": {
@@ -5898,7 +5898,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Comparte tantos detalles como puedas"
+            "value": "Comparte todos los detalles que puedas"
           }
         },
         "zh-Hans": {
@@ -5930,7 +5930,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Comparte carreras en vivo más rápido"
+            "value": "Comparte carreras en directo más rápido"
           }
         },
         "zh-Hans": {
@@ -6042,7 +6042,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "desconectar"
+            "value": "Cerrar sesión"
           }
         },
         "zh-Hans": {
@@ -6058,7 +6058,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desconectar"
+            "value": "Cerrar sesión"
           }
         },
         "zh-Hans": {
@@ -6138,7 +6138,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saltar el check-in"
+            "value": "Omitir registro"
           }
         },
         "zh-Hans": {
@@ -6154,7 +6154,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saltar configuración"
+            "value": "Omitir configuración"
           }
         },
         "zh-Hans": {
@@ -6170,7 +6170,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saltar pista"
+            "value": "Siguiente canción"
           }
         },
         "zh-Hans": {
@@ -6186,7 +6186,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los SMS y la entrega push están bloqueados en el servidor por ahora. Plainstride seguirá abriendo la hoja de compartir del sistema cuando comience una carrera en vivo."
+            "value": "El envío por SMS y notificaciones push aún no está disponible. Plainstride abrirá el menú Compartir del sistema cuando empiece una carrera en directo."
           }
         },
         "zh-Hans": {
@@ -6202,7 +6202,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hablar comando de actividad"
+            "value": "Decir comando de actividad"
           }
         },
         "zh-Hans": {
@@ -6250,7 +6250,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicio alternativo: %@"
+            "value": "Iniciar alternativa: %@"
           }
         },
         "zh-Hans": {
@@ -6282,7 +6282,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "empezar a correr"
+            "value": "Empezar a correr"
           }
         },
         "zh-Hans": {
@@ -6298,7 +6298,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Empieza la sesión de hoy"
+            "value": "Empezar el entrenamiento de hoy"
           }
         },
         "zh-Hans": {
@@ -6346,7 +6346,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forma física constante"
+            "value": "Mejorar la forma física"
           }
         },
         "zh-Hans": {
@@ -6362,7 +6362,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "deja de escuchar"
+            "value": "Detener reconocimiento de voz"
           }
         },
         "zh-Hans": {
@@ -6378,7 +6378,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Deja de compartir en vivo"
+            "value": "Dejar de compartir en directo"
           }
         },
         "zh-Hans": {
@@ -6410,7 +6410,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sincronizando la sesión de hoy"
+            "value": "Sincronizando el entrenamiento de hoy"
           }
         },
         "zh-Hans": {
@@ -6426,7 +6426,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toca para obtener orientación de hoy"
+            "value": "Toca para ver la recomendación de hoy"
           }
         },
         "zh-Hans": {
@@ -6442,7 +6442,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toque Grabar para comenzar su primera actividad."
+            "value": "Toca «Grabar» para empezar tu primera actividad."
           }
         },
         "zh-Hans": {
@@ -6474,7 +6474,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El plan activo está configurado. El calendario semanal aparecerá aquí tan pronto como termine de sincronizarse la última instantánea del plan."
+            "value": "El plan activo está listo. El calendario semanal aparecerá aquí cuando termine de sincronizarse."
           }
         },
         "zh-Hans": {
@@ -6490,7 +6490,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La sugerencia de actividad está vinculada a un plan activo. El plan completo aparecerá aquí tan pronto como termine de cargarse el último estado del plan."
+            "value": "Esta sugerencia forma parte del plan activo. El plan completo aparecerá aquí cuando termine de cargarse."
           }
         },
         "zh-Hans": {
@@ -6506,7 +6506,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estos son los hechos y patrones que Plainstride puede utilizar al adaptar el entrenamiento. Puedes corregir u olvidar cualquier elemento."
+            "value": "Esta es la información que Plainstride puede usar para adaptar tu entrenamiento. Puedes corregir o eliminar cualquier elemento."
           }
         },
         "zh-Hans": {
@@ -6522,7 +6522,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pensamiento..."
+            "value": "Pensando…"
           }
         },
         "zh-Hans": {
@@ -6554,7 +6554,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esto elimina permanentemente su cuenta de Plainstride, actividades sincronizadas, planes, perfil, datos sociales y datos de Plainstride almacenados localmente. Esto no se puede deshacer."
+            "value": "Esto eliminará permanentemente tu cuenta de Plainstride, actividades sincronizadas, planes, perfil, datos sociales y datos guardados en el dispositivo. No se puede deshacer."
           }
         },
         "zh-Hans": {
@@ -6634,7 +6634,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "tiempo en minutos"
+            "value": "Tiempo (minutos)"
           }
         },
         "zh-Hans": {
@@ -6650,7 +6650,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bicicleta cronometrada"
+            "value": "Ciclismo por tiempo"
           }
         },
         "zh-Hans": {
@@ -6666,7 +6666,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carrera cronometrada"
+            "value": "Carrera por tiempo"
           }
         },
         "zh-Hans": {
@@ -6714,7 +6714,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guía de hoy"
+            "value": "Recomendación de hoy"
           }
         },
         "zh-Hans": {
@@ -6762,7 +6762,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La carrera de hoy ha terminado."
+            "value": "La carrera de hoy está completada"
           }
         },
         "zh-Hans": {
@@ -6778,7 +6778,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Juntos"
+            "value": "Comunidad"
           }
         },
         "zh-Hans": {
@@ -6874,7 +6874,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Intentar"
+            "value": "Probar"
           }
         },
         "zh-Hans": {
@@ -6890,7 +6890,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Intentar otra vez"
+            "value": "Volver a intentar"
           }
         },
         "zh-Hans": {
@@ -6906,7 +6906,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desactivar compartir en vivo"
+            "value": "Desactivar compartir en directo"
           }
         },
         "zh-Hans": {
@@ -6938,7 +6938,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activar compartir en vivo"
+            "value": "Activar compartir en directo"
           }
         },
         "zh-Hans": {
@@ -7018,7 +7018,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "ARRIBA SIGUIENTE"
+            "value": "A CONTINUACIÓN"
           }
         },
         "zh-Hans": {
@@ -7066,7 +7066,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usar orientación adaptada al ciclo"
+            "value": "Usar orientación según el ciclo"
           }
         },
         "zh-Hans": {
@@ -7082,7 +7082,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan de uso"
+            "value": "Usar plan"
           }
         },
         "zh-Hans": {
@@ -7114,7 +7114,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilice el cronograma semanal a continuación o cambie/finalice el plan desde el menú de la tarjeta Now."
+            "value": "Sigue el calendario semanal o cambia o finaliza el plan desde el menú de la tarjeta «Ahora»."
           }
         },
         "zh-Hans": {
@@ -7242,7 +7242,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Datos meteorológicos de Apple Weather"
+            "value": "Datos meteorológicos de Tiempo de Apple"
           }
         },
         "zh-Hans": {
@@ -7334,7 +7334,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Horario de la semana"
+            "value": "Calendario semanal"
           }
         },
         "zh-Hans": {
@@ -7366,7 +7366,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los totales semanales, los mejores esfuerzos y las tendencias aparecerán aquí después de realizar el registro."
+            "value": "Los totales semanales, las mejores marcas y las tendencias aparecerán aquí después de registrar actividades."
           }
         },
         "zh-Hans": {
@@ -7382,7 +7382,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Para qué estás trabajando?"
+            "value": "¿Cuál es tu objetivo?"
           }
         },
         "zh-Hans": {
@@ -7398,7 +7398,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Qué pueden soportar la mayoría de las semanas?"
+            "value": "¿Cuánto entrenamiento cabe en una semana normal?"
           }
         },
         "zh-Hans": {
@@ -7430,7 +7430,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Cómo es correr últimamente?"
+            "value": "¿Cómo has estado corriendo últimamente?"
           }
         },
         "zh-Hans": {
@@ -7446,7 +7446,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "LO QUE HE APRENDIDO"
+            "value": "LO QUE HE APRENDIDO SOBRE TI"
           }
         },
         "zh-Hans": {
@@ -7478,7 +7478,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lo que Plainstride sabe"
+            "value": "Lo que Plainstride sabe de ti"
           }
         },
         "zh-Hans": {
@@ -7526,7 +7526,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Qué mejoraría a Plainstride?"
+            "value": "¿Cómo podríamos mejorar Plainstride?"
           }
         },
         "zh-Hans": {
@@ -7542,7 +7542,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Por qué este entrenamiento?"
+            "value": "Por qué este entrenamiento"
           }
         },
         "zh-Hans": {
@@ -7606,7 +7606,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "TU COMPAÑERO PARA CORRER CON IA"
+            "value": "TU COMPAÑERO DE RUNNING CON IA"
           }
         },
         "zh-Hans": {
@@ -7622,7 +7622,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu compañero de carrera con IA reúne tu entrenamiento con familiares, amigos y clubes."
+            "value": "Tu compañero de running con IA conecta tus entrenamientos con familiares, amigos y clubes."
           }
         },
         "zh-Hans": {
@@ -7654,7 +7654,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu compañero hará de esta una primera semana realista."
+            "value": "Tu compañero convertirá esto en una primera semana realista."
           }
         },
         "zh-Hans": {
@@ -7686,7 +7686,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Su corrección se convierte en un hecho confirmado y tiene prioridad sobre inferencias anteriores."
+            "value": "Tu corrección se convierte en un dato confirmado y tiene prioridad sobre las conclusiones anteriores."
           }
         },
         "zh-Hans": {
@@ -7702,7 +7702,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tus primeras carreras afinarán el esfuerzo, la resistencia y la recuperación. Éstas son estimaciones iniciales, no juicios."
+            "value": "Tus primeras carreras ayudarán a ajustar la intensidad, la resistencia y la recuperación. Son estimaciones iniciales, no juicios."
           }
         },
         "zh-Hans": {
@@ -7718,7 +7718,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Su nombre y biografía pueden aparecerle a las personas con las que se conecta en Together."
+            "value": "Tu nombre y biografía pueden aparecer a las personas con las que conectes en Comunidad."
           }
         },
         "zh-Hans": {
