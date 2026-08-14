@@ -21,9 +21,9 @@ enum OnboardingBodySex: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .notSpecified: return "Skip"
-        case .female: return "Female"
-        case .male: return "Male"
+        case .notSpecified: return String(localized: "Skip")
+        case .female: return String(localized: "Female")
+        case .male: return String(localized: "Male")
         }
     }
 }
@@ -39,13 +39,13 @@ enum OnboardingPlanFocus: String, Codable {
 
     var title: String {
         switch self {
-        case .first5K: return "First 5K"
-        case .race: return "Race preparation"
-        case .runFarther: return "Run farther"
-        case .runFaster: return "Run faster"
-        case .fitness: return "Fitness and weight support"
-        case .comeback: return "Safe return"
-        case .general: return "Steady fitness"
+        case .first5K: return String(localized: "First 5K")
+        case .race: return String(localized: "Race preparation")
+        case .runFarther: return String(localized: "Run farther")
+        case .runFaster: return String(localized: "Run faster")
+        case .fitness: return String(localized: "Fitness and weight support")
+        case .comeback: return String(localized: "Safe return")
+        case .general: return String(localized: "Steady fitness")
         }
     }
 }
@@ -59,17 +59,17 @@ enum OnboardingEffortPreference: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .easier: return "Easier"
-        case .balanced: return "Balanced"
-        case .harder: return "Harder"
+        case .easier: return String(localized: "Easier")
+        case .balanced: return String(localized: "Balanced")
+        case .harder: return String(localized: "Harder")
         }
     }
 
     var detail: String {
         switch self {
-        case .easier: return "More cushion"
-        case .balanced: return "Recommended"
-        case .harder: return "More challenge"
+        case .easier: return String(localized: "More cushion")
+        case .balanced: return String(localized: "Recommended")
+        case .harder: return String(localized: "More challenge")
         }
     }
 }

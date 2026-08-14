@@ -1229,7 +1229,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     @Published private(set) var liveTranscript = ""
 
     private let audioEngine = AVAudioEngine()
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US"))
+    private lazy var recognizer = SFSpeechRecognizer(locale: AppLanguage.speechLocale)
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var speechAnalyzerSession: AnyObject?
@@ -1458,7 +1458,7 @@ private final class AssistantSpeechAnalyzerSession {
     }
 
     func start() async -> Bool {
-        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en_US")) else {
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: AppLanguage.speechLocale) else {
             return false
         }
 

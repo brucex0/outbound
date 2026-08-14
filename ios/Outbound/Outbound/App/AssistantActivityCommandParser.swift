@@ -10,17 +10,32 @@ enum AssistantActivityCommandParser {
             || lowercased.contains(" for ")
             || lowercased.contains("do a")
             || lowercased.contains("set up")
+            || lowercased.contains("inicia")
+            || lowercased.contains("iniciar")
+            || lowercased.contains("empieza")
+            || lowercased.contains("prepara")
+            || lowercased.contains("开始")
+            || lowercased.contains("准备")
 
         let sport: SportType
         if lowercased.contains("bike")
             || lowercased.contains("biking")
             || lowercased.contains("cycle")
             || lowercased.contains("cycling")
-            || lowercased.contains("ride") {
+            || lowercased.contains("ride")
+            || lowercased.contains("bici")
+            || lowercased.contains("bicicleta")
+            || lowercased.contains("ciclismo")
+            || lowercased.contains("骑行")
+            || lowercased.contains("骑车") {
             sport = .bike
         } else if lowercased.contains("run")
             || lowercased.contains("running")
-            || lowercased.contains("jog") {
+            || lowercased.contains("jog")
+            || lowercased.contains("correr")
+            || lowercased.contains("carrera")
+            || lowercased.contains("跑步")
+            || lowercased.contains("跑") {
             sport = .run
         } else if hasLaunchVerb,
                   SessionIntentGoalParser.distanceMeters(from: lowercased) != nil {
@@ -42,7 +57,8 @@ enum AssistantActivityCommandParser {
         return freestyleIntent(for: sport).replacingGoal(goal, unitSystem: unitSystem)
     }
 
-    static let recognitionHints: [String] = [
+    static var recognitionHints: [String] { switch AppLanguage.current {
+    case .english: [
         "start a run",
         "start a bike",
         "start a 5K run",
@@ -61,6 +77,9 @@ enum AssistantActivityCommandParser {
         "kilometers",
         "minutes"
     ]
+    case .spanish: ["inicia una carrera", "prepara una carrera de 5 kilómetros", "correr 30 minutos", "inicia un paseo en bicicleta", "kilómetros", "millas", "minutos"]
+    case .simplifiedChinese: ["开始跑步", "准备五公里跑步", "跑三十分钟", "开始骑行", "公里", "英里", "分钟"]
+    } }
 
     private static func freestyleIntent(for sport: SportType) -> SessionIntent {
         switch sport {
@@ -93,6 +112,8 @@ enum AssistantActivityCommandParser {
             .replacingOccurrences(of: "half hour", with: "30 minutes")
             .replacingOccurrences(of: "an hour", with: "1 hour")
             .replacingOccurrences(of: "one hour", with: "1 hour")
+            .replacingOccurrences(of: "media hora", with: "30 minutos")
+            .replacingOccurrences(of: "una hora", with: "1 hora")
 
         let wordNumbers: [(String, String)] = [
             ("forty five", "45"),
@@ -124,6 +145,9 @@ enum AssistantActivityCommandParser {
             ("seven", "7"),
             ("eight", "8"),
             ("nine", "9")
+            ,("cuarenta y cinco", "45"), ("treinta", "30"), ("veinte", "20"),
+            ("diez", "10"), ("cinco", "5"), ("tres", "3"), ("一", "1"),
+            ("三", "3"), ("五", "5"), ("十", "10"), ("二十", "20"), ("三十", "30")
         ]
 
         for (word, number) in wordNumbers {

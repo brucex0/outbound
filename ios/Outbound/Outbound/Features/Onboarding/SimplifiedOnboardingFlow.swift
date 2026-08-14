@@ -63,21 +63,21 @@ struct SimplifiedOnboardingFlow: View {
         case .understanding:
             heading("Here’s what I understand", "Correct anything by going back. Plainstride will keep learning after setup.")
             summaryRow("Goal", goal.title)
-            summaryRow("Starting point", "\(frequency.title) · \(comfortableMinutes) min comfortable")
-            summaryRow("Realistic week", "\(runsPerWeek) runs · about \(availableMinutes) min")
-            AIExplanationView(text: "Your first runs will tune effort, endurance, and recovery. These are starting estimates, not judgments.")
+            summaryRow("Starting point", localizedStartingPoint)
+            summaryRow("Realistic week", localizedWeekSummary)
+            AIExplanationView(text: String(localized: "Your first runs will tune effort, endurance, and recovery. These are starting estimates, not judgments."))
         case .calibration:
             heading("We’ll learn as you run", "No all-out test is required. These are normal training runs.")
             calibrationRow(1, "Comfortable run", "Learn your natural easy effort")
             calibrationRow(2, "Easy + pickups", "Observe controlled faster running")
             calibrationRow(3, "Longer relaxed run", "Learn endurance and recovery")
-            AIExplanationView(text: "After each run, one optional tap tells Plainstride what the numbers alone cannot.")
+            AIExplanationView(text: String(localized: "After each run, one optional tap tells Plainstride what the numbers alone cannot."))
         }
     }
 
     private var footer: some View {
         OutboundPrimaryButton(
-            title: step == .calibration ? "Build my first week" : "Continue",
+            title: step == .calibration ? String(localized: "Build my first week") : String(localized: "Continue"),
             systemImage: step == .calibration ? "sparkles" : "arrow.right"
         ) {
             if step == .calibration { complete() } else { step = step.next }
@@ -86,8 +86,8 @@ struct SimplifiedOnboardingFlow: View {
 
     private func complete() {
         onboardingStore.updateGoalText(goal.intakeText)
-        onboardingStore.updateBaselineText("I run \(frequency.intakeText) and feel comfortable for about \(comfortableMinutes) minutes.")
-        onboardingStore.updateScheduleText("I can run \(runsPerWeek) times per week for about \(availableMinutes) minutes, with a longer run on Saturday.")
+        onboardingStore.updateBaselineText(localizedBaselineText)
+        onboardingStore.updateScheduleText(localizedScheduleText)
         onboardingStore.selectEffortPreference(.balanced)
         let profile = onboardingStore.complete()
         if let recommendation = trainingPlanStore.planOptions.first {
@@ -97,7 +97,7 @@ struct SimplifiedOnboardingFlow: View {
             await personalizationStore.completeProfile(
                 RunnerProfileRequestDTO(
                     goalSummary: goal.title,
-                    scheduleSummary: "\(runsPerWeek) runs per week, Saturday longer",
+                    scheduleSummary: localizedScheduleSummary,
                     comfortableDurationMinutes: comfortableMinutes,
                     recentSessionsPerWeek: frequency.sessions,
                     targetSessionsPerWeek: runsPerWeek,
@@ -111,7 +111,7 @@ struct SimplifiedOnboardingFlow: View {
         onComplete(profile)
     }
 
-    private func heading(_ title: String, _ subtitle: String) -> some View {
+    private func heading(_ title: LocalizedStringResource, _ subtitle: LocalizedStringResource) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.title2.weight(.semibold))
             Text(subtitle).foregroundStyle(.secondary)
@@ -131,16 +131,56 @@ struct SimplifiedOnboardingFlow: View {
         }
     }
 
-    private func summaryRow(_ label: String, _ value: String) -> some View {
-        OutboundCard { VStack(alignment: .leading, spacing: 4) { Text(label.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text(value).font(.headline) } }
+    private func summaryRow(_ label: LocalizedStringResource, _ value: String) -> some View {
+        OutboundCard { VStack(alignment: .leading, spacing: 4) { Text(label).textCase(.uppercase).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text(value).font(.headline) } }
     }
 
-    private func calibrationRow(_ number: Int, _ title: String, _ detail: String) -> some View {
+    private func calibrationRow(_ number: Int, _ title: LocalizedStringResource, _ detail: LocalizedStringResource) -> some View {
         HStack(spacing: OutboundSpacing.standard) {
             Text("\(number)").font(.headline).frame(width: 34, height: 34).background(OutboundPalette.companion.opacity(0.14), in: Circle())
             VStack(alignment: .leading) { Text(title).font(.headline); Text(detail).font(.subheadline).foregroundStyle(.secondary) }
         }
         .padding().background(.background, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+    }
+
+    private var localizedBaselineText: String {
+        switch AppLanguage.current {
+        case .english: "I run \(frequency.intakeText) and feel comfortable for about \(comfortableMinutes) minutes."
+        case .spanish: "Corro \(frequency.intakeText) y me siento cómodo durante unos \(comfortableMinutes) minutos."
+        case .simplifiedChinese: "我\(frequency.intakeText)，舒适跑时长约为 \(comfortableMinutes) 分钟。"
+        }
+    }
+
+    private var localizedStartingPoint: String {
+        switch AppLanguage.current {
+        case .english: "\(frequency.title) · \(comfortableMinutes) min comfortable"
+        case .spanish: "\(frequency.title) · \(comfortableMinutes) min con comodidad"
+        case .simplifiedChinese: "\(frequency.title) · 舒适跑 \(comfortableMinutes) 分钟"
+        }
+    }
+
+    private var localizedWeekSummary: String {
+        switch AppLanguage.current {
+        case .english: "\(runsPerWeek) runs · about \(availableMinutes) min"
+        case .spanish: "\(runsPerWeek) carreras · unos \(availableMinutes) min"
+        case .simplifiedChinese: "\(runsPerWeek) 次跑步 · 约 \(availableMinutes) 分钟"
+        }
+    }
+
+    private var localizedScheduleText: String {
+        switch AppLanguage.current {
+        case .english: "I can run \(runsPerWeek) times per week for about \(availableMinutes) minutes, with a longer run on Saturday."
+        case .spanish: "Puedo correr \(runsPerWeek) veces por semana durante unos \(availableMinutes) minutos, con una carrera más larga el sábado."
+        case .simplifiedChinese: "我每周可以跑 \(runsPerWeek) 次，每次约 \(availableMinutes) 分钟，周六可以安排一次更长的跑步。"
+        }
+    }
+
+    private var localizedScheduleSummary: String {
+        switch AppLanguage.current {
+        case .english: "\(runsPerWeek) runs per week, Saturday longer"
+        case .spanish: "\(runsPerWeek) carreras por semana, más larga el sábado"
+        case .simplifiedChinese: "每周 \(runsPerWeek) 次，周六长跑"
+        }
     }
 }
 
@@ -158,15 +198,34 @@ private extension SimplifiedOnboardingFlow {
         case consistency, start, comeback, race, faster
         var id: Self { self }
         var title: String {
-            switch self { case .consistency: "Run consistently"; case .start: "Start running"; case .comeback: "Return after a break"; case .race: "Train for a race"; case .faster: "Run faster" }
+            switch self {
+            case .consistency: String(localized: "Run consistently")
+            case .start: String(localized: "Start running")
+            case .comeback: String(localized: "Return after a break")
+            case .race: String(localized: "Train for a race")
+            case .faster: String(localized: "Run faster")
+            }
         }
-        var intakeText: String { "My running goal is to \(title.lowercased()) in a realistic, sustainable way." }
+        var intakeText: String {
+            switch AppLanguage.current {
+            case .english: "My running goal is to \(title.lowercased()) in a realistic, sustainable way."
+            case .spanish: "Mi objetivo de carrera es \(title.lowercased()) de una forma realista y sostenible."
+            case .simplifiedChinese: "我的跑步目标是以现实且可持续的方式做到：\(title)。"
+            }
+        }
     }
 
     enum Frequency: String, CaseIterable, Identifiable, Titled {
         case none, occasional, oneOrTwo, threePlus
         var id: Self { self }
-        var title: String { switch self { case .none: "Not running yet"; case .occasional: "Occasionally"; case .oneOrTwo: "1–2 times a week"; case .threePlus: "3+ times a week" } }
+        var title: String {
+            switch self {
+            case .none: String(localized: "Not running yet")
+            case .occasional: String(localized: "Occasionally")
+            case .oneOrTwo: String(localized: "1–2 times a week")
+            case .threePlus: String(localized: "3+ times a week")
+            }
+        }
         var sessions: Int { switch self { case .none: 0; case .occasional: 1; case .oneOrTwo: 2; case .threePlus: 3 } }
         var intakeText: String { title.lowercased() }
     }

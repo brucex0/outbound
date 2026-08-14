@@ -14,5 +14,6 @@ export type AuthContext = {
 export type AppEnv = {
   Variables: {
     auth: AuthContext | null;
+    locale: "en" | "es" | "zh-Hans";
   };
 };

@@ -61,7 +61,7 @@ enum ActivityGoal: Codable, Hashable {
     func label(unitSystem: MeasurementUnitSystem) -> String {
         switch self {
         case .freestyle:
-            return "Freestyle"
+            return String(localized: "activity.goal.freestyle", defaultValue: "Freestyle")
         case .distanceMeters(let meters):
             let value = unitSystem.distanceValue(meters: meters)
             return unitSystem.distanceString(
@@ -74,13 +74,16 @@ enum ActivityGoal: Codable, Hashable {
     }
 
     func startLabel(for sport: SportType) -> String {
+        let sportName = sport.displayName
         switch self {
         case .freestyle:
-            return "Start \(sport.displayName)"
+            return String(format: String(localized: "activity.goal.start.freestyle.format", defaultValue: "Start %@"), locale: .autoupdatingCurrent, sportName)
         case .distanceMeters(let meters):
-            return "Start \(Self.metricDistanceLabel(meters: meters)) \(sport.displayName)"
+            let distance = Self.metricDistanceLabel(meters: meters)
+            return String(format: String(localized: "activity.goal.start.distance.format", defaultValue: "Start %@ %@"), locale: .autoupdatingCurrent, distance, sportName)
         case .timeSeconds(let seconds):
-            return "Start \(Self.durationLabel(seconds: seconds)) \(sport.displayName)"
+            let duration = Self.durationLabel(seconds: seconds)
+            return String(format: String(localized: "activity.goal.start.duration.format", defaultValue: "Start %@ %@"), locale: .autoupdatingCurrent, duration, sportName)
         }
     }
 
@@ -165,11 +168,11 @@ extension SessionIntent {
     private func coachLine(for goal: ActivityGoal) -> String {
         switch goal {
         case .freestyle:
-            return "No pressure. Just start where you are."
+            return String(localized: "activity.goal.coach.freestyle", defaultValue: "No pressure. Just start where you are.")
         case .distanceMeters:
-            return "You picked the distance. Settle in, then let the rhythm do its work."
+            return String(localized: "activity.goal.coach.distance", defaultValue: "You picked the distance. Settle in, then let the rhythm do its work.")
         case .timeSeconds:
-            return "You picked the window. Keep it simple and stay present."
+            return String(localized: "activity.goal.coach.duration", defaultValue: "You picked the window. Keep it simple and stay present.")
         }
     }
 }

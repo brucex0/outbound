@@ -50,13 +50,8 @@ router.post(
     const user = await requireUser(c);
     if (user instanceof Response) return user;
     const { signal, workoutId, day } = c.req.valid("json");
-    const options = {
-      noAdjustment: { action: "keep", explanation: "Your planned workout still looks like a good fit." },
-      offerFlexibleOption: { action: "offer", explanation: "A flexible version is available if it feels better today." },
-      reduceLoad: { action: "reduce", explanation: "A gentler version can protect consistency without forcing the plan." },
-      recommendRest: { action: "rest", explanation: "Rest or a very easy alternative may be the better training choice today." },
-    } as const;
-    return c.json({ workoutId: workoutId ?? null, day, signal, ...options[signal], rawHealthDataStored: false });
+    const options = localizedCycleOptions(c.get("locale"));
+    return c.json({ workoutId: workoutId ?? null, day, signal, ...options[signal], locale: c.get("locale"), rawHealthDataStored: false });
   }
 );
 
@@ -87,3 +82,24 @@ async function requireUser(c: Context<AppEnv>) {
 }
 
 export default router;
+
+function localizedCycleOptions(locale: "en" | "es" | "zh-Hans") {
+  if (locale === "es") return {
+    noAdjustment: { action: "keep", explanation: "El entrenamiento previsto todavía parece adecuado." },
+    offerFlexibleOption: { action: "offer", explanation: "Hay una versión flexible disponible si hoy te resulta mejor." },
+    reduceLoad: { action: "reduce", explanation: "Una versión más suave puede proteger la constancia sin forzar el plan." },
+    recommendRest: { action: "rest", explanation: "Descansar o elegir una alternativa muy suave puede ser la mejor opción de entrenamiento hoy." },
+  } as const;
+  if (locale === "zh-Hans") return {
+    noAdjustment: { action: "keep", explanation: "原计划训练看起来仍然适合你。" },
+    offerFlexibleOption: { action: "offer", explanation: "如果今天感觉更合适，可以选择灵活版本。" },
+    reduceLoad: { action: "reduce", explanation: "更轻松的版本可以在不勉强执行计划的情况下保持连续性。" },
+    recommendRest: { action: "rest", explanation: "今天休息或选择非常轻松的替代训练可能更合适。" },
+  } as const;
+  return {
+    noAdjustment: { action: "keep", explanation: "Your planned workout still looks like a good fit." },
+    offerFlexibleOption: { action: "offer", explanation: "A flexible version is available if it feels better today." },
+    reduceLoad: { action: "reduce", explanation: "A gentler version can protect consistency without forcing the plan." },
+    recommendRest: { action: "rest", explanation: "Rest or a very easy alternative may be the better training choice today." },
+  } as const;
+}

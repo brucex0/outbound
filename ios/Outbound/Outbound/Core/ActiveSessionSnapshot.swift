@@ -110,10 +110,10 @@ enum SessionIntentGoalParser {
         }
 
         let patterns: [(String, Double)] = [
-            (#"([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)\b"#, 1000),
+            (#"([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers|kilómetro|kilómetros|公里)\b"#, 1000),
             (#"\b([0-9]+(?:\.[0-9]+)?)\s*k\b"#, 1000),
-            (#"([0-9]+(?:\.[0-9]+)?)\s*(?:mi|mile|miles)\b"#, 1609.344),
-            (#"([0-9]+(?:\.[0-9]+)?)\s*m\b"#, 1)
+            (#"([0-9]+(?:\.[0-9]+)?)\s*(?:mi|mile|miles|milla|millas|英里)\b"#, 1609.344),
+            (#"([0-9]+(?:\.[0-9]+)?)\s*(?:m|meter|meters|metro|metros|米)\b"#, 1)
         ]
 
         for (pattern, multiplier) in patterns {
@@ -129,11 +129,11 @@ enum SessionIntentGoalParser {
         let lowercased = text.lowercased()
         guard !lowercased.contains("no preset") else { return nil }
 
-        if let minutes = firstNumber(in: lowercased, pattern: #"([0-9]+(?:\.[0-9]+)?)\s*(?:min|mins|minute|minutes)\b"#) {
+        if let minutes = firstNumber(in: lowercased, pattern: #"([0-9]+(?:\.[0-9]+)?)\s*(?:min|mins|minute|minutes|minuto|minutos|分钟)\b"#) {
             return Int((minutes * 60).rounded())
         }
 
-        if let hours = firstNumber(in: lowercased, pattern: #"([0-9]+(?:\.[0-9]+)?)\s*(?:hr|hrs|hour|hours)\b"#) {
+        if let hours = firstNumber(in: lowercased, pattern: #"([0-9]+(?:\.[0-9]+)?)\s*(?:hr|hrs|hour|hours|hora|horas|小时)\b"#) {
             return Int((hours * 3600).rounded())
         }
 
