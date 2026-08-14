@@ -21,6 +21,7 @@ Localization covers every user-facing surface, including accessibility, system p
 - `InfoPlist.xcstrings` localizes every privacy usage description.
 - The Live Activity extension owns a target-specific catalog for its compact metric labels; activity names and status values are localized before entering ActivityKit state.
 - `AppLanguage` provides canonical API (`en`, `es`, `zh-Hans`) and speech (`en_US`, `es_ES`, `zh_CN`) locale mappings based on the active iOS app language.
+- User-facing product language uses **companion**, never **coach** or **coaching**. Simplified Chinese uses `跑步伙伴`; internal legacy type and payload names may still retain `Coach` where renaming would be an unrelated migration.
 - Every API request sends `Accept-Language` and `X-Plainstride-Locale`. Backend middleware normalizes unsupported or regional variants to one supported locale.
 - Assistant and companion AI prompts require the requested language. Their responses identify the locale used, and deterministic companion and cycle-aware fallbacks are available in all three languages.
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.

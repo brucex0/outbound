@@ -9,7 +9,7 @@ struct CycleAwareView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Use cycle-aware coaching", isOn: $store.isEnabled)
+                Toggle("Use cycle-aware guidance", isOn: $store.isEnabled)
             } footer: {
                 Text("Optional and private. Plainstride stores these entries only on this device and sends only a generic training signal when adaptation is requested.")
             }
@@ -32,7 +32,7 @@ struct CycleAwareView: View {
                 }
             }
         }
-        .navigationTitle("Cycle-aware coaching")
+        .navigationTitle("Cycle-aware guidance")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -1255,7 +1255,7 @@ private struct SimplifiedSettingsView: View {
                 }
             }
             Section("Health & body") {
-                NavigationLink("Cycle-aware coaching") { CycleAwareView() }
+                NavigationLink("Cycle-aware guidance") { CycleAwareView() }
             }
             Section {
                 Button {

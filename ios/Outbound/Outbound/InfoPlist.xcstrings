@@ -216,19 +216,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride uses the microphone for voice activity commands and coach audio during workouts."
+            "value" : "Plainstride uses the microphone for voice activity commands and companion audio during workouts."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride usa el micrófono para comandos de actividad por voz y el audio del entrenador durante los entrenamientos."
+            "value" : "Plainstride usa el micrófono para comandos de actividad por voz y el audio del compañero durante los entrenamientos."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平步青云使用麦克风接收语音活动指令，并在训练期间播放教练音频。"
+            "value" : "平步青云使用麦克风接收语音活动指令，并在训练期间播放跑步伙伴的语音。"
           }
         }
       }

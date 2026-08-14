@@ -168,11 +168,11 @@ extension SessionIntent {
     private func coachLine(for goal: ActivityGoal) -> String {
         switch goal {
         case .freestyle:
-            return String(localized: "activity.goal.coach.freestyle", defaultValue: "No pressure. Just start where you are.")
+            return String(localized: "activity.goal.companion.freestyle", defaultValue: "No pressure. Just start where you are.")
         case .distanceMeters:
-            return String(localized: "activity.goal.coach.distance", defaultValue: "You picked the distance. Settle in, then let the rhythm do its work.")
+            return String(localized: "activity.goal.companion.distance", defaultValue: "You picked the distance. Settle in, then let the rhythm do its work.")
         case .timeSeconds:
-            return String(localized: "activity.goal.coach.duration", defaultValue: "You picked the window. Keep it simple and stay present.")
+            return String(localized: "activity.goal.companion.duration", defaultValue: "You picked the window. Keep it simple and stay present.")
         }
     }
 }

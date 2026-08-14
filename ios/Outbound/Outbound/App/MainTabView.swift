@@ -877,7 +877,7 @@ struct MotivationDashboardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Now")
                         .font(.headline)
-                    Label("Coach pick", systemImage: "calendar.badge.plus")
+                    Label("Companion pick", systemImage: "calendar.badge.plus")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
                     Text(recommendation.template.title)

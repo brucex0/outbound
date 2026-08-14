@@ -2,20 +2,20 @@
   "sourceLanguage": "en",
   "strings": {
     "": {},
-    "A moment worth noticing": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Un momento digno de atención"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"一个值得留意的时刻"}}}},
+    "A moment worth noticing": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Un momento digno de atención"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"值得留意的一刻"}}}},
     "Companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"跑步伙伴"}}}},
     "Companion style": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Estilo del compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"伙伴风格"}}}},
     "Here is what your companion understood.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Esto es lo que entendió tu compañero."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这是你的伙伴所理解的内容。"}}}},
     "Recommended plans": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Planes recomendados"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"推荐计划"}}}},
-    "Set up my companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Configurar mi compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"设置我的伙伴"}}}},
+    "Set up my companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Configurar mi compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"设置跑步伙伴"}}}},
     "Spoken Updates": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Actualizaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音播报"}}}},
     "Tell us the real story. Your companion will turn it into a first session and a plan that fits.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos tu situación real. Tu compañero la convertirá en una primera sesión y un plan a tu medida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你的真实情况。你的伙伴会据此制定适合你的首次训练和计划。"}}}},
-    "Tell us where you are starting.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos desde dónde empiezas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你的起点。"}}}},
-    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"La frecuencia de actualización controla cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en vivo del ritmo, el tiempo y la distancia durante una actividad."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"播报频率决定你的伙伴在活动期间提供语音提示以及实时配速、时间和距离回顾的频率。"}}}},
+    "Tell us where you are starting.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Cuéntanos desde dónde empiezas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"告诉我们你目前的跑步状态。"}}}},
+    "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"La frecuencia de actualización controla cada cuánto tu compañero ofrece indicaciones por voz y resúmenes en vivo del ritmo, el tiempo y la distancia durante una actividad."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"播报频率决定跑步伙伴在训练中提供语音提示，以及播报配速、时间和距离的频率。"}}}},
     "Voice, style, and spoken update frequency": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Voz, estilo y frecuencia de actualizaciones por voz"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"语音、风格和播报频率"}}}},
-    "What should we focus on this week?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿En qué deberíamos centrarnos esta semana?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这周我们应该专注于什么？"}}}},
+    "What should we focus on this week?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿En qué deberíamos centrarnos esta semana?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"本周重点是什么？"}}}},
     "What should your running companion help you do first?": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"¿Qué debería ayudarte a hacer primero tu compañero de running?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你希望跑步伙伴先帮助你做什么？"}}}},
-    "Your companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的伙伴"}}}},
+    "Your companion": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的跑步伙伴"}}}},
     "Your companion recommends one concrete session you can begin right away.": {"localizations":{"es":{"stringUnit":{"state":"translated","value":"Tu compañero te recomienda una sesión concreta que puedes empezar de inmediato."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的伙伴会推荐一项可以立即开始的具体训练。"}}}},
     "“%@”": {
       "localizations": {
@@ -120,7 +120,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "建议在再跑 %@ 后退役"
+            "value": "建议再跑 %@ 后退役"
           }
         }
       }
@@ -136,7 +136,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 信心"
+            "value": "%@ 可信度"
           }
         }
       }
@@ -250,7 +250,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld 启用"
+            "value": "已启用 %lld 项"
           }
         }
       }
@@ -288,7 +288,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld 之 %2$lld"
+            "value": "%1$lld/%2$lld"
           }
         }
       }
@@ -336,7 +336,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lldx/周"
+            "value": "每周 %lld 次"
           }
         }
       }
@@ -374,7 +374,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "+%1$lld 更多识别%2$@ 保存时准备好。"
+            "value": "保存后还可获得 %1$lld 项成就%2$@。"
           }
         }
       }
@@ -406,7 +406,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每周3次以上"
+            "value": "每周 3 次以上"
           }
         }
       }
@@ -470,7 +470,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "20分钟"
+            "value": "20 分钟"
           }
         }
       }
@@ -486,7 +486,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "30分钟"
+            "value": "30 分钟"
           }
         }
       }
@@ -502,7 +502,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "45分钟"
+            "value": "45 分钟"
           }
         }
       }
@@ -518,7 +518,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "家庭成员有兼容的轻松跑步。"
+            "value": "有家人的轻松跑训练与你相配。"
           }
         }
       }
@@ -550,7 +550,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平日约%lld分钟"
+            "value": "工作日约 %lld 分钟"
           }
         }
       }
@@ -566,7 +566,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关于你"
+            "value": "你的情况"
           }
         }
       }
@@ -582,7 +582,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "帐户"
+            "value": "账户"
           }
         }
       }
@@ -614,7 +614,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "主动计划"
+            "value": "当前计划"
           }
         }
       }
@@ -635,7 +635,7 @@
         }
       }
     },
-    "activity.goal.coach.distance": {
+    "activity.goal.companion.distance": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -657,7 +657,7 @@
         }
       }
     },
-    "activity.goal.coach.duration": {
+    "activity.goal.companion.duration": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -679,7 +679,7 @@
         }
       }
     },
-    "activity.goal.coach.freestyle": {
+    "activity.goal.companion.freestyle": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -848,7 +848,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在“设置”中添加鞋子以跟踪每双的里程数。"
+            "value": "在“设置”中添加跑鞋，记录每双鞋的里程。"
           }
         }
       }
@@ -864,7 +864,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加您信任的人。当您打开共享实时跑步时，平步青云会将它们用作默认收件人。"
+            "value": "添加一位你信任的人。开启实时跑步分享后，平步青云会默认将链接发送给对方。"
           }
         }
       }
@@ -880,7 +880,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加可信联系人"
+            "value": "添加信任联系人"
           }
         }
       }
@@ -896,7 +896,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加您当前的配对，平步青云默认会将其附加到新的跑步中。"
+            "value": "添加你现在穿的跑鞋，平步青云会默认将它用于新的跑步记录。"
           }
         }
       }
@@ -928,7 +928,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每次跑步后，一个可选的点击会告诉平步青云仅靠数字无法做到的事情。"
+            "value": "每次跑步后，只需点一下，就能告诉平步青云那些数字无法表达的感受。"
           }
         }
       }
@@ -944,7 +944,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "注释"
+            "value": "标注"
           }
         }
       }
@@ -960,7 +960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还要别的吗？ （选修的）"
+            "value": "还有其他想说的吗？（选填）"
           }
         }
       }
@@ -976,7 +976,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用程序"
+            "value": "应用"
           }
         }
       }
@@ -1008,7 +1008,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "苹果音乐"
+            "value": "Apple Music"
           }
         }
       }
@@ -1024,7 +1024,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "寻求计划、快速解释或帮助摆脱困境。"
+            "value": "让跑步伙伴制定计划、快速解答，或帮你找到下一步。"
           }
         }
       }
@@ -1040,7 +1040,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "求人"
+            "value": "寻求帮助"
           }
         }
       }
@@ -1110,7 +1110,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后退"
+            "value": "返回"
           }
         }
       }
@@ -1126,7 +1126,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "均衡"
+            "value": "适中"
           }
         }
       }
@@ -1142,7 +1142,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "基线"
+            "value": "基础水平"
           }
         }
       }
@@ -1174,7 +1174,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在一起更好"
+            "value": "一起跑，更精彩"
           }
         }
       }
@@ -1190,7 +1190,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自行车"
+            "value": "骑行"
           }
         }
       }
@@ -1206,7 +1206,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "身体轮廓"
+            "value": "身体信息"
           }
         }
       }
@@ -1222,7 +1222,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持连续性"
+            "value": "养成规律"
           }
         }
       }
@@ -1238,7 +1238,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打造我的第一周"
+            "value": "制定我的第一周计划"
           }
         }
       }
@@ -1254,7 +1254,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "相机访问已关闭"
+            "value": "相机权限已关闭"
           }
         }
       }
@@ -1302,7 +1302,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "改变"
+            "value": "更改"
           }
         }
       }
@@ -1318,7 +1318,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "改变活动"
+            "value": "更改活动"
           }
         }
       }
@@ -1334,7 +1334,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "改变它"
+            "value": "更改"
           }
         }
       }
@@ -1382,7 +1382,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "改变今天的跑步"
+            "value": "调整今天的跑步"
           }
         }
       }
@@ -1398,7 +1398,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "检查当地情况..."
+            "value": "正在查看当地天气…"
           }
         }
       }
@@ -1430,7 +1430,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择邮件、消息或其他应用程序将报告发送给平步青云团队。"
+            "value": "选择“邮件”、“信息”或其他应用，将报告发送给平步青云团队。"
           }
         }
       }
@@ -1462,7 +1462,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择感觉现实的，而不是理想的。"
+            "value": "选择实际能做到的，而不是理想状态。"
           }
         }
       }
@@ -1499,146 +1499,130 @@
         }
       }
     },
-    "Coach": {
+    "%@ says:": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrenador"
+            "value": "%@ dice:"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练"
+            "value": "%@ 说："
           }
         }
       }
     },
-    "Coach %@ says:": {
+    "Your companion noticed this": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El entrenador %@ dice:"
+            "value": "Tu compañero notó esto."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练 %@ 说："
+            "value": "跑步伙伴发现了这一点"
           }
         }
       }
     },
-    "Coach noticed this": {
+    "Your companion noticed: %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El entrenador notó esto."
+            "value": "Tu compañero observó: %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练注意到了这一点"
+            "value": "跑步伙伴发现：%@"
           }
         }
       }
     },
-    "Coach noticed: %@": {
+    "Companion pick": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El entrenador observó: %@"
+            "value": "Elección del compañero"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练注意到：%@"
+            "value": "伙伴推荐"
           }
         }
       }
     },
-    "Coach pick": {
+    "Companion plan picks": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elección del entrenador"
+            "value": "Planes elegidos por tu compañero"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练推荐"
+            "value": "伙伴推荐计划"
           }
         }
       }
     },
-    "Coach plan picks": {
+    "Companion update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Selecciones de planes de entrenador"
+            "value": "La frecuencia de actualización del compañero controla las indicaciones de voz de la IA y los resúmenes de ritmo, tiempo y distancia durante una actividad."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练计划选择"
+            "value": "伙伴播报频率决定训练期间 AI 语音提示，以及配速、时间和距离回顾的频率。"
           }
         }
       }
     },
-    "Coach update frequency controls how often spoken AI nudges and live pace, time, and distance recaps play during an activity.": {
+    "Companion Updates": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La frecuencia de actualización del entrenador controla la frecuencia con la que se reproducen los indicaciones de voz de la IA y los resúmenes en vivo de ritmo, tiempo y distancia durante una actividad."
+            "value": "Actualizaciones del compañero"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练更新频率控制在活动期间AI语音提示和实时配速、时间和距离回顾的频率。"
+            "value": "伙伴播报"
           }
         }
       }
     },
-    "Coach Updates": {
+    "Your companion wants to help with this week.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualizaciones del entrenador"
+            "value": "Tu compañero quiere ayudarte esta semana."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "教练更新"
-          }
-        }
-      }
-    },
-    "Coach wants to help with this week.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El entrenador quiere ayudar con esta semana."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "教练希望在本周提供帮助。"
+            "value": "跑步伙伴希望帮助你完成本周重点。"
           }
         }
       }
@@ -1654,7 +1638,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "折叠组跑步"
+            "value": "收起团体跑"
           }
         }
       }
@@ -1670,7 +1654,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "折叠鞋子设置"
+            "value": "收起跑鞋设置"
           }
         }
       }
@@ -1686,7 +1670,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "舒适跑步"
+            "value": "轻松跑"
           }
         }
       }
@@ -1702,7 +1686,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "舒适跑 · %lld 分钟"
+            "value": "轻松跑 · %lld 分钟"
           }
         }
       }
@@ -1718,7 +1702,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同伴洞察"
+            "value": "伙伴洞察"
           }
         }
       }
@@ -1734,7 +1718,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同伴洞察：%@"
+            "value": "伙伴洞察：%@"
           }
         }
       }
@@ -1750,7 +1734,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同伴洞察力。点击今天的指导。"
+            "value": "伙伴有了新发现。轻点查看今日建议。"
           }
         }
       }
@@ -1766,7 +1750,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "完成您的个人资料并进行几次跑步，以构建透明的跑步者模型。"
+            "value": "完善个人资料并完成几次跑步，即可建立清晰可见的跑者模型。"
           }
         }
       }
@@ -1782,7 +1766,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "条件不具备"
+            "value": "暂时无法获取天气"
           }
         }
       }
@@ -1798,7 +1782,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接苹果"
+            "value": "使用 Apple 登录"
           }
         }
       }
@@ -1814,7 +1798,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接谷歌"
+            "value": "使用 Google 登录"
           }
         }
       }
@@ -1830,7 +1814,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "接触"
+            "value": "联系人"
           }
         }
       }
@@ -1878,7 +1862,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通过返回来纠正任何事情。平步青云在设置后将继续学习。"
+            "value": "如需修改，可以返回上一步。完成设置后，平步青云仍会继续了解你。"
           }
         }
       }
@@ -1942,7 +1926,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创造"
+            "value": "创建"
           }
         }
       }
@@ -1958,7 +1942,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创造..."
+            "value": "正在创建…"
           }
         }
       }
@@ -1974,7 +1958,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "策划"
+            "value": "精选"
           }
         }
       }
@@ -1990,7 +1974,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "策划计划"
+            "value": "精选计划"
           }
         }
       }
@@ -2006,7 +1990,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前焦点"
+            "value": "当前重点"
           }
         }
       }
@@ -2027,12 +2011,12 @@
         }
       }
     },
-    "Cycle-aware coaching": {
+    "Cycle-aware guidance": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrenamiento adaptado al ciclo"
+            "value": "Orientación adaptada al ciclo"
           }
         },
         "zh-Hans": {
@@ -2043,12 +2027,12 @@
         }
       }
     },
-    "Cycle-aware coaching is off": {
+    "Cycle-aware guidance is off": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El entrenamiento adaptado al ciclo está desactivado"
+            "value": "La orientación adaptada al ciclo está desactivada"
           }
         },
         "zh-Hans": {
@@ -2118,7 +2102,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除帐户和数据"
+            "value": "删除账户和数据"
           }
         }
       }
@@ -2134,7 +2118,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除循环数据"
+            "value": "删除经期数据"
           }
         }
       }
@@ -2150,7 +2134,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "送货"
+            "value": "发送方式"
           }
         }
       }
@@ -2166,7 +2150,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "细节"
+            "value": "详情"
           }
         }
       }
@@ -2182,7 +2166,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "放弃活动"
+            "value": "丢弃活动"
           }
         }
       }
@@ -2198,7 +2182,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不适：%lld 共 5 分"
+            "value": "不适程度：%lld/5"
           }
         }
       }
@@ -2246,7 +2230,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "远距离自行车"
+            "value": "按距离骑行"
           }
         }
       }
@@ -2278,7 +2262,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "距离跑"
+            "value": "按距离跑步"
           }
         }
       }
@@ -2294,7 +2278,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "完毕"
+            "value": "完成"
           }
         }
       }
@@ -2310,7 +2294,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "持续时间（分钟）"
+            "value": "时长（分钟）"
           }
         }
       }
@@ -2342,7 +2326,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "简单+拾取"
+            "value": "轻松跑 + 加速跑"
           }
         }
       }
@@ -2470,7 +2454,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "结尾"
+            "value": "结束"
           }
         }
       }
@@ -2486,7 +2470,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最终计划"
+            "value": "结束计划"
           }
         }
       }
@@ -2502,7 +2486,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "能量：%lld 共 5"
+            "value": "精力：%lld/5"
           }
         }
       }
@@ -2518,7 +2502,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "展开组跑"
+            "value": "展开团体跑"
           }
         }
       }
@@ -2534,7 +2518,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "展开鞋子设置"
+            "value": "展开跑鞋设置"
           }
         }
       }
@@ -2550,7 +2534,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "出口%@"
+            "value": "导出 %@"
           }
         }
       }
@@ -2566,7 +2550,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "脸"
+            "value": "形象"
           }
         }
       }
@@ -2614,7 +2598,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "结束"
+            "value": "完成"
           }
         }
       }
@@ -2758,7 +2742,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "齿轮"
+            "value": "装备"
           }
         }
       }
@@ -2774,7 +2758,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "建议进行温和的训练"
+            "value": "建议进行更轻松的训练"
           }
         }
       }
@@ -2806,7 +2790,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "了解您的跑步情况"
+            "value": "了解你的跑步状态"
           }
         }
       }
@@ -2838,7 +2822,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "知道了"
+            "value": "明白了"
           }
         }
       }
@@ -2950,7 +2934,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这是我的理解"
+            "value": "我对你的了解"
           }
         }
       }
@@ -2982,7 +2966,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你今天怎么到的？"
+            "value": "你今天状态如何？"
           }
         }
       }
@@ -3030,7 +3014,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "包括应用程序和设备详细信息"
+            "value": "附上应用和设备信息"
           }
         }
       }
@@ -3046,7 +3030,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "集成"
+            "value": "关联服务"
           }
         }
       }
@@ -3078,7 +3062,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "邀请家人或朋友，或加入适合您计划的跑步俱乐部。"
+            "value": "邀请家人或朋友，或加入适合你训练计划的跑团活动。"
           }
         }
       }
@@ -3094,7 +3078,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "邀请链接或令牌"
+            "value": "邀请链接或邀请码"
           }
         }
       }
@@ -3158,7 +3142,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "加入..."
+            "value": "正在加入…"
           }
         }
       }
@@ -3174,7 +3158,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持原创"
+            "value": "保持原计划"
           }
         }
       }
@@ -3190,7 +3174,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "学习耐力和恢复"
+            "value": "了解耐力与恢复能力"
           }
         }
       }
@@ -3206,7 +3190,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "学习你自然轻松的努力"
+            "value": "了解你轻松跑时的自然强度"
           }
         }
       }
@@ -3238,7 +3222,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "离开群组共享"
+            "value": "退出团体分享"
           }
         }
       }
@@ -3254,7 +3238,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让我们构建一些可以重复的东西。"
+            "value": "我们来制定一个你能坚持的安排。"
           }
         }
       }
@@ -3270,7 +3254,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让我们这一周保持脚踏实地的时间，而不是压力。"
+            "value": "这周先专注于积累跑步时间，不必给自己压力。"
           }
         }
       }
@@ -3286,7 +3270,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让我们简单一点。"
+            "value": "先从简单的开始。"
           }
         }
       }
@@ -3302,7 +3286,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让我们让回归感觉轻松而真实。"
+            "value": "让这次回归轻松一些，也更符合实际。"
           }
         }
       }
@@ -3350,7 +3334,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在加载您的跑步者模型..."
+            "value": "正在加载你的跑者模型…"
           }
         }
       }
@@ -3372,7 +3356,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "因地制宜，%1$@，%2$@"
+            "value": "%1$@当地天气：%2$@"
           }
         }
       }
@@ -3388,7 +3372,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "将其锁定"
+            "value": "确定"
           }
         }
       }
@@ -3404,7 +3388,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更长的放松跑"
+            "value": "较长的轻松跑"
           }
         }
       }
@@ -3420,7 +3404,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存的跑步时间越长，解锁的 PR 距离就越长。"
+            "value": "保存距离更长的跑步，即可解锁更多距离的个人纪录。"
           }
         }
       }
@@ -3436,7 +3420,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让一切变得更容易"
+            "value": "调轻松一些"
           }
         }
       }
@@ -3484,7 +3468,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "标记屏幕截图"
+            "value": "标注截图"
           }
         }
       }
@@ -3500,7 +3484,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最大%lld"
+            "value": "最多 %lld"
           }
         }
       }
@@ -3532,7 +3516,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "测量"
+            "value": "计量单位"
           }
         }
       }
@@ -3548,7 +3532,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "测量单位"
+            "value": "计量单位"
           }
         }
       }
@@ -3812,7 +3796,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "干得好。恢复得很好，让这一点算数。"
+            "value": "做得不错。好好恢复，这次训练也很重要。"
           }
         }
       }
@@ -3828,7 +3812,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有活动"
+            "value": "暂无活动"
           }
         }
       }
@@ -3844,7 +3828,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有活动。"
+            "value": "暂无活动。"
           }
         }
       }
@@ -3860,7 +3844,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无需进行全面测试。这些都是正常的训练。"
+            "value": "不需要全力测试，这些都是正常训练。"
           }
         }
       }
@@ -3908,7 +3892,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有预设目标。点击开始并凭感觉移动。"
+            "value": "没有预设目标。轻点“开始”，跟着感觉运动。"
           }
         }
       }
@@ -3940,7 +3924,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天没有安排会议"
+            "value": "今天没有安排训练"
           }
         }
       }
@@ -3972,7 +3956,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有任何"
+            "value": "无"
           }
         }
       }
@@ -3988,7 +3972,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "现在不要"
+            "value": "暂不"
           }
         }
       }
@@ -4036,7 +4020,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没学到什么"
+            "value": "还没有了解到相关信息"
           }
         }
       }
@@ -4068,7 +4052,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "观察受控的更快跑步"
+            "value": "了解你在可控加速时的表现"
           }
         }
       }
@@ -4100,7 +4084,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "提供灵活性"
+            "value": "提供灵活选项"
           }
         }
       }
@@ -4132,7 +4116,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "只需轻按一下即可帮助您的同伴适应 %@ 今天。"
+            "value": "轻点一下，跑步伙伴就能根据你今天的状态调整 %@。"
           }
         }
       }
@@ -4164,7 +4148,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开放计划详情"
+            "value": "查看计划详情"
           }
         }
       }
@@ -4180,7 +4164,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开 %@。准备好后点击开始。"
+            "value": "正在打开 %@。准备好后轻点“开始”。"
           }
         }
       }
@@ -4196,7 +4180,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选修的"
+            "value": "选填"
           }
         }
       }
@@ -4212,7 +4196,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "可选且私有。平步青云仅将这些条目存储在此设备上，并在请求适应时仅发送通用训练信号。"
+            "value": "此功能可选并保护隐私。平步青云只会将这些记录保存在本设备上；请求调整时，仅发送通用训练信号。"
           }
         }
       }
@@ -4228,7 +4212,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "可选。平步青云只会在你的回答有助于改进计划时于训练后询问。"
+            "value": "此功能可选。只有当你的回答有助于改进计划时，平步青云才会在训练后询问。"
           }
         }
       }
@@ -4260,7 +4244,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "参加者"
+            "value": "参与者"
           }
         }
       }
@@ -4292,7 +4276,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘贴来自其他跑步者的平步青云团体跑步邀请。"
+            "value": "粘贴其他跑者发来的平步青云团体跑邀请。"
           }
         }
       }
@@ -4356,7 +4340,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天经期"
+            "value": "今天处于经期"
           }
         }
       }
@@ -4372,7 +4356,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "永久删除您的帐户？"
+            "value": "永久删除你的账户？"
           }
         }
       }
@@ -4468,7 +4452,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平步青云在此设备上保留私人健康详细信息，并且从不在 Together 中显示它们。"
+            "value": "平步青云会将私人健康信息保留在本设备上，绝不会在“一起跑”中显示。"
           }
         }
       }
@@ -4484,7 +4468,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平步青云使用近似位置进行此预测。天气建议不会自动改变您的计划。"
+            "value": "平步青云使用大致位置提供天气预报。天气建议不会自动更改你的计划。"
           }
         }
       }
@@ -4500,7 +4484,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划行动"
+            "value": "计划操作"
           }
         }
       }
@@ -4532,7 +4516,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划详情正在加载中"
+            "value": "正在加载计划详情"
           }
         }
       }
@@ -4548,7 +4532,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划详细信息正在同步"
+            "value": "正在同步计划详情"
           }
         }
       }
@@ -4564,7 +4548,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平面形状"
+            "value": "计划结构"
           }
         }
       }
@@ -4580,7 +4564,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "奏乐"
+            "value": "播放音乐"
           }
         }
       }
@@ -4596,7 +4580,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备 ${distance} 自行车骑行"
+            "value": "准备 ${distance} 骑行"
           }
         }
       }
@@ -4628,7 +4612,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备 ${duration} 自行车骑行"
+            "value": "准备 ${duration} 骑行"
           }
         }
       }
@@ -4660,7 +4644,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项具有距离目标的平步青云自行车活动。"
+            "value": "在平步青云中准备一项设有距离目标的骑行。"
           }
         }
       }
@@ -4676,7 +4660,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项有时间目标的平步青云自行车活动。"
+            "value": "在平步青云中准备一项设有时长目标的骑行。"
           }
         }
       }
@@ -4692,7 +4676,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备以距离为目标的平步青云跑。"
+            "value": "在平步青云中准备一项设有距离目标的跑步。"
           }
         }
       }
@@ -4708,7 +4692,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一个有时间目标的平步青云跑。"
+            "value": "在平步青云中准备一项设有时长目标的跑步。"
           }
         }
       }
@@ -4724,7 +4708,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一项开放式的平步青云自行车活动。"
+            "value": "在平步青云中准备一项不限目标的骑行。"
           }
         }
       }
@@ -4740,7 +4724,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备一次开放式平步青云跑。"
+            "value": "在平步青云中准备一项不限目标的跑步。"
           }
         }
       }
@@ -4756,7 +4740,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备自行车"
+            "value": "准备骑行"
           }
         }
       }
@@ -4772,7 +4756,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备远距离自行车"
+            "value": "准备按距离骑行"
           }
         }
       }
@@ -4788,7 +4772,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备长跑"
+            "value": "准备按距离跑步"
           }
         }
       }
@@ -4820,7 +4804,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备定时自行车"
+            "value": "准备计时骑行"
           }
         }
       }
@@ -4836,7 +4820,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "准备定时跑步"
+            "value": "准备计时跑步"
           }
         }
       }
@@ -4868,7 +4852,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "私人的"
+            "value": "私密"
           }
         }
       }
@@ -4884,7 +4868,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "私密训练信息"
+            "value": "私密训练背景"
           }
         }
       }
@@ -4900,7 +4884,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轮廓"
+            "value": "个人资料"
           }
         }
       }
@@ -4916,7 +4900,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "进步"
+            "value": "进度"
           }
         }
       }
@@ -4932,7 +4916,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "进度部分"
+            "value": "进度栏目"
           }
         }
       }
@@ -4948,7 +4932,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "进度视图"
+            "value": "进度页面"
           }
         }
       }
@@ -4964,7 +4948,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "目的"
+            "value": "目标"
           }
         }
       }
@@ -4980,7 +4964,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "推送地址或设备标签"
+            "value": "推送地址或设备名称"
           }
         }
       }
@@ -5028,7 +5012,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "现实的一周"
+            "value": "切实可行的一周"
           }
         }
       }
@@ -5044,7 +5028,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近的"
+            "value": "最近"
           }
         }
       }
@@ -5076,7 +5060,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近频率"
+            "value": "近期跑步频率"
           }
         }
       }
@@ -5092,7 +5076,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "近期健康训练"
+            "value": "“健康”App 中的近期训练"
           }
         }
       }
@@ -5124,7 +5108,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最近的地图"
+            "value": "地图回到当前位置"
           }
         }
       }
@@ -5146,7 +5130,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "收件人：%1$@（%2$@存根+共享菜单）"
+            "value": "接收人：%1$@（%2$@ 暂未启用，将打开系统分享菜单）"
           }
         }
       }
@@ -5162,7 +5146,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "收件人：在共享菜单中选择"
+            "value": "接收人：在系统分享菜单中选择"
           }
         }
       }
@@ -5194,7 +5178,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "刷新条件"
+            "value": "刷新天气"
           }
         }
       }
@@ -5210,7 +5194,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "令人耳目一新的计划"
+            "value": "正在刷新计划"
           }
         }
       }
@@ -5226,7 +5210,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "消除"
+            "value": "移除"
           }
         }
       }
@@ -5242,7 +5226,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除信任的联系人"
+            "value": "删除信任联系人"
           }
         }
       }
@@ -5258,7 +5242,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "必需的"
+            "value": "必填"
           }
         }
       }
@@ -5306,7 +5290,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢复活动"
+            "value": "继续活动"
           }
         }
       }
@@ -5322,7 +5306,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "建议退役里程"
+            "value": "退役里程"
           }
         }
       }
@@ -5370,7 +5354,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "审查计划"
+            "value": "已审核计划"
           }
         }
       }
@@ -5504,7 +5488,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一起跑步会更好"
+            "value": "一起跑，更精彩"
           }
         }
       }
@@ -5520,7 +5504,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安全回归"
+            "value": "安全恢复跑步"
           }
         }
       }
@@ -5552,7 +5536,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "示例轻推"
+            "value": "提示示例"
           }
         }
       }
@@ -5584,7 +5568,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存一些干净距离的跑步来估计比赛范围。"
+            "value": "保存几次距离记录完整的跑步，即可估算比赛成绩范围。"
           }
         }
       }
@@ -5616,7 +5600,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存计划并转到“我”"
+            "value": "保存计划并前往“我”"
           }
         }
       }
@@ -5648,7 +5632,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存您的第一个活动以开始构建统计数据。"
+            "value": "保存你的第一次活动，开始积累统计数据。"
           }
         }
       }
@@ -5680,7 +5664,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "截屏"
+            "value": "截图"
           }
         }
       }
@@ -5760,7 +5744,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择%@"
+            "value": "选择 %@"
           }
         }
       }
@@ -5797,18 +5781,18 @@
         }
       }
     },
-    "Selected Coach": {
+    "Selected companion": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrenador seleccionado"
+            "value": "Compañero seleccionado"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "精选教练"
+            "value": "已选跑步伙伴"
           }
         }
       }
@@ -5840,7 +5824,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "放"
+            "value": "设置"
           }
         }
       }
@@ -5856,7 +5840,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设定下一个焦点"
+            "value": "设置下一个重点"
           }
         }
       }
@@ -5920,7 +5904,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "尽可能多地分享细节"
+            "value": "请尽可能详细地说明"
           }
         }
       }
@@ -5952,7 +5936,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "分享实时跑步速度更快"
+            "value": "更快分享实时跑步"
           }
         }
       }
@@ -6064,7 +6048,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登出"
+            "value": "退出登录"
           }
         }
       }
@@ -6080,7 +6064,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登出"
+            "value": "退出登录"
           }
         }
       }
@@ -6160,7 +6144,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跳过办理登机手续"
+            "value": "跳过状态记录"
           }
         }
       }
@@ -6192,7 +6176,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跳过曲目"
+            "value": "下一首"
           }
         }
       }
@@ -6208,7 +6192,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "SMS 和推送传送目前已在服务器上存根。当实时跑步开始时，平步青云仍会打开系统共享菜单。"
+            "value": "服务器目前尚未启用短信和推送发送。实时跑步开始时，平步青云仍会打开系统分享菜单。"
           }
         }
       }
@@ -6224,7 +6208,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "说出活动命令"
+            "value": "说出活动指令"
           }
         }
       }
@@ -6272,7 +6256,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "启动备用：%@"
+            "value": "开始备选训练：%@"
           }
         }
       }
@@ -6320,7 +6304,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开始今天的会议"
+            "value": "开始今天的训练"
           }
         }
       }
@@ -6336,7 +6320,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "起点"
+            "value": "目前状态"
           }
         }
       }
@@ -6352,7 +6336,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开头：%@"
+            "value": "从这里开始：%@"
           }
         }
       }
@@ -6384,7 +6368,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "停止聆听"
+            "value": "停止识别"
           }
         }
       }
@@ -6400,7 +6384,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "停止直播分享"
+            "value": "停止实时分享"
           }
         }
       }
@@ -6432,7 +6416,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同步今天的会议"
+            "value": "正在同步今天的训练"
           }
         }
       }
@@ -6448,7 +6432,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点击今天的指导"
+            "value": "轻点查看今日建议"
           }
         }
       }
@@ -6464,23 +6448,23 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点击“记录”开始您的第一个活动。"
+            "value": "轻点“记录”，开始你的第一次活动。"
           }
         }
       }
     },
-    "Tell your coach the real story. We will turn it into a first session and a plan that fits.": {
+    "Tell your companion the real story. We will turn it into a first session and a plan that fits.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuéntale a tu entrenador la verdadera historia. Lo convertiremos en una primera sesión y en un plan que encaje."
+            "value": "Cuéntale a tu compañero tu situación real. La convertiremos en una primera sesión y un plan que encaje."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "告诉你的教练真实的故事。我们将把它变成第一次会议和一个合适的计划。"
+            "value": "告诉跑步伙伴你的真实情况。我们会据此制定适合你的第一次训练和训练计划。"
           }
         }
       }
@@ -6496,7 +6480,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活动计划已制定。最新计划快照完成同步后，周计划将立即显示在此处。"
+            "value": "当前计划已设置。最新计划同步完成后，每周安排会显示在这里。"
           }
         }
       }
@@ -6512,7 +6496,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活动建议与活动计划相关联。最新计划状态加载完成后，完整计划将立即显示在此处。"
+            "value": "这项训练建议来自当前计划。最新计划加载完成后，完整内容会显示在这里。"
           }
         }
       }
@@ -6544,7 +6528,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "思维..."
+            "value": "正在思考…"
           }
         }
       }
@@ -6560,7 +6544,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这包括应用程序版本、设备类型和 iOS 版本。它不包括健康状况、位置或帐户数据。"
+            "value": "其中包括应用版本、设备型号和 iOS 版本，不包括健康、位置或账户数据。"
           }
         }
       }
@@ -6576,7 +6560,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这将永久删除您的平步青云帐户、同步活动、计划、个人资料、社交数据和本地存储的平步青云数据。此操作无法撤消。"
+            "value": "这将永久删除你的平步青云账户、已同步活动、计划、个人资料、社交数据和本地保存的平步青云数据。此操作无法撤销。"
           }
         }
       }
@@ -6656,7 +6640,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "时间以分钟为单位"
+            "value": "时长（分钟）"
           }
         }
       }
@@ -6672,7 +6656,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "定时自行车"
+            "value": "计时骑行"
           }
         }
       }
@@ -6688,7 +6672,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "定时跑步"
+            "value": "计时跑步"
           }
         }
       }
@@ -6736,7 +6720,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天的指导"
+            "value": "今日建议"
           }
         }
       }
@@ -6768,7 +6752,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天的推荐"
+            "value": "今日推荐"
           }
         }
       }
@@ -6784,7 +6768,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天的跑步结束了"
+            "value": "今日跑步已完成"
           }
         }
       }
@@ -6800,7 +6784,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一起"
+            "value": "跑圈"
           }
         }
       }
@@ -6864,7 +6848,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "值得信赖的联系人"
+            "value": "信任联系人"
           }
         }
       }
@@ -6880,7 +6864,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "值得信赖的联系人"
+            "value": "信任联系人"
           }
         }
       }
@@ -6976,7 +6960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开跑步机模式"
+            "value": "开启跑步机模式"
           }
         }
       }
@@ -6992,7 +6976,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法共享路线"
+            "value": "无法分享路线"
           }
         }
       }
@@ -7008,7 +6992,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "撤消"
+            "value": "撤销"
           }
         }
       }
@@ -7040,7 +7024,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上一个"
+            "value": "接下来"
           }
         }
       }
@@ -7056,7 +7040,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在上传..."
+            "value": "正在上传…"
           }
         }
       }
@@ -7077,12 +7061,12 @@
         }
       }
     },
-    "Use cycle-aware coaching": {
+    "Use cycle-aware guidance": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usar entrenamiento adaptado al ciclo"
+            "value": "Usar orientación adaptada al ciclo"
           }
         },
         "zh-Hans": {
@@ -7136,7 +7120,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "使用下面的周计划，或从“立即”卡菜单更改/结束计划。"
+            "value": "按照下方的每周安排训练，或从“现在”卡片菜单中更改或结束计划。"
           }
         }
       }
@@ -7152,7 +7136,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "使用这个计划"
+            "value": "使用此计划"
           }
         }
       }
@@ -7216,23 +7200,23 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "嗓音"
+            "value": "声音"
           }
         }
       }
     },
-    "Voice, style, and coach tuning": {
+    "Voice, style, and companion tuning": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajustes de voz, estilo y entrenador"
+            "value": "Ajustes de voz, estilo y compañero"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "语音、风格和教练设置"
+            "value": "语音、风格和伙伴设置"
           }
         }
       }
@@ -7248,7 +7232,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我们会在您跑步时学习"
+            "value": "每次跑步，我们都会更了解你"
           }
         }
       }
@@ -7264,7 +7248,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Weather 提供的天气数据"
+            "value": "天气数据由 Apple 天气提供"
           }
         }
       }
@@ -7280,7 +7264,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "周 %lld"
+            "value": "第 %lld 周"
           }
         }
       }
@@ -7302,7 +7286,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$lld 的周 %1$lld"
+            "value": "第 %1$lld 周，共 %2$lld 周"
           }
         }
       }
@@ -7324,7 +7308,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "周 %1$lld: %2$@"
+            "value": "第 %1$lld 周：%2$@"
           }
         }
       }
@@ -7340,7 +7324,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "周预览"
+            "value": "周计划预览"
           }
         }
       }
@@ -7356,7 +7340,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "周日程"
+            "value": "每周安排"
           }
         }
       }
@@ -7372,7 +7356,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每周重点完成"
+            "value": "已完成本周重点"
           }
         }
       }
@@ -7388,7 +7372,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "记录后，每周总计、最佳努力和趋势将显示在此处。"
+            "value": "记录活动后，这里会显示每周总量、最佳表现和趋势。"
           }
         }
       }
@@ -7404,7 +7388,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你正在努力做什么？"
+            "value": "你的目标是什么？"
           }
         }
       }
@@ -7420,7 +7404,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "大多数周可以支持什么？"
+            "value": "一般每周能安排多少训练？"
           }
         }
       }
@@ -7436,7 +7420,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "现实的一周是什么样的？"
+            "value": "你实际能做到的一周是什么样？"
           }
         }
       }
@@ -7468,7 +7452,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我学到了什么"
+            "value": "我对你的了解"
           }
         }
       }
@@ -7484,7 +7468,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要改变什么？"
+            "value": "需要调整什么？"
           }
         }
       }
@@ -7500,7 +7484,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平步青云知道什么"
+            "value": "平步青云对你的了解"
           }
         }
       }
@@ -7516,7 +7500,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平步青云应记住什么？"
+            "value": "希望平步青云记住什么？"
           }
         }
       }
@@ -7564,7 +7548,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为什么要进行这项训练"
+            "value": "这项训练的作用"
           }
         }
       }
@@ -7580,7 +7564,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为什么要进行这样的训练？"
+            "value": "为什么安排这项训练？"
           }
         }
       }
@@ -7596,7 +7580,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您始终可以选择是否使用较温和的选项或保留计划的训练。"
+            "value": "你可以随时选择更轻松的方案，也可以保留原定训练。"
           }
         }
       }
@@ -7612,7 +7596,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您还可以在应用程序中的任意位置摇动 iPhone 来报告错误或分享建议。"
+            "value": "你也可以在应用中的任何页面摇动 iPhone，报告问题或提出建议。"
           }
         }
       }
@@ -7628,7 +7612,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的AI跑步伙伴"
+            "value": "你的 AI 跑步伙伴"
           }
         }
       }
@@ -7644,7 +7628,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的AI跑步伙伴将您与家人、朋友和俱乐部一起进行训练。"
+            "value": "你的 AI 跑步伙伴会把家人、朋友和跑团融入训练。"
           }
         }
       }
@@ -7660,39 +7644,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的俱乐部"
-          }
-        }
-      }
-    },
-    "Your Coach": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu entrenador"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的教练"
-          }
-        }
-      }
-    },
-    "Your companion": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu compañero"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的同伴"
+            "value": "我的跑团"
           }
         }
       }
@@ -7708,7 +7660,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的同伴会把这变成现实的第一周。"
+            "value": "你的跑步伙伴会据此制定切实可行的第一周计划。"
           }
         }
       }
@@ -7724,7 +7676,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您完成的跑步将显示在此处。"
+            "value": "你完成的跑步会显示在这里。"
           }
         }
       }
@@ -7740,7 +7692,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的更正将成为已确认的事实，并优先于先前的推论。"
+            "value": "修改后的内容会成为已确认的信息，并优先于之前的推测。"
           }
         }
       }
@@ -7756,7 +7708,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的第一次跑步将调整您的努力程度、耐力和恢复能力。这些是初步估计，而不是判断。"
+            "value": "最初几次跑步会帮助调整强度、耐力和恢复能力。这些只是初步估算，不是对你的评判。"
           }
         }
       }
@@ -7772,7 +7724,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的姓名和个人简介可能会出现在Together 中与您联系的人面前。"
+            "value": "你的姓名和个人简介可能会向“跑圈”中与你建立联系的人显示。"
           }
         }
       }

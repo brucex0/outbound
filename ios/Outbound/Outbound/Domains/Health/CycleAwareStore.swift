@@ -52,7 +52,7 @@ final class CycleAwareStore: ObservableObject {
         return .noAdjustment
     }
 
-    var summary: String { isEnabled ? currentSignal.title : String(localized: "Cycle-aware coaching is off") }
+    var summary: String { isEnabled ? currentSignal.title : String(localized: "Cycle-aware guidance is off") }
 
     func log(bleeding: Bool, energy: Int, discomfort: Int) {
         logs.insert(CycleWellbeingLog(id: UUID(), date: Date(), bleeding: bleeding, energy: energy, discomfort: discomfort), at: 0)
