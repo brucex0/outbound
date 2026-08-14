@@ -190,12 +190,11 @@ struct RecordView: View {
                 Button {
                     isAssistantPresented = true
                 } label: {
-                    Label("Assistant", systemImage: "sparkles")
-                        .font(.caption.weight(.semibold))
+                    Image(systemName: "sparkles")
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(showCamera ? .white : .primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
                 .padding(.top, showCamera ? 18 : 14)
                 .padding(.trailing, 16)
