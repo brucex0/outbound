@@ -36,6 +36,24 @@ Open this when preparing a TestFlight or App Store build.
 
 7. In Xcode, select **Any iOS Device (arm64)**, choose **Product > Archive**, then use Organizer to validate and upload the archive.
 
+## Automated TestFlight Upload
+
+Run the repository helper from a clean tracked worktree:
+
+```sh
+./scripts/publish-testflight.sh
+```
+
+The helper increments the app and Live Activity extension build number, updates `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
+
+Preview the next build number without changing files:
+
+```sh
+./scripts/publish-testflight.sh --dry-run
+```
+
+If command-line upload cannot use the saved Apple Account, the script preserves the verified archive and prints the exact Organizer fallback. After Apple processes the upload, add test notes and assign the build to the intended external TestFlight group in App Store Connect.
+
 ## App Store Connect Checklist
 
 - Create the app record as **Plainstride** with bundle ID `plainstride.outbound`, version `1.0`, primary category **Health & Fitness**, and the final availability/price.
