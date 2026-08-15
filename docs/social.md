@@ -72,7 +72,7 @@ npm run db:push -- --accept-data-loss
 ```
 
 The deployment schema job described in `docs/backend-deploy.md` remains the production path.
-Production schema rollout uses the Cloud Run database job documented in `docs/backend-deploy.md`. `Activity.updatedAt` has a database default so existing pre-publish activity rows can be upgraded without blocking the current Social tables. Temporary missing-table fallbacks can be removed after the production job completes and the Social endpoints are verified.
+Production schema rollout uses the Cloud Run database job documented in `docs/backend-deploy.md`. `Activity.updatedAt` has a database default so existing pre-publish activity rows can be upgraded without blocking the current Social tables. The current production schema was applied successfully on 2026-08-14; Social database errors now surface normally rather than being masked by missing-table fallbacks.
 
 ## Deferred
 

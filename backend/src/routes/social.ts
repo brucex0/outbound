@@ -1,6 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Hono, type Context } from "hono";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
@@ -192,17 +191,11 @@ router.delete("/users/:id/block", async (c) => {
 router.get("/blocks", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  let blocks;
-  try {
-    blocks = await getPrismaClient().socialBlock.findMany({
-      where: { blockerId: user.id },
-      include: { blocked: { select: socialPersonSelect } },
-      orderBy: { createdAt: "desc" },
-    });
-  } catch (error) {
-    if (isMissingSocialTable(error)) return c.json({ blocks: [] });
-    throw error;
-  }
+  const blocks = await getPrismaClient().socialBlock.findMany({
+    where: { blockerId: user.id },
+    include: { blocked: { select: socialPersonSelect } },
+    orderBy: { createdAt: "desc" },
+  });
   return c.json({ blocks: blocks.map((block) => ({ id: block.id, person: block.blocked })) });
 });
 
@@ -219,18 +212,12 @@ router.post("/reports", zValidator("json", reportSchema), async (c) => {
 router.get("/notifications", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  let notifications;
-  try {
-    notifications = await getPrismaClient().socialNotification.findMany({
-      where: { recipientId: user.id },
-      include: { actor: { select: socialPersonSelect } },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-  } catch (error) {
-    if (isMissingSocialTable(error)) return c.json({ notifications: [] });
-    throw error;
-  }
+  const notifications = await getPrismaClient().socialNotification.findMany({
+    where: { recipientId: user.id },
+    include: { actor: { select: socialPersonSelect } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
   return c.json({ notifications });
 });
 
@@ -537,41 +524,23 @@ async function acceptedConnectionIDs(userId: string) {
 }
 
 async function blockedUserIDs(userId: string) {
-  let blocks;
-  try {
-    blocks = await getPrismaClient().socialBlock.findMany({
-      where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
-      select: { blockerId: true, blockedId: true },
-    });
-  } catch (error) {
-    if (isMissingSocialTable(error)) return [];
-    throw error;
-  }
+  const blocks = await getPrismaClient().socialBlock.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
   return blocks.map((block) => block.blockerId === userId ? block.blockedId : block.blockerId);
 }
 
-function isMissingSocialTable(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
-}
-
 async function createSocialNotification(recipientId: string, actorId: string, type: string, objectId: string, message: string) {
-  try {
-    await getPrismaClient().socialNotification.create({
-      data: { recipientId, actorId, type, objectId, message },
-    });
-  } catch (error) {
-    if (!isMissingSocialTable(error)) throw error;
-  }
+  await getPrismaClient().socialNotification.create({
+    data: { recipientId, actorId, type, objectId, message },
+  });
 }
 
 async function dismissSocialNotification(recipientId: string, type: string, objectId: string) {
-  try {
-    await getPrismaClient().socialNotification.deleteMany({
-      where: { recipientId, type, objectId },
-    });
-  } catch (error) {
-    if (!isMissingSocialTable(error)) throw error;
-  }
+  await getPrismaClient().socialNotification.deleteMany({
+    where: { recipientId, type, objectId },
+  });
 }
 
 const socialPersonSelect = {
