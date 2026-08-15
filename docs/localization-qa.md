@@ -43,6 +43,13 @@ Remaining blockers:
 - Added reviewed Simplified Chinese and Spanish translations for every Today phrase activated by this change.
 - Build-only simulator compilation passed. Rendered device verification remains required.
 
+## 2026-08-14 Social Localization Pass
+
+- Added context-written Spanish and Simplified Chinese translations for Social navigation, empty states, connections, groups, invitations, notifications, comments, accessibility actions, and activity-feed controls.
+- Simplified Chinese uses running-specific terms such as `跑友`, `跑团`, `最新动态`, and the approved phrase `一起跑，更精彩`; Spanish uses natural community and running-event language rather than literal word substitutions.
+- Localized runtime counts, conditional actions, group roles, stat labels, and share messages that previously bypassed the catalog.
+- User-authored names, group descriptions, captions, and server-authored notification text remain unchanged by design. Server-generated compatibility explanations still require locale-aware backend content.
+
 ## Release Blockers
 
 ### L10N-001 — Primary journeys contain mixed English
@@ -52,7 +59,7 @@ Severity: Blocker
 Both translations render English app-authored content inside localized screens.
 
 - Today: the reported rotating inspiration, `Start run`, built-in easy-run card, and fallback workout-step names are fixed in code. Remaining risk is backend-generated workout prose, `Location access is off...`, and uncataloged accessibility content.
-- Together: offline error, generated compatibility explanation, club-role value, `Distance`, `Time`, and `Pace`.
+- Together: local navigation, roles, counts, metric labels, actions, empty states, and share copy are fixed in code. Remaining risk is offline/server error text and generated compatibility explanations.
 - Me: plan title/detail, learned-insight values, `Distance`, `Time`, and the weekly companion sentence.
 - Profile editor: `Profile could not be loaded.`
 - Activity setup: `Freestyle run`, `Run • no preset target`, coach quote, goal choices, `Start now`, `Music`, and `Run options`.

@@ -61,7 +61,7 @@ struct SocialHomeView: View {
                     }
                     .accessibilityLabel("Social notifications")
                     .accessibilityValue(socialStore.pendingInvitationCount > 0
-                        ? "\(socialStore.pendingInvitationCount) pending invitations"
+                        ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
                         : "")
                 }
             }
@@ -152,7 +152,7 @@ struct SocialHomeView: View {
                             .buttonStyle(.borderedProminent)
 
                             if let invitationURL = socialStore.latestInvitationURL {
-                                ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
+                                ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
                                     Image(systemName: "square.and.arrow.up")
                                 }
                                 .buttonStyle(SocialIconButtonStyle())
@@ -183,7 +183,7 @@ struct SocialHomeView: View {
                         Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
                         VStack(alignment: .leading) {
                             Text(club.name).font(.headline)
-                            Text([club.city, club.role?.capitalized].compactMap { $0 }.joined(separator: " · "))
+                            Text([club.city, club.role.map(localizedGroupRole)].compactMap { $0 }.joined(separator: " · "))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -248,7 +248,7 @@ struct SocialHomeView: View {
                             }
                             .accessibilityLabel("Post actions")
                         }
-                        Text(post.activity?.title ?? "Run").font(.headline)
+                        Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
                         if let activity = post.activity {
                             HStack {
                                 socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
@@ -260,13 +260,13 @@ struct SocialHomeView: View {
                             Text(caption).font(.subheadline)
                         }
                         HStack {
-                            Button(post.currentUserCheered ? "Cheered · \(post.reactionCount)" : "Cheer · \(post.reactionCount)", systemImage: post.currentUserCheered ? "heart.fill" : "heart") {
+                            Button(post.currentUserCheered ? String(localized: "Cheered · \(post.reactionCount)") : String(localized: "Cheer · \(post.reactionCount)"), systemImage: post.currentUserCheered ? "heart.fill" : "heart") {
                                 Task { await socialStore.toggleCheer(on: post) }
                             }
                             .buttonStyle(.bordered)
                             .disabled(socialStore.isSocialMutationPending)
 
-                            Button("Comment · \(post.commentCount)", systemImage: "bubble.left") {
+                            Button(String(localized: "Comment · \(post.commentCount)"), systemImage: "bubble.left") {
                                 selectedCommentPost = post
                             }
                             .buttonStyle(.bordered)
@@ -280,7 +280,7 @@ struct SocialHomeView: View {
     private func shareReferral() async {
         guard let url = await socialStore.referralInvitationURL() else { return }
         await SystemSharePresenter.present(activityItems: [
-            "Join me for a run on Plainstride: \(url.absoluteString)",
+            String(localized: "Join me for a run on Plainstride: \(url.absoluteString)"),
         ])
     }
 
@@ -288,12 +288,21 @@ struct SocialHomeView: View {
         location.map { " · \($0)" } ?? ""
     }
 
-    private func socialStat(_ value: String, _ label: String) -> some View {
+    private func socialStat(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.subheadline.monospacedDigit().weight(.semibold))
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func localizedGroupRole(_ role: String) -> String {
+        switch role.lowercased() {
+        case "owner": String(localized: "Owner")
+        case "admin": String(localized: "Admin")
+        case "member": String(localized: "Member")
+        default: role
+        }
     }
 }
 
@@ -306,12 +315,12 @@ private struct SocialGroupsView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(group.name).font(.headline)
-                        Text([group.city, "\(group.memberCount) members"].compactMap { $0 }.joined(separator: " · "))
+                        Text([group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button(group.membershipRole == nil ? "Join" : "Leave") {
+                    Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
                         Task { await socialStore.toggleMembership(in: group) }
                     }
                     .buttonStyle(.bordered)
@@ -364,7 +373,7 @@ private struct SocialGroupRunView: View {
                     guard let detail else { return }
                     Task { self.detail = await socialStore.toggleRSVP(for: detail) }
                 } label: {
-                    Label(detail?.currentUserGoing == true ? "Leave run" : "I'm going",
+                    Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "I'm going"),
                           systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
                 }
                 .disabled(detail == nil)
@@ -375,7 +384,7 @@ private struct SocialGroupRunView: View {
                     Label("Invite connections", systemImage: "person.badge.plus")
                 }
                 if let invitationURL = socialStore.latestInvitationURL {
-                    ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
+                    ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
                         Label("Share invitation", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -665,7 +674,7 @@ private struct SocialConnectionsView: View {
                     Task {
                         guard let url = await socialStore.referralInvitationURL() else { return }
                         await SystemSharePresenter.present(activityItems: [
-                            "Join me for a run on Plainstride: \(url.absoluteString)",
+                            String(localized: "Join me for a run on Plainstride: \(url.absoluteString)"),
                         ])
                     }
                 } label: {
