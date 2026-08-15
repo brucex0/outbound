@@ -22,9 +22,7 @@ struct SimplifiedAppShell: View {
                 .tag(SimplifiedAppTab.social)
                 .tabItem { Label("Social", systemImage: "person.2") }
 
-            SimplifiedTodayView(onStartRun: onStartRun) {
-                selection = .social
-            }
+            SimplifiedTodayView(onStartRun: onStartRun)
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label("Today", systemImage: "sparkles") }
 
@@ -53,7 +51,6 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let onStartRun: (SessionIntent?) -> Void
-    let onOpenTogether: () -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsActivityCompanion = false
     @State private var showsChangeSheet = false
@@ -116,23 +113,7 @@ private struct SimplifiedTodayView: View {
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
 
-                    OutboundCard {
-                        HStack(spacing: OutboundSpacing.standard) {
-                            Image(systemName: "heart.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(OutboundPalette.companion)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Better together")
-                                    .font(.headline)
-                                Text("A family member has a compatible easy run.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button("Invite", action: onOpenTogether)
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
+                    lastActivityCard
                 }
                 .padding(.horizontal, OutboundSpacing.screen)
                 .padding(.vertical, OutboundSpacing.standard)
@@ -255,6 +236,57 @@ private struct SimplifiedTodayView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(OutboundPalette.companion)
+            }
+        }
+    }
+
+    private var lastActivityCard: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                HStack {
+                    Text("LAST ACTIVITY")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    NavigationLink("See all") { ActivityHistoryView() }
+                        .font(.subheadline.weight(.semibold))
+                }
+
+                if let activity = activityStore.activities.first {
+                    NavigationLink(value: activity) {
+                        HStack(spacing: OutboundSpacing.standard) {
+                            Image(systemName: "figure.run.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(OutboundPalette.companion)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(activity.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1))
+                                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                                    .foregroundStyle(.primary)
+                                Text(durationLabel(activity.durationSecs))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("Your completed runs will appear here.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

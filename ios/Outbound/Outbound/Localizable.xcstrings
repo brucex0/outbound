@@ -4070,6 +4070,22 @@
       }
     },
     "Keep today’s run": {},
+    "LAST ACTIVITY": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ÚLTIMA ACTIVIDAD"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近一次活动"
+          }
+        }
+      }
+    },
     "Learn endurance and recovery": {
       "localizations": {
         "es": {
