@@ -26,7 +26,7 @@ Primary references:
 
 Place setup under `Me -> Health & body -> Cycle-aware coaching`.
 
-The Me overview presents the feature name with its toggle directly, without a separate private-training-context heading.
+The Me overview presents the feature name with its toggle directly, without a separate private-training-context heading. Enabling it opens the private check-in sheet immediately, and the enabled card keeps an `Add today’s private check-in` action visible so logging does not require a trip through Settings.
 
 Setup must explain:
 

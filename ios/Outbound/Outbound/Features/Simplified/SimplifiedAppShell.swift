@@ -998,6 +998,7 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var profile: AppUserProfileDTO?
+    @State private var showsCycleAwareCheckIn = false
 
     var body: some View {
         NavigationStack {
@@ -1089,7 +1090,29 @@ private struct SimplifiedMeView: View {
                     }
                     if showsCycleAwareGuidance {
                         OutboundCard {
-                            Toggle("Cycle-aware guidance", isOn: $cycleAwareStore.isEnabled)
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Toggle("Cycle-aware guidance", isOn: $cycleAwareStore.isEnabled)
+                                    .onChange(of: cycleAwareStore.isEnabled) { wasEnabled, isEnabled in
+                                        if !wasEnabled && isEnabled {
+                                            showsCycleAwareCheckIn = true
+                                        }
+                                    }
+                                if cycleAwareStore.isEnabled {
+                                    Button {
+                                        showsCycleAwareCheckIn = true
+                                    } label: {
+                                        HStack {
+                                            Label("Add today’s private check-in", systemImage: "heart.text.clipboard")
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.primary)
+                                }
+                            }
                         }
                     }
                     OutboundCard {
@@ -1124,6 +1147,16 @@ private struct SimplifiedMeView: View {
             .navigationTitle("Me")
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .task { await loadProfile() }
+            .sheet(isPresented: $showsCycleAwareCheckIn) {
+                NavigationStack {
+                    CycleAwareView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showsCycleAwareCheckIn = false }
+                            }
+                        }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
