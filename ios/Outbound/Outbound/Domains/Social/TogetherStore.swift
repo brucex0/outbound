@@ -307,7 +307,7 @@ final class TogetherStore: ObservableObject {
                     createdAt: Date().addingTimeInterval(-3_600),
                     isCurrentUser: false,
                     user: maya,
-                    activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352),
+                    activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352, route: nil),
                     reactionCount: 2,
                     currentUserCheered: false,
                     commentCount: 1,

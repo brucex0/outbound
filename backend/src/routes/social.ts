@@ -37,7 +37,7 @@ async function socialHome(c: Context<AppEnv>) {
       where: { userId: { in: [user.id, ...connections] }, visibility: { in: ["connections", "public"] } },
       include: {
         user: { select: socialPersonSelect },
-        activity: true,
+        activity: { select: socialActivitySelect },
         reactions: { select: { id: true, userId: true, type: true } },
         comments: {
           include: { author: { select: socialPersonSelect } },
@@ -550,6 +550,15 @@ const socialPersonSelect = {
   avatarUrl: true,
 } as const;
 
+const socialActivitySelect = {
+  id: true,
+  title: true,
+  durationSecs: true,
+  distanceM: true,
+  avgPace: true,
+  route: true,
+} as const;
+
 function connectionPayload(
   connection: {
     id: string;
@@ -571,7 +580,7 @@ function connectionPayload(
 
 const socialPostInclude = {
   user: { select: socialPersonSelect },
-  activity: true,
+  activity: { select: socialActivitySelect },
   reactions: { select: { id: true, userId: true, type: true } },
   comments: {
     include: { author: { select: socialPersonSelect } },

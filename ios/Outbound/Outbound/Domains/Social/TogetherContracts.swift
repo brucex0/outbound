@@ -122,6 +122,15 @@ struct TogetherActivityDTO: Codable, Sendable {
     let durationSecs: Int?
     let distanceM: Double?
     let avgPace: Double?
+    let route: TogetherActivityRouteDTO?
+}
+
+struct TogetherActivityRouteDTO: Codable, Sendable {
+    let geometry: TogetherActivityRouteGeometryDTO
+}
+
+struct TogetherActivityRouteGeometryDTO: Codable, Sendable {
+    let coordinates: [[Double]]
 }
 
 struct TogetherPostDTO: Codable, Identifiable, Sendable {

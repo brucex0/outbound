@@ -12,6 +12,8 @@ The header keeps only two compact actions: a community menu for Connections and 
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.
 
+Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary and route fields rather than returning private reflection, coaching, or client snapshot data.
+
 The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.

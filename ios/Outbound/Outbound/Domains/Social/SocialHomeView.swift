@@ -1,8 +1,10 @@
+import MapKit
 import SwiftUI
 
 struct SocialHomeView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     @State private var selectedCommentPost: TogetherPostDTO?
 
     private var shouldShowConnectionPrompt: Bool {
@@ -262,31 +264,59 @@ struct SocialHomeView: View {
                                 }
                             } label: {
                                 Image(systemName: "ellipsis")
+                                    .font(.body.weight(.semibold))
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .accessibilityLabel("Post actions")
                         }
                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
                         if let activity = post.activity {
-                            HStack {
-                                socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                socialStat(activity.durationSecs.map { $0.formatted() } ?? "—", "Time")
-                                socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                            ZStack(alignment: .bottom) {
+                                SocialRouteMap(route: activity.route)
+                                HStack(spacing: 0) {
+                                    socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                    socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                    socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(.regularMaterial)
+                            }
+                            .frame(height: 210)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(alignment: .topLeading) {
+                                if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
+                                    RecognitionPill(preview: milestone, compact: true)
+                                        .padding(12)
+                                }
                             }
                         }
                         if let caption = post.caption, !caption.isEmpty {
                             Text(caption).font(.subheadline)
                         }
-                        HStack {
-                            Button(post.currentUserCheered ? String(localized: "Cheered · \(post.reactionCount)") : String(localized: "Cheer · \(post.reactionCount)"), systemImage: post.currentUserCheered ? "heart.fill" : "heart") {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            Button {
                                 Task { await socialStore.toggleCheer(on: post) }
+                            } label: {
+                                Label("\(post.reactionCount)", systemImage: post.currentUserCheered ? "heart.fill" : "heart")
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(SocialFeedActionButtonStyle(isActive: post.currentUserCheered))
                             .disabled(socialStore.isSocialMutationPending)
+                            .accessibilityLabel(post.currentUserCheered ? "Remove cheer" : "Cheer")
+                            .accessibilityValue("\(post.reactionCount)")
 
-                            Button(String(localized: "Comment · \(post.commentCount)"), systemImage: "bubble.left") {
+                            Button {
                                 selectedCommentPost = post
+                            } label: {
+                                Label("\(post.commentCount)", systemImage: "bubble.left")
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(SocialFeedActionButtonStyle())
+                            .accessibilityLabel("Comments")
+                            .accessibilityValue("\(post.commentCount)")
+
+                            Spacer()
                         }
                     }
                 }
@@ -301,6 +331,11 @@ struct SocialHomeView: View {
         ])
     }
 
+    private func milestone(for activity: TogetherActivityDTO, isCurrentUser: Bool) -> RecognitionPreview? {
+        guard isCurrentUser, let activityID = UUID(uuidString: activity.id) else { return nil }
+        return recognitionStore.topRecognition(for: activityID)
+    }
+
     private func locationSuffix(_ location: String?) -> String {
         location.map { " · \($0)" } ?? ""
     }
@@ -311,6 +346,15 @@ struct SocialHomeView: View {
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func socialDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        let remainingSeconds = seconds % 60
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, remainingSeconds)
+            : String(format: "%d:%02d", minutes, remainingSeconds)
     }
 
     private func localizedGroupRole(_ role: String) -> String {
@@ -790,6 +834,77 @@ private struct SocialAvatar: View {
 
     private var initials: String {
         name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+    }
+}
+
+private struct SocialRouteMap: View {
+    let route: TogetherActivityRouteDTO?
+
+    private var coordinates: [CLLocationCoordinate2D] {
+        route?.geometry.coordinates.compactMap { coordinate in
+            guard coordinate.count >= 2,
+                  (-180...180).contains(coordinate[0]),
+                  (-90...90).contains(coordinate[1]) else { return nil }
+            return CLLocationCoordinate2D(latitude: coordinate[1], longitude: coordinate[0])
+        } ?? []
+    }
+
+    private var position: MapCameraPosition {
+        guard coordinates.count > 1 else { return .automatic }
+        let latitudes = coordinates.map(\.latitude)
+        let longitudes = coordinates.map(\.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: ((latitudes.min() ?? 0) + (latitudes.max() ?? 0)) / 2,
+            longitude: ((longitudes.min() ?? 0) + (longitudes.max() ?? 0)) / 2
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: max(((latitudes.max() ?? 0) - (latitudes.min() ?? 0)) * 1.7, 0.006),
+            longitudeDelta: max(((longitudes.max() ?? 0) - (longitudes.min() ?? 0)) * 1.7, 0.006)
+        )
+        return .region(MKCoordinateRegion(center: center, span: span))
+    }
+
+    var body: some View {
+        Group {
+            if coordinates.count > 1 {
+                Map(position: .constant(position), interactionModes: []) {
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(OutboundPalette.companion, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+                .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            } else {
+                LinearGradient(
+                    colors: [OutboundPalette.companion.opacity(0.28), OutboundPalette.background],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .overlay {
+                    Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                        .font(.system(size: 54, weight: .light))
+                        .foregroundStyle(OutboundPalette.companion.opacity(0.65))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityLabel(coordinates.count > 1 ? "Activity route map" : "Activity without route data")
+    }
+}
+
+private struct SocialFeedActionButtonStyle: ButtonStyle {
+    var isActive = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isActive ? Color.pink : Color.secondary)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 40)
+            .background(
+                (isActive ? Color.pink : OutboundPalette.companion)
+                    .opacity(configuration.isPressed ? 0.18 : 0.08),
+                in: Capsule()
+            )
+            .contentShape(Capsule())
     }
 }
 
