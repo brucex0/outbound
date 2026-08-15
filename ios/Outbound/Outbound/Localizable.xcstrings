@@ -5608,7 +5608,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "立即开始"
+            "value": "一键开跑"
           }
         }
       }
@@ -7195,7 +7195,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "立即开始"
+            "value": "开始训练"
           }
         }
       }
