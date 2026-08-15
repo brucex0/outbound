@@ -70,7 +70,7 @@ npm run db:push -- --accept-data-loss
 ```
 
 The deployment schema job described in `docs/backend-deploy.md` remains the production path.
-Until that job runs, read-only Social home, block-list, and notification-list calls degrade to empty safety data when Prisma reports that the new tables do not exist; mutation features still require the schema.
+Until that job runs, read-only Social home, block-list, and notification-list calls degrade to empty safety data when Prisma reports that the new tables do not exist. Core mutations such as connection requests and acceptance still complete when only their optional notification write is unavailable; mutations that directly own records in the new tables still require the schema.
 
 ## Deferred
 

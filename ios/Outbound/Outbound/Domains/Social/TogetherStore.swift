@@ -10,6 +10,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var connections: [SocialConnectionDTO] = []
     @Published private(set) var peopleResults: [SocialPersonSearchResultDTO] = []
     @Published private(set) var isConnectionsLoading = false
+    @Published private(set) var pendingConnectionIDs: Set<String> = []
     @Published private(set) var commentsByPostID: [String: [TogetherCommentDTO]] = [:]
     @Published private(set) var isSocialMutationPending = false
     @Published private(set) var notifications: [SocialNotificationDTO] = []
@@ -221,12 +222,16 @@ final class TogetherStore: ObservableObject {
     }
 
     func acceptConnection(_ connection: SocialConnectionDTO) async {
+        guard pendingConnectionIDs.insert(connection.id).inserted else { return }
+        defer { pendingConnectionIDs.remove(connection.id) }
         if isUITestSeedData {
             replaceConnection(connection, status: "accepted", direction: "incoming")
             return
         }
         do {
             _ = try await api.acceptSocialConnection(id: connection.id)
+            replaceConnection(connection, status: "accepted", direction: "incoming")
+            errorMessage = nil
             await refreshConnections()
             await refresh()
         } catch {
@@ -235,12 +240,16 @@ final class TogetherStore: ObservableObject {
     }
 
     func removeConnection(_ connection: SocialConnectionDTO) async {
+        guard pendingConnectionIDs.insert(connection.id).inserted else { return }
+        defer { pendingConnectionIDs.remove(connection.id) }
         if isUITestSeedData {
             connections.removeAll { $0.id == connection.id }
             return
         }
         do {
             _ = try await api.removeSocialConnection(id: connection.id)
+            connections.removeAll { $0.id == connection.id }
+            errorMessage = nil
             await refreshConnections()
             await refresh()
         } catch {

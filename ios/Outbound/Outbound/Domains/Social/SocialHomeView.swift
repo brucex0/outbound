@@ -530,14 +530,26 @@ private struct SocialConnectionsView: View {
                 Section("Requests") {
                     ForEach(incomingRequests) { connection in
                         connectionRow(connection) {
-                            Button("Accept") {
+                            Button {
                                 Task { await socialStore.acceptConnection(connection) }
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(OutboundPalette.companion)
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.plain)
+                            .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
+                            .accessibilityLabel("Accept connection request")
 
-                            Button("Decline", role: .destructive) {
+                            Button(role: .destructive) {
                                 Task { await socialStore.removeConnection(connection) }
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .font(.title2)
                             }
+                            .buttonStyle(.plain)
+                            .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
+                            .accessibilityLabel("Decline connection request")
                         }
                     }
                 }
@@ -564,9 +576,15 @@ private struct SocialConnectionsView: View {
                 Section("Sent") {
                     ForEach(outgoingRequests) { connection in
                         connectionRow(connection) {
-                            Button("Cancel") {
+                            Button(role: .destructive) {
                                 Task { await socialStore.removeConnection(connection) }
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .font(.title2)
                             }
+                            .buttonStyle(.plain)
+                            .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
+                            .accessibilityLabel("Cancel connection request")
                         }
                     }
                 }

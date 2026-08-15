@@ -548,9 +548,13 @@ function isMissingSocialTable(error: unknown) {
 }
 
 async function createSocialNotification(recipientId: string, actorId: string, type: string, objectId: string, message: string) {
-  await getPrismaClient().socialNotification.create({
-    data: { recipientId, actorId, type, objectId, message },
-  });
+  try {
+    await getPrismaClient().socialNotification.create({
+      data: { recipientId, actorId, type, objectId, message },
+    });
+  } catch (error) {
+    if (!isMissingSocialTable(error)) throw error;
+  }
 }
 
 const socialPersonSelect = {
