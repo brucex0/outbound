@@ -168,6 +168,16 @@ struct SocialNotificationDTO: Codable, Identifiable, Sendable {
     let actor: SocialPersonDTO?
 }
 
+extension SocialNotificationDTO: Hashable {
+    static func == (lhs: SocialNotificationDTO, rhs: SocialNotificationDTO) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
 struct SocialNotificationsResponseDTO: Codable, Sendable {
     let notifications: [SocialNotificationDTO]
 }

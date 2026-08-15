@@ -530,6 +530,7 @@ private struct SocialGroupRunView: View {
 
 private struct SocialNotificationsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @State private var selectedNotification: SocialNotificationDTO?
 
     var body: some View {
         List {
@@ -537,34 +538,196 @@ private struct SocialNotificationsView: View {
                 ContentUnavailableView("No notifications", systemImage: "bell", description: Text("Connection requests, Cheers, comments, and run invitations appear here."))
             } else {
                 ForEach(socialStore.notifications) { notification in
-                    HStack(alignment: .top, spacing: OutboundSpacing.compact) {
-                        SocialAvatar(name: notification.actor?.displayName ?? "Plainstride", avatarURL: notification.actor?.avatarUrl)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(notification.message)
-                                .font(notification.readAt == nil ? .body.weight(.semibold) : .body)
-                            Text(notification.createdAt.formatted(.relative(presentation: .named)))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if notification.type == "runInvitation" {
-                                Button {
-                                    Task { await socialStore.acceptRunInvitation(notification) }
-                                } label: {
-                                    Image(systemName: "checkmark")
-                                }
-                                .buttonStyle(SocialIconButtonStyle())
-                                .accessibilityLabel("Accept run invitation")
+                    Button {
+                        selectedNotification = notification
+                    } label: {
+                        HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                            SocialAvatar(name: notification.actor?.displayName ?? "Plainstride", avatarURL: notification.actor?.avatarUrl)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(notification.message)
+                                    .font(notification.readAt == nil ? .body.weight(.semibold) : .body)
+                                    .foregroundStyle(.primary)
+                                Text(notification.createdAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(notificationAccessibilityHint(notification))
                 }
             }
         }
         .navigationTitle("Notifications")
+        .navigationDestination(item: $selectedNotification) { notification in
+            notificationDestination(notification)
+        }
         .task {
             await socialStore.refreshNotifications()
             await socialStore.markNotificationsRead()
         }
         .refreshable { await socialStore.refreshNotifications() }
+    }
+
+    @ViewBuilder
+    private func notificationDestination(_ notification: SocialNotificationDTO) -> some View {
+        switch notification.type {
+        case "connectionRequest", "connectionAccepted":
+            SocialConnectionsView()
+        case "cheer", "comment":
+            SocialNotificationActivityView(notification: notification)
+        case "runInvitation":
+            SocialRunInvitationActionView(notification: notification)
+        case "invitationAccepted":
+            if let runID = notification.objectId,
+               let run = socialStore.state.upcomingRuns.first(where: { $0.id == runID }) {
+                SocialGroupRunView(run: run)
+            } else {
+                SocialNotificationDetailView(notification: notification)
+            }
+        default:
+            SocialNotificationDetailView(notification: notification)
+        }
+    }
+
+    private func notificationAccessibilityHint(_ notification: SocialNotificationDTO) -> String {
+        switch notification.type {
+        case "connectionRequest", "connectionAccepted": return String(localized: "Opens Connections")
+        case "cheer", "comment": return String(localized: "Opens the activity")
+        case "runInvitation": return String(localized: "Opens the invitation")
+        case "invitationAccepted": return String(localized: "Opens the group run")
+        default: return String(localized: "Opens notification details")
+        }
+    }
+}
+
+private struct SocialNotificationActivityView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    let notification: SocialNotificationDTO
+    @State private var selectedCommentPost: TogetherPostDTO?
+
+    private var post: TogetherPostDTO? {
+        guard let postID = notification.objectId else { return nil }
+        return socialStore.state.posts.first { $0.id == postID }
+    }
+
+    var body: some View {
+        ScrollView {
+            if let post {
+                OutboundCard {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(post.user.displayName).font(.headline)
+                                Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
+                        if let activity = post.activity {
+                            ZStack(alignment: .bottom) {
+                                SocialRouteMap(route: activity.route)
+                                HStack(spacing: 0) {
+                                    stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                    stat(activity.durationSecs.map(duration) ?? "—", "Time")
+                                    stat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(.regularMaterial)
+                            }
+                            .frame(height: 240)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
+                        Button {
+                            selectedCommentPost = post
+                        } label: {
+                            Label("View \(post.commentCount) comments", systemImage: "bubble.left")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding(OutboundSpacing.screen)
+            } else {
+                ContentUnavailableView(
+                    "Activity unavailable",
+                    systemImage: "figure.run",
+                    description: Text("This activity may have been removed or is no longer shared with you.")
+                )
+                .padding(.top, 80)
+            }
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(notification.type == "comment" ? "Comment" : "Cheer")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if post == nil { await socialStore.refresh() }
+        }
+        .sheet(item: $selectedCommentPost) { SocialCommentsView(post: $0) }
+    }
+
+    private func duration(_ seconds: Int) -> String {
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        return hours > 0 ? "\(hours):\(String(format: "%02d", minutes))" : "\(minutes) min"
+    }
+
+    private func stat(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(.subheadline.weight(.semibold))
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct SocialRunInvitationActionView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    @Environment(\.dismiss) private var dismiss
+    let notification: SocialNotificationDTO
+
+    var body: some View {
+        List {
+            Section {
+                Label(notification.message, systemImage: "figure.run")
+                LabeledContent("Received", value: notification.createdAt.formatted(date: .abbreviated, time: .shortened))
+            }
+            Section {
+                Button {
+                    Task {
+                        await socialStore.acceptRunInvitation(notification)
+                        dismiss()
+                    }
+                } label: {
+                    Label("Accept invitation", systemImage: "checkmark.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .navigationTitle("Run invitation")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct SocialNotificationDetailView: View {
+    let notification: SocialNotificationDTO
+
+    var body: some View {
+        List {
+            Label(notification.message, systemImage: "bell")
+            LabeledContent("Received", value: notification.createdAt.formatted(date: .abbreviated, time: .shortened))
+        }
+        .navigationTitle("Notification")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
