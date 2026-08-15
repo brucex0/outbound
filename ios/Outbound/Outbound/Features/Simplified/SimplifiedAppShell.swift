@@ -1004,7 +1004,7 @@ private struct SimplifiedMeView: View {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     NavigationLink {
-                        SimplifiedProfileEditorView { profile = $0 }
+                        SimplifiedProfileEditorView(initialProfile: profile) { profile = $0 }
                     } label: {
                         OutboundCard {
                             HStack(spacing: 14) {
@@ -1127,7 +1127,10 @@ private struct SimplifiedMeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        SimplifiedSettingsView()
+                        SimplifiedSettingsView(
+                            profile: profile,
+                            onProfileUpdated: { profile = $0 }
+                        )
                     } label: {
                         Image(systemName: "gearshape")
                     }
@@ -1179,6 +1182,8 @@ private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    let profile: AppUserProfileDTO?
+    let onProfileUpdated: (AppUserProfileDTO) -> Void
     @State private var confirmsSignOut = false
 
     var body: some View {
@@ -1193,7 +1198,10 @@ private struct SimplifiedSettingsView: View {
             }
             Section("Profile") {
                 NavigationLink {
-                    SimplifiedProfileEditorView()
+                    SimplifiedProfileEditorView(
+                        initialProfile: profile,
+                        onProfileUpdated: onProfileUpdated
+                    )
                 } label: {
                     Label("Name and running bio", systemImage: "person.crop.circle")
                 }
@@ -1253,6 +1261,21 @@ private struct SimplifiedProfileEditorView: View {
     @State private var isSaving = false
     @State private var toast: ProfileToast?
 
+    init(
+        initialProfile: AppUserProfileDTO? = nil,
+        onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
+    ) {
+        self.onProfileUpdated = onProfileUpdated
+        _displayName = State(initialValue: initialProfile?.displayName ?? "")
+        _bio = State(initialValue: initialProfile?.bio ?? "")
+        _username = State(initialValue: initialProfile?.username ?? "")
+        _avatarUrl = State(
+            initialValue: initialProfile?.avatarUrl
+                ?? UserAvatarPersistence.url(for: AuthStore.currentUserId)
+        )
+        _isLoading = State(initialValue: initialProfile == nil)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -1293,9 +1316,6 @@ private struct SimplifiedProfileEditorView: View {
                 Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
                     .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-        }
-        .overlay {
-            if isLoading { ProgressView() }
         }
         .overlay(alignment: .top) {
             if let toast {
