@@ -16,6 +16,8 @@ model User {
   displayName     String
   avatarUrl       String?
   bio             String?
+  contactEmail    String?
+  contactPhone    String?
   verified        Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

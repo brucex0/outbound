@@ -90,6 +90,8 @@ router.patch(
     z.object({
       displayName: z.string().trim().min(1).max(50),
       bio: z.string().trim().max(160).nullish(),
+      contactEmail: z.string().trim().email().max(254).nullish().or(z.literal("")),
+      contactPhone: z.string().trim().min(7).max(30).nullish().or(z.literal("")),
     })
   ),
   async (c) => {
@@ -100,7 +102,12 @@ router.patch(
     const body = c.req.valid("json");
     return c.json(await getPrismaClient().user.update({
       where: { id: user.id },
-      data: { displayName: body.displayName, bio: body.bio || null },
+      data: {
+        displayName: body.displayName,
+        bio: body.bio || null,
+        contactEmail: body.contactEmail || null,
+        contactPhone: body.contactPhone || null,
+      },
     }));
   }
 );

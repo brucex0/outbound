@@ -6,11 +6,15 @@ struct AppUserProfileDTO: Codable, Sendable {
     let displayName: String
     let avatarUrl: String?
     let bio: String?
+    let contactEmail: String?
+    let contactPhone: String?
 }
 
 struct AppUserProfileUpdateDTO: Codable, Sendable {
     let displayName: String
     let bio: String?
+    let contactEmail: String?
+    let contactPhone: String?
 }
 
 struct AppUserAvatarUploadDTO: Codable, Sendable {

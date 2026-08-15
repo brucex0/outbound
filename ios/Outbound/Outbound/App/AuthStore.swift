@@ -503,7 +503,12 @@ final class AuthStore: ObservableObject {
                 return
             }
             _ = try await APIClient.shared.updateMyProfile(
-                AppUserProfileUpdateDTO(displayName: displayName, bio: profile.bio)
+                AppUserProfileUpdateDTO(
+                    displayName: displayName,
+                    bio: profile.bio,
+                    contactEmail: profile.contactEmail,
+                    contactPhone: profile.contactPhone
+                )
             )
         } catch {
             print("[Plainstride][Auth] Could not bootstrap backend profile: \(error.localizedDescription)")

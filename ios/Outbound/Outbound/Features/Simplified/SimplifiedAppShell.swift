@@ -1399,6 +1399,8 @@ private struct SimplifiedProfileEditorView: View {
     var onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
     @State private var displayName = ""
     @State private var bio = ""
+    @State private var contactEmail = ""
+    @State private var contactPhone = ""
     @State private var username = ""
     @State private var avatarUrl = UserAvatarPersistence.url(for: AuthStore.currentUserId)
     @State private var selectedAvatarItem: PhotosPickerItem?
@@ -1414,6 +1416,8 @@ private struct SimplifiedProfileEditorView: View {
         self.onProfileUpdated = onProfileUpdated
         _displayName = State(initialValue: initialProfile?.displayName ?? "")
         _bio = State(initialValue: initialProfile?.bio ?? "")
+        _contactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
+        _contactPhone = State(initialValue: initialProfile?.contactPhone ?? "")
         _username = State(initialValue: initialProfile?.username ?? "")
         _avatarUrl = State(
             initialValue: initialProfile?.avatarUrl
@@ -1454,6 +1458,20 @@ private struct SimplifiedProfileEditorView: View {
             } footer: {
                 Text("Your name and bio may appear to people you connect with in Together.")
             }
+            Section {
+                TextField("Email", text: $contactEmail)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                TextField("Phone number", text: $contactPhone)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
+            } header: {
+                Text("Contact details")
+            } footer: {
+                Text("These profile details do not change how you sign in.")
+            }
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
@@ -1491,6 +1509,8 @@ private struct SimplifiedProfileEditorView: View {
             let profile = try await APIClient.shared.fetchMyProfile()
             displayName = profile.displayName
             bio = profile.bio ?? ""
+            contactEmail = profile.contactEmail ?? ""
+            contactPhone = profile.contactPhone ?? ""
             username = profile.username
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
@@ -1507,11 +1527,15 @@ private struct SimplifiedProfileEditorView: View {
             let profile = try await APIClient.shared.updateMyProfile(
                 AppUserProfileUpdateDTO(
                     displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
-                    bio: bio.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : bio.trimmingCharacters(in: .whitespacesAndNewlines)
+                    bio: nilIfEmpty(bio),
+                    contactEmail: nilIfEmpty(contactEmail),
+                    contactPhone: nilIfEmpty(contactPhone)
                 )
             )
             displayName = profile.displayName
             bio = profile.bio ?? ""
+            contactEmail = profile.contactEmail ?? ""
+            contactPhone = profile.contactPhone ?? ""
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
             onProfileUpdated?(profile)
@@ -1549,6 +1573,11 @@ private struct SimplifiedProfileEditorView: View {
 
     private func showToast(_ text: String, style: ProfileToast.Style) {
         toast = ProfileToast(text: text, style: style)
+    }
+
+    private func nilIfEmpty(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func resizedAvatarData(from image: UIImage) -> Data? {
