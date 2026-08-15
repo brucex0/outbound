@@ -153,14 +153,18 @@ struct SocialHomeView: View {
 
                             if let invitationURL = socialStore.latestInvitationURL {
                                 ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
-                                    Label("Share", systemImage: "square.and.arrow.up")
+                                    Image(systemName: "square.and.arrow.up")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(SocialIconButtonStyle())
+                                .accessibilityLabel("Share run invitation")
                             } else {
-                                Button("Invite", systemImage: "person.badge.plus") {
+                                Button {
                                     Task { await socialStore.invite(to: run) }
+                                } label: {
+                                    Image(systemName: "person.badge.plus")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(SocialIconButtonStyle())
+                                .accessibilityLabel("Invite connections")
                             }
                         }
                     }
@@ -341,14 +345,19 @@ private struct SocialGroupRunView: View {
                 }
             }
             Section {
-                Button(detail?.currentUserGoing == true ? "Leave run" : "I'm going") {
+                Button {
                     guard let detail else { return }
                     Task { self.detail = await socialStore.toggleRSVP(for: detail) }
+                } label: {
+                    Label(detail?.currentUserGoing == true ? "Leave run" : "I'm going",
+                          systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
                 }
                 .disabled(detail == nil)
 
-                Button("Invite connections") {
+                Button {
                     isConnectionPickerPresented = true
+                } label: {
+                    Label("Invite connections", systemImage: "person.badge.plus")
                 }
                 if let invitationURL = socialStore.latestInvitationURL {
                     ShareLink(item: "Join me for a run on Plainstride: \(invitationURL.absoluteString)") {
@@ -376,9 +385,11 @@ private struct SocialGroupRunView: View {
                                 Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text("Invite")
+                            Image(systemName: "person.badge.plus")
+                                .foregroundStyle(OutboundPalette.companion)
                         }
                     }
+                    .accessibilityLabel("Invite \(connection.person.displayName)")
                 }
                 .navigationTitle("Invite connections")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isConnectionPickerPresented = false } } }
@@ -406,10 +417,13 @@ private struct SocialNotificationsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if notification.type == "runInvitation" {
-                                Button("Accept invitation") {
+                                Button {
                                     Task { await socialStore.acceptRunInvitation(notification) }
+                                } label: {
+                                    Image(systemName: "checkmark")
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(SocialIconButtonStyle())
+                                .accessibilityLabel("Accept run invitation")
                             }
                         }
                     }
@@ -472,12 +486,16 @@ private struct SocialCommentsView: View {
                 HStack {
                     TextField("Add encouragement", text: $draft)
                         .textFieldStyle(.roundedBorder)
-                    Button("Post") {
+                    Button {
                         let body = draft
                         draft = ""
                         Task { await socialStore.addComment(body, to: post) }
+                    } label: {
+                        Image(systemName: "paperplane.fill")
                     }
+                    .buttonStyle(SocialIconButtonStyle())
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("Post comment")
                 }
                 .padding()
                 .background(.bar)
@@ -536,21 +554,18 @@ private struct SocialConnectionsView: View {
                             Button {
                                 Task { await socialStore.acceptConnection(connection) }
                             } label: {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(OutboundPalette.companion)
+                                Image(systemName: "checkmark")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SocialIconButtonStyle())
                             .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
                             .accessibilityLabel("Accept connection request")
 
                             Button(role: .destructive) {
                                 Task { await socialStore.removeConnection(connection) }
                             } label: {
-                                Image(systemName: "xmark.circle")
-                                    .font(.title2)
+                                Image(systemName: "xmark")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SocialIconButtonStyle(tint: .red))
                             .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
                             .accessibilityLabel("Decline connection request")
                         }
@@ -582,10 +597,9 @@ private struct SocialConnectionsView: View {
                             Button(role: .destructive) {
                                 Task { await socialStore.removeConnection(connection) }
                             } label: {
-                                Image(systemName: "xmark.circle")
-                                    .font(.title2)
+                                Image(systemName: "xmark")
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(SocialIconButtonStyle(tint: .red))
                             .disabled(socialStore.pendingConnectionIDs.contains(connection.id))
                             .accessibilityLabel("Cancel connection request")
                         }
@@ -600,7 +614,13 @@ private struct SocialConnectionsView: View {
                             SocialAvatar(name: block.person.displayName, avatarURL: block.person.avatarUrl)
                             Text(block.person.displayName)
                             Spacer()
-                            Button("Unblock") { Task { await socialStore.unblock(block) } }
+                            Button {
+                                Task { await socialStore.unblock(block) }
+                            } label: {
+                                Image(systemName: "person.crop.circle.badge.checkmark")
+                            }
+                            .buttonStyle(SocialIconButtonStyle())
+                            .accessibilityLabel("Unblock \(block.person.displayName)")
                         }
                     }
                 }
@@ -681,10 +701,13 @@ private struct SocialConnectionsView: View {
         case ("pending", "incoming"):
             Text("Requested").font(.caption).foregroundStyle(.secondary)
         default:
-            Button("Connect") {
+            Button {
                 Task { await socialStore.requestConnection(to: person) }
+            } label: {
+                Image(systemName: "person.badge.plus")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(SocialIconButtonStyle())
+            .accessibilityLabel("Connect with \(person.displayName)")
         }
     }
 }
@@ -709,6 +732,21 @@ private struct SocialAvatar: View {
 
     private var initials: String {
         name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+    }
+}
+
+private struct SocialIconButtonStyle: ButtonStyle {
+    var tint: Color = OutboundPalette.companion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(width: 36, height: 36)
+            .background(tint.opacity(configuration.isPressed ? 0.2 : 0.1), in: Circle())
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }
 
