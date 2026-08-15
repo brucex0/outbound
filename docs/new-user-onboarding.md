@@ -64,7 +64,7 @@ The flow should avoid feature tours, early permission prompts, mandatory essays,
 7. Optional social connection
    - Ask `Who helps you get out?`
    - Offer invite someone, find a club, or do this later.
-   - Explain that private training context is not shared.
+   - Explain that health details are not shared.
 
 8. Today
    - Land on the real Today surface with the quote, first workout, and Start action.

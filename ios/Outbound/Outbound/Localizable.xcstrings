@@ -2251,7 +2251,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "经期感知训练指导已关闭"
+            "value": "记录和使用月经数据"
           }
         }
       }
@@ -5449,22 +5449,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "私密"
-          }
-        }
-      }
-    },
-    "PRIVATE TRAINING CONTEXT": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CONTEXTO PRIVADO DE ENTRENAMIENTO"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "私密训练背景"
           }
         }
       }

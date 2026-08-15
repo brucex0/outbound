@@ -964,6 +964,7 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var profile: AppUserProfileDTO?
 
     var body: some View {
@@ -1054,15 +1055,9 @@ private struct SimplifiedMeView: View {
                             AIExplanationView(text: weekCoachLine)
                         }
                     }
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("PRIVATE TRAINING CONTEXT").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                            NavigationLink {
-                                CycleAwareView()
-                            } label: {
-                                Label(cycleAwareStore.summary, systemImage: "heart.text.square")
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
+                    if showsCycleAwareGuidance {
+                        OutboundCard {
+                            Toggle("Cycle-aware guidance", isOn: $cycleAwareStore.isEnabled)
                         }
                     }
                     OutboundCard {
@@ -1115,6 +1110,10 @@ private struct SimplifiedMeView: View {
         UserAvatarPersistence.save(profile?.avatarUrl, for: AuthStore.currentUserId)
     }
 
+    private var showsCycleAwareGuidance: Bool {
+        onboardingStore.completedProfile?.bodyProfile.sex != .male
+    }
+
     private var planTitle: String {
         guard let plan = trainingPlanStore.activePlan else { return String(localized: "Building your running rhythm") }
         let week = trainingPlanStore.currentWeek?.currentWeekIndex ?? 1
@@ -1147,6 +1146,7 @@ private struct SimplifiedMeView: View {
 private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var confirmsSignOut = false
 
     var body: some View {
@@ -1176,8 +1176,10 @@ private struct SimplifiedSettingsView: View {
                     ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
-            Section("Health & body") {
-                NavigationLink("Cycle-aware guidance") { CycleAwareView() }
+            if onboardingStore.completedProfile?.bodyProfile.sex != .male {
+                Section("Health & body") {
+                    NavigationLink("Cycle-aware guidance") { CycleAwareView() }
+                }
             }
             Section {
                 Button {

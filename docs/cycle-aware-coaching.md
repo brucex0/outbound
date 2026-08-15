@@ -10,7 +10,7 @@ Open this when designing menstrual-cycle logging, symptom check-ins, cycle-aware
 
 Cycle dates provide context. The runner's actual symptoms, training impact, and individual history determine whether a workout changes.
 
-Use `Cycle-aware coaching`, not `female mode`. Do not infer eligibility from gender. The feature is optional for anyone who menstruates.
+Use `Cycle-aware coaching`, not `female mode`. Hide its Me and Settings entry points when the onboarding body profile is male; keep it available when the body profile is female or unspecified. The feature remains optional.
 
 Do not prescribe training from menstrual phase alone. Current evidence does not support universal phase-based programming; use individualized symptom monitoring and cautious, user-controlled adaptation instead.
 
@@ -25,6 +25,8 @@ Primary references:
 ## Entry Point
 
 Place setup under `Me -> Health & body -> Cycle-aware coaching`.
+
+The Me overview presents the feature name with its toggle directly, without a separate private-training-context heading.
 
 Setup must explain:
 
