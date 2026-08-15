@@ -25,11 +25,11 @@ struct SocialHomeView: View {
                         && socialStore.state.clubs.isEmpty
                         && socialStore.state.posts.isEmpty {
                         socialEmptyState
-                    } else {
-                        upcomingRuns
-                        joinedClubs
-                        recentPosts
                     }
+
+                    upcomingRuns
+                    joinedClubs
+                    recentPosts
                 }
                 .padding(OutboundSpacing.screen)
             }
@@ -201,8 +201,23 @@ struct SocialHomeView: View {
 
     @ViewBuilder
     private var recentPosts: some View {
-        if !socialStore.state.posts.isEmpty {
-            Text("RECENT").socialSectionLabel()
+        Text("RECENT").socialSectionLabel()
+        if socialStore.state.posts.isEmpty {
+            OutboundCard {
+                HStack(spacing: OutboundSpacing.compact) {
+                    Image(systemName: "figure.run.circle")
+                        .font(.title2)
+                        .foregroundStyle(OutboundPalette.companion)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No activity yet")
+                            .font(.headline)
+                        Text("New activities from you and your connections will appear here.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        } else {
             ForEach(socialStore.state.posts.prefix(5)) { post in
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
