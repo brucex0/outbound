@@ -231,6 +231,7 @@ final class TogetherStore: ObservableObject {
         do {
             _ = try await api.acceptSocialConnection(id: connection.id)
             replaceConnection(connection, status: "accepted", direction: "incoming")
+            notifications.removeAll { $0.type == "connectionRequest" && $0.objectId == connection.id }
             errorMessage = nil
             await refreshConnections()
             await refresh()
@@ -249,6 +250,7 @@ final class TogetherStore: ObservableObject {
         do {
             _ = try await api.removeSocialConnection(id: connection.id)
             connections.removeAll { $0.id == connection.id }
+            notifications.removeAll { $0.type == "connectionRequest" && $0.objectId == connection.id }
             errorMessage = nil
             await refreshConnections()
             await refresh()
@@ -322,6 +324,13 @@ final class TogetherStore: ObservableObject {
     }
 
     var unreadNotificationCount: Int { notifications.filter { $0.readAt == nil }.count }
+    var pendingInvitationCount: Int {
+        connections.filter { $0.status == "pending" && $0.direction == "incoming" }.count
+            + notifications.filter { $0.type == "runInvitation" }.count
+    }
+    var showsNotificationBadge: Bool {
+        unreadNotificationCount > 0 || pendingInvitationCount > 0
+    }
 
     func refreshNotifications() async {
         if isUITestSeedData {
@@ -446,6 +455,7 @@ final class TogetherStore: ObservableObject {
         }
         do {
             _ = try await api.acceptSocialRunInvitation(id: invitationID)
+            notifications.removeAll { $0.id == notification.id }
             await refreshNotifications()
             await refresh()
         } catch {

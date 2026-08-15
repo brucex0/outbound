@@ -155,7 +155,10 @@ router.post("/connections/:id/accept", async (c) => {
   const result = await getPrismaClient().connection.updateMany({ where: { id: c.req.param("id"), addresseeId: user.id, status: "pending" }, data: { status: "accepted" } });
   if (!result.count) return c.json({ error: "Connection request not found." }, 404);
   const connection = await getPrismaClient().connection.findUnique({ where: { id: c.req.param("id") } });
-  if (connection) await createSocialNotification(connection.requesterId, user.id, "connectionAccepted", connection.id, `${user.displayName} accepted your connection request.`);
+  if (connection) {
+    await dismissSocialNotification(user.id, "connectionRequest", connection.id);
+    await createSocialNotification(connection.requesterId, user.id, "connectionAccepted", connection.id, `${user.displayName} accepted your connection request.`);
+  }
   return c.json({ ok: true });
 });
 
@@ -244,13 +247,16 @@ router.post("/notifications/read-all", async (c) => {
 router.delete("/connections/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const result = await getPrismaClient().connection.deleteMany({
+  const connection = await getPrismaClient().connection.findFirst({
     where: {
       id: c.req.param("id"),
       OR: [{ requesterId: user.id }, { addresseeId: user.id }],
     },
+    select: { id: true, addresseeId: true },
   });
-  if (!result.count) return c.json({ error: "Connection not found." }, 404);
+  if (!connection) return c.json({ error: "Connection not found." }, 404);
+  await getPrismaClient().connection.delete({ where: { id: connection.id } });
+  await dismissSocialNotification(connection.addresseeId, "connectionRequest", connection.id);
   return c.json({ ok: true });
 });
 
@@ -376,6 +382,7 @@ router.post("/invitations/:id/accept", async (c) => {
       update: { status: "going" },
     }),
   ]);
+  await dismissSocialNotification(user.id, "runInvitation", invitation.id);
   await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.groupRunId, `${user.displayName} accepted your run invitation.`);
   return c.json({ ok: true });
 });
@@ -551,6 +558,16 @@ async function createSocialNotification(recipientId: string, actorId: string, ty
   try {
     await getPrismaClient().socialNotification.create({
       data: { recipientId, actorId, type, objectId, message },
+    });
+  } catch (error) {
+    if (!isMissingSocialTable(error)) throw error;
+  }
+}
+
+async function dismissSocialNotification(recipientId: string, type: string, objectId: string) {
+  try {
+    await getPrismaClient().socialNotification.deleteMany({
+      where: { recipientId, type, objectId },
     });
   } catch (error) {
     if (!isMissingSocialTable(error)) throw error;

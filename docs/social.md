@@ -12,7 +12,7 @@ The support loop is API-backed: each newly synced activity automatically creates
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
 
-The in-app notification inbox covers connection requests and acceptance, Cheers, comments, targeted group-run invitations, and invitation acceptance. Opening the inbox marks current notifications read.
+The in-app notification inbox covers connection requests and acceptance, Cheers, comments, targeted group-run invitations, and invitation acceptance. Opening the inbox marks current notifications read, while the bell remains badged for actionable incoming connection requests and run invitations until they are handled.
 
 Groups are the user-facing product term. Discovery, membership, and group runs use `Group` in UI copy; the existing Prisma `Club` and `ClubMembership` names remain internal. Runners can discover and join/leave Groups, open a group-run detail, RSVP, invite a specific accepted connection, share a link, and accept targeted invitations from Notifications.
 

@@ -57,9 +57,12 @@ struct SocialHomeView: View {
                     NavigationLink {
                         SocialNotificationsView()
                     } label: {
-                        Image(systemName: socialStore.unreadNotificationCount > 0 ? "bell.badge.fill" : "bell")
+                        Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
                     }
                     .accessibilityLabel("Social notifications")
+                    .accessibilityValue(socialStore.pendingInvitationCount > 0
+                        ? "\(socialStore.pendingInvitationCount) pending invitations"
+                        : "")
                 }
             }
             .refreshable {
