@@ -45,6 +45,7 @@ Primary flow:
 | Engineering handoff for simplified product, onboarding, and cycle-aware UI | `docs/product-ui-engineering-handoff.md` | Shared SwiftUI component contracts, screen states, accessibility, privacy, analytics, and acceptance criteria |
 | Client/backend replacement strategy and vertical migration sequence | `docs/simplified-product-refactor-plan.md` | Keep/replace/delete decisions, target modules and APIs, database reset, effort, risks, and cutover plan |
 | Simplified product flow prototype | `docs/prototypes/outbound-major-flow.html` | Clickable wireframe for Today, quick-run goals, readiness, workout detail, live run, feedback, learned insights, Together, club runs, and Me |
+| Social MVP wireframe | `docs/prototypes/social-mvp-wireframe.html` | Focused Social tab, connections entry, groups, notifications, and feed wireframe captured before implementation |
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
 | Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |

@@ -12,6 +12,8 @@ Compact Social rows use circular icon actions with 44-point tap targets for reco
 
 The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
 
+Existing non-deleted activities can be made visible with `cd backend && npm run build && npm run backfill:activity-posts`. `Activity.socialSharingInitializedAt` makes the operation idempotent: it adopts activities that already have posts, creates one for the remainder, and does not recreate posts users delete afterward.
+
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
 
 The in-app notification inbox covers connection requests and acceptance, Cheers, comments, targeted group-run invitations, and invitation acceptance. Opening the inbox marks current notifications read, while the bell remains badged for actionable incoming connection requests and run invitations until they are handled.

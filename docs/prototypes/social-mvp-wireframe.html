@@ -1,0 +1,391 @@
+<!-- Production Social MVP wireframe, captured 2026-08-13. -->
+<style>
+  #plainstride-social-wireframe {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    color: light-dark(#191a17, #f3f4ef);
+    background: transparent;
+    padding: 8px 0 14px;
+  }
+  #plainstride-social-wireframe * { box-sizing: border-box; }
+  #plainstride-social-wireframe .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 390px) minmax(220px, 290px);
+    justify-content: center;
+    align-items: start;
+    gap: 18px;
+  }
+  #plainstride-social-wireframe .phone {
+    overflow: hidden;
+    border: 1px solid light-dark(#d8d9d2, #40423c);
+    border-radius: 30px;
+    background: light-dark(#f5f5f1, #141512);
+    box-shadow: 0 16px 42px light-dark(rgba(31,34,27,.12), rgba(0,0,0,.34));
+  }
+  #plainstride-social-wireframe .status {
+    display: flex;
+    justify-content: space-between;
+    padding: 13px 22px 6px;
+    font-weight: 500;
+  }
+  #plainstride-social-wireframe .status span:last-child { letter-spacing: 2px; }
+  #plainstride-social-wireframe .appbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px 12px;
+  }
+  #plainstride-social-wireframe .appbar h2 { margin: 0; font-size: 28px; font-weight: 500; }
+  #plainstride-social-wireframe .appbar-actions { display: flex; gap: 8px; }
+  #plainstride-social-wireframe button {
+    font: inherit;
+    color: inherit;
+  }
+  #plainstride-social-wireframe .icon-button {
+    min-width: 38px;
+    min-height: 38px;
+    border: 0;
+    border-radius: 19px;
+    background: light-dark(#e7e8e1, #292b26);
+    cursor: pointer;
+  }
+  #plainstride-social-wireframe .content { padding: 0 14px 12px; }
+  #plainstride-social-wireframe .screen { display: none; }
+  #plainstride-social-wireframe .screen.active { display: block; }
+  #plainstride-social-wireframe .section-label {
+    margin: 17px 3px 8px;
+    color: light-dark(#686b62, #afb2a8);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .08em;
+  }
+  #plainstride-social-wireframe .surface {
+    margin-bottom: 10px;
+    padding: 14px;
+    border: 1px solid light-dark(#dedfd8, #383a35);
+    border-radius: 18px;
+    background: light-dark(#ffffff, #20211e);
+  }
+  #plainstride-social-wireframe .request-row,
+  #plainstride-social-wireframe .person-row,
+  #plainstride-social-wireframe .post-head,
+  #plainstride-social-wireframe .run-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #plainstride-social-wireframe .avatar {
+    display: grid;
+    flex: 0 0 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 50%;
+    background: light-dark(#dfe7d8, #384233);
+    font-weight: 500;
+  }
+  #plainstride-social-wireframe .grow { flex: 1; min-width: 0; }
+  #plainstride-social-wireframe .title { font-weight: 500; }
+  #plainstride-social-wireframe .meta {
+    margin-top: 2px;
+    color: light-dark(#6c6f66, #aeb1a7);
+    font-size: 12px;
+  }
+  #plainstride-social-wireframe .primary,
+  #plainstride-social-wireframe .secondary,
+  #plainstride-social-wireframe .text-action {
+    min-height: 34px;
+    border-radius: 17px;
+    padding: 0 12px;
+    cursor: pointer;
+  }
+  #plainstride-social-wireframe .primary {
+    border: 1px solid light-dark(#373b31, #e9eadf);
+    color: light-dark(#ffffff, #171813);
+    background: light-dark(#373b31, #e9eadf);
+  }
+  #plainstride-social-wireframe .secondary {
+    border: 1px solid light-dark(#d1d3ca, #4a4d45);
+    background: transparent;
+  }
+  #plainstride-social-wireframe .text-action {
+    border: 0;
+    color: light-dark(#525c49, #c5d1bb);
+    background: transparent;
+  }
+  #plainstride-social-wireframe .button-row { display: flex; gap: 7px; }
+  #plainstride-social-wireframe .run-symbol {
+    display: grid;
+    flex: 0 0 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 13px;
+    background: light-dark(#e7eadf, #30342c);
+    font-size: 20px;
+  }
+  #plainstride-social-wireframe .post-map {
+    position: relative;
+    height: 128px;
+    margin: 12px 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background:
+      linear-gradient(33deg, transparent 48%, light-dark(#c8ccc0, #45493f) 49%, light-dark(#c8ccc0, #45493f) 51%, transparent 52%),
+      linear-gradient(145deg, transparent 56%, light-dark(#d7dad0, #373b34) 57%, light-dark(#d7dad0, #373b34) 59%, transparent 60%),
+      light-dark(#eef0e9, #292c27);
+  }
+  #plainstride-social-wireframe .route {
+    position: absolute;
+    inset: 21px 58px 25px 61px;
+    border: 4px solid light-dark(#6d7f61, #a7ba98);
+    border-left-color: transparent;
+    border-radius: 46% 54% 45% 55%;
+    transform: rotate(-9deg);
+  }
+  #plainstride-social-wireframe .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 11px 0 8px;
+  }
+  #plainstride-social-wireframe .stat strong,
+  #plainstride-social-wireframe .stat span { display: block; }
+  #plainstride-social-wireframe .stat span { margin-top: 2px; color: light-dark(#6c6f66, #aeb1a7); font-size: 11px; }
+  #plainstride-social-wireframe .caption { margin: 9px 0; }
+  #plainstride-social-wireframe .post-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 7px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid light-dark(#e3e4de, #363833);
+  }
+  #plainstride-social-wireframe .post-actions button {
+    min-height: 36px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+  }
+  #plainstride-social-wireframe .post-actions button.cheered {
+    color: light-dark(#526746, #bed2ad);
+    background: light-dark(#e8eee3, #303a2b);
+  }
+  #plainstride-social-wireframe .bottom-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid light-dark(#dedfd8, #373934);
+    background: light-dark(#fbfbf8, #1a1b18);
+  }
+  #plainstride-social-wireframe .bottom-tabs button {
+    min-height: 58px;
+    border: 0;
+    background: transparent;
+    color: light-dark(#777a71, #999d93);
+  }
+  #plainstride-social-wireframe .bottom-tabs button.active {
+    color: light-dark(#3e4b37, #d1dfc7);
+    font-weight: 500;
+  }
+  #plainstride-social-wireframe .flow-panel {
+    padding: 12px;
+    border: 1px solid light-dark(#d8d9d2, #40423c);
+    border-radius: 20px;
+    background: light-dark(#ffffff, #20211e);
+  }
+  #plainstride-social-wireframe .flow-panel h3 { margin: 3px 3px 12px; font-weight: 500; }
+  #plainstride-social-wireframe .flow-panel button {
+    display: block;
+    width: 100%;
+    margin: 7px 0;
+    padding: 11px 12px;
+    border: 1px solid light-dark(#dedfd8, #41443d);
+    border-radius: 13px;
+    text-align: left;
+    background: light-dark(#f5f5f1, #292b26);
+    cursor: pointer;
+  }
+  #plainstride-social-wireframe .flow-panel button.active {
+    border-color: light-dark(#6d7f61, #a7ba98);
+    background: light-dark(#e8eee3, #303a2b);
+  }
+  #plainstride-social-wireframe .flow-panel small {
+    display: block;
+    margin-top: 3px;
+    color: light-dark(#6c6f66, #aeb1a7);
+  }
+  #plainstride-social-wireframe .search {
+    width: 100%;
+    min-height: 40px;
+    margin-bottom: 10px;
+    padding: 0 13px;
+    border: 1px solid light-dark(#d8dad2, #474a43);
+    border-radius: 13px;
+    color: inherit;
+    background: light-dark(#ffffff, #20211e);
+  }
+  #plainstride-social-wireframe .comment {
+    margin: 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid light-dark(#e4e5df, #363833);
+  }
+  #plainstride-social-wireframe .composer { display: flex; gap: 8px; }
+  #plainstride-social-wireframe .composer input { flex: 1; margin: 0; }
+  #plainstride-social-wireframe .share-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid light-dark(#e4e5df, #363833);
+  }
+  #plainstride-social-wireframe .share-option:last-child { border-bottom: 0; }
+  @media (max-width: 640px) {
+    #plainstride-social-wireframe .stage { grid-template-columns: minmax(0, 390px); }
+    #plainstride-social-wireframe .flow-panel { order: -1; }
+    #plainstride-social-wireframe .flow-panel button { display: inline-block; width: auto; margin: 4px 2px; }
+    #plainstride-social-wireframe .flow-panel small { display: none; }
+  }
+</style>
+
+<div id="plainstride-social-wireframe">
+  <div class="stage">
+    <section class="phone" aria-label="Plainstride Social mobile wireframe">
+      <div class="status"><span>9:41</span><span>● ◒ ▮</span></div>
+      <header class="appbar">
+        <h2 id="ps-screen-title">Social</h2>
+        <div class="appbar-actions">
+          <button class="icon-button" type="button" data-go="requests" aria-label="Open connections"><i data-lucide="users" aria-hidden="true"></i></button>
+          <button class="icon-button" type="button" aria-label="Open social notifications"><i data-lucide="bell" aria-hidden="true"></i></button>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="screen active" data-screen="home">
+          <div class="surface request-row">
+            <div class="avatar">JC</div>
+            <div class="grow"><div class="title">Jordan wants to connect</div><div class="meta">2 mutual connections</div></div>
+            <button class="primary" type="button" data-go="requests">Review</button>
+          </div>
+
+          <div class="section-label">UPCOMING TOGETHER</div>
+          <div class="surface run-row">
+            <div class="run-symbol">♧</div>
+            <div class="grow"><div class="title">Saturday waterfront 5K</div><div class="meta">9:00 AM · Crissy Field · Social pace</div></div>
+            <button class="secondary" type="button">View</button>
+          </div>
+
+          <div class="section-label">RECENT</div>
+          <article class="surface">
+            <div class="post-head">
+              <div class="avatar">MC</div>
+              <div class="grow"><div class="title">Maya Chen</div><div class="meta">1 hour ago · Connections</div></div>
+              <button class="text-action" type="button" aria-label="More actions">•••</button>
+            </div>
+            <div class="post-map" aria-label="Privacy-safe route preview"><div class="route"></div></div>
+            <div class="title">Presidio Morning Run</div>
+            <div class="stats">
+              <div class="stat"><strong>5.8 km</strong><span>Distance</span></div>
+              <div class="stat"><strong>34:00</strong><span>Time</span></div>
+              <div class="stat"><strong>5:52/km</strong><span>Pace</span></div>
+            </div>
+            <div class="caption">Easy miles and good company this morning.</div>
+            <div class="post-actions">
+              <button type="button" id="ps-cheer">♡ Cheer · 8</button>
+              <button type="button" data-go="comments">◯ Comment</button>
+              <button type="button">＋ Run together</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="screen" data-screen="requests">
+          <div class="section-label">CONNECTION REQUESTS</div>
+          <div class="surface request-row">
+            <div class="avatar">JC</div>
+            <div class="grow"><div class="title">Jordan Cruz</div><div class="meta">3 mutual connections · San Francisco</div></div>
+          </div>
+          <div class="button-row surface">
+            <button class="primary grow" type="button" id="ps-accept">Accept</button>
+            <button class="secondary grow" type="button">Decline</button>
+          </div>
+          <div class="section-label">FIND PEOPLE</div>
+          <input class="search" type="search" placeholder="Search name or username" aria-label="Search people">
+          <div class="surface person-row">
+            <div class="avatar">AL</div>
+            <div class="grow"><div class="title">Alex Lee</div><div class="meta">Golden Gate Run Club</div></div>
+            <button class="secondary" type="button">Connect</button>
+          </div>
+          <button class="secondary" type="button" style="width:100%;">Invite someone by link</button>
+        </div>
+
+        <div class="screen" data-screen="comments">
+          <div class="surface">
+            <div class="post-head"><div class="avatar">MC</div><div><div class="title">Presidio Morning Run</div><div class="meta">Maya Chen · 8 Cheers</div></div></div>
+          </div>
+          <div class="section-label">COMMENTS</div>
+          <div class="comment"><div class="title">Jordan</div><div>That finish looked strong!</div><div class="meta">32 min ago</div></div>
+          <div class="comment"><div class="title">Priya</div><div>See you Saturday?</div><div class="meta">18 min ago</div></div>
+          <div class="composer">
+            <input class="search" type="text" placeholder="Add encouragement" aria-label="Add a comment">
+            <button class="primary" type="button">Post</button>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="share">
+          <div class="surface">
+            <div class="title">Morning Easy Run</div>
+            <div class="stats"><div class="stat"><strong>5.2 km</strong><span>Distance</span></div><div class="stat"><strong>31:10</strong><span>Time</span></div><div class="stat"><strong>5:59/km</strong><span>Pace</span></div></div>
+          </div>
+          <div class="section-label">SHARE ACTIVITY</div>
+          <div class="surface">
+            <label class="share-option"><span>Audience</span><select aria-label="Activity audience"><option>Connections</option><option>Only me</option></select></label>
+            <label class="share-option"><span>Show route</span><input type="checkbox" checked></label>
+            <label class="share-option"><span>Hide start and finish</span><input type="checkbox" checked></label>
+            <label class="share-option"><span>Include photo</span><input type="checkbox"></label>
+          </div>
+          <input class="search" type="text" placeholder="Add an optional caption" aria-label="Activity caption">
+          <button class="primary" type="button" style="width:100%; min-height:44px;">Share with connections</button>
+          <button class="text-action" type="button" style="width:100%; margin-top:6px;">Keep private</button>
+        </div>
+      </main>
+
+      <nav class="bottom-tabs" aria-label="Primary navigation">
+        <button class="active" type="button" data-go="home">♧<br>Social</button>
+        <button type="button">✦<br>Today</button>
+        <button type="button">○<br>Me</button>
+      </nav>
+    </section>
+
+    <aside class="flow-panel" aria-label="Wireframe states">
+      <h3>Explore the MVP flow</h3>
+      <button class="active" type="button" data-go="home">1. Social home<small>Requests, an upcoming run, and recent activity.</small></button>
+      <button type="button" data-go="requests">2. Connections<small>Review requests, search, and invite by link.</small></button>
+      <button type="button" data-go="comments">3. Comments<small>Flat, lightweight encouragement.</small></button>
+      <button type="button" data-go="share">4. Post-run sharing<small>Explicit audience and route privacy controls.</small></button>
+    </aside>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const root = document.getElementById('plainstride-social-wireframe');
+    const titles = { home: 'Social', requests: 'Connections', comments: 'Comments', share: 'Share activity' };
+    root.querySelectorAll('[data-go]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.go;
+        root.querySelectorAll('.screen').forEach((screen) => screen.classList.toggle('active', screen.dataset.screen === target));
+        root.querySelectorAll('.flow-panel [data-go]').forEach((item) => item.classList.toggle('active', item.dataset.go === target));
+        root.querySelector('#ps-screen-title').textContent = titles[target];
+      });
+    });
+    const cheer = root.querySelector('#ps-cheer');
+    let cheered = false;
+    cheer.addEventListener('click', () => {
+      cheered = !cheered;
+      cheer.classList.toggle('cheered', cheered);
+      cheer.textContent = cheered ? '♥ Cheered · 9' : '♡ Cheer · 8';
+    });
+    const accept = root.querySelector('#ps-accept');
+    accept.addEventListener('click', () => {
+      accept.textContent = 'Connected';
+      accept.disabled = true;
+    });
+  })();
+</script>

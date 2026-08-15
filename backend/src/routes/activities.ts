@@ -236,7 +236,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   const createActivityWithSocialPost = () =>
     prisma.$transaction(async (transaction) => {
       const createdActivity = await transaction.activity.create({
-        data: activityData,
+        data: { ...activityData, socialSharingInitializedAt: new Date() },
       });
       await transaction.post.create({
         data: {
