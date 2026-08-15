@@ -156,7 +156,6 @@ model Activity {
   reflection                 Json? // post-activity finish reflection saved by the client
   clientData                 Json? // lossless client snapshot used to restore local-first history
   clientUpdatedAt            DateTime?
-  socialSharingInitializedAt DateTime?
   deletedAt                  DateTime?
   photos                     Photo[]
   posts                      Post[]

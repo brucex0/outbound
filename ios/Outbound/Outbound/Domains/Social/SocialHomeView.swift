@@ -5,6 +5,10 @@ struct SocialHomeView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @State private var selectedCommentPost: TogetherPostDTO?
 
+    private var shouldShowConnectionPrompt: Bool {
+        socialStore.connections.filter { $0.status == "accepted" }.count < 3
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -21,10 +25,8 @@ struct SocialHomeView: View {
                         incomingRequestCard(incomingRequest)
                     }
 
-                    if socialStore.state.upcomingRuns.isEmpty
-                        && socialStore.state.clubs.isEmpty
-                        && socialStore.state.posts.isEmpty {
-                        socialEmptyState
+                    if shouldShowConnectionPrompt {
+                        connectionGrowthCard
                     }
 
                     upcomingRuns
@@ -102,12 +104,12 @@ struct SocialHomeView: View {
         }
     }
 
-    private var socialEmptyState: some View {
+    private var connectionGrowthCard: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                 Text("Running is better with people who matter")
                     .font(.headline)
-                Text("Connect with friends, share selected runs, and make plans to run together.")
+                Text("Connect with a few friends to make your activity feed and run plans more useful.")
                     .font(.subheadline)
                 HStack {
                     NavigationLink {
@@ -130,8 +132,23 @@ struct SocialHomeView: View {
 
     @ViewBuilder
     private var upcomingRuns: some View {
-        if !socialStore.state.upcomingRuns.isEmpty {
-            Text("UPCOMING TOGETHER").socialSectionLabel()
+        Text("UPCOMING").socialSectionLabel()
+        if socialStore.state.upcomingRuns.isEmpty {
+            OutboundCard {
+                HStack(spacing: OutboundSpacing.compact) {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.title2)
+                        .foregroundStyle(OutboundPalette.companion)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No upcoming runs")
+                            .font(.headline)
+                        Text("Group runs and plans from your connections will appear here.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        } else {
             ForEach(socialStore.state.upcomingRuns.prefix(2)) { run in
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
@@ -535,6 +552,7 @@ private struct SocialCommentsView: View {
 private struct SocialConnectionsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @State private var searchQuery = ""
+    @FocusState private var isSearchFocused: Bool
 
     private var incomingRequests: [SocialConnectionDTO] {
         socialStore.connections.filter { $0.status == "pending" && $0.direction == "incoming" }
@@ -555,6 +573,7 @@ private struct SocialConnectionsView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
                     TextField("Search name or username", text: $searchQuery)
+                        .focused($isSearchFocused)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
@@ -669,20 +688,28 @@ private struct SocialConnectionsView: View {
                 ContentUnavailableView.search(text: searchQuery)
             }
 
-            Section {
-                Button {
-                    Task {
-                        guard let url = await socialStore.referralInvitationURL() else { return }
-                        await SystemSharePresenter.present(activityItems: [
-                            String(localized: "Join me for a run on Plainstride: \(url.absoluteString)"),
-                        ])
-                    }
-                } label: {
-                    Label("Invite someone by link", systemImage: "square.and.arrow.up")
-                }
-            }
         }
         .navigationTitle("Connections")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        isSearchFocused = true
+                    } label: {
+                        Label("Find people", systemImage: "magnifyingglass")
+                    }
+
+                    Button {
+                        Task { await inviteByLink() }
+                    } label: {
+                        Label("Invite by link", systemImage: "square.and.arrow.up")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add connection")
+            }
+        }
         .task {
             await socialStore.refreshConnections()
             await socialStore.refreshBlocks()
@@ -713,6 +740,13 @@ private struct SocialConnectionsView: View {
             Spacer()
             actions()
         }
+    }
+
+    private func inviteByLink() async {
+        guard let url = await socialStore.referralInvitationURL() else { return }
+        await SystemSharePresenter.present(activityItems: [
+            String(localized: "Join me for a run on Plainstride: \(url.absoluteString)"),
+        ])
     }
 
     @ViewBuilder

@@ -6,13 +6,13 @@ Social is the production social surface. `GET /v1/social/home` returns only the 
 
 The production Social header has a persistent Connections entry. Connections supports authenticated listing, name/username search, requests, acceptance, decline/cancel, and removal. Pending incoming requests also appear as contextual shortcuts on Social home. Referrals remain invitation links and do not silently create a connection.
 
+The Social home connection-growth card is limited to runners with fewer than three accepted connections. Connections owns the normal add flow through its top-right add menu, which focuses people search or opens referral-link sharing. Upcoming and Recent sections remain visible with explicit empty cards when they have no content.
+
 The header keeps only two compact actions: a community menu for Connections and Groups, plus Notifications. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.
 
 The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
-
-Existing non-deleted activities can be made visible with `cd backend && npm run build && npm run backfill:activity-posts`. `Activity.socialSharingInitializedAt` makes the operation idempotent: it adopts activities that already have posts, creates one for the remainder, and does not recreate posts users delete afterward.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
 
