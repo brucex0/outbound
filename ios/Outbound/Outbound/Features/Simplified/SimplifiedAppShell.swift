@@ -463,6 +463,12 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayTotalDuration: String {
+        if let distanceMeters = activeRunIntent.targetDistanceMeters {
+            let kilometers = distanceMeters / 1_000
+            return kilometers.rounded() == kilometers
+                ? "\(Int(kilometers)) km"
+                : String(format: "%.1f km", kilometers)
+        }
         let stepSeconds = activeRunIntent.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
         return durationLabel(stepSeconds > 0 ? stepSeconds : activeRunIntent.targetDurationSeconds ?? 30 * 60)
     }
@@ -477,6 +483,14 @@ private struct SimplifiedTodayView: View {
 
     private var todayPhases: [WorkoutPhaseItem] {
         if let customizedRunIntent {
+            if let meters = customizedRunIntent.targetDistanceMeters {
+                return [WorkoutPhaseItem(
+                    id: customizedRunIntent.id,
+                    duration: distanceLabel(meters),
+                    title: customizedRunIntent.title,
+                    weight: 1
+                )]
+            }
             let seconds = customizedRunIntent.targetDurationSeconds ?? 0
             return [WorkoutPhaseItem(
                 id: customizedRunIntent.id,
@@ -529,6 +543,13 @@ private struct SimplifiedTodayView: View {
         seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds / 60)m \(seconds % 60)s"
     }
 
+    private func distanceLabel(_ meters: Double) -> String {
+        let kilometers = meters / 1_000
+        return kilometers.rounded() == kilometers
+            ? "\(Int(kilometers)) km"
+            : String(format: "%.1f km", kilometers)
+    }
+
     private func changedRunIntent(minutes: Int, reason: ReadinessChoice) -> SessionIntent {
         SessionIntent(
             id: "changed-\(reason.rawValue)-\(minutes)",
@@ -545,6 +566,8 @@ private struct SimplifiedTodayView: View {
 }
 
 private struct TodayActivityCompanionSheet: View {
+    private static let conversationStorageKey = "today_activity_companion_conversation_v1"
+
     @Environment(\.dismiss) private var dismiss
     let message: String
     let isLoading: Bool
@@ -561,6 +584,7 @@ private struct TodayActivityCompanionSheet: View {
         self.activity = activity
         self.onApply = onApply
         _currentActivity = State(initialValue: activity)
+        _conversation = State(initialValue: Self.loadConversation())
     }
 
     var body: some View {
@@ -642,9 +666,11 @@ private struct TodayActivityCompanionSheet: View {
             currentActivity = adjusted
             onApply(adjusted)
             conversation.append(TodayCompanionLine(
-                text: "Done — I updated the activity card to \(adjusted.title). You can keep refining it here or start when ready.",
+                text: "Done — I updated the activity card to \(adjusted.summaryLabel). You can keep refining it here or start when ready.",
                 isUser: false
             ))
+            saveConversation()
+            return
         }
 
         isResponding = true
@@ -652,7 +678,10 @@ private struct TodayActivityCompanionSheet: View {
             let response = try? await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
                 task: .adaptToday,
                 surface: .today,
-                prompt: "The user is customizing today's activity conversationally. Current activity: \(currentActivity.title), \(currentActivity.detail). Request: \(prompt). Give a concise, useful response.",
+                prompt: """
+                You are the specialist for customizing the single planned activity shown on today's card. Current activity: \(currentActivity.title), \(currentActivity.detail). Request: \(prompt).
+                The client can directly apply distances (km, kilometers, mi, miles), durations (minutes or hours), and run effort (recovery, easy, tempo). This request did not contain a change the client could apply. Do not say the card was updated. Briefly clarify what is missing or suggest a concrete adjustment that fits the current activity.
+                """,
                 conversationKey: "ios-today-activity-customization",
                 recentMessages: conversation.suffix(6).map {
                     CompanionPriorMessageDTO(role: $0.isUser ? "user" : "assistant", text: $0.text)
@@ -663,19 +692,18 @@ private struct TodayActivityCompanionSheet: View {
                 timeZoneIdentifier: TimeZone.current.identifier,
                 signals: []
             ))
-            if adjustedActivity(for: prompt) == nil {
-                conversation.append(TodayCompanionLine(
-                    text: response?.message ?? "Tell me a duration or effort—like “25 minutes,” “easy,” or “tempo”—and I’ll update the card.",
-                    isUser: false
-                ))
-            }
+            conversation.append(TodayCompanionLine(
+                text: response?.message ?? "Tell me a distance, duration, or effort—like “15 km,” “45 minutes,” or “make it easy”—and I’ll update this activity.",
+                isUser: false
+            ))
+            saveConversation()
             isResponding = false
         }
     }
 
     private func adjustedActivity(for prompt: String) -> SessionIntent? {
         let normalized = prompt.lowercased()
-        let minutes = firstNumber(in: normalized).flatMap { (5...240).contains($0) ? $0 : nil }
+        let requestedGoal = requestedGoal(in: normalized)
         let effort: (title: String, detail: String, coach: String)? = {
             if normalized.contains("recovery") || normalized.contains("very easy") {
                 return ("Recovery run", "very easy", "Keep this restorative and finish feeling better than you started.")
@@ -688,19 +716,38 @@ private struct TodayActivityCompanionSheet: View {
             }
             return nil
         }()
-        guard minutes != nil || effort != nil else { return nil }
+        guard requestedGoal != nil || effort != nil else { return nil }
 
-        let totalSeconds = (minutes ?? currentMinutes) * 60
+        let distanceMeters: Double?
+        let durationSeconds: Int?
+        switch requestedGoal {
+        case .distance(let meters):
+            distanceMeters = meters
+            durationSeconds = nil
+        case .duration(let seconds):
+            distanceMeters = nil
+            durationSeconds = seconds
+        case nil:
+            distanceMeters = currentActivity.targetDistanceMeters
+            durationSeconds = currentActivity.targetDurationSeconds
+                ?? (currentActivity.targetDistanceMeters == nil ? currentMinutes * 60 : nil)
+        }
         let title = effort?.title ?? currentActivity.title
+        let goalDetail: String
+        if let distanceMeters {
+            goalDetail = distanceLabel(distanceMeters)
+        } else {
+            goalDetail = "\((durationSeconds ?? currentMinutes * 60) / 60) min"
+        }
         return SessionIntent(
             id: "companion-\(UUID().uuidString)",
             sport: currentActivity.sport,
             title: title,
-            detail: "\(currentActivity.sport.displayName) · \(totalSeconds / 60) min · \(effort?.detail ?? "customized")",
+            detail: "\(currentActivity.sport.displayName) · \(goalDetail) · \(effort?.detail ?? "customized")",
             coachLine: effort?.coach ?? currentActivity.coachLine,
             startLabel: "Start activity",
-            targetDistanceMeters: currentActivity.targetDistanceMeters,
-            targetDurationSeconds: totalSeconds,
+            targetDistanceMeters: distanceMeters,
+            targetDurationSeconds: durationSeconds,
             routeName: currentActivity.routeName,
             workoutSteps: []
         )
@@ -712,15 +759,81 @@ private struct TodayActivityCompanionSheet: View {
         return max(5, seconds / 60)
     }
 
-    private func firstNumber(in text: String) -> Int? {
-        text.split { !$0.isNumber }.compactMap { Int($0) }.first
+    private enum RequestedGoal {
+        case distance(Double)
+        case duration(Int)
+    }
+
+    private func requestedGoal(in text: String) -> RequestedGoal? {
+        let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*(kilometers?|kilometres?|kms?|km|miles?|mi|hours?|hrs?|hr|h|minutes?|mins?|min|m)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let valueRange = Range(match.range(at: 1), in: text),
+              let unitRange = Range(match.range(at: 2), in: text),
+              let value = Double(text[valueRange]) else { return nil }
+
+        let unit = String(text[unitRange])
+        if unit.hasPrefix("k") {
+            guard (0.1...200).contains(value) else { return nil }
+            return .distance(value * 1_000)
+        }
+        if unit == "mi" || unit.hasPrefix("mile") {
+            guard (0.1...125).contains(value) else { return nil }
+            return .distance(value * 1_609.344)
+        }
+        if unit.hasPrefix("h") {
+            guard (0.1...12).contains(value) else { return nil }
+            return .duration(Int((value * 3_600).rounded()))
+        }
+        guard (1...720).contains(value) else { return nil }
+        return .duration(Int((value * 60).rounded()))
+    }
+
+    private func distanceLabel(_ meters: Double) -> String {
+        let kilometers = meters / 1_000
+        return kilometers.rounded() == kilometers
+            ? "\(Int(kilometers)) km"
+            : String(format: "%.1f km", kilometers)
+    }
+
+    private static func loadConversation() -> [TodayCompanionLine] {
+        guard let data = UserDefaults.standard.data(forKey: conversationStorageKey) else { return [] }
+        return (try? JSONDecoder().decode([TodayCompanionLine].self, from: data)) ?? []
+    }
+
+    private func saveConversation() {
+        let retained = Array(conversation.suffix(40))
+        guard let data = try? JSONEncoder().encode(retained) else { return }
+        UserDefaults.standard.set(data, forKey: Self.conversationStorageKey)
     }
 }
 
-private struct TodayCompanionLine: Identifiable {
-    let id = UUID()
+private struct TodayCompanionLine: Identifiable, Codable {
+    let id: UUID
     let text: String
     let isUser: Bool
+
+    init(id: UUID = UUID(), text: String, isUser: Bool) {
+        self.id = id
+        self.text = text
+        self.isUser = isUser
+    }
+}
+
+private extension SessionIntent {
+    var summaryLabel: String {
+        if let meters = targetDistanceMeters {
+            let kilometers = meters / 1_000
+            let distance = kilometers.rounded() == kilometers
+                ? "\(Int(kilometers)) km"
+                : String(format: "%.1f km", kilometers)
+            return "\(distance) \(sport.displayName.lowercased())"
+        }
+        if let seconds = targetDurationSeconds {
+            return "\(seconds / 60) min \(title.lowercased())"
+        }
+        return title
+    }
 }
 
 private struct TodayWeatherRow: View {
