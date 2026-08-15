@@ -2189,6 +2189,22 @@
         }
       }
     },
+    "Connect with a few friends to make your activity feed and run plans more useful.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conecta con algunos amigos para que tu actividad y tus planes para correr sean más útiles."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加几位跑友，让动态和约跑计划更适合你。"
+          }
+        }
+      }
+    },
     "Connect with friends, share selected runs, and make plans to run together.": {
       "localizations": {
         "es": {
