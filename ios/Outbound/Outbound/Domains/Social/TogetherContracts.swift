@@ -100,6 +100,11 @@ struct TogetherGroupRunDTO: Codable, Identifiable, Sendable {
     let creator: TogetherPersonDTO
     let groups: [TogetherRunGroupDTO]
     let compatibility: TogetherCompatibilityDTO?
+    var source: FutureActivitySourceDTO? = nil
+    var attendeeCount: Int? = nil
+    var attendeePreview: [TogetherPersonDTO]? = nil
+    var currentUserGoing: Bool? = nil
+    var status: String? = nil
 }
 
 struct SocialGroupRunDetailDTO: Codable, Identifiable, Sendable {
@@ -114,7 +119,64 @@ struct SocialGroupRunDetailDTO: Codable, Identifiable, Sendable {
     let attendeeCount: Int
     let currentUserGoing: Bool
     let compatibility: TogetherCompatibilityDTO?
+    var source: FutureActivitySourceDTO? = nil
+    var attendeePreview: [TogetherPersonDTO]? = nil
+    var participants: [FutureActivityParticipantDTO]? = nil
+    var status: String? = nil
+    var currentUserOutcome: String? = nil
 }
+
+struct FutureActivitySourceDTO: Codable, Sendable {
+    let kind: String
+    let label: String
+}
+
+struct FutureActivityParticipantDTO: Codable, Identifiable, Sendable {
+    var id: String { person.id }
+    let person: TogetherPersonDTO
+    let status: String
+    let outcome: String?
+}
+
+struct CreateFutureActivityRequestDTO: Codable, Sendable {
+    let title: String
+    let startsAt: Date
+    let locationName: String?
+    let note: String?
+}
+
+struct FutureActivityInvitationBatchRequestDTO: Codable, Sendable {
+    let recipientUserIds: [String]
+}
+
+struct FutureActivityInvitationBatchResponseDTO: Codable, Sendable {
+    let invitations: [FutureActivityInvitationBatchItemDTO]
+}
+
+struct FutureActivityInvitationBatchItemDTO: Codable, Sendable {
+    let id: String
+    let recipientUserId: String
+    let status: String
+}
+
+struct FutureActivityResultDTO: Codable, Sendable {
+    let futureActivityId: String
+    let status: String
+    let goingCount: Int
+    let resolvedCount: Int
+    let combinedDistanceMeters: Double
+    let combinedDurationSeconds: Int
+    let participants: [FutureActivityResultParticipantDTO]
+}
+
+struct FutureActivityResultParticipantDTO: Codable, Identifiable, Sendable {
+    var id: String { person.id }
+    let person: TogetherPersonDTO
+    let outcome: String?
+    let result: TogetherActivityDTO?
+}
+
+struct LinkFutureActivityRequestDTO: Codable, Sendable { let activityId: String }
 
 struct TogetherActivityDTO: Codable, Sendable {
     let id: String

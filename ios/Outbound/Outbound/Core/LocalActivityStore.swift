@@ -21,7 +21,8 @@ actor ActivityPersistence {
         manualEdits: ActivityManualEdits?,
         indoor: ActivityIndoorMetadata?,
         cadence: ActivityCadenceSummary?,
-        heartRateZones: ActivityHeartRateZoneSummary?
+        heartRateZones: ActivityHeartRateZoneSummary?,
+        futureActivityID: String?
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
@@ -35,7 +36,8 @@ actor ActivityPersistence {
             manualEdits: manualEdits,
             indoor: indoor,
             cadence: cadence,
-            heartRateZones: heartRateZones
+            heartRateZones: heartRateZones,
+            futureActivityID: futureActivityID
         )
     }
 
@@ -88,7 +90,8 @@ private nonisolated enum LocalActivityStore {
         manualEdits: ActivityManualEdits? = nil,
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
-        heartRateZones: ActivityHeartRateZoneSummary? = nil
+        heartRateZones: ActivityHeartRateZoneSummary? = nil,
+        futureActivityID: String? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -123,6 +126,7 @@ private nonisolated enum LocalActivityStore {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
+            futureActivityID: futureActivityID,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -285,6 +289,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let indoor: ActivityIndoorMetadata?
     let cadence: ActivityCadenceSummary?
     let heartRateZones: ActivityHeartRateZoneSummary?
+    let futureActivityID: String?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -323,6 +328,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         indoor = try c.decodeIfPresent(ActivityIndoorMetadata.self, forKey: .indoor)
         cadence = try c.decodeIfPresent(ActivityCadenceSummary.self, forKey: .cadence)
         heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
+        futureActivityID = try c.decodeIfPresent(String.self, forKey: .futureActivityID)
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -347,6 +353,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          indoor: ActivityIndoorMetadata? = nil,
          cadence: ActivityCadenceSummary? = nil,
          heartRateZones: ActivityHeartRateZoneSummary? = nil,
+         futureActivityID: String? = nil,
          route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.title = title; self.coachNudge = coachNudge
@@ -361,6 +368,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.indoor = indoor
         self.cadence = cadence
         self.heartRateZones = heartRateZones
+        self.futureActivityID = futureActivityID
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -386,6 +394,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case indoor
         case cadence
         case heartRateZones
+        case futureActivityID
         case route
         case trackPoints
         case photos

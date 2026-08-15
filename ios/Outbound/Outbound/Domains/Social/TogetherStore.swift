@@ -16,6 +16,8 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var notifications: [SocialNotificationDTO] = []
     @Published private(set) var discoverableGroups: [SocialGroupDTO] = []
     @Published private(set) var blocks: [SocialBlockDTO] = []
+    @Published private(set) var resultsByFutureActivityID: [String: FutureActivityResultDTO] = [:]
+    @Published private(set) var recordingFutureActivityID: String?
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -69,6 +71,18 @@ final class TogetherStore: ObservableObject {
         }
     }
 
+    func invitationURL(forFutureActivity id: String) async -> URL? {
+        do {
+            let invitation = try await api.createTogetherInvitation(runID: id)
+            let url = PlainstrideLinks.scheduledRunInvitation(token: invitation.token)
+            latestInvitationURL = url
+            return url
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func invite(_ connection: SocialConnectionDTO, to run: TogetherGroupRunDTO) async -> Bool {
         if isUITestSeedData { return true }
         do {
@@ -80,6 +94,73 @@ final class TogetherStore: ObservableObject {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    func createFutureActivity(_ request: CreateFutureActivityRequestDTO) async -> SocialGroupRunDetailDTO? {
+        do {
+            let created = try await api.createFutureActivity(request)
+            await refresh()
+            errorMessage = nil
+            return created
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func inviteConnections(_ userIDs: [String], toFutureActivity id: String) async -> Bool {
+        guard !userIDs.isEmpty else { return true }
+        do {
+            _ = try await api.inviteConnections(userIDs, toFutureActivity: id)
+            await refreshNotifications()
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func loadFutureActivityResults(id: String) async {
+        do {
+            resultsByFutureActivityID[id] = try await api.fetchFutureActivityResults(id: id)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func markFutureActivityWithoutRecording(id: String) async -> Bool {
+        do {
+            _ = try await api.markFutureActivityWithoutRecording(id: id)
+            await loadFutureActivityResults(id: id)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func prepareToRecord(futureActivityID: String) {
+        recordingFutureActivityID = futureActivityID
+    }
+
+    func acceptFutureActivityInvitation(token: String) async -> Bool {
+        do {
+            _ = try await api.acceptFutureActivityInvitation(token: token)
+            await refresh()
+            await refreshNotifications()
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func consumeRecordingFutureActivityID() -> String? {
+        defer { recordingFutureActivityID = nil }
+        return recordingFutureActivityID
     }
 
     func referralInvitationURL() async -> URL? {

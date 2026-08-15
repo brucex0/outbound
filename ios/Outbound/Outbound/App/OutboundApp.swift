@@ -126,6 +126,7 @@ struct OutboundApp: App {
     private func handleIncomingURL(_ url: URL) {
         if authStore.handleOpenURL(url) { return }
         guard PlainstrideLinks.liveGroupToken(from: url) != nil
+                || PlainstrideLinks.futureActivityToken(from: url) != nil
                 || PlainstrideLinks.referralCode(from: url) != nil else { return }
         UserDefaults.standard.set(url.absoluteString, forKey: "pending_plainstride_invite_v1")
         guard authStore.isAuthenticated else { return }
@@ -139,6 +140,8 @@ struct OutboundApp: App {
         if let token = PlainstrideLinks.liveGroupToken(from: url) {
             await liveGroupStore.joinGroup(invite: token)
             guard liveGroupStore.activeSession != nil else { return }
+        } else if let token = PlainstrideLinks.futureActivityToken(from: url) {
+            guard await togetherStore.acceptFutureActivityInvitation(token: token) else { return }
         } else if let referralCode = PlainstrideLinks.referralCode(from: url) {
             do {
                 _ = try await APIClient.shared.claimReferral(code: referralCode)

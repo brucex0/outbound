@@ -60,7 +60,7 @@ model User {
   circlesOwned                Circle[]                     @relation("CircleOwner")
   circleMemberships           CircleMember[]
   clubMemberships             ClubMembership[]
-  groupRunsCreated            GroupRun[]                   @relation("GroupRunCreator")
+  futureActivitiesCreated     FutureActivity[]             @relation("FutureActivityCreator")
   invitationsSent             Invitation[]                 @relation("InvitationSender")
   invitationsReceived         Invitation[]                 @relation("InvitationRecipient")
   referralLink                ReferralLink?                @relation("ReferralCreator")
@@ -71,7 +71,7 @@ model User {
   socialReports               SocialReport[]
   socialNotifications         SocialNotification[]         @relation("SocialNotificationRecipient")
   socialNotificationsActed    SocialNotification[]         @relation("SocialNotificationActor")
-  groupRunRSVPs               GroupRunRSVP[]
+  futureActivityParticipants  FutureActivityParticipant[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -163,6 +163,7 @@ model Activity {
   posts                      Post[]
   workoutCompletions         WorkoutCompletion[]
   moments                    Moment[]
+  futureActivityParticipation FutureActivityParticipant?
 
   // AI coach analysis generated after activity
   coachAnalysis Json?
@@ -956,7 +957,7 @@ model Club {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   memberships    ClubMembership[]
-  runs           GroupRun[]
+  futureActivities FutureActivity[]
 }
 
 model ClubMembership {
@@ -972,45 +973,55 @@ model ClubMembership {
   @@index([userId])
 }
 
-model GroupRun {
+model FutureActivity {
   id           String           @id @default(cuid())
   clubId       String?
   club         Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
   creatorId    String
-  creator      User             @relation("GroupRunCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  creator      User             @relation("FutureActivityCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   title        String
   startsAt     DateTime
   locationName String?
-  paceNote     String?
+  note         String?
+  participationMode String      @default("hybrid")
+  activityPolicy   String       @default("fixed")
+  activityType     String?
+  visibility       String       @default("connections")
   status       String           @default("scheduled")
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
-  groups       GroupRunOption[]
+  options      FutureActivityOption[]
   invitations  Invitation[]
-  rsvps        GroupRunRSVP[]
+  participants FutureActivityParticipant[]
 
   @@index([startsAt, status])
   @@index([clubId, startsAt])
 }
 
-model GroupRunRSVP {
-  id         String   @id @default(cuid())
-  groupRunId String
-  groupRun   GroupRun @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status     String   @default("going")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model FutureActivityParticipant {
+  id               String         @id @default(cuid())
+  futureActivityId String
+  futureActivity   FutureActivity @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           String         @default("going")
+  outcome          String?
+  attendanceMode   String?
+  recordedActivityId String?      @unique
+  recordedActivity Activity?      @relation(fields: [recordedActivityId], references: [id], onDelete: SetNull)
+  joinedAt         DateTime       @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  @@unique([groupRunId, userId])
+  @@unique([futureActivityId, userId])
   @@index([userId, status])
 }
 
-model GroupRunOption {
-  id             String   @id @default(cuid())
-  groupRunId     String
-  groupRun       GroupRun @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
+model FutureActivityOption {
+  id               String         @id @default(cuid())
+  futureActivityId String
+  futureActivity   FutureActivity @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
   label          String
   distanceMeters Float?
   paceMinSeconds Int?
@@ -1018,7 +1029,7 @@ model GroupRunOption {
   capacity       Int?
   sortOrder      Int      @default(0)
 
-  @@index([groupRunId, sortOrder])
+  @@index([futureActivityId, sortOrder])
 }
 
 model Invitation {
@@ -1027,8 +1038,8 @@ model Invitation {
   sender      User      @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId String?
   recipient   User?     @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
-  groupRunId  String?
-  groupRun    GroupRun? @relation(fields: [groupRunId], references: [id], onDelete: Cascade)
+  futureActivityId String?
+  futureActivity   FutureActivity? @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
   kind        String
   tokenHash   String?   @unique
   status      String    @default("pending")

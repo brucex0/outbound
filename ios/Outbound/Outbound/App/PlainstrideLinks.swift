@@ -27,6 +27,15 @@ enum PlainstrideLinks {
         return nil
     }
 
+    static func futureActivityToken(from url: URL) -> String? {
+        guard url.scheme == "https", url.host == webOrigin.host else { return nil }
+        let components = url.pathComponents.filter { $0 != "/" }
+        guard components.count == 3,
+              components[0] == "invite",
+              components[1] == "run" else { return nil }
+        return components[2]
+    }
+
     static func referralCode(from url: URL) -> String? {
         guard url.scheme == "https", url.host == webOrigin.host else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }

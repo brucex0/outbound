@@ -225,6 +225,29 @@ final class APIClient {
         try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: recipientUserID))
     }
 
+    func createFutureActivity(_ request: CreateFutureActivityRequestDTO) async throws -> SocialGroupRunDetailDTO {
+        try await post("/social/group-runs", body: request)
+    }
+
+    func inviteConnections(_ userIDs: [String], toFutureActivity id: String) async throws -> FutureActivityInvitationBatchResponseDTO {
+        try await post(
+            "/social/group-runs/\(id)/invitations/batch",
+            body: FutureActivityInvitationBatchRequestDTO(recipientUserIds: userIDs)
+        )
+    }
+
+    func fetchFutureActivityResults(id: String) async throws -> FutureActivityResultDTO {
+        try await get("/social/group-runs/\(id)/results")
+    }
+
+    func linkActivity(_ activityID: String, toFutureActivity id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/group-runs/\(id)/link-activity", body: LinkFutureActivityRequestDTO(activityId: activityID))
+    }
+
+    func markFutureActivityWithoutRecording(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/group-runs/\(id)/no-recording", body: EmptyBody())
+    }
+
     func createReferralLink() async throws -> ReferralLinkResponseDTO {
         try await post("/social/referrals", body: EmptyBody())
     }
@@ -318,6 +341,10 @@ final class APIClient {
 
     func acceptSocialRunInvitation(id: String) async throws -> SocialConnectionMutationDTO {
         try await post("/social/invitations/\(id)/accept", body: EmptyBody())
+    }
+
+    func acceptFutureActivityInvitation(token: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/invitations/token/\(token)/accept", body: EmptyBody())
     }
 
     func submitCycleTrainingSignal(_ request: CycleTrainingSignalRequestDTO) async throws -> CycleTrainingSignalResponseDTO {
@@ -1338,6 +1365,7 @@ struct ActivityUploadRequest: Encodable {
     let elevationM: Double?
     let avgPace: Double?
     let avgHeartRate: Int?
+    let futureActivityId: String?
     let route: SavedRoute?
     let reflection: FinishReflection?
     let clientData: SavedActivity

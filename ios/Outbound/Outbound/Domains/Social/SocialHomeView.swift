@@ -8,6 +8,7 @@ struct SocialHomeView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var activityStore: ActivityStore
     @State private var selectedCommentPost: TogetherPostDTO?
+    @State private var isCreateFutureActivityPresented = false
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.connections.filter { $0.status == "accepted" }.count < 3
@@ -48,6 +49,12 @@ struct SocialHomeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Menu {
+                        Button {
+                            isCreateFutureActivityPresented = true
+                        } label: {
+                            Label("Plan a run", systemImage: "calendar.badge.plus")
+                        }
+
                         NavigationLink {
                             SocialConnectionsView()
                         } label: {
@@ -91,6 +98,10 @@ struct SocialHomeView: View {
             }
             .sheet(item: $selectedCommentPost) { post in
                 SocialCommentsView(post: post)
+            }
+            .sheet(isPresented: $isCreateFutureActivityPresented) {
+                CreateFutureActivityView()
+                    .environmentObject(socialStore)
             }
         }
     }
@@ -163,18 +174,27 @@ struct SocialHomeView: View {
             ForEach(socialStore.state.upcomingRuns.prefix(2)) { run in
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        Text(run.club?.name ?? run.creator.displayName)
+                        Text(run.source?.label ?? run.club?.name ?? run.creator.displayName)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Text(run.title).font(.headline)
                         Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        if let note = run.paceNote {
+                            Text(note).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: 8) {
+                            Text("\(run.attendeeCount ?? 0) going")
+                            Text("Meet up or join from anywhere")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(OutboundPalette.companion)
                         if let compatibility = run.compatibility {
                             AIExplanationView(text: compatibility.explanation)
                         }
                         HStack {
-                            NavigationLink("View run") {
+                            NavigationLink(run.currentUserGoing == true ? "View" : "Review") {
                                 SocialGroupRunView(run: run)
                             }
                             .buttonStyle(.borderedProminent)
@@ -442,25 +462,69 @@ private struct SocialGroupRunView: View {
     let run: TogetherGroupRunDTO
     @State private var detail: SocialGroupRunDetailDTO?
     @State private var isConnectionPickerPresented = false
+    private var results: FutureActivityResultDTO? { socialStore.resultsByFutureActivityID[run.id] }
 
     var body: some View {
         List {
+            if let detail, detail.currentUserGoing {
+                Section {
+                    Label("You're going", systemImage: "checkmark.circle.fill")
+                        .font(.headline)
+                        .foregroundStyle(OutboundPalette.companion)
+                    Text("Meet at the listed place or join from anywhere.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section {
+                LabeledContent("Created by", value: run.creator.displayName)
                 LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
                 if let location = run.locationName { LabeledContent("Where", value: location) }
-                if let pace = run.paceNote { LabeledContent("Pace", value: pace) }
+                if let pace = run.paceNote { LabeledContent("Pace / note", value: pace) }
+                if run.locationName == nil { LabeledContent("Where", value: "Join from anywhere") }
                 if let detail { LabeledContent("Going", value: "\(detail.attendeeCount)") }
             }
             if let compatibility = run.compatibility {
                 Section("Fit") { AIExplanationView(text: compatibility.explanation) }
             }
-            Section("Options") {
+            if !run.groups.isEmpty {
+                Section("Options") {
                 ForEach(run.groups) { option in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(option.label).font(.headline)
                         if let distance = option.distanceMeters {
                             Text(MeasurementUnitSystem.metric.distanceString(meters: distance, fractionDigits: 1))
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            }
+            if let participants = detail?.participants, !participants.isEmpty {
+                Section("Going") {
+                    ForEach(participants) { participant in
+                        HStack {
+                            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
+                            Text(participant.person.displayName)
+                        }
+                    }
+                }
+            }
+            if let results, results.status != "scheduled" {
+                Section("Results") {
+                    LabeledContent("Resolved", value: "\(results.resolvedCount) of \(results.goingCount)")
+                    if results.combinedDurationSeconds > 0 {
+                        LabeledContent("Combined time", value: "\(max(1, results.combinedDurationSeconds / 60)) min")
+                    }
+                    ForEach(results.participants) { participant in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(participant.person.displayName).font(.headline)
+                            Text(resultLabel(participant)).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    if detail?.currentUserGoing == true && detail?.currentUserOutcome == nil {
+                        Button("I joined without recording") {
+                            Task { _ = await socialStore.markFutureActivityWithoutRecording(id: run.id) }
                         }
                     }
                 }
@@ -496,7 +560,10 @@ private struct SocialGroupRunView: View {
             }
         }
         .navigationTitle(run.title)
-        .task { detail = await socialStore.groupRunDetail(id: run.id) }
+        .task {
+            detail = await socialStore.groupRunDetail(id: run.id)
+            if run.startsAt <= Date() { await socialStore.loadFutureActivityResults(id: run.id) }
+        }
         .sheet(isPresented: $isConnectionPickerPresented) {
             NavigationStack {
                 List(socialStore.connections.filter { $0.status == "accepted" }) { connection in
@@ -524,6 +591,17 @@ private struct SocialGroupRunView: View {
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isConnectionPickerPresented = false } } }
                 .task { await socialStore.refreshConnections() }
             }
+        }
+    }
+
+    private func resultLabel(_ participant: FutureActivityResultParticipantDTO) -> String {
+        if let result = participant.result {
+            return "Completed · \(MeasurementUnitSystem.metric.distanceString(meters: result.distanceM ?? 0, fractionDigits: 1))"
+        }
+        switch participant.outcome {
+        case "no_recording": return "Participated · No recording"
+        case "did_not_participate": return "Couldn't participate"
+        default: return "Waiting for result"
         }
     }
 }
@@ -1026,7 +1104,7 @@ private struct SocialConnectionsView: View {
     }
 }
 
-private struct SocialAvatar: View {
+struct SocialAvatar: View {
     let name: String
     let avatarURL: String?
 

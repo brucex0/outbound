@@ -104,15 +104,18 @@ async function seedTestPersonas() {
       memberships: { create: [{ userId: socialRunner.id, role: "organizer" }, { userId: activeRunner.id, role: "member" }] },
     },
   });
-  const groupRun = await prisma.groupRun.create({
+  const futureActivity = await prisma.futureActivity.create({
     data: {
       clubId: club.id,
       creatorId: socialRunner.id,
       title: "Saturday social 5K",
       startsAt: daysFromNow(now, 3),
       locationName: "Golden Gate Park",
-      paceNote: "Conversational pace; nobody runs alone.",
-      groups: { create: [{ label: "5K social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 450, capacity: 20, sortOrder: 0 }] },
+      note: "Conversational pace; join at the park or from anywhere.",
+      participationMode: "hybrid",
+      activityPolicy: "fixed",
+      activityType: "running",
+      options: { create: [{ label: "5K social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 450, capacity: 20, sortOrder: 0 }] },
     },
   });
   await prisma.club.create({
@@ -122,7 +125,7 @@ async function seedTestPersonas() {
       city: "San Francisco",
     },
   });
-  await prisma.groupRunRSVP.create({ data: { groupRunId: groupRun.id, userId: socialRunner.id, status: "going" } });
+  await prisma.futureActivityParticipant.create({ data: { futureActivityId: futureActivity.id, userId: socialRunner.id, status: "going" } });
   const post = await prisma.post.create({
     data: { userId: activeRunner.id, activityId: activeActivities[0].id, caption: "Easy miles and good energy today.", visibility: "connections" },
   });
@@ -130,7 +133,7 @@ async function seedTestPersonas() {
   await prisma.comment.create({ data: { authorId: socialRunner.id, postId: post.id, body: "Nice work — see you Saturday!" } });
 
   const runInvitation = await prisma.invitation.create({
-    data: { senderId: activeRunner.id, recipientId: socialRunner.id, groupRunId: groupRun.id, kind: "groupRun", status: "pending", expiresAt: daysFromNow(now, 7) },
+    data: { senderId: activeRunner.id, recipientId: socialRunner.id, futureActivityId: futureActivity.id, kind: "futureActivity", status: "pending", expiresAt: daysFromNow(now, 7) },
   });
   await prisma.socialNotification.createMany({
     data: [

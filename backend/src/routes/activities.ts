@@ -140,6 +140,7 @@ const createSchema = z.object({
   elevationM: z.number().optional(),
   avgPace: z.number().optional(),
   avgHeartRate: z.number().optional(),
+  futureActivityId: z.string().min(1).optional(),
   calories: z.number().optional(),
   route: z
     .object({
@@ -295,6 +296,13 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     })().catch(console.error);
   }
 
+  if (body.futureActivityId) {
+    await prisma.futureActivityParticipant.updateMany({
+      where: { futureActivityId: body.futureActivityId, userId: resolvedUserId, status: "going" },
+      data: { recordedActivityId: activity.id, outcome: "completed", resolvedAt: new Date() },
+    });
+  }
+
   return c.json(
     {
       id: activity.id,
@@ -326,9 +334,15 @@ router.delete("/:id", async (c) => {
   await deleteActivityPhotos(photos.map((photo) => photo.storageKey));
   await prisma.photo.deleteMany({ where: { activityId: activity.id } });
 
-  const deleted = await prisma.activity.update({
-    where: { id: activity.id },
-    data: { deletedAt: new Date(), clientData: undefined },
+  const deleted = await prisma.$transaction(async (transaction) => {
+    await transaction.futureActivityParticipant.updateMany({
+      where: { recordedActivityId: activity.id },
+      data: { recordedActivityId: null, outcome: null, resolvedAt: null },
+    });
+    return transaction.activity.update({
+      where: { id: activity.id },
+      data: { deletedAt: new Date(), clientData: undefined },
+    });
   });
   return c.json({ status: "deleted", id: deleted.id, deletedAt: deleted.deletedAt });
 });

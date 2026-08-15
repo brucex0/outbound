@@ -41,6 +41,32 @@ Core loops:
 - `Rivals`: lightweight weekly competition and segment ownership.
 - `Activity visibility`: newly synced activities appear for Connections by default, with post deletion as the opt-out.
 
+## Future Activities
+
+The production future-activity loop follows `docs/prototypes/future-activities-e2e.html`:
+
+`Plan -> Invite -> Discover -> Review -> Joined -> Record -> Reconcile`
+
+- Social's community menu opens a two-step `Plan a run` / `Invite friends` flow.
+- The MVP form stores a name, date/time, optional meetup label, and optional pace/note.
+- Every future activity is hybrid by default: participants may meet at the suggested location or join from anywhere.
+- Creating an activity automatically joins its creator. Eligible connections and invitation recipients join immediately; there is no approval or pending-RSVP state.
+- Connections-visible activities, direct invitations, joined activities, and joined-group activities appear in Upcoming with a share-safe source label.
+- A targeted invitation or shared `/invite/run/:token` Universal Link joins the recipient after authentication.
+- Starting a joined activity from Today stores its future-activity ID in the local saved activity. Offline sync later links the canonical server activity to that participant idempotently.
+- Reconciliation distinguishes a linked recording from participation without a recording. It never infers physical attendance from GPS.
+- Results use participation-neutral language and expose individual stats only where connection visibility permits.
+
+The database intentionally uses generic `FutureActivity`, `FutureActivityParticipant`, and `FutureActivityOption` models rather than run-specific names. The MVP stores `activityType = running` and `activityPolicy = fixed`; later open activities can set `activityType = null` and allow walking, trail running, cycling, strength, or other activity types without changing invitation or reconciliation ownership.
+
+This schema replacement is intentionally destructive for pre-release data. Apply it with:
+
+```sh
+cd backend
+npm run db:generate
+npm run db:push -- --accept-data-loss
+```
+
 ## Current iOS Shape
 
 - `Domains/Social/SocialHomeView.swift` owns the production Social home and Connections UI.

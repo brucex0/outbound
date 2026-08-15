@@ -22,6 +22,7 @@ struct RecordView: View {
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @EnvironmentObject var onboardingStore: OnboardingStore
+    @EnvironmentObject var socialStore: TogetherStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var coach = VirtualCoach()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -430,10 +431,12 @@ struct RecordView: View {
             source: .outboundRecorded,
             gear: gearStore.attachment(for: selectedSessionShoe),
             indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
-            heartRateZones: heartRateZones(from: activity.summary)
+            heartRateZones: heartRateZones(from: activity.summary),
+            futureActivityID: socialStore.recordingFutureActivityID
         ) else {
             return false
         }
+        _ = socialStore.consumeRecordingFutureActivityID()
 
         let savedSport = activeIntent?.sport ?? .run
         let estimatedEnergy = estimatedEnergyKilocalories(

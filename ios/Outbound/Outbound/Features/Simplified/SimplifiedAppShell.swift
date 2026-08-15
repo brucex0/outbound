@@ -50,6 +50,7 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var socialStore: TogetherStore
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsActivityCompanion = false
@@ -113,6 +114,24 @@ private struct SimplifiedTodayView: View {
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
 
+                    if let futureActivityToday {
+                        OutboundCard(style: .companion) {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("JOINED ACTIVITY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                FutureActivitySummaryContent(
+                                    title: futureActivityToday.title,
+                                    startsAt: futureActivityToday.startsAt,
+                                    locationName: futureActivityToday.locationName,
+                                    note: futureActivityToday.paceNote
+                                )
+                                OutboundPrimaryButton(title: String(localized: "Start with friends"), systemImage: "person.2.fill") {
+                                    socialStore.prepareToRecord(futureActivityID: futureActivityToday.id)
+                                    onStartRun(.freestyleRun)
+                                }
+                            }
+                        }
+                    }
+
                     lastActivityCard
                 }
                 .padding(.horizontal, OutboundSpacing.screen)
@@ -171,6 +190,12 @@ private struct SimplifiedTodayView: View {
                 onApply: { customizedRunIntent = $0 }
             )
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var futureActivityToday: TogetherGroupRunDTO? {
+        socialStore.state.upcomingRuns.first {
+            $0.currentUserGoing == true && Calendar.current.isDateInToday($0.startsAt)
         }
     }
 

@@ -27,7 +27,8 @@ final class ActivityStore: ObservableObject {
         manualEdits: ActivityManualEdits? = nil,
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
-        heartRateZones: ActivityHeartRateZoneSummary? = nil
+        heartRateZones: ActivityHeartRateZoneSummary? = nil,
+        futureActivityID: String? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         let activity = try await persistence.save(
@@ -42,7 +43,8 @@ final class ActivityStore: ObservableObject {
             manualEdits: manualEdits,
             indoor: indoor,
             cadence: cadence,
-            heartRateZones: heartRateZones
+            heartRateZones: heartRateZones,
+            futureActivityID: futureActivityID
         )
         activityRevision += 1
         activities.insert(activity, at: 0)
@@ -123,6 +125,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
+            futureActivityID: activity.futureActivityID,
             route: activity.route,
             photos: activity.photos,
             sync: SavedActivitySyncState(
@@ -211,6 +214,7 @@ final class ActivityStore: ObservableObject {
                     elevationM: activity.elevationGainM,
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
+                    futureActivityId: activity.futureActivityID,
                     route: activity.route,
                     reflection: activity.reflection,
                     clientData: syncSnapshot(for: activity),
@@ -264,6 +268,7 @@ final class ActivityStore: ObservableObject {
             indoor: current.indoor,
             cadence: current.cadence,
             heartRateZones: current.heartRateZones,
+            futureActivityID: current.futureActivityID,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -459,6 +464,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
+            futureActivityID: activity.futureActivityID,
             route: activity.route,
             photos: photos,
             sync: sync
