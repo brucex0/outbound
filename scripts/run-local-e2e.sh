@@ -150,3 +150,126 @@ if (persona === "social") {
 }
 console.log(`[e2e] ${persona}: authenticated user and seeded API state verified.`);
 NODE
+
+if [[ "$persona" == "social" ]]; then
+  print "Exercising Social server mutations..."
+  node - "$api_base" "$token" "$auth_port" <<'NODE'
+const [apiBase, token, authPort] = process.argv.slice(2);
+const headers = { Authorization: `Bearer ${token}` };
+const fail = message => { throw new Error(`[social mutations] ${message}`); };
+const request = async (path, options = {}, expected = [200]) => {
+  const response = await fetch(`${apiBase}${path}`, {
+    ...options,
+    headers: { ...headers, ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
+  });
+  const payload = await response.json();
+  if (!expected.includes(response.status)) fail(`${options.method ?? "GET"} ${path} returned ${response.status}: ${JSON.stringify(payload)}`);
+  return payload;
+};
+
+(async () => {
+  let home = await request("/social/home");
+  const post = home.posts.find(item => item.caption === "Easy miles and good energy today.");
+  const run = home.upcomingRuns.find(item => item.title === "Saturday social 5K");
+  if (!post || !run) fail("feed post or group run is missing");
+
+  const search = await request("/social/people/search?q=Avery");
+  const activePerson = search.people.find(person => person.displayName === "Avery Runner");
+  if (!activePerson || activePerson.relationship?.status !== "accepted") fail("people search did not return the accepted connection");
+
+  let groups = (await request("/social/groups")).groups;
+  const discoverableGroup = groups.find(group => group.name === "Sunset E2E Striders");
+  if (!discoverableGroup || discoverableGroup.membershipRole != null) fail("discoverable group precondition failed");
+  await request(`/social/groups/${discoverableGroup.id}/membership`, { method: "POST" }, [201]);
+  groups = (await request("/social/groups")).groups;
+  if (!groups.some(group => group.id === discoverableGroup.id && group.membershipRole === "member")) fail("joining a group did not persist");
+  await request(`/social/groups/${discoverableGroup.id}/membership`, { method: "DELETE" });
+  groups = (await request("/social/groups")).groups;
+  if (!groups.some(group => group.id === discoverableGroup.id && group.membershipRole == null)) fail("leaving a group did not persist");
+
+  let runDetail = await request(`/social/group-runs/${run.id}`);
+  if (!runDetail.currentUserGoing) fail("seeded RSVP is missing");
+  await request(`/social/group-runs/${run.id}/rsvp`, { method: "DELETE" });
+  runDetail = await request(`/social/group-runs/${run.id}`);
+  if (runDetail.currentUserGoing) fail("leaving a group run did not persist");
+  await request(`/social/group-runs/${run.id}/rsvp`, { method: "POST" });
+  runDetail = await request(`/social/group-runs/${run.id}`);
+  if (!runDetail.currentUserGoing) fail("joining a group run did not persist");
+
+  await request(`/social/posts/${post.id}/cheer`, { method: "DELETE" });
+  home = await request("/social/home");
+  if (home.posts.find(item => item.id === post.id)?.currentUserCheered) fail("removing a Cheer did not persist");
+  await request(`/social/posts/${post.id}/cheer`, { method: "PUT" });
+  home = await request("/social/home");
+  if (!home.posts.find(item => item.id === post.id)?.currentUserCheered) fail("adding a Cheer did not persist");
+
+  const commentBody = "Automated Social server comment";
+  const comment = await request(`/social/posts/${post.id}/comments`, { method: "POST", body: JSON.stringify({ body: commentBody }) }, [201]);
+  let comments = (await request(`/social/posts/${post.id}/comments`)).comments;
+  if (!comments.some(item => item.id === comment.id && item.body === commentBody)) fail("adding a comment did not persist");
+  await request(`/social/comments/${comment.id}`, { method: "DELETE" });
+  comments = (await request(`/social/posts/${post.id}/comments`)).comments;
+  if (comments.some(item => item.id === comment.id)) fail("deleting a comment did not persist");
+
+  const report = await request("/social/reports", { method: "POST", body: JSON.stringify({ targetType: "post", targetId: post.id, reason: "other", details: "Automated E2E report" }) }, [201]);
+  if (!report.id || !report.status) fail("report creation response is incomplete");
+
+  let notifications = (await request("/social/notifications")).notifications;
+  const invitation = notifications.find(item => item.type === "runInvitation");
+  if (!invitation?.objectId) fail("run invitation precondition failed");
+  await request(`/social/invitations/${invitation.objectId}/accept`, { method: "POST" });
+  notifications = (await request("/social/notifications")).notifications;
+  if (notifications.some(item => item.id === invitation.id)) fail("accepted invitation notification was not dismissed");
+  await request("/social/notifications/read-all", { method: "POST" });
+  notifications = (await request("/social/notifications")).notifications;
+  if (notifications.some(item => item.readAt == null)) fail("marking notifications read did not persist");
+
+  const targetedInvite = await request(`/social/group-runs/${run.id}/invitations`, { method: "POST", body: JSON.stringify({ recipientUserId: activePerson.id }) }, [201]);
+  if (!targetedInvite.id || !targetedInvite.token) fail("targeted invitation response is incomplete");
+  const referral = await request("/social/referrals", { method: "POST" }, [200, 201]);
+  if (!referral.url || !referral.code) fail("referral response is incomplete");
+
+  let blocks = (await request("/social/blocks")).blocks;
+  const blocked = blocks.find(item => item.person?.displayName === "Blocked Runner");
+  if (!blocked) fail("block precondition failed");
+  await request(`/social/users/${blocked.person.id}/block`, { method: "DELETE" });
+  blocks = (await request("/social/blocks")).blocks;
+  if (blocks.some(item => item.person?.id === blocked.person.id)) fail("unblocking did not persist");
+  await request(`/social/users/${blocked.person.id}/block`, { method: "POST" });
+  blocks = (await request("/social/blocks")).blocks;
+  if (!blocks.some(item => item.person?.id === blocked.person.id)) fail("blocking did not persist");
+
+  let connections = (await request("/social/connections")).connections;
+  const incoming = connections.find(item => item.status === "pending" && item.direction === "incoming");
+  if (!incoming) fail("incoming request precondition failed");
+  await request(`/social/connections/${incoming.id}/accept`, { method: "POST" });
+  connections = (await request("/social/connections")).connections;
+  if (!connections.some(item => item.id === incoming.id && item.status === "accepted")) fail("accepting a connection did not persist");
+  await request(`/social/connections/${incoming.id}`, { method: "DELETE" });
+  connections = (await request("/social/connections")).connections;
+  if (connections.some(item => item.id === incoming.id)) fail("removing a connection did not persist");
+
+  const authResponse = await fetch(`http://127.0.0.1:${authPort}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "active-runner@plainstride.test", password: "plainstride-test-persona", returnSecureToken: true }),
+  });
+  const activeAuth = await authResponse.json();
+  if (!authResponse.ok || !activeAuth.idToken) fail("could not authenticate Active Runner for activity sharing");
+  const activeHeaders = { Authorization: `Bearer ${activeAuth.idToken}` };
+  const activitiesResponse = await fetch(`${apiBase}/activities`, { headers: activeHeaders });
+  const activeActivities = await activitiesResponse.json();
+  const activity = activeActivities.activities?.[0];
+  if (!activity?.id) fail("Active Runner activity is missing");
+  const shareResponse = await fetch(`${apiBase}/social/activity-shares`, {
+    method: "POST",
+    headers: { ...activeHeaders, "Content-Type": "application/json" },
+    body: JSON.stringify({ activityId: activity.id, caption: "Easy miles and good energy today.", visibility: "connections" }),
+  });
+  const sharedPost = await shareResponse.json();
+  if (!shareResponse.ok || sharedPost.activity?.id !== activity.id) fail(`activity sharing failed: ${JSON.stringify(sharedPost)}`);
+
+  console.log("[e2e] social: server mutations verified.");
+})().catch(error => { console.error(error); process.exit(1); });
+NODE
+fi

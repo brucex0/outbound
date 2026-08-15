@@ -29,6 +29,7 @@ final class OutboundUITests: XCTestCase {
     func testPrimaryNavigationAndSettings() throws {
         let app = launchApp()
 
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Social"].tap()
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
@@ -49,9 +50,9 @@ final class OutboundUITests: XCTestCase {
     func testSeededSocialFeedRunAndComments() throws {
         let app = launchApp()
 
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Social"].tap()
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Share your latest run"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
         XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
 
@@ -73,22 +74,25 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
-    func testSeededSocialConnectionsGroupsNotificationsAndSharing() throws {
+    func testSeededSocialConnectionsGroupsAndNotifications() throws {
         let app = launchApp()
 
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Social"].tap()
         XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
 
+        app.buttons["Social community"].tap()
         app.buttons["Connections"].tap()
         XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Maya Chen"].exists)
         XCTAssertTrue(app.staticTexts["Leo Martinez"].exists)
         XCTAssertTrue(app.staticTexts["Priya Shah"].exists)
         XCTAssertTrue(app.staticTexts["Blocked Runner"].exists)
-        app.buttons["Accept"].tap()
-        XCTAssertTrue(app.buttons["Accept"].waitForNonExistence(timeout: 5))
+        app.buttons["Accept connection request"].tap()
+        XCTAssertTrue(app.buttons["Accept connection request"].waitForNonExistence(timeout: 5))
 
         app.navigationBars["Connections"].buttons.firstMatch.tap()
+        app.buttons["Social community"].tap()
         app.buttons["Groups"].tap()
         XCTAssertTrue(app.navigationBars["Groups"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
@@ -101,14 +105,27 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Notifications"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Maya Chen cheered your run."].exists)
         XCTAssertTrue(app.staticTexts["Maya Chen invited you to Saturday waterfront 5K."].exists)
-        app.buttons["Accept invitation"].tap()
-        XCTAssertTrue(app.buttons["Accept invitation"].waitForNonExistence(timeout: 5))
+        app.buttons["Accept run invitation"].tap()
+        XCTAssertTrue(app.buttons["Accept run invitation"].waitForNonExistence(timeout: 5))
 
-        app.navigationBars["Notifications"].buttons.firstMatch.tap()
-        app.buttons["Share"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Share activity"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Share with connections"].exists)
-        app.buttons["Cancel"].tap()
+    }
+
+    @MainActor
+    func testSeededSocialDeclinesConnectionRequest() throws {
+        let app = launchApp()
+
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+        app.buttons["Social community"].tap()
+        app.buttons["Connections"].tap()
+        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+
+        let declineButton = app.buttons["Decline connection request"]
+        XCTAssertTrue(declineButton.waitForExistence(timeout: 5))
+        declineButton.tap()
+        XCTAssertTrue(declineButton.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Leo Martinez"].exists)
     }
 
     @MainActor
@@ -166,7 +183,14 @@ final class OutboundUITests: XCTestCase {
     @MainActor
     private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-OutboundUseMockMusic", "-OutboundDisableFirebase", "-OutboundSkipOnboarding", "-OutboundUITestSeedData"]
+        app.launchArguments += [
+            "-OutboundUseMockMusic",
+            "-OutboundDisableFirebase",
+            "-OutboundSkipOnboarding",
+            "-OutboundUITestSeedData",
+            "-new_user_onboarding_completed_v2.UI test session",
+            "YES",
+        ]
         app.launchArguments += extraArguments
         app.launch()
         return app
