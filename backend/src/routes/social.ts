@@ -415,13 +415,20 @@ router.post("/activity-shares", zValidator("json", z.object({ activityId: z.stri
   if (user instanceof Response) return user;
   const input = c.req.valid("json");
   if (input.caption && !isAcceptableText(input.caption)) return c.json({ error: "Please revise the caption before sharing." }, 422);
-  const activity = await getPrismaClient().activity.findFirst({ where: { id: input.activityId, userId: user.id } });
+  const activity = await getPrismaClient().activity.findFirst({ where: { id: input.activityId, userId: user.id, deletedAt: null } });
   if (!activity) return c.json({ error: "Activity not found." }, 404);
-  const post = await getPrismaClient().post.create({
-    data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility },
-    include: socialPostInclude,
-  });
-  return c.json(postPayload(post, user.id), 201);
+  const existingPost = await getPrismaClient().post.findFirst({ where: { userId: user.id, activityId: activity.id } });
+  const post = existingPost
+    ? await getPrismaClient().post.update({
+        where: { id: existingPost.id },
+        data: { caption: input.caption ?? null, visibility: input.visibility },
+        include: socialPostInclude,
+      })
+    : await getPrismaClient().post.create({
+        data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility },
+        include: socialPostInclude,
+      });
+  return c.json(postPayload(post, user.id), existingPost ? 200 : 201);
 });
 
 router.put("/posts/:id/cheer", async (c) => {

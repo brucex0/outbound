@@ -233,6 +233,20 @@ router.post("/", zValidator("json", createSchema), async (c) => {
 
   let activity;
   let wasCreated = false;
+  const createActivityWithSocialPost = () =>
+    prisma.$transaction(async (transaction) => {
+      const createdActivity = await transaction.activity.create({
+        data: activityData,
+      });
+      await transaction.post.create({
+        data: {
+          userId: resolvedUserId,
+          activityId: createdActivity.id,
+          visibility: "connections",
+        },
+      });
+      return createdActivity;
+    });
 
   if (body.clientActivityId) {
     const existing = await prisma.activity.findUnique({
@@ -256,15 +270,11 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       }
     } else {
       wasCreated = true;
-      activity = await prisma.activity.create({
-        data: activityData,
-      });
+      activity = await createActivityWithSocialPost();
     }
   } else {
     wasCreated = true;
-    activity = await prisma.activity.create({
-      data: activityData,
-    });
+    activity = await createActivityWithSocialPost();
   }
 
   // Fire-and-forget: analyze activity + rebuild coach profile

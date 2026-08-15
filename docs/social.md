@@ -8,7 +8,7 @@ The production Social header has a persistent Connections entry. Connections sup
 
 The header keeps only two compact actions: a community menu for Connections and Groups, plus Notifications. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
 
-The support loop is API-backed: a runner can share the latest synced activity with Connections, Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are not included in activity-share requests.
+The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
 
@@ -29,7 +29,7 @@ Core loops:
 - `Squad`: friends' runs, live relays, cheers, comments, and route prompts.
 - `Groups`: opt-in communities around time, place, identity, and recurring runs.
 - `Rivals`: lightweight weekly competition and segment ownership.
-- `Share latest run`: converts a saved local activity into a social object.
+- `Activity visibility`: newly synced activities appear for Connections by default, with post deletion as the opt-out.
 
 ## Current iOS Shape
 
@@ -42,7 +42,6 @@ Core loops:
 - The Social module is behind the `OUTBOUND_ENABLE_SOCIAL` Swift compilation condition.
 - The legacy prototype flag should remain unset; production Social is independent of it.
 - The current implementation is local/seeded UI state. It does not call a backend yet.
-- It reads `ActivityStore.activities.first` to offer the latest saved activity as a share card.
 - Squad feed cards use route previews, cheers, local comments, route prompts, report, and block controls.
 - Clubs support local join/leave state. Challenges support local join state and progress cards.
 - Relays can be locally composed from route, time window, and audience choices, then appear in Squad.
