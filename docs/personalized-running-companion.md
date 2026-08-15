@@ -65,6 +65,7 @@ Maintain a versioned runner model with provenance and confidence rather than an 
 ### Facts
 
 - goals, dates, availability, preferences, and recurring social commitments;
+- optional private training-profile facts: sex assigned at birth, birth date, height, and weight;
 - injury or restriction flags that the runner explicitly supplied;
 - measurement units and coaching-detail preference.
 
@@ -102,6 +103,8 @@ Never regenerate the entire plan because one run was missed. Meaningful changes 
 - Do not prescribe aggressive progression from a single benchmark.
 - Sensor estimates never override explicit runner feedback without explanation.
 - Raw cycle data stays within the boundary defined in `docs/cycle-aware-coaching.md`.
+
+Optional body details live in a separate Me -> Settings -> Training profile editor, can be changed or cleared individually, and never appear in Together. Apply its additive backend columns with `cd backend && npm run db:push`.
 
 ## Client Plan
 

@@ -111,6 +111,14 @@ export const runnerProfileInputSchema = z.object({
 });
 export type RunnerProfileInput = z.infer<typeof runnerProfileInputSchema>;
 
+export const trainingProfileInputSchema = z.object({
+  sexAtBirth: z.enum(["female", "male"]).nullable(),
+  birthDate: z.string().date().nullable(),
+  heightCentimeters: z.number().min(90).max(250).nullable(),
+  weightKilograms: z.number().min(25).max(350).nullable(),
+});
+export type TrainingProfileInput = z.infer<typeof trainingProfileInputSchema>;
+
 export const adjustmentDecisionSchema = z.object({
   decision: z.enum(["accept", "reject"]),
 });

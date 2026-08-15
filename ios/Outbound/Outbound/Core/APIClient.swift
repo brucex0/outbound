@@ -172,6 +172,14 @@ final class APIClient {
         try await put("/personalization/profile", body: request)
     }
 
+    func fetchTrainingProfile() async throws -> TrainingProfileDTO {
+        try await get("/personalization/profile/training")
+    }
+
+    func updateTrainingProfile(_ request: TrainingProfileUpdateDTO) async throws -> TrainingProfileDTO {
+        try await patch("/personalization/profile/training", body: request)
+    }
+
     func submitPersonalizationReadiness(_ request: ReadinessCheckInRequestDTO) async throws -> PersonalizationMutationResponseDTO {
         try await post("/personalization/readiness", body: request)
     }

@@ -149,6 +149,23 @@ struct RunnerProfileRequestDTO: Codable, Equatable, Sendable {
     let complete: Bool
 }
 
+enum TrainingProfileSex: String, Codable, CaseIterable, Identifiable, Sendable {
+    case female
+    case male
+
+    var id: Self { self }
+    var title: String { self == .female ? String(localized: "Female") : String(localized: "Male") }
+}
+
+struct TrainingProfileDTO: Codable, Equatable, Sendable {
+    let sexAtBirth: TrainingProfileSex?
+    let birthDate: String?
+    let heightCentimeters: Double?
+    let weightKilograms: Double?
+}
+
+typealias TrainingProfileUpdateDTO = TrainingProfileDTO
+
 struct PersonalizationMutationResponseDTO: Codable, Sendable {
     let accepted: Bool?
     let adjustment: AdjustmentProposalDTO?

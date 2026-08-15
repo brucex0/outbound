@@ -1,11 +1,13 @@
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
+import { getPrismaClient } from "../services/prisma.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import {
   adjustmentDecisionSchema,
   readinessCheckInRequestSchema,
   runnerProfileInputSchema,
+  trainingProfileInputSchema,
   workoutFeedbackRequestSchema,
 } from "../services/personalization/contracts.js";
 import {
@@ -30,6 +32,31 @@ router.put("/profile", zValidator("json", runnerProfileInputSchema), async (c) =
   const user = await requireUser(c);
   if (user instanceof Response) return user;
   return c.json(await upsertRunnerProfile(user.id, c.req.valid("json")));
+});
+
+router.get("/profile/training", async (c) => {
+  const user = await requireUser(c);
+  if (user instanceof Response) return user;
+  const profile = await getPrismaClient().runnerProfile.findUnique({ where: { userId: user.id } });
+  return c.json(trainingProfilePayload(profile));
+});
+
+router.patch("/profile/training", zValidator("json", trainingProfileInputSchema), async (c) => {
+  const user = await requireUser(c);
+  if (user instanceof Response) return user;
+  const input = c.req.valid("json");
+  const data = {
+    sexAtBirth: input.sexAtBirth,
+    birthDate: input.birthDate ? new Date(`${input.birthDate}T00:00:00.000Z`) : null,
+    heightCentimeters: input.heightCentimeters,
+    weightKilograms: input.weightKilograms,
+  };
+  const profile = await getPrismaClient().runnerProfile.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, ...data },
+    update: data,
+  });
+  return c.json(trainingProfilePayload(profile));
 });
 
 router.post("/readiness", zValidator("json", readinessCheckInRequestSchema), async (c) => {
@@ -82,6 +109,20 @@ async function requireUser(c: Context<AppEnv>) {
 }
 
 export default router;
+
+function trainingProfilePayload(profile: {
+  sexAtBirth: string | null;
+  birthDate: Date | null;
+  heightCentimeters: number | null;
+  weightKilograms: number | null;
+} | null) {
+  return {
+    sexAtBirth: profile?.sexAtBirth ?? null,
+    birthDate: profile?.birthDate?.toISOString().slice(0, 10) ?? null,
+    heightCentimeters: profile?.heightCentimeters ?? null,
+    weightKilograms: profile?.weightKilograms ?? null,
+  };
+}
 
 function localizedCycleOptions(locale: "en" | "es" | "zh-Hans") {
   if (locale === "es") return {
