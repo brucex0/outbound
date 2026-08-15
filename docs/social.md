@@ -28,6 +28,8 @@ Together referral and group-run invitations are shared as a single plain-text me
 
 Open this when changing the Social tab, social graph concepts, feed cards, clubs, relays, challenges, or rivalry loops.
 
+The proposed end-to-end flow for creating a future run, inviting connections, discovering a friend's activity, and joining it is captured in `docs/prototypes/future-activities-e2e.html`. Treat it as the interaction reference before implementing future-activity creation and discovery.
+
 ## Product Direction
 
 Social is the app's network-effect surface. It should make runs feel shared, timely, and worth returning to even before a user starts recording.

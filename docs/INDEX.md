@@ -56,6 +56,7 @@ Primary flow:
 | Saved routes, route export, sharing requirements, storage efficiency | `docs/route-saving-sharing.md` | Product requirements for canonical route data, saved-route UX, sharing modes, and route simplification/storage rules |
 | Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
+| Future Social activities creation, invitations, discovery, and joining | `docs/prototypes/future-activities-e2e.html` | Interactive end-to-end wireframe covering organizer and invitee states |
 | Social regression status and defect log | `docs/social-qa.md` | Latest seeded UI and real-server Social test coverage, findings, and remaining gaps |
 | Live group run sharing with friend pins on the in-session map | `docs/superpowers/specs/2026-06-20-live-group-run-sharing-design.md` | Product and architecture design for invite-link mutual group sharing, participant presence, map overlays, and rollout |
 | Live group run sharing implementation steps | `docs/superpowers/plans/2026-06-20-live-group-run-sharing.md` | Scoped implementation plan for backend live group sessions, iOS group store, setup controls, and map overlays |
