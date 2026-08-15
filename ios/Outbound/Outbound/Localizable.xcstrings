@@ -617,13 +617,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un breve reinicio es suficiente."
+            "value": "Un respiro breve es suficiente."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "短暂调整一下就好。"
+            "value": "动一动，换换心情。"
           }
         }
       }
@@ -633,13 +633,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un comienzo corto y cómodo basta para aprender."
+            "value": "Un comienzo corto y cómodo ya nos dará algo que aprender."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次短暂、舒服的开始，就足以让我们有所了解。"
+            "value": "短短跑一程、跑得舒服，就能有所收获。"
           }
         }
       }
@@ -655,7 +655,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "短暂的训练也能让今天向前一步。"
+            "value": "哪怕只跑一小程，也是在向前。"
           }
         }
       }
@@ -1393,7 +1393,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不用等到准备万全。"
+            "value": "不用等到万事俱备。"
           }
         }
       }
@@ -1757,13 +1757,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige la opción que encaje con el día que realmente tienes."
+            "value": "Elige la opción que encaje con el día que de verdad tienes."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "根据今天的真实状态，选择合适的训练。"
+            "value": "按今天真实的状态，跑适合自己的那一程。"
           }
         }
       }
@@ -1869,13 +1869,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vuelve poco a poco."
+            "value": "Vuelve con calma."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻松回归。"
+            "value": "慢慢找回状态。"
           }
         }
       }
@@ -3090,13 +3090,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy tienes energía. Mantén el ritmo sin forzar."
+            "value": "Hoy hay energía. Aprovecha el impulso sin forzar."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天状态不错。保持节奏，不必勉强加码。"
+            "value": "今天状态不错，顺着节奏跑，不必勉强加码。"
           }
         }
       }
@@ -3380,13 +3380,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Empezamos de nuevo hoy?"
+            "value": "¿Volvemos a empezar hoy?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天，重新出发？"
+            "value": "今天，重新出发。"
           }
         }
       }
@@ -3477,7 +3477,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pon hoy un poco de movimiento."
+            "value": "Pon el día en movimiento."
           }
         },
         "zh-Hans": {
@@ -3531,7 +3531,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天适合动起来。"
+            "value": "今天适合跑起来。"
           }
         }
       }
@@ -3994,13 +3994,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy tómatelo con calma."
+            "value": "Hoy, ve suave."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天轻松一点。"
+            "value": "今天，轻松一点。"
           }
         }
       }
@@ -4010,13 +4010,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haz algo pequeño. Hoy se trata de presentarte, no de demostrar nada."
+            "value": "Haz algo pequeño. Hoy se trata de estar presente, no de demostrar nada."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "从小目标开始。今天只管行动，不必证明什么。"
+            "value": "目标小一点。今天只需出发，不必证明什么。"
           }
         }
       }
@@ -4058,13 +4058,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haz que la racha sea sostenible."
+            "value": "Haz que la racha pueda durar."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让坚持更长久。"
+            "value": "让这份坚持走得更远。"
           }
         }
       }
@@ -4173,13 +4173,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Deja que la sesión te dé espacio, no más presión."
+            "value": "Deja que la sesión te dé aire, no más presión."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "让训练帮你释放压力，而不是增加负担。"
+            "value": "让这次训练腾出一点空间，而不是再添压力。"
           }
         }
       }
@@ -4395,7 +4395,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "第一次，简单一点就好。"
+            "value": "第一次，简单一点。"
           }
         }
       }
@@ -4621,13 +4621,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El impulso nace de otro día controlado, no de una hazaña."
+            "value": "El impulso nace de sumar otro día con control, no de hacer una heroicidad."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "势头来自又一个稳稳完成的日子，不是一次逞强。"
+            "value": "势头来自一次次稳稳完成，而不是偶尔拼尽全力。"
           }
         }
       }
@@ -4909,13 +4909,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No tienes que recuperar nada. Solo vuelve con algo pequeño y real."
+            "value": "No hay nada que recuperar. Basta con volver, poco a poco y de verdad."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不用追赶进度，从一件简单、踏实的小事重新开始。"
+            "value": "不用补回错过的进度，先踏踏实实迈出一小步。"
           }
         }
       }
@@ -4973,13 +4973,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nada de heroicidades. Dale a tu mente y a tu cuerpo un espacio para calmarse."
+            "value": "Nada de heroicidades. Solo dale a tu mente y a tu cuerpo un lugar donde asentarse."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不用逞强，给身心一点安定下来的空间。"
+            "value": "不用逞强，让身体和思绪都慢慢安定下来。"
           }
         }
       }
@@ -5262,13 +5262,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una sesión útil es suficiente."
+            "value": "Una buena sesión es suficiente."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次有效的训练就够了。"
+            "value": "认真跑一次，就够了。"
           }
         }
       }
@@ -6191,13 +6191,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuida el ritmo con una sesión que puedas disfrutar de verdad."
+            "value": "Cuida el ritmo con una sesión que de verdad disfrutes."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选一次真正享受的训练，把节奏保持下去。"
+            "value": "跑得舒服，才能把这份节奏延续下去。"
           }
         }
       }
@@ -6239,13 +6239,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pon esa energía en algo útil y termina con control."
+            "value": "Dale un buen destino a esa energía y termina con el control intacto."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "把精力用在有意义的训练上，全程保持从容。"
+            "value": "把好状态用在值得的地方，也留一点余力结束。"
           }
         }
       }
@@ -7327,13 +7327,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sesión registrada."
+            "value": "Sesión completada."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本次训练已记录。"
+            "value": "训练完成。"
           }
         }
       }
@@ -7761,13 +7761,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No intentes compensar. Haz que lo de hoy sea fácil de repetir."
+            "value": "No entrenes para compensar. Haz algo que mañana quieras repetir."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "别用高强度补偿，让今天的训练轻松到愿意再来一次。"
+            "value": "别急着把落下的补回来。轻松一点，才更容易坚持。"
           }
         }
       }
@@ -7794,13 +7794,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Algo pequeño y repetible vale más que algo ambicioso que no haces."
+            "value": "Algo pequeño que repites vale más que algo ambicioso que nunca ocurre."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "小而持续，胜过目标远大却没有行动。"
+            "value": "能反复做到的小事，胜过没有开始的大目标。"
           }
         }
       }
@@ -8011,7 +8011,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "从当下开始。"
+            "value": "就从现在开始。"
           }
         }
       }
@@ -8134,13 +8134,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ten paciencia y suma una sesión más, sin engañarte."
+            "value": "Ten paciencia y suma una sesión más, sincera y a tu medida."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持耐心，再踏实完成一次训练。"
+            "value": "保持耐心，再认真跑好这一次。"
           }
         }
       }
@@ -8230,13 +8230,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Disfruta el logro. La constancia se construye con días como este."
+            "value": "Celebra esta victoria. La constancia se construye con días así."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为自己喝彩。坚持就是由这样的每一天积累而来。"
+            "value": "收下这份成就。日复一日，便是坚持。"
           }
         }
       }
@@ -8361,13 +8361,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La pausa no importa. Una sesión cómoda sí."
+            "value": "La pausa no importa. Lo que cuenta es volver con una sesión cómoda."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "中断多久并不重要，完成一次舒服的训练就好。"
+            "value": "停了多久不重要，舒服地跑一次，就是新的开始。"
           }
         }
       }
@@ -8378,13 +8378,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El trabajo ya está hecho. Todo lo demás es opcional."
+            "value": "El trabajo ya está hecho. Lo demás es un extra."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该做的已经完成，其他都是额外收获。"
+            "value": "该做的已经做完，其他都是锦上添花。"
           }
         }
       }
@@ -8619,13 +8619,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hoy ya cuenta."
+            "value": "Lo de hoy ya cuenta."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天已经很棒了。"
+            "value": "今天，已经算数。"
           }
         }
       }
@@ -9089,13 +9089,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aprovecha la energía, pero mantén el esfuerzo controlado."
+            "value": "Aprovecha la energía sin perder el control."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用好今天的精力，但别把强度拉得太高。"
+            "value": "用好今天的状态，跑得利落，也跑得从容。"
           }
         }
       }
@@ -9713,13 +9713,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estás construyendo una buena constancia."
+            "value": "Estás construyendo algo sólido."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你正在建立稳定的节奏。"
+            "value": "你的节奏，正在慢慢成形。"
           }
         }
       }
@@ -9747,13 +9747,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No necesitas hacer un gran día."
+            "value": "Hoy no tiene que ser un gran día."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天不必做太多。"
+            "value": "今天，不必完成什么大目标。"
           }
         }
       }
@@ -9769,7 +9769,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你不需要一次完美的训练。"
+            "value": "不必追求完美。"
           }
         }
       }
@@ -9779,13 +9779,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cumpliste. Deja que ese logro sea suficiente por hoy."
+            "value": "Cumpliste contigo. Por hoy, quédate con esa victoria."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你完成了今天的训练。好好享受这份成就感。"
+            "value": "说到做到。今天有这一份收获，就够了。"
           }
         }
       }
@@ -9795,13 +9795,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cumpliste contigo."
+            "value": "Cumpliste tu palabra."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你兑现了对自己的承诺。"
+            "value": "你没有辜负自己。"
           }
         }
       }
@@ -9817,7 +9817,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你只需要迈出第一步，剩下的交给跑步伙伴。"
+            "value": "你只管迈出第一步，跑步伙伴会陪你继续。"
           }
         }
       }
@@ -9827,13 +9827,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Necesitas una sesión real. Algo pequeño también cuenta."
+            "value": "Haz una sesión de verdad. Aunque sea pequeña, cuenta."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "来一次踏实的训练，哪怕很短也算数。"
+            "value": "踏踏实实跑一次。哪怕很短，也算数。"
           }
         }
       }
@@ -10072,13 +10072,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu ritmo está funcionando."
+            "value": "Tu ritmo funciona."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的节奏很有效。"
+            "value": "你找到了自己的节奏。"
           }
         }
       }
