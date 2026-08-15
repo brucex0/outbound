@@ -6,7 +6,9 @@ struct AuthView: View {
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 700
-            let actionReserve: CGFloat = (statusMessage == nil ? 126 : 166) + testPersonaActionReserve
+            let actionReserve: CGFloat = (statusMessage == nil ? 126 : 166)
+                + testPersonaActionReserve
+                + appleSignInExplanationReserve
             let storyHeight: CGFloat = compact ? 310 : 330
             let storyTop: CGFloat = 42
             let storyBottom = proxy.size.height - actionReserve - 18
@@ -40,12 +42,24 @@ struct AuthView: View {
                 .position(x: proxy.size.width / 2, y: storyCenter)
 
                 VStack(spacing: 10) {
-                    providerButton("Continue with Apple", icon: {
-                        Image(systemName: "apple.logo")
-                    }, action: {
-                        Task { await authStore.signInWithApple() }
-                    })
-                    .disabled(!authStore.isAppleSignInAvailable || authStore.isBusy)
+                    VStack(spacing: 6) {
+                        providerButton("Continue with Apple", icon: {
+                            Image(systemName: "apple.logo")
+                        }, action: {
+                            Task { await authStore.signInWithApple() }
+                        })
+                        .disabled(!authStore.isAppleSignInAvailable || authStore.isBusy)
+
+                        if authStore.isAppleSignInAvailable {
+                            Text(appleSignInExplanation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 4)
+                                .accessibilityLabel(appleSignInExplanation)
+                        }
+                    }
 
                     providerButton("Continue with Google", icon: {
                         Text("G").font(.headline)
@@ -137,6 +151,14 @@ struct AuthView: View {
         #else
         0
         #endif
+    }
+
+    private var appleSignInExplanation: String {
+        "We use your email to create your account, sync your training across devices, and help you recover access on a new phone. You can choose Hide My Email."
+    }
+
+    private var appleSignInExplanationReserve: CGFloat {
+        authStore.isAppleSignInAvailable ? 56 : 0
     }
 }
 

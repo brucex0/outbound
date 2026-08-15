@@ -165,9 +165,17 @@ function updateDataForExistingUser(
     normalizedPhone: string | null;
   }
 ) {
+  const authDisplayName = auth.name?.trim();
+  const shouldBackfillDisplayName =
+    Boolean(authDisplayName) &&
+    (!user.displayName.trim() || user.displayName.trim().toLowerCase() === "runner");
+
   return {
     ...(profile.username ? { username: profile.username } : {}),
     ...(profile.displayName ? { displayName: profile.displayName } : {}),
+    ...(!profile.displayName && shouldBackfillDisplayName
+      ? { displayName: authDisplayName!.slice(0, 50) }
+      : {}),
     ...(identifiers.normalizedEmail && !user.normalizedEmail
       ? { normalizedEmail: identifiers.normalizedEmail }
       : {}),

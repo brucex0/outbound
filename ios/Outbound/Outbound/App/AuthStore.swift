@@ -339,7 +339,7 @@ final class AuthStore: ObservableObject {
             let result = try await Auth.auth().signIn(with: credential.firebaseCredential)
             let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
             print("[Plainstride][Auth] Apple sign-in completed for user: \(result.user.uid)")
-            await completeSignIn(with: resolvedResult)
+            await completeSignIn(with: resolvedResult, appleMetadata: credential)
         } catch {
             print("[Plainstride][Auth] Apple sign-in failed: \(error.localizedDescription)")
             if !storePendingFederatedLink(from: error) {
@@ -410,7 +410,7 @@ final class AuthStore: ObservableObject {
             let credential = try await makeAppleCredential()
             let result = try await currentUser.link(with: credential.firebaseCredential)
             print("[Plainstride][Auth] Apple linked for user: \(result.user.uid)")
-            await completeSignIn(with: result, forcingTokenRefresh: true)
+            await completeSignIn(with: result, appleMetadata: credential)
         } catch {
             print("[Plainstride][Auth] Apple link failed: \(error.localizedDescription)")
             authError = Self.userFacingMessage(for: error)
@@ -456,15 +456,58 @@ final class AuthStore: ObservableObject {
 
     private func completeSignIn(
         with result: AuthDataResult,
-        forcingTokenRefresh: Bool = false
+        forcingTokenRefresh: Bool = false,
+        appleMetadata: AppleCredentialResult? = nil
     ) async {
+        if let appleMetadata {
+            await applyAppleProfileIfNeeded(user: result.user, metadata: appleMetadata)
+        }
         user = result.user
         isAuthenticated = true
         localSessionLabel = nil
         pendingFederatedLink = nil
         pendingFederatedCredential = nil
-        let token = try? await result.user.getIDToken(forcingRefresh: forcingTokenRefresh)
+        let token = try? await result.user.getIDToken(
+            forcingRefresh: forcingTokenRefresh || appleMetadata != nil
+        )
         APIClient.shared.setToken(token)
+        if let displayName = appleMetadata?.displayName {
+            await bootstrapBackendProfileIfNeeded(displayName: displayName)
+        }
+    }
+
+    private func applyAppleProfileIfNeeded(
+        user: FirebaseAuth.User,
+        metadata: AppleCredentialResult
+    ) async {
+        guard user.displayName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false,
+              let displayName = metadata.displayName else {
+            return
+        }
+
+        let request = user.createProfileChangeRequest()
+        request.displayName = displayName
+        do {
+            try await request.commitChanges()
+            try? await user.reload()
+        } catch {
+            print("[Plainstride][Auth] Could not apply Apple profile: \(error.localizedDescription)")
+        }
+    }
+
+    private func bootstrapBackendProfileIfNeeded(displayName: String) async {
+        do {
+            let profile = try await APIClient.shared.fetchMyProfile()
+            let existingName = profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard existingName.isEmpty || existingName.caseInsensitiveCompare("Runner") == .orderedSame else {
+                return
+            }
+            _ = try await APIClient.shared.updateMyProfile(
+                AppUserProfileUpdateDTO(displayName: displayName, bio: profile.bio)
+            )
+        } catch {
+            print("[Plainstride][Auth] Could not bootstrap backend profile: \(error.localizedDescription)")
+        }
     }
 
     private func resetFirebaseSessionPreservingPendingLinkIfNeeded() {
@@ -670,6 +713,16 @@ private enum AppleAuthorizationError: LocalizedError {
 private struct AppleCredentialResult {
     let firebaseCredential: AuthCredential
     let authorizationCode: String?
+    let email: String?
+    let givenName: String?
+    let familyName: String?
+
+    var displayName: String? {
+        let components = [givenName, familyName]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return components.isEmpty ? nil : components.joined(separator: " ")
+    }
 }
 
 private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
@@ -730,16 +783,19 @@ private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationCont
             return
         }
 
-        let credential = OAuthProvider.credential(
-            providerID: .apple,
-            idToken: idTokenString,
-            rawNonce: nonce
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idTokenString,
+            rawNonce: nonce,
+            fullName: appleIDCredential.fullName
         )
         let authorizationCode = appleIDCredential.authorizationCode
             .flatMap { String(data: $0, encoding: .utf8) }
         resume(returning: AppleCredentialResult(
             firebaseCredential: credential,
-            authorizationCode: authorizationCode
+            authorizationCode: authorizationCode,
+            email: appleIDCredential.email,
+            givenName: appleIDCredential.fullName?.givenName,
+            familyName: appleIDCredential.fullName?.familyName
         ))
     }
 

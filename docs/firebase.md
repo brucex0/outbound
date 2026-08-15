@@ -27,7 +27,8 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 
 - App login is provider-backed: Apple and Google are the only user-facing sign-in methods.
 - Google sign-in uses Firebase Auth's hosted OAuth flow for `google.com`, so the app can use the existing Firebase callback scheme instead of a separate native Google Sign-In SDK callback.
-- Apple sign-in uses native `AuthenticationServices` and sends a nonce-backed Apple ID token to Firebase.
+- Apple sign-in uses native `AuthenticationServices` and sends a nonce-backed Apple ID token plus Apple's first-authorization name metadata to Firebase. Apple supplies name and email only on the first authorization; returning sign-ins normally omit them.
+- To repeat a true first-sign-in test, remove Plainstride under Apple ID Settings > Sign-In & Security > Sign in with Apple, then sign in again. Deleting and reinstalling the app alone does not reset Apple's authorization grant.
 - The backend stores Firebase identities separately from app users. `AuthIdentity` records the Firebase UID, provider IDs, verified email, and normalized phone values so Apple, Google, and any legacy identities can resolve to the same Outbound user when Firebase reports the same identity.
 - Same-email provider linking is not automatic from email match alone. If Apple and Google report the same visible email, Firebase returns a pending credential conflict; the app asks the user to sign in with the already-connected provider once, then links the pending provider to the same Firebase user.
 - Keep Firebase Auth in one-account-per-email mode so same-email provider attempts become `account-exists-with-different-credential` conflicts instead of separate Firebase users.
