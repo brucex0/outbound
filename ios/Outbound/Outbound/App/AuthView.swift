@@ -6,7 +6,7 @@ struct AuthView: View {
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 700
-            let actionReserve: CGFloat = statusMessage == nil ? 126 : 166
+            let actionReserve: CGFloat = (statusMessage == nil ? 126 : 166) + testPersonaActionReserve
             let storyHeight: CGFloat = compact ? 310 : 330
             let storyTop: CGFloat = 42
             let storyBottom = proxy.size.height - actionReserve - 18
@@ -55,22 +55,22 @@ struct AuthView: View {
                     .disabled(!authStore.isFirebaseConfigured || authStore.isBusy)
 
                     #if DEBUG
-                    if authStore.isUsingAuthEmulator {
-                        Menu {
-                            ForEach(AuthStore.TestPersona.allCases) { persona in
-                                Button(persona.rawValue) {
-                                    Task { await authStore.signIn(as: persona) }
-                                }
+                    Menu {
+                        ForEach(AuthStore.TestPersona.allCases) { persona in
+                            Button(persona.rawValue) {
+                                Task { await authStore.signIn(as: persona) }
                             }
-                        } label: {
-                            Label("Use Test Persona", systemImage: "person.crop.circle.badge.checkmark")
-                                .font(.subheadline.weight(.medium))
-                                .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(authStore.isBusy)
-                        .accessibilityHint("Signs in with a local Firebase Emulator account")
+                    } label: {
+                        Label("Sign in with Test User", systemImage: "person.crop.circle.badge.checkmark")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .buttonStyle(.bordered)
+                    .disabled(authStore.isBusy)
+                    .accessibilityHint(authStore.isUsingAuthEmulator
+                        ? "Choose a local Firebase Emulator test user"
+                        : "Requires the Firebase Auth Emulator launch argument")
                     #endif
 
                     if authStore.isBusy {
@@ -129,6 +129,14 @@ struct AuthView: View {
             return "Apple sign-in is unavailable. Continue with Google."
         }
         return nil
+    }
+
+    private var testPersonaActionReserve: CGFloat {
+        #if DEBUG
+        54
+        #else
+        0
+        #endif
     }
 }
 

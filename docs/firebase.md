@@ -72,7 +72,7 @@ Expected values: app ID `1:186140050970:ios:9dcd3698a906d4cca033a3`, project ID 
 
 ## Debug Test Personas
 
-Debug builds can use local, repeatable Firebase Auth Emulator accounts without adding a password login to the release app. The login screen exposes New Runner, Active Runner, and Social Runner only when the emulator launch argument is present. Selecting a persona creates its emulator account on first use and signs into it afterward.
+Debug builds show a **Sign in with Test User** menu for local, repeatable Firebase Auth Emulator accounts without adding a password login to the release app. The menu offers New Runner, Active Runner, and Social Runner. Selecting a persona without the emulator launch argument shows a setup error; with the argument present, it creates the emulator account on first use and signs into it afterward.
 
 Start the Auth Emulator from the repository root:
 
