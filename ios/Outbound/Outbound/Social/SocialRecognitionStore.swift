@@ -1,4 +1,3 @@
-#if OUTBOUND_ENABLE_SOCIAL
 import Combine
 import Foundation
 import SwiftUI
@@ -100,6 +99,10 @@ final class SocialRecognitionStore: ObservableObject {
     }
 
     func registerCheer(for postID: String, now: Date = Date()) -> [SocialRecognitionAward] {
+        registerSupport(for: postID, now: now)
+    }
+
+    func registerSupport(for postID: String, now: Date = Date()) -> [SocialRecognitionAward] {
         trimStaleSupportEvents(now: now)
 
         guard !supportEvents.contains(where: { $0.postID == postID && calendar.isDate($0.createdAt, equalTo: now, toGranularity: .weekOfYear) }) else {
@@ -117,6 +120,23 @@ final class SocialRecognitionStore: ObservableObject {
 
         guard currentWeekPosts.count >= 3 else { return [] }
         guard let award = awardBadgeIfNeeded(.goodTeammate, sourceActivityID: nil, now: now) else { return [] }
+        persistAwards()
+        return [award]
+    }
+
+    func registerGroupJoin(groupID: String, now: Date = Date()) -> [SocialRecognitionAward] {
+        joinedClubIDs.insert(groupID)
+        persistJoinedClubs()
+        guard let award = awardBadgeIfNeeded(.relayPlayer, sourceActivityID: nil, now: now) else { return [] }
+        persistAwards()
+        return [award]
+    }
+
+    func registerPhotoFinish(for activity: SavedActivity, now: Date = Date()) -> [SocialRecognitionAward] {
+        guard !activity.photos.isEmpty else { return [] }
+        sharedActivityIDs.insert(activity.id)
+        persistSharedActivities()
+        guard let award = awardBadgeIfNeeded(.photoFinish, sourceActivityID: activity.id, now: now) else { return [] }
         persistAwards()
         return [award]
     }
@@ -233,4 +253,3 @@ final class SocialRecognitionStore: ObservableObject {
         }
     }
 }
-#endif

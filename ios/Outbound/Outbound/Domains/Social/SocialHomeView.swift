@@ -5,6 +5,8 @@ struct SocialHomeView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @EnvironmentObject private var activityStore: ActivityStore
     @State private var selectedCommentPost: TogetherPostDTO?
 
     private var shouldShowConnectionPrompt: Bool {
@@ -29,6 +31,10 @@ struct SocialHomeView: View {
 
                     if shouldShowConnectionPrompt {
                         connectionGrowthCard
+                    }
+
+                    if let milestone = socialRecognitionStore.highlight {
+                        SocialMilestoneCard(preview: milestone)
                     }
 
                     upcomingRuns
@@ -79,6 +85,9 @@ struct SocialHomeView: View {
                     await socialStore.refreshConnections()
                 }
                 await socialStore.refreshNotifications()
+            }
+            .task(id: socialStore.state.posts.map(\.id)) {
+                reconcileSharedActivityMilestones()
             }
             .sheet(item: $selectedCommentPost) { post in
                 SocialCommentsView(post: post)
@@ -298,7 +307,7 @@ struct SocialHomeView: View {
                         }
                         HStack(spacing: OutboundSpacing.compact) {
                             Button {
-                                Task { await socialStore.toggleCheer(on: post) }
+                                Task { await toggleCheer(on: post) }
                             } label: {
                                 Label("\(post.reactionCount)", systemImage: post.currentUserCheered ? "heart.fill" : "heart")
                             }
@@ -336,6 +345,26 @@ struct SocialHomeView: View {
         return recognitionStore.topRecognition(for: activityID)
     }
 
+    private func toggleCheer(on post: TogetherPostDTO) async {
+        let addsSupport = !post.currentUserCheered
+        guard await socialStore.toggleCheer(on: post), addsSupport else { return }
+        _ = socialRecognitionStore.registerSupport(for: post.id)
+    }
+
+    private func reconcileSharedActivityMilestones() {
+        let sharedActivityIDs = Set(
+            socialStore.state.posts
+                .filter(\.isCurrentUser)
+                .compactMap(\.activity?.id)
+        )
+        for activity in activityStore.activities where !activity.photos.isEmpty {
+            let serverID = activity.sync?.serverActivityId
+            if sharedActivityIDs.contains(serverID ?? activity.id.uuidString) {
+                _ = socialRecognitionStore.registerPhotoFinish(for: activity)
+            }
+        }
+    }
+
     private func locationSuffix(_ location: String?) -> String {
         location.map { " · \($0)" } ?? ""
     }
@@ -369,6 +398,7 @@ struct SocialHomeView: View {
 
 private struct SocialGroupsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
 
     var body: some View {
         List(socialStore.discoverableGroups) { group in
@@ -382,7 +412,12 @@ private struct SocialGroupsView: View {
                     }
                     Spacer()
                     Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
-                        Task { await socialStore.toggleMembership(in: group) }
+                        Task {
+                            let isJoining = group.membershipRole == nil
+                            if await socialStore.toggleMembership(in: group), isJoining {
+                                _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
+                            }
+                        }
                     }
                     .buttonStyle(.bordered)
                 }
@@ -403,6 +438,7 @@ private struct SocialGroupsView: View {
 
 private struct SocialGroupRunView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let run: TogetherGroupRunDTO
     @State private var detail: SocialGroupRunDetailDTO?
     @State private var isConnectionPickerPresented = false
@@ -432,7 +468,15 @@ private struct SocialGroupRunView: View {
             Section {
                 Button {
                     guard let detail else { return }
-                    Task { self.detail = await socialStore.toggleRSVP(for: detail) }
+                    Task {
+                        let isJoining = !detail.currentUserGoing
+                        if let updatedDetail = await socialStore.toggleRSVP(for: detail) {
+                            self.detail = updatedDetail
+                            if isJoining, updatedDetail.currentUserGoing {
+                                _ = socialRecognitionStore.registerGroupJoin(groupID: "run:\(run.id)")
+                            }
+                        }
+                    }
                 } label: {
                     Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "I'm going"),
                           systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
@@ -526,6 +570,7 @@ private struct SocialNotificationsView: View {
 
 private struct SocialCommentsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @Environment(\.dismiss) private var dismiss
     let post: TogetherPostDTO
     @State private var draft = ""
@@ -574,7 +619,11 @@ private struct SocialCommentsView: View {
                     Button {
                         let body = draft
                         draft = ""
-                        Task { await socialStore.addComment(body, to: post) }
+                        Task {
+                            if await socialStore.addComment(body, to: post) {
+                                _ = socialRecognitionStore.registerSupport(for: post.id)
+                            }
+                        }
                     } label: {
                         Image(systemName: "paperplane.fill")
                     }
@@ -887,6 +936,47 @@ private struct SocialRouteMap: View {
         }
         .allowsHitTesting(false)
         .accessibilityLabel(coordinates.count > 1 ? "Activity route map" : "Activity without route data")
+    }
+}
+
+private struct SocialMilestoneCard: View {
+    let preview: SocialRecognitionPreview
+
+    var body: some View {
+        OutboundCard {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.orange, .yellow],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Image(systemName: preview.symbolName)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 42, height: 42)
+                .shadow(color: .orange.opacity(0.22), radius: 7, y: 3)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Coach noticed this")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.orange)
+                    Text(preview.title)
+                        .font(.headline)
+                    Text(preview.coachLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

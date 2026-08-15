@@ -14,6 +14,8 @@ Compact Social rows use circular icon actions with 44-point tap targets for reco
 
 Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary and route fields rather than returning private reflection, coaching, or client snapshot data.
 
+The production Social tab also participates in the local recognition layer restored from the earlier prototype. Supporting three distinct activity posts in a calendar week through a Cheer or comment unlocks `Good Teammate`; joining a Group or its run unlocks `Relay Player`; and sharing an activity with a photo unlocks `Photo Finish`. A fresh Social recognition appears as a lightweight `Coach noticed this` card for three days. `Rival Edge` remains dormant until the deferred Rivals feature has a real backend-owned outcome rather than a manual claim button.
+
 The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
@@ -43,16 +45,16 @@ Core loops:
 - `Domains/Social/TogetherStore.swift` and `TogetherContracts.swift` still retain their earlier internal names while owning API-backed Social home, connection, invitation, referral, and Cheer state; rename these after external behavior stabilizes rather than maintaining a second store.
 - `Features/Simplified/SimplifiedAppShell.swift` owns the `Social · Today · Me` tab shell and routes Today's social invitation into Social.
 
-- `Social/ActivityFeedView.swift` owns the local social hub UI.
-- `Social/SocialModels.swift`, `Social/SocialSeed.swift`, `Social/SocialStore.swift`, and `Social/SocialRecognitionStore.swift` own Social-only models, seed data, interaction state, and Social-only recognition awards.
-- The Social module is behind the `OUTBOUND_ENABLE_SOCIAL` Swift compilation condition.
+- `Social/ActivityFeedView.swift` owns the legacy local social hub UI.
+- `Social/SocialModels.swift`, `Social/SocialSeed.swift`, and `Social/SocialStore.swift` retain its seeded models and interaction state behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition.
+- `Social/SocialRecognitionStore.swift` is no longer gated with that prototype. Production Social uses it for local Social milestone evaluation and presentation.
 - The legacy prototype flag should remain unset; production Social is independent of it.
 - The current implementation is local/seeded UI state. It does not call a backend yet.
 - Squad feed cards use route previews, cheers, local comments, route prompts, report, and block controls.
 - Clubs support local join/leave state. Challenges support local join state and progress cards.
 - Relays can be locally composed from route, time window, and audience choices, then appear in Squad.
 - Rivals show a weekly leaderboard and a local edge-claim action.
-- Social assistant copy and Social-only recognition state are also gated behind `OUTBOUND_ENABLE_SOCIAL`; no-social build artifacts should not contain Social/Squad/Rival/Relay/Cheer strings.
+- Legacy Social assistant and seeded interaction copy remain gated behind `OUTBOUND_ENABLE_SOCIAL`; production recognition copy is always compiled because the production Social tab uses it.
 
 The feature-flagged files above are a legacy prototype, not the production Social implementation. Port useful interaction patterns into `Domains/Social` and then delete the legacy module; do not connect its local store to the backend.
 

@@ -97,11 +97,12 @@ final class TogetherStore: ObservableObject {
         await toggleCheer(on: post)
     }
 
-    func toggleCheer(on post: TogetherPostDTO) async {
-        guard !isSocialMutationPending else { return }
+    @discardableResult
+    func toggleCheer(on post: TogetherPostDTO) async -> Bool {
+        guard !isSocialMutationPending else { return false }
         if isUITestSeedData {
             state = replacing(post: post, cheered: !post.currentUserCheered)
-            return
+            return true
         }
         isSocialMutationPending = true
         defer { isSocialMutationPending = false }
@@ -112,8 +113,10 @@ final class TogetherStore: ObservableObject {
                 _ = try await api.cheerSocialPost(postID: post.id)
             }
             await refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -130,21 +133,24 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func addComment(_ body: String, to post: TogetherPostDTO) async {
+    @discardableResult
+    func addComment(_ body: String, to post: TogetherPostDTO) async -> Bool {
         let cleaned = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else { return }
+        guard !cleaned.isEmpty else { return false }
         if isUITestSeedData {
             var comments = commentsByPostID[post.id] ?? post.comments
             comments.append(Self.uiTestComment(body: cleaned))
             commentsByPostID[post.id] = comments
-            return
+            return true
         }
         do {
             _ = try await api.commentOnSocialPost(postID: post.id, body: cleaned)
             await loadComments(for: post)
             await refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -393,13 +399,14 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func toggleMembership(in group: SocialGroupDTO) async {
+    @discardableResult
+    func toggleMembership(in group: SocialGroupDTO) async -> Bool {
         if isUITestSeedData {
             discoverableGroups = discoverableGroups.map {
                 guard $0.id == group.id else { return $0 }
                 return SocialGroupDTO(id: $0.id, name: $0.name, description: $0.description, city: $0.city, memberCount: max(0, $0.memberCount + ($0.membershipRole == nil ? 1 : -1)), membershipRole: $0.membershipRole == nil ? "member" : nil)
             }
-            return
+            return true
         }
         do {
             if group.membershipRole == nil {
@@ -409,8 +416,10 @@ final class TogetherStore: ObservableObject {
             }
             await refreshGroups()
             await refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
