@@ -154,7 +154,20 @@ struct SocialHomeView: View {
 
     @ViewBuilder
     private var upcomingRuns: some View {
-        Text("UPCOMING").socialSectionLabel()
+        HStack {
+            Text("UPCOMING").socialSectionLabel()
+            Spacer()
+            Button {
+                isCreateFutureActivityPresented = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 32, height: 32)
+                    .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+            }
+            .foregroundStyle(OutboundPalette.companion)
+            .accessibilityLabel("Plan a run")
+        }
         if socialStore.state.upcomingRuns.isEmpty {
             OutboundCard {
                 HStack(spacing: OutboundSpacing.compact) {
