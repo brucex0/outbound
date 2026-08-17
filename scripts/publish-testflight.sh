@@ -40,7 +40,8 @@ App Store Connect for TestFlight processing.
 Options:
   --dry-run              Print the planned version without changing anything.
   --no-commit            Do not commit the verified build-number changes.
-  --build-number NUMBER  Use NUMBER instead of incrementing by one.
+  --build-number NUMBER  Use NUMBER instead of incrementing by one. NUMBER may
+                         equal the current build to publish prepared metadata.
   -h, --help             Show this help.
 
 Environment:
@@ -127,13 +128,17 @@ current_build="${version_info#*$'\t'}"
 if [[ -n "$requested_build" ]]; then
   [[ "$requested_build" =~ ^[0-9]+$ ]] || fail "requested build number must be an integer"
   next_build="$requested_build"
+  (( next_build >= current_build )) || fail "new build number must not be lower than $current_build"
 else
   next_build="$((current_build + 1))"
+  (( next_build > current_build )) || fail "new build number must be greater than $current_build"
 fi
 
-(( next_build > current_build )) || fail "new build number must be greater than $current_build"
-
-log "Plainstride ${marketing_version}: build ${current_build} -> ${next_build}"
+if (( next_build == current_build )); then
+  log "Plainstride ${marketing_version}: using prepared build ${current_build}"
+else
+  log "Plainstride ${marketing_version}: build ${current_build} -> ${next_build}"
+fi
 log "External TestFlight eligibility: enabled"
 
 if [[ "$dry_run" == true ]]; then
@@ -200,8 +205,12 @@ git diff --check
 
 if [[ "$commit_changes" == true ]]; then
   git add "$PROJECT_FILE" "$RELEASE_DOC"
-  git commit -m "Bump TestFlight build to ${next_build}"
-  log "Committed verified build metadata"
+  if git diff --cached --quiet; then
+    log "Build metadata is already committed"
+  else
+    git commit -m "Bump TestFlight build to ${next_build}"
+    log "Committed verified build metadata"
+  fi
 else
   log "Leaving verified build metadata uncommitted (--no-commit)"
 fi

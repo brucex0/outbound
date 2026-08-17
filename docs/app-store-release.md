@@ -52,6 +52,13 @@ Preview the next build number without changing files:
 ./scripts/publish-testflight.sh --dry-run
 ```
 
+To upload an already-prepared build without incrementing it again, pass its
+current number explicitly:
+
+```sh
+./scripts/publish-testflight.sh --build-number 10
+```
+
 If command-line upload cannot use the saved Apple Account, the script preserves the verified archive and prints the exact Organizer fallback. After Apple processes the upload, add test notes and assign the build to the intended external TestFlight group in App Store Connect.
 
 ## App Store Connect Checklist
