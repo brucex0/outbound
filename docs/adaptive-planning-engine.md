@@ -57,7 +57,7 @@ Recommended layers:
 5. The scoring layer compares candidate schedules.
 6. The adaptation layer revises today and the next 7-14 days as new data arrives.
 7. The activity suggestion layer selects the single best next action for the Home `Now` card.
-8. AI explains the decision in coach voice, but does not invent unsafe load from scratch.
+8. AI explains the decision in guide voice, but does not invent unsafe load from scratch.
 
 ## Planning Horizon
 
@@ -81,7 +81,7 @@ Practical behavior:
 
 ## Implementation Architecture
 
-Build planning as a backend domain that coach surfaces consume. The coach UI can explain and present the plan, but the planning service should own goals, generated workouts, adaptation, and event processing.
+Build planning as a backend domain that guide surfaces consume. The guide UI can explain and present the plan, but the planning service should own goals, generated workouts, adaptation, and event processing.
 
 Target flow:
 
@@ -425,7 +425,7 @@ export type PlanningState = {
 export type TodayPlanningResponse = {
   workout: PlannedWorkoutDTO | null;
   adjustment: PlanAdjustmentEventDTO | null;
-  coachLine: string;
+  guideLine: string;
   planningStatus: PlanningState["planningStatus"];
 };
 ```
@@ -453,7 +453,7 @@ Responsibilities:
 - compute acute context from today and the last 7 days
 - compute baseline context from the last 28 days
 - coordinate plan-first recommendations with non-plan adaptive suggestions
-- select from a small library of real coach-used workout archetypes
+- select from a small library of real guide-used workout archetypes
 - return an app-shaped response with title, effort, reason, steps, plan relationship, cache metadata, and safer alternatives
 
 The client should render this response. It should not recreate plan logic or generate its own training recommendation when online.
@@ -542,7 +542,7 @@ export type ActivitySuggestionResponse = {
   relationship: ActivitySuggestionRelationship;
   primary: ActivitySuggestion | null;
   alternates: ActivitySuggestion[];
-  coachLine: string;
+  guideLine: string;
   planningStatus: PlanningStatus;
   generatedAt: string;
   validForDate: string;
@@ -588,7 +588,7 @@ Example:
     "optional": false
   },
   "alternates": [],
-  "coachLine": "Keep this comfortably easy. The goal is aerobic time, not proving fitness today.",
+  "guideLine": "Keep this comfortably easy. The goal is aerobic time, not proving fitness today.",
   "planningStatus": "stable",
   "generatedAt": "2026-05-06T15:00:00.000Z",
   "validForDate": "2026-05-06",
@@ -608,7 +608,7 @@ Example:
 
 #### Canonical Activity Library
 
-Suggestions should be selected from reviewed workout archetypes that coaches and athletes recognize.
+Suggestions should be selected from reviewed workout archetypes that guides and athletes recognize.
 
 Initial running and cycling archetypes:
 
@@ -727,7 +727,7 @@ Important fields:
 - `goalId`
 - `status`: `active`, `paused`, `completed`, `replaced`
 - `currentPhase`: `base`, `build`, `sharpen`, `taper`, `recovery`, `maintenance`
-- `source`: `generated`, `templateSeeded`, `coachAdjusted`
+- `source`: `generated`, `templateSeeded`, `guideAdjusted`
 - `startedAt`
 - `endedAt`
 - `createdAt`
@@ -1158,7 +1158,7 @@ Situation classes:
 
 ## Adaptation Policy
 
-Rules should feel like a good coach:
+Rules should feel like a good guide:
 
 - Do not cram missed work.
 - Preserve the workout intent when possible.
@@ -1243,7 +1243,7 @@ Suggested authenticated endpoints:
 - `POST /v1/planning/schedule/constraints`
 - `GET /v1/planning/adjustments`
 
-Because there are no live users yet, prefer a clean replacement: move the client to `/v1/planning/*`, then remove the old `/v1/coach/plans/*` routes instead of maintaining compatibility wrappers.
+Because there are no live users yet, prefer a clean replacement: move the client to `/v1/planning/*`, then remove the old `/v1/guide/plans/*` routes instead of maintaining compatibility wrappers.
 
 ## Implementation Plan
 
@@ -1255,7 +1255,7 @@ There are no live users yet, so prefer a clean replacement over migration compat
 - Remove `ActiveTrainingPlan` once the new flow is wired.
 - Keep `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` as seed/reference tables.
 - Create `backend/src/services/planning/`.
-- Move planning-specific types out of `coach` route code.
+- Move planning-specific types out of `guide` route code.
 
 Suggested service files:
 
@@ -1326,7 +1326,7 @@ Client responsibilities:
 - render plan adjustment explanations
 - cache the latest planning state and activity suggestion for offline display
 
-Because there are no live users, old `/v1/coach/plans/*` client calls can be removed once the new screens compile.
+Because there are no live users, old `/v1/guide/plans/*` client calls can be removed once the new screens compile.
 
 ### Phase 5: Worker And Scheduling
 
@@ -1378,7 +1378,7 @@ Each adapter must define generation, stress estimate, completion evaluation, and
 
 ## Open Questions
 
-- Should `TrainingPlan` live under `coach` routes or a separate `planning` domain?
+- Should `TrainingPlan` live under `guide` routes or a separate `planning` domain?
 - How much generated history should the client cache offline?
 - Should `WorkoutBlock` and `WorkoutStep` be tables immediately, or stay JSON until editing/analytics require relational data?
 - What is the first non-running modality: strength, walking, cycling, or mobility?

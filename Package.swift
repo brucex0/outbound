@@ -27,9 +27,9 @@ let package = Package(
                 "Safety",
                 "Social",
                 "GoogleService-Info.plist",
-                "Coach/CoachCatalogStore.swift",
-                "Coach/CoachSelectionView.swift",
-                "Coach/CoachStore.swift",
+                "Guide/GuideCatalogStore.swift",
+                "Guide/GuideSelectionView.swift",
+                "Guide/GuideStore.swift",
                 "Core/APIClient.swift",
                 "Core/ActivityRecorder.swift",
                 "Core/FirebaseBootstrap.swift",
@@ -45,11 +45,11 @@ let package = Package(
                 "Core/SessionFormatting.swift",
                 "Domains/Athlete/CompanionContracts.swift",
                 "Progress/ProgressStatsEngine.swift",
-                "Coach/CoachProfile.swift",
-                "Coach/CoachTemplate.swift",
-                "Coach/SessionAnalysisProvider.swift",
-                "Coach/AppleFoundationModelSessionAnalysisProvider.swift",
-                "Coach/VirtualCoach.swift"
+                "Guide/GuideProfile.swift",
+                "Guide/GuideTemplate.swift",
+                "Guide/SessionAnalysisProvider.swift",
+                "Guide/AppleFoundationModelSessionAnalysisProvider.swift",
+                "Guide/VirtualGuide.swift"
             ]
         ),
         .testTarget(

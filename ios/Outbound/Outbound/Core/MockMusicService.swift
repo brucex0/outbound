@@ -110,7 +110,7 @@ final class MockMusicService: MusicService {
         playback()
     }
 
-    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot {
+    func handleGuideSpeechEvent(_ event: GuideSpeechEvent) async -> MusicPlaybackSnapshot {
         _ = event
         return playback()
     }

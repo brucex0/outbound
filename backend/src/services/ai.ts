@@ -16,15 +16,15 @@ export async function runFinalTranscriptionAndParse({ audioUrl, language }: { au
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Shared cached system prompt prefix for all coach operations
-const COACH_SYSTEM_CACHE_PREFIX = `You are an expert running and endurance sports coach AI.
-Your role is to analyze athlete data and produce actionable, personalized coaching insights.
+// Shared cached system prompt prefix for all guide operations
+const GUIDE_SYSTEM_CACHE_PREFIX = `You are an expert running and endurance sports guide AI.
+Your role is to analyze athlete data and produce actionable, personalized guidance insights.
 Be specific, data-driven, and empathetic. Never give generic advice — always reference the athlete's actual numbers.`;
 
 type AssistantCapability = "discover" | "navigate" | "support" | "brainstorm" | "plan";
 
 type AssistantChatContext = {
-  coachName: string;
+  guideName: string;
   activityCount: number;
   weeklyDistanceKilometers: number;
   currentGoalSummary?: string | null;
@@ -45,7 +45,7 @@ type DeepSeekAssistantResponse = {
 
 export async function analyzeActivity(
   activityData: object,
-  coachContext: object
+  guideContext: object
 ): Promise<string> {
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
@@ -53,13 +53,13 @@ export async function analyzeActivity(
     system: [
       {
         type: "text",
-        text: COACH_SYSTEM_CACHE_PREFIX,
+        text: GUIDE_SYSTEM_CACHE_PREFIX,
       },
     ],
     messages: [
       {
         role: "user",
-        content: `Analyze this activity and provide coaching insights.\n\nCoach context: ${JSON.stringify(coachContext)}\n\nActivity: ${JSON.stringify(activityData)}`,
+        content: `Analyze this activity and provide guidance insights.\n\nGuide context: ${JSON.stringify(guideContext)}\n\nActivity: ${JSON.stringify(activityData)}`,
       },
     ],
   });
@@ -67,7 +67,7 @@ export async function analyzeActivity(
   return response.content[0].type === "text" ? response.content[0].text : "";
 }
 
-export async function buildCoachSystemPrompt(
+export async function buildGuideSystemPrompt(
   athleteProfile: object
 ): Promise<string> {
   const response = await client.messages.create({
@@ -76,14 +76,14 @@ export async function buildCoachSystemPrompt(
     system: [
       {
         type: "text",
-        text: COACH_SYSTEM_CACHE_PREFIX,
+        text: GUIDE_SYSTEM_CACHE_PREFIX,
       },
     ],
     messages: [
       {
         role: "user",
-        content: `Generate a concise on-device system prompt (max 300 words) for a virtual coach with this athlete profile.
-The prompt will run on a small on-device LLM for real-time coaching during runs.
+        content: `Generate a concise on-device system prompt (max 300 words) for a virtual guide with this athlete profile.
+The prompt will run on a small on-device LLM for real-time guidance during runs.
 Focus on: the athlete's current level, known weaknesses to watch, pacing guidance, and motivational style.
 
 Athlete: ${JSON.stringify(athleteProfile)}`,
@@ -97,7 +97,7 @@ Athlete: ${JSON.stringify(athleteProfile)}`,
 export async function generateWeeklyReview(
   userId: string,
   activities: object[],
-  coachProfile: object
+  guideProfile: object
 ): Promise<string> {
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
@@ -105,7 +105,7 @@ export async function generateWeeklyReview(
     system: [
       {
         type: "text",
-        text: COACH_SYSTEM_CACHE_PREFIX,
+        text: GUIDE_SYSTEM_CACHE_PREFIX,
       },
     ],
     messages: [
@@ -114,7 +114,7 @@ export async function generateWeeklyReview(
         content: `Write a weekly training review for this athlete.
 Include: what went well, what to improve, next week's focus, and one specific drill or workout recommendation.
 
-Coach profile: ${JSON.stringify(coachProfile)}
+Guide profile: ${JSON.stringify(guideProfile)}
 This week's activities: ${JSON.stringify(activities)}`,
       },
     ],
@@ -154,7 +154,7 @@ Return only valid JSON in the shape {"message":"..."} with no markdown fencing.`
   const userPrompt = `Assistant capability: ${input.capability}
 Current screen: ${input.context.currentScreen ?? "unknown"}
 Recording active: ${input.context.isRecordingActive ? "yes" : "no"}
-Companion style: ${input.context.coachName}
+Companion style: ${input.context.guideName}
 Saved activities: ${input.context.activityCount}
 Weekly distance: ${input.context.weeklyDistanceKilometers.toFixed(1)} km
 Goal summary: ${input.context.currentGoalSummary ?? "No active goal"}

@@ -46,7 +46,7 @@ enum GoalProgressEngine {
             isComplete: isComplete,
             remainingValue: remainingValue,
             summaryLine: summaryLine(kind: goal.kind, currentValue: currentValue, targetValue: goal.targetValue),
-            coachLine: coachLine(kind: goal.kind, remainingValue: remainingValue, isComplete: isComplete)
+            guideLine: guideLine(kind: goal.kind, remainingValue: remainingValue, isComplete: isComplete)
         )
     }
 
@@ -90,7 +90,7 @@ enum GoalProgressEngine {
         }
     }
 
-    private static func coachLine(kind: GoalKind, remainingValue: Int, isComplete: Bool) -> String {
+    private static func guideLine(kind: GoalKind, remainingValue: Int, isComplete: Bool) -> String {
         if isComplete {
             return "You completed this week's focus."
         }

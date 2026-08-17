@@ -4,10 +4,10 @@ enum PlainstrideLinks {
     static let webOrigin = URL(string: "https://run.plainstride.com")!
     static let appInvitation = webOrigin.appending(path: "invite")
 
-    static func scheduledRunInvitation(token: String) -> URL {
+    static func activityEventInvitation(token: String) -> URL {
         webOrigin
             .appending(path: "invite")
-            .appending(path: "run")
+            .appending(path: "activity")
             .appending(path: token)
     }
 
@@ -27,12 +27,12 @@ enum PlainstrideLinks {
         return nil
     }
 
-    static func futureActivityToken(from url: URL) -> String? {
+    static func activityEventToken(from url: URL) -> String? {
         guard url.scheme == "https", url.host == webOrigin.host else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
         guard components.count == 3,
               components[0] == "invite",
-              components[1] == "run" else { return nil }
+              components[1] == "activity" else { return nil }
         return components[2]
     }
 

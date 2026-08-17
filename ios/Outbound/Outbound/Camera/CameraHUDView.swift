@@ -4,14 +4,14 @@ import CoreLocation
 import UIKit
 
 // Full-screen camera with an always-available shutter, a right-edge utility
-// rail, and a bottom session card that carries live workout status plus coach
+// rail, and a bottom session card that carries live workout status plus guide
 // motivation while the session is active.
 struct CameraHUDView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveShareStore: LiveShareStore
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @ObservedObject var recorder: ActivityRecorder
-    @ObservedObject var coach: VirtualCoach
+    @ObservedObject var guide: VirtualGuide
     @ObservedObject var musicStore: MusicStore
     let intent: SessionIntent?
     let capturedPhotoCount: Int
@@ -75,7 +75,7 @@ struct CameraHUDView: View {
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,
                         heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
-                        coachMessage: coachMessage,
+                        guideMessage: guideMessage,
                         musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
                         showsMusicDisabledState: musicStore.hasDeveloperTokenError,
                         musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
@@ -135,9 +135,9 @@ struct CameraHUDView: View {
         .onDisappear { camera.stop() }
     }
 
-    private var coachMessage: String? {
-        guard recorder.state != .idle, !coach.lastNudge.isEmpty else { return nil }
-        return coach.lastNudge
+    private var guideMessage: String? {
+        guard recorder.state != .idle, !guide.lastNudge.isEmpty else { return nil }
+        return guide.lastNudge
     }
 
     private var rightControlRail: some View {
@@ -152,7 +152,7 @@ struct CameraHUDView: View {
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(.orange))
                 }
-                .accessibilityLabel("Stop live sharing")
+                .accessibilityLabel(String(localized: "camera.live_share.stop", defaultValue: "Stop live sharing"))
             }
 
             if liveGroupStore.isSharing {
@@ -165,7 +165,7 @@ struct CameraHUDView: View {
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(.blue))
                 }
-                .accessibilityLabel("Leave group sharing")
+                .accessibilityLabel(String(localized: "camera.group_share.leave", defaultValue: "Leave group sharing"))
             }
 
             CapturedPhotoStackView(
@@ -182,7 +182,7 @@ struct CameraHUDView: View {
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(.black.opacity(0.42)))
             }
-            .accessibilityLabel("Flip Camera")
+            .accessibilityLabel(String(localized: "camera.action.flip", defaultValue: "Flip Camera"))
 
             Button { activePage = .map } label: {
                 Image(systemName: "map.fill")
@@ -191,7 +191,7 @@ struct CameraHUDView: View {
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(.black.opacity(0.42)))
             }
-            .accessibilityLabel("Show Map")
+            .accessibilityLabel(String(localized: "camera.action.show_map", defaultValue: "Show Map"))
 
             ShutterButton {
                 capturePhoto()
@@ -220,9 +220,9 @@ struct CameraHUDView: View {
         VStack(spacing: 8) {
             Image(systemName: "camera.fill")
                 .font(.largeTitle)
-            Text("Camera access is off")
+            Text(String(localized: "camera.permission.off.title", defaultValue: "Camera access is off"))
                 .font(.headline)
-            Text("Enable Camera for Plainstride in Settings to record with the live preview.")
+            Text(String(localized: "camera.permission.off.detail", defaultValue: "Enable Camera for Plainstride in Settings to record with the live preview."))
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
@@ -519,12 +519,13 @@ struct ShutterButton: View {
                     .frame(width: 74, height: 74)
             }
         }
-        .accessibilityLabel("Capture Photo")
+        .accessibilityLabel(String(localized: "camera.action.capture_photo", defaultValue: "Capture Photo"))
     }
 }
 
 struct SessionStatusCard: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var connectivityStore: ConnectivityStore
 
     let state: RecordingState
     let isCompact: Bool
@@ -539,7 +540,7 @@ struct SessionStatusCard: View {
     let elevationText: String
     let elevationLabel: String
     let heartRateText: String
-    let coachMessage: String?
+    let guideMessage: String?
     let musicPlayback: MusicPlaybackSnapshot?
     let showsMusicDisabledState: Bool
     let musicErrorMessage: String?
@@ -559,6 +560,9 @@ struct SessionStatusCard: View {
             } else {
                 VStack(spacing: 10) {
                     topRow
+                    if connectivityStore.isOffline {
+                        OfflineStatusBanner(compact: true)
+                    }
                     extraCountdownStrip
                     controlMetricsLayout
                 }
@@ -577,6 +581,13 @@ struct SessionStatusCard: View {
 
     private var compactRow: some View {
         HStack(spacing: 10) {
+            if connectivityStore.isOffline {
+                Image(systemName: "icloud.slash.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel(String(localized: "session.offline.accessibility", defaultValue: "Offline. Activity saved on this device and will sync later."))
+            }
+
             SessionMetricColumn(value: displayedElapsedText, label: nil)
                 .frame(maxWidth: .infinity)
 
@@ -600,7 +611,7 @@ struct SessionStatusCard: View {
                 .font(.callout.weight(.bold))
         }
         .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 40))
-        .accessibilityLabel("Finish activity")
+        .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
     }
 
     private var topRow: some View {
@@ -628,7 +639,7 @@ struct SessionStatusCard: View {
 
             if state == .paused {
                 Button(action: onFinish) {
-                    Label("Finish", systemImage: "stop.fill")
+                    Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
                 }
                 .buttonStyle(SessionMiniCapsuleButtonStyle(background: .black, foreground: .white))
             }
@@ -704,21 +715,21 @@ struct SessionStatusCard: View {
                     .font(.title3.weight(.bold))
             }
             .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
-            .accessibilityLabel("Start activity")
+            .accessibilityLabel(String(localized: "session.action.start.accessibility", defaultValue: "Start activity"))
         case .active:
             Button(action: onPause) {
                 Image(systemName: "pause.fill")
                     .font(.title3.weight(.bold))
             }
             .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
-            .accessibilityLabel("Pause activity")
+            .accessibilityLabel(String(localized: "session.action.pause.accessibility", defaultValue: "Pause activity"))
         case .paused:
             Button(action: onResume) {
                 Image(systemName: "play.fill")
                     .font(.title3.weight(.bold))
             }
             .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
-            .accessibilityLabel("Resume activity")
+            .accessibilityLabel(String(localized: "session.action.resume.accessibility", defaultValue: "Resume activity"))
         }
     }
 
@@ -731,17 +742,17 @@ struct SessionStatusCard: View {
                           systemImage: musicPlayback.isPlaying ? "pause.fill" : "play.fill")
                 }
                 Button(action: onSkipTrack) {
-                    Label("Skip track", systemImage: "forward.fill")
+                    Label(String(localized: "session.music.skip_track", defaultValue: "Skip track"), systemImage: "forward.fill")
                 }
             } label: {
                 musicIcon(isPlaying: musicPlayback.isPlaying, symbolName: "music.note")
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Music controls, \(musicPlayback.title)")
+            .accessibilityLabel(String(localized: "Music controls, \(musicPlayback.title)"))
             .accessibilityIdentifier("MusicPlaybackRow")
         } else if showsMusicDisabledState {
             musicIcon(isPlaying: false, symbolName: "music.note.slash")
-                .accessibilityLabel("Music unavailable")
+                .accessibilityLabel(String(localized: "session.music.unavailable", defaultValue: "Music unavailable"))
         } else if let musicErrorMessage, !musicErrorMessage.isEmpty {
             musicIcon(isPlaying: false, symbolName: "exclamationmark.triangle.fill")
                 .accessibilityLabel(musicErrorMessage)
@@ -792,8 +803,8 @@ struct SessionStatusCard: View {
     }
 
     private var headerText: String {
-        if let coachMessage, state != .idle {
-            return coachMessage
+        if let guideMessage, state != .idle {
+            return guideMessage
         }
 
         switch state {
@@ -905,6 +916,22 @@ struct SessionStatusCard: View {
         case .active: return .orange
         case .paused: return Color(red: 0.95, green: 0.78, blue: 0.26)
         }
+    }
+}
+
+struct OfflineStatusBanner: View {
+    var compact = false
+
+    var body: some View {
+        Label(String(localized: "session.offline.label", defaultValue: "Offline · activity saved on this device"), systemImage: "icloud.slash.fill")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: compact ? .leading : .center)
+            .padding(.horizontal, compact ? 0 : 12)
+            .padding(.vertical, compact ? 0 : 9)
+            .background(compact ? Color.clear : Color.orange.opacity(0.1))
+            .clipShape(Capsule())
+            .accessibilityLabel(String(localized: "session.offline.accessibility", defaultValue: "Offline. Activity saved on this device and will sync later."))
     }
 }
 

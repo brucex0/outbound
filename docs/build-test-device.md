@@ -49,7 +49,52 @@ Run the complete deterministic app UI regression suite. It selects the first ava
 ./scripts/run-app-tests.sh 'id=SIMULATOR_UUID'
 ```
 
-This suite covers the primary shell and navigation, seeded Social connections, requests, groups, notifications, group-run RSVP, Cheers, comments and activity sharing, activity history, Settings, recording and post-run lifecycle, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
+This suite covers the primary shell and navigation, installed iOS guide voice previews, seeded Social connections, requests, groups, notifications, group-run RSVP, Cheers, comments and activity sharing, activity history, Settings, recording and post-run lifecycle, a deterministic live 10K run with route and health metrics, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
+
+### Seeded Live 10K
+
+The focused automated test is `OutboundUITests.testSeededLive10KRunMetricsAndLifecycle`. It runs on a simulator with local UI-test authentication, not a Firebase test account:
+
+```sh
+xcodebuild -quiet \
+  -project ios/Outbound/Outbound.xcodeproj \
+  -scheme OutboundAppTests \
+  -destination 'id=SIMULATOR_UUID' \
+  -derivedDataPath /tmp/outbound-app-test-derived \
+  OUTBOUND_APP_TEST_MODE=YES \
+  -parallel-testing-enabled NO \
+  -only-testing:OutboundUITests/OutboundUITests/testSeededLive10KRunMetricsAndLifecycle \
+  test
+```
+
+The fixture opens an active map session with 10.00 km, 1:00:00 elapsed time, 6:00/km pace, 82 m elevation gain, 154 bpm heart rate, and a deterministic San Francisco route. The test verifies pause, resume, finish, summary metrics, and discard. The seed code and launch trigger are compiled only in Debug; Release builds do not contain them.
+
+To exercise the same lifecycle manually on `Bruce main` while using the Firebase test account already signed into the app:
+
+1. End or discard any real session currently in progress. Install a fresh Debug build without launching it:
+
+   ```sh
+   ./scripts/build-install-bruce-main.sh
+   ```
+
+2. Unlock the phone, then launch the installed app with the seed flag:
+
+   ```sh
+   xcrun devicectl device process launch \
+     --terminate-existing \
+     --device 591E461F-4950-5FBD-A797-4777F1E83532 \
+     plainstride.outbound \
+     -- \
+     -OutboundUITestLive10K \
+     -measurement_unit_system_v1 metric
+   ```
+
+   The `--` ends `devicectl` option parsing. Without it, `devicectl` can mistake the app's `-measurement_unit_system_v1` argument for its own `-t` timeout option.
+
+3. If the app is signed out, sign in normally with the test account. On Today, tap **Quick start**. Opening the recording screen activates the seeded live run immediately; no countdown, GPS movement, HealthKit sample, or hour-long wait is required.
+4. Confirm the map route and metrics, then use **Pause**, **Resume**, **Pause**, and **Finish**. On the summary, choose **Discard activity** unless the seeded run is intentionally meant to be saved and synchronized to the test account.
+
+Launching the app normally afterward, including with `./scripts/build-install-bruce-main.sh --launch`, omits the seed flag. The flag does not replace or bypass Firebase authentication on a physical device.
 
 Run the automated local server E2E test with one seeded persona. The runner starts and stops Firebase Auth, the local API, and embedded PostgreSQL; resets deterministic seed data; obtains a real emulator ID token; then verifies authenticated account, activity, and social API state:
 
@@ -85,7 +130,7 @@ for dir in ~/Library/Developer/Xcode/DerivedData/Outbound-*; do
 done
 ```
 
-This project previously hit an Xcode state where old `Blueprint.xcscmblueprint` metadata still referenced removed packages such as `piper-objc`, which caused indexing and package resolution to hang.
+This project previously hit an Xcode state where stale `Blueprint.xcscmblueprint` package metadata caused indexing and package resolution to hang.
 
 Build without installing:
 

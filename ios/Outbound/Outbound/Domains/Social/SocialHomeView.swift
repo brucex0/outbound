@@ -8,7 +8,7 @@ struct SocialHomeView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var activityStore: ActivityStore
     @State private var selectedCommentPost: TogetherPostDTO?
-    @State private var isCreateFutureActivityPresented = false
+    @State private var isCreateActivityEventPresented = false
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.connections.filter { $0.status == "accepted" }.count < 3
@@ -39,6 +39,7 @@ struct SocialHomeView: View {
                     }
 
                     upcomingRuns
+                    pastActivityEvents
                     joinedClubs
                     recentPosts
                 }
@@ -48,11 +49,19 @@ struct SocialHomeView: View {
             .navigationTitle("Social")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    GlobalConditionsButton()
+
                     Menu {
                         Button {
-                            isCreateFutureActivityPresented = true
+                            isCreateActivityEventPresented = true
                         } label: {
                             Label("Plan a run", systemImage: "calendar.badge.plus")
+                        }
+
+                        NavigationLink {
+                            SocialActivityDiscoveryView()
+                        } label: {
+                            Label("Discover activities", systemImage: "safari")
                         }
 
                         NavigationLink {
@@ -99,8 +108,8 @@ struct SocialHomeView: View {
             .sheet(item: $selectedCommentPost) { post in
                 SocialCommentsView(post: post)
             }
-            .sheet(isPresented: $isCreateFutureActivityPresented) {
-                CreateFutureActivityView()
+            .sheet(isPresented: $isCreateActivityEventPresented) {
+                CreateActivityEventView()
                     .environmentObject(socialStore)
             }
         }
@@ -109,14 +118,20 @@ struct SocialHomeView: View {
     private func incomingRequestCard(_ connection: SocialConnectionDTO) -> some View {
         OutboundCard(style: .companion) {
             HStack(spacing: OutboundSpacing.compact) {
-                SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("\(connection.person.displayName) wants to connect")
-                        .font(.headline)
-                    Text("@\(connection.person.username)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                NavigationLink {
+                    SocialPersonProfileView(person: connection.person.asTogetherPerson, username: connection.person.username)
+                } label: {
+                    HStack(spacing: OutboundSpacing.compact) {
+                        SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(connection.person.displayName) wants to connect").font(.headline)
+                            Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 Spacer()
                 NavigationLink("Review") {
                     SocialConnectionsView()
@@ -157,8 +172,15 @@ struct SocialHomeView: View {
         HStack {
             Text("UPCOMING").socialSectionLabel()
             Spacer()
+            NavigationLink {
+                SocialActivityDiscoveryView()
+            } label: {
+                Text("Discover")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(OutboundPalette.companion)
             Button {
-                isCreateFutureActivityPresented = true
+                isCreateActivityEventPresented = true
             } label: {
                 Image(systemName: "plus")
                     .font(.subheadline.weight(.semibold))
@@ -186,50 +208,86 @@ struct SocialHomeView: View {
         } else {
             ForEach(socialStore.state.upcomingRuns.prefix(2)) { run in
                 OutboundCard {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        Text(run.source?.label ?? run.club?.name ?? run.creator.displayName)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(run.title).font(.headline)
-                        Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if let note = run.paceNote {
-                            Text(note).font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        HStack(spacing: 8) {
-                            Text("\(run.attendeeCount ?? 0) going")
-                            Text("Meet up or join from anywhere")
-                        }
-                        .font(.caption)
-                        .foregroundStyle(OutboundPalette.companion)
-                        if let compatibility = run.compatibility {
-                            AIExplanationView(text: compatibility.explanation)
-                        }
-                        HStack {
-                            NavigationLink(run.currentUserGoing == true ? "View" : "Review") {
-                                SocialGroupRunView(run: run)
-                            }
-                            .buttonStyle(.borderedProminent)
+                    ZStack(alignment: .topTrailing) {
+                        NavigationLink {
+                            ActivityEventDetailView(run: run)
+                        } label: {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                    Text(activityEventSourceLabel(run))
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Text(run.title).font(.headline).foregroundStyle(.primary)
+                                    Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    if let note = run.paceNote {
+                                        Text(note).font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(.trailing, 44)
 
-                            if let invitationURL = socialStore.latestInvitationURL {
-                                ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
-                                    Image(systemName: "square.and.arrow.up")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
+                                    Text("People going: \(run.attendeeCount ?? 0)")
                                 }
-                                .buttonStyle(SocialIconButtonStyle())
-                                .accessibilityLabel("Share run invitation")
-                            } else {
-                                Button {
-                                    Task { await socialStore.invite(to: run) }
-                                } label: {
-                                    Image(systemName: "person.badge.plus")
+                                .font(.caption)
+                                .foregroundStyle(OutboundPalette.companion)
+                                if let compatibility = run.compatibility {
+                                    AIExplanationView(text: compatibility.explanation)
                                 }
-                                .buttonStyle(SocialIconButtonStyle())
-                                .accessibilityLabel("Invite connections")
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if let invitationURL = socialStore.latestInvitationURL {
+                            ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
+                                Image(systemName: "square.and.arrow.up")
+                            }
+                            .buttonStyle(SocialIconButtonStyle())
+                            .accessibilityLabel("Share run invitation")
+                        } else {
+                            Button {
+                                Task { await socialStore.invite(to: run) }
+                            } label: {
+                                Image(systemName: "person.badge.plus")
+                            }
+                            .buttonStyle(SocialIconButtonStyle())
+                            .accessibilityLabel("Invite connections")
                         }
                     }
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pastActivityEvents: some View {
+        if !socialStore.state.pastEvents.isEmpty {
+            Text("PAST ACTIVITIES").socialSectionLabel()
+            ForEach(socialStore.state.pastEvents.prefix(3)) { event in
+                NavigationLink {
+                    ActivityEventDetailView(run: event)
+                } label: {
+                    OutboundCard {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            Image(systemName: "person.2.fill")
+                                .foregroundStyle(OutboundPalette.companion)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(event.title).font(.headline).foregroundStyle(.primary)
+                                Text(event.startsAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text(event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))
+                                    .font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -239,17 +297,24 @@ struct SocialHomeView: View {
         if !socialStore.state.clubs.isEmpty {
             Text("YOUR GROUPS").socialSectionLabel()
             ForEach(socialStore.state.clubs.prefix(3)) { club in
-                OutboundCard {
-                    HStack {
-                        Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
-                        VStack(alignment: .leading) {
-                            Text(club.name).font(.headline)
-                            Text([club.city, club.role.map(localizedGroupRole)].compactMap { $0 }.joined(separator: " · "))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                NavigationLink {
+                    SocialGroupsView()
+                } label: {
+                    OutboundCard {
+                        HStack {
+                            Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
+                            VStack(alignment: .leading) {
+                                Text(club.name).font(.headline).foregroundStyle(.primary)
+                                Text([club.city, club.role.map(localizedGroupRole)].compactMap { $0 }.joined(separator: " · "))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                         }
                     }
                 }
+                .buttonStyle(.plain)
             }
             NavigationLink {
                 SocialGroupsView()
@@ -283,13 +348,21 @@ struct SocialHomeView: View {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         HStack {
-                            SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
-                            VStack(alignment: .leading) {
-                                Text(post.user.displayName).font(.headline)
-                                Text(post.createdAt.formatted(.relative(presentation: .named)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            NavigationLink {
+                                SocialPersonProfileView(person: post.user)
+                            } label: {
+                                HStack {
+                                    SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
+                                    VStack(alignment: .leading) {
+                                        Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
+                                        Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             Spacer()
                             Menu {
                                 if post.isCurrentUser {
@@ -313,28 +386,35 @@ struct SocialHomeView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Post actions")
                         }
-                        Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
-                        if let activity = post.activity {
-                            ZStack(alignment: .bottom) {
-                                SocialRouteMap(route: activity.route)
-                                HStack(spacing: 0) {
-                                    socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                    socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
-                                    socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                        NavigationLink {
+                            SocialActivityDetailView(post: post)
+                        } label: {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
+                                if let activity = post.activity {
+                                    ZStack(alignment: .bottom) {
+                                        SocialRouteMap(route: activity.route)
+                                        HStack(spacing: 0) {
+                                            socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                            socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                            socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 10)
+                                        .background(.regularMaterial)
+                                    }
+                                    .frame(height: 210)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .overlay(alignment: .topLeading) {
+                                        if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
+                                            RecognitionPill(preview: milestone, compact: true).padding(12)
+                                        }
+                                    }
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(.regularMaterial)
                             }
-                            .frame(height: 210)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(alignment: .topLeading) {
-                                if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
-                                    RecognitionPill(preview: milestone, compact: true)
-                                        .padding(12)
-                                }
-                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                         if let caption = post.caption, !caption.isEmpty {
                             Text(caption).font(.subheadline)
                         }
@@ -402,6 +482,23 @@ struct SocialHomeView: View {
         location.map { " · \($0)" } ?? ""
     }
 
+    private func activityEventSourceLabel(_ run: ActivityEventDTO) -> String {
+        switch run.source?.kind {
+        case "createdByYou":
+            return String(localized: "Created by you")
+        case "joined":
+            return String(localized: "Joined · From \(run.creator.displayName)")
+        case "directInvitation":
+            return String(localized: "From \(run.creator.displayName) · Direct invitation")
+        case "group":
+            return String(localized: "From \(run.club?.name ?? run.creator.displayName) · Your group")
+        case "connection":
+            return String(localized: "From \(run.creator.displayName) · Your connection")
+        default:
+            return String(localized: "From \(run.creator.displayName)")
+        }
+    }
+
     private func socialStat(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.subheadline.monospacedDigit().weight(.semibold))
@@ -426,6 +523,42 @@ struct SocialHomeView: View {
         case "member": String(localized: "Member")
         default: role
         }
+    }
+}
+
+private struct SocialActivityDiscoveryView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+
+    var body: some View {
+        List {
+            if socialStore.state.upcomingRuns.isEmpty {
+                ContentUnavailableView(
+                    "No activities to discover",
+                    systemImage: "figure.run.circle",
+                    description: Text("Plans from your connections and groups will appear here.")
+                )
+            } else {
+                ForEach(socialStore.state.upcomingRuns) { activity in
+                    NavigationLink {
+                        ActivityEventDetailView(run: activity)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(activity.title)
+                                .font(.headline)
+                            Text(activity.startsAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
+                                .font(.caption)
+                                .foregroundStyle(OutboundPalette.companion)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Discover activities")
+        .refreshable { await socialStore.refresh() }
     }
 }
 
@@ -469,29 +602,51 @@ private struct SocialGroupsView: View {
     }
 }
 
-private struct SocialGroupRunView: View {
+private struct ActivityEventDetailView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
-    let run: TogetherGroupRunDTO
-    @State private var detail: SocialGroupRunDetailDTO?
+    let run: ActivityEventDTO
+    @State private var detail: ActivityEventDetailDTO?
     @State private var isConnectionPickerPresented = false
-    private var results: FutureActivityResultDTO? { socialStore.resultsByFutureActivityID[run.id] }
+    @State private var selectedConnectionIDs: Set<String> = []
+    @State private var isInviting = false
+    @State private var isAttendanceChoicePresented = false
+    @State private var invitationToDelete: ActivityEventPendingInvitationDTO?
+    @State private var deletingInvitationIDs: Set<String> = []
+    private var results: ActivityEventResultDTO? { socialStore.resultsByActivityEventID[run.id] }
+    private var isCreator: Bool { (detail?.currentUserRole ?? run.currentUserRole) == "owner" }
+    private var participantIDs: Set<String> { Set(detail?.participants?.map(\.person.id) ?? []) }
+    private var invitedUserIDs: Set<String> { Set(detail?.invitedUserIds ?? []) }
+    private var eventEndsAt: Date? { detail?.endsAt ?? run.endsAt }
 
     var body: some View {
         List {
-            if let detail, detail.currentUserGoing {
+            if let detail, detail.currentUserGoing, !isCreator {
                 Section {
                     Label("You're going", systemImage: "checkmark.circle.fill")
                         .font(.headline)
                         .foregroundStyle(OutboundPalette.companion)
-                    Text("Meet at the listed place or join from anywhere.")
+                    Label(attendanceLabel(detail.currentUserAttendanceMode), systemImage: attendanceIcon(detail.currentUserAttendanceMode))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
             Section {
+                Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
+                    .font(.headline)
+                    .foregroundStyle(OutboundPalette.companion)
+                Text("Meet at the listed place or join from anywhere.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
                 LabeledContent("Created by", value: run.creator.displayName)
                 LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
+                if let eventEndsAt {
+                    LabeledContent("Duration", value: activityDurationLabel(from: run.startsAt, to: eventEndsAt))
+                    LabeledContent("Scheduled end", value: eventEndsAt.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent("Results close", value: eventEndsAt.addingTimeInterval(ActivityEventTiming.reconciliationWindow).formatted(date: .abbreviated, time: .shortened))
+                }
                 if let location = run.locationName { LabeledContent("Where", value: location) }
                 if let pace = run.paceNote { LabeledContent("Pace / note", value: pace) }
                 if run.locationName == nil { LabeledContent("Where", value: "Join from anywhere") }
@@ -519,15 +674,47 @@ private struct SocialGroupRunView: View {
                         HStack {
                             SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
                             Text(participant.person.displayName)
+                            Spacer()
+                            Label(attendanceLabel(participant.attendanceMode), systemImage: attendanceIcon(participant.attendanceMode))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            if isCreator, let invitations = detail?.pendingInvitations, !invitations.isEmpty {
+                Section("Pending invitations") {
+                    ForEach(invitations) { invitation in
+                        HStack(spacing: 12) {
+                            SocialAvatar(name: invitation.recipient.displayName, avatarURL: invitation.recipient.avatarUrl)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(invitation.recipient.displayName)
+                                Text("Awaiting response")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(role: .destructive) {
+                                invitationToDelete = invitation
+                            } label: {
+                                if deletingInvitationIDs.contains(invitation.id) {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "trash")
+                                }
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(deletingInvitationIDs.contains(invitation.id))
+                            .accessibilityLabel("Delete invitation for \(invitation.recipient.displayName)")
                         }
                     }
                 }
             }
             if let results, results.status != "scheduled" {
                 Section("Results") {
-                    LabeledContent("Resolved", value: "\(results.resolvedCount) of \(results.goingCount)")
+                    LabeledContent("Results received", value: String(localized: "\(results.resolvedCount) of \(results.goingCount)"))
                     if results.combinedDurationSeconds > 0 {
-                        LabeledContent("Combined time", value: "\(max(1, results.combinedDurationSeconds / 60)) min")
+                        LabeledContent("Combined time", value: String(localized: "\(max(1, results.combinedDurationSeconds / 60)) min"))
                     }
                     ForEach(results.participants) { participant in
                         VStack(alignment: .leading, spacing: 3) {
@@ -537,33 +724,38 @@ private struct SocialGroupRunView: View {
                     }
                     if detail?.currentUserGoing == true && detail?.currentUserOutcome == nil {
                         Button("I joined without recording") {
-                            Task { _ = await socialStore.markFutureActivityWithoutRecording(id: run.id) }
+                            Task { _ = await socialStore.markActivityEventWithoutRecording(id: run.id) }
                         }
                     }
                 }
             }
             Section {
-                Button {
-                    guard let detail else { return }
-                    Task {
-                        let isJoining = !detail.currentUserGoing
-                        if let updatedDetail = await socialStore.toggleRSVP(for: detail) {
-                            self.detail = updatedDetail
-                            if isJoining, updatedDetail.currentUserGoing {
-                                _ = socialRecognitionStore.registerGroupJoin(groupID: "run:\(run.id)")
+                if !isCreator && ["scheduled", "active"].contains(detail?.status ?? run.status ?? "scheduled") {
+                    Button {
+                        guard let detail else { return }
+                        if detail.currentUserGoing {
+                            Task {
+                                if let updatedDetail = await socialStore.toggleRSVP(for: detail) {
+                                    self.detail = updatedDetail
+                                }
                             }
+                        } else {
+                            isAttendanceChoicePresented = true
                         }
+                    } label: {
+                        Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "I'm going"),
+                              systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
                     }
-                } label: {
-                    Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "I'm going"),
-                          systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
+                    .disabled(detail == nil)
                 }
-                .disabled(detail == nil)
 
-                Button {
-                    isConnectionPickerPresented = true
-                } label: {
-                    Label("Invite connections", systemImage: "person.badge.plus")
+                if isCreator && (detail?.status ?? run.status) == "scheduled" {
+                    Button {
+                        selectedConnectionIDs.removeAll()
+                        isConnectionPickerPresented = true
+                    } label: {
+                        Label("Invite connections", systemImage: "person.badge.plus")
+                    }
                 }
                 if let invitationURL = socialStore.latestInvitationURL {
                     ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
@@ -573,48 +765,139 @@ private struct SocialGroupRunView: View {
             }
         }
         .navigationTitle(run.title)
+        .confirmationDialog("Meet up or join from anywhere", isPresented: $isAttendanceChoicePresented, titleVisibility: .visible) {
+            Button(run.locationName ?? String(localized: "Meet in person")) {
+                join(attendanceMode: "in_person")
+            }
+            Button("Join from anywhere") {
+                join(attendanceMode: "virtual")
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Delete invitation?", isPresented: Binding(
+            get: { invitationToDelete != nil },
+            set: { if !$0 { invitationToDelete = nil } }
+        ), presenting: invitationToDelete) { invitation in
+            Button("Delete invitation", role: .destructive) {
+                deleteInvitation(invitation)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { invitation in
+            Text("\(invitation.recipient.displayName) will no longer be able to accept this invitation.")
+        }
         .task {
-            detail = await socialStore.groupRunDetail(id: run.id)
-            if run.startsAt <= Date() { await socialStore.loadFutureActivityResults(id: run.id) }
+            detail = await socialStore.activityEventDetail(id: run.id)
+            if run.startsAt <= Date() { await socialStore.loadActivityEventResults(id: run.id) }
         }
         .sheet(isPresented: $isConnectionPickerPresented) {
             NavigationStack {
                 List(socialStore.connections.filter { $0.status == "accepted" }) { connection in
+                    let isGoing = participantIDs.contains(connection.person.id)
+                    let isInvited = invitedUserIDs.contains(connection.person.id)
+                    let isUnavailable = isGoing || isInvited
                     Button {
-                        Task {
-                            if await socialStore.invite(connection, to: run) {
-                                isConnectionPickerPresented = false
-                            }
+                        if selectedConnectionIDs.contains(connection.person.id) {
+                            selectedConnectionIDs.remove(connection.person.id)
+                        } else if !isUnavailable {
+                            selectedConnectionIDs.insert(connection.person.id)
                         }
                     } label: {
-                        HStack {
+                        HStack(spacing: 12) {
                             SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
-                            VStack(alignment: .leading) {
-                                Text(connection.person.displayName)
-                                Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(connection.person.displayName).foregroundStyle(.primary)
+                                Text(isGoing ? String(localized: "Going") : isInvited ? String(localized: "Sent") : "@\(connection.person.username)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "person.badge.plus")
-                                .foregroundStyle(OutboundPalette.companion)
+                            Image(systemName: isUnavailable ? "checkmark.circle.fill" : selectedConnectionIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(isUnavailable ? .secondary : selectedConnectionIDs.contains(connection.person.id) ? OutboundPalette.companion : .secondary)
                         }
                     }
-                    .accessibilityLabel("Invite \(connection.person.displayName)")
+                    .disabled(isUnavailable)
+                    .accessibilityLabel(isGoing ? "\(connection.person.displayName), going" : isInvited ? "\(connection.person.displayName), already invited" : "Select \(connection.person.displayName)")
                 }
-                .navigationTitle("Invite connections")
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isConnectionPickerPresented = false } } }
+                .navigationTitle("Invite friends")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { isConnectionPickerPresented = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            Task {
+                                isInviting = true
+                                if await socialStore.inviteConnections(Array(selectedConnectionIDs), toActivityEvent: run.id) {
+                                    detail = await socialStore.activityEventDetail(id: run.id)
+                                    isConnectionPickerPresented = false
+                                }
+                                isInviting = false
+                            }
+                        } label: {
+                            if isInviting { ProgressView() } else { Text("Invite") }
+                        }
+                        .disabled(isInviting || selectedConnectionIDs.isEmpty)
+                    }
+                }
                 .task { await socialStore.refreshConnections() }
             }
         }
     }
 
-    private func resultLabel(_ participant: FutureActivityResultParticipantDTO) -> String {
+    private func resultLabel(_ participant: ActivityEventResultParticipantDTO) -> String {
         if let result = participant.result {
-            return "Completed · \(MeasurementUnitSystem.metric.distanceString(meters: result.distanceM ?? 0, fractionDigits: 1))"
+            return String(localized: "Completed · \(MeasurementUnitSystem.metric.distanceString(meters: result.distanceM ?? 0, fractionDigits: 1))")
         }
         switch participant.outcome {
-        case "no_recording": return "Participated · No recording"
-        case "did_not_participate": return "Couldn't participate"
-        default: return "Waiting for result"
+        case "no_recording": return String(localized: "Participated · No recording")
+        case "did_not_participate": return String(localized: "Couldn't participate")
+        default: return String(localized: "Waiting for result")
+        }
+    }
+
+    private func activityDurationLabel(from start: Date, to end: Date) -> String {
+        let totalMinutes = max(0, Int(end.timeIntervalSince(start) / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours == 0 { return String(localized: "\(minutes) min") }
+        if minutes == 0 { return String(localized: "\(hours) hr") }
+        return String(localized: "\(hours) hr \(minutes) min")
+    }
+
+    private func join(attendanceMode: String) {
+        guard let detail else { return }
+        Task {
+            if let updatedDetail = await socialStore.toggleRSVP(for: detail, attendanceMode: attendanceMode) {
+                self.detail = updatedDetail
+                _ = socialRecognitionStore.registerGroupJoin(groupID: "run:\(run.id)")
+            }
+        }
+    }
+
+    private func deleteInvitation(_ invitation: ActivityEventPendingInvitationDTO) {
+        deletingInvitationIDs.insert(invitation.id)
+        Task {
+            if let updatedDetail = await socialStore.deleteActivityEventInvitation(id: invitation.id, activityEventID: run.id) {
+                detail = updatedDetail
+            }
+            deletingInvitationIDs.remove(invitation.id)
+        }
+    }
+
+    private func attendanceLabel(_ mode: String?) -> String {
+        switch mode {
+        case "virtual": String(localized: "Join from anywhere")
+        case "in_person": run.locationName ?? String(localized: "Meet in person")
+        default: String(localized: "Meet up or join from anywhere")
+        }
+    }
+
+    private func attendanceIcon(_ mode: String?) -> String {
+        switch mode {
+        case "virtual": "wifi"
+        case "in_person": "mappin.and.ellipse"
+        default: "person.2.wave.2"
         }
     }
 }
@@ -676,7 +959,7 @@ private struct SocialNotificationsView: View {
         case "invitationAccepted":
             if let runID = notification.objectId,
                let run = socialStore.state.upcomingRuns.first(where: { $0.id == runID }) {
-                SocialGroupRunView(run: run)
+                ActivityEventDetailView(run: run)
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
@@ -794,18 +1077,26 @@ private struct SocialRunInvitationActionView: View {
             }
             Section {
                 Button {
-                    Task {
-                        await socialStore.acceptRunInvitation(notification)
-                        dismiss()
-                    }
+                    accept(attendanceMode: "in_person")
                 } label: {
-                    Label("Accept invitation", systemImage: "checkmark.circle.fill")
+                    Label("Meet in person", systemImage: "mappin.and.ellipse")
                 }
-                .buttonStyle(.borderedProminent)
+                Button {
+                    accept(attendanceMode: "virtual")
+                } label: {
+                    Label("Join from anywhere", systemImage: "wifi")
+                }
             }
         }
         .navigationTitle("Run invitation")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func accept(attendanceMode: String) {
+        Task {
+            await socialStore.acceptRunInvitation(notification, attendanceMode: attendanceMode)
+            dismiss()
+        }
     }
 }
 
@@ -1079,11 +1370,19 @@ private struct SocialConnectionsView: View {
         @ViewBuilder actions: () -> Actions
     ) -> some View {
         HStack(spacing: OutboundSpacing.compact) {
-            SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(connection.person.displayName).font(.headline)
-                Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
+            NavigationLink {
+                SocialPersonProfileView(person: connection.person.asTogetherPerson, username: connection.person.username)
+            } label: {
+                HStack(spacing: OutboundSpacing.compact) {
+                    SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(connection.person.displayName).font(.headline).foregroundStyle(.primary)
+                        Text("@\(connection.person.username)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             Spacer()
             actions()
         }
@@ -1114,6 +1413,134 @@ private struct SocialConnectionsView: View {
             .buttonStyle(SocialIconButtonStyle())
             .accessibilityLabel("Connect with \(person.displayName)")
         }
+    }
+}
+
+private struct SocialPersonProfileView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    let person: TogetherPersonDTO
+    var username: String? = nil
+
+    private var posts: [TogetherPostDTO] {
+        socialStore.state.posts.filter { $0.user.id == person.id }
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                VStack(spacing: OutboundSpacing.compact) {
+                    SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
+                        .scaleEffect(2)
+                        .frame(width: 80, height: 80)
+                    Text(person.displayName).font(.title2.weight(.semibold))
+                    if let username { Text("@\(username)").font(.subheadline).foregroundStyle(.secondary) }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, OutboundSpacing.standard)
+
+                Text("RECENT ACTIVITIES").socialSectionLabel()
+                if posts.isEmpty {
+                    OutboundCard {
+                        Text("No shared activities yet.").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                } else {
+                    ForEach(posts) { post in
+                        NavigationLink {
+                            SocialActivityDetailView(post: post)
+                        } label: {
+                            OutboundCard {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
+                                        Text(post.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct SocialActivityDetailView: View {
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    let post: TogetherPostDTO
+    @State private var showsComments = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                NavigationLink {
+                    SocialPersonProfileView(person: post.user)
+                } label: {
+                    HStack {
+                        SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
+                        VStack(alignment: .leading) {
+                            Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
+                            Text(post.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if let activity = post.activity {
+                    SocialRouteMap(route: activity.route)
+                        .frame(height: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: OutboundRadius.card, style: .continuous))
+                    HStack {
+                        detailStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                        detailStat(activity.durationSecs.map(duration) ?? "—", "Time")
+                        detailStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                    }
+                }
+                if let caption = post.caption, !caption.isEmpty { Text(caption).font(.body) }
+                Button { showsComments = true } label: {
+                    Label("View \(post.commentCount) comments", systemImage: "bubble.left")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(post.activity?.title ?? String(localized: "Activity"))
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsComments) { SocialCommentsView(post: post) }
+    }
+
+    private func detailStat(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.headline.monospacedDigit())
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func duration(_ seconds: Int) -> String {
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        let remaining = seconds % 60
+        return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, remaining) : String(format: "%d:%02d", minutes, remaining)
+    }
+}
+
+private extension SocialPersonDTO {
+    var asTogetherPerson: TogetherPersonDTO {
+        TogetherPersonDTO(id: id, displayName: displayName, avatarUrl: avatarUrl)
     }
 }
 
@@ -1216,12 +1643,12 @@ private struct SocialMilestoneCard: View {
                 .shadow(color: .orange.opacity(0.22), radius: 7, y: 3)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Coach noticed this")
+                    Text("Guide noticed this")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.orange)
                     Text(preview.title)
                         .font(.headline)
-                    Text(preview.coachLine)
+                    Text(preview.guideLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

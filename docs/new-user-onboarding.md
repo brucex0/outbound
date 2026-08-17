@@ -86,13 +86,13 @@ Do not request multiple system permissions during initial signup.
 
 ## Deferred Profile Inputs
 
-Age, height, weight, body profile, coach face, coach voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. They should not block the first useful plan.
+Age, height, weight, body profile, guide face, guide voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. They should not block the first useful plan.
 
 ## Current Implementation
 
 The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, editable understanding, and calibration. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
 
-The older `OnboardingFlowView` remains available only with the DEBUG `-OutboundLegacyShell` comparison launch argument. Its implementation notes remain below for regression work and should not guide new product development.
+Settings includes a DEBUG-only replay action that restarts the simplified onboarding flow without signing out.
 
 ## Implementation
 
@@ -104,10 +104,10 @@ The older `OnboardingFlowView` remains available only with the DEBUG `-OutboundL
 
 - `App/OnboardingFlowView.swift`
   - Renders the full-screen SwiftUI flow.
-  - Uses the selected coach face color as the accent.
+  - Uses the selected guide face color as the accent.
   - Uses text editors for goal, baseline, and schedule intake.
   - Uses exact fields for age, height, weight, units, and body profile.
-  - Shows the extracted coach review before the recommendation.
+  - Shows the extracted guide review before the recommendation.
   - Calls back with whether the user chose to start the first session.
 
 - `App/MainTabView.swift`
@@ -133,4 +133,4 @@ This keeps a completed flow for one account from hiding onboarding for another a
 
 Debug builds show Settings -> Debug -> Run Onboarding Flow.
 
-The debug trigger reopens the flow and resets only the in-progress draft. It does not sign out, clear activity history, clear coach settings, or remove the prior completed profile until the replayed flow is completed.
+The debug trigger reopens the flow and resets only the in-progress draft. It does not sign out, clear activity history, clear guide settings, or remove the prior completed profile until the replayed flow is completed.

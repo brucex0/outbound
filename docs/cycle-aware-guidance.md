@@ -1,4 +1,4 @@
-# Cycle-Aware Coaching
+# Cycle-Aware Guidance
 
 ## Current implementation boundary
 
@@ -10,7 +10,7 @@ Open this when designing menstrual-cycle logging, symptom check-ins, cycle-aware
 
 Cycle dates provide context. The runner's actual symptoms, training impact, and individual history determine whether a workout changes.
 
-Use `Cycle-aware coaching`, not `female mode`. Hide its Me and Settings entry points when the onboarding body profile is male; keep it available when the body profile is female or unspecified. The feature remains optional.
+Use `Cycle-aware guidance`, not `female mode`. Hide its Me and Settings entry points when the onboarding body profile is male; keep it available when the body profile is female or unspecified. The feature remains optional.
 
 Do not prescribe training from menstrual phase alone. Current evidence does not support universal phase-based programming; use individualized symptom monitoring and cautious, user-controlled adaptation instead.
 
@@ -24,7 +24,7 @@ Primary references:
 
 ## Entry Point
 
-Place setup under `Me -> Health & body -> Cycle-aware coaching`.
+Place setup under `Me -> Health & body -> Cycle-aware guidance`.
 
 The Me overview presents the feature name with its toggle directly, without a separate private-training-context heading. Enabling it opens the private check-in sheet immediately, and the enabled card keeps an `Add today’s private check-in` action visible so logging does not require a trip through Settings.
 
@@ -93,7 +93,7 @@ Not allowed:
 
 > Xia changed her workout because of cycle symptoms.
 
-Cycle dates, symptoms, contraception, pregnancy status, pain, and adjustment reasons must not appear in social APIs, activity posts, club data, notifications to other people, or group-coaching prompts.
+Cycle dates, symptoms, contraception, pregnancy status, pain, and adjustment reasons must not appear in social APIs, activity posts, club data, notifications to other people, or group-guidance prompts.
 
 ## Data and AI Boundary
 
@@ -112,7 +112,7 @@ Outbound must not diagnose irregular cycles, amenorrhea, endometriosis, PCOS, pr
 
 Persistent missing or materially changed periods can be a health signal in athletes. Provide calm guidance to consult a healthcare professional rather than treating the change as a plan-optimization opportunity.
 
-Severe or concerning symptoms should trigger care guidance, not stronger coaching claims.
+Severe or concerning symptoms should trigger care guidance, not stronger guidance claims.
 
 ## V1 Scope
 
@@ -129,7 +129,7 @@ Defer:
 
 - universal phase-based plans;
 - fertility or ovulation guidance;
-- pregnancy and postpartum coaching;
+- pregnancy and postpartum guidance;
 - PCOS, endometriosis, perimenopause, or other condition-specific guidance;
 - hormonal-contraception-based predictions;
 - automatic social disclosure of any kind.

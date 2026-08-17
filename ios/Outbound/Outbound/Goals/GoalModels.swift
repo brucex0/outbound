@@ -29,7 +29,7 @@ enum GoalFocusTheme: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var coachPrompt: String {
+    var guidePrompt: String {
         switch self {
         case .consistency:
             return String(localized: "Let's build something you can repeat.")
@@ -80,5 +80,5 @@ struct GoalProgressSnapshot: Equatable {
     let isComplete: Bool
     let remainingValue: Int
     let summaryLine: String
-    let coachLine: String
+    let guideLine: String
 }

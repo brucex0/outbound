@@ -1,14 +1,14 @@
 # Motivation UX
 
-Open this when designing or building daily motivation, coach-driven engagement, nudges, comeback flows, or post-activity emotional rewards.
+Open this when designing or building daily motivation, guide-driven engagement, nudges, comeback flows, or post-activity emotional rewards.
 
 ## Product Goal
 
-Make Outbound feel like a coach that understands the user's day and gives them a doable next step.
+Make Outbound feel like a guide that understands the user's day and gives them a doable next step.
 
-The motivation system should not feel like a separate quotes or notifications feature. It should feel like part of the coach relationship that already exists in the app.
+The motivation system should not feel like a separate quotes or notifications feature. It should feel like part of the guide relationship that already exists in the app.
 
-The coach should feel present across the whole product:
+The guide should feel present across the whole product:
 
 - before the run as the daily guide
 - during the run as a calm companion
@@ -23,28 +23,28 @@ Core loop:
 5. Post-activity emotional reward
 6. Progress reflection with one momentum note
 
-## Coach Surface Model
+## Guide Surface Model
 
-The product should have two distinct coach surfaces.
+The product should have two distinct guide surfaces.
 
-### 1. Coach tab or page
+### 1. Guide tab or page
 
 Purpose:
-- relationship home for the selected coach
-- place to check in, tune coaching style, and see what the coach wants for today
+- relationship home for the selected guide
+- place to check in, tune guidance style, and see what the guide wants for today
 - home for future memory, plan, and reflection features
 
 Recommended role:
-- promote Coach into its own primary tab if coaching is the product thesis
-- do not hide coach inside Profile long-term
+- promote Guide into its own primary tab if guidance is the product thesis
+- do not hide guide inside Profile long-term
 
 What belongs here:
-- selected coach hero card
+- selected guide hero card
 - daily message
 - readiness check-in
 - today suggestion cards
 - recent reflections and progress notes
-- coaching settings such as tone, voice, intensity, and nudge frequency
+- guidance settings such as tone, voice, intensity, and nudge frequency
 - future training plan and recovery advice
 
 What does not belong here:
@@ -52,26 +52,26 @@ What does not belong here:
 - broad account settings
 - generic profile management
 
-### 2. In-activity coach companion
+### 2. In-activity guide companion
 
 Purpose:
-- make the coach feel like a run mate instead of a notification engine
+- make the guide feel like a run mate instead of a notification engine
 - keep the user feeling accompanied without cluttering the recording experience
 
 Form:
 - persistent small avatar during active sessions
 - short visual reactions plus audio guidance
-- tap to expand into a slightly richer coach panel when wanted
+- tap to expand into a slightly richer guide panel when wanted
 
 ## UX Principles
 
 - Motivation should always lead to an action, not dead-end inspiration.
 - The app should reward showing up, especially for short sessions.
 - Missed days should trigger softness and re-entry, not guilt.
-- Copy should feel spoken by the selected coach persona, not by the system.
+- Copy should feel spoken by the selected guide persona, not by the system.
 - History and stats support the experience, but action should come first.
-- The coach must feel present, but never needy or noisy.
-- The coach should act more like a good running partner than a talking dashboard.
+- The guide must feel present, but never needy or noisy.
+- The guide should act more like a good running partner than a talking dashboard.
 
 ## Home Screen Structure
 
@@ -87,7 +87,7 @@ Decision:
 - let the activity page remain dismissible during a live session and reopen from the floating button
 
 Why:
-- the product thesis is coach-led activation, not a neutral recording utility
+- the product thesis is guide-led activation, not a neutral recording utility
 - Me should still answer `what should I do today?` before asking the user to self-direct
 - Social also needs a fast path into activity without pushing the user back to Me first
 - a single floating button works better as a global activity anchor than as a freestyle shortcut
@@ -98,7 +98,7 @@ Non-goals for this step:
 - do not turn Me into a dense dashboard
 - do not force the user through a long setup flow before every activity
 - do not remove the ability to start something unstructured or freestyle
-- do not make the floating button visually louder than the coach recommendation on Me
+- do not make the floating button visually louder than the guide recommendation on Me
 
 Design consequence:
 - Me keeps recommended starts inline, but not every start path needs to live there
@@ -131,7 +131,7 @@ Principle:
 - guided, not gatekeeping
 
 This means the screen should feel like:
-- the coach has a recommendation
+- the guide has a recommendation
 - the user can accept that recommendation in one tap
 - freestyle is still easy to reach, but no longer needs to sit inside the hero
 
@@ -183,13 +183,13 @@ The existing pre-start confirmation pattern should become the shared entry point
 Guided confirmation should show:
 - suggestion title
 - duration / activity type
-- short coach line
+- short guide line
 - `Start now`
 - `Change activity`
 
 Freestyle confirmation should show:
 - simple session label such as `Freestyle run`
-- optional one-line coach framing such as `No pressure. Just start where you are.`
+- optional one-line guide framing such as `No pressure. Just start where you are.`
 - `Start now`
 - `Change activity`
 
@@ -206,7 +206,7 @@ The user should never have to scroll to find the recommended start, and the floa
 Current implementation note:
 - Momentum is no longer a standalone Me section. Its user-facing role is a single interpretive line inside the Progress card, while the full Progress surface owns historical stats and trends.
 
-### 1. Coach Spark Card
+### 1. Guide Spark Card
 
 Purpose:
 - emotional entry point
@@ -214,7 +214,7 @@ Purpose:
 - primary call to action
 
 Content:
-- coach avatar or portrait
+- guide avatar or portrait
 - short daily spark headline
 - one-line supporting message
 - primary CTA such as `Start 10 min walk`
@@ -223,7 +223,7 @@ Content:
 Example:
 
 ```text
-[ Coach avatar ]   "You don't need a perfect session.
+[ Guide avatar ]   "You don't need a perfect session.
                     You need a beginning."
 
                     Today is a good day for something light.
@@ -236,14 +236,14 @@ Behavior:
 - refresh once per day
 - select the day's copy deterministically from the local calendar date and selected companion, so it stays stable during the day without requiring seeded backend data
 - adapt the copy pool to first-session, steady, comeback, momentum, readiness, and completed-today state
-- tone reflects selected coach persona
+- tone reflects selected guide persona
 - if the user already completed an activity today, swap to a congratulatory version
 
 ### 2. Readiness Check-In
 
 Purpose:
 - adapt suggestion difficulty
-- adjust coach tone for the day
+- adjust guide tone for the day
 
 UI:
 
@@ -270,7 +270,7 @@ Use 2-3 cards only.
 Card anatomy:
 - duration
 - activity type
-- one-line coach framing
+- one-line guide framing
 
 Examples:
 
@@ -303,7 +303,7 @@ The activity page is now the shared surface for:
 
 When opened from the floating button while idle, it should skip an intermediate chooser and go straight to the freestyle start state.
 
-Future goals work should plug into this page as context, not as a full setup interruption. The coach can reference the active weekly focus here, but initial focus setup should still begin in Me.
+Future goals work should plug into this page as context, not as a full setup interruption. The guide can reference the active weekly focus here, but initial focus setup should still begin in Me.
 
 ## Live Session Dismissal
 
@@ -367,24 +367,24 @@ Examples:
 
 Existing feed or activity history should stay below the motivation layer. Action-driving content belongs above the fold; history is supporting context.
 
-## Coach Tab Structure
+## Guide Tab Structure
 
-If we add a dedicated Coach tab, it should become the emotional front door of the app.
+If we add a dedicated Guide tab, it should become the emotional front door of the app.
 
 Recommended top-to-bottom structure:
 
-1. Coach hero
+1. Guide hero
 2. Daily spark
 3. Readiness check-in
 4. Suggested actions
 5. Momentum strip
 6. Recent reflection
-7. Coach tuning controls
+7. Guide tuning controls
 
 Example:
 
 ```text
-[ Coach Maya avatar ]
+[ Guide Maya avatar ]
 "You don't need a big day. You need a real one."
 
 [ Low energy ] [ Okay ] [ Ready ] [ Stressed ]
@@ -405,18 +405,18 @@ Design note:
 - this should feel more intimate and alive than a settings page
 - think conversation, not configuration
 
-This same principle should guide goal setting. If we add weekly goals or focus areas, the coach should introduce them as a short conversation with reply chips, not as a static form.
+This same principle should guide goal setting. If we add weekly goals or focus areas, the guide should introduce them as a short conversation with reply chips, not as a static form.
 
 ## Key User Journeys
 
 ### Normal Day
 
 1. User opens Home.
-2. User sees the daily coach spark.
+2. User sees the daily guide spark.
 3. User optionally answers the readiness check-in.
 4. User chooses one of the suggested actions.
 5. User starts recording.
-6. User receives in-activity coach nudges.
+6. User receives in-activity guide nudges.
 7. User finishes and sees a positive reflection.
 
 Tone:
@@ -430,7 +430,7 @@ Trigger:
 
 Flow:
 1. Home avoids any "catch up" framing.
-2. Coach spark invites a fresh start.
+2. Guide spark invites a fresh start.
 3. Suggested actions skew smaller and easier.
 4. Finish reflection rewards return, not performance.
 
@@ -485,7 +485,7 @@ Example:
 ```text
 10 min easy run
 
-Coach Maya says:
+Guide Maya says:
 "Keep this one light. Today is about showing up."
 
 [ Start now ]
@@ -500,7 +500,7 @@ Purpose:
 
 During recording, the motivation layer should mostly step aside and let the existing camera/map experience lead.
 
-Coach nudges should reference:
+Guide nudges should reference:
 - readiness check-in state
 - suggested action context
 - recent adherence state such as comeback or momentum
@@ -514,17 +514,17 @@ Guideline:
 - keep on-screen motivation minimal
 - prefer audio nudges and short overlays over dense text
 
-### Coach Avatar In Session
+### Guide Avatar In Session
 
 This is a strong idea and should be treated as a core interaction, not decoration.
 
 Recommended behavior:
 
-- show a persistent compact coach avatar on the active session screen
+- show a persistent compact guide avatar on the active session screen
 - place it away from key recording controls and map/camera switching
-- animate subtly when the coach is about to speak or has a new check-in
+- animate subtly when the guide is about to speak or has a new check-in
 - keep the default state small and quiet
-- allow tap to expand into a coach card with the latest message, session intent, and quick controls
+- allow tap to expand into a guide card with the latest message, session intent, and quick controls
 
 Recommended compact states:
 
@@ -535,15 +535,15 @@ Recommended compact states:
 
 Recommended expanded card content:
 
-- current coach line
+- current guide line
 - today's intent, such as `Easy effort` or `Just show up`
 - one quick reply if we support interaction later, such as `Too hard` or `Doing good`
-- mute / less / more coach controls
+- mute / less / more guide controls
 
 What the avatar should do well:
 
 - provide companionship
-- make the coach feel embodied
+- make the guide feel embodied
 - reinforce the selected persona
 - offer reassurance at moments of doubt
 
@@ -582,7 +582,7 @@ Cadence guidelines:
 - first supportive nudge after the run settles in
 - check-ins at meaningful intervals, not on a timer alone
 - milestone reactions at distance, duration, or comeback moments
-- fewer nudges when the user chose low energy or low coach intensity
+- fewer nudges when the user chose low energy or low guide intensity
 - more guidance only when the user is in a structured workout or clear goal session
 
 ### Future Interaction Layer
@@ -591,9 +591,9 @@ Long-term, the avatar can become lightly interactive.
 
 Promising future behaviors:
 
-- user taps `Too hard` and the coach shifts the rest of the run tone
-- user taps `Need a photo moment` and the coach suggests a capture prompt
-- user taps `Quiet for a bit` and the coach pauses nudges temporarily
+- user taps `Too hard` and the guide shifts the rest of the run tone
+- user taps `Need a photo moment` and the guide suggests a capture prompt
+- user taps `Quiet for a bit` and the guide pauses nudges temporarily
 - user finishes a segment and gets a brief face-to-face reflection
 
 Avoid full chatbot behavior during the run. Fast, low-friction interactions are better than open-ended conversation while moving.
@@ -640,7 +640,7 @@ You're building consistency.
 
 ## Notification UX
 
-Notifications should be sparse, behavior-aware, and coach-voiced.
+Notifications should be sparse, behavior-aware, and guide-voiced.
 
 Useful categories:
 - morning spark
@@ -650,7 +650,7 @@ Useful categories:
 Examples:
 - `Ten minutes still counts.`
 - `Fresh start today?`
-- `Want an easy reset with Coach Maya?`
+- `Want an easy reset with Guide Maya?`
 
 Rules:
 - avoid guilt language
@@ -660,7 +660,7 @@ Rules:
 
 ## Tone System
 
-Define coach copy using a few simple tone axes:
+Define guide copy using a few simple tone axes:
 
 - gentle vs intense
 - warm vs direct
@@ -670,13 +670,13 @@ Examples:
 - warm / gentle: `A small session is still a real session.`
 - direct / focused: `No drama. Shoes on. Ten minutes.`
 
-This keeps the UX structure stable while making each coach persona feel distinct.
+This keeps the UX structure stable while making each guide persona feel distinct.
 
 ## MVP Recommendation
 
 Ship the smallest complete loop first:
 
-1. Coach spark card on Home
+1. Guide spark card on Home
 2. One-tap daily readiness check-in
 3. 2-3 suggested action cards
 4. Local motivation state logic from recent activity history
@@ -689,8 +689,8 @@ This provides a full motivation arc without requiring backend work, notification
 This concept fits the current app shape with minimal disruption.
 
 Relevant existing pieces:
-- `CoachCatalogStore` already owns persona-related customization
-- `VirtualCoach` already handles coach nudges during active sessions
+- `GuideCatalogStore` already owns persona-related customization
+- `VirtualGuide` already handles guide nudges during active sessions
 - `RecordView` already owns the activity start flow
 - `ActivityFeedView` is the logical Home insertion point
 - `LocalActivityStore` can support local behavior-derived motivation states
@@ -699,18 +699,18 @@ Suggested additions:
 - `DailyMotivationEngine` to determine home state, daily spark, suggested actions, and finish reflections
 - `DailyCheckInStore` to persist one daily mood value in `UserDefaults`
 - Home-specific SwiftUI views for spark, check-in, suggested actions, and momentum
-- lightweight session-intent context passed into the Record flow and VirtualCoach
+- lightweight session-intent context passed into the Record flow and VirtualGuide
 
 ## Visual Direction
 
-Lean toward an editorial coach-companion feel instead of a metrics dashboard.
+Lean toward an editorial guide-companion feel instead of a metrics dashboard.
 
 Guidelines:
 - one strong featured card at the top
 - generous spacing
 - large copy
 - fewer metrics above the fold
-- color/background tone reflecting coach personality
+- color/background tone reflecting guide personality
 - subtle motion on card appearance instead of gamified clutter
 
 The emotional goal is simple: the app should feel like it understands the user's day and offers a manageable next step.

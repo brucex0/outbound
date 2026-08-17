@@ -16,8 +16,8 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var notifications: [SocialNotificationDTO] = []
     @Published private(set) var discoverableGroups: [SocialGroupDTO] = []
     @Published private(set) var blocks: [SocialBlockDTO] = []
-    @Published private(set) var resultsByFutureActivityID: [String: FutureActivityResultDTO] = [:]
-    @Published private(set) var recordingFutureActivityID: String?
+    @Published private(set) var resultsByActivityEventID: [String: ActivityEventResultDTO] = [:]
+    @Published private(set) var recordingActivityEventID: String?
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -57,24 +57,24 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func invite(to run: TogetherGroupRunDTO) async {
+    func invite(to run: ActivityEventDTO) async {
         if isUITestSeedData {
             latestInvitationURL = URL(string: "https://plainstride.app/invite/ui-test-run")
             return
         }
         do {
             let invitation = try await api.createTogetherInvitation(runID: run.id)
-            latestInvitationURL = PlainstrideLinks.scheduledRunInvitation(token: invitation.token)
+            latestInvitationURL = PlainstrideLinks.activityEventInvitation(token: invitation.token)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func invitationURL(forFutureActivity id: String) async -> URL? {
+    func invitationURL(forActivityEvent id: String) async -> URL? {
         do {
             let invitation = try await api.createTogetherInvitation(runID: id)
-            let url = PlainstrideLinks.scheduledRunInvitation(token: invitation.token)
+            let url = PlainstrideLinks.activityEventInvitation(token: invitation.token)
             latestInvitationURL = url
             return url
         } catch {
@@ -83,7 +83,7 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func invite(_ connection: SocialConnectionDTO, to run: TogetherGroupRunDTO) async -> Bool {
+    func invite(_ connection: SocialConnectionDTO, to run: ActivityEventDTO) async -> Bool {
         if isUITestSeedData { return true }
         do {
             _ = try await api.createTogetherInvitation(runID: run.id, recipientUserID: connection.person.id)
@@ -96,9 +96,9 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func createFutureActivity(_ request: CreateFutureActivityRequestDTO) async -> SocialGroupRunDetailDTO? {
+    func createActivityEvent(_ request: CreateActivityEventRequestDTO) async -> ActivityEventDetailDTO? {
         do {
-            let created = try await api.createFutureActivity(request)
+            let created = try await api.createActivityEvent(request)
             await refresh()
             errorMessage = nil
             return created
@@ -108,10 +108,10 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func inviteConnections(_ userIDs: [String], toFutureActivity id: String) async -> Bool {
+    func inviteConnections(_ userIDs: [String], toActivityEvent id: String) async -> Bool {
         guard !userIDs.isEmpty else { return true }
         do {
-            _ = try await api.inviteConnections(userIDs, toFutureActivity: id)
+            _ = try await api.inviteConnections(userIDs, toActivityEvent: id)
             await refreshNotifications()
             errorMessage = nil
             return true
@@ -121,19 +121,19 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func loadFutureActivityResults(id: String) async {
+    func loadActivityEventResults(id: String) async {
         do {
-            resultsByFutureActivityID[id] = try await api.fetchFutureActivityResults(id: id)
+            resultsByActivityEventID[id] = try await api.fetchActivityEventResults(id: id)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func markFutureActivityWithoutRecording(id: String) async -> Bool {
+    func markActivityEventWithoutRecording(id: String) async -> Bool {
         do {
-            _ = try await api.markFutureActivityWithoutRecording(id: id)
-            await loadFutureActivityResults(id: id)
+            _ = try await api.markActivityEventWithoutRecording(id: id)
+            await loadActivityEventResults(id: id)
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -141,13 +141,13 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func prepareToRecord(futureActivityID: String) {
-        recordingFutureActivityID = futureActivityID
+    func prepareToRecord(activityEventID: String) {
+        recordingActivityEventID = activityEventID
     }
 
-    func acceptFutureActivityInvitation(token: String) async -> Bool {
+    func acceptActivityEventInvitation(token: String) async -> Bool {
         do {
-            _ = try await api.acceptFutureActivityInvitation(token: token)
+            _ = try await api.acceptActivityEventInvitation(token: token)
             await refresh()
             await refreshNotifications()
             errorMessage = nil
@@ -158,9 +158,9 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func consumeRecordingFutureActivityID() -> String? {
-        defer { recordingFutureActivityID = nil }
-        return recordingFutureActivityID
+    func consumeRecordingActivityEventID() -> String? {
+        defer { recordingActivityEventID = nil }
+        return recordingActivityEventID
     }
 
     func referralInvitationURL() async -> URL? {
@@ -374,7 +374,7 @@ final class TogetherStore: ObservableObject {
         let maya = TogetherPersonDTO(id: "ui-test-maya", displayName: "Maya Chen", avatarUrl: nil)
         return TogetherResponseDTO(
             upcomingRuns: [
-                TogetherGroupRunDTO(
+                ActivityEventDTO(
                     id: "ui-test-saturday-5k",
                     title: "Saturday waterfront 5K",
                     startsAt: Date().addingTimeInterval(86_400),
@@ -450,7 +450,7 @@ final class TogetherStore: ObservableObject {
     func reportPost(_ post: TogetherPostDTO, reason: String) async {
         do {
             _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "post", targetId: post.id, reason: reason, details: nil))
-            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id })
+            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id })
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -504,13 +504,13 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func groupRunDetail(id: String) async -> SocialGroupRunDetailDTO? {
+    func activityEventDetail(id: String) async -> ActivityEventDetailDTO? {
         if isUITestSeedData {
             guard let run = state.upcomingRuns.first(where: { $0.id == id }) else { return nil }
             return Self.uiTestRunDetail(run: run, isGoing: false)
         }
         do {
-            let detail = try await api.fetchSocialGroupRun(id: id)
+            let detail = try await api.fetchActivityEvent(id: id)
             errorMessage = nil
             return detail
         } catch {
@@ -519,32 +519,49 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func toggleRSVP(for run: SocialGroupRunDetailDTO) async -> SocialGroupRunDetailDTO? {
+    func toggleRSVP(for run: ActivityEventDetailDTO, attendanceMode: String? = nil) async -> ActivityEventDetailDTO? {
         if isUITestSeedData {
             guard let fixture = state.upcomingRuns.first(where: { $0.id == run.id }) else { return nil }
             return Self.uiTestRunDetail(run: fixture, isGoing: !run.currentUserGoing)
         }
         do {
             if run.currentUserGoing {
-                _ = try await api.leaveSocialGroupRun(id: run.id)
+                _ = try await api.leaveActivityEvent(id: run.id)
             } else {
-                _ = try await api.joinSocialGroupRun(id: run.id)
+                guard let attendanceMode else { return nil }
+                _ = try await api.joinActivityEvent(id: run.id, attendanceMode: attendanceMode)
             }
-            return await groupRunDetail(id: run.id)
+            return await activityEventDetail(id: run.id)
         } catch {
             errorMessage = error.localizedDescription
             return nil
         }
     }
 
-    func acceptRunInvitation(_ notification: SocialNotificationDTO) async {
+    func deleteActivityEventInvitation(id invitationID: String, activityEventID: String) async -> ActivityEventDetailDTO? {
+        if isUITestSeedData {
+            guard var detail = await activityEventDetail(id: activityEventID) else { return nil }
+            detail.pendingInvitations?.removeAll { $0.id == invitationID }
+            return detail
+        }
+        do {
+            _ = try await api.deleteActivityEventInvitation(id: invitationID, activityEventID: activityEventID)
+            errorMessage = nil
+            return await activityEventDetail(id: activityEventID)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func acceptRunInvitation(_ notification: SocialNotificationDTO, attendanceMode: String) async {
         guard let invitationID = notification.objectId else { return }
         if isUITestSeedData {
             notifications.removeAll { $0.id == notification.id }
             return
         }
         do {
-            _ = try await api.acceptSocialRunInvitation(id: invitationID)
+            _ = try await api.acceptSocialRunInvitation(id: invitationID, attendanceMode: attendanceMode)
             notifications.removeAll { $0.id == notification.id }
             await refreshNotifications()
             await refresh()
@@ -612,7 +629,7 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
-        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, clubs: state.clubs, posts: posts)
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts)
     }
 
     private func replaceConnection(_ connection: SocialConnectionDTO, status: String, direction: String) {
@@ -649,8 +666,8 @@ final class TogetherStore: ObservableObject {
         SocialBlockDTO(id: "ui-block", person: SocialPersonDTO(id: "ui-blocked", username: "blocked.runner", displayName: "Blocked Runner", avatarUrl: nil)),
     ]
 
-    private static func uiTestRunDetail(run: TogetherGroupRunDTO, isGoing: Bool) -> SocialGroupRunDetailDTO {
-        SocialGroupRunDetailDTO(id: run.id, title: run.title, startsAt: run.startsAt, locationName: run.locationName, paceNote: run.paceNote, club: run.club, creator: run.creator, groups: run.groups, attendeeCount: isGoing ? 19 : 18, currentUserGoing: isGoing, compatibility: run.compatibility)
+    private static func uiTestRunDetail(run: ActivityEventDTO, isGoing: Bool) -> ActivityEventDetailDTO {
+        ActivityEventDetailDTO(id: run.id, title: run.title, startsAt: run.startsAt, locationName: run.locationName, paceNote: run.paceNote, club: run.club, creator: run.creator, groups: run.groups, attendeeCount: isGoing ? 19 : 18, currentUserGoing: isGoing, compatibility: run.compatibility)
     }
 
     private static func uiTestComment(body: String) -> TogetherCommentDTO {

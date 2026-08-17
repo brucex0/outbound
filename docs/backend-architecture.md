@@ -7,7 +7,7 @@ Open this when planning backend implementation, changing server boundaries, or d
 Today the backend already has the right high-level container shape:
 
 - one Hono service in `backend/src/index.ts`
-- route modules for `auth`, `activities`, `assistant`, `coach`, `social`, and `media`
+- route modules for `auth`, `activities`, `assistant`, `guide`, `social`, and `media`
 - Prisma + Postgres schema in `backend/prisma/schema.prisma`
 - Cloud Run deployment path documented in `docs/backend-deploy.md`
 
@@ -16,7 +16,7 @@ Current strengths:
 - assistant chat already works without a database
 - database-backed routes are grouped by domain instead of one large file
 - iOS already sends a Firebase bearer token to `APIClient`
-- coach profile rebuild logic exists and can evolve instead of being rewritten
+- guide profile rebuild logic exists and can evolve instead of being rewritten
 - authenticated activity ingest now has an initial idempotent path using client-generated activity IDs
 
 Current gaps:
@@ -32,7 +32,7 @@ Current gaps:
 ## Architecture Principles
 
 - Keep recording, local save, and offline UX on-device.
-- Keep synced identity, derived coach state, plans, and social state on the backend.
+- Keep synced identity, derived guide state, plans, and social state on the backend.
 - Treat activities as the canonical workout fact that downstream systems build on.
 - Keep the backend as a modular monolith until product and traffic clearly justify splitting services.
 - Use deterministic rules for safety-critical progression logic and AI for explanation, summarization, and rewriting.
@@ -45,7 +45,7 @@ Current gaps:
 - `backend/src/services/personalization/personalizationService.ts` persists runner facts, idempotent readiness and feedback, calibration progress, evidence-backed insights, immutable runner-model versions, and proposed adjustment decisions.
 - `backend/src/routes/personalization.ts` exposes authenticated snapshot, profile, readiness, feedback, and adjustment-decision routes under `/v1/personalization`.
 - `contracts/personalization/v1/` contains canonical JSON examples shared with the iOS Codable model in `Domains/Athlete/PersonalizationContracts.swift`.
-- Planning persistence and routes should adopt these contracts rather than extending the legacy free-form `CoachProfile.memorySnapshot`.
+- Planning persistence and routes should adopt these contracts rather than extending the legacy free-form `GuideProfile.memorySnapshot`.
 
 ## Recommended System Shape
 
@@ -56,14 +56,14 @@ Core components:
 - `api`: Hono app serving versioned REST endpoints under `/v1`
 - `db`: Postgres via Prisma for durable product state
 - `media storage`: Google Cloud Storage for activity photos and future derived media
-- `jobs`: async workers for coach analysis, plan recompute, feed fanout, and notifications
+- `jobs`: async workers for guide analysis, plan recompute, feed fanout, and notifications
 - `auth`: Firebase Auth token verification on every authenticated route
 
 This is still one product backend, but with explicit module boundaries:
 
 - `identity`
 - `activities`
-- `coach`
+- `guide`
 - `assistant`
 - `plans`
 - `social`
@@ -78,7 +78,7 @@ Client should own:
 
 - live recording session state
 - local activity save and offline history
-- cached coach profile and plan snapshots
+- cached guide profile and plan snapshots
 - offline fallback suggestions and assistant fallback replies
 - optimistic UI for syncable actions
 
@@ -86,7 +86,7 @@ Backend should own:
 
 - authenticated user identity mapping
 - synced activities and media metadata
-- coach profile artifacts and weekly review generation
+- guide profile artifacts and weekly review generation
 - active plan state, readiness history, and adaptation logic
 - social graph, posts, reactions, comments, clubs, and rival state
 - server-side AI orchestration and provider keys
@@ -118,7 +118,7 @@ Responsibilities:
 - store the client-generated finish reflection shown after Save Activity
 - attach route summaries and photo metadata
 - normalize uploaded route points into an `Activity.route` GeoJSON Feature, using `[longitude, latitude, altitude]` coordinates when altitude is available and preserving per-point timestamps/vertical accuracy in route properties
-- trigger downstream coach and plan work
+- trigger downstream guide and plan work
 
 Rules:
 
@@ -140,33 +140,33 @@ Recommended first response model:
 - media upload state
 - optional lightweight derived summary for the UI
 
-### Coach
+### Guide
 
 Responsibilities:
 
-- persist coach preferences and derived coach profile
+- persist guide preferences and derived guide profile
 - rebuild profile artifacts after activity sync
-- generate weekly review and compact coaching context
+- generate weekly review and compact guidance context
 
 Rules:
 
-- keep the downloadable coach payload stable and versioned
-- do not make the device fetch large raw history for everyday coach use
+- keep the downloadable guide payload stable and versioned
+- do not make the device fetch large raw history for everyday guide use
 - move analysis and rebuild work out of request handlers into jobs
 
 Recommended API shape:
 
-- `GET /v1/coach/profile`
-- `POST /v1/coach/rebuild`
-- `POST /v1/coach/customize`
-- `POST /v1/coach/weekly-review`
+- `GET /v1/guide/profile`
+- `POST /v1/guide/rebuild`
+- `POST /v1/guide/customize`
+- `POST /v1/guide/weekly-review`
 
 ### Assistant
 
 Responsibilities:
 
 - answer product discovery, navigation, support, brainstorming, and planning prompts
-- pull in lightweight structured user context from coach, activity, and plan domains
+- pull in lightweight structured user context from guide, activity, and plan domains
 - return concise app-aware replies
 
 Rules:
@@ -202,13 +202,13 @@ Rules:
 Current API shape:
 
 - `GET /v1/planning/recommendations`
-- `GET /v1/coach/plans/state`
-- `POST /v1/coach/plans/recommendation`
-- `POST /v1/coach/plans`
-- `GET /v1/coach/plans/active`
-- `GET /v1/coach/plans/active/week`
-- `DELETE /v1/coach/plans/active`
-- `GET /v1/coach/today`
+- `GET /v1/guide/plans/state`
+- `POST /v1/guide/plans/recommendation`
+- `POST /v1/guide/plans`
+- `GET /v1/guide/plans/active`
+- `GET /v1/guide/plans/active/week`
+- `DELETE /v1/guide/plans/active`
+- `GET /v1/guide/today`
 
 Next plan work:
 
@@ -316,7 +316,7 @@ Rules:
 Keep the current tables as a starting point:
 
 - `User`
-- `CoachProfile`
+- `GuideProfile`
 - `Activity`
 - `Photo`
 - `Post`
@@ -359,13 +359,13 @@ Implementation target:
 Preferred route style:
 
 - `GET /v1/me`
-- `GET /v1/coach/profile`
+- `GET /v1/guide/profile`
 - `POST /v1/activities`
 - `GET /v1/social/feed`
 
 Avoid:
 
-- `GET /v1/coach/:userId/profile`
+- `GET /v1/guide/:userId/profile`
 - `GET /v1/social/feed/:userId`
 - `POST /v1/activities` with trusted body `userId`
 
@@ -375,8 +375,8 @@ Do not keep long-term product logic in request-time fire-and-forget closures.
 
 Move these into explicit jobs:
 
-- coach analysis after activity ingest
-- coach profile rebuild after activity ingest
+- guide analysis after activity ingest
+- guide profile rebuild after activity ingest
 - plan adherence update after activity ingest
 - daily recommendation recompute after readiness check-in
 - social feed fanout and notifications later
@@ -395,8 +395,8 @@ Deliver:
 
 - Firebase auth middleware
 - authenticated `GET /v1/me`
-- authenticated `GET /v1/coach/profile`
-- authenticated `POST /v1/coach/rebuild`
+- authenticated `GET /v1/guide/profile`
+- authenticated `POST /v1/guide/rebuild`
 - authenticated `POST /v1/activities`
 - removal of trusted path/body identity on core routes
 - route handlers refactored to call service-layer functions
@@ -404,7 +404,7 @@ Deliver:
 Notes:
 
 - keep backward compatibility only if the iOS app still needs it during rollout
-- prioritize `assistant`, `coach`, and `activities` over `social`
+- prioritize `assistant`, `guide`, and `activities` over `social`
 
 ### Milestone 2: Idempotent Activity Sync
 
@@ -420,17 +420,17 @@ Deliver:
 - server-issued upload keys
 - normalized activity response payloads
 
-### Milestone 3: Coach Pipeline Hardening
+### Milestone 3: Guide Pipeline Hardening
 
 Goal:
 
-- make synced coaching dependable and cheap to evolve
+- make synced guidance dependable and cheap to evolve
 
 Deliver:
 
-- explicit coach service layer
+- explicit guide service layer
 - background jobs for post-activity analysis and profile rebuild
-- stable versioned coach payload contract
+- stable versioned guide payload contract
 - weekly review endpoint retained but moved off fragile inline assumptions
 
 ### Milestone 4: Plans Domain
@@ -476,7 +476,7 @@ Deliver:
 
 - durable job execution path
 - plan refresh jobs
-- coach summary jobs
+- guide summary jobs
 - notification triggers
 - feed projection if needed
 
@@ -513,7 +513,7 @@ The iOS app already sends Firebase tokens through `APIClient`, so the first roll
 - modular monolith first
 - Postgres behind the API, not direct client DB access
 - local-first recording and save flow
-- backend-owned plan and coach derivation
+- backend-owned plan and guide derivation
 - explicit privacy boundary for route and photo sharing
 
 ## Open Questions

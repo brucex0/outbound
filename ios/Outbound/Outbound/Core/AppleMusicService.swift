@@ -143,8 +143,8 @@ final class AppleMusicService: MusicService {
         playbackSnapshot()
     }
 
-    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot {
-        Self.logger.info("Coach speech event received. event=\(String(describing: event), privacy: .public)")
+    func handleGuideSpeechEvent(_ event: GuideSpeechEvent) async -> MusicPlaybackSnapshot {
+        Self.logger.info("Guide speech event received. event=\(String(describing: event), privacy: .public)")
         _ = event
         return playbackSnapshot()
     }

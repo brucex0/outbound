@@ -35,7 +35,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 1 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -56,7 +56,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -92,7 +92,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -113,7 +113,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -149,7 +149,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -185,7 +185,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -206,7 +206,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -253,7 +253,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 2 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -274,7 +274,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -310,7 +310,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -331,7 +331,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -367,7 +367,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -403,7 +403,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -424,7 +424,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -471,7 +471,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 3 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -492,7 +492,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -528,7 +528,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -549,7 +549,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -585,7 +585,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -621,7 +621,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -642,7 +642,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -689,7 +689,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 4 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -710,7 +710,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -746,7 +746,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -767,7 +767,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
+            "guideCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
             "dayLabel" : "Thu",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -803,7 +803,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run with strides"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -839,7 +839,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -860,7 +860,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -907,7 +907,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 5 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -928,7 +928,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -964,7 +964,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -985,7 +985,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "This should feel controlled, not desperate.",
+            "guideCue" : "This should feel controlled, not desperate.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1021,7 +1021,7 @@ export const trainingPlanTemplates = [
             "title" : "Threshold run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -1057,7 +1057,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1078,7 +1078,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -1125,7 +1125,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 6 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1146,7 +1146,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -1182,7 +1182,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1203,7 +1203,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
+            "guideCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1239,7 +1239,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run with strides"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -1275,7 +1275,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1296,7 +1296,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -1343,7 +1343,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 7 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1364,7 +1364,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1400,7 +1400,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1421,7 +1421,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "This should feel controlled, not desperate.",
+            "guideCue" : "This should feel controlled, not desperate.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1457,7 +1457,7 @@ export const trainingPlanTemplates = [
             "title" : "Threshold run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -1493,7 +1493,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1514,7 +1514,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -1561,7 +1561,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 8 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1582,7 +1582,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1618,7 +1618,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1639,7 +1639,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
+            "guideCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -1675,7 +1675,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run with strides"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1711,7 +1711,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1732,7 +1732,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -1779,7 +1779,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 9 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1800,7 +1800,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1836,7 +1836,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1857,7 +1857,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "This should feel controlled, not desperate.",
+            "guideCue" : "This should feel controlled, not desperate.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -1893,7 +1893,7 @@ export const trainingPlanTemplates = [
             "title" : "Threshold run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -1929,7 +1929,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -1950,7 +1950,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -1997,7 +1997,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported base week 10 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -2018,7 +2018,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -2054,7 +2054,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -2075,7 +2075,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
+            "guideCue" : "Stay easy on the run and keep the strides crisp, not exhausting.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -2111,7 +2111,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run with strides"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -2147,7 +2147,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -2168,7 +2168,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -2242,7 +2242,7 @@ export const trainingPlanTemplates = [
         "summary" : "Start with repeatable sessions that feel almost too manageable.",
         "workouts" : [
           {
-            "coachCue" : "If this feels easy, that's a good sign.",
+            "guideCue" : "If this feels easy, that's a good sign.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1500,
             "effortLabel" : "Conversational",
@@ -2277,7 +2277,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy start run"
           },
           {
-            "coachCue" : "Float the quicker bits; don't turn them into sprints.",
+            "guideCue" : "Float the quicker bits; don't turn them into sprints.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1680,
             "effortLabel" : "Playful steady",
@@ -2389,7 +2389,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "Finish with the same calm pace you started with.",
+            "guideCue" : "Finish with the same calm pace you started with.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy-steady",
@@ -2424,7 +2424,7 @@ export const trainingPlanTemplates = [
             "title" : "Long run"
           },
           {
-            "coachCue" : "Choose something that opens you up, not something that buries you.",
+            "guideCue" : "Choose something that opens you up, not something that buries you.",
             "dayLabel" : "Sun",
             "durationSeconds" : 1500,
             "effortLabel" : "Easy",
@@ -2456,7 +2456,7 @@ export const trainingPlanTemplates = [
         "summary" : "Keep the structure familiar while nudging one session slightly longer.",
         "workouts" : [
           {
-            "coachCue" : "This is habit work.",
+            "guideCue" : "This is habit work.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1680,
             "effortLabel" : "Conversational",
@@ -2491,7 +2491,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy rhythm run"
           },
           {
-            "coachCue" : "Run tall and keep the recoveries patient.",
+            "guideCue" : "Run tall and keep the recoveries patient.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1800,
             "effortLabel" : "Strong but controlled",
@@ -2603,7 +2603,7 @@ export const trainingPlanTemplates = [
             "title" : "Hill session"
           },
           {
-            "coachCue" : "Let the run stay chatty from start to finish.",
+            "guideCue" : "Let the run stay chatty from start to finish.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2400,
             "effortLabel" : "Easy-steady",
@@ -2638,7 +2638,7 @@ export const trainingPlanTemplates = [
             "title" : "Long run"
           },
           {
-            "coachCue" : "Optional really means optional.",
+            "guideCue" : "Optional really means optional.",
             "dayLabel" : "Sun",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy",
@@ -2670,7 +2670,7 @@ export const trainingPlanTemplates = [
         "summary" : "The plan now feels familiar, so the priority is protecting the routine.",
         "workouts" : [
           {
-            "coachCue" : "Keep the effort low enough to recover fast.",
+            "guideCue" : "Keep the effort low enough to recover fast.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Conversational",
@@ -2705,7 +2705,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy support run"
           },
           {
-            "coachCue" : "Comfortably hard beats dramatic.",
+            "guideCue" : "Comfortably hard beats dramatic.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1920,
             "effortLabel" : "Comfortably hard",
@@ -2754,7 +2754,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "This one should build calm confidence.",
+            "guideCue" : "This one should build calm confidence.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2520,
             "effortLabel" : "Easy-steady",
@@ -2789,7 +2789,7 @@ export const trainingPlanTemplates = [
             "title" : "Long run"
           },
           {
-            "coachCue" : "Only do this if your legs want it.",
+            "guideCue" : "Only do this if your legs want it.",
             "dayLabel" : "Sun",
             "durationSeconds" : 1200,
             "effortLabel" : "Very easy",
@@ -2835,7 +2835,7 @@ export const trainingPlanTemplates = [
         "summary" : "A cutback week that still keeps the routine intact.",
         "workouts" : [
           {
-            "coachCue" : "Less is more this week.",
+            "guideCue" : "Less is more this week.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1440,
             "effortLabel" : "Conversational",
@@ -2870,7 +2870,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy cutback run"
           },
           {
-            "coachCue" : "Stay loose; the goal is pop, not fatigue.",
+            "guideCue" : "Stay loose; the goal is pop, not fatigue.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1440,
             "effortLabel" : "Playful steady",
@@ -2968,7 +2968,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "End with plenty left.",
+            "guideCue" : "End with plenty left.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1920,
             "effortLabel" : "Easy-steady",
@@ -3003,7 +3003,7 @@ export const trainingPlanTemplates = [
             "title" : "Long run"
           },
           {
-            "coachCue" : "Use this to reset, not to chase numbers.",
+            "guideCue" : "Use this to reset, not to chase numbers.",
             "dayLabel" : "Sun",
             "durationSeconds" : 1500,
             "effortLabel" : "Easy",
@@ -3062,7 +3062,7 @@ export const trainingPlanTemplates = [
         "summary" : "Short sessions designed to feel safe and finish strong.",
         "workouts" : [
           {
-            "coachCue" : "The win is simply getting moving again.",
+            "guideCue" : "The win is simply getting moving again.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1500,
             "effortLabel" : "Gentle",
@@ -3174,7 +3174,7 @@ export const trainingPlanTemplates = [
             "title" : "Restart session"
           },
           {
-            "coachCue" : "Keep the runs gentle enough to finish calm.",
+            "guideCue" : "Keep the runs gentle enough to finish calm.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1650,
             "effortLabel" : "Gentle",
@@ -3300,7 +3300,7 @@ export const trainingPlanTemplates = [
             "title" : "Repeatable return"
           },
           {
-            "coachCue" : "No catching up. Just collect time on feet.",
+            "guideCue" : "No catching up. Just collect time on feet.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1500,
             "effortLabel" : "Conversational",
@@ -3346,7 +3346,7 @@ export const trainingPlanTemplates = [
         "summary" : "The run segments get a little longer, but recovery still leads.",
         "workouts" : [
           {
-            "coachCue" : "Keep every run segment at easy effort.",
+            "guideCue" : "Keep every run segment at easy effort.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1860,
             "effortLabel" : "Gentle",
@@ -3472,7 +3472,7 @@ export const trainingPlanTemplates = [
             "title" : "Run-walk build"
           },
           {
-            "coachCue" : "Take the easiest line that keeps momentum.",
+            "guideCue" : "Take the easiest line that keeps momentum.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1080,
             "effortLabel" : "Very easy",
@@ -3507,7 +3507,7 @@ export const trainingPlanTemplates = [
             "title" : "Recovery run"
           },
           {
-            "coachCue" : "Don't rush the first half.",
+            "guideCue" : "Don't rush the first half.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2070,
             "effortLabel" : "Gentle",
@@ -3644,7 +3644,7 @@ export const trainingPlanTemplates = [
         "summary" : "The walks shrink and the running begins to connect.",
         "workouts" : [
           {
-            "coachCue" : "Run smooth rather than ambitious.",
+            "guideCue" : "Run smooth rather than ambitious.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1950,
             "effortLabel" : "Gentle",
@@ -3742,7 +3742,7 @@ export const trainingPlanTemplates = [
             "title" : "Connected effort"
           },
           {
-            "coachCue" : "A tiny continuous run is enough.",
+            "guideCue" : "A tiny continuous run is enough.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1200,
             "effortLabel" : "Conversational",
@@ -3777,7 +3777,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy continuous run"
           },
           {
-            "coachCue" : "Keep the final ten minutes especially controlled.",
+            "guideCue" : "Keep the final ten minutes especially controlled.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy-steady",
@@ -3823,7 +3823,7 @@ export const trainingPlanTemplates = [
         "summary" : "A calm finish that sets up the next block rather than exhausting you.",
         "workouts" : [
           {
-            "coachCue" : "Stay within yourself.",
+            "guideCue" : "Stay within yourself.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1320,
             "effortLabel" : "Conversational",
@@ -3858,7 +3858,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy confidence run"
           },
           {
-            "coachCue" : "The quicker segments should feel playful.",
+            "guideCue" : "The quicker segments should feel playful.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1440,
             "effortLabel" : "Playful steady",
@@ -3956,7 +3956,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "Land this run feeling like you could have kept going.",
+            "guideCue" : "Land this run feeling like you could have kept going.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1920,
             "effortLabel" : "Easy-steady",
@@ -4029,7 +4029,7 @@ export const trainingPlanTemplates = [
         "summary" : "Build comfort with short one-minute run segments.",
         "workouts" : [
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1710,
             "effortLabel" : "Easy",
@@ -4162,7 +4162,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 1, Workout 1"
           },
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1710,
             "effortLabel" : "Easy",
@@ -4295,7 +4295,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 1, Workout 2"
           },
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1710,
             "effortLabel" : "Easy",
@@ -4439,7 +4439,7 @@ export const trainingPlanTemplates = [
         "summary" : "Lengthen the running while keeping plenty of walk recovery.",
         "workouts" : [
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy",
@@ -4551,7 +4551,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 2, Workout 1"
           },
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy",
@@ -4663,7 +4663,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 2, Workout 2"
           },
           {
-            "coachCue" : "Keep every run interval comfortably easy.",
+            "guideCue" : "Keep every run interval comfortably easy.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy",
@@ -4786,7 +4786,7 @@ export const trainingPlanTemplates = [
         "summary" : "Mix short and medium run segments so continuous running starts to feel less foreign.",
         "workouts" : [
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1680,
             "effortLabel" : "Easy",
@@ -4870,7 +4870,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 3, Workout 1"
           },
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1680,
             "effortLabel" : "Easy",
@@ -4954,7 +4954,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 3, Workout 2"
           },
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1680,
             "effortLabel" : "Easy",
@@ -5049,7 +5049,7 @@ export const trainingPlanTemplates = [
         "summary" : "Step into longer blocks with two three-minute segments and two five-minute segments.",
         "workouts" : [
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1890,
             "effortLabel" : "Easy",
@@ -5133,7 +5133,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 4, Workout 1"
           },
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1890,
             "effortLabel" : "Easy",
@@ -5217,7 +5217,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 4, Workout 2"
           },
           {
-            "coachCue" : "Stay patient through the early blocks so the later ones still feel possible.",
+            "guideCue" : "Stay patient through the early blocks so the later ones still feel possible.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1890,
             "effortLabel" : "Easy",
@@ -5312,7 +5312,7 @@ export const trainingPlanTemplates = [
         "summary" : "This is the first real leap week, ending with a twenty-minute continuous run.",
         "workouts" : [
           {
-            "coachCue" : "Let the middle eight-minute run stay under control.",
+            "guideCue" : "Let the middle eight-minute run stay under control.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2040,
             "effortLabel" : "Easy",
@@ -5375,7 +5375,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 5, Workout 1"
           },
           {
-            "coachCue" : "Focus on smoothness in the second block.",
+            "guideCue" : "Focus on smoothness in the second block.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1860,
             "effortLabel" : "Easy",
@@ -5424,7 +5424,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 5, Workout 2"
           },
           {
-            "coachCue" : "Start slower than you think you need to.",
+            "guideCue" : "Start slower than you think you need to.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1800,
             "effortLabel" : "Easy",
@@ -5470,7 +5470,7 @@ export const trainingPlanTemplates = [
         "summary" : "Alternate interval days with another jump in continuous running.",
         "workouts" : [
           {
-            "coachCue" : "This week is about confidence, not proving toughness.",
+            "guideCue" : "This week is about confidence, not proving toughness.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2040,
             "effortLabel" : "Easy",
@@ -5533,7 +5533,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 6, Workout 1"
           },
           {
-            "coachCue" : "Treat the second ten-minute block like a calm reset.",
+            "guideCue" : "Treat the second ten-minute block like a calm reset.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1980,
             "effortLabel" : "Easy",
@@ -5582,7 +5582,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 6, Workout 2"
           },
           {
-            "coachCue" : "Relax the shoulders and let the time unfold.",
+            "guideCue" : "Relax the shoulders and let the time unfold.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1920,
             "effortLabel" : "Easy",
@@ -5628,7 +5628,7 @@ export const trainingPlanTemplates = [
         "summary" : "Three identical continuous 25-minute runs build familiarity over novelty.",
         "workouts" : [
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -5663,7 +5663,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 7, Workout 1"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -5698,7 +5698,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 7, Workout 2"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -5744,7 +5744,7 @@ export const trainingPlanTemplates = [
         "summary" : "Push continuous running to 28 minutes while keeping the effort patient.",
         "workouts" : [
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2280,
             "effortLabel" : "Easy",
@@ -5779,7 +5779,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 8, Workout 1"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2280,
             "effortLabel" : "Easy",
@@ -5814,7 +5814,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 8, Workout 2"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2280,
             "effortLabel" : "Easy",
@@ -5860,7 +5860,7 @@ export const trainingPlanTemplates = [
         "summary" : "Three continuous 30-minute runs complete the progression.",
         "workouts" : [
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2400,
             "effortLabel" : "Easy",
@@ -5895,7 +5895,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 9, Workout 1"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2400,
             "effortLabel" : "Easy",
@@ -5930,7 +5930,7 @@ export const trainingPlanTemplates = [
             "title" : "Week 9, Workout 2"
           },
           {
-            "coachCue" : "Go out slower than you want for the first five minutes.",
+            "guideCue" : "Go out slower than you want for the first five minutes.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2400,
             "effortLabel" : "Easy",
@@ -6003,7 +6003,7 @@ export const trainingPlanTemplates = [
         "summary" : "Start with familiar paces and a light workout touch.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2100,
             "effortLabel" : "Conversational",
@@ -6038,7 +6038,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Work the reps, but keep the first one restrained.",
+            "guideCue" : "Work the reps, but keep the first one restrained.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1920,
             "effortLabel" : "10K effort",
@@ -6115,7 +6115,7 @@ export const trainingPlanTemplates = [
             "title" : "4 x 2 min intervals"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -6136,7 +6136,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3000,
             "effortLabel" : "Easy-steady",
@@ -6182,7 +6182,7 @@ export const trainingPlanTemplates = [
         "summary" : "The quality day shifts toward threshold work while the long run grows slightly.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2160,
             "effortLabel" : "Conversational",
@@ -6217,7 +6217,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Smooth breathing matters more than pace numbers.",
+            "guideCue" : "Smooth breathing matters more than pace numbers.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2280,
             "effortLabel" : "Comfortably hard",
@@ -6266,7 +6266,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -6287,7 +6287,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3300,
             "effortLabel" : "Easy-steady",
@@ -6333,7 +6333,7 @@ export const trainingPlanTemplates = [
         "summary" : "A fartlek session lets you move a little quicker without locking into a pace target.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2280,
             "effortLabel" : "Conversational",
@@ -6368,7 +6368,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Think flow, not fight.",
+            "guideCue" : "Think flow, not fight.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2400,
             "effortLabel" : "Playful steady",
@@ -6466,7 +6466,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -6487,7 +6487,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3600,
             "effortLabel" : "Easy-steady",
@@ -6533,7 +6533,7 @@ export const trainingPlanTemplates = [
         "summary" : "A lighter week keeps the block sustainable.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Conversational",
@@ -6568,7 +6568,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Keep the climbs springy and the recoveries complete.",
+            "guideCue" : "Keep the climbs springy and the recoveries complete.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1680,
             "effortLabel" : "Strong but controlled",
@@ -6680,7 +6680,7 @@ export const trainingPlanTemplates = [
             "title" : "Hill session"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -6701,7 +6701,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 2700,
             "effortLabel" : "Easy-steady",
@@ -6747,7 +6747,7 @@ export const trainingPlanTemplates = [
         "summary" : "The second half of the block starts a little stronger than the first.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2400,
             "effortLabel" : "Conversational",
@@ -6782,7 +6782,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Keep the final rep looking like the first.",
+            "guideCue" : "Keep the final rep looking like the first.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2460,
             "effortLabel" : "10K effort",
@@ -6873,7 +6873,7 @@ export const trainingPlanTemplates = [
             "title" : "5 x 3 min intervals"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -6894,7 +6894,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3720,
             "effortLabel" : "Easy-steady",
@@ -6940,7 +6940,7 @@ export const trainingPlanTemplates = [
         "summary" : "Longer steady blocks make race effort feel calmer.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2400,
             "effortLabel" : "Conversational",
@@ -6975,7 +6975,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Stay patient for the first two blocks.",
+            "guideCue" : "Stay patient for the first two blocks.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2520,
             "effortLabel" : "Comfortably hard",
@@ -7038,7 +7038,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -7059,7 +7059,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3900,
             "effortLabel" : "Easy-steady",
@@ -7105,7 +7105,7 @@ export const trainingPlanTemplates = [
         "summary" : "A classic open-source-style workout mix of intervals, easy mileage, and a long aerobic finish.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2100,
             "effortLabel" : "Conversational",
@@ -7140,7 +7140,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Run these at rhythm, not rage.",
+            "guideCue" : "Run these at rhythm, not rage.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2400,
             "effortLabel" : "10K effort",
@@ -7217,7 +7217,7 @@ export const trainingPlanTemplates = [
             "title" : "4 x 800m effort"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -7238,7 +7238,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4200,
             "effortLabel" : "Easy-steady",
@@ -7284,7 +7284,7 @@ export const trainingPlanTemplates = [
         "summary" : "Back off volume, then finish with a controlled 10K effort or local race.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1680,
             "effortLabel" : "Conversational",
@@ -7319,7 +7319,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Keep this snappy, not draining.",
+            "guideCue" : "Keep this snappy, not draining.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1440,
             "effortLabel" : "Light and snappy",
@@ -7410,7 +7410,7 @@ export const trainingPlanTemplates = [
             "title" : "Race-prep run"
           },
           {
-            "coachCue" : "Keep this tiny and relaxed.",
+            "guideCue" : "Keep this tiny and relaxed.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1080,
             "effortLabel" : "Very easy",
@@ -7445,7 +7445,7 @@ export const trainingPlanTemplates = [
             "title" : "Recovery run"
           },
           {
-            "coachCue" : "Settle in early and finish the last third with intent.",
+            "guideCue" : "Settle in early and finish the last third with intent.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3300,
             "effortLabel" : "Race effort",
@@ -7518,7 +7518,7 @@ export const trainingPlanTemplates = [
         "summary" : "Start with aerobic volume that feels durable.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2400,
             "effortLabel" : "Conversational",
@@ -7553,7 +7553,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Run tall and keep the downhill recoveries easy.",
+            "guideCue" : "Run tall and keep the downhill recoveries easy.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2160,
             "effortLabel" : "Strong but controlled",
@@ -7665,7 +7665,7 @@ export const trainingPlanTemplates = [
             "title" : "Hill session"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -7686,7 +7686,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4200,
             "effortLabel" : "Easy-steady",
@@ -7732,7 +7732,7 @@ export const trainingPlanTemplates = [
         "summary" : "The week gets slightly longer while the quality stays measured.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2520,
             "effortLabel" : "Conversational",
@@ -7767,7 +7767,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Stay smooth and avoid a red-line feel.",
+            "guideCue" : "Stay smooth and avoid a red-line feel.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2520,
             "effortLabel" : "Comfortably hard",
@@ -7816,7 +7816,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -7837,7 +7837,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4500,
             "effortLabel" : "Easy-steady",
@@ -7883,7 +7883,7 @@ export const trainingPlanTemplates = [
         "summary" : "The quality day asks for steadier work while the long run extends.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2640,
             "effortLabel" : "Conversational",
@@ -7918,7 +7918,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Let the fast bits feel controlled, not all-out.",
+            "guideCue" : "Let the fast bits feel controlled, not all-out.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2640,
             "effortLabel" : "Playful steady",
@@ -8016,7 +8016,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -8037,7 +8037,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4800,
             "effortLabel" : "Easy-steady",
@@ -8083,7 +8083,7 @@ export const trainingPlanTemplates = [
         "summary" : "A lighter week before the second build.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2040,
             "effortLabel" : "Conversational",
@@ -8118,7 +8118,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Nothing heroic today.",
+            "guideCue" : "Nothing heroic today.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1920,
             "effortLabel" : "Conversational",
@@ -8153,7 +8153,7 @@ export const trainingPlanTemplates = [
             "title" : "Steady cutback run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -8174,7 +8174,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 3600,
             "effortLabel" : "Easy-steady",
@@ -8220,7 +8220,7 @@ export const trainingPlanTemplates = [
         "summary" : "Rebuild with a stronger aerobic set and more range on the weekend.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2700,
             "effortLabel" : "Conversational",
@@ -8255,7 +8255,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "These should feel strong but repeatable.",
+            "guideCue" : "These should feel strong but repeatable.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2760,
             "effortLabel" : "10K effort",
@@ -8346,7 +8346,7 @@ export const trainingPlanTemplates = [
             "title" : "5 x 4 min intervals"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -8367,7 +8367,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5100,
             "effortLabel" : "Easy-steady",
@@ -8413,7 +8413,7 @@ export const trainingPlanTemplates = [
         "summary" : "Tempo work gets longer while the long run climbs again.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2700,
             "effortLabel" : "Conversational",
@@ -8448,7 +8448,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "The middle block should feel the smoothest.",
+            "guideCue" : "The middle block should feel the smoothest.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2880,
             "effortLabel" : "Comfortably hard",
@@ -8511,7 +8511,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -8532,7 +8532,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5400,
             "effortLabel" : "Easy-steady",
@@ -8578,7 +8578,7 @@ export const trainingPlanTemplates = [
         "summary" : "The final big week asks for patience more than speed.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2520,
             "effortLabel" : "Conversational",
@@ -8613,7 +8613,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Quick but never strained.",
+            "guideCue" : "Quick but never strained.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2040,
             "effortLabel" : "Light and snappy",
@@ -8704,7 +8704,7 @@ export const trainingPlanTemplates = [
             "title" : "Race-prep run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -8725,7 +8725,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5700,
             "effortLabel" : "Easy-steady",
@@ -8771,7 +8771,7 @@ export const trainingPlanTemplates = [
         "summary" : "Pull volume down and carry freshness into a 10-mile effort or supported long run.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Conversational",
@@ -8806,7 +8806,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Leave the run feeling sharper than when you started.",
+            "guideCue" : "Leave the run feeling sharper than when you started.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1440,
             "effortLabel" : "Conversational",
@@ -8841,7 +8841,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy pre-race run"
           },
           {
-            "coachCue" : "Keep this tiny and relaxed.",
+            "guideCue" : "Keep this tiny and relaxed.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1080,
             "effortLabel" : "Very easy",
@@ -8876,7 +8876,7 @@ export const trainingPlanTemplates = [
             "title" : "Recovery run"
           },
           {
-            "coachCue" : "Be patient in the first half so you can run strong late.",
+            "guideCue" : "Be patient in the first half so you can run strong late.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5100,
             "effortLabel" : "Race effort",
@@ -8949,7 +8949,7 @@ export const trainingPlanTemplates = [
         "summary" : "The first week establishes the four-day rhythm without forcing pace.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2520,
             "effortLabel" : "Conversational",
@@ -8984,7 +8984,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Think calm strength.",
+            "guideCue" : "Think calm strength.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2640,
             "effortLabel" : "Comfortably hard",
@@ -9033,7 +9033,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9054,7 +9054,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4500,
             "effortLabel" : "Easy-steady",
@@ -9100,7 +9100,7 @@ export const trainingPlanTemplates = [
         "summary" : "The long run grows, while the quality day stays controlled.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2700,
             "effortLabel" : "Conversational",
@@ -9135,7 +9135,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Settle into rhythm before the pace settles into you.",
+            "guideCue" : "Settle into rhythm before the pace settles into you.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2640,
             "effortLabel" : "10K effort",
@@ -9212,7 +9212,7 @@ export const trainingPlanTemplates = [
             "title" : "4 x 5 min intervals"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9233,7 +9233,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5100,
             "effortLabel" : "Easy-steady",
@@ -9279,7 +9279,7 @@ export const trainingPlanTemplates = [
         "summary" : "Sustained tempo and a longer long run raise the floor.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2700,
             "effortLabel" : "Conversational",
@@ -9314,7 +9314,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Stay tall when the work accumulates.",
+            "guideCue" : "Stay tall when the work accumulates.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2880,
             "effortLabel" : "Comfortably hard",
@@ -9377,7 +9377,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9398,7 +9398,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5700,
             "effortLabel" : "Easy-steady",
@@ -9444,7 +9444,7 @@ export const trainingPlanTemplates = [
         "summary" : "Volume comes down enough for the next push to land well.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2100,
             "effortLabel" : "Conversational",
@@ -9479,7 +9479,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Short and springy beats sloggy.",
+            "guideCue" : "Short and springy beats sloggy.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2040,
             "effortLabel" : "Strong but controlled",
@@ -9591,7 +9591,7 @@ export const trainingPlanTemplates = [
             "title" : "Hill session"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9612,7 +9612,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4200,
             "effortLabel" : "Easy-steady",
@@ -9658,7 +9658,7 @@ export const trainingPlanTemplates = [
         "summary" : "Back to a higher long-run range with a quality session that stays measured.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2880,
             "effortLabel" : "Conversational",
@@ -9693,7 +9693,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Keep the fast bits strong but relaxed.",
+            "guideCue" : "Keep the fast bits strong but relaxed.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2760,
             "effortLabel" : "Playful steady",
@@ -9805,7 +9805,7 @@ export const trainingPlanTemplates = [
             "title" : "Fartlek run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9826,7 +9826,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 6000,
             "effortLabel" : "Easy-steady",
@@ -9872,7 +9872,7 @@ export const trainingPlanTemplates = [
         "summary" : "This week leans into long aerobic control.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2880,
             "effortLabel" : "Conversational",
@@ -9907,7 +9907,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Stay just below strain.",
+            "guideCue" : "Stay just below strain.",
             "dayLabel" : "Thu",
             "durationSeconds" : 3120,
             "effortLabel" : "Comfortably hard",
@@ -9956,7 +9956,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -9977,7 +9977,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 6600,
             "effortLabel" : "Easy-steady",
@@ -10023,7 +10023,7 @@ export const trainingPlanTemplates = [
         "summary" : "The weekend reaches its high point while the quality day stays compact.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2700,
             "effortLabel" : "Conversational",
@@ -10058,7 +10058,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "You should finish feeling eager, not empty.",
+            "guideCue" : "You should finish feeling eager, not empty.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2160,
             "effortLabel" : "Light and snappy",
@@ -10149,7 +10149,7 @@ export const trainingPlanTemplates = [
             "title" : "Race-prep run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -10170,7 +10170,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 7200,
             "effortLabel" : "Easy-steady",
@@ -10216,7 +10216,7 @@ export const trainingPlanTemplates = [
         "summary" : "The long run comes back while tempo rhythm stays alive.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2520,
             "effortLabel" : "Conversational",
@@ -10251,7 +10251,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Practice restraint.",
+            "guideCue" : "Practice restraint.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2520,
             "effortLabel" : "Comfortably hard",
@@ -10300,7 +10300,7 @@ export const trainingPlanTemplates = [
             "title" : "Tempo run"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -10321,7 +10321,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 5700,
             "effortLabel" : "Easy-steady",
@@ -10367,7 +10367,7 @@ export const trainingPlanTemplates = [
         "summary" : "A lighter week with a final specific session.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 2100,
             "effortLabel" : "Conversational",
@@ -10402,7 +10402,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "Let the pace come to you.",
+            "guideCue" : "Let the pace come to you.",
             "dayLabel" : "Thu",
             "durationSeconds" : 2220,
             "effortLabel" : "10K effort",
@@ -10465,7 +10465,7 @@ export const trainingPlanTemplates = [
             "title" : "3 x 5 min race-pace effort"
           },
           {
-            "coachCue" : "Skip this if your legs are asking for recovery.",
+            "guideCue" : "Skip this if your legs are asking for recovery.",
             "dayLabel" : "Sat",
             "durationSeconds" : 2100,
             "effortLabel" : "Easy",
@@ -10486,7 +10486,7 @@ export const trainingPlanTemplates = [
             "title" : "Cross-train"
           },
           {
-            "coachCue" : "The right pace is the one that keeps the back half steady.",
+            "guideCue" : "The right pace is the one that keeps the back half steady.",
             "dayLabel" : "Sun",
             "durationSeconds" : 4200,
             "effortLabel" : "Easy-steady",
@@ -10532,7 +10532,7 @@ export const trainingPlanTemplates = [
         "summary" : "Carry freshness into your half marathon or supported long effort.",
         "workouts" : [
           {
-            "coachCue" : "Let this feel boring in the best possible way.",
+            "guideCue" : "Let this feel boring in the best possible way.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1440,
             "effortLabel" : "Conversational",
@@ -10567,7 +10567,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy aerobic run"
           },
           {
-            "coachCue" : "This should feel crisp and brief.",
+            "guideCue" : "This should feel crisp and brief.",
             "dayLabel" : "Thu",
             "durationSeconds" : 1320,
             "effortLabel" : "Light and snappy",
@@ -10644,7 +10644,7 @@ export const trainingPlanTemplates = [
             "title" : "Race-prep run"
           },
           {
-            "coachCue" : "Keep this tiny and relaxed.",
+            "guideCue" : "Keep this tiny and relaxed.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1080,
             "effortLabel" : "Very easy",
@@ -10679,7 +10679,7 @@ export const trainingPlanTemplates = [
             "title" : "Recovery run"
           },
           {
-            "coachCue" : "Start patient, settle into rhythm, and trust the work.",
+            "guideCue" : "Start patient, settle into rhythm, and trust the work.",
             "dayLabel" : "Sun",
             "durationSeconds" : 7200,
             "effortLabel" : "Race effort",
@@ -10752,7 +10752,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 1 with 3 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -10773,7 +10773,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -10794,7 +10794,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -10815,7 +10815,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -10851,7 +10851,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Fri",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -10872,7 +10872,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -10908,7 +10908,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -10955,7 +10955,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 2 with 5 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -10976,7 +10976,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "2 mi",
             "durationSeconds" : 1890,
@@ -11012,7 +11012,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11033,7 +11033,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -11069,7 +11069,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -11105,7 +11105,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -11141,7 +11141,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11188,7 +11188,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 3 with 5 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11209,7 +11209,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11245,7 +11245,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11266,7 +11266,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11302,7 +11302,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11338,7 +11338,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11374,7 +11374,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -11421,7 +11421,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 4 with 5 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11442,7 +11442,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -11478,7 +11478,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11499,7 +11499,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -11535,7 +11535,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -11571,7 +11571,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -11607,7 +11607,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -11654,7 +11654,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 5 with 5 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11675,7 +11675,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -11711,7 +11711,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11732,7 +11732,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -11766,7 +11766,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -11802,7 +11802,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11838,7 +11838,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -11885,7 +11885,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 6 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -11921,7 +11921,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -11954,7 +11954,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -11975,7 +11975,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -12009,7 +12009,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -12045,7 +12045,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -12081,7 +12081,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -12128,7 +12128,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 7 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -12164,7 +12164,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -12197,7 +12197,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -12218,7 +12218,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -12252,7 +12252,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -12288,7 +12288,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -12324,7 +12324,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -12371,7 +12371,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 8 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -12407,7 +12407,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -12440,7 +12440,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -12461,7 +12461,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -12495,7 +12495,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -12531,7 +12531,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -12567,7 +12567,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -12614,7 +12614,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 9 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -12650,7 +12650,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -12683,7 +12683,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -12704,7 +12704,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -12738,7 +12738,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -12774,7 +12774,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -12810,7 +12810,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -12857,7 +12857,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 10 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -12893,7 +12893,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -12926,7 +12926,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -12947,7 +12947,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -12981,7 +12981,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13017,7 +13017,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13053,7 +13053,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -13100,7 +13100,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 11 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13136,7 +13136,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13170,7 +13170,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -13191,7 +13191,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -13225,7 +13225,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -13261,7 +13261,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13297,7 +13297,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13344,7 +13344,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 12 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13380,7 +13380,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13414,7 +13414,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -13435,7 +13435,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -13469,7 +13469,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13505,7 +13505,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -13541,7 +13541,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -13588,7 +13588,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 13 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -13624,7 +13624,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13658,7 +13658,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -13679,7 +13679,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -13713,7 +13713,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -13749,7 +13749,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13785,7 +13785,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13832,7 +13832,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 14 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13868,7 +13868,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -13902,7 +13902,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -13923,7 +13923,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -13957,7 +13957,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -13993,7 +13993,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -14029,7 +14029,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -14076,7 +14076,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 15 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -14112,7 +14112,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -14146,7 +14146,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -14167,7 +14167,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -14201,7 +14201,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -14237,7 +14237,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14273,7 +14273,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -14320,7 +14320,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 16 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14356,7 +14356,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -14390,7 +14390,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -14411,7 +14411,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -14445,7 +14445,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14481,7 +14481,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -14517,7 +14517,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -14564,7 +14564,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 17 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14600,7 +14600,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -14634,7 +14634,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -14655,7 +14655,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -14689,7 +14689,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -14725,7 +14725,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14761,7 +14761,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -14808,7 +14808,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported beginner half week 18 with 5 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14844,7 +14844,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -14865,7 +14865,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Wed",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -14901,7 +14901,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -14937,7 +14937,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -14973,7 +14973,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Stay calmer than feels natural in the opening stretch.",
+            "guideCue" : "Stay calmer than feels natural in the opening stretch.",
             "dayLabel" : "Sat",
             "distanceLabel" : "13.1 mi",
             "durationSeconds" : 8253,
@@ -15047,7 +15047,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 1 with 4 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Mon",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15068,7 +15068,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Tue",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15089,7 +15089,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15110,7 +15110,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15146,7 +15146,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "3 mi",
             "durationSeconds" : 1890,
@@ -15182,7 +15182,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15218,7 +15218,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -15265,7 +15265,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 2 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15301,7 +15301,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -15334,7 +15334,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15355,7 +15355,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -15389,7 +15389,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15425,7 +15425,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15461,7 +15461,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -15508,7 +15508,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 3 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15544,7 +15544,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -15577,7 +15577,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15598,7 +15598,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -15632,7 +15632,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -15668,7 +15668,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -15704,7 +15704,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -15751,7 +15751,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 4 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -15787,7 +15787,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -15820,7 +15820,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -15841,7 +15841,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3870,
@@ -15875,7 +15875,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -15911,7 +15911,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -15947,7 +15947,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -15994,7 +15994,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 5 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "4 mi",
             "durationSeconds" : 2520,
@@ -16030,7 +16030,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -16063,7 +16063,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -16084,7 +16084,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -16118,7 +16118,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -16154,7 +16154,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16190,7 +16190,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -16237,7 +16237,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 6 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -16273,7 +16273,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -16306,7 +16306,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -16327,7 +16327,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -16361,7 +16361,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16397,7 +16397,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16433,7 +16433,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -16480,7 +16480,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 7 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -16516,7 +16516,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -16549,7 +16549,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -16570,7 +16570,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4500,
@@ -16604,7 +16604,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16640,7 +16640,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -16676,7 +16676,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -16723,7 +16723,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 8 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16759,7 +16759,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -16792,7 +16792,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -16813,7 +16813,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -16847,7 +16847,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16883,7 +16883,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -16919,7 +16919,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -16966,7 +16966,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 9 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17002,7 +17002,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -17035,7 +17035,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -17056,7 +17056,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -17090,7 +17090,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -17126,7 +17126,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17162,7 +17162,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -17209,7 +17209,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 10 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -17245,7 +17245,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5670,
@@ -17278,7 +17278,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -17299,7 +17299,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -17333,7 +17333,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17369,7 +17369,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -17405,7 +17405,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "12 mi",
             "durationSeconds" : 7560,
@@ -17452,7 +17452,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 11 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17488,7 +17488,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -17521,7 +17521,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -17542,7 +17542,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -17576,7 +17576,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -17612,7 +17612,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17648,7 +17648,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -17695,7 +17695,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 12 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17731,7 +17731,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -17764,7 +17764,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -17785,7 +17785,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -17819,7 +17819,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -17855,7 +17855,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -17891,7 +17891,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "14 mi",
             "durationSeconds" : 8820,
@@ -17938,7 +17938,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 13 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -17974,7 +17974,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18007,7 +18007,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -18028,7 +18028,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "9 mi",
             "durationSeconds" : 5760,
@@ -18062,7 +18062,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -18098,7 +18098,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18134,7 +18134,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18181,7 +18181,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 14 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18217,7 +18217,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18250,7 +18250,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -18271,7 +18271,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6390,
@@ -18305,7 +18305,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18341,7 +18341,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -18377,7 +18377,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "14 mi",
             "durationSeconds" : 8820,
@@ -18424,7 +18424,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 15 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -18460,7 +18460,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18493,7 +18493,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -18514,7 +18514,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6390,
@@ -18548,7 +18548,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -18584,7 +18584,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18620,7 +18620,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18667,7 +18667,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 16 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18703,7 +18703,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18736,7 +18736,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -18757,7 +18757,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6390,
@@ -18791,7 +18791,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -18827,7 +18827,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -18863,7 +18863,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run this patiently enough that the last third still looks relaxed.",
+            "guideCue" : "Run this patiently enough that the last third still looks relaxed.",
             "dayLabel" : "Sun",
             "distanceLabel" : "14 mi",
             "durationSeconds" : 8820,
@@ -18910,7 +18910,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 17 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "7 mi",
             "durationSeconds" : 4410,
@@ -18946,7 +18946,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Run the reps with control so the final one still looks clean.",
+            "guideCue" : "Run the reps with control so the final one still looks clean.",
             "dayLabel" : "Tue",
             "distanceLabel" : "10 mi",
             "durationSeconds" : 6300,
@@ -18979,7 +18979,7 @@ export const trainingPlanTemplates = [
             "title" : "Interval session"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -19000,7 +19000,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Lock into rhythm instead of chasing pace.",
+            "guideCue" : "Lock into rhythm instead of chasing pace.",
             "dayLabel" : "Thu",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5130,
@@ -19034,7 +19034,7 @@ export const trainingPlanTemplates = [
             "title" : "Half-marathon pace run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -19070,7 +19070,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sat",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -19106,7 +19106,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Sun",
             "distanceLabel" : "8 mi",
             "durationSeconds" : 5040,
@@ -19153,7 +19153,7 @@ export const trainingPlanTemplates = [
         "summary" : "Imported advanced half week 18 with 6 scheduled items.",
         "workouts" : [
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Mon",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -19189,7 +19189,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Tue",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -19225,7 +19225,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Take the easiest option that helps you absorb the week.",
+            "guideCue" : "Take the easiest option that helps you absorb the week.",
             "dayLabel" : "Wed",
             "durationSeconds" : 1800,
             "effortLabel" : "Optional easy",
@@ -19246,7 +19246,7 @@ export const trainingPlanTemplates = [
             "title" : "Rest or cross-train"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Thu",
             "distanceLabel" : "6 mi",
             "durationSeconds" : 3780,
@@ -19282,7 +19282,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Let this support the week rather than steal from it.",
+            "guideCue" : "Let this support the week rather than steal from it.",
             "dayLabel" : "Fri",
             "distanceLabel" : "5 mi",
             "durationSeconds" : 3150,
@@ -19318,7 +19318,7 @@ export const trainingPlanTemplates = [
             "title" : "Easy run"
           },
           {
-            "coachCue" : "Keep it tiny. Fresh beats fit right now.",
+            "guideCue" : "Keep it tiny. Fresh beats fit right now.",
             "dayLabel" : "Sat",
             "durationSeconds" : 1920,
             "effortLabel" : "Very easy",
@@ -19353,7 +19353,7 @@ export const trainingPlanTemplates = [
             "title" : "Recovery run"
           },
           {
-            "coachCue" : "Stay calmer than feels natural in the opening stretch.",
+            "guideCue" : "Stay calmer than feels natural in the opening stretch.",
             "dayLabel" : "Sun",
             "distanceLabel" : "13.1 mi",
             "durationSeconds" : 8253,

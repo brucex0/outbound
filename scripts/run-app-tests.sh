@@ -38,9 +38,11 @@ xcodebuild -quiet \
   -parallel-testing-enabled NO \
   -only-testing:OutboundUITests/OutboundUITests/testLaunchSkipsLoginAndShowsPrimaryTabs \
   -only-testing:OutboundUITests/OutboundUITests/testPrimaryNavigationAndSettings \
+  -only-testing:OutboundUITests/OutboundUITests/testRealPiperGuideVoicePreviews \
   -only-testing:OutboundUITests/OutboundUITests/testSeededSocialFeedRunAndComments \
   -only-testing:OutboundUITests/OutboundUITests/testSeededSocialConnectionsGroupsAndNotifications \
   -only-testing:OutboundUITests/OutboundUITests/testSeededSocialDeclinesConnectionRequest \
   -only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish \
+  -only-testing:OutboundUITests/OutboundUITests/testSeededLive10KRunMetricsAndLifecycle \
   -only-testing:OutboundUITests/OutboundUITests/testLaunchPerformance \
   test

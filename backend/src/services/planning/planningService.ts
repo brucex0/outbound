@@ -117,7 +117,7 @@ export async function getToday(userId: string): Promise<TodayPlanningResponse> {
   return {
     workout: state.today,
     adjustment: state.latestAdjustment,
-    coachLine: state.today
+    guideLine: state.today
       ? "Here is the best next session based on your current plan."
       : "Create a goal and I will build today's session.",
     planningStatus: state.planningStatus,

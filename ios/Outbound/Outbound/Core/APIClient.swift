@@ -32,12 +32,12 @@ final class APIClient {
 
     func setToken(_ token: String?) { authToken = token }
 
-    func fetchCoachProfile(userId: String) async throws -> CoachProfile {
-        try await get("/coach/\(userId)/profile")
+    func fetchGuideProfile(userId: String) async throws -> GuideProfile {
+        try await get("/guide/\(userId)/profile")
     }
 
-    func rebuildCoachProfile(userId: String) async throws -> CoachProfile {
-        try await post("/coach/\(userId)/rebuild", body: EmptyBody())
+    func rebuildGuideProfile(userId: String) async throws -> GuideProfile {
+        try await post("/guide/\(userId)/rebuild", body: EmptyBody())
     }
 
     func uploadActivity(_ request: ActivityUploadRequest) async throws -> ActivityUploadResponse {
@@ -222,30 +222,34 @@ final class APIClient {
     }
 
     func createTogetherInvitation(runID: String, recipientUserID: String? = nil) async throws -> TogetherInvitationResponseDTO {
-        try await post("/social/group-runs/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: recipientUserID))
+        try await post("/social/activity-events/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: recipientUserID))
     }
 
-    func createFutureActivity(_ request: CreateFutureActivityRequestDTO) async throws -> SocialGroupRunDetailDTO {
-        try await post("/social/group-runs", body: request)
+    func createActivityEvent(_ request: CreateActivityEventRequestDTO) async throws -> ActivityEventDetailDTO {
+        try await post("/social/activity-events", body: request)
     }
 
-    func inviteConnections(_ userIDs: [String], toFutureActivity id: String) async throws -> FutureActivityInvitationBatchResponseDTO {
+    func inviteConnections(_ userIDs: [String], toActivityEvent id: String) async throws -> ActivityEventInvitationBatchResponseDTO {
         try await post(
-            "/social/group-runs/\(id)/invitations/batch",
-            body: FutureActivityInvitationBatchRequestDTO(recipientUserIds: userIDs)
+            "/social/activity-events/\(id)/invitations/batch",
+            body: ActivityEventInvitationBatchRequestDTO(recipientUserIds: userIDs)
         )
     }
 
-    func fetchFutureActivityResults(id: String) async throws -> FutureActivityResultDTO {
-        try await get("/social/group-runs/\(id)/results")
+    func deleteActivityEventInvitation(id invitationID: String, activityEventID: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/activity-events/\(activityEventID)/invitations/\(invitationID)")
     }
 
-    func linkActivity(_ activityID: String, toFutureActivity id: String) async throws -> SocialConnectionMutationDTO {
-        try await post("/social/group-runs/\(id)/link-activity", body: LinkFutureActivityRequestDTO(activityId: activityID))
+    func fetchActivityEventResults(id: String) async throws -> ActivityEventResultDTO {
+        try await get("/social/activity-events/\(id)/results")
     }
 
-    func markFutureActivityWithoutRecording(id: String) async throws -> SocialConnectionMutationDTO {
-        try await post("/social/group-runs/\(id)/no-recording", body: EmptyBody())
+    func linkActivity(_ activityID: String, toActivityEvent id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/activity-events/\(id)/link-activity", body: LinkActivityEventRequestDTO(activityId: activityID))
+    }
+
+    func markActivityEventWithoutRecording(id: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/activity-events/\(id)/no-recording", body: EmptyBody())
     }
 
     func createReferralLink() async throws -> ReferralLinkResponseDTO {
@@ -327,23 +331,23 @@ final class APIClient {
         try await delete("/social/groups/\(id)/membership")
     }
 
-    func fetchSocialGroupRun(id: String) async throws -> SocialGroupRunDetailDTO {
-        try await get("/social/group-runs/\(id)")
+    func fetchActivityEvent(id: String) async throws -> ActivityEventDetailDTO {
+        try await get("/social/activity-events/\(id)")
     }
 
-    func joinSocialGroupRun(id: String) async throws -> SocialConnectionMutationDTO {
-        try await post("/social/group-runs/\(id)/rsvp", body: EmptyBody())
+    func joinActivityEvent(id: String, attendanceMode: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/activity-events/\(id)/rsvp", body: ActivityEventAttendanceRequestDTO(attendanceMode: attendanceMode))
     }
 
-    func leaveSocialGroupRun(id: String) async throws -> SocialConnectionMutationDTO {
-        try await delete("/social/group-runs/\(id)/rsvp")
+    func leaveActivityEvent(id: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/activity-events/\(id)/rsvp")
     }
 
-    func acceptSocialRunInvitation(id: String) async throws -> SocialConnectionMutationDTO {
-        try await post("/social/invitations/\(id)/accept", body: EmptyBody())
+    func acceptSocialRunInvitation(id: String, attendanceMode: String) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/invitations/\(id)/accept", body: ActivityEventAttendanceRequestDTO(attendanceMode: attendanceMode))
     }
 
-    func acceptFutureActivityInvitation(token: String) async throws -> SocialConnectionMutationDTO {
+    func acceptActivityEventInvitation(token: String) async throws -> SocialConnectionMutationDTO {
         try await post("/social/invitations/token/\(token)/accept", body: EmptyBody())
     }
 
@@ -650,7 +654,7 @@ private extension PlanningAPIStateResponse {
             targetMinutes: targetMinutes,
             progressPercent: progressPercent,
             summaryLine: "\(completedSessions) of \(targetSessions) sessions, \(completedMinutes) of \(targetMinutes) min this week",
-            coachLine: coachLine(fallbackFocus: focus),
+            guideLine: guideLine(fallbackFocus: focus),
             focus: plan.currentPhase.capitalized,
             weekSummary: currentVersion?.summary ?? "This week is being generated from your current training data.",
             scheduledWorkouts: scheduledWorkouts,
@@ -694,7 +698,7 @@ private extension PlanningAPIStateResponse {
         currentWeekWorkouts(calendar: calendar).filter { $0.status == status }
     }
 
-    private func coachLine(fallbackFocus: TrainingPlanFocus) -> String {
+    private func guideLine(fallbackFocus: TrainingPlanFocus) -> String {
         if let latestAdjustment {
             return latestAdjustment.message
         }
@@ -721,7 +725,7 @@ private extension PlanningAPIStateResponse {
         let lowReadiness = readiness == .lowEnergy || readiness == .stressed
         let adjustmentLine = latestAdjustment?.message
             ?? (lowReadiness ? "Dialed in around today's readiness." : nil)
-        let coachLine = latestAdjustment?.message ?? workout.coachCue
+        let guideLine = latestAdjustment?.message ?? workout.guideCue
         let suggestion = SuggestedSession(
             id: "plan-\(apiWorkout.id)",
             sport: SportType.apiSport(from: apiWorkout.modality),
@@ -729,7 +733,7 @@ private extension PlanningAPIStateResponse {
             durationLabel: workout.durationLabel,
             activityLabel: workout.kind.displayName,
             framing: workout.purpose,
-            coachLine: coachLine,
+            guideLine: guideLine,
             startLabel: "Start now",
             targetDistanceMeters: workout.targetDistanceMeters,
             targetDurationSeconds: workout.durationSeconds,
@@ -740,7 +744,7 @@ private extension PlanningAPIStateResponse {
         return TodayTrainingSuggestion(
             title: workout.title,
             detail: "Adaptive session • \(workout.durationLabel) • \(workout.effortLabel)",
-            coachLine: coachLine,
+            guideLine: guideLine,
             adjustmentLine: adjustmentLine,
             suggestedSession: suggestion,
             workout: workout,
@@ -790,7 +794,7 @@ private extension PlanningAPIWorkout {
             dayLabel: overrideDayLabel ?? APIDateParser.weekdayLabel(from: scheduledDate),
             summary: stimulus.summaryLabel,
             purpose: stimulus.purposeLabel,
-            coachCue: stimulus.coachCue,
+            guideCue: stimulus.guideCue,
             effortLabel: stimulus.effortLabel,
             durationSeconds: durationSeconds,
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
@@ -960,7 +964,7 @@ private extension String {
         }
     }
 
-    var coachCue: String {
+    var guideCue: String {
         switch self {
         case "threshold", "speed": return "Smooth and controlled beats forcing it today."
         case "longEndurance": return "Stay patient early so the finish still feels composed."
@@ -1025,7 +1029,7 @@ struct AssistantChatRequest: Encodable {
 }
 
 struct AssistantChatAPIContext: Encodable {
-    let coachName: String
+    let guideName: String
     let activityCount: Int
     let weeklyDistanceKilometers: Double
     let currentGoalSummary: String?
@@ -1059,7 +1063,7 @@ struct ActivitySuggestionResponse: Codable, Equatable {
     let relationship: String
     let primary: ActivitySuggestionPayload?
     let alternates: [ActivitySuggestionPayload]
-    let coachLine: String
+    let guideLine: String
     let planningStatus: String
     let generatedAt: String
     let validForDate: String
@@ -1134,12 +1138,12 @@ extension ActivitySuggestionResponse {
     }
 
     func todayTrainingSuggestion() -> TodayTrainingSuggestion? {
-        primary?.todayTrainingSuggestion(coachLine: coachLine)
+        primary?.todayTrainingSuggestion(guideLine: guideLine)
     }
 }
 
 extension ActivitySuggestionPayload {
-    func todayTrainingSuggestion(coachLine: String) -> TodayTrainingSuggestion {
+    func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion {
         let durationSeconds = durationMinutes * 60
         let stepDuration = max(60, durationSeconds / max(1, steps.count))
         let workoutSteps = steps.enumerated().map { index, step in
@@ -1158,7 +1162,7 @@ extension ActivitySuggestionPayload {
             dayLabel: "Today",
             summary: why,
             purpose: why,
-            coachCue: coachLine,
+            guideCue: guideLine,
             effortLabel: effortLabel,
             durationSeconds: durationSeconds,
             distanceLabel: nil,
@@ -1182,14 +1186,14 @@ extension ActivitySuggestionPayload {
             durationLabel: "\(durationMinutes) min",
             activityLabel: effortLabel.lowercased(),
             framing: why,
-            coachLine: coachLine,
+            guideLine: guideLine,
             startLabel: startLabel
         )
 
         return TodayTrainingSuggestion(
             title: title,
             detail: "\(durationMinutes) min • \(effortLabel)",
-            coachLine: coachLine,
+            guideLine: guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,
             workout: workout,
@@ -1365,7 +1369,7 @@ struct ActivityUploadRequest: Encodable {
     let elevationM: Double?
     let avgPace: Double?
     let avgHeartRate: Int?
-    let futureActivityId: String?
+    let activityEventId: String?
     let route: SavedRoute?
     let reflection: FinishReflection?
     let clientData: SavedActivity

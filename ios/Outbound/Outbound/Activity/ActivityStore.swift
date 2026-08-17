@@ -6,10 +6,20 @@ import UIKit
 @MainActor
 final class ActivityStore: ObservableObject {
     @Published private(set) var activities: [SavedActivity] = []
+    @Published private(set) var isSyncing = false
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
     private var activityRevision = 0
-    private var isSyncing = false
+
+    var pendingActivityCount: Int {
+        activities.filter { !($0.sync?.isSynced ?? false) }.count
+    }
+
+    var failedActivityCount: Int {
+        activities.filter { activity in
+            !(activity.sync?.isSynced ?? false) && activity.sync?.lastError?.isEmpty == false
+        }.count
+    }
 
     init() {
         Task { await loadActivities() }
@@ -19,6 +29,7 @@ final class ActivityStore: ObservableObject {
     func save(
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
+        activityType: ActivityType = .running,
         reflection: FinishReflection?,
         goal: ActivityGoal? = nil,
         title: String? = nil,
@@ -28,14 +39,15 @@ final class ActivityStore: ObservableObject {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
-        futureActivityID: String? = nil
+        activityEventID: String? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         let activity = try await persistence.save(
             summary: summary,
             photos: photos,
+            activityType: activityType,
             title: resolvedTitle,
-            coachNudge: "",
+            guideNudge: "",
             reflection: reflection,
             goal: goal,
             source: source,
@@ -44,7 +56,7 @@ final class ActivityStore: ObservableObject {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
-            futureActivityID: futureActivityID
+            activityEventID: activityEventID
         )
         activityRevision += 1
         activities.insert(activity, at: 0)
@@ -98,8 +110,9 @@ final class ActivityStore: ObservableObject {
 
         let updated = SavedActivity(
             id: activity.id,
+            activityType: activity.activityType,
             title: cleanedTitle.isEmpty ? activity.title : cleanedTitle,
-            coachNudge: activity.coachNudge,
+            guideNudge: activity.guideNudge,
             reflection: activity.reflection,
             createdAt: activity.createdAt,
             startedAt: startedAt,
@@ -125,7 +138,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
-            futureActivityID: activity.futureActivityID,
+            activityEventID: activity.activityEventID,
             route: activity.route,
             photos: activity.photos,
             sync: SavedActivitySyncState(
@@ -205,7 +218,7 @@ final class ActivityStore: ObservableObject {
                 ActivityUploadRequest(
                     clientActivityId: priorState.clientActivityId,
                     syncSource: "ios-local-store",
-                    type: "running",
+                    type: activity.activityType.rawValue,
                     title: activity.title,
                     startedAt: activity.startedAt,
                     endedAt: activity.endedAt,
@@ -214,7 +227,7 @@ final class ActivityStore: ObservableObject {
                     elevationM: activity.elevationGainM,
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
-                    futureActivityId: activity.futureActivityID,
+                    activityEventId: activity.activityEventID,
                     route: activity.route,
                     reflection: activity.reflection,
                     clientData: syncSnapshot(for: activity),
@@ -250,8 +263,9 @@ final class ActivityStore: ObservableObject {
         guard let current = activity(id: activityID) else { return }
         let updated = SavedActivity(
             id: current.id,
+            activityType: current.activityType,
             title: current.title,
-            coachNudge: current.coachNudge,
+            guideNudge: current.guideNudge,
             reflection: current.reflection,
             createdAt: current.createdAt,
             startedAt: current.startedAt,
@@ -268,7 +282,7 @@ final class ActivityStore: ObservableObject {
             indoor: current.indoor,
             cadence: current.cadence,
             heartRateZones: current.heartRateZones,
-            futureActivityID: current.futureActivityID,
+            activityEventID: current.activityEventID,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -446,8 +460,9 @@ final class ActivityStore: ObservableObject {
     ) -> SavedActivity {
         SavedActivity(
             id: activity.id,
+            activityType: activity.activityType,
             title: activity.title,
-            coachNudge: activity.coachNudge,
+            guideNudge: activity.guideNudge,
             reflection: activity.reflection,
             createdAt: activity.createdAt,
             startedAt: activity.startedAt,
@@ -464,7 +479,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
-            futureActivityID: activity.futureActivityID,
+            activityEventID: activity.activityEventID,
             route: activity.route,
             photos: photos,
             sync: sync
@@ -537,7 +552,7 @@ final class ActivityStore: ObservableObject {
         return SavedActivity(
             id: UUID(uuidString: id) ?? UUID(),
             title: title,
-            coachNudge: "Keep your cadence steady.",
+            guideNudge: "Keep your cadence steady.",
             reflection: nil,
             createdAt: startedAt,
             startedAt: startedAt,

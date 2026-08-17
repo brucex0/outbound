@@ -1,16 +1,16 @@
 import { Prisma } from "@prisma/client/index.js";
-import { buildCoachSystemPrompt } from "./ai.js";
+import { buildGuideSystemPrompt } from "./ai.js";
 import { getPrismaClient } from "./prisma.js";
-import type { CoachProfilePayload, GoalItem, MemorySnapshot, PersonalRecords } from "../types/coach.js";
+import type { GuideProfilePayload, GoalItem, MemorySnapshot, PersonalRecords } from "../types/guide.js";
 
-// Rebuild and persist the coach profile after each activity or on demand.
-// Called by the activity completion webhook and the /coach/rebuild endpoint.
-export async function rebuildCoachProfile(userId: string): Promise<CoachProfilePayload> {
+// Rebuild and persist the guide profile after each activity or on demand.
+// Called by the activity completion webhook and the /guide/rebuild endpoint.
+export async function rebuildGuideProfile(userId: string): Promise<GuideProfilePayload> {
   const prisma = getPrismaClient();
   const [user, activities] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: { coachProfile: true },
+      include: { guideProfile: true },
     }),
     prisma.activity.findMany({
       where: { userId, type: "running" },
@@ -19,7 +19,7 @@ export async function rebuildCoachProfile(userId: string): Promise<CoachProfileP
     }),
   ]);
 
-  const existing = user.coachProfile;
+  const existing = user.guideProfile;
   const runActivities = activities.filter((a) => a.distanceM && a.durationSecs);
 
   // Compute weekly volume (last 7 days)
@@ -73,19 +73,19 @@ export async function rebuildCoachProfile(userId: string): Promise<CoachProfileP
     memorySnapshot,
   };
 
-  const systemPrompt = await buildCoachSystemPrompt(athleteProfile);
+  const systemPrompt = await buildGuideSystemPrompt(athleteProfile);
 
-  const coachName = existing?.coachName ?? "Coach";
-  const personality = (existing?.personality ?? "encouraging") as CoachProfilePayload["personality"];
+  const guideName = existing?.guideName ?? "Guide";
+  const personality = (existing?.personality ?? "encouraging") as GuideProfilePayload["personality"];
   const voiceId = existing?.voiceId ?? "default";
   const goals = ((existing?.goals ?? []) as unknown) as GoalItem[];
   const version = (existing?.version ?? 0) + 1;
 
-  await prisma.coachProfile.upsert({
+  await prisma.guideProfile.upsert({
     where: { userId },
     create: {
       userId,
-      coachName,
+      guideName,
       personality,
       voiceId,
       fitnessLevel,
@@ -108,13 +108,13 @@ export async function rebuildCoachProfile(userId: string): Promise<CoachProfileP
     },
   });
 
-  const payload: CoachProfilePayload = {
+  const payload: GuideProfilePayload = {
     version,
-    coachName,
+    guideName,
     personality,
     voiceId,
     athlete: {
-      fitnessLevel: fitnessLevel as CoachProfilePayload["athlete"]["fitnessLevel"],
+      fitnessLevel: fitnessLevel as GuideProfilePayload["athlete"]["fitnessLevel"],
       weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
       strengths: existing?.strengths ?? [],
       weaknesses: existing?.weaknesses ?? [],

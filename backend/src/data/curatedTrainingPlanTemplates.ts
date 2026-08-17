@@ -6,13 +6,13 @@ type RawWorkout = Record<string, any>;
 const outboundPlanStandardsSource = {
   name: "Plainstride plan standards",
   license: "Original",
-  attribution: "Plainstride-authored plans benchmarked against established road-running coaching patterns",
+  attribution: "Plainstride-authored plans benchmarked against established road-running guidance patterns",
   url: "https://www.halhigdon.com/",
   importNotes:
-    "Uses original Plainstride workout tables shaped by common coaching conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans.",
+    "Uses original Plainstride workout tables shaped by common guidance conventions: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and a taper for race plans.",
 };
 
-const coachBuiltTemplateIds = new Set([
+const guideBuiltTemplateIds = new Set([
   "run-consistency-v1",
   "run-comeback-v1",
   "run-base-30-v1",
@@ -28,7 +28,7 @@ export const trainingPlanTemplates = [
 
 function curateTemplate(template: RawTemplate): RawTemplate {
   const curated = structuredClone(template);
-  if (coachBuiltTemplateIds.has(curated.id)) {
+  if (guideBuiltTemplateIds.has(curated.id)) {
     curated.source = outboundPlanStandardsSource;
   }
   if (curated.id === "run-5k-v1") {
@@ -68,7 +68,7 @@ function curateWorkout(workout: RawWorkout): RawWorkout {
     ...workout,
     title: "Rest day",
     purpose: "Absorb the week and protect the next real session.",
-    coachCue: "Take the rest day seriously. Recovery is part of the plan.",
+    guideCue: "Take the rest day seriously. Recovery is part of the plan.",
     effortLabel: "Rest",
     durationSeconds: 0,
     steps: [
@@ -240,7 +240,7 @@ function raceRun(id: string, day: string, title: string, durationMinutes: number
   ]);
 }
 
-function workout(id: string, title: string, kind: string, dayLabel: string, summary: string, purpose: string, coachCue: string, effortLabel: string, durationMinutes: number, steps: RawTemplate[], isOptional = false): RawWorkout {
+function workout(id: string, title: string, kind: string, dayLabel: string, summary: string, purpose: string, guideCue: string, effortLabel: string, durationMinutes: number, steps: RawTemplate[], isOptional = false): RawWorkout {
   return {
     id,
     title,
@@ -248,7 +248,7 @@ function workout(id: string, title: string, kind: string, dayLabel: string, summ
     dayLabel,
     summary,
     purpose,
-    coachCue,
+    guideCue,
     effortLabel,
     durationSeconds: durationMinutes * 60,
     distanceLabel: null,

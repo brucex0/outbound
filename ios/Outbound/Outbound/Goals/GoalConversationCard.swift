@@ -34,7 +34,7 @@ struct GoalConversationCard: View {
             Text(progress.summaryLine)
                 .font(.title3.weight(.bold))
 
-            Text(progress.coachLine)
+            Text(progress.guideLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -91,7 +91,7 @@ struct GoalConversationCard: View {
 
     private var chooseTargetCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(goalStore.conversation.draft?.theme.coachPrompt ?? "Let's keep it realistic.")
+            Text(goalStore.conversation.draft?.theme.guidePrompt ?? "Let's keep it realistic.")
                 .font(.headline)
 
             Text(targetPrompt)

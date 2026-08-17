@@ -28,7 +28,7 @@ export async function buildSessionBrief(prisma: PrismaClient, userId: string, wo
       soreness: state.latestReadiness.soreness,
       illnessOrPain: state.latestReadiness.illnessOrPain,
     } : null,
-    coachingPriorities: beliefs.map((belief) => belief.summary).slice(0, 3),
+    guidancePriorities: beliefs.map((belief) => belief.summary).slice(0, 3),
     cuePreferences: beliefs.filter((belief) => belief.kind === "preference").map((belief) => belief.summary),
     forbiddenBehavior: [
       "Do not diagnose pain or symptoms.",

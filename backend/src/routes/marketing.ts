@@ -151,7 +151,7 @@ router.get("/", (c) => c.html(pageShell({
     <section class="hero wrap">
       <div class="hero-copy">
         <p class="eyebrow">Run the day you're in</p>
-        <h1>A coach that keeps pace with real life.</h1>
+        <h1>A guide that keeps pace with real life.</h1>
         <p class="lede">Plainstride turns your goals, readiness, recent training, and available time into one clear answer: what should I do today?</p>
         <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="#beta">Join the beta</a></div>
         <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Private TestFlight beta now underway</div>
@@ -186,7 +186,7 @@ router.get("/", (c) => c.html(pageShell({
         <h2>Before, during, and after every run.</h2>
         <div class="feature-grid">
           <article class="feature"><span class="feature-num">01 · TODAY</span><h3>Know what to do</h3><p>Adaptive guidance grounded in your goal, readiness, training history, weather, and actual schedule.</p></article>
-          <article class="feature"><span class="feature-num">02 · THE RUN</span><h3>Stay present</h3><p>GPS recording, optional spoken coaching, Live Activities, photos, and private live sharing when you choose.</p></article>
+          <article class="feature"><span class="feature-num">02 · THE RUN</span><h3>Stay present</h3><p>GPS recording, optional spoken guidance, Live Activities, photos, and private live sharing when you choose.</p></article>
           <article class="feature"><span class="feature-num">03 · PROGRESS</span><h3>See momentum</h3><p>Weekly trends, records, race predictions, gear mileage, and reflections that value consistency over perfection.</p></article>
         </div>
       </div>

@@ -1,12 +1,12 @@
 # Product UI Engineering Handoff
 
-Open this when implementing the simplified product, onboarding, cycle-aware coaching, or their shared SwiftUI components.
+Open this when implementing the simplified product, onboarding, cycle-aware guidance, or their shared SwiftUI components.
 
 This document translates the target UX into implementation contracts. Product rationale remains in:
 
 - `docs/simplified-product-ux.md`
 - `docs/new-user-onboarding.md`
-- `docs/cycle-aware-coaching.md`
+- `docs/cycle-aware-guidance.md`
 
 Clickable references:
 
@@ -223,7 +223,7 @@ Order:
 
 1. Current focus and plan week.
 2. Weekly adherence and totals.
-3. Precise coach observation.
+3. Precise guide observation.
 4. Four-week trend.
 5. Training-oriented recent activity.
 6. History, records, predictions, and gear.
@@ -258,9 +258,9 @@ Conditional fields:
 
 Do not request location, motion, notifications, camera, contacts, or live-location permissions as a batch. Follow the timing in `docs/new-user-onboarding.md`.
 
-## Cycle-Aware Coaching Contract
+## Cycle-Aware Guidance Contract
 
-Entry: `Me -> Health & body -> Cycle-aware coaching`.
+Entry: `Me -> Health & body -> Cycle-aware guidance`.
 
 Required V1 screens:
 
@@ -280,7 +280,7 @@ Raw cycle data must not enter:
 - club or compatible-workout APIs;
 - general product analytics.
 
-Planning receives only the derived adjustment signal described in `docs/cycle-aware-coaching.md`.
+Planning receives only the derived adjustment signal described in `docs/cycle-aware-guidance.md`.
 
 ## Accessibility Acceptance Criteria
 
@@ -315,7 +315,7 @@ Recommended events:
 - `moment_shared(destination_kind)`
 - `compatible_run_opened(source_kind)`
 - `club_run_joined(distance_group)`
-- `cycle_coaching_enabled(source)` without cycle or symptom data
+- `cycle_guidance_enabled(source)` without cycle or symptom data
 - `cycle_adjustment_accepted(adjustment_kind)` without private reason
 
 ## Definition of Done

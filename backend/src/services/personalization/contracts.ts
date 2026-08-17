@@ -105,7 +105,7 @@ export const runnerProfileInputSchema = z.object({
   recentSessionsPerWeek: z.number().int().min(0).max(14).nullable().optional(),
   targetSessionsPerWeek: z.number().int().min(1).max(7).optional(),
   preferredLongRunDay: z.string().min(1).max(16).nullable().optional(),
-  coachingDetail: z.enum(["minimal", "balanced", "detailed"]).optional(),
+  guidanceDetail: z.enum(["minimal", "balanced", "detailed"]).optional(),
   constraints: z.record(z.unknown()).optional(),
   complete: z.boolean().optional(),
 });

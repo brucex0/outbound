@@ -6,18 +6,18 @@ struct MainTabView: View {
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
-    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
-    @State private var selectedTab: AppTab = .me
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var connectivityStore: ConnectivityStore
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
-    @State private var isAssistantPresented = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -25,29 +25,17 @@ struct MainTabView: View {
         }
         .background(Color(.systemGroupedBackground))
         .feedbackReporter()
-        .overlay(alignment: .bottom) {
-            if !isActivityVisible && !usesSimplifiedShell {
-                HStack(spacing: 10) {
-                    AssistantLauncherButton(accentColor: assistantAccentColor) {
-                        isAssistantPresented = true
-                    }
-
-#if OUTBOUND_ENABLE_SOCIAL
-                    CompactTabSwitcher(
-                        selectedTab: $selectedTab,
-                        accentColor: assistantAccentColor
-                    )
-#endif
-
-                    ActivityPortalButton(
-                        state: activitySessionState,
-                        elapsedSeconds: activityElapsedSeconds,
-                        sport: activeLaunch?.intent?.sport
-                    ) {
-                        presentActivity()
-                    }
+        .overlay(alignment: .bottomTrailing) {
+            if !isActivityVisible && activitySessionState != .idle {
+                ActivityPortalButton(
+                    state: activitySessionState,
+                    elapsedSeconds: activityElapsedSeconds,
+                    sport: activeLaunch?.intent?.sport
+                ) {
+                    presentActivity()
                 }
-                .offset(y: 10)
+                .padding(.trailing, 18)
+                .padding(.bottom, 72)
                 .zIndex(2)
             }
         }
@@ -66,35 +54,24 @@ struct MainTabView: View {
                 .zIndex(1)
             }
         }
-        .sheet(isPresented: $isAssistantPresented) {
-            AssistantView(
-                screenName: currentScreenName,
-                isRecordingActive: false
-            )
-            .presentationDetents([.fraction(0.58), .large])
-            .presentationDragIndicator(.visible)
-        }
-        .fullScreenCover(isPresented: onboardingPresentation) {
-            Group {
-                if usesSimplifiedShell {
-                    SimplifiedOnboardingFlow { profile in
-                        applyOnboardingProfile(profile)
-                    }
-                    .environmentObject(onboardingStore)
-                    .environmentObject(personalizationStore)
-                    .environmentObject(trainingPlanStore)
-                } else {
-                    OnboardingFlowView { shouldStartSession in
-                        let profile = onboardingStore.complete()
-                        applyOnboardingProfile(profile)
-                        if shouldStartSession {
-                            presentActivity(intent: profile.suggestedSession.intent)
-                        }
-                    }
-                    .environmentObject(onboardingStore)
-                    .environmentObject(coachCatalog)
-                }
+        .overlay(alignment: .top) {
+            if !isActivityVisible {
+                GlobalConnectivityBanner()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(10)
             }
+        }
+        .animation(.easeInOut(duration: 0.22), value: connectivityStore.isOffline)
+        .animation(.easeInOut(duration: 0.22), value: activityStore.isSyncing)
+        .fullScreenCover(isPresented: onboardingPresentation) {
+            SimplifiedOnboardingFlow { profile in
+                applyOnboardingProfile(profile)
+            }
+            .environmentObject(onboardingStore)
+            .environmentObject(personalizationStore)
+            .environmentObject(trainingPlanStore)
             .interactiveDismissDisabled()
         }
         .onAppear {
@@ -106,7 +83,6 @@ struct MainTabView: View {
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil else { return }
-            selectedTab = .me
             if isActivityVisible {
                 isActivityVisible = false
             }
@@ -119,6 +95,10 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             consumeStoredPreparedActivityIfNeeded()
+        }
+        .onChange(of: connectivityStore.isOffline) { wasOffline, isOffline in
+            guard wasOffline, !isOffline else { return }
+            Task { await activityStore.syncPendingActivitiesIfNeeded() }
         }
     }
 
@@ -138,83 +118,12 @@ struct MainTabView: View {
 
     @ViewBuilder
     private var currentContent: some View {
-        if usesSimplifiedShell {
-            SimplifiedAppShell { intent in
-                presentActivity(intent: intent)
-            }
-        } else {
-            legacyContent
-        }
-    }
-
-    @ViewBuilder
-    private var legacyContent: some View {
-#if OUTBOUND_ENABLE_SOCIAL
-        Group {
-            switch selectedTab {
-            case .me:
-                ProfileView(
-                    bottomContentInset: bottomChromeContentInset,
-                    onStartSuggestion: { suggestion in
-                        presentActivity(intent: suggestion.intent)
-                    }
-                )
-            case .social:
-                ActivityFeedView(bottomContentInset: bottomChromeContentInset)
-            }
-        }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 24)
-                .onEnded { value in
-                    guard abs(value.translation.width) > abs(value.translation.height),
-                          abs(value.translation.width) > 60 else { return }
-
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        if value.translation.width < 0 {
-                            selectedTab = selectedTab.next
-                        } else {
-                            selectedTab = selectedTab.previous
-                        }
-                    }
-                }
-        )
-#else
-        ProfileView(
-            bottomContentInset: bottomChromeContentInset,
-            onStartSuggestion: { suggestion in
-                presentActivity(intent: suggestion.intent)
-            }
-        )
-#endif
-    }
-
-    private var usesSimplifiedShell: Bool {
-        true
-    }
-
-    private var bottomChromeContentInset: CGFloat {
-        96
-    }
-
-    private var currentScreenName: String {
-#if OUTBOUND_ENABLE_SOCIAL
-        selectedTab == .me ? "Me" : "Social"
-#else
-        "Me"
-#endif
-    }
-
-    private var assistantAccentColor: Color {
-        switch coachCatalog.selectedPersona.face.colorName {
-        case "orange": .orange
-        case "pink": .pink
-        case "green": .green
-        case "blue": .blue
-        case "cyan": .cyan
-        case "yellow": .yellow
-        case "red": .red
-        case "gray": .gray
-        default: .orange
+        SimplifiedAppShell(
+            activitySessionState: activitySessionState,
+            activityElapsedSeconds: activityElapsedSeconds,
+            activeSport: activeLaunch?.intent?.sport
+        ) { intent in
+            presentActivity(intent: intent)
         }
     }
 
@@ -398,7 +307,7 @@ enum MotivationPhase {
     case completedToday
 }
 
-struct CoachSpark: Equatable {
+struct GuideSpark: Equatable {
     let headline: String
     let message: String
     let primaryCTA: String
@@ -412,7 +321,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let durationLabel: String
     let activityLabel: String
     let framing: String
-    let coachLine: String
+    let guideLine: String
     let startLabel: String
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
@@ -426,7 +335,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         durationLabel: String,
         activityLabel: String,
         framing: String,
-        coachLine: String,
+        guideLine: String,
         startLabel: String,
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
@@ -439,7 +348,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.durationLabel = durationLabel
         self.activityLabel = activityLabel
         self.framing = framing
-        self.coachLine = coachLine
+        self.guideLine = guideLine
         self.startLabel = startLabel
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
@@ -453,7 +362,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             sport: sport,
             title: title,
             detail: "\(durationLabel) • \(activityLabel)",
-            coachLine: coachLine,
+            guideLine: guideLine,
             startLabel: startLabel,
             targetDistanceMeters: targetDistanceMeters,
             targetDurationSeconds: targetDurationSeconds ?? SessionIntentGoalParser.durationSeconds(from: durationLabel),
@@ -472,13 +381,13 @@ struct FinishReflection: Equatable, Codable {
 
 struct DailyMotivationSnapshot {
     let phase: MotivationPhase
-    let spark: CoachSpark
+    let spark: GuideSpark
     let suggestions: [SuggestedSession]
 }
 
 struct MotivationDashboardView: View {
     @EnvironmentObject private var activityStore: ActivityStore
-    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var checkInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
@@ -492,7 +401,7 @@ struct MotivationDashboardView: View {
         DailyMotivationEngine.makeSnapshot(
             activities: activityStore.activities,
             readiness: checkInStore.readiness,
-            persona: coachCatalog.selectedPersona
+            persona: guideCatalog.selectedPersona
         )
     }
 
@@ -531,17 +440,17 @@ struct MotivationDashboardView: View {
                             activePlan: activePlan,
                             week: week,
                             todaySuggestion: trainingPlanStore.todaySuggestion,
-                            accentColor: coachCatalog.selectedPersona.face.accentColor
+                            accentColor: guideCatalog.selectedTheme.accentColor
                         )
                     } else {
                         ActiveTrainingPlanPendingDetailView(
                             activePlan: activePlan,
-                            accentColor: coachCatalog.selectedPersona.face.accentColor
+                            accentColor: guideCatalog.selectedTheme.accentColor
                         )
                     }
                 } else {
                     ActiveTrainingPlanSyncingDetailView(
-                        accentColor: coachCatalog.selectedPersona.face.accentColor
+                        accentColor: guideCatalog.selectedTheme.accentColor
                     )
                 }
             }
@@ -550,7 +459,7 @@ struct MotivationDashboardView: View {
             NavigationStack {
                 TrainingPlanRecommendationDetailView(
                     recommendation: recommendation,
-                    accentColor: coachCatalog.selectedPersona.face.accentColor
+                    accentColor: guideCatalog.selectedTheme.accentColor
                 ) {
                     trainingPlanStore.acceptRecommendation(recommendation)
                     selectedRecommendation = nil
@@ -565,7 +474,7 @@ struct MotivationDashboardView: View {
                 TrainingPlanPickerView(
                     recommendations: trainingPlanStore.planOptions,
                     isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
-                    accentColor: coachCatalog.selectedPersona.face.accentColor,
+                    accentColor: guideCatalog.selectedTheme.accentColor,
                     onSelectPlan: { recommendation in
                         selectedRecommendation = recommendation
                     },
@@ -581,7 +490,7 @@ struct MotivationDashboardView: View {
     private var sparkCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 14) {
-                coachBadge
+                guideBadge
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(snapshot.spark.headline)
@@ -614,7 +523,7 @@ struct MotivationDashboardView: View {
         .background(
             LinearGradient(
                 colors: [
-                    coachCatalog.selectedPersona.face.accentColor.opacity(0.95),
+                    guideCatalog.selectedTheme.accentColor.opacity(0.95),
                     .black.opacity(0.85)
                 ],
                 startPoint: .topLeading,
@@ -640,16 +549,16 @@ struct MotivationDashboardView: View {
         } else if let activitySuggestion = trainingPlanStore.activitySuggestion {
             activitySuggestionNowCard(activitySuggestion)
         } else if let primarySuggestion = snapshot.suggestions.first {
-            coachNowCard(primarySuggestion: primarySuggestion)
+            guideNowCard(primarySuggestion: primarySuggestion)
         }
     }
 
-    private var coachBadge: some View {
+    private var guideBadge: some View {
         ZStack {
             Circle()
                 .fill(.white.opacity(0.18))
                 .frame(width: 68, height: 68)
-            Image(systemName: coachCatalog.selectedPersona.face.symbolName)
+            Image(systemName: "sparkles")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(.white)
         }
@@ -689,7 +598,7 @@ struct MotivationDashboardView: View {
             Text(todaySuggestion.detail)
                 .font(.subheadline.weight(.semibold))
 
-            Text(todaySuggestion.coachLine)
+            Text(todaySuggestion.guideLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -697,11 +606,11 @@ struct MotivationDashboardView: View {
             if let adjustmentLine = todaySuggestion.adjustmentLine {
                 Label(adjustmentLine, systemImage: "heart.text.square.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .foregroundStyle(guideCatalog.selectedTheme.accentColor)
             } else if let entry = checkInStore.todayEntry {
                 Label(entry.readiness.summaryLabel, systemImage: "checkmark.circle.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .foregroundStyle(guideCatalog.selectedTheme.accentColor)
             }
 
             HStack(spacing: 10) {
@@ -709,7 +618,7 @@ struct MotivationDashboardView: View {
                     onStartSuggestion(todaySuggestion.suggestedSession)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(coachCatalog.selectedPersona.face.accentColor)
+                .tint(guideCatalog.selectedTheme.accentColor)
 
                 activePlanActionsButton
             }
@@ -755,7 +664,7 @@ struct MotivationDashboardView: View {
                         systemImage: "calendar"
                     )
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .foregroundStyle(guideCatalog.selectedTheme.accentColor)
                     .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
@@ -789,7 +698,7 @@ struct MotivationDashboardView: View {
                         .font(.title3.weight(.bold))
                     Text(activitySuggestionDetail(for: response))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                        .foregroundStyle(guideCatalog.selectedTheme.accentColor)
                 }
 
                 Spacer()
@@ -802,7 +711,7 @@ struct MotivationDashboardView: View {
                     .background(Color(.systemBackground), in: Capsule())
             }
 
-            Text(response.coachLine)
+            Text(response.guideLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -810,7 +719,7 @@ struct MotivationDashboardView: View {
             if let why = primary?.why {
                 Label(why, systemImage: "lightbulb.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                    .foregroundStyle(guideCatalog.selectedTheme.accentColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -824,20 +733,20 @@ struct MotivationDashboardView: View {
             HStack(spacing: 10) {
                 if let primary {
                     Button {
-                        onStartSuggestion(primary.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                        onStartSuggestion(primary.todayTrainingSuggestion(guideLine: response.guideLine).suggestedSession)
                     } label: {
                         Image(systemName: activitySuggestionStartIcon(for: primary))
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(width: 44, height: 44)
-                            .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
+                            .background(guideCatalog.selectedTheme.accentColor, in: Circle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(primary.startLabel)
 
                     if let alternate = response.alternates.first {
                         Button {
-                            onStartSuggestion(alternate.todayTrainingSuggestion(coachLine: response.coachLine).suggestedSession)
+                            onStartSuggestion(alternate.todayTrainingSuggestion(guideLine: response.guideLine).suggestedSession)
                         } label: {
                             Text(alternate.title)
                                 .font(.caption.weight(.semibold))
@@ -879,7 +788,7 @@ struct MotivationDashboardView: View {
                         .font(.headline)
                     Label("Companion pick", systemImage: "calendar.badge.plus")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                        .foregroundStyle(guideCatalog.selectedTheme.accentColor)
                     Text(recommendation.template.title)
                         .font(.title3.weight(.bold))
                 }
@@ -911,7 +820,7 @@ struct MotivationDashboardView: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
-                        .background(coachCatalog.selectedPersona.face.accentColor, in: Circle())
+                        .background(guideCatalog.selectedTheme.accentColor, in: Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Use recommended plan")
@@ -978,7 +887,7 @@ struct MotivationDashboardView: View {
                     .lineLimit(1)
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+            .foregroundStyle(guideCatalog.selectedTheme.accentColor)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open plan details")
@@ -1064,11 +973,11 @@ struct MotivationDashboardView: View {
                 .font(.title3)
                 .frame(width: 44, height: 44)
         }
-        .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+        .foregroundStyle(guideCatalog.selectedTheme.accentColor)
         .accessibilityLabel("Plan actions")
     }
 
-    private func coachNowCard(primarySuggestion: SuggestedSession) -> some View {
+    private func guideNowCard(primarySuggestion: SuggestedSession) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Now")
                 .font(.headline)
@@ -1078,9 +987,9 @@ struct MotivationDashboardView: View {
 
             Text(nowReason(for: primarySuggestion))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                .foregroundStyle(guideCatalog.selectedTheme.accentColor)
 
-            Text(primarySuggestion.coachLine)
+            Text(primarySuggestion.guideLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1092,14 +1001,14 @@ struct MotivationDashboardView: View {
                     onStartSuggestion(primarySuggestion)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(coachCatalog.selectedPersona.face.accentColor)
+                .tint(guideCatalog.selectedTheme.accentColor)
 
                 if let alternateSuggestion = snapshot.suggestions.dropFirst().first {
                     Button(alternateSuggestion.title) {
                         onStartSuggestion(alternateSuggestion)
                     }
                     .buttonStyle(.bordered)
-                    .tint(coachCatalog.selectedPersona.face.accentColor)
+                    .tint(guideCatalog.selectedTheme.accentColor)
                 }
             }
             .font(.subheadline.weight(.semibold))
@@ -1115,7 +1024,7 @@ struct MotivationDashboardView: View {
         if let entry = checkInStore.todayEntry {
             Label(entry.readiness.summaryLabel, systemImage: "checkmark.circle.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(coachCatalog.selectedPersona.face.accentColor)
+                .foregroundStyle(guideCatalog.selectedTheme.accentColor)
         } else {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
                 ForEach(DailyReadiness.allCases) { readiness in
@@ -1329,7 +1238,7 @@ enum DailyMotivationEngine {
     static func makeSnapshot(
         activities: [SavedActivity],
         readiness: DailyReadiness?,
-        persona: CoachPersona,
+        persona: GuidePersona,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> DailyMotivationSnapshot {
@@ -1358,7 +1267,7 @@ enum DailyMotivationEngine {
     ) -> FinishReflection {
         let weekCount = activitiesThisWeek(activities: priorActivities, now: now, calendar: calendar) + 1
         let highlight = "\(summary.durationSecs.formatted()) completed"
-        let progressNote = goalProgress?.coachLine
+        let progressNote = goalProgress?.guideLine
 
         if wasComeback(priorActivities: priorActivities, now: now, calendar: calendar) {
             return FinishReflection(
@@ -1443,35 +1352,35 @@ enum DailyMotivationEngine {
     private static func makeSpark(
         phase: MotivationPhase,
         readiness: DailyReadiness?,
-        persona: CoachPersona,
+        persona: GuidePersona,
         now: Date,
         calendar: Calendar
-    ) -> CoachSpark {
-        let variants: [CoachSpark]
+    ) -> GuideSpark {
+        let variants: [GuideSpark]
         switch phase {
         case .completedToday:
             variants = [
-                CoachSpark(headline: String(localized: "Session logged."), message: String(localized: "You followed through. Let that win be enough for today."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
-                CoachSpark(headline: String(localized: "Today already counts."), message: String(localized: "The work is in. Anything else is optional."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
-                CoachSpark(headline: String(localized: "You kept the promise."), message: String(localized: "Take the win. Consistency grows from days like this."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today"))
+                GuideSpark(headline: String(localized: "Session logged."), message: String(localized: "You followed through. Let that win be enough for today."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
+                GuideSpark(headline: String(localized: "Today already counts."), message: String(localized: "The work is in. Anything else is optional."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today")),
+                GuideSpark(headline: String(localized: "You kept the promise."), message: String(localized: "Take the win. Consistency grows from days like this."), primaryCTA: String(localized: "Start another light session"), secondaryCTA: String(localized: "Review today"))
             ]
         case .comeback:
             variants = [
-                CoachSpark(headline: String(localized: "Fresh start today?"), message: String(localized: "No catching up. Just reconnect with something small and real."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Start from where you are."), message: String(localized: "The gap does not matter. One comfortable session does."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Come back gently."), message: String(localized: "Skip the payback workout. Make today easy to repeat."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas"))
+                GuideSpark(headline: String(localized: "Fresh start today?"), message: String(localized: "No catching up. Just reconnect with something small and real."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Start from where you are."), message: String(localized: "The gap does not matter. One comfortable session does."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Come back gently."), message: String(localized: "Skip the payback workout. Make today easy to repeat."), primaryCTA: String(localized: "Start easy"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .momentum:
             variants = [
-                CoachSpark(headline: String(localized: "You are building something steady."), message: readiness == .ready ? String(localized: "Energy is there today. Keep the rhythm going without forcing it.") : String(localized: "Protect the rhythm with a session you can actually enjoy."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Keep the streak sustainable."), message: String(localized: "Momentum comes from another controlled day, not a heroic one."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Your rhythm is working."), message: String(localized: "Stay patient and add one more honest session."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas"))
+                GuideSpark(headline: String(localized: "You are building something steady."), message: readiness == .ready ? String(localized: "Energy is there today. Keep the rhythm going without forcing it.") : String(localized: "Protect the rhythm with a session you can actually enjoy."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Keep the streak sustainable."), message: String(localized: "Momentum comes from another controlled day, not a heroic one."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Your rhythm is working."), message: String(localized: "Stay patient and add one more honest session."), primaryCTA: String(localized: "Keep the rhythm going"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .firstSession:
             variants = [
-                CoachSpark(headline: String(localized: "You do not need a perfect session."), message: String(localized: "You need a beginning. Your companion can take it from there."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Make the first one simple."), message: String(localized: "A short, comfortable start is enough to learn from."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
-                CoachSpark(headline: String(localized: "Begin before you feel ready."), message: String(localized: "Keep it small. Today is about showing up, not proving anything."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas"))
+                GuideSpark(headline: String(localized: "You do not need a perfect session."), message: String(localized: "You need a beginning. Your companion can take it from there."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Make the first one simple."), message: String(localized: "A short, comfortable start is enough to learn from."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas")),
+                GuideSpark(headline: String(localized: "Begin before you feel ready."), message: String(localized: "Keep it small. Today is about showing up, not proving anything."), primaryCTA: String(localized: "Start a first session"), secondaryCTA: String(localized: "Other ideas"))
             ]
         case .steady:
             variants = steadySparkVariants(for: readiness)
@@ -1485,13 +1394,13 @@ enum DailyMotivationEngine {
         )]
     }
 
-    private static func steadySparkVariants(for readiness: DailyReadiness?) -> [CoachSpark] {
+    private static func steadySparkVariants(for readiness: DailyReadiness?) -> [GuideSpark] {
         let headline = defaultHeadline(for: readiness)
         let message = defaultMessage(for: readiness)
         return [
-            CoachSpark(headline: headline, message: message, primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
-            CoachSpark(headline: String(localized: "One useful session is enough."), message: readiness == .ready ? String(localized: "Put the energy somewhere purposeful, then finish in control.") : String(localized: "Choose the version that fits the day you actually have."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
-            CoachSpark(headline: String(localized: "Give today a little motion."), message: readiness == .stressed ? String(localized: "Let the session create space, not more pressure.") : String(localized: "Small and repeatable beats ambitious and skipped."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas"))
+            GuideSpark(headline: headline, message: message, primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
+            GuideSpark(headline: String(localized: "One useful session is enough."), message: readiness == .ready ? String(localized: "Put the energy somewhere purposeful, then finish in control.") : String(localized: "Choose the version that fits the day you actually have."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas")),
+            GuideSpark(headline: String(localized: "Give today a little motion."), message: readiness == .stressed ? String(localized: "Let the session create space, not more pressure.") : String(localized: "Small and repeatable beats ambitious and skipped."), primaryCTA: String(localized: "Pick a simple session"), secondaryCTA: String(localized: "Other ideas"))
         ]
     }
 
@@ -1509,7 +1418,7 @@ enum DailyMotivationEngine {
     private static func makeSuggestions(
         phase: MotivationPhase,
         readiness: DailyReadiness?,
-        persona: CoachPersona
+        persona: GuidePersona
     ) -> [SuggestedSession] {
         let isBike = persona.template.sport == .bike
         let sportLabel = isBike ? "ride" : "run"
@@ -1520,7 +1429,7 @@ enum DailyMotivationEngine {
             durationLabel: isBike ? "25 min" : "20 min",
             activityLabel: isBike ? "recovery ride" : "walk",
             framing: "Very easy aerobic movement.",
-            coachLine: "Keep this RPE 1-2. If it does not make you feel better, skip it.",
+            guideLine: "Keep this RPE 1-2. If it does not make you feel better, skip it.",
             startLabel: isBike ? "Start ride" : "Start walk"
         )
         let walkRunReturn = SuggestedSession(
@@ -1530,7 +1439,7 @@ enum DailyMotivationEngine {
             durationLabel: "25 min",
             activityLabel: "walk-run",
             framing: "5 min walk, 6 x 1 min jog / 2 min walk, easy finish.",
-            coachLine: "This is a standard return-to-running dose: enough rhythm, not too much load.",
+            guideLine: "This is a standard return-to-running dose: enough rhythm, not too much load.",
             startLabel: "Start walk-run"
         )
         let easyAerobic = SuggestedSession(
@@ -1540,7 +1449,7 @@ enum DailyMotivationEngine {
             durationLabel: isBike ? "35 min" : "30 min",
             activityLabel: "easy \(sportLabel)",
             framing: "Conversational aerobic work.",
-            coachLine: "Stay smooth and finish feeling like you could do a little more.",
+            guideLine: "Stay smooth and finish feeling like you could do a little more.",
             startLabel: isBike ? "Start ride" : "Start run"
         )
 
@@ -1555,7 +1464,7 @@ enum DailyMotivationEngine {
                     durationLabel: isBike ? "25 min" : "20 min",
                     activityLabel: isBike ? "easy ride" : "walk",
                     framing: "Keep it relaxed after today's logged work.",
-                    coachLine: "The main work is already done. This should feel optional and restorative.",
+                    guideLine: "The main work is already done. This should feel optional and restorative.",
                     startLabel: isBike ? "Start ride" : "Start walk"
                 )
             ]
@@ -1570,7 +1479,7 @@ enum DailyMotivationEngine {
                     durationLabel: "30 min",
                     activityLabel: "easy \(sportLabel)",
                     framing: "Keep it friendly from the first minute.",
-                    coachLine: "Today is not about catching up. Keep the effort conversational.",
+                    guideLine: "Today is not about catching up. Keep the effort conversational.",
                     startLabel: isBike ? "Start ride" : "Start run"
                 )
             ]
@@ -1586,7 +1495,7 @@ enum DailyMotivationEngine {
                     framing: isBike
                         ? "Smooth aerobic riding, no surges."
                         : "20 min easy, 4 x 20 sec relaxed strides, easy cooldown.",
-                    coachLine: isBike
+                    guideLine: isBike
                         ? "Keep pressure steady and controlled. This is aerobic rhythm, not a test."
                         : "Keep the strides relaxed. They should feel smooth, not like intervals.",
                     startLabel: isBike ? "Start ride" : "Start run"
@@ -1605,7 +1514,7 @@ enum DailyMotivationEngine {
                     durationLabel: "20 min",
                     activityLabel: "walk",
                     framing: "Purposeful but comfortable walking.",
-                    coachLine: "This is simple aerobic work. Keep it comfortable enough to hold a conversation.",
+                    guideLine: "This is simple aerobic work. Keep it comfortable enough to hold a conversation.",
                     startLabel: "Start walk"
                 )
             ]
@@ -1666,22 +1575,6 @@ enum DailyMotivationEngine {
         return daysSince(date: latest.startedAt, now: now, calendar: calendar) >= 2
     }
 
-}
-
-private extension CoachFace {
-    var accentColor: Color {
-        switch colorName {
-        case "orange": .orange
-        case "pink": .pink
-        case "green": .green
-        case "blue": .blue
-        case "cyan": .cyan
-        case "yellow": .yellow
-        case "red": .red
-        case "gray": .gray
-        default: .orange
-        }
-    }
 }
 
 struct TrainingPlanCard: View {
@@ -1788,7 +1681,7 @@ struct TrainingPlanCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
-                Text(week.coachLine)
+                Text(week.guideLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1802,7 +1695,7 @@ struct TrainingPlanCard: View {
                 Text(todaySuggestion.detail)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(accentColor)
-                Text(todaySuggestion.coachLine)
+                Text(todaySuggestion.guideLine)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2209,7 +2102,7 @@ private struct TrainingPlanRecommendationDetailView: View {
         if recommendation.template.source?.name == "Plainstride plan standards" {
             return "Plainstride-authored and benchmarked against established road-running structure: mostly easy running, controlled quality, cutback weeks, and event-specific tapering."
         }
-        return "Reviewed against Plainstride's coaching standards for safe progression, clear recovery, and practical workout purpose."
+        return "Reviewed against Plainstride's guidance standards for safe progression, clear recovery, and practical workout purpose."
     }
 }
 
@@ -2253,7 +2146,7 @@ private struct ActiveTrainingPlanDetailView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
-                    Text(week.coachLine)
+                    Text(week.guideLine)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2271,7 +2164,7 @@ private struct ActiveTrainingPlanDetailView: View {
                         Text(todaySuggestion.detail)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(accentColor)
-                        Text(todaySuggestion.coachLine)
+                        Text(todaySuggestion.guideLine)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

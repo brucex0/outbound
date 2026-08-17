@@ -21,13 +21,13 @@ func makeSnapshot(
     )
 }
 
-func makeProfile(preferredPaceSecs: Double?) -> CoachProfile {
-    CoachProfile(
+func makeProfile(preferredPaceSecs: Double?) -> GuideProfile {
+    GuideProfile(
         version: 1,
-        coachName: "Coach",
+        guideName: "Guide",
         personality: "direct",
         voiceId: "en-US",
-        athlete: CoachProfile.AthleteSnapshot(
+        athlete: GuideProfile.AthleteSnapshot(
             fitnessLevel: "intermediate",
             weeklyVolumeKm: 25,
             preferredPaceSecs: preferredPaceSecs,
@@ -36,7 +36,7 @@ func makeProfile(preferredPaceSecs: Double?) -> CoachProfile {
             records: [:]
         ),
         goals: [
-            CoachProfile.GoalItem(
+            GuideProfile.GoalItem(
                 type: "pace",
                 description: "Hold target pace",
                 targetDate: nil,
@@ -44,14 +44,14 @@ func makeProfile(preferredPaceSecs: Double?) -> CoachProfile {
                 achieved: false
             )
         ],
-        memorySnapshot: CoachProfile.MemorySnapshot(
+        memorySnapshot: GuideProfile.MemorySnapshot(
             recentActivities: [],
             weeklyVolumeKm: 25,
             longestRunKm: 12,
             consistencyScore: 0.8,
             recentInsight: "Start controlled and finish strong."
         ),
-        systemPrompt: "Coach concise in-session decisions.",
+        systemPrompt: "Guide concise in-session decisions.",
         builtAt: Date(timeIntervalSince1970: 0)
     )
 }

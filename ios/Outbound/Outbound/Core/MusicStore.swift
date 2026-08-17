@@ -202,9 +202,9 @@ final class MusicStore: ObservableObject {
         }
     }
 
-    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async {
-        Self.logger.info("Handle coach speech event. event=\(String(describing: event), privacy: .public)")
-        playback = await service.handleCoachSpeechEvent(event)
+    func handleGuideSpeechEvent(_ event: GuideSpeechEvent) async {
+        Self.logger.info("Handle guide speech event. event=\(String(describing: event), privacy: .public)")
+        playback = await service.handleGuideSpeechEvent(event)
     }
 
     func retryPendingWorkoutPlaybackIfNeeded() async {
@@ -323,7 +323,7 @@ protocol MusicService: AnyObject {
     func resume() async throws -> MusicPlaybackSnapshot
     func skipToNext() async throws -> MusicPlaybackSnapshot
     func refreshPlayback() async -> MusicPlaybackSnapshot
-    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot
+    func handleGuideSpeechEvent(_ event: GuideSpeechEvent) async -> MusicPlaybackSnapshot
 }
 
 enum MusicServiceFactory {

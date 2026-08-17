@@ -44,7 +44,7 @@ export async function seedTrainingPlanTemplates(client: PrismaClient = prisma) {
                     dayLabel: workout.dayLabel,
                     summary: workout.summary,
                     purpose: workout.purpose,
-                    coachCue: workout.coachCue,
+                    guideCue: workout.guideCue,
                     effortLabel: workout.effortLabel,
                     durationSeconds: workout.durationSeconds,
                     distanceLabel: workout.distanceLabel ?? null,

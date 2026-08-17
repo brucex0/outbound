@@ -42,7 +42,7 @@ struct LocalActivityStorePhotoTests {
             summary: summary,
             photos: [(makeTestImage(), metadata)],
             title: "Photo Persistence Test",
-            coachNudge: "Keep the cadence steady.",
+            guideNudge: "Keep the cadence steady.",
             reflection: nil,
             goal: nil
         )

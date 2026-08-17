@@ -60,7 +60,7 @@ The backend has an equivalent mismatch:
 - old and new planning services bridging each other;
 - prototype social endpoints based on caller-supplied actor IDs;
 - media placeholders without ownership or private-by-default Moments;
-- coach/avatar and generic assistant concepts treated as primary domains.
+- guide/avatar and generic assistant concepts treated as primary domains.
 
 ## Client Keep, Replace, Delete
 
@@ -88,7 +88,7 @@ The backend has an equivalent mismatch:
 - current onboarding store and views;
 - `RecordView` and `CameraHUDView` presentation while retaining underlying services;
 - seeded Social models/stores/UI with Together contracts;
-- generic assistant UI/state with structured contextual coaching actions;
+- generic assistant UI/state with structured contextual guidance actions;
 - current client plan models/library with the unified plan/workout contract.
 
 ### Delete after cutover
@@ -163,13 +163,13 @@ Each feature owns one observable screen model or coordinator with explicit depen
 - planning orchestration and DTO assembly;
 - prototype Social schema/routes with Together;
 - media placeholder with owned, private-by-default Moment upload/share flow;
-- CoachProfile as a primary avatar/personality object with compact coaching preferences and derived athlete summary;
+- GuideProfile as a primary avatar/personality object with compact guidance preferences and derived athlete summary;
 - request-time fire-and-forget analysis with durable jobs/events.
 
 ### Delete
 
 - `GET /auth/me/:firebaseUid`;
-- user-ID-in-path activity, coach, and social self-service routes;
+- user-ID-in-path activity, guide, and social self-service routes;
 - caller-supplied social actor IDs;
 - raw/imported compatibility plan catalog and old plan bridge service;
 - fake public media URLs and arbitrary activity attachment;
@@ -316,7 +316,7 @@ Document one canonical rebuild command when the schema implementation lands.
 - Client: Together actionable sections and rich social activity cards.
 - Remove seeded Social and compile-time gating.
 
-### 6. Cycle-aware coaching
+### 6. Cycle-aware guidance
 
 - Client: isolated local health store and derived signal generation.
 - Backend: short-lived private adjustment input only.
@@ -366,7 +366,7 @@ The production root now uses `Together · Today · Me`; the prior shell is not a
 - editable runner intake, calibration sessions, readiness, workout feedback, learned insights, and explained adjustment decisions;
 - Today with plan-backed interval summaries, a direct path into run setup, quick Open/Distance/Time runs, optional readiness actions, and safe fallbacks;
 - the retained recorder, camera Moment capture, pause/resume/finish, local activity save, and post-run reflection/feedback;
-- Me with live plan/week progress, saved weekly totals, recent activity history, learned insights, settings, and cycle-aware coaching;
+- Me with live plan/week progress, saved weekly totals, recent activity history, learned insights, settings, and cycle-aware guidance;
 - Together backed by authenticated connections, clubs, group runs, invitations, posts, reactions, comments, compatibility, and cached client state;
 - private-by-default Moment records with ownership checks and an explicit share transition;
 - raw cycle/wellbeing data stored on-device, with only `noAdjustment`, `offerFlexibleOption`, `reduceLoad`, or `recommendRest` sent to planning.

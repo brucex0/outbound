@@ -13,7 +13,15 @@ Do not run the test suite unless the user explicitly asks. A build-only compile 
 
 ## Pre-Publish Data Policy
 
-Outbound has not shipped publicly yet. Do not preserve awkward backward compatibility for training plans, seed data, or local/backend database rows when a cleaner model is better. It is acceptable to reset, reseed, or rebuild the local/backend database when plan IDs, template shape, or seed content changes, as long as the change is documented and the required rebuild command is clear.
+Outbound has not shipped publicly yet. Do not spend implementation effort preserving backward compatibility for training plans, seed data, local files, caches, or local/backend database rows unless the user explicitly requests it. Prefer the cleanest current model even when adopting it requires destructive migration or data loss. It is acceptable to reset, reseed, or rebuild the local/backend database when schemas, plan IDs, template shape, or seed content changes, as long as the change is documented and the required rebuild command is clear.
+
+## UI Feedback
+
+- Show transient API results, such as save success or failure, with temporary toast-style feedback instead of inserting status text into the page layout. Use inline status only when the result must remain visible or requires an action from the user.
+
+## iOS Localization
+
+- Whenever adding or changing iOS user-facing strings, make them localizable. Do not introduce hard-coded display text that bypasses the app's localization system.
 
 ## Documentation Discipline
 

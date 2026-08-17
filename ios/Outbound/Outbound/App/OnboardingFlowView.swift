@@ -2,12 +2,12 @@ import SwiftUI
 
 struct OnboardingFlowView: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
-    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
 
     let onComplete: (Bool) -> Void
 
     private var accentColor: Color {
-        coachCatalog.selectedPersona.face.onboardingAccentColor
+        guideCatalog.selectedTheme.accentColor
     }
 
     var body: some View {
@@ -356,9 +356,9 @@ struct OnboardingFlowView: View {
                     detail: profile.bodyProfile.calorieEstimateLine
                 )
                 setupRow(
-                    systemImage: coachCatalog.selectedPersona.face.symbolName,
+                    systemImage: "sparkles",
                     title: "Companion style",
-                    detail: coachCatalog.selectedPersona.template.tagline
+                    detail: guideCatalog.selectedPersona.template.tagline
                 )
             }
             .padding(18)
@@ -366,7 +366,7 @@ struct OnboardingFlowView: View {
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
-            Text(session.coachLine)
+            Text(session.guideLine)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -654,21 +654,5 @@ private struct CompactChoiceButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
-    }
-}
-
-private extension CoachFace {
-    var onboardingAccentColor: Color {
-        switch colorName {
-        case "orange": .orange
-        case "pink": .pink
-        case "green": .green
-        case "blue": .blue
-        case "cyan": .cyan
-        case "yellow": .yellow
-        case "red": .red
-        case "gray": .gray
-        default: .orange
-        }
     }
 }

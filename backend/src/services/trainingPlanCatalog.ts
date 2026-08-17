@@ -59,7 +59,7 @@ export async function loadTrainingPlanCatalog(): Promise<TrainingPlanCatalog> {
           dayLabel: workout.dayLabel,
           summary: workout.summary,
           purpose: workout.purpose,
-          coachCue: workout.coachCue,
+          guideCue: workout.guideCue ?? workout.purpose,
           effortLabel: workout.effortLabel,
           durationSeconds: workout.durationSeconds,
           distanceLabel: workout.distanceLabel,

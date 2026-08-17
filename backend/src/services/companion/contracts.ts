@@ -5,7 +5,7 @@ export const companionTaskSchema = z.enum([
   "adapt_today",
   "prepare_week",
   "post_run_reflection",
-  "live_coaching",
+  "live_guidance",
   "inspect_memory",
   "product_help",
 ]);

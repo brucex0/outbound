@@ -36,6 +36,11 @@ final class LocationManager: NSObject, ObservableObject {
     private let manager = CLLocationManager()
     private var wantsTracking = false
     private var trackingStartedAt: Date?
+#if DEBUG
+    private var testDistanceMeters: Double?
+    private var testElevationGainMeters: Double?
+    private var testCurrentPaceSecsPerKm: Double?
+#endif
 
     override init() {
         super.init()
@@ -52,6 +57,9 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func startTracking() {
+#if DEBUG
+        clearTestOverrides()
+#endif
         trackPoints = []
         location = nil
         trackingStartedAt = Date()
@@ -90,17 +98,34 @@ final class LocationManager: NSObject, ObservableObject {
         return trackPoints
     }
 
+    func restoreTracking(from points: [CLLocation]) {
+        trackPoints = points
+        location = points.last
+        trackingStartedAt = Date()
+        wantsTracking = true
+        manager.stopUpdatingLocation()
+    }
+
     var totalDistanceMeters: Double {
+#if DEBUG
+        if let testDistanceMeters { return testDistanceMeters }
+#endif
         guard trackPoints.count > 1 else { return 0 }
         return zip(trackPoints, trackPoints.dropFirst())
             .reduce(0) { $0 + $1.0.distance(from: $1.1) }
     }
 
     var elevationGainMeters: Double {
-        ElevationGainCalculator.sanitizedElevationRangeMeters(from: trackPoints)
+#if DEBUG
+        if let testElevationGainMeters { return testElevationGainMeters }
+#endif
+        return ElevationGainCalculator.sanitizedElevationRangeMeters(from: trackPoints)
     }
 
     var currentPaceSecsPerKm: Double? {
+#if DEBUG
+        if let testCurrentPaceSecsPerKm { return testCurrentPaceSecsPerKm }
+#endif
         guard trackPoints.count > 5 else { return nil }
         let recent = Array(trackPoints.suffix(10))
         let dist = zip(recent, recent.dropFirst()).reduce(0.0) { $0 + $1.0.distance(from: $1.1) }
@@ -112,6 +137,27 @@ final class LocationManager: NSObject, ObservableObject {
         guard pace >= minimumValidPaceSecsPerKm, pace <= maximumValidPaceSecsPerKm else { return nil }
         return pace
     }
+
+#if DEBUG
+    func seedLiveRunForUITest(
+        distanceMeters: Double,
+        elevationGainMeters: Double,
+        currentPaceSecsPerKm: Double,
+        trackPoints: [CLLocation]
+    ) {
+        testDistanceMeters = distanceMeters
+        testElevationGainMeters = elevationGainMeters
+        testCurrentPaceSecsPerKm = currentPaceSecsPerKm
+        self.trackPoints = trackPoints
+        location = trackPoints.last
+    }
+
+    private func clearTestOverrides() {
+        testDistanceMeters = nil
+        testElevationGainMeters = nil
+        testCurrentPaceSecsPerKm = nil
+    }
+#endif
 }
 
 extension LocationManager: CLLocationManagerDelegate {

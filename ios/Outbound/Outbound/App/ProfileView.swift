@@ -3,368 +3,19 @@ import Combine
 import Speech
 import SwiftUI
 
-struct ProfileView: View {
-    @EnvironmentObject var appNavigationStore: AppNavigationStore
-    @EnvironmentObject var authStore: AuthStore
-    @EnvironmentObject var coachStore: CoachStore
-    @EnvironmentObject var coachCatalog: CoachCatalogStore
-    @EnvironmentObject var activityStore: ActivityStore
-    @EnvironmentObject var goalStore: GoalStore
-    @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
-    @EnvironmentObject var healthImportStore: HealthImportStore
-    @EnvironmentObject var musicStore: MusicStore
-    @EnvironmentObject var recognitionStore: RecognitionStore
-
-    let bottomContentInset: CGFloat
-    let onStartSuggestion: (SuggestedSession) -> Void
-
-    @State private var navigationPath = NavigationPath()
-
+struct SafetyContactsSettingsView: View {
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ScrollView {
-                VStack(spacing: 20) {
-                    MotivationDashboardView(
-                        onStartSuggestion: onStartSuggestion
-                    )
-                    ProgressSummaryCard()
-                    recentActivitySection
-                }
+        ScrollView {
+            SafetyContactsSettingsCard()
                 .padding()
-            }
-            .safeAreaInset(edge: .bottom) {
-                Color.clear
-                    .frame(height: bottomContentInset)
-                    .allowsHitTesting(false)
-            }
-            .navigationTitle("Me")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        SettingsView(initialFocusSection: nil)
-                            .environmentObject(authStore)
-                            .environmentObject(coachCatalog)
-                            .environmentObject(healthAuthorizationStore)
-                            .environmentObject(healthImportStore)
-                            .environmentObject(musicStore)
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                    }
-                    .accessibilityLabel("Settings")
-                }
-            }
-            .navigationDestination(for: SavedActivity.self) { activity in
-                ActivityDetailView(activity: activity)
-                    .environmentObject(activityStore)
-            }
-            .navigationDestination(for: AssistantNavigationTarget.self) { target in
-                assistantDestinationView(for: target)
-            }
-            .onAppear {
-                handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
-            }
-            .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
-                handlePendingAssistantTarget(target)
-            }
         }
-    }
-
-    private var recentActivitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Recent activity")
-                    .font(.title3.bold())
-                Spacer()
-                if !activityStore.activities.isEmpty {
-                    NavigationLink("See All") {
-                        ActivityHistoryView()
-                            .environmentObject(activityStore)
-                    }
-                    .font(.caption.weight(.semibold))
-                }
-            }
-
-            if let activity = activityStore.activities.first {
-                NavigationLink(value: activity) {
-                    RecentActivitySummaryCard(activity: activity)
-                }
-                .buttonStyle(.plain)
-            } else {
-                emptyActivitiesPlaceholder
-            }
-        }
-    }
-
-    private var emptyActivitiesPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "figure.run.circle")
-                .font(.system(size: 44))
-                .foregroundStyle(.orange.opacity(0.6))
-            Text("No activities yet.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-    }
-
-    @ViewBuilder
-    private func assistantDestinationView(for target: AssistantNavigationTarget) -> some View {
-        switch target {
-        case .settingsAppleMusic:
-            SettingsView(initialFocusSection: .appleMusic)
-                .environmentObject(authStore)
-                .environmentObject(coachCatalog)
-                .environmentObject(healthAuthorizationStore)
-                .environmentObject(healthImportStore)
-                .environmentObject(musicStore)
-        case .settingsAppleHealth:
-            SettingsView(initialFocusSection: .appleHealth)
-                .environmentObject(authStore)
-                .environmentObject(coachCatalog)
-                .environmentObject(healthAuthorizationStore)
-                .environmentObject(healthImportStore)
-                .environmentObject(musicStore)
-        case .coachSettings:
-            CoachSelectionView()
-                .environmentObject(coachCatalog)
-        case .activityHistory:
-            ActivityHistoryView()
-                .environmentObject(activityStore)
-        }
-    }
-
-    private func handlePendingAssistantTarget(_ target: AssistantNavigationTarget?) {
-        guard let target else { return }
-        navigationPath.append(target)
-        appNavigationStore.consume()
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Trusted Contacts")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-private struct SettingsView: View {
-    @EnvironmentObject var authStore: AuthStore
-    @EnvironmentObject var coachCatalog: CoachCatalogStore
-    @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
-    @EnvironmentObject var healthImportStore: HealthImportStore
-    @EnvironmentObject var musicStore: MusicStore
-    @EnvironmentObject var measurementPreferences: MeasurementPreferences
-    @EnvironmentObject var onboardingStore: OnboardingStore
-    @EnvironmentObject var gearStore: GearStore
-    @EnvironmentObject var safetyContactStore: SafetyContactStore
-
-    let initialFocusSection: SettingsFocusSection?
-    @State private var isConfirmingAccountDeletion = false
-
-    var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                Section("Account") {
-                    if let label = authStore.currentLoginLabel {
-                        LabeledContent("Signed in as", value: label)
-                    } else {
-                        LabeledContent("Account", value: "Signed in")
-                    }
-
-                    Text(authStore.backendDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if !authStore.connectedProviderLabels.isEmpty {
-                        LabeledContent(
-                            "Sign-in methods",
-                            value: authStore.connectedProviderLabels.joined(separator: ", ")
-                        )
-                    }
-
-                    if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isGoogleLinked {
-                        Button {
-                            Task { await authStore.connectGoogleAccount() }
-                        } label: {
-                            Label("Connect Google", systemImage: "globe")
-                        }
-                        .disabled(authStore.isBusy)
-                    }
-
-                    if authStore.isAppleSignInAvailable, authStore.user != nil, !authStore.isAppleLinked {
-                        Button {
-                            Task { await authStore.connectAppleAccount() }
-                        } label: {
-                            Label("Connect Apple", systemImage: "apple.logo")
-                        }
-                        .disabled(authStore.isBusy)
-                    }
-
-                    if let error = authStore.authError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section("Companion") {
-                    NavigationLink {
-                        CoachSelectionView()
-                            .environmentObject(coachCatalog)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(coachCatalog.selectedPersona.template.tagline)
-                                .font(.subheadline.weight(.semibold))
-                            Text("Voice, style, and spoken update frequency")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                Section("Integrations") {
-                    AppleHealthSettingsCard()
-                        .environmentObject(healthAuthorizationStore)
-                        .environmentObject(healthImportStore)
-                        .listRowInsets(EdgeInsets())
-                        .id(SettingsFocusSection.appleHealth)
-
-                    AppleMusicSettingsCard()
-                        .environmentObject(musicStore)
-                        .listRowInsets(EdgeInsets())
-                        .id(SettingsFocusSection.appleMusic)
-                }
-
-                Section("Gear") {
-                    GearSettingsCard()
-                        .environmentObject(gearStore)
-                        .listRowInsets(EdgeInsets())
-                }
-
-                Section("Safety") {
-                    SafetyContactsSettingsCard()
-                        .environmentObject(safetyContactStore)
-                        .listRowInsets(EdgeInsets())
-                        .id(SettingsFocusSection.safety)
-                }
-
-                Section("App") {
-                    Picker("Measurement Units", selection: $measurementPreferences.unitSystem) {
-                        ForEach(MeasurementUnitSystem.allCases) { unitSystem in
-                            Text(unitSystem.title).tag(unitSystem)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    LabeledContent("Version", value: "Prototype")
-                }
-
-                #if DEBUG
-                Section("Debug") {
-                    Button {
-                        onboardingStore.restartForDebug()
-                    } label: {
-                        Label("Run Onboarding Flow", systemImage: "sparkles")
-                    }
-
-                    Text("Presents the new-user flow again without signing out.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                #endif
-
-                Section {
-                    Button("Sign Out", role: .destructive) {
-                        authStore.signOut()
-                    }
-
-                    if authStore.user != nil {
-                        Button("Delete Account", role: .destructive) {
-                            isConfirmingAccountDeletion = true
-                        }
-                        .disabled(authStore.isBusy)
-                    }
-                }
-            }
-            .task(id: initialFocusSection) {
-                guard let initialFocusSection else { return }
-                try? await Task.sleep(for: .milliseconds(150))
-                withAnimation(.easeOut(duration: 0.22)) {
-                    proxy.scrollTo(initialFocusSection, anchor: .top)
-                }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .confirmationDialog(
-                "Permanently delete your account?",
-                isPresented: $isConfirmingAccountDeletion,
-                titleVisibility: .visible
-            ) {
-                Button("Delete Account and Data", role: .destructive) {
-                    Task { await authStore.deleteAccount() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.")
-            }
-        }
-    }
-}
-
-private struct RecentActivitySummaryCard: View {
-    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
-    let activity: SavedActivity
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "figure.run.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.orange)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(activity.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-
-                    Text(activity.startedAt.formatted(.relative(presentation: .named)))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text("\(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM)) • \(activity.durationSecs.formatted())")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
-            }
-
-            if let reflection = activity.reflection {
-                Text(reflection.highlight)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            } else if !activity.coachNudge.isEmpty {
-                Text(activity.coachNudge)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-    }
-}
-
-private enum SettingsFocusSection: Hashable {
-    case appleHealth
-    case appleMusic
-    case safety
-}
-
-private struct SafetyContactsSettingsCard: View {
+struct SafetyContactsSettingsCard: View {
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @State private var isAddContactPresented = false
 
@@ -837,7 +488,7 @@ struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var assistantStore: AssistantStore
-    @EnvironmentObject private var coachCatalog: CoachCatalogStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var goalStore: GoalStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -892,7 +543,7 @@ struct AssistantView: View {
 
     private var contextHeader: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: coachCatalog.selectedPersona.face.symbolName)
+            Image(systemName: "sparkles")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(personaAccentColor)
                 .frame(width: 30, height: 30)
@@ -1064,7 +715,7 @@ struct AssistantView: View {
 
     private var assistantContext: AssistantContext {
         AssistantContext(
-            coachName: coachCatalog.selectedPersona.template.displayName,
+            guideName: guideCatalog.selectedPersona.template.displayName,
             activityCount: activityStore.activities.count,
             weeklyDistanceKilometers: weeklyDistanceKilometers,
             currentGoalSummary: goalStore.progress?.summaryLine,
@@ -1148,17 +799,7 @@ struct AssistantView: View {
     }
 
     private var personaAccentColor: Color {
-        switch coachCatalog.selectedPersona.face.colorName {
-        case "orange": .orange
-        case "pink": .pink
-        case "green": .green
-        case "blue": .blue
-        case "cyan": .cyan
-        case "yellow": .yellow
-        case "red": .red
-        case "gray": .gray
-        default: .orange
-        }
+        guideCatalog.selectedTheme.accentColor
     }
 }
 
@@ -1681,6 +1322,18 @@ private enum SpeechAnalyzerSessionError: Error {
     case unsupportedAssets
 }
 
+struct AppleHealthSettingsView: View {
+    var body: some View {
+        ScrollView {
+            AppleHealthSettingsCard()
+                .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Apple Health")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 private struct AppleHealthSettingsCard: View {
     @EnvironmentObject var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject var healthImportStore: HealthImportStore
@@ -1798,187 +1451,6 @@ private struct AppleHealthSettingsCard: View {
                     .padding(.vertical, 4)
                 }
             }
-        }
-    }
-}
-
-private struct AppleMusicSettingsCard: View {
-    @EnvironmentObject var musicStore: MusicStore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Apple Music")
-                        .font(.title3.bold())
-                    Text(musicStore.snapshot.statusTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-
-                Spacer()
-
-                if musicStore.isRefreshing || musicStore.isLoadingQuickPicks {
-                    ProgressView()
-                } else if musicStore.hasDeveloperTokenError {
-                    Image(systemName: "music.note.slash")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Image(systemName: "music.note.house.fill")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
-                }
-            }
-
-            Text(musicStore.snapshot.statusDetail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(musicStore.musicSummaryLine)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let lastErrorMessage = musicStore.lastErrorMessage, !musicStore.hasDeveloperTokenError {
-                Text(lastErrorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let troubleshootingLine = musicStore.troubleshootingLine {
-                Text(troubleshootingLine)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Button {
-                Task {
-                    await musicStore.performPrimaryAction()
-                }
-            } label: {
-                HStack {
-                    Text(musicStore.primaryActionTitle)
-                        .font(.subheadline.bold())
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                }
-                .padding(.horizontal, 14)
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
-            .disabled(!musicStore.isPrimaryActionEnabled)
-        }
-        .padding()
-        .background(.orange.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-private struct ProfileMetricCard: View {
-    let label: String
-    let value: String
-    let systemImage: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: systemImage)
-                .foregroundStyle(.orange)
-            Text(value)
-                .font(.title3.bold().monospacedDigit())
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-private struct ActivityCard: View {
-    @EnvironmentObject private var recognitionStore: RecognitionStore
-    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
-    let activity: SavedActivity
-    let activityStore: ActivityStore
-
-    private var recognitionPreview: RecognitionPreview? {
-        recognitionStore.topRecognition(for: activity.id)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                thumbnail
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(activity.title)
-                        .font(.headline)
-                        .lineLimit(1)
-                    Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 12) {
-                        Label(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM),
-                              systemImage: "figure.run")
-                        Label(activity.durationSecs.formatted(), systemImage: "timer")
-                        if let pace = activity.avgPace {
-                            Label(pace.paceString(for: measurementPreferences.unitSystem), systemImage: "speedometer")
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
-            if let recognitionPreview {
-                RecognitionPill(preview: recognitionPreview)
-            }
-        }
-        .padding(12)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    @ViewBuilder
-    private var thumbnail: some View {
-        if let photo = activity.photos.first, let url = activityStore.imageURL(for: photo) {
-            LocalImageView(url: url) {
-                Color.orange.opacity(0.25)
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(alignment: .topTrailing) {
-                if let recognitionPreview {
-                    RecognitionOrb(preview: recognitionPreview, size: 22)
-                        .offset(x: 6, y: -6)
-                }
-            }
-        } else {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.orange.opacity(0.15))
-                .frame(width: 56, height: 56)
-                .overlay {
-                    Image(systemName: "figure.run").foregroundStyle(.orange)
-                }
-                .overlay(alignment: .topTrailing) {
-                    if let recognitionPreview {
-                        RecognitionOrb(preview: recognitionPreview, size: 22)
-                            .offset(x: 6, y: -6)
-                    }
-                }
         }
     }
 }

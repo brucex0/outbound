@@ -145,7 +145,7 @@ extension SessionIntent {
             sport: sport,
             title: goal.title(for: sport),
             detail: goal.detail(for: sport, unitSystem: unitSystem),
-            coachLine: coachLine(for: goal),
+            guideLine: guideLine(for: goal),
             startLabel: goal.startLabel(for: sport),
             targetDistanceMeters: goal.targetDistanceMeters,
             targetDurationSeconds: goal.targetDurationSeconds,
@@ -165,7 +165,7 @@ extension SessionIntent {
         }
     }
 
-    private func coachLine(for goal: ActivityGoal) -> String {
+    private func guideLine(for goal: ActivityGoal) -> String {
         switch goal {
         case .freestyle:
             return String(localized: "activity.goal.companion.freestyle", defaultValue: "No pressure. Just start where you are.")

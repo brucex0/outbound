@@ -9,30 +9,30 @@ struct CycleAwareView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Use cycle-aware guidance", isOn: $store.isEnabled)
+                Toggle(String(localized: "cycle.setting.enabled", defaultValue: "Use cycle-aware guidance"), isOn: $store.isEnabled)
             } footer: {
-                Text("Optional and private. Plainstride stores these entries only on this device and sends only a generic training signal when adaptation is requested.")
+                Text(String(localized: "cycle.privacy.detail", defaultValue: "Optional and private. Plainstride stores these entries only on this device and sends only a generic training signal when adaptation is requested."))
             }
             if store.isEnabled {
-                Section("How are you today?") {
-                    Toggle("Period today", isOn: $bleeding)
-                    Stepper("Energy: \(energy) of 5", value: $energy, in: 1...5)
-                    Stepper("Discomfort: \(discomfort) of 5", value: $discomfort, in: 1...5)
-                    Button("Save private check-in") { store.log(bleeding: bleeding, energy: energy, discomfort: discomfort) }
+                Section(String(localized: "cycle.checkin.title", defaultValue: "How are you today?")) {
+                    Toggle(String(localized: "cycle.checkin.period_today", defaultValue: "Period today"), isOn: $bleeding)
+                    Stepper(String(localized: "Energy: \(energy) of 5"), value: $energy, in: 1...5)
+                    Stepper(String(localized: "Discomfort: \(discomfort) of 5"), value: $discomfort, in: 1...5)
+                    Button(String(localized: "cycle.checkin.save", defaultValue: "Save private check-in")) { store.log(bleeding: bleeding, energy: energy, discomfort: discomfort) }
                 }
-                Section("Training impact") {
+                Section(String(localized: "cycle.training_impact.title", defaultValue: "Training impact")) {
                     Label(store.currentSignal.title, systemImage: "sparkles")
-                    Text("You always choose whether to use a gentler option or keep the planned workout.")
+                    Text(String(localized: "cycle.training_impact.detail", defaultValue: "You always choose whether to use a gentler option or keep the planned workout."))
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 if !store.logs.isEmpty {
                     Section {
-                        Button("Delete cycle data", role: .destructive) { store.clear() }
+                        Button(String(localized: "cycle.data.delete", defaultValue: "Delete cycle data"), role: .destructive) { store.clear() }
                     }
                 }
             }
         }
-        .navigationTitle("Cycle-aware guidance")
+        .navigationTitle(String(localized: "cycle.title", defaultValue: "Cycle-aware guidance"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

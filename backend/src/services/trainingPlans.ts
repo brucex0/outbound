@@ -62,7 +62,7 @@ export interface TrainingPlanWorkout {
   dayLabel: string;
   summary: string;
   purpose: string;
-  coachCue: string;
+  guideCue: string;
   effortLabel: string;
   durationSeconds: number;
   distanceLabel?: string | null;
@@ -130,7 +130,7 @@ export interface TrainingPlanWeekSnapshot {
   targetMinutes: number;
   progressPercent: number;
   summaryLine: string;
-  coachLine: string;
+  guideLine: string;
   focus: string;
   weekSummary: string;
   scheduledWorkouts: TrainingPlanWorkout[];
@@ -144,14 +144,14 @@ export interface SuggestedSession {
   durationLabel: string;
   activityLabel: string;
   framing: string;
-  coachLine: string;
+  guideLine: string;
   startLabel: string;
 }
 
 export interface TodayTrainingSuggestion {
   title: string;
   detail: string;
-  coachLine: string;
+  guideLine: string;
   adjustmentLine?: string | null;
   suggestedSession: SuggestedSession;
   workout: TrainingPlanWorkout;
@@ -402,7 +402,7 @@ function makeWeekSnapshot(
     targetMinutes,
     progressPercent,
     summaryLine: `${completedSessions} of ${targetSessions} sessions, ${completedMinutes} of ${targetMinutes} min this week`,
-    coachLine: coachLine(plan, completedSessions, completedMinutes),
+    guideLine: guideLine(plan, completedSessions, completedMinutes),
     focus: scheduledWeek?.focus ?? "Settle into the week",
     weekSummary: scheduledWeek?.summary ?? plan.subtitle,
     scheduledWorkouts: scheduledWeek?.workouts ?? [],
@@ -419,14 +419,14 @@ function makeTodaySuggestion(
   const lowReadiness = readiness === "Low energy" || readiness === "Stressed";
   const workout = lowReadiness ? adjustedWorkout(baseWorkout) : baseWorkout;
   const detailPrefix = lowReadiness ? "Adjusted session" : "Planned session";
-  const coachLineText = lowReadiness
+  const guideLineText = lowReadiness
     ? "We kept the shape of the workout, but softened the stress so the plan stays usable."
-    : workout.coachCue;
+    : workout.guideCue;
 
   return {
     title: workout.title,
     detail: `${detailPrefix} • ${formatDuration(workout.durationSeconds)} • ${workout.effortLabel}`,
-    coachLine: coachLineText,
+    guideLine: guideLineText,
     adjustmentLine: lowReadiness ? "Dialed back for today's readiness." : null,
     suggestedSession: {
       id: `plan-${plan.templateID}-${workout.id}`,
@@ -435,7 +435,7 @@ function makeTodaySuggestion(
       durationLabel: formatDuration(workout.durationSeconds),
       activityLabel: workoutKindDisplayName(workout.kind),
       framing: workout.purpose,
-      coachLine: coachLineText,
+      guideLine: guideLineText,
       startLabel: "Start now",
     },
     workout,
@@ -674,7 +674,7 @@ function tradeoff(focus: TrainingPlanFocus, sessionsPerWeek: number): string {
   }
 }
 
-function coachLine(plan: ActiveTrainingPlan, completedSessions: number, completedMinutes: number): string {
+function guideLine(plan: ActiveTrainingPlan, completedSessions: number, completedMinutes: number): string {
   if (completedSessions >= plan.sessionsPerWeek || completedMinutes >= plan.targetWeeklyMinutes) {
     return "You covered this week's core work. Anything extra can stay easy.";
   }
@@ -721,7 +721,7 @@ function adjustedWorkout(workout: TrainingPlanWorkout): TrainingPlanWorkout {
     dayLabel: workout.dayLabel,
     summary: "A softer version of the scheduled workout.",
     purpose: "Protect consistency without turning today into a grind.",
-    coachCue: "Today still counts. Keep it easy and bank the routine.",
+    guideCue: "Today still counts. Keep it easy and bank the routine.",
     effortLabel: "Easy",
     durationSeconds: shortenedDuration,
     distanceLabel: null,
@@ -792,7 +792,7 @@ function completionWorkout(focus: TrainingPlanFocus): TrainingPlanWorkout {
     dayLabel: "Optional",
     summary: "You already covered the core week.",
     purpose: "Keep moving lightly if you want a little extra freshness.",
-    coachCue: "The plan is already intact. Anything here should feel restorative.",
+    guideCue: "The plan is already intact. Anything here should feel restorative.",
     effortLabel: "Very easy",
     durationSeconds: 20 * 60,
     distanceLabel: null,
@@ -811,7 +811,7 @@ function easyRun(
   title: string,
   durationMinutes: number,
   summary: string,
-  coachCue: string
+  guideCue: string
 ): TrainingPlanWorkout {
   return {
     id,
@@ -820,7 +820,7 @@ function easyRun(
     dayLabel,
     summary,
     purpose: "Build aerobic support while keeping recovery intact.",
-    coachCue,
+    guideCue,
     effortLabel: "Conversational",
     durationSeconds: durationMinutes * 60,
     distanceLabel: null,
@@ -844,7 +844,7 @@ function longRun(
   dayLabel: string,
   durationMinutes: number,
   summary: string,
-  coachCue: string
+  guideCue: string
 ): TrainingPlanWorkout {
   return {
     id,
@@ -853,7 +853,7 @@ function longRun(
     dayLabel,
     summary,
     purpose: "Build durable endurance with low drama and steady effort.",
-    coachCue,
+    guideCue,
     effortLabel: "Easy-steady",
     durationSeconds: durationMinutes * 60,
     distanceLabel: null,
@@ -878,7 +878,7 @@ function walkRun(
   title: string,
   durationMinutes: number,
   summary: string,
-  coachCue: string,
+  guideCue: string,
   runSeconds: number,
   walkSeconds: number,
   repeats: number
@@ -896,7 +896,7 @@ function walkRun(
     dayLabel,
     summary,
     purpose: "Rebuild impact tolerance and confidence with controlled run segments.",
-    coachCue,
+    guideCue,
     effortLabel: "Gentle",
     durationSeconds: Math.max(durationMinutes * 60, totalSeconds),
     distanceLabel: null,

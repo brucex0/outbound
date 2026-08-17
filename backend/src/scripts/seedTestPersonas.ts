@@ -104,12 +104,13 @@ async function seedTestPersonas() {
       memberships: { create: [{ userId: socialRunner.id, role: "organizer" }, { userId: activeRunner.id, role: "member" }] },
     },
   });
-  const futureActivity = await prisma.futureActivity.create({
+  const activityEvent = await prisma.activityEvent.create({
     data: {
       clubId: club.id,
       creatorId: socialRunner.id,
       title: "Saturday social 5K",
       startsAt: daysFromNow(now, 3),
+      endsAt: new Date(daysFromNow(now, 3).getTime() + 60 * 60 * 1000),
       locationName: "Golden Gate Park",
       note: "Conversational pace; join at the park or from anywhere.",
       participationMode: "hybrid",
@@ -125,7 +126,7 @@ async function seedTestPersonas() {
       city: "San Francisco",
     },
   });
-  await prisma.futureActivityParticipant.create({ data: { futureActivityId: futureActivity.id, userId: socialRunner.id, status: "going" } });
+  await prisma.activityEventParticipant.create({ data: { activityEventId: activityEvent.id, userId: socialRunner.id, status: "going" } });
   const post = await prisma.post.create({
     data: { userId: activeRunner.id, activityId: activeActivities[0].id, caption: "Easy miles and good energy today.", visibility: "connections" },
   });
@@ -133,7 +134,7 @@ async function seedTestPersonas() {
   await prisma.comment.create({ data: { authorId: socialRunner.id, postId: post.id, body: "Nice work — see you Saturday!" } });
 
   const runInvitation = await prisma.invitation.create({
-    data: { senderId: activeRunner.id, recipientId: socialRunner.id, futureActivityId: futureActivity.id, kind: "futureActivity", status: "pending", expiresAt: daysFromNow(now, 7) },
+    data: { senderId: activeRunner.id, recipientId: socialRunner.id, activityEventId: activityEvent.id, kind: "activityEvent", status: "pending", expiresAt: daysFromNow(now, 7) },
   });
   await prisma.socialNotification.createMany({
     data: [

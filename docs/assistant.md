@@ -4,7 +4,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Product Intent
 
-- Position the assistant as Plainstride's persistent running companion, not as a separate named coach or generic chatbot.
+- Position the assistant as Plainstride's persistent running companion, not as a separate named guide or generic chatbot.
 - Keep the first version local-first so the feature still works without backend dependencies.
 - Reuse existing app context such as companion communication style, saved activities, and current goal progress to make responses feel grounded.
 - Make the assistant always reachable across the app, but quiet by default.
@@ -14,7 +14,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - Always reachable: the assistant should be visible everywhere in some form.
 - Context-aware: the expanded assistant should use the current screen or flow when suggesting next steps.
 - Low-noise: default to a passive icon, not constant interruption.
-- Coach-adjacent: useful and motivating, but distinct from the live `VirtualCoach`.
+- Guide-adjacent: useful and motivating, but distinct from the live `VirtualGuide`.
 - Typed outcomes over generic chat: prefer navigation, explanation, planning, and suggestions over long free-form responses.
 
 ## Shell Model
@@ -42,9 +42,10 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ### Activity-adjacent surfaces
 
+- Today:
+  - keeps the icon-only sparkles entry point at page level in a consistent toolbar position across planned, event, and completed states
 - Record start / pre-activity:
   - primary jobs: suggested-session help, simple planning, and conversational activity customization
-  - Today places the passive sparkles entry point on the activity card instead of showing a separate insight section
   - concrete duration and effort requests update the card and its launch intent immediately
 - Live recording:
   - compact-only mode

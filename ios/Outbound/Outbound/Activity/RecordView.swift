@@ -9,8 +9,8 @@ struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var activityStore: ActivityStore
-    @EnvironmentObject var coachStore: CoachStore
-    @EnvironmentObject var coachCatalog: CoachCatalogStore
+    @EnvironmentObject var guideStore: GuideStore
+    @EnvironmentObject var guideCatalog: GuideCatalogStore
     @EnvironmentObject var assistantStore: AssistantStore
     @EnvironmentObject var checkInStore: DailyCheckInStore
     @EnvironmentObject var goalStore: GoalStore
@@ -23,10 +23,12 @@ struct RecordView: View {
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @EnvironmentObject var onboardingStore: OnboardingStore
     @EnvironmentObject var socialStore: TogetherStore
+    @EnvironmentObject var connectivityStore: ConnectivityStore
     @StateObject private var recorder: ActivityRecorder
-    @StateObject private var coach = VirtualCoach()
+    @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
+    @AppStorage("dismissed_apple_voice_download_tip_v1") private var dismissedAppleVoiceDownloadTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -52,6 +54,9 @@ struct RecordView: View {
     @State private var isMusicSetupExpanded = false
     @State private var isSessionOptionsExpanded = false
     @State private var isAddShoePresented = false
+    @State private var didSeedLiveRunForUITest = false
+    @State private var didRestoreSession = false
+    @State private var showsVoiceDownloadHelp = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -83,7 +88,7 @@ struct RecordView: View {
                     TabView(selection: $activePage) {
                         CameraHUDView(
                             recorder: recorder,
-                            coach: coach,
+                            guide: guide,
                             musicStore: musicStore,
                             intent: activeIntent ?? plannedIntent,
                             capturedPhotoCount: capturedPhotos.count,
@@ -100,7 +105,7 @@ struct RecordView: View {
                         LiveMapView(
                             recorder: recorder,
                             locationManager: recorder.locationManager,
-                            coach: coach,
+                            guide: guide,
                             musicStore: musicStore,
                             intent: activeIntent ?? plannedIntent,
                             capturedPhotoCount: capturedPhotos.count,
@@ -132,7 +137,7 @@ struct RecordView: View {
             }
         }
         .onReceive(recorder.$liveSnapshot) { snapshot in
-            coach.ingest(snapshot)
+            guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
             liveGroupStore.ingest(snapshot)
             liveActivityManager.update(
@@ -148,14 +153,23 @@ struct RecordView: View {
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
         }
+        .onChange(of: isVisible, initial: true) { _, _ in
+            seedLiveRunForUITestIfRequested()
+        }
+        .onAppear {
+            restoreInterruptedSessionIfNeeded()
+        }
         .task {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
-            coach.speechEventHandler = { event in
-                Task { await musicStore.handleCoachSpeechEvent(event) }
+            guide.speechEventHandler = { event in
+                Task { await musicStore.handleGuideSpeechEvent(event) }
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                guideCatalog.refreshInstalledVoices()
+            }
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
         }
@@ -199,7 +213,7 @@ struct RecordView: View {
                 }
                 .padding(.top, showCamera ? 18 : 14)
                 .padding(.trailing, 16)
-                .accessibilityLabel("Open assistant")
+                .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
             }
         }
         .fullScreenCover(item: $pendingActivity) { activity in
@@ -209,11 +223,6 @@ struct RecordView: View {
                 reflection: activity.reflection,
                 recognitionPreviews: activity.recognitionPreviews,
                 workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
-                requestsFeedback: PostWorkoutFeedbackPolicy.shouldRequestFeedback(
-                    summary: activity.summary,
-                    intent: activeIntent ?? plannedIntent,
-                    priorActivityCount: activityStore.activities.count
-                ),
                 onSave: { selectedPhotos, reflection in
                     await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
                 },
@@ -233,41 +242,44 @@ struct RecordView: View {
                 .environmentObject(gearStore)
                 .environmentObject(measurementPreferences)
         }
+        .sheet(isPresented: $showsVoiceDownloadHelp) {
+            AppleVoiceDownloadHelpView()
+        }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
             if customGoalKind == .distance {
-                TextField("Distance in km", text: $customDistanceText)
+                TextField(String(localized: "record.goal.distance_km", defaultValue: "Distance in km"), text: $customDistanceText)
                     .keyboardType(.decimalPad)
             } else {
-                TextField("Time in minutes", text: $customTimeText)
+                TextField(String(localized: "record.goal.time_minutes", defaultValue: "Time in minutes"), text: $customTimeText)
                     .keyboardType(.numberPad)
             }
 
-            Button("Set") {
+            Button(String(localized: "common.set", defaultValue: "Set")) {
                 applyCustomGoal()
             }
 
-            Button("Cancel", role: .cancel) {
+            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {
                 customGoalKind = nil
             }
         } message: {
             Text(customGoalAlertMessage)
         }
-        .alert("Join group run", isPresented: $isGroupJoinAlertPresented) {
-            TextField("Invite link or token", text: $groupInviteText)
+        .alert(String(localized: "record.group.join.title", defaultValue: "Join group run"), isPresented: $isGroupJoinAlertPresented) {
+            TextField(String(localized: "record.group.invite.placeholder", defaultValue: "Invite link or token"), text: $groupInviteText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
 
-            Button("Join") {
+            Button(String(localized: "record.group.join.action", defaultValue: "Join")) {
                 let invite = groupInviteText
                 groupInviteText = ""
                 Task { await liveGroupStore.joinGroup(invite: invite) }
             }
 
-            Button("Cancel", role: .cancel) {
+            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {
                 groupInviteText = ""
             }
         } message: {
-            Text("Paste the Plainstride group run invite from another runner.")
+            Text(String(localized: "record.group.join.help", defaultValue: "Paste the Plainstride group run invite from another runner."))
         }
     }
 
@@ -275,24 +287,64 @@ struct RecordView: View {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
         isStartingActivity = true
+        let intent = plannedIntent
+        beginRecordingAfterLiveShareSetup()
+        isStartingActivity = false
+
+        guard !connectivityStore.isOffline else { return }
         Task { @MainActor in
-            let intent = plannedIntent
-            let companionBrief = try? await APIClient.shared.fetchCompanionSessionBrief(workoutID: intent?.id)
-            let liveSharePresentation = await liveShareStore.beginIfArmed(
+            async let brief = try? APIClient.shared.fetchCompanionSessionBrief(workoutID: intent?.id)
+            async let presentation = liveShareStore.beginIfArmed(
                 intent: intent,
                 contact: safetyContactStore.defaultContact
             )
-            if let liveSharePresentation {
-                isStartingActivity = false
-                await SystemSharePresenter.present(activityItems: liveSharePresentation.activityItems)
-                guard recorder.state == .idle, !isCountingDown else { return }
-                beginRecordingAfterLiveShareSetup(companionBrief: companionBrief)
-                isStartingActivity = false
-                return
+            if let companionBrief = await brief {
+                guide.updateCompanionBrief(companionBrief)
             }
-            beginRecordingAfterLiveShareSetup(companionBrief: companionBrief)
-            isStartingActivity = false
+            if let liveSharePresentation = await presentation {
+                await SystemSharePresenter.present(activityItems: liveSharePresentation.activityItems)
+            }
         }
+    }
+
+    private func restoreInterruptedSessionIfNeeded() {
+        guard recorder.recoveredSession, !didRestoreSession else { return }
+        didRestoreSession = true
+        activeIntent = plannedIntent
+        activePage = preferredSessionPage
+        showCamera = true
+        guide.activate(
+            with: guideStore.profile,
+            persona: guideCatalog.selectedPersona,
+            sessionIntent: activeIntent
+        )
+    }
+
+    private func seedLiveRunForUITestIfRequested() {
+#if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("-OutboundUITestLive10K"),
+              isVisible,
+              !didSeedLiveRunForUITest
+        else { return }
+
+        didSeedLiveRunForUITest = true
+        let intent = SessionIntent(
+            id: "ui-test-live-10k",
+            sport: .run,
+            title: "Seeded live 10K",
+            detail: "Run • 10 km target",
+            guideLine: "A deterministic 10K live run for UI testing.",
+            startLabel: "Start now",
+            targetDistanceMeters: 10_000
+        )
+        plannedIntent = intent
+        activeIntent = intent
+        activePage = .map
+        capturedPhotos = []
+        pendingActivity = nil
+        showCamera = true
+        recorder.seedLiveRunForUITest()
+#endif
     }
 
     private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
@@ -301,9 +353,9 @@ struct RecordView: View {
         activePage = preferredSessionPage
         activeIntent = plannedIntent
         recorder.locationManager.requestPermission()
-        coach.activate(
-            with: coachStore.profile,
-            persona: coachCatalog.selectedPersona,
+        guide.activate(
+            with: guideStore.profile,
+            persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             companionBrief: companionBrief
         )
@@ -334,7 +386,7 @@ struct RecordView: View {
     }
 
     private func announceCountdownStep(_ step: ActivityStartCountdownStep) {
-        coach.announceStartCountdown(step.spokenText)
+        guide.announceStartCountdown(step.spokenText)
         #if os(iOS)
         UIAccessibility.post(notification: .announcement, argument: step.accessibilityText)
         switch step {
@@ -372,7 +424,7 @@ struct RecordView: View {
         countdownTask?.cancel()
         countdownTask = nil
         countdownStep = nil
-        coach.deactivate()
+        guide.deactivate()
         activeIntent = nil
         if returnToSetup {
             showCamera = false
@@ -389,7 +441,7 @@ struct RecordView: View {
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
         liveGroupStore.finishActivity()
-        coach.deactivate()
+        guide.deactivate()
         musicStore.clearPendingWorkoutPlayback()
         showCamera = false
         let reflection = DailyMotivationEngine.finishReflection(
@@ -422,23 +474,24 @@ struct RecordView: View {
     ) async -> Bool {
         let priorActivities = activityStore.activities
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
+        let savedSport = activeIntent?.sport ?? .run
 
         guard let savedActivity = try? await activityStore.save(
             summary: activity.summary,
             photos: photos,
+            activityType: savedSport.activityType,
             reflection: reflection,
             goal: activeIntent?.activityGoal,
             source: .outboundRecorded,
             gear: gearStore.attachment(for: selectedSessionShoe),
             indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
             heartRateZones: heartRateZones(from: activity.summary),
-            futureActivityID: socialStore.recordingFutureActivityID
+            activityEventID: socialStore.recordingActivityEventID
         ) else {
             return false
         }
-        _ = socialStore.consumeRecordingFutureActivityID()
+        _ = socialStore.consumeRecordingActivityEventID()
 
-        let savedSport = activeIntent?.sport ?? .run
         let estimatedEnergy = estimatedEnergyKilocalories(
             for: savedActivity,
             sport: savedSport,
@@ -524,6 +577,12 @@ struct RecordView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     Spacer(minLength: 68)
+                    if connectivityStore.isOffline {
+                        OfflineStatusBanner()
+                    }
+                    if !guideCatalog.hasDownloadedAppleVoices, !dismissedAppleVoiceDownloadTip {
+                        appleVoiceDownloadTip
+                    }
                     confirmationView(for: plannedIntent ?? .freestyleRun)
                 }
                 .padding(.horizontal, 20)
@@ -533,9 +592,46 @@ struct RecordView: View {
             pinnedStartButton
         }
         .onAppear {
+            guideCatalog.refreshInstalledVoices()
             applySmartGoalDefaultIfNeeded()
             applyDefaultSessionShoeIfNeeded()
         }
+    }
+
+    private var appleVoiceDownloadTip: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "waveform.circle")
+                .font(.title3)
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(String(localized: "record.voice_tip.title", defaultValue: "Make spoken coaching sound even better"))
+                    .font(.subheadline.weight(.semibold))
+                Text(String(localized: "record.voice_tip.detail", defaultValue: "Add a free Apple Enhanced or Premium voice. Your current voice works in the meantime."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button(String(localized: "record.voice_tip.action", defaultValue: "See how")) {
+                    showsVoiceDownloadHelp = true
+                }
+                .font(.footnote.weight(.semibold))
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                dismissedAppleVoiceDownloadTip = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(6)
+            }
+            .accessibilityLabel(String(localized: "record.voice_tip.dismiss", defaultValue: "Dismiss voice download suggestion"))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
     private var pinnedStartButton: some View {
@@ -573,7 +669,7 @@ struct RecordView: View {
             .padding(.horizontal, 48)
 
             VStack(alignment: .leading) {
-                Text(intent.coachLine)
+                Text(intent.guideLine)
                     .font(.title3.weight(.semibold))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -669,7 +765,7 @@ struct RecordView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label("Group run", systemImage: "person.2.fill")
+                    Label(String(localized: "record.group.title", defaultValue: "Group run"), systemImage: "person.2.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(liveGroupStore.isSharing ? liveGroupStore.displayTitle : "Create or join a group run")
@@ -694,7 +790,7 @@ struct RecordView: View {
                             await SystemSharePresenter.present(activityItems: presentation.activityItems)
                         }
                     } label: {
-                        Label("Invite", systemImage: "square.and.arrow.up")
+                        Label(String(localized: "common.invite", defaultValue: "Invite"), systemImage: "square.and.arrow.up")
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 40)
@@ -847,7 +943,7 @@ struct RecordView: View {
                 compactSetupLabel(title: "Shoes", value: selectedSessionShoe?.displayName ?? "None", systemImage: "shoeprints.fill")
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Change shoes")
+            .accessibilityLabel(String(localized: "record.shoes.change", defaultValue: "Change shoes"))
         }
     }
 
@@ -892,7 +988,7 @@ struct RecordView: View {
     private func sessionGoalCard(for intent: SessionIntent) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label("Goal", systemImage: "flag")
+                Label(String(localized: "record.goal.title", defaultValue: "Goal"), systemImage: "flag")
                     .font(.headline)
                 Spacer()
                 Text(intent.activityGoal.label(unitSystem: measurementPreferences.unitSystem))
@@ -908,7 +1004,7 @@ struct RecordView: View {
 
             switch selectedGoalMode {
             case .freestyle:
-                Text("No preset target. Tap Start and move by feel.")
+                Text(String(localized: "record.goal.freestyle.detail", defaultValue: "No preset target. Tap Start and move by feel."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             case .distance:
@@ -943,7 +1039,7 @@ struct RecordView: View {
     private func plannedWorkoutCard(for intent: SessionIntent) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label("Workout plan", systemImage: "list.bullet.clipboard")
+                Label(String(localized: "record.workout_plan.title", defaultValue: "Workout plan"), systemImage: "list.bullet.clipboard")
                     .font(.headline)
                 Spacer()
                 Text(plannedWorkoutDurationLabel(for: intent))
@@ -1142,7 +1238,7 @@ struct RecordView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "music.note.slash")
                         .foregroundStyle(.secondary)
-                    Text("Music unavailable")
+                    Text(String(localized: "session.music.unavailable", defaultValue: "Music unavailable"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -1190,7 +1286,7 @@ struct RecordView: View {
                             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Select \(quickPick.title)")
+                        .accessibilityLabel(String(localized: "Select \(quickPick.title)"))
                     }
                 }
                 } else {

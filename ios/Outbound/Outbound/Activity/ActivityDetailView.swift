@@ -93,25 +93,38 @@ struct ActivityDetailView: View {
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    shareActivityCard()
+                } label: {
+                    if isPreparingShareCard {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+                .disabled(isPreparingShareCard)
+                .accessibilityLabel(isPreparingShareCard
+                                    ? String(localized: "activity.share.preparing", defaultValue: "Preparing activity to share")
+                                    : String(localized: "activity.share", defaultValue: "Share activity"))
+
                 Button {
                     isEditPresented = true
                 } label: {
                     Image(systemName: "pencil")
                 }
-                .accessibilityLabel("Edit activity")
+                .accessibilityLabel(String(localized: "activity.edit", defaultValue: "Edit activity"))
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
-        .toolbar(sheetDetent == .expanded ? .hidden : .visible, for: .navigationBar)
+        .toolbar(.visible, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
             if let shareURL {
                 ShareSheet(activityItems: [shareURL])
             }
         }
         .alert(item: $shareError) { error in
-            Alert(title: Text("Unable to Share Route"), message: Text(error.message))
+            Alert(title: Text(String(localized: "activity.share_route.unable", defaultValue: "Unable to Share Route")), message: Text(error.message))
         }
         .sheet(isPresented: $isEditPresented) {
             EditActivityView(activity: currentActivity)
@@ -140,11 +153,12 @@ struct ActivityDetailView: View {
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
                         statsHeroSection
+                        if currentActivity.activityEventID != nil { sharedActivitySection }
                         metadataSection
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
                         routeControlsSection
-                        if let reflection = currentActivity.reflection { coachHeroCard(reflection) }
+                        if let reflection = currentActivity.reflection { guideHeroCard(reflection) }
                         if !currentActivity.photos.isEmpty { photoSection }
                     }
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
@@ -163,6 +177,22 @@ struct ActivityDetailView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private var sharedActivitySection: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "person.2.fill")
+                .foregroundStyle(OutboundPalette.companion)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(String(localized: "activity.shared.title", defaultValue: "Shared activity")).font(.headline)
+                Text(String(localized: "activity.shared.detail", defaultValue: "This is your personal recording from an activity event. Shared participant results remain in Social."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
     }
 
     private var sheetGrabber: some View {
@@ -265,7 +295,7 @@ struct ActivityDetailView: View {
                     withAnimation(.snappy) { showElevationProfile.toggle() }
                 } label: {
                     HStack(spacing: 10) {
-                        Text("Elevation")
+                        Text(String(localized: "activity.elevation.section", defaultValue: "Elevation"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -379,21 +409,21 @@ struct ActivityDetailView: View {
             )
 
             if let gear = currentActivity.gear {
-                ActivityMetadataRow(icon: "shoeprints.fill", title: "Shoes", detail: gear.shoeName)
+                ActivityMetadataRow(icon: "shoeprints.fill", title: String(localized: "activity.meta.shoes", defaultValue: "Shoes"), detail: gear.shoeName)
             }
 
             if currentActivity.indoor?.isIndoor == true {
-                ActivityMetadataRow(icon: "figure.run.treadmill", title: "Treadmill", detail: "Indoor run")
+                ActivityMetadataRow(icon: "figure.run.treadmill", title: String(localized: "activity.meta.treadmill", defaultValue: "Treadmill"), detail: String(localized: "activity.meta.indoor_run", defaultValue: "Indoor run"))
             }
 
             if let cadence = currentActivity.cadence,
                cadence.averageStepsPerMinute != nil || cadence.maxStepsPerMinute != nil {
                 ActivityMetadataRow(
                     icon: "metronome.fill",
-                    title: "Cadence",
+                    title: String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"),
                     detail: [
-                        cadence.averageStepsPerMinute.map { "Avg \($0) spm" },
-                        cadence.maxStepsPerMinute.map { "Max \($0) spm" }
+                        cadence.averageStepsPerMinute.map { String(localized: "Avg \($0) spm") },
+                        cadence.maxStepsPerMinute.map { String(localized: "Max \($0) spm") }
                     ].compactMap { $0 }.joined(separator: " • ")
                 )
             }
@@ -407,7 +437,7 @@ struct ActivityDetailView: View {
     }
 
     private var sourceTitle: String {
-        if currentActivity.manualEdits != nil { return "Edited activity" }
+        if currentActivity.manualEdits != nil { return String(localized: "activity.source.edited", defaultValue: "Edited activity") }
         return currentActivity.source.displayName
     }
 
@@ -416,11 +446,11 @@ struct ActivityDetailView: View {
             return edits.editedFields.joined(separator: ", ")
         }
         switch currentActivity.source.kind {
-        case .outbound: return "Recorded in Plainstride"
-        case .appleHealth: return "Imported from Apple Health"
-        case .garminViaHealth: return "Garmin via Apple Health"
-        case .manual: return "Manual entry"
-        case .importedFile: return "Imported file"
+        case .outbound: return String(localized: "activity.source.outbound", defaultValue: "Recorded in Plainstride")
+        case .appleHealth: return String(localized: "activity.source.apple_health", defaultValue: "Imported from Apple Health")
+        case .garminViaHealth: return String(localized: "activity.source.garmin_via_health", defaultValue: "Garmin via Apple Health")
+        case .manual: return String(localized: "activity.source.manual", defaultValue: "Manual entry")
+        case .importedFile: return String(localized: "activity.source.imported_file", defaultValue: "Imported file")
         }
     }
 
@@ -446,7 +476,7 @@ struct ActivityDetailView: View {
                 withAnimation(.snappy) { showSplits.toggle() }
             } label: {
                 HStack {
-                    Text("Splits")
+                    Text(String(localized: "activity.splits.title", defaultValue: "Splits"))
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text("\(splits.count) \(unitSystem.distanceUnit)")
@@ -470,13 +500,13 @@ struct ActivityDetailView: View {
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .frame(width: 30, alignment: .leading)
-                        Text("Pace")
+                        Text(String(localized: "activity.splits.pace", defaultValue: "Pace"))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .frame(width: 54, alignment: .leading)
                         Spacer()
                         if showElevation {
-                            Text("Elev")
+                            Text(String(localized: "activity.splits.elev", defaultValue: "Elev"))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.secondary)
                                 .frame(width: 42, alignment: .trailing)
@@ -506,9 +536,9 @@ struct ActivityDetailView: View {
         .background(Color(.systemBackground))
     }
 
-    // MARK: - Coach Hero Card
+    // MARK: - Guide Hero Card
 
-    private func coachHeroCard(_ reflection: FinishReflection) -> some View {
+    private func guideHeroCard(_ reflection: FinishReflection) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "figure.run.circle.fill")
@@ -518,7 +548,7 @@ struct ActivityDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(reflection.title)
                         .font(.subheadline.weight(.semibold))
-                    Text("Your companion")
+                    Text(String(localized: "activity.guide.companion", defaultValue: "Your companion"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -529,12 +559,12 @@ struct ActivityDetailView: View {
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if !currentActivity.coachNudge.isEmpty {
+            if !currentActivity.guideNudge.isEmpty {
                 HStack(spacing: 8) {
                     Image(systemName: "lightbulb.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)
-                    Text(currentActivity.coachNudge)
+                    Text(currentActivity.guideNudge)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -555,7 +585,7 @@ struct ActivityDetailView: View {
 
     private var photoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Photos")
+            Text(String(localized: "activity.photos.title", defaultValue: "Photos"))
                 .font(.headline)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -584,46 +614,25 @@ struct ActivityDetailView: View {
         }
     }
 
-    // MARK: - Route Controls (inline)
+    // MARK: - Route Privacy
 
+    @ViewBuilder
     private var routeControlsSection: some View {
-        HStack(spacing: 12) {
-            if currentActivity.hasRoute {
-                Label("Private", systemImage: "lock.fill")
+        if currentActivity.hasRoute {
+            HStack {
+                Label(String(localized: "activity.route.private", defaultValue: "Private"), systemImage: "lock.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(Color(.secondarySystemBackground))
                     .clipShape(Capsule())
-            }
 
-            Spacer()
-
-            Menu {
-                Button {
-                    shareActivityCard()
-                } label: {
-                    Label("Share Activity Card", systemImage: "photo.on.rectangle.angled")
-                }
-                .disabled(isPreparingShareCard)
-            } label: {
-                if isPreparingShareCard {
-                    Label("Preparing", systemImage: "hourglass")
-                } else {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
+                Spacer()
             }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.orange)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .disabled(isPreparingShareCard)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Share Sheet
@@ -668,7 +677,6 @@ struct ActivityDetailView: View {
         }
     }
 }
-
 // MARK: - Sheet Detents
 
 private enum ActivityDetailSheetDetent: CaseIterable {
@@ -758,7 +766,7 @@ private struct ActivityRouteMapView: View {
                             Image(systemName: "map")
                                 .font(.largeTitle)
                                 .foregroundStyle(.secondary)
-                            Text("No route data")
+                            Text(String(localized: "activity.map.no_route", defaultValue: "No route data"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -1151,7 +1159,7 @@ private struct EditActivityView: View {
                     Button(isSaving ? "Saving…" : "Save") {
                         Task { await save() }
                     }
-                        .disabled(isSaving)
+                        .disabled(isSaving || !hasChanges)
                         .fontWeight(.semibold)
                 }
             }
@@ -1166,8 +1174,20 @@ private struct EditActivityView: View {
         }
     }
 
+    private var hasChanges: Bool {
+        let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000
+        let durationSecs = max(1, Int((Double(durationMinutesText) ?? Double(activity.durationSecs) / 60) * 60))
+
+        return (!cleanedTitle.isEmpty && cleanedTitle != activity.title)
+            || startedAt != activity.startedAt
+            || abs(distanceM - activity.distanceM) > 0.5
+            || durationSecs != activity.durationSecs
+            || shoeID != activity.gear?.shoeID
+    }
+
     private func save() async {
-        guard !isSaving else { return }
+        guard !isSaving, hasChanges else { return }
         isSaving = true
         defer { isSaving = false }
         let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000

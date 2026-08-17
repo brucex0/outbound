@@ -8,6 +8,7 @@ import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
+const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 const reportSchema = z.object({
@@ -16,14 +17,16 @@ const reportSchema = z.object({
   reason: z.enum(["spam", "harassment", "hate", "sexual", "violence", "privacy", "other"]),
   details: z.string().trim().max(500).optional(),
 });
-const createFutureActivitySchema = z.object({
+const createActivityEventSchema = z.object({
   title: z.string().trim().min(1).max(80),
   startsAt: z.string().datetime(),
+  durationMinutes: z.number().int().min(15).max(24 * 60).default(60),
   locationName: z.string().trim().max(120).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
 });
 const invitationBatchSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(50) });
-const linkFutureActivitySchema = z.object({ activityId: z.string().min(1) });
+const linkActivityEventSchema = z.object({ activityId: z.string().min(1) });
+const attendanceModeSchema = z.object({ attendanceMode: z.enum(["in_person", "virtual"]) });
 
 router.get("/home", socialHome);
 router.get("/together", socialHome);
@@ -33,25 +36,54 @@ async function socialHome(c: Context<AppEnv>) {
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
   const connections = await acceptedConnectionIDs(user.id);
-  const [upcomingRuns, memberships, posts] = await Promise.all([
-    prisma.futureActivity.findMany({
+  await refreshActivityEventStatuses();
+  const unsharedActivities = await prisma.activity.findMany({
+    where: { userId: user.id, deletedAt: null, posts: { none: {} } },
+    select: { id: true, createdAt: true },
+  });
+  if (unsharedActivities.length > 0) {
+    await prisma.post.createMany({
+      data: unsharedActivities.map((activity) => ({
+        userId: user.id,
+        activityId: activity.id,
+        visibility: "connections",
+        createdAt: activity.createdAt,
+      })),
+      skipDuplicates: true,
+    });
+  }
+  const visibility = [
+    { creatorId: { in: [user.id, ...connections] }, visibility: "connections" },
+    { participants: { some: { userId: user.id, status: "going" } } },
+    { invitations: { some: { recipientId: user.id, status: "pending" } } },
+    { club: { memberships: { some: { userId: user.id } } } },
+  ];
+  const [upcomingRuns, pastEvents, memberships, posts] = await Promise.all([
+    prisma.activityEvent.findMany({
       where: {
-        status: "scheduled",
-        startsAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-        OR: [
-          { creatorId: { in: [user.id, ...connections] }, visibility: "connections" },
-          { participants: { some: { userId: user.id, status: "going" } } },
-          { invitations: { some: { recipientId: user.id, status: "pending" } } },
-          { club: { memberships: { some: { userId: user.id } } } },
-        ],
+        status: { in: ["scheduled", "active"] },
+        OR: visibility,
       },
-      include: futureActivityInclude(user.id),
+      include: activityEventInclude(user.id),
       orderBy: { startsAt: "asc" },
       take: 5,
     }),
+    prisma.activityEvent.findMany({
+      where: {
+        status: { in: ["reconciling", "completed"] },
+        OR: visibility,
+      },
+      include: activityEventInclude(user.id),
+      orderBy: { startsAt: "desc" },
+      take: 10,
+    }),
     prisma.clubMembership.findMany({ where: { userId: user.id }, include: { club: true } }),
     prisma.post.findMany({
-      where: { userId: { in: [user.id, ...connections] }, visibility: { in: ["connections", "public"] } },
+      where: {
+        userId: { in: [user.id, ...connections] },
+        visibility: { in: ["connections", "public"] },
+        deletedAt: null,
+      },
       include: {
         user: { select: socialPersonSelect },
         activity: { select: socialActivitySelect },
@@ -69,7 +101,8 @@ async function socialHome(c: Context<AppEnv>) {
   ]);
 
   return c.json({
-    upcomingRuns: upcomingRuns.map((activity) => futureActivityPayload(activity, user.id, connections)),
+    upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
+    pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
     posts: posts.map((post) => postPayload(post, user.id)),
   });
@@ -330,18 +363,19 @@ router.delete("/clubs/:id/membership", async (c) => {
   return c.json({ ok: true });
 });
 
-router.post("/group-runs", zValidator("json", createFutureActivitySchema), async (c) => {
+router.post("/activity-events", zValidator("json", createActivityEventSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const input = c.req.valid("json");
   const startsAt = new Date(input.startsAt);
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
   const activity = await getPrismaClient().$transaction(async (prisma) => {
-    const created = await prisma.futureActivity.create({
+    const created = await prisma.activityEvent.create({
       data: {
         creatorId: user.id,
         title: input.title,
         startsAt,
+        endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
         locationName: input.locationName || null,
         note: input.note || null,
         participationMode: "hybrid",
@@ -350,100 +384,123 @@ router.post("/group-runs", zValidator("json", createFutureActivitySchema), async
         visibility: "connections",
       },
     });
-    await prisma.futureActivityParticipant.create({
-      data: { futureActivityId: created.id, userId: user.id, status: "going" },
+    await prisma.activityEventParticipant.create({
+      data: { activityEventId: created.id, userId: user.id, status: "going" },
     });
-    return prisma.futureActivity.findUniqueOrThrow({ where: { id: created.id }, include: futureActivityInclude(user.id) });
+    return prisma.activityEvent.findUniqueOrThrow({ where: { id: created.id }, include: activityEventInclude(user.id) });
   });
-  return c.json(futureActivityPayload(activity, user.id, []), 201);
+  return c.json(activityEventPayload(activity, user.id, []), 201);
 });
 
-router.get("/group-runs/:id", async (c) => {
+router.get("/activity-events/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const connections = await acceptedConnectionIDs(user.id);
-  const activity = await visibleFutureActivity(user.id, connections, c.req.param("id"));
-  if (!activity) return c.json({ error: "Future activity not found." }, 404);
-  return c.json(futureActivityPayload(activity, user.id, connections, true));
+  const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
+  await refreshActivityEventStatus(activity);
+  return c.json(activityEventPayload(activity, user.id, connections, true));
 });
 
-router.post("/group-runs/:id/rsvp", async (c) => {
+router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const connections = await acceptedConnectionIDs(user.id);
-  const activity = await visibleFutureActivity(user.id, connections, c.req.param("id"));
-  if (!activity || activity.status !== "scheduled") return c.json({ error: "Future activity not found." }, 404);
-  const participant = await getPrismaClient().futureActivityParticipant.upsert({
-    where: { futureActivityId_userId: { futureActivityId: activity.id, userId: user.id } },
-    create: { futureActivityId: activity.id, userId: user.id, status: "going" },
-    update: { status: "going", outcome: null, resolvedAt: null },
+  const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
+  if (!activity || activity.status !== "scheduled") return c.json({ error: "Activity event not found." }, 404);
+  const participant = await getPrismaClient().activityEventParticipant.upsert({
+    where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
+    create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
+    update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode, outcome: null, resolvedAt: null },
   });
   if (activity.creatorId !== user.id) {
-    await createSocialNotification(activity.creatorId, user.id, "futureActivityJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
+    await createSocialNotification(activity.creatorId, user.id, "activityEventJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
   }
   return c.json(participant);
 });
 
-router.delete("/group-runs/:id/rsvp", async (c) => {
+router.delete("/activity-events/:id/rsvp", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const activity = await getPrismaClient().futureActivity.findUnique({ where: { id: c.req.param("id") } });
+  const activity = await getPrismaClient().activityEvent.findUnique({ where: { id: c.req.param("id") } });
   if (!activity || activity.creatorId === user.id) return c.json({ error: "The creator cannot leave this activity." }, 422);
-  await getPrismaClient().futureActivityParticipant.updateMany({
-    where: { futureActivityId: activity.id, userId: user.id },
+  await getPrismaClient().activityEventParticipant.updateMany({
+    where: { activityEventId: activity.id, userId: user.id },
     data: { status: "left", outcome: null, recordedActivityId: null, resolvedAt: new Date() },
   });
   return c.json({ ok: true });
 });
 
-router.post("/group-runs/:id/invitations", zValidator("json", z.object({ recipientUserId: z.string().optional() })), async (c) => {
+router.post("/activity-events/:id/invitations", zValidator("json", z.object({ recipientUserId: z.string().optional() })), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const activity = await getPrismaClient().futureActivity.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
-  if (!activity) return c.json({ error: "Future activity not found." }, 404);
+  const activity = await getPrismaClient().activityEvent.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
   const token = randomBytes(24).toString("base64url");
   const recipientId = c.req.valid("json").recipientUserId;
   if (recipientId && !(await acceptedConnectionIDs(user.id)).includes(recipientId)) return c.json({ error: "Connect with this person before inviting them." }, 403);
-  const invitation = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, futureActivityId: activity.id, kind: "futureActivity", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+  const invitation = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
   if (recipientId) await createSocialNotification(recipientId, user.id, "runInvitation", invitation.id, `${user.displayName} invited you to ${activity.title}.`);
   return c.json({ id: invitation.id, token, status: invitation.status }, 201);
 });
 
-router.post("/group-runs/:id/invitations/batch", zValidator("json", invitationBatchSchema), async (c) => {
+router.post("/activity-events/:id/invitations/batch", zValidator("json", invitationBatchSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const activity = await getPrismaClient().futureActivity.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
-  if (!activity) return c.json({ error: "Future activity not found." }, 404);
+  const activity = await getPrismaClient().activityEvent.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
   const connectionIds = new Set(await acceptedConnectionIDs(user.id));
   const recipientIds = [...new Set(c.req.valid("json").recipientUserIds)].filter((id) => connectionIds.has(id));
   const invitations = [];
   for (const recipientId of recipientIds) {
-    const existing = await getPrismaClient().invitation.findFirst({ where: { futureActivityId: activity.id, recipientId, status: "pending" } });
+    const existing = await getPrismaClient().invitation.findFirst({ where: { activityEventId: activity.id, recipientId, status: "pending" } });
     if (existing) { invitations.push({ id: existing.id, recipientUserId: recipientId, status: "alreadyInvited" }); continue; }
-    const created = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, futureActivityId: activity.id, kind: "futureActivity", expiresAt: new Date(Date.now() + 7 * 86400000) } });
+    const created = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", expiresAt: new Date(Date.now() + 7 * 86400000) } });
     await createSocialNotification(recipientId, user.id, "runInvitation", created.id, `${user.displayName} invited you to ${activity.title}.`);
     invitations.push({ id: created.id, recipientUserId: recipientId, status: "sent" });
   }
   return c.json({ invitations }, 201);
 });
 
-router.post("/invitations/:id/accept", async (c) => {
+router.delete("/activity-events/:activityEventId/invitations/:invitationId", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const invitation = await getPrismaClient().invitation.findFirst({
+    where: {
+      id: c.req.param("invitationId"),
+      activityEventId: c.req.param("activityEventId"),
+      senderId: user.id,
+      status: "pending",
+      activityEvent: { creatorId: user.id, status: "scheduled" },
+    },
+  });
+  if (!invitation) return c.json({ error: "Invitation not found." }, 404);
+  await getPrismaClient().$transaction([
+    getPrismaClient().socialNotification.deleteMany({
+      where: { recipientId: invitation.recipientId ?? undefined, type: "runInvitation", objectId: invitation.id },
+    }),
+    getPrismaClient().invitation.delete({ where: { id: invitation.id } }),
+  ]);
+  return c.json({ ok: true });
+});
+
+router.post("/invitations/:id/accept", zValidator("json", attendanceModeSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const invitation = await getPrismaClient().invitation.findFirst({
     where: { id: c.req.param("id"), recipientId: user.id, status: "pending" },
   });
-  if (!invitation || !invitation.futureActivityId) return c.json({ error: "Invitation not found." }, 404);
+  if (!invitation || !invitation.activityEventId) return c.json({ error: "Invitation not found." }, 404);
   await getPrismaClient().$transaction([
     getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "accepted" } }),
-    getPrismaClient().futureActivityParticipant.upsert({
-      where: { futureActivityId_userId: { futureActivityId: invitation.futureActivityId, userId: user.id } },
-      create: { futureActivityId: invitation.futureActivityId, userId: user.id, status: "going" },
-      update: { status: "going" },
+    getPrismaClient().activityEventParticipant.upsert({
+      where: { activityEventId_userId: { activityEventId: invitation.activityEventId, userId: user.id } },
+      create: { activityEventId: invitation.activityEventId, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
+      update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode },
     }),
   ]);
   await dismissSocialNotification(user.id, "runInvitation", invitation.id);
-  await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.futureActivityId, `${user.displayName} accepted your activity invitation.`);
+  await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.activityEventId, `${user.displayName} accepted your activity invitation.`);
   return c.json({ ok: true });
 });
 
@@ -453,26 +510,26 @@ router.post("/invitations/token/:token/accept", async (c) => {
   const tokenHash = createHash("sha256").update(c.req.param("token")).digest("hex");
   const invitation = await getPrismaClient().invitation.findFirst({
     where: { tokenHash, status: "pending", expiresAt: { gt: new Date() } },
-    include: { futureActivity: true },
+    include: { activityEvent: true },
   });
-  if (!invitation?.futureActivity || (invitation.recipientId && invitation.recipientId !== user.id)) {
+  if (!invitation?.activityEvent || (invitation.recipientId && invitation.recipientId !== user.id)) {
     return c.json({ error: "Invitation not found." }, 404);
   }
   await getPrismaClient().$transaction([
     getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "accepted", recipientId: user.id } }),
-    getPrismaClient().futureActivityParticipant.upsert({
-      where: { futureActivityId_userId: { futureActivityId: invitation.futureActivity.id, userId: user.id } },
-      create: { futureActivityId: invitation.futureActivity.id, userId: user.id, status: "going" },
+    getPrismaClient().activityEventParticipant.upsert({
+      where: { activityEventId_userId: { activityEventId: invitation.activityEvent.id, userId: user.id } },
+      create: { activityEventId: invitation.activityEvent.id, userId: user.id, status: "going" },
       update: { status: "going", outcome: null, resolvedAt: null },
     }),
   ]);
   if (invitation.senderId !== user.id) {
-    await createSocialNotification(invitation.senderId, user.id, "futureActivityJoined", invitation.futureActivity.id, `${user.displayName} joined ${invitation.futureActivity.title}.`);
+    await createSocialNotification(invitation.senderId, user.id, "activityEventJoined", invitation.activityEvent.id, `${user.displayName} joined ${invitation.activityEvent.title}.`);
   }
-  return c.json({ ok: true, futureActivityId: invitation.futureActivity.id });
+  return c.json({ ok: true, activityEventId: invitation.activityEvent.id });
 });
 
-router.post("/group-runs/:id/link-activity", zValidator("json", linkFutureActivitySchema), async (c) => {
+router.post("/activity-events/:id/link-activity", zValidator("json", linkActivityEventSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const recorded = await linkRecordedActivity(user.id, c.req.param("id"), c.req.valid("json").activityId);
@@ -480,24 +537,25 @@ router.post("/group-runs/:id/link-activity", zValidator("json", linkFutureActivi
   return c.json({ ok: true });
 });
 
-router.post("/group-runs/:id/no-recording", async (c) => {
+router.post("/activity-events/:id/no-recording", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const result = await getPrismaClient().futureActivityParticipant.updateMany({
-    where: { futureActivityId: c.req.param("id"), userId: user.id, status: "going" },
+  const result = await getPrismaClient().activityEventParticipant.updateMany({
+    where: { activityEventId: c.req.param("id"), userId: user.id, status: "going" },
     data: { outcome: "no_recording", recordedActivityId: null, resolvedAt: new Date() },
   });
   if (!result.count) return c.json({ error: "Participation not found." }, 404);
   return c.json({ ok: true });
 });
 
-router.get("/group-runs/:id/results", async (c) => {
+router.get("/activity-events/:id/results", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const connections = await acceptedConnectionIDs(user.id);
-  const activity = await visibleFutureActivity(user.id, connections, c.req.param("id"));
-  if (!activity) return c.json({ error: "Future activity not found." }, 404);
-  return c.json(futureActivityResultsPayload(activity, user.id, connections));
+  const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
+  const status = await refreshActivityEventStatus(activity);
+  return c.json(activityEventResultsPayload(activity, user.id, connections, status));
 });
 
 router.post("/referrals", async (c) => {
@@ -624,8 +682,9 @@ router.delete("/comments/:id", async (c) => {
 router.delete("/posts/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const result = await getPrismaClient().post.deleteMany({
-    where: { id: c.req.param("id"), userId: user.id },
+  const result = await getPrismaClient().post.updateMany({
+    where: { id: c.req.param("id"), userId: user.id, deletedAt: null },
+    data: { deletedAt: new Date() },
   });
   if (!result.count) return c.json({ error: "Post not found." }, 404);
   return c.json({ ok: true });
@@ -756,7 +815,7 @@ async function visiblePost(postId: string, userId: string) {
   });
 }
 
-function futureActivityInclude(_currentUserId: string) {
+function activityEventInclude(_currentUserId: string) {
   return {
     club: true,
     creator: { select: socialPersonSelect },
@@ -769,14 +828,17 @@ function futureActivityInclude(_currentUserId: string) {
       orderBy: { joinedAt: "asc" as const },
     },
     invitations: {
-      include: { sender: { select: socialPersonSelect } },
+      include: {
+        sender: { select: socialPersonSelect },
+        recipient: { select: socialPersonSelect },
+      },
       orderBy: { createdAt: "desc" as const },
     },
   } as const;
 }
 
-async function visibleFutureActivity(userId: string, connectionIds: string[], id: string) {
-  return getPrismaClient().futureActivity.findFirst({
+async function visibleActivityEvent(userId: string, connectionIds: string[], id: string) {
+  return getPrismaClient().activityEvent.findFirst({
     where: {
       id,
       OR: [
@@ -787,11 +849,11 @@ async function visibleFutureActivity(userId: string, connectionIds: string[], id
         { club: { memberships: { some: { userId } } } },
       ],
     },
-    include: futureActivityInclude(userId),
+    include: activityEventInclude(userId),
   });
 }
 
-function futureActivityPayload(activity: any, currentUserId: string, connectionIds: string[], includeParticipants = false) {
+function activityEventPayload(activity: any, currentUserId: string, connectionIds: string[], includeParticipants = false) {
   const going = activity.participants.filter((participant: any) => participant.status === "going");
   const currentParticipant = activity.participants.find((participant: any) => participant.userId === currentUserId);
   const directInvitation = activity.invitations.find((invitation: any) => invitation.recipientId === currentUserId && invitation.status === "pending");
@@ -810,6 +872,7 @@ function futureActivityPayload(activity: any, currentUserId: string, connectionI
     id: activity.id,
     title: activity.title,
     startsAt: activity.startsAt,
+    endsAt: activity.endsAt,
     locationName: activity.locationName,
     paceNote: activity.note,
     note: activity.note,
@@ -827,21 +890,32 @@ function futureActivityPayload(activity: any, currentUserId: string, connectionI
     attendeePreview: going.slice(0, 3).map((participant: any) => participant.user),
     currentUserGoing: currentParticipant?.status === "going",
     currentUserOutcome: currentParticipant?.outcome ?? null,
+    currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
+    currentUserRole: activity.creatorId === currentUserId ? "owner" : currentParticipant?.status === "going" ? "participant" : "viewer",
     compatibility: shareSafeCompatibility(activity.options),
   };
-  if (includeParticipants) payload.participants = going.map((participant: any) => ({ person: participant.user, status: participant.status, outcome: participant.outcome }));
+  if (includeParticipants) {
+    payload.participants = going.map((participant: any) => ({ person: participant.user, status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
+    if (activity.creatorId === currentUserId) {
+      payload.invitedUserIds = activity.invitations
+        .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))
+        .map((invitation: any) => invitation.recipientId);
+      payload.pendingInvitations = activity.invitations
+        .filter((invitation: any) => invitation.status === "pending" && invitation.recipient)
+        .map((invitation: any) => ({ id: invitation.id, recipient: invitation.recipient, createdAt: invitation.createdAt }));
+    }
+  }
   return payload;
 }
 
-function futureActivityResultsPayload(activity: any, currentUserId: string, connectionIds: string[]) {
+function activityEventResultsPayload(activity: any, currentUserId: string, connectionIds: string[], status = activity.status) {
   const participants = activity.participants.filter((participant: any) => participant.status === "going");
   const canSeeDetails = (participant: any) => participant.userId === currentUserId || connectionIds.includes(participant.userId);
   const visibleRecorded = participants.filter((participant: any) => participant.recordedActivity && canSeeDetails(participant));
   const resolvedCount = participants.filter((participant: any) => participant.outcome).length;
-  const graceExpired = Date.now() > new Date(activity.startsAt).getTime() + 24 * 60 * 60 * 1000;
   return {
-    futureActivityId: activity.id,
-    status: resolvedCount === participants.length || graceExpired ? "completed" : new Date(activity.startsAt) <= new Date() ? "reconciling" : "scheduled",
+    activityEventId: activity.id,
+    status,
     goingCount: participants.length,
     resolvedCount,
     combinedDistanceMeters: visibleRecorded.reduce((sum: number, participant: any) => sum + (participant.recordedActivity.distanceM ?? 0), 0),
@@ -854,14 +928,55 @@ function futureActivityResultsPayload(activity: any, currentUserId: string, conn
   };
 }
 
-async function linkRecordedActivity(userId: string, futureActivityId: string, activityId: string) {
+async function refreshActivityEventStatuses() {
+  const prisma = getPrismaClient();
+  const now = new Date();
+  const graceCutoff = new Date(now.getTime() - activityEventReconciliationWindowMs);
+  await prisma.$transaction([
+    prisma.activityEvent.updateMany({
+      where: { status: "scheduled", startsAt: { lte: now }, endsAt: { gt: now } },
+      data: { status: "active" },
+    }),
+    prisma.activityEvent.updateMany({
+      where: { status: { in: ["scheduled", "active"] }, endsAt: { lte: now, gt: graceCutoff } },
+      data: { status: "reconciling" },
+    }),
+    prisma.activityEvent.updateMany({
+      where: { status: { in: ["scheduled", "active", "reconciling"] }, endsAt: { lte: graceCutoff } },
+      data: { status: "completed" },
+    }),
+  ]);
+}
+
+async function refreshActivityEventStatus(activity: any) {
+  if (["completed", "cancelled"].includes(activity.status)) return activity.status;
+  const now = Date.now();
+  const startsAt = new Date(activity.startsAt).getTime();
+  const endsAt = new Date(activity.endsAt).getTime();
+  const going = activity.participants.filter((participant: any) => participant.status === "going");
+  const allResolved = going.length > 0 && going.every((participant: any) => participant.outcome);
+  const nextStatus = allResolved || now >= endsAt + activityEventReconciliationWindowMs
+    ? "completed"
+    : now >= endsAt
+      ? "reconciling"
+      : now >= startsAt
+        ? "active"
+        : "scheduled";
+  if (nextStatus !== activity.status) {
+    await getPrismaClient().activityEvent.update({ where: { id: activity.id }, data: { status: nextStatus } });
+    activity.status = nextStatus;
+  }
+  return nextStatus;
+}
+
+async function linkRecordedActivity(userId: string, activityEventId: string, activityId: string) {
   const recordedActivity = await getPrismaClient().activity.findFirst({
     where: { userId, deletedAt: null, OR: [{ id: activityId }, { clientActivityId: activityId }] },
     select: { id: true },
   });
   if (!recordedActivity) return null;
-  const result = await getPrismaClient().futureActivityParticipant.updateMany({
-    where: { futureActivityId, userId, status: "going" },
+  const result = await getPrismaClient().activityEventParticipant.updateMany({
+    where: { activityEventId, userId, status: "going" },
     data: { recordedActivityId: recordedActivity.id, outcome: "completed", resolvedAt: new Date() },
   });
   return result.count ? recordedActivity : null;

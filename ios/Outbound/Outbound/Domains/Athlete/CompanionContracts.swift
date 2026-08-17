@@ -5,7 +5,7 @@ enum CompanionTask: String, Codable, Sendable {
     case adaptToday = "adapt_today"
     case prepareWeek = "prepare_week"
     case postRunReflection = "post_run_reflection"
-    case liveCoaching = "live_coaching"
+    case liveGuidance = "live_guidance"
     case inspectMemory = "inspect_memory"
     case productHelp = "product_help"
 }
@@ -145,7 +145,7 @@ struct CompanionSessionBriefDTO: Codable, Sendable {
     let runnerModelVersion: String
     let workout: CompanionSessionWorkoutDTO?
     let readiness: CompanionSessionReadinessDTO?
-    let coachingPriorities: [String]
+    let guidancePriorities: [String]
     let cuePreferences: [String]
     let forbiddenBehavior: [String]
 }

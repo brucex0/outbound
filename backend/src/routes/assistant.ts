@@ -25,7 +25,7 @@ const assistantMessageSchema = z.object({
 });
 
 const assistantContextSchema = z.object({
-  coachName: z.string(),
+  guideName: z.string(),
   activityCount: z.number().int().nonnegative(),
   weeklyDistanceKilometers: z.number().nonnegative(),
   currentGoalSummary: z.string().optional().nullable(),
@@ -53,7 +53,7 @@ router.post(
       const user = await getAuthenticatedAppUser(c).catch(() => null);
       if (user) {
         const task = body.context.isRecordingActive
-          ? "live_coaching"
+          ? "live_guidance"
           : body.capability === "plan"
             ? "prepare_week"
             : body.capability === "support" || body.capability === "navigate" || body.capability === "discover"

@@ -10,7 +10,6 @@ struct PostRunSummaryView: View {
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
     let workoutID: String
-    let requestsFeedback: Bool
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var selectedPhotoIndices: Set<Int>
@@ -25,7 +24,6 @@ struct PostRunSummaryView: View {
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
         workoutID: String = "freestyle-run",
-        requestsFeedback: Bool = true,
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
@@ -34,7 +32,6 @@ struct PostRunSummaryView: View {
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
         self.workoutID = workoutID
-        self.requestsFeedback = requestsFeedback
         self.onSave = onSave
         self.onDiscard = onDiscard
         _selectedPhotoIndices = State(initialValue: Set(photos.indices))
@@ -46,12 +43,12 @@ struct PostRunSummaryView: View {
                 VStack(spacing: 0) {
                     heroImage
                     reflectionSection
+                    feedbackSection
                     if !photos.isEmpty { photoReviewSection }
                     if let primaryRecognition = recognitionPreviews.first {
                         recognitionSection(primaryRecognition)
                     }
                     statsSection
-                    if requestsFeedback { feedbackSection }
                     if summary.trackPoints.count > 1 { routeMap }
                     motivationSection
                 }
@@ -98,19 +95,19 @@ struct PostRunSummaryView: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 SummaryStatColumn(
-                    label: "Distance",
+                    label: String(localized: "summary.stats.distance", defaultValue: "Distance"),
                     value: measurementPreferences.unitSystem.distanceValueString(meters: summary.distanceM),
                     unit: measurementPreferences.unitSystem.distanceUnit
                 )
                 Divider().frame(height: 48)
                 SummaryStatColumn(
-                    label: "Time",
+                    label: String(localized: "summary.stats.time", defaultValue: "Time"),
                     value: summary.durationSecs.formatted(),
                     unit: ""
                 )
                 if let pace = summary.avgPace {
                     Divider().frame(height: 48)
-                    SummaryStatColumn(label: "Avg Pace", value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
+                    SummaryStatColumn(label: String(localized: "summary.stats.avg_pace", defaultValue: "Avg Pace"), value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
                 }
             }
 
@@ -118,13 +115,13 @@ struct PostRunSummaryView: View {
 
             HStack(spacing: 0) {
                 SummaryStatColumn(
-                    label: "Elev Gain",
+                    label: String(localized: "summary.stats.elev_gain", defaultValue: "Elev Gain"),
                     value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
                     unit: measurementPreferences.unitSystem.elevationUnit
                 )
                 if let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM {
                     Divider().frame(height: 48)
-                    SummaryStatColumn(label: "Avg HR", value: "\(averageHeartRate)", unit: "bpm")
+                    SummaryStatColumn(label: String(localized: "summary.stats.avg_hr", defaultValue: "Avg HR"), value: "\(averageHeartRate)", unit: "bpm")
                 }
             }
         }
@@ -190,23 +187,23 @@ struct PostRunSummaryView: View {
 
     private var feedbackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("How did that feel?")
+            Text(String(localized: "summary.feedback.header", defaultValue: "How did that feel?"))
                 .font(.headline)
             HStack {
-                effortButton(.easy, title: "Easy")
-                effortButton(.aboutRight, title: "About right")
-                effortButton(.tooHard, title: "Too hard")
+                effortButton(.easy, title: String(localized: "summary.feedback.easy", defaultValue: "Easy"))
+                effortButton(.aboutRight, title: String(localized: "summary.feedback.about_right", defaultValue: "About right"))
+                effortButton(.tooHard, title: String(localized: "summary.feedback.too_hard", defaultValue: "Too hard"))
             }
             if selectedEffort == .easy {
-                Text("Could you comfortably have continued?")
+                Text(String(localized: "summary.feedback.capacity.header", defaultValue: "Could you comfortably have continued?"))
                     .font(.subheadline.weight(.semibold))
                 HStack {
-                    capacityButton(.none, title: "No")
-                    capacityButton(.tenMinutes, title: "10 min")
-                    capacityButton(.muchLonger, title: "Much longer")
+                    capacityButton(.none, title: String(localized: "summary.feedback.capacity.no", defaultValue: "No"))
+                    capacityButton(.tenMinutes, title: String(localized: "summary.feedback.capacity.10min", defaultValue: "10 min"))
+                    capacityButton(.muchLonger, title: String(localized: "summary.feedback.capacity.much_longer", defaultValue: "Much longer"))
                 }
             }
-            Text("Optional. Plainstride asks after workouts where your answer can improve the plan.")
+            Text(String(localized: "summary.feedback.note", defaultValue: "Optional. Plainstride asks after workouts where your answer can improve the plan."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -267,7 +264,7 @@ struct PostRunSummaryView: View {
     private var photoSelectionSummary: String {
         switch selectedPhotos.count {
         case 0:
-            return "None selected"
+            return String(localized: "summary.photos.none_selected", defaultValue: "None selected")
         case photos.count:
             return "\(photos.count) selected"
         default:
@@ -279,7 +276,7 @@ struct PostRunSummaryView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Photos")
+                    Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
                         .font(.headline)
                     Text(photoSelectionSummary)
                         .font(.caption)
@@ -291,7 +288,7 @@ struct PostRunSummaryView: View {
                 Button {
                     isPhotoSelectionPresented = true
                 } label: {
-                    Label("Manage", systemImage: "slider.horizontal.3")
+                    Label(String(localized: "summary.photos.manage", defaultValue: "Manage"), systemImage: "slider.horizontal.3")
                         .font(.subheadline.weight(.semibold))
                 }
                 .buttonStyle(.bordered)
@@ -332,7 +329,7 @@ struct PostRunSummaryView: View {
             .frame(width: 56, height: 56)
             .background(Color(.tertiarySystemBackground))
             .clipShape(Circle())
-            .accessibilityLabel("Discard activity")
+            .accessibilityLabel(String(localized: "summary.action.discard", defaultValue: "Discard activity"))
 
             Button {
                 guard !isSubmitting else { return }
@@ -371,7 +368,7 @@ struct PostRunSummaryView: View {
             .frame(width: 56, height: 56)
             .background(Color.orange)
             .clipShape(Circle())
-            .accessibilityLabel("Save activity")
+            .accessibilityLabel(String(localized: "summary.action.save", defaultValue: "Save activity"))
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
@@ -432,11 +429,11 @@ private struct PhotoSelectionView: View {
                 }
                 .padding(16)
             }
-            .navigationTitle("Choose Photos")
+            .navigationTitle(String(localized: "summary.photos.choose.title", defaultValue: "Choose Photos"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(allPhotosSelected ? "Clear" : "Select All") {
+                    Button(allPhotosSelected ? String(localized: "common.clear", defaultValue: "Clear") : String(localized: "common.select_all", defaultValue: "Select All")) {
                         if allPhotosSelected {
                             selectedPhotoIndices.removeAll()
                         } else {
@@ -446,7 +443,7 @@ private struct PhotoSelectionView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button(String(localized: "common.done", defaultValue: "Done")) {
                         dismiss()
                     }
                     .fontWeight(.semibold)

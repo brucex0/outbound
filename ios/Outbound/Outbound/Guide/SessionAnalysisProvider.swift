@@ -7,8 +7,8 @@ enum SessionAnalysisUrgency: String {
 }
 
 struct SessionAnalysisRequest {
-    let profile: CoachProfile?
-    let persona: CoachPersona?
+    let profile: GuideProfile?
+    let persona: GuidePersona?
     let snapshot: ActiveSessionSnapshot
     let recentSnapshots: [ActiveSessionSnapshot]
     let sessionIntent: SessionIntent?
@@ -16,8 +16,8 @@ struct SessionAnalysisRequest {
     let companionBrief: CompanionSessionBriefDTO?
 
     init(
-        profile: CoachProfile?,
-        persona: CoachPersona?,
+        profile: GuideProfile?,
+        persona: GuidePersona?,
         snapshot: ActiveSessionSnapshot,
         recentSnapshots: [ActiveSessionSnapshot],
         sessionIntent: SessionIntent? = nil,
@@ -38,7 +38,7 @@ struct SessionNudgePacket: Encodable {
     let session: SessionData
     let plan: PlanData
     let athlete: AthleteData
-    let coach: CoachData
+    let guide: GuideData
     let decision: DecisionData
     let history: HistoryData
 
@@ -78,7 +78,7 @@ struct SessionNudgePacket: Encodable {
         let recentPatterns: [String]
     }
 
-    struct CoachData: Encodable {
+    struct GuideData: Encodable {
         let persona: String
         let style: String
         let intensity: String
@@ -135,12 +135,12 @@ extension SessionAnalysisRequest {
                 weeklyVolumeKm: profile?.athlete.weeklyVolumeKm,
                 preferredPaceSecondsPerKm: profile?.athlete.preferredPaceSecs,
                 goal: profile?.goals.first(where: { !$0.achieved })?.description,
-                recentPatterns: Array((athletePatterns + (companionBrief?.coachingPriorities ?? [])).prefix(8))
+                recentPatterns: Array((athletePatterns + (companionBrief?.guidancePriorities ?? [])).prefix(8))
             ),
-            coach: .init(
+            guide: .init(
                 persona: persona?.template.personality ?? "supportive, concise",
-                style: persona?.template.coachingStyle ?? "supportive live coaching",
-                intensity: persona?.intensity.displayName ?? CoachingIntensity.balanced.displayName,
+                style: persona?.template.guidanceStyle ?? "supportive live guidance",
+                intensity: persona?.intensity.displayName ?? GuidanceIntensity.balanced.displayName,
                 maxWords: 18
             ),
             decision: .init(
@@ -336,13 +336,13 @@ protocol SessionAnalysisProvider: AnyObject {
     var identifier: String { get }
     var displayName: String { get }
 
-    func beginSession(profile: CoachProfile?, persona: CoachPersona?)
+    func beginSession(profile: GuideProfile?, persona: GuidePersona?)
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult
     func endSession()
 }
 
 extension SessionAnalysisProvider {
-    func beginSession(profile: CoachProfile?, persona: CoachPersona?) {}
+    func beginSession(profile: GuideProfile?, persona: GuidePersona?) {}
     func endSession() {}
 }
 
@@ -365,7 +365,7 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
     let displayName = "Rule-Based Session Analyzer"
     private var messageCounter = 0
 
-    func beginSession(profile: CoachProfile?, persona: CoachPersona?) {
+    func beginSession(profile: GuideProfile?, persona: GuidePersona?) {
         messageCounter = 0
     }
 

@@ -1,10 +1,10 @@
 import Foundation
 
-// Mirror of backend CoachProfilePayload — synced and stored on device
-struct CoachProfile: Codable, Identifiable {
-    var id: String { coachName + "\(version)" }
+// Mirror of backend GuideProfilePayload — synced and stored on device
+struct GuideProfile: Codable, Identifiable {
+    var id: String { guideName + "\(version)" }
     let version: Int
-    let coachName: String
+    let guideName: String
     let personality: String
     let voiceId: String
     let athlete: AthleteSnapshot

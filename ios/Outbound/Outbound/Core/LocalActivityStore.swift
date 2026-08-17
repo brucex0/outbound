@@ -12,8 +12,9 @@ actor ActivityPersistence {
     func save(
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
+        activityType: ActivityType,
         title: String,
-        coachNudge: String,
+        guideNudge: String,
         reflection: FinishReflection?,
         goal: ActivityGoal?,
         source: ActivitySourceMetadata,
@@ -22,13 +23,14 @@ actor ActivityPersistence {
         indoor: ActivityIndoorMetadata?,
         cadence: ActivityCadenceSummary?,
         heartRateZones: ActivityHeartRateZoneSummary?,
-        futureActivityID: String?
+        activityEventID: String?
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
             photos: photos,
+            activityType: activityType,
             title: title,
-            coachNudge: coachNudge,
+            guideNudge: guideNudge,
             reflection: reflection,
             goal: goal,
             source: source,
@@ -37,7 +39,7 @@ actor ActivityPersistence {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
-            futureActivityID: futureActivityID
+            activityEventID: activityEventID
         )
     }
 
@@ -81,8 +83,9 @@ private nonisolated enum LocalActivityStore {
     static func save(
         summary: ActivitySummary,
         photos: [(UIImage, PhotoMetadata)],
+        activityType: ActivityType = .running,
         title: String,
-        coachNudge: String,
+        guideNudge: String,
         reflection: FinishReflection?,
         goal: ActivityGoal?,
         source: ActivitySourceMetadata = .outboundRecorded,
@@ -91,7 +94,7 @@ private nonisolated enum LocalActivityStore {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
-        futureActivityID: String? = nil
+        activityEventID: String? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -108,8 +111,9 @@ private nonisolated enum LocalActivityStore {
 
         let activity = SavedActivity(
             id: activityId,
+            activityType: activityType,
             title: title,
-            coachNudge: coachNudge,
+            guideNudge: guideNudge,
             reflection: reflection,
             createdAt: Date(),
             startedAt: summary.startedAt,
@@ -126,7 +130,7 @@ private nonisolated enum LocalActivityStore {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
-            futureActivityID: futureActivityID,
+            activityEventID: activityEventID,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -271,8 +275,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: UUID
+    let activityType: ActivityType
     let title: String
-    let coachNudge: String
+    let guideNudge: String
     let reflection: FinishReflection?
     let createdAt: Date
     let startedAt: Date
@@ -289,7 +294,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let indoor: ActivityIndoorMetadata?
     let cadence: ActivityCadenceSummary?
     let heartRateZones: ActivityHeartRateZoneSummary?
-    let futureActivityID: String?
+    let activityEventID: String?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -298,10 +303,11 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     var routeCoordinates: [CLLocationCoordinate2D] { routePoints.map(\.coordinate) }
     var hasRoute: Bool { routePoints.count > 1 }
 
-    // Backward-compatible decoder for activities saved before title/coachNudge existed
+    // Backward-compatible decoder for activities saved before title/guideNudge existed
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
+        activityType = try c.decodeIfPresent(ActivityType.self, forKey: .activityType) ?? .running
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         startedAt = try c.decode(Date.self, forKey: .startedAt)
         endedAt = try c.decode(Date.self, forKey: .endedAt)
@@ -328,7 +334,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         indoor = try c.decodeIfPresent(ActivityIndoorMetadata.self, forKey: .indoor)
         cadence = try c.decodeIfPresent(ActivityCadenceSummary.self, forKey: .cadence)
         heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
-        futureActivityID = try c.decodeIfPresent(String.self, forKey: .futureActivityID)
+        activityEventID = try c.decodeIfPresent(String.self, forKey: .activityEventID)
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -337,13 +343,13 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         }
         photos = try c.decode([SavedPhoto].self, forKey: .photos)
         sync = try c.decodeIfPresent(SavedActivitySyncState.self, forKey: .sync)
-        coachNudge = (try? c.decodeIfPresent(String.self, forKey: .coachNudge)) ?? ""
+        guideNudge = (try? c.decodeIfPresent(String.self, forKey: .guideNudge)) ?? ""
         reflection = try c.decodeIfPresent(FinishReflection.self, forKey: .reflection)
         let day = startedAt.formatted(.dateTime.weekday(.wide))
         title = ((try? c.decodeIfPresent(String.self, forKey: .title)) ?? nil) ?? "\(day) Run"
     }
 
-    init(id: UUID, title: String, coachNudge: String, reflection: FinishReflection?, createdAt: Date,
+    init(id: UUID, activityType: ActivityType = .running, title: String, guideNudge: String, reflection: FinishReflection?, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
          healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil,
@@ -353,10 +359,10 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          indoor: ActivityIndoorMetadata? = nil,
          cadence: ActivityCadenceSummary? = nil,
          heartRateZones: ActivityHeartRateZoneSummary? = nil,
-         futureActivityID: String? = nil,
+         activityEventID: String? = nil,
          route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
-        self.id = id; self.title = title; self.coachNudge = coachNudge
+        self.id = id; self.activityType = activityType; self.title = title; self.guideNudge = guideNudge
         self.reflection = reflection
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
@@ -368,14 +374,15 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.indoor = indoor
         self.cadence = cadence
         self.heartRateZones = heartRateZones
-        self.futureActivityID = futureActivityID
+        self.activityEventID = activityEventID
         self.route = route; self.photos = photos; self.sync = sync
     }
 
     enum CodingKeys: String, CodingKey {
         case id
+        case activityType
         case title
-        case coachNudge
+        case guideNudge
         case reflection
         case createdAt
         case startedAt
@@ -394,7 +401,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case indoor
         case cadence
         case heartRateZones
-        case futureActivityID
+        case activityEventID
         case route
         case trackPoints
         case photos
@@ -404,8 +411,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
+        try c.encode(activityType, forKey: .activityType)
         try c.encode(title, forKey: .title)
-        try c.encode(coachNudge, forKey: .coachNudge)
+        try c.encode(guideNudge, forKey: .guideNudge)
         try c.encodeIfPresent(reflection, forKey: .reflection)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(startedAt, forKey: .startedAt)
@@ -426,6 +434,16 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)
     }
+}
+
+/// Stable values persisted locally and in `Activity.type` on the backend.
+/// This is intentionally broader than the sports currently selectable in the recorder.
+nonisolated enum ActivityType: String, Codable, CaseIterable, Hashable {
+    case running
+    case cycling
+    case hiking
+    case walking
+    case swimming
 }
 
 nonisolated struct ActivitySourceMetadata: Codable, Hashable {

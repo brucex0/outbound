@@ -6,21 +6,21 @@ Open this when designing or building badges, milestones, post-run recognition, o
 
 Make progress feel noticed, not scored.
 
-Outbound should not use rewards as a generic gamification layer. Recognition should feel like the coach and the product noticing effort, momentum, and participation in a way that helps the user come back tomorrow.
+Outbound should not use rewards as a generic gamification layer. Recognition should feel like the guide and the product noticing effort, momentum, and participation in a way that helps the user come back tomorrow.
 
 ## Positioning
 
 Use `recognition` as the main product language.
 
 Why:
-- it fits the coach relationship better than `achievement`
+- it fits the guide relationship better than `achievement`
 - it can include short sessions, comeback days, and social participation
 - it avoids the cold tone of points, levels, and grind-heavy systems
 
 Use `badge` as the internal and UI object when the product needs a compact collectible artifact.
 
 Example mapping:
-- user sees: `Recognition`, `Noticed this week`, `Coach noticed this`
+- user sees: `Recognition`, `Noticed this week`, `Guide noticed this`
 - app tracks: `BadgeDefinition`, `BadgeAward`, `RecognitionFeedItem`
 
 ## Principles
@@ -29,7 +29,7 @@ Example mapping:
 - Short sessions count.
 - Missed days should not create punishment mechanics.
 - Rewards should feed the next action, not end in a trophy case.
-- The coach should frame why a badge mattered.
+- The guide should frame why a badge mattered.
 - Social rewards should feel expressive and lightweight, not cutthroat.
 - V1 should prefer a small set of meaningful badges over a large catalog.
 
@@ -38,7 +38,7 @@ Example mapping:
 What other apps tend to do well:
 - Strava: social proof, challenge participation, visible accomplishments
 - Garmin Connect: dependable badge system, points, and habit loops
-- Nike Run Club: coaching, milestone framing, and challenge motivation
+- Nike Run Club: guidance, milestone framing, and challenge motivation
 - Peloton: frequent challenge cadence and energetic celebration
 
 What Outbound should not copy directly:
@@ -67,7 +67,7 @@ This lets rewards influence behavior immediately instead of becoming a dead arch
 Ship:
 - a curated set of 8-12 badges
 - local-first unlock evaluation from saved activities and social interactions
-- coach-framed unlock messaging
+- guide-framed unlock messaging
 - post-run unlock moments
 - next-day Today reinforcement
 - optional sharing for a small subset of badges
@@ -154,9 +154,9 @@ Suggested short-session rule:
 Suggested social rule:
 - Count distinct support actions on distinct activities to avoid spammy farming.
 
-## Coach Framing
+## Guide Framing
 
-Every badge should come with a short coach explanation.
+Every badge should come with a short guide explanation.
 
 Examples:
 
@@ -179,7 +179,7 @@ Guidelines:
 - explain why the effort mattered
 - prefer emotional meaning over statistic recap
 - keep copy specific and short
-- vary tone by selected coach persona later
+- vary tone by selected guide persona later
 
 ## Surface Placement
 
@@ -210,7 +210,7 @@ You came back before it felt perfect.
 The next app open should reflect the badge in the spark or momentum area.
 
 Examples:
-- spark subtext: `Coach noticed: Back In Motion`
+- spark subtext: `Guide noticed: Back In Motion`
 - momentum chip: `Short sessions count. You proved it yesterday.`
 - suggestion framing: `Let's build on that, not top it.`
 
@@ -238,12 +238,12 @@ Defer a full badge cabinet for V1, but keep a simple `Recognition` list in mind 
 
 When added, it should:
 - group by family
-- show coach copy and earn date
+- show guide copy and earn date
 - avoid making unearned badges feel like a wall of failure
 
 Activity cards in Profile and History can show a compact badge pill and thumbnail overlay when that saved activity earned a recognition.
 
-Important milestones such as comeback or weekly-focus completion can also appear as a small orb on the main coach/avatar surface to make the achievement feel alive outside the badge list.
+Important milestones such as comeback or weekly-focus completion can also appear as a small orb on the main guide/avatar surface to make the achievement feel alive outside the badge list.
 
 ## Relationship To Goals
 
@@ -282,7 +282,7 @@ Recommended supporting engine:
 Responsibilities:
 - evaluate unlocks from local activities, goal progress, check-ins, and social actions
 - prevent duplicate awards
-- emit coach-facing copy inputs for UI surfaces
+- emit guide-facing copy inputs for UI surfaces
 
 ## Implementation Order
 
@@ -314,5 +314,5 @@ Avoid:
 
 - Should `Photo Finish` belong to Social or a future Story family once media loops deepen?
 - Should `Week Closed Well` use Sunday specifically or the locale-aware last day of week?
-- Does `Kept It Easy` require a guided suggestion start, or can coach intent be inferred from check-in state?
+- Does `Kept It Easy` require a guided suggestion start, or can guide intent be inferred from check-in state?
 - When multiple badges unlock at once, which family gets display priority in post-run?

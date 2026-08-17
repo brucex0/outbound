@@ -24,7 +24,7 @@ model User {
 
   activities                  Activity[]
   authIdentities              AuthIdentity[]
-  coachProfile                CoachProfile?
+  guideProfile                GuideProfile?
   trainingGoals               TrainingGoal[]
   trainingPlans               TrainingPlan[]
   plannedWorkouts             PlannedWorkout[]
@@ -60,7 +60,7 @@ model User {
   circlesOwned                Circle[]                     @relation("CircleOwner")
   circleMemberships           CircleMember[]
   clubMemberships             ClubMembership[]
-  futureActivitiesCreated     FutureActivity[]             @relation("FutureActivityCreator")
+  activityEventsCreated       ActivityEvent[]              @relation("ActivityEventCreator")
   invitationsSent             Invitation[]                 @relation("InvitationSender")
   invitationsReceived         Invitation[]                 @relation("InvitationRecipient")
   referralLink                ReferralLink?                @relation("ReferralCreator")
@@ -71,7 +71,7 @@ model User {
   socialReports               SocialReport[]
   socialNotifications         SocialNotification[]         @relation("SocialNotificationRecipient")
   socialNotificationsActed    SocialNotification[]         @relation("SocialNotificationActor")
-  futureActivityParticipants  FutureActivityParticipant[]
+  activityEventParticipants   ActivityEventParticipant[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -101,13 +101,13 @@ model AuthIdentity {
   @@index([normalizedPhone])
 }
 
-model CoachProfile {
+model GuideProfile {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Coach identity
-  coachName   String @default("Coach")
+  // Guide identity
+  guideName   String @default("Guide")
   personality String @default("encouraging") // encouraging | data-driven | direct | zen
   voiceId     String @default("default")
 
@@ -124,7 +124,7 @@ model CoachProfile {
   // Personal records
   records Json @default("{}") // { "5k": seconds, "10k": seconds, ... }
 
-  // Coaching memory — compressed history for on-device context
+  // Guidance memory — compressed history for on-device context
   memorySnapshot Json      @default("{}") // last 30 days summary
   lastBuiltAt    DateTime?
 
@@ -142,7 +142,9 @@ model Activity {
   clientActivityId String?
   syncSource       String? // ios-local-store, watch-import, manual
 
-  type         String // running | cycling | hiking | swimming
+  // Extensible canonical endurance-sport value. Current values are
+  // running | cycling | hiking | walking | swimming.
+  type         String
   title        String?
   startedAt    DateTime
   endedAt      DateTime?
@@ -163,10 +165,10 @@ model Activity {
   posts                      Post[]
   workoutCompletions         WorkoutCompletion[]
   moments                    Moment[]
-  futureActivityParticipation FutureActivityParticipant?
+  activityEventParticipation ActivityEventParticipant?
 
-  // AI coach analysis generated after activity
-  coachAnalysis Json?
+  // AI guide analysis generated after activity
+  guideAnalysis Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -313,7 +315,7 @@ model TrainingPlanWorkout {
   dayLabel        String
   summary         String
   purpose         String
-  coachCue        String
+  guideCue        String?
   effortLabel     String
   durationSeconds Int
   distanceLabel   String?
@@ -527,7 +529,7 @@ model RunnerProfile {
   recentSessionsPerWeek      Int?
   targetSessionsPerWeek      Int       @default(3)
   preferredLongRunDay        String?
-  coachingDetail             String    @default("balanced")
+  guidanceDetail             String    @default("balanced")
   sexAtBirth                 String?
   birthDate                  DateTime? @db.Date
   heightCentimeters          Float?
@@ -900,13 +902,14 @@ model Post {
   id         String     @id @default(cuid())
   userId     String
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId String?
+  activityId String?    @unique
   activity   Activity?  @relation(fields: [activityId], references: [id], onDelete: Cascade)
   caption    String?
   createdAt  DateTime   @default(now())
   reactions  Reaction[]
   comments   Comment[]
   visibility String     @default("connections")
+  deletedAt  DateTime?
 }
 
 model Connection {
@@ -957,7 +960,7 @@ model Club {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   memberships    ClubMembership[]
-  futureActivities FutureActivity[]
+  activityEvents ActivityEvent[]
 }
 
 model ClubMembership {
@@ -973,78 +976,79 @@ model ClubMembership {
   @@index([userId])
 }
 
-model FutureActivity {
-  id           String           @id @default(cuid())
-  clubId       String?
-  club         Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  creatorId    String
-  creator      User             @relation("FutureActivityCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  title        String
-  startsAt     DateTime
-  locationName String?
-  note         String?
-  participationMode String      @default("hybrid")
-  activityPolicy   String       @default("fixed")
-  activityType     String?
-  visibility       String       @default("connections")
-  status       String           @default("scheduled")
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  options      FutureActivityOption[]
-  invitations  Invitation[]
-  participants FutureActivityParticipant[]
+model ActivityEvent {
+  id                String                     @id @default(cuid())
+  clubId            String?
+  club              Club?                      @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  creatorId         String
+  creator           User                       @relation("ActivityEventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  title             String
+  startsAt          DateTime
+  endsAt            DateTime
+  locationName      String?
+  note              String?
+  participationMode String                     @default("hybrid")
+  activityPolicy    String                     @default("fixed")
+  activityType      String?
+  visibility        String                     @default("connections")
+  status            String                     @default("scheduled")
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  options           ActivityEventOption[]
+  invitations       Invitation[]
+  participants      ActivityEventParticipant[]
 
   @@index([startsAt, status])
   @@index([clubId, startsAt])
 }
 
-model FutureActivityParticipant {
-  id               String         @id @default(cuid())
-  futureActivityId String
-  futureActivity   FutureActivity @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
-  userId           String
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status           String         @default("going")
-  outcome          String?
-  attendanceMode   String?
-  recordedActivityId String?      @unique
-  recordedActivity Activity?      @relation(fields: [recordedActivityId], references: [id], onDelete: SetNull)
-  joinedAt         DateTime       @default(now())
-  resolvedAt       DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+model ActivityEventParticipant {
+  id                 String        @id @default(cuid())
+  activityEventId    String
+  activityEvent      ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status             String        @default("going")
+  outcome            String?
+  attendanceMode     String?
+  recordedActivityId String?       @unique
+  recordedActivity   Activity?     @relation(fields: [recordedActivityId], references: [id], onDelete: SetNull)
+  joinedAt           DateTime      @default(now())
+  resolvedAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  @@unique([futureActivityId, userId])
+  @@unique([activityEventId, userId])
   @@index([userId, status])
 }
 
-model FutureActivityOption {
-  id               String         @id @default(cuid())
-  futureActivityId String
-  futureActivity   FutureActivity @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
-  label          String
-  distanceMeters Float?
-  paceMinSeconds Int?
-  paceMaxSeconds Int?
-  capacity       Int?
-  sortOrder      Int      @default(0)
+model ActivityEventOption {
+  id              String        @id @default(cuid())
+  activityEventId String
+  activityEvent   ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  label           String
+  distanceMeters  Float?
+  paceMinSeconds  Int?
+  paceMaxSeconds  Int?
+  capacity        Int?
+  sortOrder       Int           @default(0)
 
-  @@index([futureActivityId, sortOrder])
+  @@index([activityEventId, sortOrder])
 }
 
 model Invitation {
-  id          String    @id @default(cuid())
-  senderId    String
-  sender      User      @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
-  recipientId String?
-  recipient   User?     @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
-  futureActivityId String?
-  futureActivity   FutureActivity? @relation(fields: [futureActivityId], references: [id], onDelete: Cascade)
-  kind        String
-  tokenHash   String?   @unique
-  status      String    @default("pending")
-  createdAt   DateTime  @default(now())
-  expiresAt   DateTime?
+  id              String         @id @default(cuid())
+  senderId        String
+  sender          User           @relation("InvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId     String?
+  recipient       User?          @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  activityEventId String?
+  activityEvent   ActivityEvent? @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  kind            String
+  tokenHash       String?        @unique
+  status          String         @default("pending")
+  createdAt       DateTime       @default(now())
+  expiresAt       DateTime?
 
   @@index([recipientId, status])
   @@index([senderId, status])

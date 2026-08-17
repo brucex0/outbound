@@ -1,6 +1,6 @@
-# Coaching Plans
+# Guidance Plans
 
-Open this when designing or building personalized plans, plan recommendations, adaptive coaching, or the backend/client architecture for progression features.
+Open this when designing or building personalized plans, plan recommendations, adaptive guidance, or the backend/client architecture for progression features.
 
 ## Product Goal
 
@@ -10,7 +10,7 @@ Make Outbound useful before, during, and after activity by helping the user know
 - what this week should look like
 - what to do today
 
-The system should feel like a coach relationship, not a rigid training spreadsheet.
+The system should feel like a guide relationship, not a rigid training spreadsheet.
 
 ## Core Product Shape
 
@@ -75,7 +75,7 @@ Recommended layering:
 1. A structured plan template library defines the allowed progression patterns.
 2. A personalization engine selects the right template and tunes its parameters.
 3. An adaptation engine adjusts the week and the next workout using recent behavior.
-4. AI explains the choice and rewrites the result in coach voice.
+4. AI explains the choice and rewrites the result in guide voice.
 
 This keeps the system trustworthy while still feeling personalized.
 
@@ -106,7 +106,7 @@ Backend should own:
 - weekly and daily recomputation
 - adherence tracking
 - AI prompt orchestration
-- explanation and coach copy generation
+- explanation and guide copy generation
 - experiments, versioning, and observability
 
 Client should own:
@@ -133,7 +133,7 @@ Use generic concepts:
 - `CompletedSession`
 - `PlanAdaptation`
 - `ReadinessCheckIn`
-- `CoachRecommendation`
+- `GuideRecommendation`
 
 Recommended high-level definitions:
 
@@ -146,7 +146,7 @@ Recommended high-level definitions:
 - `CompletedSession`: the normalized record of what actually happened
 - `PlanAdaptation`: a record of what changed and why
 - `ReadinessCheckIn`: user-reported daily state
-- `CoachRecommendation`: the Today card content and rationale
+- `GuideRecommendation`: the Today card content and rationale
 
 ## Plan Template Design
 
@@ -183,10 +183,10 @@ Current iOS/backend MVP note:
 - Outbound-authored plans are benchmarked against established road-running structure rather than copied from copyrighted public plans: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and event-specific tapers
 - MIT open-source imports remain as compatibility/fallback content, but high-volume imported half-marathon plans should not lead normal recommendations
 - retained imported plain-text plans are normalized into Outbound workout kinds and step lists, and rest days are represented as rest placeholders rather than 30-minute scheduled workouts
-- the backend now applies a curation layer in `backend/src/data/curatedTrainingPlanTemplates.ts` over the raw exported catalog before seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables
+- the backend now applies a curation layer in `backend/src/data/curatedTrainingPlanTemplates.ts` over the raw exported catalog before seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables. A stored workout may omit `guideCue`; catalog reads use its `purpose` as the guide cue in that case so the client contract remains non-null.
 - the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
 - iOS fetches Explore Plans recommendations from `GET /v1/planning/recommendations`, caches the last good server response for immediate/offline display, and keeps `TrainingPlanLibrary.swift` as the final offline fallback and compatibility cache.
-- The top coach pick should stay personalized and short, but the More Plans picker should show the broader public plan catalog so users can browse credible presets beyond the current recommendation shortlist.
+- The top guide pick should stay personalized and short, but the More Plans picker should show the broader public plan catalog so users can browse credible presets beyond the current recommendation shortlist.
 
 ## Personalization Parameters
 
@@ -231,7 +231,7 @@ Potential outcomes:
 - recommend recovery, mobility, or rest
 - suggest a catch-up only when it is safe and helpful
 
-The coach voice should explain the recommendation in human language.
+The guide voice should explain the recommendation in human language.
 
 ## Activity Suggestion Model
 
@@ -246,7 +246,7 @@ Backend responsibility:
 - use the active plan if one exists
 - use synced activity history when no active plan exists
 - consider today, the last 7 days, and the last 28 days
-- select from reviewed coach-used workout archetypes
+- select from reviewed guide-used workout archetypes
 - return clear, concrete session details rather than vague labels
 
 Client responsibility:
@@ -301,7 +301,7 @@ Avoid vague suggestion names:
 - `Confidence lap`
 - `Repeat yesterday's vibe`
 
-These can work as coach flavor inside explanatory copy, but they should not be the session title.
+These can work as guide flavor inside explanatory copy, but they should not be the session title.
 
 Canonical archetypes for V1:
 
@@ -344,7 +344,7 @@ Use AI for:
 
 - mapping survey answers and messy history into structured plan inputs
 - producing candidate-plan explanations
-- rewriting plan summaries in coach voice
+- rewriting plan summaries in guide voice
 - generating weekly and daily rationale
 - suggesting alternatives when the user deviates from plan
 
@@ -438,7 +438,7 @@ Keep responses structured and typed.
 - duration or effort target
 - sport
 - structured workout payload when relevant
-- coach explanation
+- guide explanation
 - fallback easier option
 - confidence or rationale metadata for internal use
 
@@ -451,7 +451,7 @@ Keep responses structured and typed.
 - modality and training stimulus
 - duration, effort label, intensity model, and optional intensity target
 - why this is recommended
-- structured steps that the start screen and live coach can use
+- structured steps that the start screen and live guide can use
 - alternatives only when they are safe and clearly different
 - cache metadata: generated time, valid date, expiry, plan version, and latest activity watermark
 - decision metadata for observability and debugging
@@ -493,7 +493,7 @@ Recommended storage split:
 - template catalog in versioned backend config or database
 - active plans and generated weeks in database
 - adaptations and user feedback in database
-- coach explanation text stored with generation metadata when useful for debugging
+- guide explanation text stored with generation metadata when useful for debugging
 
 Version important objects:
 
@@ -532,7 +532,7 @@ Recommended product flow:
 1. User chooses a focus.
 2. User answers a short setup survey.
 3. Backend recommends 1-3 plan options.
-4. Coach explains the best-fit option in human language.
+4. Guide explains the best-fit option in human language.
 5. User accepts or tunes difficulty.
 6. Today starts reflecting the active plan immediately.
 7. Daily and weekly check-ins adapt the plan over time.
@@ -554,14 +554,14 @@ Ship first:
 - deterministic personalization from survey plus recent history
 - daily Today recommendation from active plan plus readiness
 - weekly plan view with simple adaptation
-- AI explanation and coach voice, not full free-form planning
+- AI explanation and guide voice, not full free-form planning
 
 Defer:
 
 - full multi-sport hybrid plans
 - advanced pace targeting
 - strength block periodization
-- shared coach plans between users
+- shared guide plans between users
 - heavy calendar editing
 - complex wearables-first recovery models
 
@@ -607,7 +607,7 @@ Success signals:
 - daily recommendation taps increase
 - plan users return more often than non-plan users
 
-### Phase 2: Adaptive Weekly Coaching
+### Phase 2: Adaptive Weekly Guidance
 
 Goal:
 - make plans feel responsive rather than static
@@ -629,7 +629,7 @@ Success signals:
 ### Phase 3: Expand Beyond Running
 
 Goal:
-- evolve from race-plan support into a broader coaching platform
+- evolve from race-plan support into a broader guidance platform
 
 Build:
 
@@ -678,4 +678,4 @@ Recommended first visible surfaces:
 - Should V1 allow one active plan only, or one primary plan plus optional side routines such as mobility?
 - How much plan editing should users get before backend adaptation becomes the main mechanism?
 - Should the first non-running expansion be walking, strength, or a simple mixed consistency plan?
-- Should coach personas only rewrite explanations, or should they slightly alter recommendation framing too?
+- Should guide personas only rewrite explanations, or should they slightly alter recommendation framing too?

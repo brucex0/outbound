@@ -7,7 +7,7 @@ struct LiveMapView: View {
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
-    @ObservedObject var coach: VirtualCoach
+    @ObservedObject var guide: VirtualGuide
     @ObservedObject var musicStore: MusicStore
     let intent: SessionIntent?
     let capturedPhotoCount: Int
@@ -128,7 +128,7 @@ struct LiveMapView: View {
                     elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                     elevationLabel: measurementPreferences.unitSystem.elevationLabel,
                     heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
-                    coachMessage: coachMessage,
+                    guideMessage: guideMessage,
                     musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
                     showsMusicDisabledState: musicStore.hasDeveloperTokenError,
                     musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
@@ -176,9 +176,9 @@ struct LiveMapView: View {
         }
     }
 
-    private var coachMessage: String? {
-        guard recorder.state != .idle, !coach.lastNudge.isEmpty else { return nil }
-        return coach.lastNudge
+    private var guideMessage: String? {
+        guard recorder.state != .idle, !guide.lastNudge.isEmpty else { return nil }
+        return guide.lastNudge
     }
 
     private var trailCoordinates: [CLLocationCoordinate2D] {
@@ -208,7 +208,7 @@ struct LiveMapView: View {
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(.black.opacity(0.42)))
             }
-            .accessibilityLabel("Show Camera")
+            .accessibilityLabel(String(localized: "map.action.show_camera", defaultValue: "Show Camera"))
 
             Button {
                 if let loc = locationManager.location {
@@ -223,7 +223,7 @@ struct LiveMapView: View {
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(.black.opacity(0.42)))
             }
-            .accessibilityLabel("Recenter Map")
+            .accessibilityLabel(String(localized: "map.action.recenter", defaultValue: "Recenter Map"))
         }
     }
 
@@ -346,7 +346,7 @@ private struct LiveGroupManagementPanel: View {
 
                     HStack(spacing: 8) {
                         Button(action: onInvite) {
-                            Label("Invite", systemImage: "square.and.arrow.up")
+                            Label(String(localized: "common.invite", defaultValue: "Invite"), systemImage: "square.and.arrow.up")
                                 .font(.caption.weight(.semibold))
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 34)
@@ -371,7 +371,7 @@ private struct LiveGroupManagementPanel: View {
         .background(Color(.systemBackground).opacity(0.94), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
     }
 
@@ -388,6 +388,13 @@ private struct LiveGroupManagementPanel: View {
 private struct LiveGroupParticipantPin: View {
     let participant: LiveGroupParticipant
 
+    private var participantAccessibilityLabel: String {
+        if participant.isFresh {
+            return String(localized: "\(participant.displayName), live")
+        }
+        return String(localized: "\(participant.displayName), last seen")
+    }
+
     var body: some View {
         Text(participant.initials)
             .font(.caption.weight(.black))
@@ -399,7 +406,7 @@ private struct LiveGroupParticipantPin: View {
                     .stroke(.white, lineWidth: 3)
             }
             .shadow(radius: 4)
-            .accessibilityLabel("\(participant.displayName), \(participant.isFresh ? "live" : "last seen")")
+            .accessibilityLabel(participantAccessibilityLabel)
     }
 
     private var pinColor: Color {
@@ -448,7 +455,7 @@ private struct LiveGroupRunnerStrip: View {
                         )
                         .overlay {
                             Capsule()
-                                .stroke(focusedParticipantID == participant.id ? Color.orange : Color.black.opacity(0.08), lineWidth: 1)
+                                .stroke(focusedParticipantID == participant.id ? Color.orange : Color.primary.opacity(0.08), lineWidth: 1)
                         }
                     }
                     .buttonStyle(.plain)

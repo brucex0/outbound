@@ -6,17 +6,17 @@ Social is the production social surface. `GET /v1/social/home` returns only the 
 
 The production Social header has a persistent Connections entry. Connections supports authenticated listing, name/username search, requests, acceptance, decline/cancel, and removal. Pending incoming requests also appear as contextual shortcuts on Social home. Referrals remain invitation links and do not silently create a connection.
 
-The Social home connection-growth card is limited to runners with fewer than three accepted connections. Connections owns the normal add flow through its top-right add menu, which focuses people search or opens referral-link sharing. Upcoming and Recent sections remain visible with explicit empty cards when they have no content.
+The Social home connection-growth card is limited to runners with fewer than three accepted connections. Connections owns the normal add flow through its top-right add menu, which focuses people search or opens referral-link sharing. Upcoming includes a visible Discover entry, also available from the community menu, for browsing compatible activities from connections and joined groups. Upcoming and Recent sections remain visible with explicit empty cards when they have no content.
 
 The header keeps only two compact actions: a community menu for Connections and Groups, plus Notifications. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.
 
-Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary and route fields rather than returning private reflection, coaching, or client snapshot data.
+Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary and route fields rather than returning private reflection, guidance, or client snapshot data.
 
-The production Social tab also participates in the local recognition layer restored from the earlier prototype. Supporting three distinct activity posts in a calendar week through a Cheer or comment unlocks `Good Teammate`; joining a Group or its run unlocks `Relay Player`; and sharing an activity with a photo unlocks `Photo Finish`. A fresh Social recognition appears as a lightweight `Coach noticed this` card for three days. `Rival Edge` remains dormant until the deferred Rivals feature has a real backend-owned outcome rather than a manual claim button.
+The production Social tab also participates in the local recognition layer restored from the earlier prototype. Supporting three distinct activity posts in a calendar week through a Cheer or comment unlocks `Good Teammate`; joining a Group or its run unlocks `Relay Player`; and sharing an activity with a photo unlocks `Photo Finish`. A fresh Social recognition appears as a lightweight `Guide noticed this` card for three days. `Rival Edge` remains dormant until the deferred Rivals feature has a real backend-owned outcome rather than a manual claim button.
 
-The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Later syncs do not duplicate it, and deleting the post keeps that activity out of the feed. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and coaching context are never included in Social responses.
+The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Social home repairs missing posts for older synced activities, while soft-deleted posts preserve the runner's opt-out and are not recreated. Later syncs do not duplicate posts. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and guidance context are never included in Social responses.
 
 Safety is server-owned. Runners can report posts or comments, block an author, review their block list, and unblock. A block removes any connection and is enforced in people search, connection creation, feed queries, and post mutations. Authors can delete their posts; comment authors and post owners can delete comments.
 
@@ -28,7 +28,7 @@ Together referral and group-run invitations are shared as a single plain-text me
 
 Open this when changing the Social tab, social graph concepts, feed cards, clubs, relays, challenges, or rivalry loops.
 
-The proposed end-to-end flow for creating a future run, inviting connections, discovering a friend's activity, and joining it is captured in `docs/prototypes/future-activities-e2e.html`. Treat it as the interaction reference before implementing future-activity creation and discovery.
+The end-to-end event flow was originally explored in `docs/prototypes/future-activities-e2e.html`. It remains an interaction reference, but the production concept is an activity event because the same object persists before, during, and after its scheduled time.
 
 ## Product Direction
 
@@ -41,23 +41,32 @@ Core loops:
 - `Rivals`: lightweight weekly competition and segment ownership.
 - `Activity visibility`: newly synced activities appear for Connections by default, with post deletion as the opt-out.
 
-## Future Activities
+## Activity Events
 
-The production future-activity loop follows `docs/prototypes/future-activities-e2e.html`:
+The production activity-event loop follows `docs/prototypes/future-activities-e2e.html`:
 
 `Plan -> Invite -> Discover -> Review -> Joined -> Record -> Reconcile`
 
 - Social's community menu opens a two-step `Plan a run` / `Invite friends` flow.
 - The MVP form stores a name, date/time, optional meetup label, and optional pace/note.
-- Every future activity is hybrid by default: participants may meet at the suggested location or join from anywhere.
+- Every activity event is hybrid by default: participants may meet at the suggested location or join from anywhere.
+- Creation, Upcoming cards, and activity detail label this explicitly as `Meet up or join from anywhere`; the person-and-radio-waves icon reinforces that both in-person and virtual participation are first-class, and meetup location remains optional.
 - Creating an activity automatically joins its creator. Eligible connections and invitation recipients join immediately; there is no approval or pending-RSVP state.
+- When a connection joins or accepts a targeted invitation, they choose `in_person` or `virtual`; that attendance intent is stored independently from recorded results and never inferred from GPS.
 - Connections-visible activities, direct invitations, joined activities, and joined-group activities appear in Upcoming with a share-safe source label.
-- A targeted invitation or shared `/invite/run/:token` Universal Link joins the recipient after authentication.
-- Starting a joined activity from Today stores its future-activity ID in the local saved activity. Offline sync later links the canonical server activity to that participant idempotently.
+- A targeted invitation or shared `/invite/activity/:token` Universal Link joins the recipient after authentication.
+- Targeted invitations create an in-app notification. APNs delivery is still deferred, so invitees see it in Plainstride's Notifications inbox rather than as an OS push notification.
+- The creator's invite picker supports multi-select and marks friends who are already invited or already going so they cannot be selected twice.
+- The creator sees pending targeted invitations on the planned activity detail and can delete an invitation before it is accepted; deleting it also removes the invitee's matching notification.
+- Today presents one primary next activity. A joined activity event takes precedence over the planned recommendation; after completing a workout, the recommendation remains available as the compact Up next affordance.
+- Starting an event uses an event-specific session intent rather than a Quick Run or planned-workout intent. The setup and live session use the event title, while the saved personal activity stores the event ID. Offline sync later links the canonical server activity to that participant idempotently.
 - Reconciliation distinguishes a linked recording from participation without a recording. It never infers physical attendance from GPS.
 - Results use participation-neutral language and expose individual stats only where connection visibility permits.
+- Event lifecycle is `scheduled -> active -> reconciling -> completed`, with `cancelled` as a terminal alternative. The server derives and persists transitions from `startsAt`, `endsAt`, participant outcomes, and a four-hour reconciliation window after the scheduled end. An event completes sooner when every going participant has resolved an outcome. Only scheduled and active events appear in Upcoming; reconciling and completed events appear under Past activities.
+- The owner sees organizer and invitation controls but no redundant personal RSVP or Leave action. Participants see their RSVP and attendance mode. Everyone sees whether each participant plans to meet in person or join from anywhere.
+- Every participant's recording remains an ordinary personal `Activity` with its own ID. `ActivityEventParticipant.recordedActivityId` links that record to the shared parent event. Personal history shows a subtle Shared activity marker; Social owns the cross-participant result view. A participant who did not record has no synthetic personal activity row.
 
-The database intentionally uses generic `FutureActivity`, `FutureActivityParticipant`, and `FutureActivityOption` models rather than run-specific names. The MVP stores `activityType = running` and `activityPolicy = fixed`; later open activities can set `activityType = null` and allow walking, trail running, cycling, strength, or other activity types without changing invitation or reconciliation ownership.
+The database uses durable `ActivityEvent`, `ActivityEventParticipant`, and `ActivityEventOption` models rather than time-relative or run-specific names. The event has an explicit duration (`startsAt` and `endsAt`). Creation offers an optional duration choice and uses one hour when it is left unset. Activity detail shows the duration, scheduled end, and exact results deadline. The MVP stores `activityType = running`, `activityPolicy = fixed`, and `participationMode = hybrid`; later open activities can set `activityType = null` and allow walking, trail running, cycling, strength, or other activity types without changing invitation, attendance, personal recording, or reconciliation ownership.
 
 This schema replacement is intentionally destructive for pre-release data. Apply it with:
 

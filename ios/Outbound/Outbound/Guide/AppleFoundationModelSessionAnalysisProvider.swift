@@ -21,7 +21,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         return true
     }
 
-    func beginSession(profile: CoachProfile?, persona: CoachPersona?) {
+    func beginSession(profile: GuideProfile?, persona: GuidePersona?) {
         guard isAvailable else {
             session = nil
             activeSessionKey = nil
@@ -74,7 +74,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         activeSessionKey = nil
     }
 
-    private static func instructions(for profile: CoachProfile?, persona: CoachPersona?) -> String {
+    private static func instructions(for profile: GuideProfile?, persona: GuidePersona?) -> String {
         var lines = [
             "You are Plainstride's on-device live session analyst.",
             "Analyze only the active workout data supplied in each prompt.",
@@ -92,7 +92,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
             lines.append("Companion communication profile: \(persona.template.personality).")
             lines.append("Sport focus: \(persona.template.sport.displayName).")
             lines.append("Persona traits: \(persona.template.personality).")
-            lines.append("Guidance style: \(persona.template.coachingStyle).")
+            lines.append("Guidance style: \(persona.template.guidanceStyle).")
             lines.append("User-selected intensity: \(persona.intensity.displayName).")
             lines.append("System persona seed: \(persona.template.systemPromptSeed).")
         }
@@ -122,7 +122,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         return lines.joined(separator: "\n")
     }
 
-    private static func sessionKey(profile: CoachProfile?, persona: CoachPersona?) -> String {
+    private static func sessionKey(profile: GuideProfile?, persona: GuidePersona?) -> String {
         "\(profile?.id ?? "no-profile")|\(persona?.id ?? "no-persona")"
     }
 
@@ -138,7 +138,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         Requirements:
         - Match the packet's decision intent and urgency.
         - Use plan, athlete profile, and recent patterns only when they materially improve the cue.
-        - Mention time, distance, or pace only if they improve the coaching moment.
+        - Mention time, distance, or pace only if they improve the guidance moment.
         - Do not describe the athlete as reaching a kilometer or another distance milestone until session.distanceMeters is at least that raw milestone.
         - For short distances, prefer meters; for example 20 meters should not become 0.02 kilometers.
         - Prefer conversational phrasing like "just over a kilometer in", "pace still settling", or "a touch quick" only when it matches the packet.

@@ -1,12 +1,12 @@
 # Goals And Progress
 
-Open this when designing or building goal setting, weekly progress, milestones, or coach-led planning.
+Open this when designing or building goal setting, weekly progress, milestones, or guide-led planning.
 
 ## Product Goal
 
-Make progress feel like part of the coach relationship, not a separate analytics dashboard.
+Make progress feel like part of the guide relationship, not a separate analytics dashboard.
 
-The user should feel like the coach is helping them choose a realistic focus, track it gently, and turn it into today's next step.
+The user should feel like the guide is helping them choose a realistic focus, track it gently, and turn it into today's next step.
 
 ## Positioning
 
@@ -15,7 +15,7 @@ Use `focus` as the main user-facing language.
 Why:
 - it sounds more human than `goal`
 - it matches the app's motivation-first tone
-- it lets the coach frame progress softly on comeback days and more directly on momentum weeks
+- it lets the guide frame progress softly on comeback days and more directly on momentum weeks
 
 Use `goal` as the structured internal concept that powers progress logic.
 
@@ -36,7 +36,7 @@ Example mapping:
 
 Ship:
 - one active weekly goal at a time
-- coach-led setup inside Me
+- guide-led setup inside Me
 - local-first persistence
 - progress derived from saved activities
 - goal-aware Me-surface copy and post-run reflection
@@ -55,7 +55,7 @@ Implemented in the app:
 
 - one active weekly focus at a time
 - `weeklySessions` and `weeklyMinutes`
-- coach-led setup in Me with reply-chip cards
+- guide-led setup in Me with reply-chip cards
 - progress card and progress chip on Me
 - post-run reflection note that references goal progress
 
@@ -83,34 +83,34 @@ Do not auto-suggest targets that exceed the user's recent pattern unless they ex
 
 ## Conversation Model
 
-The setup flow should feel like a coach-thread card stack with reply chips, not a generic form and not a full chatbot.
+The setup flow should feel like a guide-thread card stack with reply chips, not a generic form and not a full chatbot.
 
 Suggested flow:
 
-1. Coach offers help at the right moment.
+1. Guide offers help at the right moment.
 2. User picks a direction from chips.
-3. Coach proposes a realistic target.
+3. Guide proposes a realistic target.
 4. User confirms, eases, or changes it.
 5. Me immediately starts reflecting the new goal.
 
 Example:
 
 ```text
-Coach:
+Guide:
 Want a focus for this week?
 
 [ Build consistency ] [ Get back into rhythm ] [ Move by time ] [ Not now ]
 ```
 
 ```text
-Coach:
+Guide:
 What feels realistic right now?
 
 [ 2 sessions ] [ 3 sessions ] [ 4 sessions ] [ Help me choose ]
 ```
 
 ```text
-Coach:
+Guide:
 Let's keep it simple: 3 sessions this week. Short ones count. Lock that in?
 
 [ Lock it in ] [ Make it easier ] [ Change it ]
@@ -140,7 +140,7 @@ Recommended Me order:
 
 Secondary surfaces:
 - post-run reflection card
-- future coach tab if coaching gets promoted out of Me
+- future guide tab if guidance gets promoted out of Me
 
 Do not start with a standalone progress dashboard.
 

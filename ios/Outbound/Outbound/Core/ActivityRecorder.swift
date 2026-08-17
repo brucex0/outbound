@@ -35,6 +35,7 @@ final class ActivityRecorder: ObservableObject {
     }
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
+    @Published private(set) var recoveredSession = false
 
     let locationManager: LocationManager
     private var timer: AnyCancellable?
@@ -50,16 +51,19 @@ final class ActivityRecorder: ObservableObject {
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
     private var heartRateSamples: [HeartRateSample] = []
+    private var lastJournalSaveAt: Date?
 
     init(locationManager: LocationManager) {
         self.locationManager = locationManager
         locationCancellable = locationManager.$location.sink { [weak self] _ in
             self?.handleLocationUpdate()
         }
+        restoreJournalIfPresent()
     }
 
     func start() {
         timer?.cancel()
+        ActiveSessionJournal.clear()
         let now = Date()
         state = .active
         autoPaused = false
@@ -75,6 +79,7 @@ final class ActivityRecorder: ObservableObject {
         heartRateSamples.removeAll()
         locationManager.startTracking()
         liveSnapshot = makeSnapshot()
+        persistJournal(force: true)
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -94,6 +99,7 @@ final class ActivityRecorder: ObservableObject {
             locationManager.pauseTracking()
         }
         liveSnapshot = makeSnapshot()
+        persistJournal(force: true)
     }
 
     func resume() {
@@ -105,6 +111,7 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = Date()
         locationManager.resumeTracking()
         liveSnapshot = makeSnapshot()
+        persistJournal(force: true)
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -132,8 +139,75 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = nil
         accumulatedActiveDuration = 0
         heartRateSamples.removeAll()
+        recoveredSession = false
+        ActiveSessionJournal.clear()
         return summary
     }
+
+#if DEBUG
+    func seedLiveRunForUITest(
+        elapsedSeconds: Int = 3_600,
+        distanceMeters: Double = 10_000,
+        elevationGainMeters: Double = 82,
+        currentPaceSecsPerKm: Double = 360,
+        heartRate: Int = 154
+    ) {
+        timer?.cancel()
+        let now = Date()
+        let route = Self.seeded10KRoute(endingAt: now)
+        locationManager.seedLiveRunForUITest(
+            distanceMeters: distanceMeters,
+            elevationGainMeters: elevationGainMeters,
+            currentPaceSecsPerKm: currentPaceSecsPerKm,
+            trackPoints: route
+        )
+        state = .active
+        autoPaused = false
+        autoPauseCandidateStart = nil
+        autoResumeCandidateStart = nil
+        startDate = now.addingTimeInterval(-TimeInterval(elapsedSeconds))
+        accumulatedActiveDuration = TimeInterval(elapsedSeconds)
+        currentSegmentStartDate = now
+        self.elapsedSeconds = elapsedSeconds
+        self.distanceMeters = distanceMeters
+        self.elevationGainMeters = elevationGainMeters
+        currentPace = currentPaceSecsPerKm
+        heartRateSamples.removeAll()
+        self.heartRate = heartRate
+        liveSnapshot = makeSnapshot()
+        timer = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.tick() }
+    }
+
+    private static func seeded10KRoute(endingAt endDate: Date) -> [CLLocation] {
+        let coordinates: [(Double, Double, Double)] = [
+            (37.8078, -122.4750, 8),
+            (37.8061, -122.4660, 13),
+            (37.8032, -122.4568, 20),
+            (37.7994, -122.4477, 31),
+            (37.7950, -122.4390, 39),
+            (37.7900, -122.4310, 48),
+            (37.7846, -122.4239, 56),
+            (37.7790, -122.4174, 65),
+            (37.7732, -122.4118, 72),
+            (37.7671, -122.4073, 82),
+            (37.7608, -122.4041, 90),
+        ]
+        let interval = TimeInterval(3_600 / max(1, coordinates.count - 1))
+        return coordinates.enumerated().map { index, point in
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: point.0, longitude: point.1),
+                altitude: point.2,
+                horizontalAccuracy: 5,
+                verticalAccuracy: 5,
+                course: 170,
+                speed: 2.78,
+                timestamp: endDate.addingTimeInterval(-interval * Double(coordinates.count - 1 - index))
+            )
+        }
+    }
+#endif
 
     private func tick() {
         switch state {
@@ -212,6 +286,36 @@ final class ActivityRecorder: ObservableObject {
         elevationGainMeters = locationManager.elevationGainMeters
         currentPace = locationManager.currentPaceSecsPerKm
         liveSnapshot = makeSnapshot()
+        persistJournal()
+    }
+
+    private func restoreJournalIfPresent() {
+        guard let journal = ActiveSessionJournal.load() else { return }
+        let points = journal.trackPoints.map(\.location)
+        startDate = journal.startedAt
+        accumulatedActiveDuration = TimeInterval(journal.elapsedSeconds)
+        currentSegmentStartDate = nil
+        elapsedSeconds = journal.elapsedSeconds
+        locationManager.restoreTracking(from: points)
+        distanceMeters = locationManager.totalDistanceMeters
+        elevationGainMeters = locationManager.elevationGainMeters
+        currentPace = locationManager.currentPaceSecsPerKm
+        state = .paused
+        recoveredSession = true
+        liveSnapshot = makeSnapshot()
+    }
+
+    private func persistJournal(force: Bool = false) {
+        guard state != .idle, let startDate else { return }
+        let now = Date()
+        if !force, let lastJournalSaveAt, now.timeIntervalSince(lastJournalSaveAt) < 10 { return }
+        lastJournalSaveAt = now
+        ActiveSessionJournal(
+            startedAt: startDate,
+            elapsedSeconds: elapsedSeconds,
+            wasPaused: state == .paused,
+            trackPoints: locationManager.trackPoints.map(JournalTrackPoint.init)
+        ).save()
     }
 
     private func currentElapsedSeconds(at now: Date) -> Int {

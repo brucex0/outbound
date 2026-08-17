@@ -9,7 +9,7 @@ Open this for rendered-app localization findings and release blockers. The suppo
 - Locales: Spanish (`es_ES`) and Simplified Chinese (`zh_CN`).
 - Surfaces inspected: authentication, Today, Together empty and populated states, Me with seeded history, Settings, profile editor, activity setup, active and paused activity, post-run summary, and activity detail.
 - Data mode: offline UI-test session with one saved activity. Authentication was separately inspected without the test-session bypass.
-- Remaining coverage: authenticated onboarding, full activity-history and Progress screens, cycle-aware coaching, gear, safety/live sharing, music, assistant sheets, Dynamic Island, App Intents UI, and on-device speech recognition/synthesis.
+- Remaining coverage: authenticated onboarding, full activity-history and Progress screens, cycle-aware guidance, gear, safety/live sharing, music, assistant sheets, Dynamic Island, App Intents UI, and on-device speech recognition/synthesis.
 
 ## 2026-08-13 Simplified Chinese Rerun
 
@@ -62,7 +62,7 @@ Both translations render English app-authored content inside localized screens.
 - Together: local navigation, roles, counts, metric labels, actions, empty states, and share copy are fixed in code. Remaining risk is offline/server error text and generated compatibility explanations.
 - Me: plan title/detail, learned-insight values, `Distance`, `Time`, and the weekly companion sentence.
 - Profile editor: `Profile could not be loaded.`
-- Activity setup: `Freestyle run`, `Run • no preset target`, coach quote, goal choices, `Start now`, `Music`, and `Run options`.
+- Activity setup: `Freestyle run`, `Run • no preset target`, guide quote, goal choices, `Start now`, `Music`, and `Run options`.
 - Live activity: `No photos captured`, activity title/status, `Pace`, `Avg. pace`, and `HR`.
 - Post-run: recognition titles/explanations, `completed`, `Distance`, `Time`, and `Elev Gain`.
 - Activity detail: `Distance`, `Avg Pace`, `Moving Time`, `Elev Gain`, `Max Elevation`, `Avg HR`, and `Recorded in Plainstride`.

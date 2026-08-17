@@ -112,7 +112,7 @@ Examples worth evaluating after HealthKit:
 - Oura
 - TrainingPeaks
 
-These are good candidates because they cover social fitness, recovery, and coaching/training use cases.
+These are good candidates because they cover social fitness, recovery, and guidance/training use cases.
 
 ### Popular Watches And Wearables
 
@@ -138,7 +138,7 @@ Goal:
 Ship:
 - Apple Health permission flow
 - import of recent workouts and routes
-- read heart rate for activity detail and coach context
+- read heart rate for activity detail and guide context
 - write Outbound-recorded workouts back to Apple Health
 
 Current implementation:
@@ -150,12 +150,12 @@ Current implementation:
 
 User value:
 - Outbound stops feeling like an isolated tracker
-- coach features can use real fitness context
+- guide features can use real fitness context
 
-### Phase 2: Better Coaching Inputs
+### Phase 2: Better Guidance Inputs
 
 Goal:
-- improve readiness and in-run coaching quality
+- improve readiness and in-run guidance quality
 
 Ship:
 - read resting HR, HRV, sleep, and recent training load proxies
@@ -193,7 +193,7 @@ Selection rule:
 
 ## Architecture Recommendation
 
-Add a small integration layer rather than mixing vendor logic into recording or coach code.
+Add a small integration layer rather than mixing vendor logic into recording or guide code.
 
 Suggested modules:
 
@@ -214,7 +214,7 @@ Responsibilities:
 Keep these boundaries:
 
 - `ActivityRecorder` remains focused on live recording
-- coach logic consumes normalized session or history inputs, not raw `HealthKit` samples
+- guide logic consumes normalized session or history inputs, not raw `HealthKit` samples
 - vendor-specific mapping stays isolated from core app flows
 
 ## Data Model Guidance
@@ -256,7 +256,7 @@ Recommended entry points:
 
 Permission copy should explain the user benefit clearly:
 
-- read workouts and heart rate to personalize coaching
+- read workouts and heart rate to personalize guidance
 - save Outbound workouts back to Apple Health
 
 Do not ask for every health permission at once unless the product needs it immediately.

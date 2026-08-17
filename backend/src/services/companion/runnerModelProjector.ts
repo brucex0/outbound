@@ -12,7 +12,7 @@ export async function recordProfileEvidence(
     comfortableDurationMinutes: number | null;
     targetSessionsPerWeek: number;
     preferredLongRunDay: string | null;
-    coachingDetail: string;
+    guidanceDetail: string;
     constraints: Prisma.JsonValue;
     updatedAt: Date;
   }
@@ -31,7 +31,7 @@ export async function recordProfileEvidence(
     profile.scheduleSummary ? { key: "schedule-summary", kind: "schedule", label: "Usual schedule", value: profile.scheduleSummary } : null,
     { key: "weekly-capacity", kind: "schedule", label: "Target weekly sessions", value: `${profile.targetSessionsPerWeek} sessions` },
     profile.preferredLongRunDay ? { key: "long-run-day", kind: "schedule", label: "Preferred long-run day", value: profile.preferredLongRunDay } : null,
-    { key: "coaching-detail", kind: "preference", label: "Coaching detail", value: profile.coachingDetail },
+    { key: "guidance-detail", kind: "preference", label: "Guidance detail", value: profile.guidanceDetail },
   ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
   for (const entry of entries) {
     await upsertConfirmedBelief(prisma, userId, entry, evidence.id);

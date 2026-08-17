@@ -233,7 +233,7 @@ export interface PlanningState {
 export interface TodayPlanningResponse {
   workout: unknown | null;
   adjustment: unknown | null;
-  coachLine: string;
+  guideLine: string;
   planningStatus: PlanningStatus;
 }
 
@@ -288,7 +288,7 @@ export interface ActivitySuggestionResponse {
   relationship: ActivitySuggestionRelationship;
   primary: ActivitySuggestion | null;
   alternates: ActivitySuggestion[];
-  coachLine: string;
+  guideLine: string;
   planningStatus: PlanningStatus;
   generatedAt: string;
   validForDate: string;

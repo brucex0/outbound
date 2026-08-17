@@ -34,7 +34,7 @@ struct SimplifiedOnboardingFlow: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if step != .goal {
-                        Button("Back", systemImage: "chevron.left") { step = step.previous }
+                        Button(String(localized: "onboarding.action.back", defaultValue: "Back"), systemImage: "chevron.left") { step = step.previous }
                     }
                 }
             }
@@ -50,15 +50,15 @@ struct SimplifiedOnboardingFlow: View {
             choices(Goal.allCases, selection: $goal)
         case .baseline:
             heading("What does running look like lately?", "A starting estimate is enough. Your runs will make it more accurate.")
-            Text("RECENT FREQUENCY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(String(localized: "onboarding.baseline.recent_frequency", defaultValue: "RECENT FREQUENCY")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             choices(Frequency.allCases, selection: $frequency)
-            Stepper("Comfortable run · \(comfortableMinutes) min", value: $comfortableMinutes, in: 10...90, step: 5)
+            Stepper(String(localized: "Comfortable run · \(comfortableMinutes) min"), value: $comfortableMinutes, in: 10...90, step: 5)
                 .padding().background(.background, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
         case .week:
             heading("What can most weeks support?", "Choose what feels realistic, not ideal.")
-            Stepper("\(runsPerWeek) runs per week", value: $runsPerWeek, in: 2...6)
+            Stepper(String(localized: "\(runsPerWeek) runs per week"), value: $runsPerWeek, in: 2...6)
                 .padding().background(.background, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
-            Stepper("About \(availableMinutes) min on weekdays", value: $availableMinutes, in: 15...90, step: 5)
+            Stepper(String(localized: "About \(availableMinutes) min on weekdays"), value: $availableMinutes, in: 15...90, step: 5)
                 .padding().background(.background, in: RoundedRectangle(cornerRadius: OutboundRadius.control))
         case .understanding:
             heading("Here’s what I understand", "Correct anything by going back. Plainstride will keep learning after setup.")
@@ -102,7 +102,7 @@ struct SimplifiedOnboardingFlow: View {
                     recentSessionsPerWeek: frequency.sessions,
                     targetSessionsPerWeek: runsPerWeek,
                     preferredLongRunDay: "Saturday",
-                    coachingDetail: "balanced",
+                    guidanceDetail: "balanced",
                     constraints: [:],
                     complete: true
                 )

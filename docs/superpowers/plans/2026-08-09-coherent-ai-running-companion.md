@@ -118,14 +118,14 @@ Files:
 
 - `backend/src/services/companion/sessionBrief.ts`
 - `backend/src/routes/companion.ts`
-- `ios/Outbound/Outbound/Coach/SessionAnalysisProvider.swift`
-- `ios/Outbound/Outbound/Coach/VirtualCoach.swift`
+- `ios/Outbound/Outbound/Guide/SessionAnalysisProvider.swift`
+- `ios/Outbound/Outbound/Guide/VirtualGuide.swift`
 
 Work:
 
 1. Add a compact session-brief endpoint tied to runner-model and plan versions.
 2. Include workout purpose, targets, relevant restrictions, readiness, cue preferences, priorities, and forbidden behavior.
-3. Consume the brief in live coaching while preserving deterministic on-device timing and offline fallback.
+3. Consume the brief in live guidance while preserving deterministic on-device timing and offline fallback.
 4. Upload only bounded post-session evidence summaries, not raw continuous telemetry.
 
 ## Slice 9: Documentation, build verification, and deployment

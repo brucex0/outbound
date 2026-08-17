@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { rebuildCoachProfile } from "../services/coachProfile.js";
+import { rebuildGuideProfile } from "../services/guideProfile.js";
 import { analyzeActivity } from "../services/ai.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -12,6 +12,7 @@ import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
+const activityTypes = ["running", "cycling", "hiking", "walking", "swimming"] as const;
 
 router.get("/", async (c) => {
   const unavailable = requireDatabase(c);
@@ -75,6 +76,7 @@ router.get("/:id", async (c) => {
 
 function legacyClientData(activity: {
   clientActivityId: string | null;
+  type: string;
   title: string | null;
   startedAt: Date;
   endedAt: Date | null;
@@ -98,8 +100,9 @@ function legacyClientData(activity: {
   const verticalAccuracy = route?.properties?.verticalAccuracy ?? [];
   return {
     id: activity.clientActivityId,
+    activityType: activity.type,
     title: activity.title ?? "Restored Run",
-    coachNudge: "",
+    guideNudge: "",
     reflection: activity.reflection,
     createdAt: activity.createdAt,
     startedAt: activity.startedAt,
@@ -131,7 +134,7 @@ const createSchema = z.object({
   userId: z.string().optional(),
   clientActivityId: z.string().min(1).max(128).optional(),
   syncSource: z.string().min(1).max(64).optional(),
-  type: z.string().default("running"),
+  type: z.enum(activityTypes).default("running"),
   title: z.string().optional(),
   startedAt: z.string(),
   endedAt: z.string().optional(),
@@ -140,7 +143,7 @@ const createSchema = z.object({
   elevationM: z.number().optional(),
   avgPace: z.number().optional(),
   avgHeartRate: z.number().optional(),
-  futureActivityId: z.string().min(1).optional(),
+  activityEventId: z.string().min(1).optional(),
   calories: z.number().optional(),
   route: z
     .object({
@@ -278,27 +281,27 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     activity = await createActivityWithSocialPost();
   }
 
-  // Fire-and-forget: analyze activity + rebuild coach profile
+  // Fire-and-forget: analyze activity + rebuild guide profile
   if (wasCreated) {
     (async () => {
-      const coachProfile = await prisma.coachProfile.findUnique({
+      const guideProfile = await prisma.guideProfile.findUnique({
         where: { userId: resolvedUserId },
       });
-      const analysis = await analyzeActivity(activity, coachProfile ?? {});
+      const analysis = await analyzeActivity(activity, guideProfile ?? {});
       await Promise.all([
         prisma.activity.update({
           where: { id: activity.id },
-          data: { coachAnalysis: analysis },
+          data: { guideAnalysis: analysis },
         }),
-        rebuildCoachProfile(resolvedUserId),
+        rebuildGuideProfile(resolvedUserId),
         enqueueActivityCompletedEvent(resolvedUserId, activity.id),
       ]);
     })().catch(console.error);
   }
 
-  if (body.futureActivityId) {
-    await prisma.futureActivityParticipant.updateMany({
-      where: { futureActivityId: body.futureActivityId, userId: resolvedUserId, status: "going" },
+  if (body.activityEventId) {
+    await prisma.activityEventParticipant.updateMany({
+      where: { activityEventId: body.activityEventId, userId: resolvedUserId, status: "going" },
       data: { recordedActivityId: activity.id, outcome: "completed", resolvedAt: new Date() },
     });
   }
@@ -335,7 +338,7 @@ router.delete("/:id", async (c) => {
   await prisma.photo.deleteMany({ where: { activityId: activity.id } });
 
   const deleted = await prisma.$transaction(async (transaction) => {
-    await transaction.futureActivityParticipant.updateMany({
+    await transaction.activityEventParticipant.updateMany({
       where: { recordedActivityId: activity.id },
       data: { recordedActivityId: null, outcome: null, resolvedAt: null },
     });

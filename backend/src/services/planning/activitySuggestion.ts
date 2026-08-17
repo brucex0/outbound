@@ -140,7 +140,7 @@ export async function buildActivitySuggestion(
       relationship: "rest",
       primary: null,
       alternates: [],
-      coachLine: "Rest is the training decision today. Wait until pain or illness clears before adding load.",
+      guideLine: "Rest is the training decision today. Wait until pain or illness clears before adding load.",
       decision: {
         algorithmVersion: ALGORITHM_VERSION,
         reasons: ["pain_or_illness_flagged"],
@@ -157,7 +157,7 @@ export async function buildActivitySuggestion(
         relationship: "optionalRecovery",
         primary: archetypeSuggestion("recovery-walk-20", "You already logged activity today, so this is optional recovery only."),
         alternates: [],
-        coachLine: "You already have the meaningful work for today. Only add this if it genuinely helps you loosen up.",
+        guideLine: "You already have the meaningful work for today. Only add this if it genuinely helps you loosen up.",
         reasons: ["activity_already_completed_today", "active_plan_present"],
       });
     }
@@ -177,7 +177,7 @@ export async function buildActivitySuggestion(
           optional: false,
         },
         alternates: [],
-        coachLine: "Keep the plan alive by lowering the strain today. This protects the next useful workout.",
+        guideLine: "Keep the plan alive by lowering the strain today. This protects the next useful workout.",
         reasons: ["active_plan_present", "planned_workout_softened", athleteState.fatigueRisk],
         safetyFlags: athleteState.fatigueRisk === "low" ? [] : [`fatigue_${athleteState.fatigueRisk}`],
       });
@@ -189,7 +189,7 @@ export async function buildActivitySuggestion(
       relationship: "todayPlannedWorkout",
       primary: plannedWorkoutSuggestion(todayWorkout, "This is today's planned session."),
       alternates: [],
-      coachLine: "This is the next planned step. Keep the effort matched to the prescription.",
+      guideLine: "This is the next planned step. Keep the effort matched to the prescription.",
       reasons: ["active_plan_present", "today_planned_workout"],
     });
   }
@@ -201,7 +201,7 @@ export async function buildActivitySuggestion(
       relationship: "planFallback",
       primary: plannedWorkoutSuggestion(upcomingWorkout, "There is no workout specifically scheduled today, so this is the next plan session."),
       alternates: [],
-      coachLine: "There is no specific workout on today's calendar. This is the next useful plan step when you are ready.",
+      guideLine: "There is no specific workout on today's calendar. This is the next useful plan step when you are ready.",
       reasons: ["active_plan_present", "no_today_workout", "next_planned_workout"],
     });
   }
@@ -213,7 +213,7 @@ export async function buildActivitySuggestion(
       relationship: "optionalRecovery",
       primary: archetypeSuggestion("recovery-walk-20", "You already trained today, so this is optional recovery movement."),
       alternates: [],
-      coachLine: "The main work is already logged. Keep anything else genuinely easy.",
+      guideLine: "The main work is already logged. Keep anything else genuinely easy.",
       reasons: ["activity_already_completed_today", "no_active_plan"],
     });
   }
@@ -225,7 +225,7 @@ export async function buildActivitySuggestion(
     relationship: "noPlanSuggestion",
     primary: noPlan.primary,
     alternates: noPlan.alternates,
-    coachLine: noPlan.coachLine,
+    guideLine: noPlan.guideLine,
     reasons: noPlan.reasons,
     safetyFlags: noPlan.safetyFlags,
   });
@@ -240,7 +240,7 @@ function chooseNoPlanSuggestion(
   source: ActivitySuggestionSource;
   primary: ActivitySuggestion;
   alternates: ActivitySuggestion[];
-  coachLine: string;
+  guideLine: string;
   reasons: string[];
   safetyFlags: string[];
 } {
@@ -259,7 +259,7 @@ function chooseNoPlanSuggestion(
       source: "recovery",
       primary,
       alternates: [archetypeSuggestion("recovery-walk-20", "Use this if running or riding feels like too much today.")],
-      coachLine: "Make this restorative. The goal is absorbing work, not adding stress.",
+      guideLine: "Make this restorative. The goal is absorbing work, not adding stress.",
       reasons: ["recovery_bias", `fatigue_${athleteState.fatigueRisk}`],
       safetyFlags: athleteState.fatigueRisk === "high" ? ["high_fatigue"] : [],
     };
@@ -270,7 +270,7 @@ function chooseNoPlanSuggestion(
       source: "adaptive",
       primary: archetypeSuggestion("walk-run-return-25", "This is a proven return-to-running structure for rebuilding rhythm."),
       alternates: [archetypeSuggestion("easy-walk-25", "Keep it all walking if the jog intervals feel like too much.")],
-      coachLine: "Use a walk-run structure today. It gives you real aerobic work without pretending this needs to be a full run.",
+      guideLine: "Use a walk-run structure today. It gives you real aerobic work without pretending this needs to be a full run.",
       reasons: ["low_or_missing_baseline", "walk_run_return"],
       safetyFlags: [],
     };
@@ -289,7 +289,7 @@ function chooseNoPlanSuggestion(
       source: "adaptive",
       primary: archetypeSuggestion("easy-run-strides-30", "You have enough recent consistency for easy running with a small relaxed speed touch."),
       alternates: [archetypeSuggestion("easy-run-30", "Use this if you want the same aerobic benefit without strides.")],
-      coachLine: "Keep the strides relaxed. They should feel smooth, not like intervals.",
+      guideLine: "Keep the strides relaxed. They should feel smooth, not like intervals.",
       reasons: ["consistent_recent_running", "readiness_good", "strides_eligible"],
       safetyFlags: [],
     };
@@ -300,7 +300,7 @@ function chooseNoPlanSuggestion(
       source: "adaptive",
       primary: archetypeSuggestion("easy-ride-35", "Your recent activity supports a straightforward aerobic ride."),
       alternates: [archetypeSuggestion("recovery-spin-25", "Use this if your legs feel heavier than expected.")],
-      coachLine: "Keep the ride smooth and aerobic. You should finish feeling like you could do a little more.",
+      guideLine: "Keep the ride smooth and aerobic. You should finish feeling like you could do a little more.",
       reasons: ["bike_preference", "baseline_supports_easy_aerobic"],
       safetyFlags: [],
     };
@@ -310,7 +310,7 @@ function chooseNoPlanSuggestion(
     source: "adaptive",
     primary: archetypeSuggestion("easy-run-30", "Your recent activity supports a simple aerobic run."),
     alternates: [archetypeSuggestion("walk-run-return-25", "Use this if you want a gentler structure today.")],
-    coachLine: "Keep this conversational. The value is aerobic time, not proving fitness today.",
+    guideLine: "Keep this conversational. The value is aerobic time, not proving fitness today.",
     reasons: ["baseline_supports_easy_aerobic", "no_active_plan"],
     safetyFlags: [],
   };
@@ -467,7 +467,7 @@ function responseWithPrimary(params: {
   relationship: ActivitySuggestionRelationship;
   primary: ActivitySuggestion;
   alternates: ActivitySuggestion[];
-  coachLine: string;
+  guideLine: string;
   reasons: string[];
   safetyFlags?: string[];
 }): ActivitySuggestionResponse {
@@ -478,7 +478,7 @@ function responseWithPrimary(params: {
     relationship: params.relationship,
     primary: params.primary,
     alternates: params.alternates,
-    coachLine: params.coachLine,
+    guideLine: params.guideLine,
     decision: {
       algorithmVersion: ALGORITHM_VERSION,
       reasons: params.reasons,
@@ -502,7 +502,7 @@ function baseResponse(params: {
     relationship: "noPlanSuggestion",
     primary: null,
     alternates: [],
-    coachLine: "No activity suggestion is available yet.",
+    guideLine: "No activity suggestion is available yet.",
     planningStatus: params.planningStatus,
     generatedAt: params.now.toISOString(),
     validForDate: validFor.toISOString().slice(0, 10),

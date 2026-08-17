@@ -91,7 +91,7 @@ enum AssistantActivityCommandParser {
                 sport: .bike,
                 title: "Freestyle bike",
                 detail: "Bike • no preset target",
-                coachLine: "Keep it easy at the start, then build into the ride.",
+                guideLine: "Keep it easy at the start, then build into the ride.",
                 startLabel: "Start Bike"
             )
         }

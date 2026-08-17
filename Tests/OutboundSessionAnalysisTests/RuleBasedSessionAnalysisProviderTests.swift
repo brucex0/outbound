@@ -88,7 +88,7 @@ final class RuleBasedSessionAnalysisProviderTests: XCTestCase {
                 sport: .run,
                 title: "5K Tempo",
                 detail: "5 km • Tempo",
-                coachLine: "Start controlled.",
+                guideLine: "Start controlled.",
                 startLabel: "Start tempo",
                 targetDistanceMeters: 5000
             )

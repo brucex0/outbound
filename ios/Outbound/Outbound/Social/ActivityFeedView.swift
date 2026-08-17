@@ -63,20 +63,20 @@ struct ActivityFeedView: View {
                     .allowsHitTesting(false)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Social")
+            .navigationTitle(String(localized: "social.title", defaultValue: "Social"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingRelayComposer = true } label: {
                         Image(systemName: "person.badge.plus")
                     }
-                    .accessibilityLabel("Invite Runner")
+                    .accessibilityLabel(String(localized: "social.invite_runner", defaultValue: "Invite Runner"))
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { } label: {
                         Image(systemName: "bell.badge")
                     }
-                    .accessibilityLabel("Notifications")
+                    .accessibilityLabel(String(localized: "social.notifications", defaultValue: "Notifications"))
                 }
             }
             .sheet(isPresented: $showingRelayComposer) {
@@ -100,9 +100,9 @@ struct ActivityFeedView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Crew Pulse")
+                    Text(String(localized: "social.crew_pulse", defaultValue: "Crew Pulse"))
                         .font(.title3.bold())
-                    Text("4 running now")
+                    Text(String(localized: "social.running_now", defaultValue: "4 running now"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -110,7 +110,7 @@ struct ActivityFeedView: View {
                 Spacer()
 
                 Button { showingRelayComposer = true } label: {
-                    Label("Start Relay", systemImage: "bolt.fill")
+                    Label(String(localized: "social.start_relay", defaultValue: "Start Relay"), systemImage: "bolt.fill")
                         .font(.subheadline.bold())
                 }
                 .buttonStyle(.borderedProminent)
@@ -118,9 +118,9 @@ struct ActivityFeedView: View {
             }
 
             HStack(spacing: 10) {
-                SocialMetricPill(value: "12", label: "active", symbol: "figure.run")
-                SocialMetricPill(value: "8", label: "cheers", symbol: "hands.clap.fill")
-                SocialMetricPill(value: "3", label: "invites", symbol: "link")
+                SocialMetricPill(value: "12", label: String(localized: "social.metric.active", defaultValue: "active"), symbol: "figure.run")
+                SocialMetricPill(value: "8", label: String(localized: "social.metric.cheers", defaultValue: "cheers"), symbol: "hands.clap.fill")
+                SocialMetricPill(value: "3", label: String(localized: "social.metric.invites", defaultValue: "invites"), symbol: "link")
             }
         }
         .padding(14)
@@ -141,7 +141,7 @@ struct ActivityFeedView: View {
     }
 
     private var scopePicker: some View {
-        Picker("Social Scope", selection: $selectedScope) {
+        Picker(String(localized: "social.scope", defaultValue: "Social Scope"), selection: $selectedScope) {
             ForEach(SocialFeedScope.allCases) { scope in
                 Text(scope.rawValue).tag(scope)
             }
@@ -230,7 +230,6 @@ struct ActivityFeedView: View {
         _ = socialRecognitionStore.toggleShare(for: activity)
     }
 }
-
 private struct SocialMetricPill: View {
     let value: String
     let label: String
@@ -340,7 +339,7 @@ private struct CrewPulseAvatar: View {
                 .frame(width: 68)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(person.firstName), \(person.isRunning ? "running" : "offline")")
+        .accessibilityLabel(String(localized: person.isRunning ? "social.person.running" : "social.person.offline", defaultValue: "\(person.firstName), \(person.isRunning ? "running" : "offline")"))
     }
 }
 
@@ -360,7 +359,7 @@ private struct ShareLatestRunCard: View {
                     Image(systemName: "square.and.arrow.up")
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
-                    Text(isShared ? "Shared with Squad" : "Ready to Share")
+                    Text(isShared ? String(localized: "social.shared_with_squad", defaultValue: "Shared with Squad") : String(localized: "social.ready_to_share", defaultValue: "Ready to Share"))
                         .font(.caption.bold())
                         .foregroundStyle(.orange)
                 }
@@ -380,7 +379,7 @@ private struct ShareLatestRunCard: View {
 
             Spacer(minLength: 0)
 
-            Button(isShared ? "Posted" : "Share") {
+            Button(isShared ? String(localized: "social.posted", defaultValue: "Posted") : String(localized: "social.share", defaultValue: "Share")) {
                 onToggleShare()
             }
             .font(.subheadline.bold())
@@ -420,7 +419,7 @@ private struct RelayInviteCard: View {
                 .background(.green.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("Relay invite created")
+                Text(String(localized: "social.relay.created", defaultValue: "Relay invite created"))
                     .font(.headline)
                 Text("\(invite.routeLabel) - \(invite.windowLabel) - \(invite.audienceLabel)")
                     .font(.caption)
@@ -472,10 +471,10 @@ private struct SocialFeedPostCard: View {
                 Spacer()
 
                 Menu {
-                    Button("Report post", systemImage: "exclamationmark.bubble") {
+                    Button(String(localized: "social.post.report", defaultValue: "Report post"), systemImage: "exclamationmark.bubble") {
                         onReport()
                     }
-                    Button("Block \(post.author.firstName)", systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
+                    Button(String(localized: "social.post.block", defaultValue: "Block \(post.author.firstName)"), systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
                         onBlock()
                     }
                 } label: {
@@ -485,7 +484,7 @@ private struct SocialFeedPostCard: View {
                         .frame(width: 34, height: 34)
                         .background(Color(.tertiarySystemGroupedBackground), in: Circle())
                 }
-                .accessibilityLabel("Post options")
+                .accessibilityLabel(String(localized: "social.post.options", defaultValue: "Post options"))
             }
 
             Text(post.caption)
@@ -496,14 +495,14 @@ private struct SocialFeedPostCard: View {
 
             HStack(spacing: 10) {
                 SocialActionButton(
-                    title: isCheered ? "Cheered" : "Cheer",
+                    title: isCheered ? String(localized: "social.cheered", defaultValue: "Cheered") : String(localized: "social.cheer", defaultValue: "Cheer"),
                     symbol: "hands.clap.fill",
                     isActive: isCheered,
                     action: onCheer
                 )
 
                 SocialActionButton(title: "\(commentCount)", symbol: "bubble.left.fill", isActive: false, action: onComment)
-                SocialActionButton(title: "Run it", symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false, action: onRunRoute)
+                SocialActionButton(title: String(localized: "social.run_it", defaultValue: "Run it"), symbol: "arrow.triangle.turn.up.right.circle.fill", isActive: false, action: onRunRoute)
 
                 Spacer()
 
@@ -666,9 +665,9 @@ private struct RivalryHeaderCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Weekly Loop")
+                    Text(String(localized: "social.rival.weekly_loop", defaultValue: "Weekly Loop"))
                         .font(.headline)
-                    Text("You are \(measurementPreferences.unitSystem.distanceString(meters: 1800, fractionDigits: 1)) behind Maya")
+                    Text(String(localized: "social.rival.behind_maya", defaultValue: "You are \(measurementPreferences.unitSystem.distanceString(meters: 1800, fractionDigits: 1)) behind Maya"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -683,7 +682,7 @@ private struct RivalryHeaderCard: View {
             ProgressView(value: 0.78)
                 .tint(.blue)
 
-            Button(hasClaimedEdge ? "Edge logged" : "Log this week's edge") {
+            Button(hasClaimedEdge ? String(localized: "social.rival.edge_logged", defaultValue: "Edge logged") : String(localized: "social.rival.log_edge", defaultValue: "Log this week's edge")) {
                 onClaimEdge()
             }
             .font(.caption.bold())
@@ -711,7 +710,7 @@ private struct SocialRecognitionCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(preview.title)
                     .font(.subheadline.bold())
-                Text(preview.coachLine)
+                Text(preview.guideLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -888,9 +887,9 @@ private struct CommentThreadSheet: View {
                         Text(post.author.fullName)
                     }
 
-                    Section("Thread") {
+                    Section(String(localized: "social.thread", defaultValue: "Thread")) {
                         if comments.isEmpty {
-                            Text("No comments yet.")
+                            Text(String(localized: "social.no_comments", defaultValue: "No comments yet."))
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(comments) { comment in
@@ -907,7 +906,7 @@ private struct CommentThreadSheet: View {
                 }
 
                 HStack(spacing: 10) {
-                    TextField("Add a comment", text: $draft)
+                    TextField(String(localized: "social.add_comment", defaultValue: "Add a comment"), text: $draft)
                         .textFieldStyle(.roundedBorder)
 
                     Button {
@@ -924,11 +923,11 @@ private struct CommentThreadSheet: View {
                 .padding(12)
                 .background(.bar)
             }
-            .navigationTitle("Comments")
+            .navigationTitle(String(localized: "social.comments.title", defaultValue: "Comments"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "common.done", defaultValue: "Done")) { dismiss() }
                 }
             }
         }
@@ -945,26 +944,26 @@ private struct RelayComposerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Invite runners into a shared route, live pace board, and finish-line thread.")
+                Text(String(localized: "social.relay.intro", defaultValue: "Invite runners into a shared route, live pace board, and finish-line thread."))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 RelayOptionPicker(
                     symbol: "location.fill",
-                    title: "Route",
+                    title: String(localized: "social.relay.route", defaultValue: "Route"),
                     options: ["Neighborhood Loop", "Waterfront Out-and-Back", "Track Ladder"],
                     selection: $selectedRoute
                 )
                 RelayOptionPicker(
                     symbol: "clock.fill",
-                    title: "Window",
+                    title: String(localized: "social.relay.window", defaultValue: "Window"),
                     options: ["Lunch Window", "After Work", "Weekend Morning"],
                     selection: $selectedWindow
                 )
                 RelayOptionPicker(
                     symbol: "person.2.fill",
-                    title: "Audience",
+                    title: String(localized: "social.relay.audience", defaultValue: "Audience"),
                     options: ["Squad Only", "Club Members", "Rivals"],
                     selection: $selectedAudience
                 )
@@ -975,7 +974,7 @@ private struct RelayComposerSheet: View {
                     onCreate(selectedRoute, selectedWindow, selectedAudience)
                     dismiss()
                 } label: {
-                    Label("Create Relay", systemImage: "bolt.fill")
+                    Label(String(localized: "social.relay.create", defaultValue: "Create Relay"), systemImage: "bolt.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -984,11 +983,11 @@ private struct RelayComposerSheet: View {
                 .tint(.orange)
             }
             .padding(20)
-            .navigationTitle("New Relay")
+            .navigationTitle(String(localized: "social.relay.new", defaultValue: "New Relay"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "common.done", defaultValue: "Done")) { dismiss() }
                 }
             }
         }

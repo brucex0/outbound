@@ -6,8 +6,8 @@ import SwiftUI
 struct OutboundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var authStore = AuthStore()
-    @StateObject private var coachStore = CoachStore()
-    @StateObject private var coachCatalogStore = CoachCatalogStore()
+    @StateObject private var guideStore = GuideStore()
+    @StateObject private var guideCatalogStore = GuideCatalogStore()
     @StateObject private var activityStore = ActivityStore()
     @StateObject private var goalStore = GoalStore()
     @StateObject private var trainingPlanStore = TrainingPlanStore()
@@ -32,6 +32,8 @@ struct OutboundApp: App {
     @StateObject private var togetherStore = TogetherStore()
     @StateObject private var cycleAwareStore = CycleAwareStore()
     @StateObject private var situationalWeatherStore = SituationalWeatherStore()
+    @StateObject private var connectivityStore = ConnectivityStore()
+    @StateObject private var appearancePreferences = AppearancePreferences()
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -40,6 +42,10 @@ struct OutboundApp: App {
     var body: some Scene {
         WindowGroup {
             rootView
+                .tint(guideCatalogStore.selectedTheme.accentColor)
+                .environment(\.outboundTheme, guideCatalogStore.selectedTheme)
+                .environmentObject(appearancePreferences)
+                .preferredColorScheme(appearancePreferences.mode.colorScheme)
         }
     }
 
@@ -64,8 +70,8 @@ struct OutboundApp: App {
         if authStore.isAuthenticated {
             MainTabView()
                 .environmentObject(authStore)
-                .environmentObject(coachStore)
-                .environmentObject(coachCatalogStore)
+                .environmentObject(guideStore)
+                .environmentObject(guideCatalogStore)
                 .environmentObject(activityStore)
                 .environmentObject(goalStore)
                 .environmentObject(trainingPlanStore)
@@ -90,8 +96,9 @@ struct OutboundApp: App {
                 .environmentObject(togetherStore)
                 .environmentObject(cycleAwareStore)
                 .environmentObject(situationalWeatherStore)
+                .environmentObject(connectivityStore)
                 .task {
-                    await coachStore.syncIfNeeded()
+                    await guideStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
                     await healthAuthorizationStore.refresh()
                     await healthImportStore.refreshRecentWorkouts()
@@ -126,7 +133,7 @@ struct OutboundApp: App {
     private func handleIncomingURL(_ url: URL) {
         if authStore.handleOpenURL(url) { return }
         guard PlainstrideLinks.liveGroupToken(from: url) != nil
-                || PlainstrideLinks.futureActivityToken(from: url) != nil
+                || PlainstrideLinks.activityEventToken(from: url) != nil
                 || PlainstrideLinks.referralCode(from: url) != nil else { return }
         UserDefaults.standard.set(url.absoluteString, forKey: "pending_plainstride_invite_v1")
         guard authStore.isAuthenticated else { return }
@@ -140,8 +147,8 @@ struct OutboundApp: App {
         if let token = PlainstrideLinks.liveGroupToken(from: url) {
             await liveGroupStore.joinGroup(invite: token)
             guard liveGroupStore.activeSession != nil else { return }
-        } else if let token = PlainstrideLinks.futureActivityToken(from: url) {
-            guard await togetherStore.acceptFutureActivityInvitation(token: token) else { return }
+        } else if let token = PlainstrideLinks.activityEventToken(from: url) {
+            guard await togetherStore.acceptActivityEventInvitation(token: token) else { return }
         } else if let referralCode = PlainstrideLinks.referralCode(from: url) {
             do {
                 _ = try await APIClient.shared.claimReferral(code: referralCode)
@@ -152,6 +159,45 @@ struct OutboundApp: App {
             return
         }
         UserDefaults.standard.removeObject(forKey: "pending_plainstride_invite_v1")
+    }
+}
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+@MainActor
+final class AppearancePreferences: ObservableObject {
+    @Published var mode: AppearanceMode {
+        didSet { defaults.set(mode.rawValue, forKey: modeKey) }
+    }
+
+    private let defaults: UserDefaults
+    private let modeKey = "appearance_mode_v1"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        mode = defaults.string(forKey: modeKey).flatMap(AppearanceMode.init(rawValue:)) ?? .dark
     }
 }
 
@@ -365,7 +411,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let dayLabel: String
     let summary: String
     let purpose: String
-    let coachCue: String
+    let guideCue: String
     let effortLabel: String
     let durationSeconds: Int
     let distanceLabel: String?
@@ -472,7 +518,7 @@ struct TrainingPlanWeekSnapshot: Codable, Equatable {
     let targetMinutes: Int
     let progressPercent: Double
     let summaryLine: String
-    let coachLine: String
+    let guideLine: String
     let focus: String
     let weekSummary: String
     let scheduledWorkouts: [TrainingPlanWorkout]
@@ -482,7 +528,7 @@ struct TrainingPlanWeekSnapshot: Codable, Equatable {
 struct TodayTrainingSuggestion: Codable, Equatable {
     let title: String
     let detail: String
-    let coachLine: String
+    let guideLine: String
     let adjustmentLine: String?
     let suggestedSession: SuggestedSession
     let workout: TrainingPlanWorkout
@@ -1123,7 +1169,7 @@ private extension TrainingPlanStore {
             targetMinutes: targetMinutes,
             progressPercent: progressPercent,
             summaryLine: "\(completedSessions) of \(targetSessions) sessions, \(completedMinutes) of \(targetMinutes) min this week",
-            coachLine: coachLine(for: plan, completedSessions: completedSessions, completedMinutes: completedMinutes),
+            guideLine: guideLine(for: plan, completedSessions: completedSessions, completedMinutes: completedMinutes),
             focus: scheduledWeek?.focus ?? "Settle into the week",
             weekSummary: scheduledWeek?.summary ?? plan.subtitle,
             scheduledWorkouts: scheduledWeek?.workouts ?? [],
@@ -1136,9 +1182,9 @@ private extension TrainingPlanStore {
         let lowReadiness = readiness == .lowEnergy || readiness == .stressed
         let workout = lowReadiness ? adjustedWorkout(from: baseWorkout) : baseWorkout
         let detailPrefix = lowReadiness ? "Adjusted session" : "Planned session"
-        let coachLine = lowReadiness
+        let guideLine = lowReadiness
             ? "We kept the shape of the workout, but softened the stress so the plan stays usable."
-            : workout.coachCue
+            : workout.guideCue
 
         let suggestion = SuggestedSession(
             id: "plan-\(plan.templateID)-\(workout.id)",
@@ -1147,7 +1193,7 @@ private extension TrainingPlanStore {
             durationLabel: workout.durationLabel,
             activityLabel: workout.kind.displayName,
             framing: workout.purpose,
-            coachLine: coachLine,
+            guideLine: guideLine,
             startLabel: "Start now",
             targetDistanceMeters: workout.targetDistanceMeters,
             targetDurationSeconds: workout.durationSeconds,
@@ -1158,7 +1204,7 @@ private extension TrainingPlanStore {
         return TodayTrainingSuggestion(
             title: workout.title,
             detail: "\(detailPrefix) • \(workout.durationLabel) • \(workout.effortLabel)",
-            coachLine: coachLine,
+            guideLine: guideLine,
             adjustmentLine: lowReadiness ? "Dialed back for today's readiness." : nil,
             suggestedSession: suggestion,
             workout: workout,
@@ -1235,7 +1281,7 @@ private extension TrainingPlanStore {
         }
     }
 
-    static func coachLine(for plan: ActiveTrainingPlan, completedSessions: Int, completedMinutes: Int) -> String {
+    static func guideLine(for plan: ActiveTrainingPlan, completedSessions: Int, completedMinutes: Int) -> String {
         if completedSessions >= plan.sessionsPerWeek || completedMinutes >= plan.targetWeeklyMinutes {
             return "You covered this week's core work. Anything extra can stay easy."
         }
@@ -1291,7 +1337,7 @@ private extension TrainingPlanStore {
             dayLabel: workout.dayLabel,
             summary: "A softer version of the scheduled workout.",
             purpose: "Protect consistency without turning today into a grind.",
-            coachCue: "Today still counts. Keep it easy and bank the routine.",
+            guideCue: "Today still counts. Keep it easy and bank the routine.",
             effortLabel: "Easy",
             durationSeconds: shortenedDuration,
             distanceLabel: nil,
@@ -1377,7 +1423,7 @@ struct AssistantSuggestion: Identifiable, Hashable {
 enum AssistantNavigationTarget: String, Codable, Hashable, Identifiable {
     case settingsAppleMusic
     case settingsAppleHealth
-    case coachSettings
+    case guideSettings
     case activityHistory
 
     var id: String { rawValue }
@@ -1414,7 +1460,7 @@ struct AssistantMessage: Identifiable, Codable, Equatable {
 }
 
 struct AssistantContext {
-    let coachName: String
+    let guideName: String
     let activityCount: Int
     let weeklyDistanceKilometers: Double
     let currentGoalSummary: String?
@@ -1514,7 +1560,7 @@ final class AssistantStore: ObservableObject {
                 text: """
                 I can help with discovery, navigation, support, brainstorming, and simple planning.
 
-                I already know your current coach is \(context.coachName), you have \(context.activityCount) saved activit\(context.activityCount == 1 ? "y" : "ies"), and your week is at \(String(format: "%.1f", context.weeklyDistanceKilometers)) km.
+                I already know your current guide is \(context.guideName), you have \(context.activityCount) saved activit\(context.activityCount == 1 ? "y" : "ies"), and your week is at \(String(format: "%.1f", context.weeklyDistanceKilometers)) km.
                 """,
                 capability: .discover
             )
@@ -1654,7 +1700,7 @@ final class AssistantStore: ObservableObject {
                 prompt: prompt,
                 capability: capability.rawValue,
                 context: AssistantChatAPIContext(
-                    coachName: context.coachName,
+                    guideName: context.guideName,
                     activityCount: context.activityCount,
                     weeklyDistanceKilometers: context.weeklyDistanceKilometers,
                     currentGoalSummary: context.currentGoalSummary,
@@ -1690,7 +1736,7 @@ final class AssistantStore: ObservableObject {
         capability: AssistantCapability,
         context: AssistantContext
     ) -> CompanionTask {
-        if context.isRecordingActive { return .liveCoaching }
+        if context.isRecordingActive { return .liveGuidance }
         let normalized = prompt.lowercased()
         if normalized.contains("today") || normalized.contains("short on time") || normalized.contains("tired") || normalized.contains("sore") {
             return .adaptToday
@@ -1751,7 +1797,7 @@ final class AssistantStore: ObservableObject {
 #endif
         case .support:
             return """
-            The main support checkpoints are account setup, coach preferences, Apple Health or Music permissions, and making sure the start flow feels clear.
+            The main support checkpoints are account setup, guide preferences, Apple Health or Music permissions, and making sure the start flow feels clear.
 
             If something feels broken, tell me the exact step and what you expected to happen. I’ll turn it into a short troubleshooting path instead of generic advice.
             """
@@ -1761,7 +1807,7 @@ final class AssistantStore: ObservableObject {
             A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
 
             Good ideas to explore:
-            Give it guided prompts for finding features, choosing a coach vibe, and building a comeback plan.
+            Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
             Use it in Social to suggest clubs, challenges, or rivalry nudges based on recent activity.
             """
@@ -1770,7 +1816,7 @@ final class AssistantStore: ObservableObject {
             A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
 
             Good ideas to explore:
-            Give it guided prompts for finding features, choosing a coach vibe, and building a comeback plan.
+            Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
             Use it to explain progress, route history, and the next realistic training step from recent activity.
             """
@@ -1812,8 +1858,8 @@ final class AssistantStore: ObservableObject {
             return .settingsAppleHealth
         }
 
-        if lowercased.contains("coach") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick")) {
-            return .coachSettings
+        if lowercased.contains("guide") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick")) {
+            return .guideSettings
         }
 
         if lowercased.contains("activity history") || lowercased.contains("my activities") || lowercased.contains("past activities") {
@@ -1826,10 +1872,10 @@ final class AssistantStore: ObservableObject {
     private static func navigationReply(for target: AssistantNavigationTarget) -> String {
         switch target {
         case .settingsAppleMusic:
-            return "Opening Apple Music settings."
+            return "Opening Apple Music setup guidance."
         case .settingsAppleHealth:
             return "Opening Apple Health settings."
-        case .coachSettings:
+        case .guideSettings:
             return "Opening companion settings."
         case .activityHistory:
             return "Opening your activity history."
@@ -1880,7 +1926,7 @@ final class AssistantStore: ObservableObject {
         }
 
         let outboundTerms = [
-            "activity", "activities", "run", "walk", "ride", "bike", "coach",
+            "activity", "activities", "run", "walk", "ride", "bike", "guide",
             "goal", "plan", "history", "settings", "music", "health"
         ]
         return !outboundTerms.contains { lowercased.contains($0) }
@@ -1956,7 +2002,7 @@ private final class AssistantFoundationModelSession {
         let response = try await session.respond(
             to: """
             Capability: \(capability.title)
-            Coach: \(context.coachName)
+            Guide: \(context.guideName)
             Saved activities: \(context.activityCount)
             Weekly distance: \(String(format: "%.1f", context.weeklyDistanceKilometers)) km
             Goal summary: \(context.currentGoalSummary ?? "No active goal.")

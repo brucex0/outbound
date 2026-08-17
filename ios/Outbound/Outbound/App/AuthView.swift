@@ -174,17 +174,17 @@ private struct WelcomeOrbit: View {
                     .rotationEffect(.degrees(-8))
                     .position(center)
 
-                orbitPerson("Family", systemImage: "heart.fill", fill: Color(red: 0.88, green: 0.91, blue: 0.88))
+                orbitPerson("Family", systemImage: "heart.fill", fill: Color(uiColor: .tertiarySystemFill))
                     .position(x: center.x - 108, y: 51)
 
-                orbitPerson("Friends", systemImage: "person.2.fill", fill: Color(red: 0.84, green: 0.86, blue: 0.94))
+                orbitPerson("Friends", systemImage: "person.2.fill", fill: Color(uiColor: .secondarySystemFill))
                     .position(x: center.x + 108, y: 66)
 
-                orbitPerson("Groups", systemImage: "person.3.fill", fill: Color(red: 0.91, green: 0.88, blue: 0.80))
+                orbitPerson("Groups", systemImage: "person.3.fill", fill: Color(uiColor: .tertiarySystemFill))
                     .position(x: center.x - 99, y: 142)
 
                 ZStack(alignment: .topTrailing) {
-                    orbitPerson("You", systemImage: "person.crop.circle.fill", fill: Color(red: 0.94, green: 0.78, blue: 0.71), size: 76)
+                    orbitPerson("You", systemImage: "person.crop.circle.fill", fill: Color(uiColor: .secondarySystemFill), size: 76)
 
                     Image(systemName: "sparkles")
                         .font(.caption2.weight(.bold))

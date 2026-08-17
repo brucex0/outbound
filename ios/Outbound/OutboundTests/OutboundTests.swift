@@ -106,5 +106,5 @@ private final class StubMusicService: MusicService {
     func resume() async throws -> MusicPlaybackSnapshot { currentPlayback }
     func skipToNext() async throws -> MusicPlaybackSnapshot { currentPlayback }
     func refreshPlayback() async -> MusicPlaybackSnapshot { currentPlayback }
-    func handleCoachSpeechEvent(_ event: CoachSpeechEvent) async -> MusicPlaybackSnapshot { currentPlayback }
+    func handleGuideSpeechEvent(_ event: GuideSpeechEvent) async -> MusicPlaybackSnapshot { currentPlayback }
 }

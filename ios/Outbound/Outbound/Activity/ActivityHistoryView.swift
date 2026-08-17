@@ -81,6 +81,11 @@ private struct ActivityRowCard: View {
                     Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if activity.activityEventID != nil {
+                        Label("Shared activity", systemImage: "person.2.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(OutboundPalette.companion)
+                    }
                     HStack(spacing: 14) {
                         Label(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM), systemImage: "figure.run")
                         Label(activity.durationSecs.formatted(), systemImage: "timer")

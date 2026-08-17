@@ -1,13 +1,12 @@
 import Foundation
-import AVFoundation
 import Combine
 
-enum CoachSpeechEvent {
+enum GuideSpeechEvent {
     case didStart
     case didFinish
 }
 
-private enum CoachingMomentRole {
+private enum GuidanceMomentRole {
     case progress
     case form
     case hype
@@ -17,8 +16,8 @@ private enum CoachingMomentRole {
     case caution
 }
 
-private struct CoachingMoment {
-    let role: CoachingMomentRole
+private struct GuidanceMoment {
+    let role: GuidanceMomentRole
 
     var includesProgressContext: Bool {
         switch role {
@@ -56,10 +55,10 @@ private enum GoalMilestone: Hashable {
     }
 }
 
-// On-device real-time coach that analyzes active session snapshots and speaks
+// On-device real-time guide that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
-final class VirtualCoach: NSObject, ObservableObject {
+final class VirtualGuide: NSObject, ObservableObject {
     @Published var lastNudge: String = ""
     @Published private(set) var lastSpokenAnnouncement: String = ""
     @Published var latestAnalysis: SessionAnalysisResult?
@@ -68,10 +67,10 @@ final class VirtualCoach: NSObject, ObservableObject {
 
     private let provider: any SessionAnalysisProvider
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
-    private let synthesizer = AVSpeechSynthesizer()
+    private let synthesizer = GuideSpeechSynthesizer()
     private let speechEnabled: Bool
-    private var profile: CoachProfile?
-    private var persona: CoachPersona?
+    private var profile: GuideProfile?
+    private var persona: GuidePersona?
     private var sessionIntent: SessionIntent?
     private var companionBrief: CompanionSessionBriefDTO?
     private var snapshotHistory: [ActiveSessionSnapshot] = []
@@ -80,11 +79,11 @@ final class VirtualCoach: NSObject, ObservableObject {
     private var lastProgressAnnouncementElapsedSeconds: Int?
     private var lastProgressTimeMilestone = 0
     private var lastProgressDistanceMilestone = 0
-    private var lastCoachSpeechElapsedSeconds: Int?
+    private var lastGuideSpeechElapsedSeconds: Int?
     private var isActive = false
     private var recentSpokenFingerprints: [String] = []
     private var recentSpokenMessages: [String] = []
-    private var recentSpokenRoles: [CoachingMomentRole] = []
+    private var recentSpokenRoles: [GuidanceMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
     private var spokenTimedBoundaryCues: Set<String> = []
 
@@ -97,10 +96,10 @@ final class VirtualCoach: NSObject, ObservableObject {
     private let minimumDistanceProgressElapsedSeconds = 30
     private let minimumProgressAnnouncementElapsedSeconds = 300
     private let minimumProgressAnnouncementDistanceMeters: Double = 400
-    private let minimumCoachSpeechGapSeconds = 75
+    private let minimumGuideSpeechGapSeconds = 75
     private let maximumRunningProgressAverageSpeedMetersPerSecond: Double = 10
     private let maximumCyclingProgressAverageSpeedMetersPerSecond: Double = 25
-    var speechEventHandler: ((CoachSpeechEvent) -> Void)?
+    var speechEventHandler: ((GuideSpeechEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil, speechEnabled: Bool = true) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
@@ -108,17 +107,14 @@ final class VirtualCoach: NSObject, ObservableObject {
         self.speechEnabled = speechEnabled
         providerName = selectedProvider.displayName
         super.init()
-        // Apple documents this path as the synthesizer creating its own short-
-        // lived session and automatically managing ducking and interruptions.
-        #if os(iOS)
-        synthesizer.usesApplicationAudioSession = false
-        #endif
-        synthesizer.delegate = self
+        synthesizer.eventHandler = { [weak self] event in
+            self?.speechEventHandler?(event)
+        }
     }
 
     func activate(
-        with profile: CoachProfile?,
-        persona: CoachPersona? = nil,
+        with profile: GuideProfile?,
+        persona: GuidePersona? = nil,
         sessionIntent: SessionIntent? = nil,
         companionBrief: CompanionSessionBriefDTO? = nil
     ) {
@@ -132,7 +128,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressAnnouncementElapsedSeconds = nil
         lastProgressTimeMilestone = 0
         lastProgressDistanceMilestone = 0
-        lastCoachSpeechElapsedSeconds = nil
+        lastGuideSpeechElapsedSeconds = nil
         recentSpokenFingerprints = []
         recentSpokenMessages = []
         recentSpokenRoles = []
@@ -156,6 +152,10 @@ final class VirtualCoach: NSObject, ObservableObject {
         provider.endSession()
         fallbackProvider.endSession()
         synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    func updateCompanionBrief(_ brief: CompanionSessionBriefDTO) {
+        companionBrief = brief
     }
 
     func ingest(_ snapshot: ActiveSessionSnapshot) {
@@ -238,7 +238,7 @@ final class VirtualCoach: NSObject, ObservableObject {
 
         let fingerprint = normalizedFingerprint(for: message)
         guard !recentSpokenFingerprints.contains(fingerprint) else { return }
-        guard canSpeakCoachMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else { return }
+        guard canSpeakGuideMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else { return }
 
         recentSpokenFingerprints.append(fingerprint)
         if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
@@ -249,13 +249,13 @@ final class VirtualCoach: NSObject, ObservableObject {
             recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
         }
 
-        let moment = coachingMoment(for: snapshot, analysis: analysis)
+        let moment = guidanceMoment(for: snapshot, analysis: analysis)
         if speak(
-            coachingAnnouncement(for: snapshot, message: message, moment: moment),
+            guidanceAnnouncement(for: snapshot, message: message, moment: moment),
             urgency: analysis.urgency,
             role: moment.role
         ) {
-            rememberCoachSpeech(at: snapshot.elapsedSeconds)
+            rememberGuideSpeech(at: snapshot.elapsedSeconds)
         }
     }
 
@@ -267,13 +267,13 @@ final class VirtualCoach: NSObject, ObservableObject {
         if let goalMilestone = nextGoalMilestone(for: snapshot) {
             let isFinishCue = goalMilestone.isFinishCue
             guard isFinishCue || canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
-            guard isFinishCue || canSpeakCoachMoment(at: snapshot.elapsedSeconds) else { return }
+            guard isFinishCue || canSpeakGuideMoment(at: snapshot.elapsedSeconds) else { return }
 
             if speakPriorityIfNeeded(goalProgressAnnouncement(for: goalMilestone), isPriority: isFinishCue) {
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
                 lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-                rememberCoachSpeech(at: snapshot.elapsedSeconds)
+                rememberGuideSpeech(at: snapshot.elapsedSeconds)
             }
             return
         }
@@ -301,7 +301,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         lastProgressDistanceMilestone = nextDistanceMilestone
         if speak(progressAnnouncement(for: snapshot), role: .progress) {
             lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-            rememberCoachSpeech(at: snapshot.elapsedSeconds)
+            rememberGuideSpeech(at: snapshot.elapsedSeconds)
         }
     }
 
@@ -315,12 +315,12 @@ final class VirtualCoach: NSObject, ObservableObject {
         reachedDistanceMilestone: Bool
     ) -> Bool {
         if reachedDistanceMilestone {
-            return canSpeakCoachMoment(at: snapshot.elapsedSeconds)
+            return canSpeakGuideMoment(at: snapshot.elapsedSeconds)
         }
 
         guard snapshot.elapsedSeconds >= minimumProgressAnnouncementElapsedSeconds else { return false }
         guard snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters else { return false }
-        return canSpeakCoachMoment(at: snapshot.elapsedSeconds)
+        return canSpeakGuideMoment(at: snapshot.elapsedSeconds)
     }
 
     private func rememberProgressMilestones(for snapshot: ActiveSessionSnapshot) {
@@ -423,7 +423,7 @@ final class VirtualCoach: NSObject, ObservableObject {
         }
         spokenTimedBoundaryCues.insert(cue.id)
         lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-        rememberCoachSpeech(at: snapshot.elapsedSeconds)
+        rememberGuideSpeech(at: snapshot.elapsedSeconds)
         if cue.isCompletion {
             spokenGoalMilestones.insert(.durationComplete)
         }
@@ -522,10 +522,10 @@ final class VirtualCoach: NSObject, ObservableObject {
         return parts.isEmpty ? "Settle in and keep it easy." : parts.joined(separator: " ")
     }
 
-    private func coachingAnnouncement(
+    private func guidanceAnnouncement(
         for snapshot: ActiveSessionSnapshot,
         message: String,
-        moment: CoachingMoment
+        moment: GuidanceMoment
     ) -> String {
         guard moment.includesProgressContext else { return message }
         return "\(progressAnnouncement(for: snapshot)) \(message)"
@@ -535,12 +535,12 @@ final class VirtualCoach: NSObject, ObservableObject {
     private func speak(
         _ text: String,
         urgency: SessionAnalysisUrgency = .steady,
-        role: CoachingMomentRole? = nil
+        role: GuidanceMomentRole? = nil
     ) -> Bool {
         let announcement = spokenText(for: text)
         if speechEnabled, synthesizer.isSpeaking {
             guard urgency == .caution else { return false }
-            synthesizer.stopSpeaking(at: .word)
+            synthesizer.stopSpeaking(at: .currentWord)
         }
 
         lastSpokenAnnouncement = announcement
@@ -549,48 +549,41 @@ final class VirtualCoach: NSObject, ObservableObject {
         }
         guard speechEnabled else { return true }
 
-        let utterance = AVSpeechUtterance(string: announcement)
-        if let voice = persona?.voice {
-            utterance.voice = selectedSpeechVoice(for: voice)
-            utterance.rate = adjustedRate(for: voice, urgency: urgency)
-            utterance.pitchMultiplier = adjustedPitch(for: voice, urgency: urgency)
-            utterance.volume = voice.volume
-        } else {
-            utterance.voice = preferredVoice(for: "en-US")
-            utterance.rate = 0.47
-            utterance.volume = 0.9
-        }
-        utterance.preUtteranceDelay = 0.06
-        utterance.postUtteranceDelay = 0.12
-        synthesizer.speak(utterance)
+        let voice = persona?.voice ?? .systemBest
+        synthesizer.speak(
+            announcement,
+            voice: voice,
+            speed: speechRateScale(for: voice, urgency: urgency),
+            volume: voice.volume
+        )
         return true
     }
 
-    private func canSpeakCoachMoment(
+    private func canSpeakGuideMoment(
         at elapsedSeconds: Int,
         urgency: SessionAnalysisUrgency = .steady
     ) -> Bool {
         guard urgency != .caution else { return true }
-        guard let lastCoachSpeechElapsedSeconds else { return true }
-        return elapsedSeconds - lastCoachSpeechElapsedSeconds >= minimumCoachSpeechGapSeconds
+        guard let lastGuideSpeechElapsedSeconds else { return true }
+        return elapsedSeconds - lastGuideSpeechElapsedSeconds >= minimumGuideSpeechGapSeconds
     }
 
-    private func rememberCoachSpeech(at elapsedSeconds: Int) {
-        lastCoachSpeechElapsedSeconds = elapsedSeconds
+    private func rememberGuideSpeech(at elapsedSeconds: Int) {
+        lastGuideSpeechElapsedSeconds = elapsedSeconds
     }
 
-    private func coachingMoment(
+    private func guidanceMoment(
         for snapshot: ActiveSessionSnapshot,
         analysis: SessionAnalysisResult
-    ) -> CoachingMoment {
-        let role = preferredCoachingMomentRole(for: snapshot, analysis: analysis)
-        return CoachingMoment(role: role)
+    ) -> GuidanceMoment {
+        let role = preferredGuidanceMomentRole(for: snapshot, analysis: analysis)
+        return GuidanceMoment(role: role)
     }
 
-    private func preferredCoachingMomentRole(
+    private func preferredGuidanceMomentRole(
         for snapshot: ActiveSessionSnapshot,
         analysis: SessionAnalysisResult
-    ) -> CoachingMomentRole {
+    ) -> GuidanceMomentRole {
         if analysis.urgency == .caution || (snapshot.heartRate ?? 0) > 185 {
             return .caution
         }
@@ -611,7 +604,7 @@ final class VirtualCoach: NSObject, ObservableObject {
             return .progress
         }
 
-        let naturalRole: CoachingMomentRole = recentSpokenRoles.last == .hype ? .form : .hype
+        let naturalRole: GuidanceMomentRole = recentSpokenRoles.last == .hype ? .form : .hype
         if roleWouldRepeatTooMuch(naturalRole) {
             return naturalRole == .hype ? .form : .hype
         }
@@ -649,11 +642,11 @@ final class VirtualCoach: NSObject, ObservableObject {
         return elapsedInWorkout <= 12
     }
 
-    private func roleWouldRepeatTooMuch(_ role: CoachingMomentRole) -> Bool {
+    private func roleWouldRepeatTooMuch(_ role: GuidanceMomentRole) -> Bool {
         recentSpokenRoles.suffix(2).allSatisfy { $0 == role } && recentSpokenRoles.count >= 2
     }
 
-    private func rememberSpokenRole(_ role: CoachingMomentRole) {
+    private func rememberSpokenRole(_ role: GuidanceMomentRole) {
         recentSpokenRoles.append(role)
         if recentSpokenRoles.count > maxRecentSpokenRoles {
             recentSpokenRoles.removeFirst(recentSpokenRoles.count - maxRecentSpokenRoles)
@@ -683,71 +676,19 @@ final class VirtualCoach: NSObject, ObservableObject {
             .replacingOccurrences(of: "—", with: ", ")
     }
 
-    private func selectedSpeechVoice(for voice: CoachVoice) -> AVSpeechSynthesisVoice? {
-        if AppLanguage.current != .english {
-            let locale = AppLanguage.speechLocale.identifier.replacingOccurrences(of: "_", with: "-")
-            return preferredVoice(for: locale) ?? AVSpeechSynthesisVoice(language: locale)
-        }
-        if let identifier = voice.avFoundationIdentifier,
-           let selectedVoice = AVSpeechSynthesisVoice(identifier: identifier) {
-            return selectedVoice
-        }
-
-        return preferredVoice(for: voice.locale) ?? AVSpeechSynthesisVoice(language: voice.locale)
-    }
-
-    private func preferredVoice(for locale: String) -> AVSpeechSynthesisVoice? {
-        AVSpeechSynthesisVoice.speechVoices()
-            .filter { candidate in
-                candidate.language == locale || candidate.language.hasPrefix(locale.replacingOccurrences(of: "_", with: "-"))
-            }
-            .sorted { lhs, rhs in
-                voiceScore(lhs) > voiceScore(rhs)
-            }
-            .first
-    }
-
-    private func voiceScore(_ voice: AVSpeechSynthesisVoice) -> Int {
-        let qualityScore: Int
-        switch voice.quality {
-        case .premium:
-            qualityScore = 30
-        case .enhanced:
-            qualityScore = 20
-        default:
-            qualityScore = 10
-        }
-
-        let siriBonus = voice.name.localizedCaseInsensitiveContains("Siri") ? 5 : 0
-        return qualityScore + siriBonus
-    }
-
-    private func adjustedRate(for voice: CoachVoice, urgency: SessionAnalysisUrgency) -> Float {
+    private func speechRateScale(for voice: GuideVoice?, urgency: SessionAnalysisUrgency) -> Float {
         let delta: Float
         switch urgency {
         case .steady:
-            delta = -0.03
+            delta = -0.04
         case .opportunity:
-            delta = 0.0
+            delta = 0.03
         case .caution:
-            delta = -0.05
+            delta = -0.08
         }
-
-        return max(0.42, min(0.56, voice.rate + delta))
-    }
-
-    private func adjustedPitch(for voice: CoachVoice, urgency: SessionAnalysisUrgency) -> Float {
-        let delta: Float
-        switch urgency {
-        case .steady:
-            delta = 0.0
-        case .opportunity:
-            delta = 0.02
-        case .caution:
-            delta = -0.02
-        }
-
-        return max(0.9, min(1.2, voice.pitch + delta))
+        let configuredRate = voice?.rate ?? 0.49
+        let normalizedRate = (configuredRate - 0.42) / 0.16
+        return max(0.85, min(1.2, 0.9 + normalizedRate * 0.25 + delta))
     }
 
     private func normalizedFingerprint(for message: String) -> String {
@@ -759,7 +700,7 @@ final class VirtualCoach: NSObject, ObservableObject {
     }
 
     private static func initialNudge(for intent: SessionIntent) -> String {
-        var parts = [intent.coachLine]
+        var parts = [intent.guideLine]
 
         if let targetDistance = intent.resolvedTargetDistanceMeters {
             parts.append("Goal: \(spokenDistance(targetDistance)).")
@@ -789,25 +730,5 @@ final class VirtualCoach: NSObject, ObservableObject {
 
         let minutes = max(1, Int((Double(seconds) / 60.0).rounded()))
         return "\(minutes) minutes"
-    }
-}
-
-extension VirtualCoach: AVSpeechSynthesizerDelegate {
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
-        Task { @MainActor [weak self] in
-            self?.speechEventHandler?(.didStart)
-        }
-    }
-
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor [weak self] in
-            self?.speechEventHandler?(.didFinish)
-        }
-    }
-
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor [weak self] in
-            self?.speechEventHandler?(.didFinish)
-        }
     }
 }

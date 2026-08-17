@@ -13,14 +13,14 @@ The current view is a Strava-style layered detail page:
 3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
 4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
-6. **Route controls** — privacy badge + activity-card share menu; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
-7. **Coach reflection** — full card with reflection title/body and optional nudge
+6. **Route controls** — persistent navigation-bar Share action plus an inline privacy badge; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
+7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — horizontal story strip
 
 The Share Activity Card action exports a 9:16 image built from a full-bleed muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid in a Strava-style lower gradient. The lower-right branding includes a scannable canonical referral URL that opens an installed app or offers the appropriate App Store, Play Store, iOS beta, and Android beta destinations configured on the backend. The system Share Sheet receives only the PNG card so Copy and messaging apps cannot mistake a secondary URL payload for an extensionless attachment. If referral creation is unavailable, the QR code uses the stable `https://run.plainstride.com/invite` landing link; if a route snapshot cannot be created, the export falls back to a stats-only card so sharing still succeeds.
 
 Limitations vs Strava and category expectations:
-- Share is in a menu, not a persistent bottom toolbar
+- Share is persistent in the navigation bar rather than a fixed bottom social toolbar
 - No comparison to previous activities
 - No mood/training context tags
 
@@ -37,7 +37,7 @@ Strava's activity detail (iOS + web) uses:
 - Relative effort / heart rate zone chart
 
 Outbound differentiators to lean into:
-- Coach reflection with persona, narrative, and "what's next"
+- Guide reflection with persona, narrative, and "what's next"
 - Emotion-first framing (mood tags, comeback/momentum context)
 - Training plan integration (this was part of Week X)
 - Camera-native photo storytelling
@@ -50,7 +50,7 @@ Outbound differentiators to lean into:
 2. **Elevation profile chart** — Swift Charts bar/area chart below the map
 3. **Pace-heatmap-colored polyline** — color route segments by pace
 4. **Splits section** — collapsible per-km/mile breakdown with pace, time, elevation, HR
-5. **Coach hero card** — full card with persona avatar, title, body, "What's next" CTA
+5. **Guide hero card** — full card with persona avatar, title, body, "What's next" CTA
 6. **Floating bottom toolbar** — share, export, edit, delete in a frosted-glass toolbar
 7. **Photo map pins** — small photo thumbnails on the map at GPS coordinates
 
@@ -62,7 +62,7 @@ Outbound differentiators to lean into:
 
 ### Phase 3 — Differentiation
 
-11. **Coach narrative summary** — AI-generated prose about the run
+11. **Guide narrative summary** — AI-generated prose about the run
 12. **Training plan context** — "This was your long run for Week 3"
 13. **Squad/Rival social reactions** — compact social strip
 14. **Mood tags** — "Cruise Run", "Hill Crusher", "Recovery Jog"
@@ -74,7 +74,7 @@ The redesigned view uses these helper components:
 - `ElevationProfileView` — Swift Charts area chart showing elevation over distance
 - `PaceHeatmapPolyline` — segmented polyline colored by pace bands
 - `SplitsSectionView` — collapsible per-km/mile split list
-- `CoachHeroCard` — persona avatar + reflection title/body + next-action CTA
+- `GuideHeroCard` — persona avatar + reflection title/body + next-action CTA
 - `ActivityBottomToolbar` — floating frosted-glass toolbar with share/export/edit/delete
 - `MapPhotoAnnotation` — photo thumbnail overlay on map at GPS coordinate
 - `FullScreenMapView` — modal sheet with full interactive map
@@ -111,7 +111,7 @@ No backend changes required for Phase 1. All features are computed locally:
 - **Splits** — computed from route points via haversine + timestamp arithmetic
 - **Pace heatmap** — computed from point-to-point distance/time deltas
 - **Photo map pins** — use existing `SavedPhoto.coordinate`
-- **Coach hero card** — use existing `SavedActivity.reflection`
+- **Guide hero card** — use existing `SavedActivity.reflection`
 - **Bottom toolbar** — use existing `ActivityStore.exportRoute()`
 
 Future phases needing backend:
@@ -134,11 +134,12 @@ The layout uses a persistent full-screen route map with a bottom information she
 3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
-6. **Content order** — stats, elevation, splits, route controls, coach card, photos
+6. **Content order** — stats, elevation, splits, route controls, guide card, photos
 7. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
 8. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
 9. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras
 10. **Splits layout** — Strava-style table with distance index, pace-as-time, proportional blue bar, and optional elevation delta; do not show a separate time column
+11. **Persistent actions** — keep Share and Edit visible beside each other in the trailing navigation bar at every sheet detent
 
 Safe-area strategy:
 - The map ignores container safe areas so it feels full screen.

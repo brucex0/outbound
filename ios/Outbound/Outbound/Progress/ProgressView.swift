@@ -48,7 +48,7 @@ struct RunnerProgressView: View {
         case .now:
             VStack(alignment: .leading, spacing: 18) {
                 topSummary
-                coachNote
+                guideNote
                 recentStatsSection
             }
         case .trends:
@@ -216,11 +216,11 @@ struct RunnerProgressView: View {
         }
     }
 
-    private var coachNote: some View {
+    private var guideNote: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "sparkles")
                 .foregroundStyle(.orange)
-            Text(snapshot.coachNote)
+            Text(snapshot.guideNote)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

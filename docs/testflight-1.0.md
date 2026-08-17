@@ -8,7 +8,7 @@ Open this for the first internal or external TestFlight upload. Product behavior
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.0`
-- Build: `7`
+- Build: `8`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -24,7 +24,7 @@ Screenshots are not required for TestFlight. Approved App Store screenshots can 
 
 ### Beta App Description
 
-Plainstride is a personalized running companion that helps runners decide what to do today, start with less friction, and build sustainable momentum. It combines adaptive training guidance, readiness-aware workout suggestions, GPS activity recording, live coaching, progress insights, Apple Health integration, optional Apple Music playback, local weather context, and private live-run sharing.
+Plainstride is a personalized running companion that helps runners decide what to do today, start with less friction, and build sustainable momentum. It combines adaptive training guidance, readiness-aware workout suggestions, GPS activity recording, live guidance, progress insights, Apple Health integration, optional Apple Music playback, local weather context, and private live-run sharing.
 
 This beta focuses on the complete runner journey: signing in, setting a goal and realistic weekly rhythm, reviewing today's workout, recording and saving a run, and seeing progress afterward. Some guidance is generated or adapted automatically and should be treated as fitness guidance, not medical advice.
 
@@ -37,11 +37,11 @@ Please focus on:
 - Start, pause, resume, finish, and save an outdoor run.
 - Confirm GPS route, elapsed time, distance, pace, photos, and Live Activity behavior.
 - Try Apple Health import/write access and optional Apple Music connection.
-- Review Progress, recent activity details, goals, and coach guidance in Me.
+- Review Progress, recent activity details, goals, and guide guidance in Me.
 - Try private live-run sharing only with someone you trust.
 - In Settings, confirm sign-out and Delete Account are understandable and functional.
 
-Please report crashes, permission loops, missing activity data, inaccurate state after relaunch, confusing coaching, or any screen that blocks completion.
+Please report crashes, permission loops, missing activity data, inaccurate state after relaunch, confusing guidance, or any screen that blocks completion.
 
 ### How to Report Feedback
 
@@ -87,9 +87,9 @@ Plainstride provides general fitness guidance and is not a medical service. All 
 
 These fields are not required to begin TestFlight, but preparing them now avoids a second metadata pass.
 
-- Subtitle: `Your adaptive running coach`
+- Subtitle: `Your adaptive running guide`
 - Promotional text: `A running companion that adapts today's workout to your goals, readiness, recent training, and real life.`
-- Keywords: `running,run tracker,training plan,AI coach,GPS,workout,fitness,pace,marathon,5K`
+- Keywords: `running,run tracker,training plan,AI guide,GPS,workout,fitness,pace,marathon,5K`
 
 ### Description
 
@@ -97,7 +97,7 @@ Plainstride helps you know what to do today—and makes it easier to get out the
 
 Build a running rhythm around your goals, current fitness, realistic schedule, and readiness. Plainstride turns that understanding into a clear workout, adapts when your day changes, and keeps the reason behind each adjustment visible.
 
-During a run, track distance, time, pace, and route while receiving optional coaching. Save meaningful moments with photos, keep an eye on the session through Live Activities, and share a private live link with someone you trust when you choose.
+During a run, track distance, time, pace, and route while receiving optional guidance. Save meaningful moments with photos, keep an eye on the session through Live Activities, and share a private live link with someone you trust when you choose.
 
 Afterward, review recent activities, weekly progress, trends, personal records, race predictions, and shoe mileage. Optional Apple Health, Apple Music, and local weather integrations keep the experience connected without making them prerequisites.
 
@@ -106,7 +106,7 @@ Key features:
 - Personalized runner onboarding and adaptive workout guidance
 - Readiness-aware Today experience
 - Outdoor GPS and indoor activity recording
-- Pause, resume, goals, spoken coaching, and Live Activities
+- Pause, resume, goals, spoken guidance, and Live Activities
 - Activity history, weekly trends, records, and progress insights
 - Optional Apple Health import and workout saving
 - Optional Apple Music playback and local weather context
@@ -134,7 +134,7 @@ Likely collected and linked to identity:
 
 - Contact Info: email address returned by Apple or Google sign-in.
 - Identifiers: Firebase user ID and provider identifiers.
-- Fitness: onboarding profile, plan/readiness inputs, workout/activity data, and coaching feedback sent to the backend.
+- Fitness: onboarding profile, plan/readiness inputs, workout/activity data, and guidance feedback sent to the backend.
 - Precise Location: active live-share coordinates and any uploaded route/activity coordinates.
 - User Content: assistant messages, activity reflections, and user-submitted live-share/contact fields; include photos only if the production build uploads them.
 
@@ -155,6 +155,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.0 (7)`, validate, and upload from Xcode Organizer.
+- Archive `1.0 (8)`, validate, and upload from Xcode Organizer.
 - After processing, answer export compliance and add the build to an internal group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review.

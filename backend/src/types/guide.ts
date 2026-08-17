@@ -1,4 +1,4 @@
-export type CoachPersonality = "encouraging" | "data-driven" | "direct" | "zen";
+export type GuidePersonality = "encouraging" | "data-driven" | "direct" | "zen";
 export type FitnessLevel = "beginner" | "intermediate" | "advanced" | "elite";
 
 export interface GoalItem {
@@ -29,14 +29,14 @@ export interface MemorySnapshot {
   weeklyVolumeKm: number;
   longestRunKm: number;
   consistencyScore: number;  // 0-1
-  recentInsight: string;     // one-line coach observation
+  recentInsight: string;     // one-line guide observation
 }
 
 // The downloadable artifact synced to device
-export interface CoachProfilePayload {
+export interface GuideProfilePayload {
   version: number;
-  coachName: string;
-  personality: CoachPersonality;
+  guideName: string;
+  personality: GuidePersonality;
   voiceId: string;
   athlete: {
     fitnessLevel: FitnessLevel;

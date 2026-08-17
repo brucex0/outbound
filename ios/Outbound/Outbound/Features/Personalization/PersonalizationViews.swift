@@ -8,9 +8,9 @@ struct CalibrationProgressBanner: View {
             Image(systemName: "sparkles")
                 .foregroundStyle(OutboundPalette.companion)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Getting to know your running")
+                Text(String(localized: "personalization.calibration.title", defaultValue: "Getting to know your running"))
                     .font(.subheadline.weight(.semibold))
-                Text("Run \(nextSessionNumber) of \(summary.targetSessionCount) · normal training, not a test")
+                Text(String(localized: "Run \(nextSessionNumber) of \(summary.targetSessionCount) · normal training, not a test"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -33,9 +33,9 @@ struct ReadinessCheckInView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    Text("How are you arriving today?")
+                    Text(String(localized: "personalization.readiness.title", defaultValue: "How are you arriving today?"))
                         .font(.title2.weight(.semibold))
-                    Text("One tap helps your companion fit \(workoutTitle.lowercased()) to today.")
+                    Text(String(localized: "One tap helps your companion fit \(workoutTitle.lowercased()) to today."))
                         .foregroundStyle(.secondary)
 
                     LazyVGrid(columns: columns, spacing: OutboundSpacing.compact) {
@@ -55,11 +55,11 @@ struct ReadinessCheckInView: View {
 
                     AIExplanationView(text: explanation)
 
-                    OutboundPrimaryButton(title: "Continue to workout", systemImage: "figure.run") {
+                    OutboundPrimaryButton(title: String(localized: "personalization.readiness.continue", defaultValue: "Continue to workout"), systemImage: "figure.run") {
                         onContinue(selection)
                     }
 
-                    Button("Skip check-in") {
+                    Button(String(localized: "personalization.readiness.skip", defaultValue: "Skip check-in")) {
                         onContinue(nil)
                     }
                     .frame(maxWidth: .infinity)
@@ -67,7 +67,7 @@ struct ReadinessCheckInView: View {
                 .padding(OutboundSpacing.screen)
             }
             .background(OutboundPalette.background)
-            .navigationTitle("Before you run")
+            .navigationTitle(String(localized: "personalization.readiness.navigation_title", defaultValue: "Before you run"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -77,13 +77,13 @@ struct ReadinessCheckInView: View {
     private var explanation: String {
         switch selection {
         case .tired:
-            "If this is more than ordinary tiredness, Plainstride can offer a shorter easy option before you start."
+            String(localized: "personalization.readiness.tired", defaultValue: "If this is more than ordinary tiredness, Plainstride can offer a shorter easy option before you start.")
         case .sore:
-            "Soreness can change today's recommendation. Pain should not be treated as a training signal to push through."
+            String(localized: "personalization.readiness.sore", defaultValue: "Soreness can change today's recommendation. Pain should not be treated as a training signal to push through.")
         case .shortOnTime:
-            "Plainstride can preserve the purpose of this run in a shorter version."
+            String(localized: "personalization.readiness.short_on_time", defaultValue: "Plainstride can preserve the purpose of this run in a shorter version.")
         case .good, .none:
-            "Your recent load supports the planned easy run. Nothing changes unless you want it to."
+            String(localized: "personalization.readiness.good", defaultValue: "Your recent load supports the planned easy run. Nothing changes unless you want it to.")
         }
     }
 }
@@ -98,18 +98,18 @@ struct CompanionMemoryView: View {
     var body: some View {
         List {
             Section {
-                Text("These are the facts and patterns Plainstride may use when adapting training. You can correct or forget any item.")
+                Text(String(localized: "personalization.memory.intro", defaultValue: "These are the facts and patterns Plainstride may use when adapting training. You can correct or forget any item."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             if isLoading && memories.isEmpty {
-                ProgressView("Loading your runner model…")
+                ProgressView(String(localized: "personalization.memory.loading", defaultValue: "Loading your runner model…"))
             } else if memories.isEmpty {
                 ContentUnavailableView(
-                    "Nothing learned yet",
+                    String(localized: "personalization.memory.empty.title", defaultValue: "Nothing learned yet"),
                     systemImage: "sparkles",
-                    description: Text("Complete your profile and a few runs to build a transparent runner model.")
+                    description: Text(String(localized: "personalization.memory.empty.detail", defaultValue: "Complete your profile and a few runs to build a transparent runner model."))
                 )
             } else {
                 ForEach(memories) { memory in
@@ -118,7 +118,7 @@ struct CompanionMemoryView: View {
                             Text(memory.label)
                                 .font(.headline)
                             Spacer()
-                            Text(memory.status == "confirmed" ? "Confirmed" : confidenceLabel(memory.confidence))
+                            Text(memory.status == "confirmed" ? String(localized: "personalization.memory.confirmed", defaultValue: "Confirmed") : confidenceLabel(memory.confidence))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(memory.status == "confirmed" ? OutboundPalette.companion : .secondary)
                         }
@@ -128,11 +128,11 @@ struct CompanionMemoryView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         HStack {
-                            Button("Correct") {
+                            Button(String(localized: "personalization.memory.correct", defaultValue: "Correct")) {
                                 editedSummary = memory.summary
                                 editingMemory = memory
                             }
-                            Button("Forget", role: .destructive) {
+                            Button(String(localized: "personalization.memory.forget", defaultValue: "Forget"), role: .destructive) {
                                 Task { await forget(memory) }
                             }
                         }
@@ -146,27 +146,27 @@ struct CompanionMemoryView: View {
                 Section { Text(errorMessage).font(.footnote).foregroundStyle(.secondary) }
             }
         }
-        .navigationTitle("What Plainstride knows")
+        .navigationTitle(String(localized: "personalization.memory.title", defaultValue: "What Plainstride knows"))
         .task { await refresh() }
         .refreshable { await refresh() }
         .sheet(item: $editingMemory) { memory in
             NavigationStack {
                 Form {
                     Section(memory.label) {
-                        TextField("What should Plainstride remember?", text: $editedSummary, axis: .vertical)
+                        TextField(String(localized: "personalization.memory.correct.placeholder", defaultValue: "What should Plainstride remember?"), text: $editedSummary, axis: .vertical)
                             .lineLimit(2...6)
                     }
                     Section {
-                        Text("Your correction becomes a confirmed fact and takes precedence over prior inferences.")
+                        Text(String(localized: "personalization.memory.correct.detail", defaultValue: "Your correction becomes a confirmed fact and takes precedence over prior inferences."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
-                .navigationTitle("Correct memory")
+                .navigationTitle(String(localized: "personalization.memory.correct.title", defaultValue: "Correct memory"))
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { editingMemory = nil } }
+                    ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.cancel", defaultValue: "Cancel")) { editingMemory = nil } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { Task { await correct(memory) } }
+                        Button(String(localized: "common.save", defaultValue: "Save")) { Task { await correct(memory) } }
                             .disabled(editedSummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
@@ -181,7 +181,7 @@ struct CompanionMemoryView: View {
             memories = try await APIClient.shared.fetchCompanionMemories().memories
             errorMessage = nil
         } catch {
-            errorMessage = "Your runner model is unavailable right now."
+            errorMessage = String(localized: "personalization.memory.error.unavailable", defaultValue: "Your runner model is unavailable right now.")
         }
     }
 
@@ -194,7 +194,7 @@ struct CompanionMemoryView: View {
             editingMemory = nil
             errorMessage = nil
         } catch {
-            errorMessage = "That correction could not be saved."
+            errorMessage = String(localized: "personalization.memory.error.correction", defaultValue: "That correction could not be saved.")
         }
     }
 
@@ -204,7 +204,7 @@ struct CompanionMemoryView: View {
             if response.forgotten { memories.removeAll { $0.stableKey == memory.stableKey } }
             errorMessage = nil
         } catch {
-            errorMessage = "That memory could not be forgotten."
+            errorMessage = String(localized: "personalization.memory.error.forget", defaultValue: "That memory could not be forgotten.")
         }
     }
 

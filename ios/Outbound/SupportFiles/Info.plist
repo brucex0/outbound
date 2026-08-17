@@ -61,7 +61,7 @@
     <string>Plainstride keeps the camera ready so you can capture moments during your run without leaving the app.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>Plainstride uses the microphone for voice activity commands and coach audio during workouts.</string>
+    <string>Plainstride uses the microphone for voice activity commands and guide audio during workouts.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Plainstride uses speech recognition to turn short voice commands into prepared activities.</string>
 

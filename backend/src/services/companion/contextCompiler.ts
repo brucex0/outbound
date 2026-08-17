@@ -10,7 +10,7 @@ const TASK_BUDGETS: Record<CompanionTurnRequest["task"], number> = {
   adapt_today: 4_500,
   prepare_week: 7_000,
   post_run_reflection: 4_000,
-  live_coaching: 1_600,
+  live_guidance: 1_600,
   inspect_memory: 3_000,
   product_help: 2_500,
 };
@@ -55,7 +55,7 @@ export async function compileCompanionContext(
     comfortableDurationMinutes: state.profile.comfortableDurationMinutes,
     targetSessionsPerWeek: state.profile.targetSessionsPerWeek,
     preferredLongRunDay: state.profile.preferredLongRunDay,
-    coachingDetail: state.profile.coachingDetail,
+    guidanceDetail: state.profile.guidanceDetail,
     constraints: state.profile.constraints,
   } : {};
   const currentState = {

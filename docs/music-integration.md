@@ -1,6 +1,6 @@
 # Music Integration Plan
 
-Open this when planning Apple Music or Spotify support, workout playback controls, coach-and-music coexistence, or music-provider account linking.
+Open this when planning Apple Music or Spotify support, workout playback controls, guide-and-music coexistence, or music-provider account linking.
 
 ## Snapshot
 
@@ -9,7 +9,7 @@ Outbound should treat music as a workout companion, not as a media-export featur
 Recommended rollout order:
 
 1. Apple Music playback companion
-2. coach and music audio-session polish
+2. guide and music audio-session polish
 3. Spotify playback companion
 4. optional smart playlist and recommendation features
 
@@ -17,14 +17,14 @@ Do not plan v1 around soundtrack export, music-attached photo/video output, or d
 
 ## Product Goal
 
-Music should make a run easier to start and nicer to stay in without pulling focus away from Outbound's camera-first coach experience.
+Music should make a run easier to start and nicer to stay in without pulling focus away from Outbound's camera-first guide experience.
 
 The right first version is:
 
 - choose a provider
 - pick or resume a workout mix quickly
 - control playback without leaving the recording flow
-- keep coach nudges understandable while music is playing
+- keep guide nudges understandable while music is playing
 
 The wrong first version is:
 
@@ -101,7 +101,7 @@ Implication for Outbound:
 ### V1 User Flow
 
 1. User taps `Connect Apple Music` from Me or from the run start page.
-2. Outbound explains the benefit: play music during runs and keep coach prompts audible.
+2. Outbound explains the benefit: play music during runs and keep guide prompts audible.
 3. User grants Apple Music permission.
 4. User chooses a quick music source:
    - recent playlist
@@ -109,7 +109,7 @@ Implication for Outbound:
    - recommended upbeat mix
    - continue current playback
 5. During the run, the HUD shows compact playback controls.
-6. When the coach speaks, music ducks briefly and returns smoothly.
+6. When the guide speaks, music ducks briefly and returns smoothly.
 
 ### V1 UI Rules
 
@@ -160,9 +160,9 @@ Suggested modules:
 
 `MusicSessionCoordinator.swift`
 
-- orchestration layer between recording, coach speech, and provider playback
+- orchestration layer between recording, guide speech, and provider playback
 - reacts to run start, pause, resume, finish
-- owns ducking policy during coach voice prompts
+- owns ducking policy during guide voice prompts
 
 `AppleMusicService.swift`
 
@@ -189,7 +189,7 @@ Suggested modules:
 ### Boundaries To Keep
 
 - `ActivityRecorder` should not know provider details
-- `VirtualCoach` should not issue provider commands directly
+- `VirtualGuide` should not issue provider commands directly
 - camera and recording UI should consume normalized playback state only
 - provider auth callbacks should not leak into unrelated app flows
 
@@ -210,24 +210,24 @@ Recommended ownership:
 
 - `OutboundApp` creates authorization and playback stores
 - `RecordView` asks the coordinator to bind the current activity session
-- `VirtualCoach` exposes a narrow callback or notification when speech begins and ends
+- `VirtualGuide` exposes a narrow callback or notification when speech begins and ends
 
 ## Audio Session Strategy
 
-Outbound already declares `audio` in `UIBackgroundModes`, but it does not yet have an explicit music/coaching audio strategy.
+Outbound already declares `audio` in `UIBackgroundModes`, but it does not yet have an explicit music/guidance audio strategy.
 
 V1 behavior should be:
 
 - user music keeps playing while the app records
-- coach speech ducks music briefly instead of stopping it
+- guide speech ducks music briefly instead of stopping it
 - pausing a run should not automatically stop music
 - finishing a run should not force-stop music unless the user started playback from an Outbound-only quick pick and we later decide that behavior is preferable
 
 Implementation guidance:
 
-- centralize `AVAudioSession` policy in one place instead of scattering it across coach and music code
+- centralize `AVAudioSession` policy in one place instead of scattering it across guide and music code
 - test for interruptions, headphones disconnecting, and background/foreground transitions
-- define whether coach voice uses ducking or spoken-audio interruption before writing provider code
+- define whether guide voice uses ducking or spoken-audio interruption before writing provider code
 
 Suggested future file:
 
@@ -236,7 +236,7 @@ Suggested future file:
 Responsibilities:
 
 - configure category and options
-- coordinate spoken coach output with background music
+- coordinate spoken guide output with background music
 - react to interruption and route-change notifications
 
 ## Minimum iOS Project Changes
@@ -249,7 +249,7 @@ In `ios/Outbound/SupportFiles/Info.plist` add:
 
 Suggested copy:
 
-- `Outbound uses Apple Music to play music during workouts and keep your coach experience in one place.`
+- `Outbound uses Apple Music to play music during workouts and keep your guide experience in one place.`
 
 In Apple Developer account:
 
@@ -368,18 +368,18 @@ Success bar:
 
 - user can start a run with Apple Music in under three taps from the start page
 
-### Phase 2: Coach And Audio Polish
+### Phase 2: Guide And Audio Polish
 
 Ship:
 
 - `AudioSessionCoordinator`
-- predictable ducking during coach speech
+- predictable ducking during guide speech
 - interruption handling
 - route-change handling for headphones and car audio
 
 Success bar:
 
-- coach voice remains intelligible without making music feel broken
+- guide voice remains intelligible without making music feel broken
 
 ### Phase 3: Spotify Companion
 
@@ -410,7 +410,7 @@ Success bar:
 ## Open Questions To Resolve Before Implementation
 
 - Should Apple Music v1 use `ApplicationMusicPlayer` or preserve continuity with current system playback through `SystemMusicPlayer`?
-- Should Outbound auto-resume music after coach speech, or only duck audio and let the provider continue naturally?
+- Should Outbound auto-resume music after guide speech, or only duck audio and let the provider continue naturally?
 - Should music controls appear directly in the camera HUD from day one, or only in an expanded bottom card state?
 - Do we want provider-specific quick picks, or a single normalized list that hides most differences?
 - Is "continue what I'm already listening to" the default, or should Outbound actively suggest a run mix first?
@@ -423,5 +423,5 @@ Use these defaults unless product priorities change:
 - use `ApplicationMusicPlayer` first
 - build one normalized quick-pick UI
 - keep controls compact in the recorder HUD
-- duck rather than pause during coach speech
+- duck rather than pause during guide speech
 - avoid any soundtrack, export, or media-sync claims in product copy

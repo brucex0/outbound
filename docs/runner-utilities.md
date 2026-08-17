@@ -16,7 +16,7 @@ Runkeeper, MapMyRun, Strava, Garmin, and similar apps all carry small practical 
 - broader import/export
 - device/source attribution polish
 
-These should support the coaching/motivation thesis, not turn Outbound into a spreadsheet.
+These should support the guidance/motivation thesis, not turn Outbound into a spreadsheet.
 
 ## Product Principles
 
@@ -70,7 +70,7 @@ Ship after enough clean history exists:
 Why:
 
 - predictions are only useful when based on credible, recent data
-- coach copy can explain the "why" without overpromising precision
+- guide copy can explain the "why" without overpromising precision
 
 ### Phase 4: Import/Export Breadth
 

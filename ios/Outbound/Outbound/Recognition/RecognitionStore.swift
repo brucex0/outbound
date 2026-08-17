@@ -40,7 +40,7 @@ struct RecognitionPreview: Identifiable, Equatable {
     let badgeID: RecognitionBadgeID
     let title: String
     let symbolName: String
-    let coachLine: String
+    let guideLine: String
 
     var id: RecognitionBadgeID { badgeID }
 }
@@ -162,7 +162,7 @@ final class RecognitionStore: ObservableObject {
             badgeID: badgeID,
             title: Self.definition(for: badgeID).title,
             symbolName: Self.definition(for: badgeID).symbolName,
-            coachLine: Self.coachLine(for: badgeID)
+            guideLine: Self.guideLine(for: badgeID)
         )
     }
 
@@ -240,7 +240,7 @@ final class RecognitionStore: ObservableObject {
         }
 
         guard let intent else { return false }
-        let haystack = "\(intent.id) \(intent.title) \(intent.detail) \(intent.coachLine)".lowercased()
+        let haystack = "\(intent.id) \(intent.title) \(intent.detail) \(intent.guideLine)".lowercased()
         let hints = ["easy", "reset", "fresh", "comeback", "light", "walk", "recovery"]
         return hints.contains { haystack.contains($0) }
     }
@@ -327,7 +327,7 @@ final class RecognitionStore: ObservableObject {
         }
     }
 
-    static func coachLine(for badgeID: RecognitionBadgeID) -> String {
+    static func guideLine(for badgeID: RecognitionBadgeID) -> String {
         switch badgeID {
         case .firstStep:
             return "You turned the first session into something real."
@@ -436,7 +436,7 @@ struct RecognitionHeroBadge: View {
                 Spacer()
             }
 
-            Text(preview.coachLine)
+            Text(preview.guideLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

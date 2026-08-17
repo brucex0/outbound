@@ -41,35 +41,38 @@ struct SessionIntent: Identifiable, Hashable {
     let sport: SportType
     let title: String
     let detail: String
-    let coachLine: String
+    let guideLine: String
     let startLabel: String
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
     let routeName: String?
     let workoutSteps: [SessionIntentStep]
+    let activityEvent: ActivityEventLaunchContext?
 
     init(
         id: String,
         sport: SportType,
         title: String,
         detail: String,
-        coachLine: String,
+        guideLine: String,
         startLabel: String,
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
         routeName: String? = nil,
-        workoutSteps: [SessionIntentStep] = []
+        workoutSteps: [SessionIntentStep] = [],
+        activityEvent: ActivityEventLaunchContext? = nil
     ) {
         self.id = id
         self.sport = sport
         self.title = title
         self.detail = detail
-        self.coachLine = coachLine
+        self.guideLine = guideLine
         self.startLabel = startLabel
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
         self.routeName = routeName
         self.workoutSteps = workoutSteps
+        self.activityEvent = activityEvent
     }
 
     var systemImage: String { sport.systemImage }
@@ -96,9 +99,17 @@ struct SessionIntent: Identifiable, Hashable {
         sport: .run,
         title: "Freestyle run",
         detail: "Run • no preset target",
-        coachLine: "No pressure. Just start where you are.",
+        guideLine: "No pressure. Just start where you are.",
         startLabel: "Start now"
     )
+}
+
+struct ActivityEventLaunchContext: Hashable {
+    let id: String
+    let title: String
+    let role: String
+    let attendanceMode: String?
+    let organizerName: String
 }
 
 enum SessionIntentGoalParser {

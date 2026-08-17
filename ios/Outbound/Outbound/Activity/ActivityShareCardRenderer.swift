@@ -26,13 +26,18 @@ enum ActivityShareCardRenderer {
         unitSystem: MeasurementUnitSystem,
         referralURL: URL
     ) async throws -> URL {
-        let mapImage = try? await ActivityShareMapSnapshotRenderer.snapshot(for: activity, size: cardSize)
+        async let mapImageTask = try? ActivityShareMapSnapshotRenderer.snapshot(for: activity, size: cardSize)
+        async let avatarImageTask = loadCurrentUserAvatar()
+        let (mapImage, avatarImage) = await (mapImageTask, avatarImageTask)
         let qrCodeImage = makeQRCode(for: referralURL)
+        let appLogoImage = loadAppIcon()
         let card = ActivityShareCardView(
             activity: activity,
             unitSystem: unitSystem,
             mapImage: mapImage,
-            qrCodeImage: qrCodeImage
+            avatarImage: avatarImage,
+            qrCodeImage: qrCodeImage,
+            appLogoImage: appLogoImage
         )
             .frame(width: cardSize.width, height: cardSize.height)
 
@@ -60,13 +65,56 @@ enum ActivityShareCardRenderer {
     private static func makeQRCode(for url: URL) -> UIImage? {
         guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
         filter.setValue(Data(url.absoluteString.utf8), forKey: "inputMessage")
-        filter.setValue("M", forKey: "inputCorrectionLevel")
+        // The centered avatar intentionally covers a small part of the code, so use
+        // the highest correction level to preserve reliable scanning.
+        filter.setValue("H", forKey: "inputCorrectionLevel")
         guard let outputImage = filter.outputImage else { return nil }
 
-        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
         let context = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
-        return UIImage(cgImage: cgImage)
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
+
+        let quietZoneModules: CGFloat = 1
+        let codeSize = outputImage.extent.size
+        let imageSize = CGSize(
+            width: codeSize.width + quietZoneModules * 2,
+            height: codeSize.height + quietZoneModules * 2
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: imageSize, format: format).image { rendererContext in
+            rendererContext.cgContext.setFillColor(UIColor.white.cgColor)
+            rendererContext.cgContext.fill(CGRect(origin: .zero, size: imageSize))
+            UIImage(cgImage: cgImage).draw(
+                in: CGRect(origin: CGPoint(x: quietZoneModules, y: quietZoneModules), size: codeSize)
+            )
+        }
+    }
+
+    private static func loadCurrentUserAvatar() async -> UIImage? {
+        guard let profile = try? await APIClient.shared.fetchMyProfile(),
+              let avatarURLString = profile.avatarUrl,
+              let avatarURL = URL(string: avatarURLString) else { return nil }
+
+        var request = URLRequest(url: avatarURL)
+        request.cachePolicy = .returnCacheDataElseLoad
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else { return nil }
+        return UIImage(data: data)
+    }
+
+    private static func loadAppIcon() -> UIImage? {
+        // App-icon asset catalogs are emitted as standalone bundle PNGs and are not
+        // reliably available through UIImage(named: "AppIcon") at runtime.
+        let candidates = ["AppIcon60x60@3x", "AppIcon60x60@2x", "AppIcon60x60"]
+        for name in candidates {
+            if let path = Bundle.main.path(forResource: name, ofType: "png"),
+               let image = UIImage(contentsOfFile: path) {
+                return image
+            }
+        }
+        return nil
     }
 }
 
@@ -85,7 +133,9 @@ private struct ActivityShareCardView: View {
     let activity: SavedActivity
     let unitSystem: MeasurementUnitSystem
     let mapImage: UIImage?
+    let avatarImage: UIImage?
     let qrCodeImage: UIImage?
+    let appLogoImage: UIImage?
 
     private var dateText: String {
         activity.startedAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year())
@@ -157,26 +207,57 @@ private struct ActivityShareCardView: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 20) {
+                VStack(alignment: .center, spacing: 20) {
                     if let qrCodeImage {
-                        Image(uiImage: qrCodeImage)
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 210, height: 210)
-                            .padding(20)
-                            .background(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        Text("Run With Me")
+                            .font(.system(size: 32, weight: .heavy))
+                            .tracking(1.6)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
+                            .frame(width: 264, height: 52, alignment: .center)
 
-                        Text("RUN WITH ME")
-                            .font(.system(size: 24, weight: .bold))
-                            .tracking(1.2)
-                            .foregroundStyle(.white.opacity(0.88))
+                        ZStack {
+                            Image(uiImage: qrCodeImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 264, height: 264)
+
+                            if let avatarImage {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 106, height: 106)
+
+                                Image(uiImage: avatarImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 96, height: 96)
+                                    .clipShape(Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(.white, lineWidth: 3)
+                                    }
+                            }
+                        }
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                     }
 
-                    Text("PLAINSTRIDE")
-                        .font(.system(size: 44, weight: .black))
-                        .tracking(1.5)
-                        .foregroundStyle(.white)
+                    HStack(spacing: 16) {
+                        if let appLogoImage {
+                            Image(uiImage: appLogoImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 58, height: 58)
+                                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        }
+
+                        Text("Plainstride")
+                            .font(.system(size: 34, weight: .medium))
+                            .tracking(1.1)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 }
                 .padding(.bottom, 168)
             }

@@ -26,7 +26,7 @@ Collect only information needed for a safe, realistic first week:
 - current pain, recent injury/illness, and material restrictions;
 - optional Apple Health import;
 - recurring family, friend, and club runs;
-- preference for detailed or minimal coaching.
+- preference for detailed or minimal guidance.
 
 Before generating the week, show an editable companion summary. Separate runner-provided facts from starting estimates.
 
@@ -67,7 +67,7 @@ Maintain a versioned runner model with provenance and confidence rather than an 
 - goals, dates, availability, preferences, and recurring social commitments;
 - optional private training-profile facts: sex assigned at birth, birth date, height, and weight;
 - injury or restriction flags that the runner explicitly supplied;
-- measurement units and coaching-detail preference.
+- measurement units and guidance-detail preference.
 
 ### Observations
 
@@ -102,7 +102,7 @@ Never regenerate the entire plan because one run was missed. Meaningful changes 
 - The companion may recommend stopping, resting, or seeking qualified care.
 - Do not prescribe aggressive progression from a single benchmark.
 - Sensor estimates never override explicit runner feedback without explanation.
-- Raw cycle data stays within the boundary defined in `docs/cycle-aware-coaching.md`.
+- Raw cycle data stays within the boundary defined in `docs/cycle-aware-guidance.md`.
 
 Optional body details live in a separate Me -> Settings -> Training profile editor, can be changed or cleared individually, and never appear in Together. Apply its additive backend columns with `cd backend && npm run db:push`.
 
@@ -168,7 +168,7 @@ Services/API/
 
 ### Slice B1: Identity, onboarding, and runner facts
 
-- Replace `CoachProfile` as the primary athlete record with `RunnerProfile` and structured preferences.
+- Replace `GuideProfile` as the primary athlete record with `RunnerProfile` and structured preferences.
 - Add authenticated `GET/PUT /v1/onboarding` and `GET/PUT /v1/me` routes.
 - Store runner-provided facts separately from derived observations and inferences.
 
@@ -247,7 +247,7 @@ Use checked-in JSON fixtures in both backend contract checks and Swift previews 
 5. Runner-model projection and `What I learned`.
 6. Explainable immediate adaptations.
 7. Weekly and long-term adaptation.
-8. Social schedule awareness without exposing private coaching evidence.
+8. Social schedule awareness without exposing private guidance evidence.
 
 The first shippable learning loop is complete when a new runner can finish intake, see an editable understanding, complete calibration runs, submit lightweight feedback, and receive one safe, explained plan adjustment grounded in visible evidence.
 
@@ -261,7 +261,7 @@ The first shippable learning loop is complete when a new runner can finish intak
 - Tired, sore, short-on-time, and harder-than-expected signals can create bounded adjustment proposals.
 - The runner explicitly accepts or rejects changes; accepted duration changes update the owned planned workout.
 - Me displays up to three evidence-backed insights with confidence language.
-- The simplified shell is the release default. DEBUG builds may pass `-OutboundLegacyShell` for temporary regression comparison.
+- The simplified shell is the only app shell in both DEBUG and release builds.
 
 Authenticated API surface:
 

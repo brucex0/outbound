@@ -12,21 +12,21 @@ Plainstride will initially support:
 
 Traditional Chinese is a separate future localization (`zh-Hant`), not an automated conversion of Simplified Chinese. The first release should follow the system or iOS per-app language setting; it does not need a custom in-app language picker.
 
-Localization covers every user-facing surface, including accessibility, system permission prompts, Live Activities, share text, generated plans, assistant and coach responses, speech recognition, and spoken coaching. User-authored content such as activity titles, biographies, and messages must remain unchanged.
+Localization covers every user-facing surface, including accessibility, system permission prompts, Live Activities, share text, generated plans, assistant and guide responses, speech recognition, and spoken guidance. User-authored content such as activity titles, biographies, and messages must remain unchanged.
 
 ## Implemented Foundation
 
 - The Xcode project declares English, Spanish, and Simplified Chinese regions.
-- `Localizable.xcstrings` contains the extracted SwiftUI and App Intent surface with Spanish and Simplified Chinese translations. Product, health, safety, coaching, and running terminology received an explicit review after machine seeding.
+- `Localizable.xcstrings` contains the extracted SwiftUI and App Intent surface with Spanish and Simplified Chinese translations. Product, health, safety, guidance, and running terminology received an explicit review after machine seeding.
 - `InfoPlist.xcstrings` localizes every privacy usage description.
 - The Live Activity extension owns a target-specific catalog for its compact metric labels; activity names and status values are localized before entering ActivityKit state.
 - `AppLanguage` provides canonical API (`en`, `es`, `zh-Hans`) and speech (`en_US`, `es_ES`, `zh_CN`) locale mappings based on the active iOS app language.
-- User-facing product language uses **companion**, never **coach** or **coaching**. Simplified Chinese uses `跑步伙伴`; Spanish uses `compañero` and the informal `tú` voice. Internal legacy type and payload names may still retain `Coach` where renaming would be an unrelated migration.
+- User-facing product language uses **companion**, never **guide** or **guidance**. Simplified Chinese uses `跑步伙伴`; Spanish uses `compañero` and the informal `tú` voice. Internal legacy type and payload names may still retain `Guide` where renaming would be an unrelated migration.
 - Every API request sends `Accept-Language` and `X-Plainstride-Locale`. Backend middleware normalizes unsupported or regional variants to one supported locale.
 - Assistant and companion AI prompts require the requested language. Their responses identify the locale used, and deterministic companion and cycle-aware fallbacks are available in all three languages.
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
 - Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
-- Speech recognition, speech-analysis assets, spoken coaching voices, command hints, and deterministic activity parsing support English, Spanish, and Mandarin, including localized duration and distance units.
+- Speech recognition, speech-analysis assets, spoken guidance voices, command hints, and deterministic activity parsing support English, Spanish, and Mandarin, including localized duration and distance units.
 
 The catalogs are product-authored translations and still require native-speaker release review, as described below. User-authored content remains unchanged.
 
@@ -86,7 +86,7 @@ The preferred contract boundary is:
 
 - Backend returns semantic workout structure, identifiers, quantities, and state.
 - Client localizes standard titles, workout steps, weekdays, effort levels, and status labels.
-- Backend or AI generates truly dynamic explanations, assistant replies, and coach messages in the requested locale.
+- Backend or AI generates truly dynamic explanations, assistant replies, and guide messages in the requested locale.
 - Responses containing generated prose include the locale used so caching and offline behavior are deterministic.
 
 Prompts must require the requested language while preserving proper names, numeric values, and safety meaning. The English rule-based/offline fallbacks need equivalent catalog-backed or locale-specific content so loss of network does not silently switch the experience to English.
@@ -97,7 +97,7 @@ Visual localization does not automatically localize voice behavior.
 
 - Select speech-recognition locales compatible with the active app language and available on-device assets.
 - Add Spanish and Mandarin vocabulary and parsing paths for deterministic activity commands, including distance and duration units.
-- Select an appropriate `AVSpeechSynthesisVoice` for generated coaching locale, with a documented fallback if the exact language voice is unavailable.
+- Route generated companion announcements through iOS speech synthesis. Apple Best is the default and selects the highest-quality installed non-novelty system voice for the active app language, preferring Premium, then Enhanced, then Default quality. Settings lists installed Apple Premium and Enhanced voices for selection and on-device preview.
 - Localize App Intent titles, parameter labels, dialogs, shortcuts phrases, and invocation examples.
 - Keep spoken measurement units consistent with the user's measurement preference.
 
@@ -124,7 +124,7 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 
 ### 3. Dynamic And Spoken Content
 
-- Propagate locale through planning, personalization, assistant, weather, recognition, and coaching requests.
+- Propagate locale through planning, personalization, assistant, weather, recognition, and guidance requests.
 - Return and cache generated-content locale metadata.
 - Add Spanish and Simplified Chinese prompt behavior and deterministic fallbacks.
 - Localize activity-command parsing, speech recognition, speech synthesis, and App Intents.
@@ -133,8 +133,9 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 ## Translation Workflow
 
 - English source copy should be product-reviewed before translation to avoid repeatedly translating unstable text.
+- Translate from the product meaning and full UI context; never use word-by-word Google Translate output. Write natural Simplified Chinese and Spanish copy directly, preserving Plainstride's running terminology, privacy meaning, and conversational tone.
 - Export catalogs through Xcode/XLIFF or provide `.xcstrings` directly to translators.
-- Use human review by native speakers familiar with running vocabulary. Machine translation can seed drafts but is not sufficient for permission prompts, health/safety content, onboarding, or coach tone.
+- Use human review by native speakers familiar with running vocabulary. Machine translation can seed drafts but is not sufficient for permission prompts, health/safety content, onboarding, or guide tone.
 - Keep terminology consistent for run, workout, pace, split, effort, readiness, recovery, calibration, live sharing, and training-plan concepts.
 - Review translations in the rendered app, not only in a string table.
 
@@ -149,7 +150,7 @@ For each supported language:
 - Check metric and imperial preferences independently of language.
 - Switch language with existing activities, plan caches, recognition, and profile data.
 - Confirm backend responses and offline fallbacks use the requested locale.
-- Validate Mandarin and Spanish command recognition and spoken coaching on a device.
+- Validate Mandarin and Spanish command recognition and spoken guidance on a device.
 
 ## Completion Criteria
 
@@ -158,5 +159,5 @@ For each supported language:
 - User-authored and imported proper-name content is preserved verbatim.
 - Counts and measurements are grammatically and numerically correct.
 - Cached generated prose is labeled by locale and cannot silently leak across language changes.
-- Voice commands, coaching speech, App Intents, accessibility labels, and Live Activities have an explicit supported-language behavior.
+- Voice commands, guidance speech, App Intents, accessibility labels, and Live Activities have an explicit supported-language behavior.
 - Native-speaker review is complete for both translations before release.

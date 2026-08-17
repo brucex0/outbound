@@ -75,7 +75,7 @@ router.get("/me", async (c) => {
 
   const userWithProfile = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { coachProfile: true },
+    include: { guideProfile: true },
   });
   if (!userWithProfile) {
     return c.json({ error: "Authenticated user has not been registered yet." }, 404);
@@ -192,7 +192,7 @@ router.get("/me/:firebaseUid", async (c) => {
         { authIdentities: { some: { firebaseUid } } },
       ],
     },
-    include: { coachProfile: true },
+    include: { guideProfile: true },
   });
   if (!user) return c.json({ error: "Not found" }, 404);
   return c.json(user);

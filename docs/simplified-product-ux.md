@@ -70,24 +70,24 @@ The workout must answer:
 
 Avoid multiple competing recommendation cards, generic AI chat prompts, and motivational copy that does not lead to action.
 
-## AI Coach
+## AI Guide
 
-Treat the coach as the intelligence connecting the experience, not necessarily as a separate destination or character-customization product.
+Treat the guide as the intelligence connecting the experience, not necessarily as a separate destination or character-customization product.
 
-Before a run, the coach:
+Before a run, the guide:
 
 - selects or adjusts the workout;
 - explains why;
 - responds to time, fatigue, soreness, travel, and schedule constraints;
 - finds compatible people or club runs.
 
-During a run, the coach:
+During a run, the guide:
 
 - announces the current step and what comes next;
 - answers concise workout questions;
 - avoids repetitive stat narration.
 
-After a run, the coach:
+After a run, the guide:
 
 - gives a precise private reflection;
 - updates plan and weekly progress;
@@ -109,7 +109,7 @@ Start with a small, reviewed plan library rather than a large AI-generated catal
 
 Defer marathon plans until progression and adaptation are demonstrably trustworthy.
 
-Use recognizable workout names such as `Easy run`, `Progression run`, and `Threshold intervals`. Coach flavor belongs in supporting copy, not the workout title.
+Use recognizable workout names such as `Easy run`, `Progression run`, and `Threshold intervals`. Guide flavor belongs in supporting copy, not the workout title.
 
 ### Workout presentation
 
@@ -193,7 +193,7 @@ Prioritize:
 
 1. Current focus and plan week.
 2. This week's adherence and totals.
-3. One precise coach observation.
+3. One precise guide observation.
 4. Four-week trend.
 5. Recent activity.
 6. History, personal records, predictions, and gear.
@@ -217,7 +217,7 @@ The clickable reference is `docs/prototypes/outbound-major-flow.html`.
 Deprioritize until the core loop is excellent:
 
 - a generic assistant destination;
-- prominent coach-face customization;
+- prominent guide-face customization;
 - a generic public social feed;
 - badges and broad reward systems;
 - broad multi-sport positioning;

@@ -309,7 +309,7 @@ function profileData(input: RunnerProfileInput) {
     ...(input.recentSessionsPerWeek !== undefined ? { recentSessionsPerWeek: input.recentSessionsPerWeek } : {}),
     ...(input.targetSessionsPerWeek !== undefined ? { targetSessionsPerWeek: input.targetSessionsPerWeek } : {}),
     ...(input.preferredLongRunDay !== undefined ? { preferredLongRunDay: input.preferredLongRunDay } : {}),
-    ...(input.coachingDetail !== undefined ? { coachingDetail: input.coachingDetail } : {}),
+    ...(input.guidanceDetail !== undefined ? { guidanceDetail: input.guidanceDetail } : {}),
     ...(input.constraints !== undefined ? { constraints: input.constraints as Prisma.InputJsonValue } : {}),
   };
 }

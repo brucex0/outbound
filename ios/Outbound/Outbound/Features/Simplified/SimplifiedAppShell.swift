@@ -10,9 +10,16 @@ enum SimplifiedAppTab: Hashable {
 }
 
 struct SimplifiedAppShell: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var weatherStore: SituationalWeatherStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    let activitySessionState: ActivitySessionPortalState
+    let activityElapsedSeconds: Int
+    let activeSport: SportType?
     let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
 
@@ -22,7 +29,13 @@ struct SimplifiedAppShell: View {
                 .tag(SimplifiedAppTab.social)
                 .tabItem { Label("Social", systemImage: "person.2") }
 
-            SimplifiedTodayView(onStartRun: onStartRun)
+            SimplifiedTodayView(
+                isSelected: selection == .today,
+                activitySessionState: activitySessionState,
+                activityElapsedSeconds: activityElapsedSeconds,
+                activeSport: activeSport,
+                onStartRun: onStartRun
+            )
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label("Today", systemImage: "sparkles") }
 
@@ -30,32 +43,62 @@ struct SimplifiedAppShell: View {
                 .tag(SimplifiedAppTab.me)
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
-        .tint(OutboundPalette.companion)
+        .tint(guideCatalog.selectedTheme.accentColor)
         .onAppear {
+            weatherStore.refreshForToday()
             trainingPlanStore.refresh(
                 activities: activityStore.activities,
                 readiness: dailyCheckInStore.readiness,
                 phase: DailyMotivationEngine.phase(for: activityStore.activities)
             )
         }
+        .onChange(of: activityStore.activities) { _, activities in
+            trainingPlanStore.refresh(
+                activities: activities,
+                readiness: dailyCheckInStore.readiness,
+                phase: DailyMotivationEngine.phase(for: activities)
+            )
+        }
+        .onChange(of: dailyCheckInStore.readiness) { _, readiness in
+            trainingPlanStore.refresh(
+                activities: activityStore.activities,
+                readiness: readiness,
+                phase: DailyMotivationEngine.phase(for: activityStore.activities)
+            )
+        }
+        .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
+            if target != nil {
+                selection = .me
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                weatherStore.refreshForToday()
+            }
+        }
     }
 }
 
 private struct SimplifiedTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.outboundTheme) private var theme
     @EnvironmentObject private var activityStore: ActivityStore
-    @EnvironmentObject private var coachCatalog: CoachCatalogStore
-    @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
+    @AppStorage("theme_discovery_tip_dismissed_v1") private var hasDismissedThemeTip = false
+    @AppStorage("theme_discovery_tip_presentation_count_v1") private var themeTipPresentationCount = 0
+    let isSelected: Bool
+    let activitySessionState: ActivitySessionPortalState
+    let activityElapsedSeconds: Int
+    let activeSport: SportType?
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsActivityCompanion = false
     @State private var showsChangeSheet = false
-    @State private var showsWeatherSheet = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
     @State private var companionActivityID: UUID?
@@ -63,76 +106,51 @@ private struct SimplifiedTodayView: View {
     @State private var companionRequestID: UUID?
     @State private var customizedRunIntent: SessionIntent?
     @State private var currentDay = Calendar.current.startOfDay(for: Date())
-
-    private var dailySpark: CoachSpark {
-        DailyMotivationEngine.makeSnapshot(
-            activities: activityStore.activities,
-            readiness: dailyCheckInStore.readiness,
-            persona: coachCatalog.selectedPersona
-        ).spark
-    }
+    @State private var showsThemeTip = false
+    @State private var showsThemeChooser = false
+    @State private var showsUpcomingWorkout = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
-                    OutboundCard(style: .companion) {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text(dailySpark.headline)
-                                .font(.title3.weight(.semibold))
-                            Text(dailySpark.message)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
                     if let completedActivityToday {
                         completedTodayCard(completedActivityToday)
+                        if activitySessionState == .idle {
+                            Button {
+                                onStartRun(.freestyleRun)
+                            } label: {
+                                Label("Start another activity", systemImage: "plus.circle.fill")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, minHeight: 48)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                            .tint(theme.actionColor)
+                        }
+
+                        upcomingWorkoutButton
+                    } else if let activityEventToday {
+                        activityEventCard(activityEventToday)
                     } else {
                         plannedWorkoutCard
-                    }
-
-                    if completedActivityToday != nil {
-                        Button {
-                            onStartRun(activeRunIntent)
-                        } label: {
-                            Label("Run again", systemImage: "arrow.clockwise")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, minHeight: 46)
-                        }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                    }
-
-                    Button {
-                        onStartRun(.freestyleRun)
-                    } label: {
-                        Label("Quick start", systemImage: "bolt.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 46)
-                    }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-
-                    if let futureActivityToday {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("JOINED ACTIVITY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                FutureActivitySummaryContent(
-                                    title: futureActivityToday.title,
-                                    startsAt: futureActivityToday.startsAt,
-                                    locationName: futureActivityToday.locationName,
-                                    note: futureActivityToday.paceNote
-                                )
-                                OutboundPrimaryButton(title: String(localized: "Start with friends"), systemImage: "person.2.fill") {
-                                    socialStore.prepareToRecord(futureActivityID: futureActivityToday.id)
-                                    onStartRun(.freestyleRun)
-                                }
+                        if activitySessionState == .idle {
+                            Button {
+                                onStartRun(.freestyleRun)
+                            } label: {
+                                Label("Quick run", systemImage: "bolt.fill")
+                                    .font(.subheadline.weight(.semibold))
                             }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(theme.accentColor)
+                            .padding(.vertical, 6)
                         }
                     }
 
-                    lastActivityCard
+                    if activitySessionState != .idle {
+                        inProgressActivityCard
+                    }
+
                 }
                 .padding(.horizontal, OutboundSpacing.screen)
                 .padding(.vertical, OutboundSpacing.standard)
@@ -140,8 +158,49 @@ private struct SimplifiedTodayView: View {
             .background(OutboundPalette.background)
             .navigationTitle("Today")
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
+            .toolbar {
+                if canPresentThemeTip || showsThemeTip {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            if showsThemeTip {
+                                showsThemeTip = false
+                            } else {
+                                presentThemeTip()
+                            }
+                        } label: {
+                            Image(systemName: "paintpalette.fill")
+                        }
+                        .accessibilityLabel("Change appearance")
+                        .popover(isPresented: $showsThemeTip, arrowEdge: .top) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Want a different look?")
+                                    .font(.headline)
+                                Text("Change the mode or pick a theme that feels like you.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Button("Change appearance") {
+                                    hasDismissedThemeTip = true
+                                    showsThemeTip = false
+                                    Task { @MainActor in
+                                        try? await Task.sleep(for: .milliseconds(250))
+                                        showsThemeChooser = true
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                            .padding()
+                            .presentationCompactAdaptation(.popover)
+                        }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlobalConditionsButton()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    companionButton
+                }
+            }
             .task {
-                weatherStore.refreshForToday()
                 await loadCompanionTodayMessage()
             }
             .onChange(of: weatherStore.snapshot) { _, _ in
@@ -159,6 +218,21 @@ private struct SimplifiedTodayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCurrentDayIfNeeded()
             }
+            .task(id: isSelected) {
+                guard isSelected, canPresentThemeTip else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(650))
+                } catch {
+                    return
+                }
+                guard isSelected, canPresentThemeTip else { return }
+                presentThemeTip()
+            }
+            .onChange(of: isSelected) { _, isSelected in
+                if !isSelected {
+                    showsThemeTip = false
+                }
+            }
         }
         .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
             Button("Got it", role: .cancel) {}
@@ -173,15 +247,6 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showsWeatherSheet) {
-            WeatherDetailSheet(
-                snapshot: weatherStore.snapshot,
-                errorMessage: weatherStore.errorMessage,
-                unitSystem: measurementPreferences.unitSystem,
-                onRefresh: { weatherStore.refresh(force: true) }
-            )
-            .presentationDetents([.medium])
-        }
         .sheet(isPresented: $showsActivityCompanion) {
             TodayActivityCompanionSheet(
                 message: companionInsightMessage,
@@ -191,78 +256,265 @@ private struct SimplifiedTodayView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showsThemeChooser) {
+            ThemeChooserView()
+                .environmentObject(guideCatalog)
+        }
+        .sheet(isPresented: $showsUpcomingWorkout) {
+            upcomingWorkoutSheet
+                .presentationDetents([.medium])
+        }
     }
 
-    private var futureActivityToday: TogetherGroupRunDTO? {
+    private var canPresentThemeTip: Bool {
+        !hasDismissedThemeTip && themeTipPresentationCount < 3
+    }
+
+    private func presentThemeTip() {
+        guard canPresentThemeTip else { return }
+        themeTipPresentationCount += 1
+        showsThemeTip = true
+    }
+
+    private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
             $0.currentUserGoing == true && Calendar.current.isDateInToday($0.startsAt)
         }
     }
 
-    private var plannedWorkoutCard: some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(todayWorkoutName).font(.title3.weight(.semibold))
-                    Spacer()
-                    Text(todayTotalDuration).font(.headline.monospacedDigit())
-                    companionButton
-                    Button { showsChangeSheet = true } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Change today’s run")
-                    Button { showsCompanionExplanation = true } label: {
-                        Image(systemName: "info.circle")
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Why this workout")
-                }
-                TodayWeatherRow(
-                    snapshot: weatherStore.snapshot,
-                    errorMessage: weatherStore.errorMessage,
-                    isLoading: weatherStore.isLoading,
-                    unitSystem: measurementPreferences.unitSystem,
-                    onOpen: { showsWeatherSheet = true }
+    private func activityEventCard(_ event: ActivityEventDTO) -> some View {
+        OutboundCard(style: .companion) {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text("NEXT ACTIVITY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                ActivityEventSummaryContent(
+                    title: event.title,
+                    startsAt: event.startsAt,
+                    locationName: event.locationName,
+                    note: event.paceNote
                 )
-                CompactIntervalPreview(phases: todayPhases)
-                OutboundPrimaryButton(title: String(localized: "Start run"), systemImage: "figure.run") {
-                    onStartRun(activeRunIntent)
+                Text(event.currentUserRole == "owner"
+                     ? String(localized: "You’re organizing · Meet up or join from anywhere")
+                     : String(localized: "You’re participating · Meet up or join from anywhere"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if activitySessionState == .idle {
+                    OutboundPrimaryButton(title: String(localized: "Start activity event"), systemImage: "person.2.fill") {
+                        socialStore.prepareToRecord(activityEventID: event.id)
+                        onStartRun(activityEventIntent(event))
+                    }
                 }
             }
         }
     }
 
-    private func completedTodayCard(_ activity: SavedActivity) -> some View {
-        OutboundCard(style: .companion) {
+    private func activityEventIntent(_ event: ActivityEventDTO) -> SessionIntent {
+        SessionIntent(
+            id: "activity-event:\(event.id)",
+            sport: .run,
+            title: event.title,
+            detail: String(localized: "Shared activity · Meet up or join from anywhere"),
+            guideLine: String(localized: "Your activity will be saved to your history and included in the shared results."),
+            startLabel: String(localized: "Start activity event"),
+            activityEvent: ActivityEventLaunchContext(
+                id: event.id,
+                title: event.title,
+                role: event.currentUserRole ?? "participant",
+                attendanceMode: nil,
+                organizerName: event.creator.displayName
+            )
+        )
+    }
+
+    private var plannedWorkoutCard: some View {
+        OutboundCard {
             VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                Label("Today’s run is done", systemImage: "checkmark.circle.fill")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
-                HStack {
-                    Text("Nice work. Recover well and let this one count.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                HStack(alignment: .top, spacing: OutboundSpacing.standard) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(completedActivityToday == nil ? "Today’s workout" : "Up next")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(theme.accentColor)
+                            .textCase(.uppercase)
+                        Text(todayWorkoutName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(OutboundPalette.primaryText)
+                    }
                     Spacer()
-                    companionButton
+                    Menu {
+                        Button("Ask companion", systemImage: "sparkles") {
+                            showsActivityCompanion = true
+                            Task { await loadCompanionTodayMessage(force: true) }
+                        }
+                        Button("Change workout", systemImage: "slider.horizontal.3") {
+                            showsChangeSheet = true
+                        }
+                        Button("Why this workout?", systemImage: "info.circle") {
+                            showsCompanionExplanation = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.headline)
+                            .frame(width: 36, height: 36)
+                            .background(Color.primary.opacity(0.06), in: Circle())
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Workout options")
                 }
-                HStack {
-                    todayStat(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1), "Distance")
-                    todayStat(durationLabel(activity.durationSecs), "Time")
+                Text(todayTotalDuration)
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                CompactIntervalPreview(phases: todayPhases)
+                if activitySessionState == .idle {
+                    OutboundPrimaryButton(title: String(localized: "Start run"), systemImage: "figure.run") {
+                        onStartRun(activeRunIntent)
+                    }
                 }
-                NavigationLink(value: activity) {
-                    Label("View today’s activity", systemImage: "clock.arrow.circlepath")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(OutboundPalette.companion)
             }
         }
+    }
+
+    private var inProgressActivityCard: some View {
+        Button {
+            onStartRun(nil)
+        } label: {
+            OutboundCard {
+                HStack(spacing: OutboundSpacing.standard) {
+                    ZStack {
+                        Circle()
+                            .fill((activitySessionState == .paused ? Color.yellow : Color.red).opacity(0.14))
+                            .frame(width: 38, height: 38)
+                        Image(systemName: activitySessionState == .paused ? "pause.fill" : "waveform.path.ecg")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(activitySessionState == .paused ? Color.orange : Color.red)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(activitySessionState == .paused ? "Activity paused" : "Activity in progress")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(activeSport?.displayName ?? String(localized: "Activity"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(activityElapsedSeconds.formatted())
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(activitySessionState == .paused ? "Activity paused" : "Activity in progress"), "
+            + "\(activeSport?.displayName ?? String(localized: "Activity")), "
+            + "\(activityElapsedSeconds.formatted()) elapsed"
+        )
+        .accessibilityHint("Returns to the activity recording screen")
+    }
+
+    private var upcomingWorkoutButton: some View {
+        Button { showsUpcomingWorkout = true } label: {
+            HStack(spacing: OutboundSpacing.compact) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(theme.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(upcomingScheduleLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    Text("\(todayWorkoutName) · \(todayTotalDuration)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(upcomingScheduleLabel), \(todayWorkoutName), \(todayTotalDuration)")
+        .accessibilityHint("Shows the upcoming workout")
+    }
+
+    private var upcomingWorkoutSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OutboundSpacing.section) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(upcomingScheduleLabel)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(theme.accentColor)
+                        Text(todayWorkoutName)
+                            .font(.title2.weight(.bold))
+                        Text(todayTotalDuration)
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    CompactIntervalPreview(phases: todayPhases)
+                    Text(todayExplanation)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OutboundSpacing.screen)
+            }
+            .background(OutboundPalette.background)
+            .navigationTitle("Up next")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showsUpcomingWorkout = false }
+                }
+            }
+        }
+    }
+
+    private var upcomingScheduleLabel: String {
+        guard let dayLabel = trainingPlanStore.todaySuggestion?.workout.dayLabel,
+              !dayLabel.isEmpty,
+              dayLabel.localizedCaseInsensitiveCompare("Today") != .orderedSame
+        else { return String(localized: "Next recommendation") }
+
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+        let tomorrowLabel = tomorrow.formatted(.dateTime.weekday(.abbreviated))
+        return dayLabel.localizedCaseInsensitiveCompare(tomorrowLabel) == .orderedSame
+            ? String(localized: "Tomorrow")
+            : dayLabel
+    }
+
+    private func completedTodayCard(_ activity: SavedActivity) -> some View {
+        NavigationLink(value: activity) {
+            OutboundCard(style: .companion) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                    HStack {
+                        Label("Today’s run is done", systemImage: "checkmark.circle.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.72))
+                    }
+                    Text("Nice work. Recover well and let this one count.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.82))
+                    HStack {
+                        todayStat(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1), "Distance")
+                        todayStat(durationLabel(activity.durationSecs), "Time")
+                    }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens today’s completed activity")
     }
 
     private var lastActivityCard: some View {
@@ -282,7 +534,7 @@ private struct SimplifiedTodayView: View {
                         HStack(spacing: OutboundSpacing.standard) {
                             Image(systemName: "figure.run.circle.fill")
                                 .font(.title2)
-                                .foregroundStyle(OutboundPalette.companion)
+                                .foregroundStyle(theme.accentColor)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(activity.title)
                                     .font(.headline)
@@ -325,7 +577,7 @@ private struct SimplifiedTodayView: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(OutboundPalette.companion.gradient, in: Circle())
+                .background(theme.accentColor.gradient, in: Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Ask companion about this activity")
@@ -406,7 +658,7 @@ private struct SimplifiedTodayView: View {
         let distance = measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)
         return """
         \(base)
-        The local activity store confirms that today's workout is complete: \(activity.title), \(durationLabel(activity.durationSecs)), \(distance). Do not describe today as a rest day or recommend another workout as though the planned activity is still pending. Focus on recovery, reflection, or the next useful step.
+        The local activity store confirms that a workout was already completed today: \(activity.title), \(durationLabel(activity.durationSecs)), \(distance). The workout currently displayed is a new optional recommendation, not the completed session. Briefly explain whether doing it today is sensible, and favor recovery when another workout would add unnecessary stress.
         """
     }
 
@@ -446,7 +698,7 @@ private struct SimplifiedTodayView: View {
                 sport: .run,
                 title: workout.title,
                 detail: String(localized: "Run · \(durationLabel(workout.durationSeconds)) · conversational effort"),
-                coachLine: workout.purpose,
+                guideLine: workout.purpose,
                 startLabel: String(localized: "Start workout"),
                 targetDurationSeconds: workout.durationSeconds,
                 workoutSteps: workout.steps.map {
@@ -462,7 +714,7 @@ private struct SimplifiedTodayView: View {
             sport: .run,
             title: String(localized: "Easy run"),
             detail: String(localized: "Run · 30 min · conversational effort"),
-            coachLine: String(localized: "Settle into a conversational effort and keep this one comfortable."),
+            guideLine: String(localized: "Settle into a conversational effort and keep this one comfortable."),
             startLabel: String(localized: "Start workout"),
             targetDurationSeconds: 30 * 60,
             workoutSteps: [
@@ -501,7 +753,7 @@ private struct SimplifiedTodayView: View {
     private var todayExplanation: String {
         if let workout = currentCalibrationWorkout { return localizedAppCopy(workout.purpose) }
         let copy = trainingPlanStore.todaySuggestion?.adjustmentLine
-            ?? trainingPlanStore.todaySuggestion?.coachLine
+            ?? trainingPlanStore.todaySuggestion?.guideLine
             ?? "This approachable run builds consistency while Plainstride learns your natural easy effort."
         return localizedAppCopy(copy)
     }
@@ -581,12 +833,69 @@ private struct SimplifiedTodayView: View {
             sport: .run,
             title: "\(minutes) min easy run",
             detail: "Run · \(minutes) min · very easy",
-            coachLine: reason == .sore
+            guideLine: reason == .sore
                 ? "Keep this very easy and stop if discomfort becomes pain."
                 : "Keep the effort easy. A shorter run still protects the habit.",
             startLabel: "Start changed run",
             targetDurationSeconds: minutes * 60
         )
+    }
+}
+
+struct ThemeChooserView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
+    @EnvironmentObject private var appearancePreferences: AppearancePreferences
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Mode") {
+                    Picker("Mode", selection: $appearancePreferences.mode) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
+
+                Section("Theme") {
+                    ForEach(OutboundTheme.allCases) { theme in
+                        Button {
+                            guideCatalog.setTheme(theme)
+                        } label: {
+                            HStack(spacing: 14) {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(theme.heroGradient)
+                                    .frame(width: 52, height: 34)
+                                    .shadow(color: theme.glowColor, radius: 6, y: 2)
+
+                                Text(theme.displayName)
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                if guideCatalog.selectedTheme == theme {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(theme.accentColor)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(guideCatalog.selectedTheme == theme ? "Selected" : "")
+                    }
+                }
+            }
+            .navigationTitle("Appearance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 
@@ -729,7 +1038,7 @@ private struct TodayActivityCompanionSheet: View {
     private func adjustedActivity(for prompt: String) -> SessionIntent? {
         let normalized = prompt.lowercased()
         let requestedGoal = requestedGoal(in: normalized)
-        let effort: (title: String, detail: String, coach: String)? = {
+        let effort: (title: String, detail: String, guide: String)? = {
             if normalized.contains("recovery") || normalized.contains("very easy") {
                 return ("Recovery run", "very easy", "Keep this restorative and finish feeling better than you started.")
             }
@@ -769,7 +1078,7 @@ private struct TodayActivityCompanionSheet: View {
             sport: currentActivity.sport,
             title: title,
             detail: "\(currentActivity.sport.displayName) · \(goalDetail) · \(effort?.detail ?? "customized")",
-            coachLine: effort?.coach ?? currentActivity.coachLine,
+            guideLine: effort?.guide ?? currentActivity.guideLine,
             startLabel: "Start activity",
             targetDistanceMeters: distanceMeters,
             targetDurationSeconds: durationSeconds,
@@ -861,65 +1170,16 @@ private extension SessionIntent {
     }
 }
 
-private struct TodayWeatherRow: View {
+private struct WorkoutWeatherGuidance: View {
     let snapshot: RunningWeatherSnapshot?
-    let errorMessage: String?
-    let isLoading: Bool
-    let unitSystem: MeasurementUnitSystem
-    let onOpen: () -> Void
 
+    @ViewBuilder
     var body: some View {
-        if isLoading && snapshot == nil {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Checking local conditions…")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
-        } else if let snapshot {
-            Button(action: onOpen) {
-                HStack(spacing: 8) {
-                    Image(systemName: snapshot.symbolName)
-                        .foregroundStyle(weatherColor(snapshot.impact))
-                    Text(snapshot.temperatureLabel(unitSystem: unitSystem))
-                        .font(.subheadline.monospacedDigit().weight(.semibold))
-                    Text(snapshot.headline)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Local conditions, \(snapshot.temperatureLabel(unitSystem: unitSystem)), \(snapshot.headline)")
-        } else if let errorMessage {
-            Button(action: onOpen) {
-                HStack(spacing: 8) {
-                    Image(systemName: "location.slash")
-                    Text(errorMessage)
-                        .lineLimit(2)
-                    Spacer(minLength: 4)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                }
+        if let snapshot, snapshot.impact != .none {
+            Label(snapshot.guidance ?? snapshot.headline, systemImage: snapshot.symbolName)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        } else {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Checking local conditions…")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
+                .foregroundStyle(weatherColor(snapshot.impact))
+                .accessibilityLabel("Workout weather guidance: \(snapshot.guidance ?? snapshot.headline)")
         }
     }
 
@@ -929,6 +1189,56 @@ private struct TodayWeatherRow: View {
         case .advisory: .orange
         case .caution, .unsafe: .red
         }
+    }
+}
+
+struct GlobalConditionsButton: View {
+    @EnvironmentObject private var weatherStore: SituationalWeatherStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @State private var showsDetails = false
+
+    var body: some View {
+        Button { showsDetails = true } label: {
+            if let snapshot = weatherStore.snapshot {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) {
+                        Image(systemName: snapshot.symbolName)
+                        if let placeName = snapshot.placeName {
+                            Text(placeName)
+                        }
+                        Text(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem))
+                            .monospacedDigit()
+                    }
+                    HStack(spacing: 3) {
+                        Image(systemName: snapshot.symbolName)
+                        Text(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem))
+                            .monospacedDigit()
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            } else if weatherStore.isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: "location.circle")
+            }
+        }
+        .accessibilityLabel(accessibilityLabel)
+        .sheet(isPresented: $showsDetails) {
+            WeatherDetailSheet(
+                snapshot: weatherStore.snapshot,
+                errorMessage: weatherStore.errorMessage,
+                unitSystem: measurementPreferences.unitSystem,
+                onRefresh: { weatherStore.refresh(force: true) }
+            )
+            .presentationDetents([.medium])
+        }
+    }
+
+    private var accessibilityLabel: String {
+        guard let snapshot = weatherStore.snapshot else { return String(localized: "Local conditions") }
+        let place = snapshot.placeName ?? String(localized: "your area")
+        return String(localized: "Local conditions in \(place), \(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem)), \(snapshot.headline)")
     }
 }
 
@@ -1128,6 +1438,7 @@ private struct TodayChangeSheet: View {
 }
 
 private struct SimplifiedMeView: View {
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var activityStore: ActivityStore
@@ -1136,10 +1447,12 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @State private var profile: AppUserProfileDTO?
+    @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     NavigationLink {
@@ -1223,7 +1536,7 @@ private struct SimplifiedMeView: View {
                                 meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), "Distance")
                                 meStat(weekDuration.formatted(), "Time")
                             }
-                            AIExplanationView(text: weekCoachLine)
+                            AIExplanationView(text: weekGuideLine)
                         }
                     }
                     if showsCycleAwareGuidance {
@@ -1284,7 +1597,16 @@ private struct SimplifiedMeView: View {
             .background(OutboundPalette.background)
             .navigationTitle("Me")
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
-            .task { await loadProfile() }
+            .navigationDestination(for: AssistantNavigationTarget.self) { target in
+                assistantDestination(for: target)
+            }
+            .task { await loadMeData() }
+            .onAppear {
+                handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
+            }
+            .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
+                handlePendingAssistantTarget(target)
+            }
             .sheet(isPresented: $showsCycleAwareCheckIn) {
                 NavigationStack {
                     CycleAwareView()
@@ -1296,11 +1618,14 @@ private struct SimplifiedMeView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    GlobalConditionsButton()
                     NavigationLink {
                         SimplifiedSettingsView(
                             profile: profile,
-                            onProfileUpdated: { profile = $0 }
+                            trainingProfileSex: trainingProfileSex,
+                            onProfileUpdated: { profile = $0 },
+                            onTrainingProfileUpdated: { trainingProfileSex = $0.sexAtBirth }
                         )
                     } label: {
                         Image(systemName: "gearshape")
@@ -1316,8 +1641,50 @@ private struct SimplifiedMeView: View {
         UserAvatarPersistence.save(profile?.avatarUrl, for: AuthStore.currentUserId)
     }
 
+    @ViewBuilder
+    private func assistantDestination(for target: AssistantNavigationTarget) -> some View {
+        switch target {
+        case .settingsAppleHealth:
+            AppleHealthSettingsView()
+        case .settingsAppleMusic:
+            Form {
+                Section("Apple Music") {
+                    Text("Choose and connect music from the Music section before starting an activity.")
+                }
+            }
+            .navigationTitle("Music")
+        case .guideSettings:
+            GuideSelectionView()
+        case .activityHistory:
+            ActivityHistoryView()
+        }
+    }
+
+    private func handlePendingAssistantTarget(_ target: AssistantNavigationTarget?) {
+        guard let target else { return }
+        navigationPath.append(target)
+        appNavigationStore.consume()
+    }
+
+    private func loadMeData() async {
+        async let profileLoad: Void = loadProfile()
+        async let trainingProfileLoad: Void = loadTrainingProfile()
+        _ = await (profileLoad, trainingProfileLoad)
+    }
+
+    private func loadTrainingProfile() async {
+        trainingProfileSex = try? await APIClient.shared.fetchTrainingProfile().sexAtBirth
+    }
+
     private var showsCycleAwareGuidance: Bool {
-        onboardingStore.completedProfile?.bodyProfile.sex != .male
+        effectiveSexIsMale == false
+    }
+
+    private var effectiveSexIsMale: Bool {
+        if let trainingProfileSex {
+            return trainingProfileSex == .male
+        }
+        return onboardingStore.completedProfile?.bodyProfile.sex == .male
     }
 
     private var planTitle: String {
@@ -1331,8 +1698,8 @@ private struct SimplifiedMeView: View {
     private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? currentWeekActivities.count }
     private var weekDistance: Double { currentWeekActivities.reduce(0) { $0 + $1.distanceM } }
     private var weekDuration: Int { currentWeekActivities.reduce(0) { $0 + $1.durationSecs } }
-    private var weekCoachLine: String {
-        if let line = trainingPlanStore.currentWeek?.coachLine { return line }
+    private var weekGuideLine: String {
+        if let line = trainingPlanStore.currentWeek?.guideLine { return line }
         if weekRuns >= weekTarget { return String(localized: "You completed this week’s rhythm.") }
         let remaining = max(0, weekTarget - weekRuns)
         return remaining == 1
@@ -1351,11 +1718,16 @@ private struct SimplifiedMeView: View {
 
 private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var appearancePreferences: AppearancePreferences
     @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     let profile: AppUserProfileDTO?
+    let trainingProfileSex: TrainingProfileSex?
     let onProfileUpdated: (AppUserProfileDTO) -> Void
+    let onTrainingProfileUpdated: (TrainingProfileDTO) -> Void
     @State private var confirmsSignOut = false
+    @State private var confirmsAccountDeletion = false
 
     var body: some View {
         Form {
@@ -1363,9 +1735,37 @@ private struct SimplifiedSettingsView: View {
                 if let label = authStore.currentLoginLabel {
                     LabeledContent("Signed in as", value: label)
                 }
+                if !authStore.connectedProviderLabels.isEmpty {
+                    LabeledContent("Sign-in methods", value: authStore.connectedProviderLabels.joined(separator: ", "))
+                }
+                if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isGoogleLinked {
+                    Button {
+                        Task { await authStore.connectGoogleAccount() }
+                    } label: {
+                        Label("Connect Google", systemImage: "globe")
+                    }
+                    .disabled(authStore.isBusy)
+                }
+                if authStore.isAppleSignInAvailable, authStore.user != nil, !authStore.isAppleLinked {
+                    Button {
+                        Task { await authStore.connectAppleAccount() }
+                    } label: {
+                        Label("Connect Apple", systemImage: "apple.logo")
+                    }
+                    .disabled(authStore.isBusy)
+                }
+                if let error = authStore.authError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
                 Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                     confirmsSignOut = true
                 }
+                Button("Delete Account", systemImage: "trash", role: .destructive) {
+                    confirmsAccountDeletion = true
+                }
+                .disabled(authStore.isBusy)
             }
             Section("Profile") {
                 NavigationLink {
@@ -1377,7 +1777,7 @@ private struct SimplifiedSettingsView: View {
                     Label("Name and running bio", systemImage: "person.crop.circle")
                 }
                 NavigationLink {
-                    TrainingProfileEditorView()
+                    TrainingProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
                 } label: {
                     Label("Training profile", systemImage: "heart.text.square")
                 }
@@ -1387,12 +1787,48 @@ private struct SimplifiedSettingsView: View {
                     Label("What Plainstride knows", systemImage: "brain.head.profile")
                 }
             }
+            Section("Live Guidance") {
+                NavigationLink {
+                    GuideSelectionView()
+                } label: {
+                    LabeledContent {
+                        Text(guideCatalog.selectedVoice.displayName)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Voice", systemImage: "waveform.circle")
+                    }
+                }
+            }
+            Section("Appearance") {
+                Picker("Mode", selection: $appearancePreferences.mode) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                NavigationLink {
+                    ThemeChooserView()
+                } label: {
+                    LabeledContent {
+                        Text(guideCatalog.selectedTheme.displayName)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label {
+                            Text("Theme")
+                        } icon: {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(guideCatalog.selectedTheme.heroGradient)
+                                .frame(width: 24, height: 18)
+                                .shadow(color: guideCatalog.selectedTheme.glowColor, radius: 3, y: 1)
+                        }
+                    }
+                }
+            }
             Section("Units") {
                 Picker("Measurement", selection: $measurementPreferences.unitSystem) {
                     ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
-            if onboardingStore.completedProfile?.bodyProfile.sex != .male {
+            if effectiveSexIsMale == false {
                 Section("Health & body") {
                     NavigationLink("Cycle-aware guidance") { CycleAwareView() }
                 }
@@ -1411,6 +1847,32 @@ private struct SimplifiedSettingsView: View {
             Section("Gear") {
                 GearSettingsCard()
             }
+            Section("Integrations") {
+                NavigationLink {
+                    AppleHealthSettingsView()
+                } label: {
+                    Label("Apple Health", systemImage: "heart.text.square")
+                }
+            }
+            Section("Safety") {
+                NavigationLink {
+                    SafetyContactsSettingsView()
+                } label: {
+                    Label("Trusted contacts", systemImage: "person.crop.circle.badge.checkmark")
+                }
+            }
+            #if DEBUG
+            Section("Debug") {
+                Button {
+                    onboardingStore.restartForDebug()
+                } label: {
+                    Label("Run onboarding flow", systemImage: "sparkles")
+                }
+                Text("Presents the new-user flow again without signing out.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #endif
             Section {
                 Text("Plainstride keeps private health details on this device and never shows them in Together.")
                     .font(.footnote).foregroundStyle(.secondary)
@@ -1421,11 +1883,31 @@ private struct SimplifiedSettingsView: View {
             Button("Sign out", role: .destructive) { authStore.signOut() }
             Button("Cancel", role: .cancel) {}
         }
+        .confirmationDialog(
+            "Permanently delete your account?",
+            isPresented: $confirmsAccountDeletion,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Account and Data", role: .destructive) {
+                Task { await authStore.deleteAccount() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.")
+        }
+    }
+
+    private var effectiveSexIsMale: Bool {
+        if let trainingProfileSex {
+            return trainingProfileSex == .male
+        }
+        return onboardingStore.completedProfile?.bodyProfile.sex == .male
     }
 }
 
 private struct TrainingProfileEditorView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    let onProfileUpdated: (TrainingProfileDTO) -> Void
     @State private var sexAtBirth: TrainingProfileSex?
     @State private var hasBirthDate = false
     @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
@@ -1433,7 +1915,7 @@ private struct TrainingProfileEditorView: View {
     @State private var weightText = ""
     @State private var isLoading = true
     @State private var isSaving = false
-    @State private var message: String?
+    @State private var toast: ProfileToast?
 
     var body: some View {
         Form {
@@ -1470,13 +1952,6 @@ private struct TrainingProfileEditorView: View {
             } footer: {
                 Text("Leave a field blank to remove it. You can update these values whenever they change.")
             }
-
-            if let message {
-                Section {
-                    Text(message)
-                        .foregroundStyle(message == "Training profile saved" ? .green : .red)
-                }
-            }
         }
         .navigationTitle("Training profile")
         .navigationBarTitleDisplayMode(.inline)
@@ -1486,12 +1961,27 @@ private struct TrainingProfileEditorView: View {
                     .disabled(isLoading || isSaving || !measurementsAreValid)
             }
         }
+        .overlay(alignment: .top) {
+            if let toast {
+                ProfileToastView(toast: toast)
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.top, OutboundSpacing.compact)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: toast)
+        .task(id: toast?.id) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            toast = nil
+        }
         .task { await load() }
     }
 
     private var usesMetric: Bool { measurementPreferences.unitSystem == .metric }
-    private var heightLabel: String { usesMetric ? "Height (cm)" : "Height (in)" }
-    private var weightLabel: String { usesMetric ? "Weight (kg)" : "Weight (lb)" }
+    private var heightLabel: String { usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)") }
+    private var weightLabel: String { usesMetric ? String(localized: "Weight (kg)") : String(localized: "Weight (lb)") }
     private var oldestBirthDate: Date { Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast }
     private var latestBirthDate: Date { Date() }
 
@@ -1510,7 +2000,7 @@ private struct TrainingProfileEditorView: View {
         do {
             apply(try await APIClient.shared.fetchTrainingProfile())
         } catch {
-            message = "Training profile could not be loaded."
+            showToast(String(localized: "Training profile could not be loaded."), style: .error)
         }
     }
 
@@ -1525,11 +2015,17 @@ private struct TrainingProfileEditorView: View {
                 heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
                 weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
             )
-            apply(try await APIClient.shared.updateTrainingProfile(request))
-            message = "Training profile saved"
+            let profile = try await APIClient.shared.updateTrainingProfile(request)
+            apply(profile)
+            onProfileUpdated(profile)
+            showToast(String(localized: "Training profile saved"), style: .success)
         } catch {
-            message = "Could not save training profile. Try again."
+            showToast(String(localized: "Could not save training profile. Try again."), style: .error)
         }
+    }
+
+    private func showToast(_ text: String, style: ProfileToast.Style) {
+        toast = ProfileToast(text: text, style: style)
     }
 
     private func apply(_ profile: TrainingProfileDTO) {
@@ -1570,6 +2066,9 @@ private struct SimplifiedProfileEditorView: View {
     @State private var bio = ""
     @State private var contactEmail = ""
     @State private var contactPhone = ""
+    @State private var savedContactEmail = ""
+    @State private var savedContactPhone = ""
+    @State private var isEditingContactDetails = false
     @State private var username = ""
     @State private var avatarUrl = UserAvatarPersistence.url(for: AuthStore.currentUserId)
     @State private var selectedAvatarItem: PhotosPickerItem?
@@ -1587,6 +2086,8 @@ private struct SimplifiedProfileEditorView: View {
         _bio = State(initialValue: initialProfile?.bio ?? "")
         _contactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
         _contactPhone = State(initialValue: initialProfile?.contactPhone ?? "")
+        _savedContactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
+        _savedContactPhone = State(initialValue: initialProfile?.contactPhone ?? "")
         _username = State(initialValue: initialProfile?.username ?? "")
         _avatarUrl = State(
             initialValue: initialProfile?.avatarUrl
@@ -1628,16 +2129,31 @@ private struct SimplifiedProfileEditorView: View {
                 Text("Your name and bio may appear to people you connect with in Together.")
             }
             Section {
-                TextField("Email", text: $contactEmail)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
-                    .autocorrectionDisabled()
-                TextField("Phone number", text: $contactPhone)
-                    .keyboardType(.phonePad)
-                    .textContentType(.telephoneNumber)
+                if isEditingContactDetails || savedContactEmail.isEmpty {
+                    TextField("Email", text: $contactEmail)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocorrectionDisabled()
+                } else {
+                    LabeledContent("Email", value: savedContactEmail)
+                }
+                if isEditingContactDetails || savedContactPhone.isEmpty {
+                    TextField("Phone number", text: $contactPhone)
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
+                } else {
+                    LabeledContent("Phone number", value: savedContactPhone)
+                }
             } header: {
-                Text("Contact details")
+                HStack {
+                    Text("Contact details")
+                    Spacer()
+                    if hasSavedContactDetails && !isEditingContactDetails {
+                        Button("Edit") { isEditingContactDetails = true }
+                            .textCase(nil)
+                    }
+                }
             } footer: {
                 Text("These profile details do not change how you sign in.")
             }
@@ -1680,12 +2196,15 @@ private struct SimplifiedProfileEditorView: View {
             bio = profile.bio ?? ""
             contactEmail = profile.contactEmail ?? ""
             contactPhone = profile.contactPhone ?? ""
+            savedContactEmail = contactEmail
+            savedContactPhone = contactPhone
+            isEditingContactDetails = false
             username = profile.username
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
         } catch {
             displayName = authStore.currentLoginLabel ?? ""
-            showToast("Profile could not be loaded.", style: .error)
+            showToast(String(localized: "Profile could not be loaded."), style: .error)
         }
     }
 
@@ -1705,13 +2224,20 @@ private struct SimplifiedProfileEditorView: View {
             bio = profile.bio ?? ""
             contactEmail = profile.contactEmail ?? ""
             contactPhone = profile.contactPhone ?? ""
+            savedContactEmail = contactEmail
+            savedContactPhone = contactPhone
+            isEditingContactDetails = false
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
             onProfileUpdated?(profile)
-            showToast("Profile saved", style: .success)
+            showToast(String(localized: "Profile saved"), style: .success)
         } catch {
-            showToast("Could not save profile. Try again.", style: .error)
+            showToast(String(localized: "Could not save profile. Try again."), style: .error)
         }
+    }
+
+    private var hasSavedContactDetails: Bool {
+        !savedContactEmail.isEmpty || !savedContactPhone.isEmpty
     }
 
     private func uploadAvatar(from item: PhotosPickerItem) async {
@@ -1724,7 +2250,7 @@ private struct SimplifiedProfileEditorView: View {
             guard let sourceData = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: sourceData),
                   let jpegData = resizedAvatarData(from: image) else {
-                showToast("That photo could not be used.", style: .error)
+                showToast(String(localized: "That photo could not be used."), style: .error)
                 return
             }
             let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
@@ -1734,9 +2260,9 @@ private struct SimplifiedProfileEditorView: View {
                 UserAvatarImageLoader.store(uploadedImage, for: avatarUrl)
             }
             onProfileUpdated?(profile)
-            showToast("Profile photo updated", style: .success)
+            showToast(String(localized: "Profile photo updated"), style: .success)
         } catch {
-            showToast("Could not upload photo. Try again.", style: .error)
+            showToast(String(localized: "Could not upload photo. Try again."), style: .error)
         }
     }
 
@@ -1898,7 +2424,12 @@ private extension RunnerConfidence {
 }
 
 #Preview {
-    SimplifiedAppShell(onStartRun: { _ in })
+    SimplifiedAppShell(
+        activitySessionState: .idle,
+        activityElapsedSeconds: 0,
+        activeSport: nil,
+        onStartRun: { _ in }
+    )
         .environmentObject(ActivityStore())
         .environmentObject(DailyCheckInStore())
         .environmentObject(PersonalizationStore())

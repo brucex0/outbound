@@ -200,7 +200,7 @@ struct OnboardingProfile: Codable, Equatable {
             durationLabel: intakeSummary.firstSessionLength.title,
             activityLabel: activityLabel,
             framing: sessionFraming,
-            coachLine: coachLine,
+            guideLine: guideLine,
             startLabel: "Start first session",
             targetDurationSeconds: intakeSummary.firstSessionLength.rawValue * 60
         )
@@ -265,7 +265,7 @@ struct OnboardingProfile: Codable, Equatable {
         }
     }
 
-    private var coachLine: String {
+    private var guideLine: String {
         if let cautionLine = intakeSummary.cautionLine {
             return "\(cautionLine) Keep this first session smooth and leave energy in the tank."
         }

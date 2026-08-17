@@ -158,6 +158,40 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testSeededLive10KRunMetricsAndLifecycle() throws {
+        let app = launchApp(extraArguments: [
+            "-OutboundUITestLive10K",
+            "-measurement_unit_system_v1",
+            "metric",
+        ])
+
+        app.buttons["Quick start"].tap()
+        XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Seeded live 10K"].exists)
+        XCTAssertTrue(app.staticTexts["10/10km"].exists)
+        XCTAssertTrue(app.staticTexts["6:00 /km"].exists)
+        XCTAssertTrue(app.staticTexts["82"].exists)
+        XCTAssertTrue(app.staticTexts["154"].exists)
+        XCTAssertTrue(app.buttons["Show Camera"].exists)
+        XCTAssertTrue(app.buttons["Recenter Map"].exists)
+
+        app.buttons["Pause activity"].tap()
+        XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 5))
+        app.buttons["Resume activity"].tap()
+        XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 5))
+        app.buttons["Pause activity"].tap()
+        XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
+        app.buttons["Finish"].tap()
+
+        XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["10.00"].exists)
+        XCTAssertTrue(app.staticTexts["6:00 /km"].exists)
+        XCTAssertTrue(app.staticTexts["154"].exists)
+        app.buttons["Discard activity"].tap()
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testPostRunSummaryCanManageCapturedPhotos() throws {
         let app = launchApp(extraArguments: ["-OutboundDebugPostRunSummary"])
 

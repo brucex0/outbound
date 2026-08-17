@@ -144,7 +144,7 @@ struct RunnerProfileRequestDTO: Codable, Equatable, Sendable {
     let recentSessionsPerWeek: Int?
     let targetSessionsPerWeek: Int
     let preferredLongRunDay: String?
-    let coachingDetail: String
+    let guidanceDetail: String
     let constraints: [String: String]
     let complete: Bool
 }
@@ -164,7 +164,32 @@ struct TrainingProfileDTO: Codable, Equatable, Sendable {
     let weightKilograms: Double?
 }
 
-typealias TrainingProfileUpdateDTO = TrainingProfileDTO
+struct TrainingProfileUpdateDTO: Encodable, Equatable, Sendable {
+    let sexAtBirth: TrainingProfileSex?
+    let birthDate: String?
+    let heightCentimeters: Double?
+    let weightKilograms: Double?
+
+    private enum CodingKeys: String, CodingKey {
+        case sexAtBirth
+        case birthDate
+        case heightCentimeters
+        case weightKilograms
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(sexAtBirth, forKey: .sexAtBirth)
+        try container.encodeIfPresent(birthDate, forKey: .birthDate)
+        try container.encodeIfPresent(heightCentimeters, forKey: .heightCentimeters)
+        try container.encodeIfPresent(weightKilograms, forKey: .weightKilograms)
+
+        if sexAtBirth == nil { try container.encodeNil(forKey: .sexAtBirth) }
+        if birthDate == nil { try container.encodeNil(forKey: .birthDate) }
+        if heightCentimeters == nil { try container.encodeNil(forKey: .heightCentimeters) }
+        if weightKilograms == nil { try container.encodeNil(forKey: .weightKilograms) }
+    }
+}
 
 struct PersonalizationMutationResponseDTO: Codable, Sendable {
     let accepted: Bool?

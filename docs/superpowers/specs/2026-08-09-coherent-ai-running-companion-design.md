@@ -16,7 +16,7 @@ observe -> understand -> decide -> ask or act -> explain -> measure outcome -> l
 
 ## Chosen Architecture
 
-Use one logical companion identity backed by a modular companion kernel. Do not create independent planning, motivation, memory, and live-coaching agents. The shared kernel coordinates deterministic services through versioned contracts:
+Use one logical companion identity backed by a modular companion kernel. Do not create independent planning, motivation, memory, and live-guidance agents. The shared kernel coordinates deterministic services through versioned contracts:
 
 ```text
 Runner event
@@ -63,7 +63,7 @@ Each belief records a stable key, typed value, supporting and contradicting evid
 
 ## Context Compiler
 
-Every reasoning request declares a task such as `adapt_today`, `answer_training_question`, `prepare_week`, `post_run_reflection`, or `live_coaching`. The Context Compiler produces a bounded, typed context package for that task.
+Every reasoning request declares a task such as `adapt_today`, `answer_training_question`, `prepare_week`, `post_run_reflection`, or `live_guidance`. The Context Compiler produces a bounded, typed context package for that task.
 
 It must:
 
@@ -86,7 +86,7 @@ Tool-result reserve                10%
 Reasoning and response reserve     15%
 ```
 
-Actual budgets are task-specific and measured in tokens, not percentages alone. Live coaching uses a much smaller precompiled package and does not perform broad retrieval for every telemetry update.
+Actual budgets are task-specific and measured in tokens, not percentages alone. Live guidance uses a much smaller precompiled package and does not perform broad retrieval for every telemetry update.
 
 ### Conversation compaction
 
@@ -151,7 +151,7 @@ Dynamic conditions do not become memory. A repeated choice under those condition
 - Access precise location only for route or live-safety purposes.
 - Do not send raw coordinates to the reasoning model.
 - Derive bounded facts such as `hilly route`, `poor air quality`, or `sunset in 35 minutes`.
-- Keep coaching-location permission separate from social and live-sharing permission.
+- Keep guidance-location permission separate from social and live-sharing permission.
 
 ## Reasoning and Action Loop
 
@@ -187,7 +187,7 @@ Validation may approve, reject, replace with a reviewed safer action, or downgra
 - **Tier 2 — meaningful training change:** alter intensity, weekly structure, or a key workout. Require confirmation by default.
 - **Tier 3 — sensitive or external:** health-related escalation, sharing, messaging another person, or privacy changes. Always require explicit intent and confirmation.
 
-The runner may tighten permissions but cannot authorize unsafe coaching behavior.
+The runner may tighten permissions but cannot authorize unsafe guidance behavior.
 
 ### Execution and outcomes
 
@@ -205,7 +205,7 @@ Every surface calls one orchestration boundary with runner ID, surface, task, in
 - **Conversation:** ambiguity resolution, planning, explanation, corrections, and typed outcomes rather than endless chat.
 - **Post-run:** ask the most informative unanswered question and distinguish observations, hypotheses, learned beliefs, and proposed changes.
 - **Weekly planning:** deterministic services own progression and load bounds; the model interprets life context and compares validated structures.
-- **Live coaching:** consume a precompiled session brief containing workout purpose, targets, restrictions, readiness, cue preferences, priorities, and forbidden behavior. On-device telemetry chooses moments; local constrained generation verbalizes cues.
+- **Live guidance:** consume a precompiled session brief containing workout purpose, targets, restrictions, readiness, cue preferences, priorities, and forbidden behavior. On-device telemetry chooses moments; local constrained generation verbalizes cues.
 
 A small versioned communication policy supplies personality, warmth, directness, verbosity, vocabulary, voice, and interruption tolerance across all surfaces. Situational constraints adjust expression without creating a different agent identity.
 
@@ -267,7 +267,7 @@ RunnerModel
 - Evolve `/assistant/chat` into a general companion-turn endpoint.
 - Make `assistantActivityTools` one typed member of `DomainToolGateway`.
 - Move current personalization adjustment rules behind the shared proposal validator.
-- Make `VirtualCoach` consume a compiled session brief from the same runner-model version.
+- Make `VirtualGuide` consume a compiled session brief from the same runner-model version.
 - Preserve deterministic local fallbacks for offline and provider failure states.
 - Implement this as a modular monolith before considering service or multi-agent decomposition.
 
@@ -281,7 +281,7 @@ Degrade by capability:
 - unavailable validation causes mutations to fail closed;
 - offline writes retain timestamps and idempotency keys;
 - conflicts become visible proposals rather than silent last-write-wins updates;
-- live coaching continues from the compiled session brief;
+- live guidance continues from the compiled session brief;
 - malformed proposals may be repaired once and otherwise fail closed.
 
 Create a versioned synthetic scenario suite covering fatigue, pain, travel, weather, limited data, contradictions, corrections, stale memory, simultaneous constraints, and prompt injection in imported or user-authored text.

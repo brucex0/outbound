@@ -25,7 +25,7 @@ struct ProgressStatsSnapshot: Equatable {
     let momentumNote: ProgressMomentumNote?
     let eligibleActivityCount: Int
 
-    var coachNote: String {
+    var guideNote: String {
         guard eligibleActivityCount > 0 else {
             return "Save your first activity to start building stats."
         }

@@ -22,7 +22,7 @@ struct SocialRecognitionPreview: Identifiable, Equatable {
     let badgeID: SocialRecognitionBadgeID
     let title: String
     let symbolName: String
-    let coachLine: String
+    let guideLine: String
 
     var id: SocialRecognitionBadgeID { badgeID }
 }
@@ -155,7 +155,7 @@ final class SocialRecognitionStore: ObservableObject {
             badgeID: badgeID,
             title: Self.title(for: badgeID),
             symbolName: Self.symbolName(for: badgeID),
-            coachLine: Self.coachLine(for: badgeID)
+            guideLine: Self.guideLine(for: badgeID)
         )
     }
 
@@ -240,7 +240,7 @@ final class SocialRecognitionStore: ObservableObject {
         }
     }
 
-    private static func coachLine(for badgeID: SocialRecognitionBadgeID) -> String {
+    private static func guideLine(for badgeID: SocialRecognitionBadgeID) -> String {
         switch badgeID {
         case .goodTeammate:
             return "You helped the week feel shared, not solo."
