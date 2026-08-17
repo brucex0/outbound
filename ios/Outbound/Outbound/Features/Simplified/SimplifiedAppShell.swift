@@ -132,19 +132,10 @@ private struct SimplifiedTodayView: View {
                         upcomingWorkoutButton
                     } else if let activityEventToday {
                         activityEventCard(activityEventToday)
+                        quickRunButton
                     } else {
                         plannedWorkoutCard
-                        if activitySessionState == .idle {
-                            Button {
-                                onStartRun(.freestyleRun)
-                            } label: {
-                                Label("Quick run", systemImage: "bolt.fill")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(theme.accentColor)
-                            .padding(.vertical, 6)
-                        }
+                        quickRunButton
                     }
 
                     if activitySessionState != .idle {
@@ -279,6 +270,21 @@ private struct SimplifiedTodayView: View {
     private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
             $0.currentUserGoing == true && Calendar.current.isDateInToday($0.startsAt)
+        }
+    }
+
+    @ViewBuilder
+    private var quickRunButton: some View {
+        if activitySessionState == .idle {
+            Button {
+                onStartRun(.freestyleRun)
+            } label: {
+                Label("Quick run", systemImage: "bolt.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.accentColor)
+            .padding(.vertical, 6)
         }
     }
 

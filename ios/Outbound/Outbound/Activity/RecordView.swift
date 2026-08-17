@@ -539,11 +539,17 @@ struct RecordView: View {
     }
 
     private func discardPendingActivity() {
+        let activityEventID = socialStore.consumeRecordingActivityEventID()
         liveActivityManager.end()
         liveShareStore.end()
         liveGroupStore.finishActivity()
         clearPending()
         onCloseRequest?(false)
+        if let activityEventID {
+            Task {
+                _ = await socialStore.markActivityEventWithoutRecording(id: activityEventID)
+            }
+        }
     }
 
     private func clearPending() {

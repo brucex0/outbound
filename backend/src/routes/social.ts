@@ -545,6 +545,11 @@ router.post("/activity-events/:id/no-recording", async (c) => {
     data: { outcome: "no_recording", recordedActivityId: null, resolvedAt: new Date() },
   });
   if (!result.count) return c.json({ error: "Participation not found." }, 404);
+  const activity = await getPrismaClient().activityEvent.findUnique({
+    where: { id: c.req.param("id") },
+    include: { participants: true },
+  });
+  if (activity) await refreshActivityEventStatus(activity);
   return c.json({ ok: true });
 });
 

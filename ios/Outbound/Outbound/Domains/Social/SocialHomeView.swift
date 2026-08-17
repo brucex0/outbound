@@ -850,7 +850,7 @@ private struct ActivityEventDetailView: View {
             return String(localized: "Completed · \(MeasurementUnitSystem.metric.distanceString(meters: result.distanceM ?? 0, fractionDigits: 1))")
         }
         switch participant.outcome {
-        case "no_recording": return String(localized: "Participated · No recording")
+        case "no_recording": return String(localized: "Finished · No activity saved")
         case "did_not_participate": return String(localized: "Couldn't participate")
         default: return String(localized: "Waiting for result")
         }

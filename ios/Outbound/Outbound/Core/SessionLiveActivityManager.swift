@@ -48,7 +48,7 @@ final class SessionLiveActivityManager: ObservableObject {
     }
 
     func end(using snapshot: ActiveSessionSnapshot? = nil, unitSystem: MeasurementUnitSystem = .metric) {
-        guard let activity else { return }
+        let trackedActivity = activity
         self.activity = nil
 
         let finalState = snapshot.map {
@@ -65,7 +65,13 @@ final class SessionLiveActivityManager: ObservableObject {
         let finalContent = ActivityContent(state: finalState, staleDate: nil)
 
         Task {
-            await activity.end(finalContent, dismissalPolicy: .immediate)
+            var activities = Activity<OutboundLiveActivityAttributes>.activities
+            if let trackedActivity, !activities.contains(where: { $0.id == trackedActivity.id }) {
+                activities.append(trackedActivity)
+            }
+            for activity in activities {
+                await activity.end(finalContent, dismissalPolicy: .immediate)
+            }
         }
     }
 

@@ -134,6 +134,7 @@ final class TogetherStore: ObservableObject {
         do {
             _ = try await api.markActivityEventWithoutRecording(id: id)
             await loadActivityEventResults(id: id)
+            await refresh()
             return true
         } catch {
             errorMessage = error.localizedDescription
