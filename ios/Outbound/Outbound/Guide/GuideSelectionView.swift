@@ -78,17 +78,6 @@ struct GuideSelectionView: View {
                 .pickerStyle(.segmented)
             }
 
-            Section(String(localized: "guide.preview.section.title", defaultValue: "Preview")) {
-                Button {
-                    previewSelectedVoice()
-                } label: {
-                    Label(
-                        isPreviewingSelectedVoice ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview") : String(localized: "guide.preview.play", defaultValue: "Play Coaching Preview"),
-                        systemImage: isPreviewingSelectedVoice ? "stop.fill" : "play.fill"
-                    )
-                }
-            }
-
             Section {
                 Text(String(localized: "guide.tone.frequency.help", defaultValue: "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity."))
                     .font(.footnote)
@@ -132,6 +121,22 @@ struct GuideSelectionView: View {
     private func voiceButton(_ voice: GuideVoice) -> some View {
         HStack(spacing: 12) {
             Button {
+                previewVoice(voice)
+            } label: {
+                Image(systemName: previewingVoiceID == voice.id ? "waveform.circle.fill" : "play.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                previewingVoiceID == voice.id
+                    ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview")
+                    : String(localized: "guide.preview.voice", defaultValue: "Preview Voice")
+            )
+            .accessibilityHint(voice.displayName)
+
+            Button {
                 stopVoicePreview()
                 if voice.isStandardQuality, guideCatalog.selectedVoice.id != voice.id {
                     pendingStandardVoice = voice
@@ -140,10 +145,6 @@ struct GuideSelectionView: View {
                 }
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.orange)
-
                     VStack(alignment: .leading, spacing: 3) {
                         Text(voice.displayName)
                             .foregroundStyle(.primary)
@@ -161,27 +162,7 @@ struct GuideSelectionView: View {
                 }
             }
             .buttonStyle(.plain)
-
-            Button {
-                previewVoice(voice)
-            } label: {
-                Image(systemName: previewingVoiceID == voice.id ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.orange)
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                previewingVoiceID == voice.id
-                    ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview")
-                    : String(localized: "guide.preview.voice", defaultValue: "Preview Voice")
-            )
-            .accessibilityHint(voice.displayName)
         }
-    }
-
-    private var isPreviewingSelectedVoice: Bool {
-        previewingVoiceID == guideCatalog.selectedVoice.id
     }
 
     private func previewVoice(_ voice: GuideVoice) {
@@ -234,10 +215,6 @@ struct GuideSelectionView: View {
         guideCatalog.selectedTemplate.voiceOptions.filter {
             $0.isStandardQuality
         }
-    }
-
-    private func previewSelectedVoice() {
-        previewVoice(guideCatalog.selectedVoice)
     }
 
     private var coachingPreviewText: String {
