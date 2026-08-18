@@ -1425,6 +1425,7 @@ enum AssistantDestinationID: String, Codable, Hashable, CaseIterable {
     case today
     case me
     case settings
+    case appearance
     case settingsAppleMusic
     case settingsAppleHealth
     case guideSettings
@@ -1446,7 +1447,8 @@ enum AssistantDestinationRegistry {
         .init(id: .today, title: "Today", summary: "See today's suggested workout, readiness, and quick start.", searchTerms: ["today", "workout", "readiness", "quick run", "start run"], defaultAnchorID: "today.primary-action"),
         .init(id: .social, title: "Social", summary: "Find connections, groups, invitations, and shared activities.", searchTerms: ["social", "friends", "connections", "groups", "invitations"], defaultAnchorID: nil),
         .init(id: .me, title: "Me", summary: "Review your profile, progress, recent runs, and personal settings.", searchTerms: ["me", "profile", "progress", "personal"], defaultAnchorID: nil),
-        .init(id: .settings, title: "Settings", summary: "Manage account, appearance, integrations, and app preferences.", searchTerms: ["settings", "preferences", "account", "appearance"], defaultAnchorID: nil),
+        .init(id: .settings, title: "Settings", summary: "Manage account, appearance, integrations, and app preferences.", searchTerms: ["settings", "preferences", "account"], defaultAnchorID: nil),
+        .init(id: .appearance, title: String(localized: "Appearance"), summary: "Change the app's appearance mode or color theme.", searchTerms: ["appearance", "app theme", "theme", "color theme", "light mode", "dark mode"], defaultAnchorID: nil),
         .init(id: .activityHistory, title: "Activity history", summary: "Review completed and saved activities.", searchTerms: ["activity history", "my activities", "past activities", "saved runs", "recent runs"], defaultAnchorID: "activity-history.content"),
         .init(id: .guideSettings, title: "Live Guidance settings", summary: "Choose voice, coaching tone, and spoken update frequency.", searchTerms: ["guide", "companion settings", "voice", "coaching tone", "spoken updates"], defaultAnchorID: "guide-settings.content"),
         .init(id: .settingsAppleHealth, title: "Apple Health", summary: "Manage Apple Health permissions and workout integration.", searchTerms: ["health", "apple health", "healthkit", "health permission"], defaultAnchorID: "apple-health.content"),
@@ -1459,7 +1461,7 @@ enum AssistantDestinationRegistry {
 
     static func infer(from prompt: String) -> AssistantNavigationTarget? {
         let prompt = prompt.lowercased()
-        let navigationWords = ["open", "show me", "take me", "go to", "navigate", "where", "find"]
+        let navigationWords = ["open", "show me", "take me", "go to", "navigate", "where", "find", "change", "choose", "pick"]
         guard navigationWords.contains(where: prompt.contains) else { return nil }
 
         let ranked = destinations.map { definition in

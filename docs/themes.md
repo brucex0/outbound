@@ -12,6 +12,7 @@ Open this when adding, changing, or applying an app theme or editing theme disco
 
 - Theme is an app appearance preference, not a companion identity or avatar.
 - The permanent entry point is `Settings > Appearance > Theme`. It opens the same appearance chooser used by the Today discovery tip, with mode controls and rich theme previews; do not maintain a second picker presentation.
+- Assistant requests such as “change app theme” open that shared appearance chooser directly.
 - Today may show a discovery tip up to three times: “Want a different look? Change the mode or pick a theme that feels like you.” Its action opens the appearance chooser directly.
 - Keep the list intentionally finite. The current eight themes cover restrained, natural, warm, celebratory, and high-energy personalities without categories or pagination.
 - Theme changes apply immediately and persist in `UserDefaults` through `GuideCatalogStore`.

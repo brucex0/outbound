@@ -112,7 +112,7 @@ struct SimplifiedAppShell: View {
             case .me:
                 selection = .me
                 appNavigationStore.consume()
-            case .settings, .settingsAppleMusic, .settingsAppleHealth, .guideSettings, .activityHistory:
+            case .settings, .appearance, .settingsAppleMusic, .settingsAppleHealth, .guideSettings, .activityHistory:
                 selection = .me
             }
         }
@@ -1960,6 +1960,8 @@ private struct SimplifiedMeView: View {
                     onProfileUpdated: { profile = $0 },
                     onTrainingProfileUpdated: { trainingProfileSex = $0.sexAtBirth }
                 )
+            case .appearance:
+                ThemeChooserView()
             case .social, .today, .me:
                 EmptyView()
             }
