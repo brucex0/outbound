@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Combine
 
@@ -549,11 +550,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
         guard speechEnabled else { return true }
 
-        let voice = persona?.voice ?? .systemBest
+        let voice = persona?.voice ?? GuideVoice.defaultOption
         synthesizer.speak(
             announcement,
             voice: voice,
-            speed: speechRateScale(for: voice, urgency: urgency),
+            rate: speechRate(for: voice, urgency: urgency),
             volume: voice.volume
         )
         return true
@@ -676,7 +677,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             .replacingOccurrences(of: "—", with: ", ")
     }
 
-    private func speechRateScale(for voice: GuideVoice?, urgency: SessionAnalysisUrgency) -> Float {
+    private func speechRate(for voice: GuideVoice, urgency: SessionAnalysisUrgency) -> Float {
         let delta: Float
         switch urgency {
         case .steady:
@@ -686,9 +687,10 @@ final class VirtualGuide: NSObject, ObservableObject {
         case .caution:
             delta = -0.08
         }
-        let configuredRate = voice?.rate ?? 0.49
-        let normalizedRate = (configuredRate - 0.42) / 0.16
-        return max(0.85, min(1.2, 0.9 + normalizedRate * 0.25 + delta))
+        return max(
+            AVSpeechUtteranceMinimumSpeechRate,
+            min(AVSpeechUtteranceMaximumSpeechRate, voice.rate + delta)
+        )
     }
 
     private func normalizedFingerprint(for message: String) -> String {

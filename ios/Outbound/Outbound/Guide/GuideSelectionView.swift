@@ -6,15 +6,16 @@ struct GuideSelectionView: View {
     @State private var previewSynthesizer: GuideSpeechSynthesizer?
     @State private var isPreviewingVoice = false
     @State private var showsVoiceDownloadHelp = false
+    @State private var pendingStandardVoice: GuideVoice?
 
     var body: some View {
         Form {
             Section(String(localized: "guide.voice.section.title", defaultValue: "Voice")) {
-                if downloadedAppleVoices.isEmpty {
+                if compatibleDownloadedAppleVoices.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(String(localized: "guide.voice.add_apple_voice", defaultValue: "Add a more natural Apple voice"), systemImage: "arrow.down.circle")
                             .font(.subheadline.weight(.semibold))
-                        Text(String(localized: "guide.voice.add_apple_voice.detail", defaultValue: "Your built-in voices still work. Enhanced and Premium voices can make spoken coaching sound more natural."))
+                        Text(String(localized: "guide.voice.add_apple_voice.detail", defaultValue: "No Premium or Enhanced voice is installed. The available Standard voice may sound noticeably robotic or poor."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Button(String(localized: "guide.voice.download_help", defaultValue: "How to download a voice")) {
@@ -53,10 +54,10 @@ struct GuideSelectionView: View {
                     }
                 }
 
-                Text(String(localized: "guide.voice.other_voices", defaultValue: "Other voices"))
+                Text(String(localized: "guide.voice.standard.section", defaultValue: "Standard fallback"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(otherVoices) { voice in
+                ForEach(standardVoices) { voice in
                     voiceButton(voice)
                 }
             }
@@ -105,6 +106,24 @@ struct GuideSelectionView: View {
         .sheet(isPresented: $showsVoiceDownloadHelp) {
             AppleVoiceDownloadHelpView()
         }
+        .alert(
+            String(localized: "guide.voice.standard.warning.title", defaultValue: "Use a lower-quality voice?"),
+            isPresented: Binding(
+                get: { pendingStandardVoice != nil },
+                set: { if !$0 { pendingStandardVoice = nil } }
+            ),
+            presenting: pendingStandardVoice
+        ) { voice in
+            Button(String(localized: "guide.voice.standard.warning.use", defaultValue: "Use Standard Voice")) {
+                guideCatalog.setVoice(id: voice.id)
+                pendingStandardVoice = nil
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {
+                pendingStandardVoice = nil
+            }
+        } message: { _ in
+            Text(String(localized: "guide.voice.standard.warning.message", defaultValue: "Standard system voices can sound robotic or poor. Download an Apple Premium or Enhanced voice for more natural coaching."))
+        }
         .onDisappear {
             stopVoicePreview()
         }
@@ -113,7 +132,11 @@ struct GuideSelectionView: View {
     private func voiceButton(_ voice: GuideVoice) -> some View {
         Button {
             stopVoicePreview()
-            guideCatalog.setVoice(id: voice.id)
+            if voice.isStandardQuality, guideCatalog.selectedVoice.id != voice.id {
+                pendingStandardVoice = voice
+            } else {
+                guideCatalog.setVoice(id: voice.id)
+            }
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "waveform.circle.fill")
@@ -146,16 +169,25 @@ struct GuideSelectionView: View {
     }
 
     private var downloadedAppleVoices: [GuideVoice] {
-        guideCatalog.selectedTemplate.voiceOptions.filter { $0.appleVoiceIdentifier != nil }
+        guideCatalog.selectedTemplate.voiceOptions.filter {
+            $0.appleVoiceIdentifier != nil && !$0.isStandardQuality
+        }
+    }
+
+    private var compatibleDownloadedAppleVoices: [GuideVoice] {
+        let targetLanguage = AppLanguage.speechLocale.language.languageCode?.identifier
+        return downloadedAppleVoices.filter {
+            Locale(identifier: $0.locale).language.languageCode?.identifier == targetLanguage
+        }
     }
 
     private var downloadedAppleVoicesWithUnspecifiedGender: [GuideVoice] {
         downloadedAppleVoices.filter { $0.genderPresentation == nil }
     }
 
-    private var otherVoices: [GuideVoice] {
+    private var standardVoices: [GuideVoice] {
         guideCatalog.selectedTemplate.voiceOptions.filter {
-            $0.appleVoiceIdentifier == nil
+            $0.isStandardQuality
         }
     }
 
@@ -177,7 +209,7 @@ struct GuideSelectionView: View {
         synthesizer.speak(
             coachingPreviewText,
             voice: voice,
-            speed: 1,
+            rate: voice.rate,
             volume: voice.volume
         )
     }

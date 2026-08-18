@@ -18,11 +18,11 @@ final class GuideSpeechSynthesizer {
         appleSynthesizer.isSpeaking
     }
 
-    private let appleSynthesizer = AppleBestSpeechSynthesizer()
+    private let appleSynthesizer = InstalledAppleSpeechSynthesizer()
 
-    func speak(_ text: String, voice: GuideVoice, speed: Float, volume: Float) {
+    func speak(_ text: String, voice: GuideVoice, rate: Float, volume: Float) {
         stopSpeaking(at: .immediate)
-        appleSynthesizer.speak(text, voice: voice, speed: speed, volume: volume)
+        appleSynthesizer.speak(text, voice: voice, rate: rate, volume: volume)
     }
 
     func stopSpeaking(at boundary: StopBoundary) {
@@ -35,7 +35,7 @@ final class GuideSpeechSynthesizer {
 }
 
 @MainActor
-private final class AppleBestSpeechSynthesizer: NSObject, @preconcurrency AVSpeechSynthesizerDelegate {
+private final class InstalledAppleSpeechSynthesizer: NSObject, @preconcurrency AVSpeechSynthesizerDelegate {
     var eventHandler: ((GuideSpeechEvent) -> Void)?
     private(set) var isSpeaking = false
 
@@ -46,15 +46,12 @@ private final class AppleBestSpeechSynthesizer: NSObject, @preconcurrency AVSpee
         synthesizer.delegate = self
     }
 
-    func speak(_ text: String, voice: GuideVoice, speed: Float, volume: Float) {
+    func speak(_ text: String, voice: GuideVoice, rate: Float, volume: Float) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice.appleVoiceIdentifier
             .flatMap(AVSpeechSynthesisVoice.init(identifier:))
-            ?? Self.bestAvailableVoice(for: AppLanguage.speechLocale)
-        utterance.rate = max(
-            AVSpeechUtteranceMinimumSpeechRate,
-            min(AVSpeechUtteranceMaximumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * speed)
-        )
+            ?? AVSpeechSynthesisVoice(language: voice.locale)
+        utterance.rate = max(AVSpeechUtteranceMinimumSpeechRate, min(AVSpeechUtteranceMaximumSpeechRate, rate))
         utterance.volume = max(0, min(1, volume))
 
         do {
@@ -93,33 +90,6 @@ private final class AppleBestSpeechSynthesizer: NSObject, @preconcurrency AVSpee
         #endif
         if wasSpeaking {
             eventHandler?(.didFinish)
-        }
-    }
-
-    private static func bestAvailableVoice(for locale: Locale) -> AVSpeechSynthesisVoice? {
-        let targetLanguage = locale.language.languageCode?.identifier
-        let targetRegion = locale.region?.identifier
-
-        let languageVoices = AVSpeechSynthesisVoice.speechVoices()
-            .filter { voice in
-                let voiceLocale = Locale(identifier: voice.language)
-                return voiceLocale.language.languageCode?.identifier == targetLanguage
-                    && !voice.voiceTraits.contains(.isNoveltyVoice)
-                    && !voice.voiceTraits.contains(.isPersonalVoice)
-            }
-
-        let regionalVoices = languageVoices.filter {
-            Locale(identifier: $0.language).region?.identifier == targetRegion
-        }
-        let candidates = regionalVoices.isEmpty ? languageVoices : regionalVoices
-        return candidates.max { qualityScore($0) < qualityScore($1) }
-    }
-
-    private static func qualityScore(_ voice: AVSpeechSynthesisVoice) -> Int {
-        switch voice.quality {
-        case .premium: 300
-        case .enhanced: 200
-        default: 100
         }
     }
 

@@ -5161,8 +5161,20 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Your built-in voices still work. Enhanced and Premium voices can make spoken coaching sound more natural."
+            "state" : "translated",
+            "value" : "No Premium or Enhanced voice is installed. The available Standard voice may sound noticeably robotic or poor."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna voz prémium o mejorada instalada. La voz estándar disponible puede sonar robótica o de baja calidad."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未安装高级版或增强版语音。可用的标准语音可能听起来明显机械或效果很差。"
           }
         }
       }
@@ -5204,6 +5216,27 @@
         }
       }
     },
+    "guide.voice.quality.enhanced" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Enhanced" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Apple mejorada" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Apple 增强版" } }
+      }
+    },
+    "guide.voice.quality.premium" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Premium" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Apple prémium" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Apple 高级版" } }
+      }
+    },
+    "guide.voice.quality.standard" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple Standard" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Apple estándar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Apple 标准版" } }
+      }
+    },
     "guide.voice.section.title" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -5213,6 +5246,34 @@
             "value" : "Voice"
           }
         }
+      }
+    },
+    "guide.voice.standard.section" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Standard fallback" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Voz estándar de respaldo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标准备用语音" } }
+      }
+    },
+    "guide.voice.standard.warning.message" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Standard system voices can sound robotic or poor. Download an Apple Premium or Enhanced voice for more natural coaching." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Las voces estándar del sistema pueden sonar robóticas o de baja calidad. Descarga una voz Apple prémium o mejorada para obtener indicaciones más naturales." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标准系统语音可能听起来机械或效果很差。请下载 Apple 高级版或增强版语音，以获得更自然的指导。" } }
+      }
+    },
+    "guide.voice.standard.warning.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use a lower-quality voice?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Usar una voz de menor calidad?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用较低质量的语音？" } }
+      }
+    },
+    "guide.voice.standard.warning.use" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use Standard Voice" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usar voz estándar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用标准语音" } }
       }
     },
     "Harder" : {

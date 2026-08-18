@@ -97,7 +97,7 @@ Visual localization does not automatically localize voice behavior.
 
 - Select speech-recognition locales compatible with the active app language and available on-device assets.
 - Add Spanish and Mandarin vocabulary and parsing paths for deterministic activity commands, including distance and duration units.
-- Route generated companion announcements through iOS speech synthesis. Apple Best is the default and selects the highest-quality installed non-novelty system voice for the active app language, preferring Premium, then Enhanced, then Default quality. Settings lists installed Apple Premium and Enhanced voices for selection and on-device preview.
+- Route generated companion announcements through iOS speech synthesis. Settings lists every installed Apple Premium and Enhanced voice for selection and on-device preview, plus one deterministic Standard fallback under its actual system name. Warn before selecting the Standard voice because it may sound poor. Speech must use the selected voice's identifier, locale, configured rate, and volume.
 - Localize App Intent titles, parameter labels, dialogs, shortcuts phrases, and invocation examples.
 - Keep spoken measurement units consistent with the user's measurement preference.
 

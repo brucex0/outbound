@@ -9,7 +9,6 @@ final class GuideCatalogStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
-    private let appleBestMigrationKey = "guide_catalog_apple_best_default_v1"
 
     var selectedTemplate: GuideTemplate {
         templates.first { $0.id == selection.templateId } ?? templates[0]
@@ -31,7 +30,7 @@ final class GuideCatalogStore: ObservableObject {
     var selectedTheme: OutboundTheme { selection.theme }
 
     var hasDownloadedAppleVoices: Bool {
-        selectedTemplate.voiceOptions.contains { $0.appleVoiceIdentifier != nil }
+        selectedTemplate.voiceOptions.contains { $0.appleVoiceIdentifier != nil && !$0.isStandardQuality }
     }
 
     init(
@@ -59,7 +58,6 @@ final class GuideCatalogStore: ObservableObject {
 
         normalizeSelection()
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
-        migrateToAppleBestVoiceIfNeeded()
     }
 
     func setVoice(id: String) {
@@ -131,14 +129,6 @@ final class GuideCatalogStore: ObservableObject {
         defaults.set(data, forKey: selectionKey)
     }
 
-    private func migrateToAppleBestVoiceIfNeeded() {
-        guard !defaults.bool(forKey: appleBestMigrationKey) else { return }
-        if selectedTemplate.voiceOptions.contains(where: { $0.id == GuideVoice.systemBest.id }) {
-            selection.voiceId = GuideVoice.systemBest.id
-            saveSelection()
-        }
-        defaults.set(true, forKey: appleBestMigrationKey)
-    }
 }
 
 struct GuideSelection: Codable, Equatable {

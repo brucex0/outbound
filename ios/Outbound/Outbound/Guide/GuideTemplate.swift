@@ -103,19 +103,32 @@ struct GuideVoice: Codable, Hashable, Identifiable {
     let rate: Float
     let volume: Float
 
-    nonisolated static let systemBest = GuideVoice(
-        id: "apple-system-best",
-        displayName: "Apple Best",
-        description: "Highest-quality installed voice for your language",
-        locale: "system",
-        appleVoiceIdentifier: nil,
-        genderPresentation: nil,
-        rate: 0.5,
-        volume: 0.95
-    )
+    var isStandardQuality: Bool { id.hasPrefix("apple-standard-") }
 
     static var availableOptions: [GuideVoice] {
-        [.systemBest] + downloadedAppleVoices()
+        downloadedAppleVoices() + (standardAppleVoice().map { [$0] } ?? [])
+    }
+
+    static var defaultOption: GuideVoice {
+        let options = availableOptions
+        let locale = AppLanguage.speechLocale
+        let targetLanguage = locale.language.languageCode?.identifier
+        let targetRegion = locale.region?.identifier
+        return options
+            .filter {
+                !$0.isStandardQuality
+                    && Locale(identifier: $0.locale).language.languageCode?.identifier == targetLanguage
+            }
+            .sorted {
+                let lhsLocale = Locale(identifier: $0.locale)
+                let rhsLocale = Locale(identifier: $1.locale)
+                let lhsRank = localeRank(lhsLocale, targetLanguage: targetLanguage, targetRegion: targetRegion)
+                let rhsRank = localeRank(rhsLocale, targetLanguage: targetLanguage, targetRegion: targetRegion)
+                return lhsRank == rhsRank
+                    ? $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+                    : lhsRank > rhsRank
+            }
+            .first ?? options.first(where: \.isStandardQuality) ?? options[0]
     }
 
     private static func downloadedAppleVoices() -> [GuideVoice] {
@@ -130,8 +143,7 @@ struct GuideVoice: Codable, Hashable, Identifiable {
             }
 
         func rankedVoices(for gender: AVSpeechSynthesisVoiceGender) -> [AVSpeechSynthesisVoice] {
-            Array(
-                downloadedVoices
+            downloadedVoices
                     .filter { $0.gender == gender }
                     .sorted { lhs, rhs in
                         let lhsLocale = Locale(identifier: lhs.language)
@@ -149,10 +161,11 @@ struct GuideVoice: Codable, Hashable, Identifiable {
                         if lhsRank != rhsRank {
                             return lhsRank > rhsRank
                         }
+                        if lhs.quality != rhs.quality {
+                            return lhs.quality == .premium
+                        }
                         return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
                     }
-                    .prefix(5)
-            )
         }
 
         let femaleVoices = rankedVoices(for: .female).map {
@@ -165,6 +178,37 @@ struct GuideVoice: Codable, Hashable, Identifiable {
             downloadedAppleVoice(from: $0, gender: nil)
         }
         return femaleVoices + maleVoices + unspecifiedVoices
+    }
+
+    private static func standardAppleVoice() -> GuideVoice? {
+        let locale = AppLanguage.speechLocale
+        let targetLanguage = locale.language.languageCode?.identifier
+        let targetRegion = locale.region?.identifier
+        let voice = AVSpeechSynthesisVoice.speechVoices()
+            .filter { voice in
+                let voiceLocale = Locale(identifier: voice.language)
+                return voice.quality == .default
+                    && voiceLocale.language.languageCode?.identifier == targetLanguage
+                    && !voice.voiceTraits.contains(.isNoveltyVoice)
+                    && !voice.voiceTraits.contains(.isPersonalVoice)
+            }
+            .sorted { lhs, rhs in
+                let lhsRank = localeRank(Locale(identifier: lhs.language), targetLanguage: targetLanguage, targetRegion: targetRegion)
+                let rhsRank = localeRank(Locale(identifier: rhs.language), targetLanguage: targetLanguage, targetRegion: targetRegion)
+                return lhsRank == rhsRank
+                    ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                    : lhsRank > rhsRank
+            }
+            .first
+        return voice.map { downloadedAppleVoice(from: $0, gender: genderPresentation(for: $0.gender)) }
+    }
+
+    private static func genderPresentation(for gender: AVSpeechSynthesisVoiceGender) -> GuideGenderPresentation? {
+        switch gender {
+        case .female: .female
+        case .male: .male
+        default: nil
+        }
     }
 
     private static func localeRank(
@@ -181,15 +225,25 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         gender: GuideGenderPresentation?
     ) -> GuideVoice {
         GuideVoice(
-            id: "apple-premium-\(voice.identifier)",
+            id: voice.quality == .default ? "apple-standard-\(voice.identifier)" : "apple-high-quality-\(voice.identifier)",
             displayName: voice.name,
-            description: "Apple \(voice.quality == .premium ? "Premium" : "Enhanced") · \(Locale.current.localizedString(forIdentifier: voice.language) ?? voice.language)",
+            description: voiceDescription(voice),
             locale: voice.language,
             appleVoiceIdentifier: voice.identifier,
             genderPresentation: gender,
             rate: 0.5,
             volume: 0.95
         )
+    }
+
+    private static func voiceDescription(_ voice: AVSpeechSynthesisVoice) -> String {
+        let quality = switch voice.quality {
+        case .premium: String(localized: "guide.voice.quality.premium", defaultValue: "Apple Premium")
+        case .enhanced: String(localized: "guide.voice.quality.enhanced", defaultValue: "Apple Enhanced")
+        default: String(localized: "guide.voice.quality.standard", defaultValue: "Apple Standard")
+        }
+        let language = Locale.current.localizedString(forIdentifier: voice.language) ?? voice.language
+        return "\(quality) · \(language)"
     }
 }
 
@@ -227,17 +281,19 @@ struct GuidePersona: Codable, Hashable, Identifiable {
 }
 
 extension GuideTemplate {
-    nonisolated static let fixtures: [GuideTemplate] = [
-        GuideTemplate(
+    nonisolated static var fixtures: [GuideTemplate] {
+        let voices = GuideVoice.availableOptions
+        let defaultVoice = GuideVoice.defaultOption
+        return [GuideTemplate(
             id: "live-running-guidance",
             sport: .run,
             displayName: "Live Guidance",
             tagline: "Spoken coaching that adapts to your run.",
             personality: "supportive, practical, pace-aware",
             guidanceStyle: "Concise running guidance whose tone follows the athlete's coaching-tone preference.",
-            defaultVoiceId: GuideVoice.systemBest.id,
-            voiceOptions: GuideVoice.availableOptions,
+            defaultVoiceId: defaultVoice.id,
+            voiceOptions: voices,
             systemPromptSeed: "Be practical and concise. Follow the selected coaching tone while prioritizing sustainable pacing, posture, breathing, and consistency."
-        )
-    ]
+        )]
+    }
 }
