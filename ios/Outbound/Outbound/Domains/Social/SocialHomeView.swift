@@ -266,29 +266,20 @@ struct SocialHomeView: View {
     @ViewBuilder
     private var pastActivityEvents: some View {
         if !socialStore.state.pastEvents.isEmpty {
-            Text("PAST ACTIVITIES").socialSectionLabel()
-            ForEach(socialStore.state.pastEvents.prefix(3)) { event in
-                NavigationLink {
-                    ActivityEventDetailView(run: event)
-                } label: {
-                    OutboundCard {
-                        HStack(spacing: OutboundSpacing.compact) {
-                            Image(systemName: "person.2.fill")
-                                .foregroundStyle(OutboundPalette.companion)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(event.title).font(.headline).foregroundStyle(.primary)
-                                Text(event.startsAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption).foregroundStyle(.secondary)
-                                Text(event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))
-                                    .font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                        }
+            HStack {
+                Text("PAST ACTIVITIES").socialSectionLabel()
+                Spacer()
+                if socialStore.state.pastEvents.count > 1 {
+                    NavigationLink {
+                        PastActivityEventsView(events: socialStore.state.pastEvents)
+                    } label: {
+                        Text("All")
+                            .font(.subheadline.weight(.semibold))
                     }
+                    .foregroundStyle(OutboundPalette.companion)
                 }
-                .buttonStyle(.plain)
             }
+            PastActivityEventRow(event: socialStore.state.pastEvents[0])
         }
     }
 
@@ -899,6 +890,51 @@ private struct ActivityEventDetailView: View {
         case "in_person": "mappin.and.ellipse"
         default: "person.2.wave.2"
         }
+    }
+}
+
+private struct PastActivityEventsView: View {
+    let events: [ActivityEventDTO]
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: OutboundSpacing.standard) {
+                ForEach(events) { event in
+                    PastActivityEventRow(event: event)
+                }
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle("Past activities")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PastActivityEventRow: View {
+    let event: ActivityEventDTO
+
+    var body: some View {
+        NavigationLink {
+            ActivityEventDetailView(run: event)
+        } label: {
+            OutboundCard {
+                HStack(spacing: OutboundSpacing.compact) {
+                    Image(systemName: "person.2.fill")
+                        .foregroundStyle(OutboundPalette.companion)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(event.title).font(.headline).foregroundStyle(.primary)
+                        Text(event.startsAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))
+                            .font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
