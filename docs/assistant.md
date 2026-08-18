@@ -66,6 +66,15 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - `suggest_session`: propose a likely next workout or direction
 - `summarize_progress`: reflect recent activity or goal momentum
 
+## Destination And Highlight Framework
+
+- `AssistantDestinationRegistry` is the source of truth for assistant-reachable pages and general app information. Each entry has a stable ID, title, description, search terms, and optional default highlight anchor.
+- `AssistantNavigationTarget` is a typed request containing a destination and optional anchor. The model never receives permission to name or manipulate arbitrary SwiftUI views.
+- `AppNavigationStore` coordinates tab selection, detail navigation, and the pending highlight across app surfaces.
+- Add `.assistantHighlightAnchor("stable.anchor.id")` to an important control or content region to make it spotlightable. Anchors are opt-in because SwiftUI does not expose a reliable semantic runtime inventory of every view.
+- Product-help requests include the destination catalog as bounded source-of-truth context, so navigation and app explanations use the same metadata.
+- Adding a destination requires one registry entry and a renderer at the app composition root. Top-level destinations select their tab; detail destinations are pushed in the Me navigation stack.
+
 ## Current Implementation Shape
 
 - `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights.

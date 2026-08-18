@@ -39,6 +39,7 @@ struct SimplifiedAppShell: View {
                 customizedRunIntent: $customizedTodayIntent,
                 onStartRun: onStartRun
             )
+                .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label("Today", systemImage: "sparkles") }
 
@@ -100,7 +101,18 @@ struct SimplifiedAppShell: View {
             )
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
-            if target != nil {
+            guard let target else { return }
+            switch target.destination {
+            case .social:
+                selection = .social
+                appNavigationStore.consume()
+            case .today:
+                selection = .today
+                appNavigationStore.consume()
+            case .me:
+                selection = .me
+                appNavigationStore.consume()
+            case .settings, .settingsAppleMusic, .settingsAppleHealth, .guideSettings, .activityHistory:
                 selection = .me
             }
         }
@@ -1926,25 +1938,38 @@ private struct SimplifiedMeView: View {
 
     @ViewBuilder
     private func assistantDestination(for target: AssistantNavigationTarget) -> some View {
-        switch target {
-        case .settingsAppleHealth:
-            AppleHealthSettingsView()
-        case .settingsAppleMusic:
-            Form {
-                Section("Apple Music") {
-                    Text("Choose and connect music from the Music section before starting an activity.")
+        Group {
+            switch target.destination {
+            case .settingsAppleHealth:
+                AppleHealthSettingsView()
+            case .settingsAppleMusic:
+                Form {
+                    Section("Apple Music") {
+                        Text("Choose and connect music from the Music section before starting an activity.")
+                    }
                 }
+                .navigationTitle("Music")
+            case .guideSettings:
+                GuideSelectionView()
+            case .activityHistory:
+                ActivityHistoryView()
+            case .settings:
+                SimplifiedSettingsView(
+                    profile: profile,
+                    trainingProfileSex: trainingProfileSex,
+                    onProfileUpdated: { profile = $0 },
+                    onTrainingProfileUpdated: { trainingProfileSex = $0.sexAtBirth }
+                )
+            case .social, .today, .me:
+                EmptyView()
             }
-            .navigationTitle("Music")
-        case .guideSettings:
-            GuideSelectionView()
-        case .activityHistory:
-            ActivityHistoryView()
         }
+        .assistantHighlightAnchor(target.anchorID ?? target.definition.defaultAnchorID)
     }
 
     private func handlePendingAssistantTarget(_ target: AssistantNavigationTarget?) {
         guard let target else { return }
+        guard ![.social, .today, .me].contains(target.destination) else { return }
         navigationPath.append(target)
         appNavigationStore.consume()
     }

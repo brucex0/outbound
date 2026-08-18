@@ -1420,36 +1420,82 @@ struct AssistantSuggestion: Identifiable, Hashable {
     let prompt: String
 }
 
-enum AssistantNavigationTarget: String, Codable, Hashable, Identifiable {
+enum AssistantDestinationID: String, Codable, Hashable, CaseIterable {
+    case social
+    case today
+    case me
+    case settings
     case settingsAppleMusic
     case settingsAppleHealth
     case guideSettings
     case activityHistory
+}
 
-    var id: String { rawValue }
+struct AssistantDestinationDefinition: Hashable {
+    let id: AssistantDestinationID
+    let title: String
+    let summary: String
+    let searchTerms: [String]
+    let defaultAnchorID: String?
+}
+
+/// The single catalog used for assistant navigation, product explanations, and discovery.
+/// Adding a page requires metadata here plus a destination renderer at the app composition root.
+enum AssistantDestinationRegistry {
+    static let destinations: [AssistantDestinationDefinition] = [
+        .init(id: .today, title: "Today", summary: "See today's suggested workout, readiness, and quick start.", searchTerms: ["today", "workout", "readiness", "quick run", "start run"], defaultAnchorID: "today.primary-action"),
+        .init(id: .social, title: "Social", summary: "Find connections, groups, invitations, and shared activities.", searchTerms: ["social", "friends", "connections", "groups", "invitations"], defaultAnchorID: nil),
+        .init(id: .me, title: "Me", summary: "Review your profile, progress, recent runs, and personal settings.", searchTerms: ["me", "profile", "progress", "personal"], defaultAnchorID: nil),
+        .init(id: .settings, title: "Settings", summary: "Manage account, appearance, integrations, and app preferences.", searchTerms: ["settings", "preferences", "account", "appearance"], defaultAnchorID: nil),
+        .init(id: .activityHistory, title: "Activity history", summary: "Review completed and saved activities.", searchTerms: ["activity history", "my activities", "past activities", "saved runs", "recent runs"], defaultAnchorID: "activity-history.content"),
+        .init(id: .guideSettings, title: "Live Guidance settings", summary: "Choose voice, coaching tone, and spoken update frequency.", searchTerms: ["guide", "companion settings", "voice", "coaching tone", "spoken updates"], defaultAnchorID: "guide-settings.content"),
+        .init(id: .settingsAppleHealth, title: "Apple Health", summary: "Manage Apple Health permissions and workout integration.", searchTerms: ["health", "apple health", "healthkit", "health permission"], defaultAnchorID: "apple-health.content"),
+        .init(id: .settingsAppleMusic, title: "Apple Music", summary: "Learn where to connect and choose music for an activity.", searchTerms: ["music", "apple music", "playlist", "music permission"], defaultAnchorID: "apple-music.content")
+    ]
+
+    static func definition(for id: AssistantDestinationID) -> AssistantDestinationDefinition {
+        destinations.first { $0.id == id }!
+    }
 
     static func infer(from prompt: String) -> AssistantNavigationTarget? {
-        let lowercased = prompt.lowercased()
+        let prompt = prompt.lowercased()
+        let navigationWords = ["open", "show me", "take me", "go to", "navigate", "where", "find"]
+        guard navigationWords.contains(where: prompt.contains) else { return nil }
 
-        if (lowercased.contains("music") || lowercased.contains("apple music")) &&
-            (lowercased.contains("setting") || lowercased.contains("connect") || lowercased.contains("permission") || lowercased.contains("show me") || lowercased.contains("open")) {
-            return .settingsAppleMusic
+        let ranked = destinations.map { definition in
+            let score = definition.searchTerms.reduce(0) { score, term in
+                score + (prompt.contains(term) ? term.count : 0)
+            }
+            return (definition: definition, score: score)
         }
+        guard let match = ranked.max(by: { $0.score < $1.score }), match.score > 0 else { return nil }
+        return AssistantNavigationTarget(destination: match.definition.id)
+    }
 
-        if (lowercased.contains("health") || lowercased.contains("apple health")) &&
-            (lowercased.contains("setting") || lowercased.contains("permission") || lowercased.contains("show me") || lowercased.contains("open")) {
-            return .settingsAppleHealth
-        }
+    static var productContext: String {
+        destinations.map { "\($0.title): \($0.summary)" }.joined(separator: "\n")
+    }
+}
 
-        if lowercased.contains("guide") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick") || lowercased.contains("open")) {
-            return .guideSettings
-        }
+struct AssistantNavigationTarget: Codable, Hashable, Identifiable {
+    let destination: AssistantDestinationID
+    let anchorID: String?
 
-        if lowercased.contains("activity history") || lowercased.contains("my activities") || lowercased.contains("past activities") {
-            return .activityHistory
-        }
+    init(destination: AssistantDestinationID, anchorID: String? = nil) {
+        self.destination = destination
+        self.anchorID = anchorID
+    }
 
-        return nil
+    var id: String { "\(destination.rawValue):\(anchorID ?? "")" }
+    var definition: AssistantDestinationDefinition { AssistantDestinationRegistry.definition(for: destination) }
+
+    static let settingsAppleMusic = Self(destination: .settingsAppleMusic)
+    static let settingsAppleHealth = Self(destination: .settingsAppleHealth)
+    static let guideSettings = Self(destination: .guideSettings)
+    static let activityHistory = Self(destination: .activityHistory)
+
+    static func infer(from prompt: String) -> AssistantNavigationTarget? {
+        AssistantDestinationRegistry.infer(from: prompt)
     }
 }
 
@@ -1496,10 +1542,12 @@ struct AssistantContext {
 @MainActor
 final class AppNavigationStore: ObservableObject {
     @Published var pendingAssistantTarget: AssistantNavigationTarget?
+    @Published private(set) var highlightedAssistantAnchorID: String?
     @Published var pendingActivityIntent: SessionIntent?
 
     func open(_ target: AssistantNavigationTarget) {
         pendingAssistantTarget = target
+        highlightedAssistantAnchorID = target.anchorID ?? target.definition.defaultAnchorID
     }
 
     func prepareActivity(intent: SessionIntent) {
@@ -1513,6 +1561,11 @@ final class AppNavigationStore: ObservableObject {
 
     func consume() {
         pendingAssistantTarget = nil
+    }
+
+    func clearHighlight(_ anchorID: String) {
+        guard highlightedAssistantAnchorID == anchorID else { return }
+        highlightedAssistantAnchorID = nil
     }
 
     func consumePreparedActivity() {
@@ -1715,11 +1768,12 @@ final class AssistantStore: ObservableObject {
         capability: AssistantCapability,
         context: AssistantContext
     ) async -> String {
+        let groundedPrompt = Self.groundedProductPrompt(prompt, capability: capability)
         do {
             let response = try await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
                 task: Self.companionTask(for: prompt, capability: capability, context: context),
                 surface: context.isRecordingActive ? .liveSession : .assistant,
-                prompt: prompt,
+                prompt: groundedPrompt,
                 conversationKey: "ios-main-assistant",
                 recentMessages: recentMessagesForAPI().map {
                     CompanionPriorMessageDTO(role: $0.role, text: $0.text)
@@ -1738,7 +1792,7 @@ final class AssistantStore: ObservableObject {
         }
         do {
             let remote = try await APIClient.shared.chatWithAssistant(AssistantChatRequest(
-                prompt: prompt,
+                prompt: groundedPrompt,
                 capability: capability.rawValue,
                 context: AssistantChatAPIContext(
                     guideName: context.guideName,
@@ -1888,16 +1942,20 @@ final class AssistantStore: ObservableObject {
     }
 
     private static func navigationReply(for target: AssistantNavigationTarget) -> String {
-        switch target {
-        case .settingsAppleMusic:
-            return "Opening Apple Music setup guidance."
-        case .settingsAppleHealth:
-            return "Opening Apple Health settings."
-        case .guideSettings:
-            return "Opening companion settings."
-        case .activityHistory:
-            return "Opening your activity history."
-        }
+        "Opening \(target.definition.title)."
+    }
+
+    private static func groundedProductPrompt(
+        _ prompt: String,
+        capability: AssistantCapability
+    ) -> String {
+        guard [.discover, .navigate, .support].contains(capability) else { return prompt }
+        return """
+        User request: \(prompt)
+
+        Use this current Plainstride feature catalog as the source of truth. Do not invent pages or capabilities:
+        \(AssistantDestinationRegistry.productContext)
+        """
     }
 
     private func recentMessagesForAPI() -> [AssistantChatAPIPriorMessage] {
