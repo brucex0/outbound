@@ -300,9 +300,26 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   }
 
   if (body.activityEventId) {
-    await prisma.activityEventParticipant.updateMany({
-      where: { activityEventId: body.activityEventId, userId: resolvedUserId, status: "going" },
-      data: { recordedActivityId: activity.id, outcome: "completed", resolvedAt: new Date() },
+    await prisma.$transaction(async (transaction) => {
+      await transaction.activityEventParticipant.updateMany({
+        where: { activityEventId: body.activityEventId, userId: resolvedUserId, status: "going" },
+        data: { recordedActivityId: activity.id, outcome: "completed", resolvedAt: new Date() },
+      });
+
+      const [goingCount, unresolvedCount] = await Promise.all([
+        transaction.activityEventParticipant.count({
+          where: { activityEventId: body.activityEventId, status: "going" },
+        }),
+        transaction.activityEventParticipant.count({
+          where: { activityEventId: body.activityEventId, status: "going", outcome: null },
+        }),
+      ]);
+      if (goingCount > 0 && unresolvedCount === 0) {
+        await transaction.activityEvent.updateMany({
+          where: { id: body.activityEventId, status: { notIn: ["completed", "cancelled"] } },
+          data: { status: "completed" },
+        });
+      }
     });
   }
 

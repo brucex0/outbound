@@ -16,6 +16,10 @@ struct SocialHomeView: View {
         socialStore.connections.filter { $0.status == "accepted" }.count < 3
     }
 
+    private var syncedActivityIDs: [String] {
+        activityStore.activities.compactMap(\.sync?.serverActivityId).sorted()
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -103,6 +107,9 @@ struct SocialHomeView: View {
                     await socialStore.refreshConnections()
                 }
                 await socialStore.refreshNotifications()
+            }
+            .task(id: syncedActivityIDs) {
+                await socialStore.refresh()
             }
             .navigationDestination(isPresented: $showsNotifications) {
                 SocialNotificationsView()
