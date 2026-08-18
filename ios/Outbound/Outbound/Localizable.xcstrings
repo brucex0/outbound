@@ -9061,6 +9061,22 @@
         }
       }
     },
+    "PAST GROUP RUNS" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CARRERAS DE GRUPO ANTERIORES"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "往期团体跑"
+          }
+        }
+      }
+    },
     "ACTIVITY FEED" : {
       "localizations" : {
         "es" : {

@@ -267,7 +267,7 @@ struct SocialHomeView: View {
     private var pastActivityEvents: some View {
         if !socialStore.state.pastEvents.isEmpty {
             HStack {
-                Text("PAST ACTIVITIES").socialSectionLabel()
+                Text("PAST GROUP RUNS").socialSectionLabel()
                 Spacer()
                 if socialStore.state.pastEvents.count > 1 {
                     NavigationLink {
@@ -318,7 +318,7 @@ struct SocialHomeView: View {
 
     @ViewBuilder
     private var recentPosts: some View {
-        Text("RECENT").socialSectionLabel()
+        Text("ACTIVITY FEED").socialSectionLabel()
         if socialStore.state.posts.isEmpty {
             OutboundCard {
                 HStack(spacing: OutboundSpacing.compact) {
