@@ -498,6 +498,20 @@ struct AssistantView: View {
 
     let screenName: String
     let isRecordingActive: Bool
+    let focusedActivity: SessionIntent?
+    let onApplyFocusedActivity: ((SessionIntent) -> Void)?
+
+    init(
+        screenName: String,
+        isRecordingActive: Bool,
+        focusedActivity: SessionIntent? = nil,
+        onApplyFocusedActivity: ((SessionIntent) -> Void)? = nil
+    ) {
+        self.screenName = screenName
+        self.isRecordingActive = isRecordingActive
+        self.focusedActivity = focusedActivity
+        self.onApplyFocusedActivity = onApplyFocusedActivity
+    }
 
     var body: some View {
         NavigationStack {
@@ -553,7 +567,7 @@ struct AssistantView: View {
                 Text("Ask for a plan, a quick explanation, or help getting unstuck.")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                Text(contextLine)
+                Text(surfaceContextLine)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -571,7 +585,10 @@ struct AssistantView: View {
             ForEach(compactSuggestions) { suggestion in
                 Button {
                     Task {
-                        if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {
+                        if focusedActivity != nil {
+                            assistantStore.draft = suggestion.prompt
+                            await sendDraft()
+                        } else if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {
                             routeThroughApp(target)
                         }
                     }
@@ -685,15 +702,7 @@ struct AssistantView: View {
                     .lineLimit(1...4)
 
                 Button {
-                    Task {
-                        if handleActivityCommandIfPresent(assistantStore.draft) {
-                            return
-                        }
-
-                        if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
-                            routeThroughApp(target)
-                        }
-                    }
+                    Task { await sendDraft() }
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 30))
@@ -771,13 +780,60 @@ struct AssistantView: View {
     }
 
     private var compactSuggestions: [AssistantSuggestion] {
-        [
+        if focusedActivity != nil {
+            return [
+                AssistantSuggestion(
+                    id: "today-adjust",
+                    capability: .plan,
+                    title: String(localized: "Make this workout easier"),
+                    prompt: String(localized: "Make today’s workout easier")
+                ),
+                AssistantSuggestion(
+                    id: "today-explain",
+                    capability: .discover,
+                    title: String(localized: "Why this workout?"),
+                    prompt: String(localized: "Why is this the right workout for me today?")
+                ),
+                assistantStore.suggestions.first { $0.capability == .navigate }
+            ]
+            .compactMap { $0 }
+        }
+        return [
             assistantStore.suggestions.first { $0.capability == .plan },
             assistantStore.suggestions.first { $0.capability == .navigate },
             assistantStore.suggestions.first { $0.capability == .support },
             assistantStore.suggestions.first { $0.capability == .brainstorm }
         ]
         .compactMap { $0 }
+    }
+
+    private var surfaceContextLine: String {
+        if let focusedActivity {
+            return String(localized: "Focused on Today: \(focusedActivity.title) · \(focusedActivity.detail)")
+        }
+        return String(localized: "Helping with \(screenName)")
+    }
+
+    private func sendDraft() async {
+        let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else { return }
+
+        if let focusedActivity,
+           let adjusted = TodayActivityCustomizer.adjustedActivity(focusedActivity, for: prompt) {
+            assistantStore.draft = ""
+            assistantStore.recordFocusedActivityAdjustment(
+                prompt: prompt,
+                intent: adjusted,
+                context: assistantContext
+            )
+            onApplyFocusedActivity?(adjusted)
+            return
+        }
+
+        if handleActivityCommandIfPresent(prompt) { return }
+        if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
+            routeThroughApp(target)
+        }
     }
 
     private var contextLine: String {

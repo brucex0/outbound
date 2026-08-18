@@ -19,8 +19,8 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Shell Model
 
-- Primary shell is a standalone sparkles icon in the main app chrome.
-- The icon sits to the left of the floating tab switcher in the bottom chrome row as a separate control, not inside a shared navigation container.
+- Primary shell is a standalone sparkles icon floating above the leading side of the main tab bar.
+- The launcher remains visually separate from `Social · Today · Me`, so it reads as a persistent app capability rather than a fourth destination.
 - The icon is the minimized state and expands into a richer assistant surface on demand.
 - During live recording, the assistant switches to a compact entry mode so it does not compete with the camera/map workout UI.
 
@@ -43,7 +43,9 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ### Activity-adjacent surfaces
 
 - Today:
-  - keeps the icon-only sparkles entry point at page level in a consistent toolbar position across planned, event, and completed states
+  - uses the same global launcher as every other main surface
+  - prioritizes the visible workout in its context label and quick starts while retaining general questions and app navigation
+  - applies supported distance, duration, and effort changes directly to the visible workout through the shared conversation
 - Record start / pre-activity:
   - primary jobs: suggested-session help, simple planning, and conversational activity customization
   - concrete duration and effort requests update the card and its launch intent immediately
@@ -66,7 +68,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Current Implementation Shape
 
-- `MainTabView` owns the persistent assistant launcher for the main app tabs.
+- `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights.
 - `RecordView` owns the compact live-session assistant entry.
 - `AssistantView` remains the expanded assistant surface with:
   - a short hero summary
@@ -74,6 +76,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - quick-start prompt cards
   - a lightweight conversation timeline
   - a bottom composer with a microphone shortcut for short activity-start commands, including an animated listening wave and live transcript text in the composer
+- The Today workout card no longer carries a separate sparkle button or `Ask companion` menu action. Its assistant work uses the global `AssistantStore` transcript and Today-focused context.
 - The Reset button clears the stored conversation and restores the seeded intro message.
 
 ## Response Strategy
@@ -96,7 +99,7 @@ Conversation transcripts are not durable runner memory. The backend stores a bou
   - current screen and recording state
   - current device time zone, so backend date questions such as "yesterday" use the user's local day
 - Activity-start commands are deterministic V1 actions, not open-ended chat. The speech request uses command-specific recognition hints, and the parser normalizes common short-command variants such as `ten kay run`, `5 k`, and `thirty minute run`. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start. During voice input, a recognized command executes after the live partial transcript stays stable briefly; the composer Send button uses the same parser before falling back to assistant chat, so corrected voice text and typed commands route the same way.
-- The Today activity-card companion has its own bounded, persisted transcript. Before activity customization, it routes recognized app-navigation requests through the shared assistant navigation targets. Its local customization path distinguishes distance units (`km`, `kilometers`, `mi`, `miles`) from time units (`minutes`, `hours`), replaces the previous goal type instead of combining conflicting distance and duration goals, and immediately reflects the applied goal on the card. Unrecognized requests receive activity-specific guidance and must not be described as applied changes.
+- Today workout customization uses the global transcript. Its local customization path distinguishes distance units (`km`, `kilometers`, `mi`, `miles`) from time units (`minutes`, `hours`), replaces the previous goal type instead of combining conflicting distance and duration goals, and immediately reflects the applied goal on the card. Other requests continue through the general companion and shared navigation actions.
 - The response stack is:
   - try the backend assistant chat endpoint first
   - fall back to Apple Foundation Models when available on device

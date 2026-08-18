@@ -22,6 +22,8 @@ struct SimplifiedAppShell: View {
     let activeSport: SportType?
     let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
+    @State private var showsAssistant = false
+    @State private var customizedTodayIntent: SessionIntent?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -34,6 +36,7 @@ struct SimplifiedAppShell: View {
                 activitySessionState: activitySessionState,
                 activityElapsedSeconds: activityElapsedSeconds,
                 activeSport: activeSport,
+                customizedRunIntent: $customizedTodayIntent,
                 onStartRun: onStartRun
             )
                 .tag(SimplifiedAppTab.today)
@@ -44,6 +47,36 @@ struct SimplifiedAppShell: View {
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
+        .overlay(alignment: .bottomLeading) {
+            Button {
+                showsAssistant = true
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                    }
+                    .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Open assistant"))
+            .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+            .padding(.leading, 18)
+            .padding(.bottom, 58)
+        }
+        .sheet(isPresented: $showsAssistant) {
+            AssistantView(
+                screenName: assistantScreenName,
+                isRecordingActive: activitySessionState != .idle,
+                focusedActivity: selection == .today ? customizedTodayIntent ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent : nil,
+                onApplyFocusedActivity: { customizedTodayIntent = $0 }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .onAppear {
             weatherStore.refreshForToday()
             trainingPlanStore.refresh(
@@ -77,6 +110,20 @@ struct SimplifiedAppShell: View {
             }
         }
     }
+
+    private var assistantScreenName: String {
+        switch selection {
+        case .social:
+            return String(localized: "Social")
+        case .today:
+            if let activity = customizedTodayIntent ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent {
+                return String(localized: "Today · \(activity.title) · \(activity.detail)")
+            }
+            return String(localized: "Today")
+        case .me:
+            return String(localized: "Me")
+        }
+    }
 }
 
 private struct SimplifiedTodayView: View {
@@ -96,16 +143,15 @@ private struct SimplifiedTodayView: View {
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
     let activeSport: SportType?
+    @Binding var customizedRunIntent: SessionIntent?
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsCompanionExplanation = false
-    @State private var showsActivityCompanion = false
     @State private var showsChangeSheet = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
     @State private var companionActivityID: UUID?
     @State private var isCompanionInsightLoading = false
     @State private var companionRequestID: UUID?
-    @State private var customizedRunIntent: SessionIntent?
     @State private var currentDay = Calendar.current.startOfDay(for: Date())
     @State private var showsThemeTip = false
     @State private var showsThemeChooser = false
@@ -192,9 +238,6 @@ private struct SimplifiedTodayView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    companionButton
-                }
             }
             .task {
                 await loadCompanionTodayMessage()
@@ -207,6 +250,9 @@ private struct SimplifiedTodayView: View {
             }
             .onChange(of: todayWorkoutID) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
+            }
+            .onChange(of: trainingPlanStore.todaySuggestion?.workout.id) { _, _ in
+                customizedRunIntent = nil
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { refreshCurrentDayIfNeeded() }
@@ -241,15 +287,6 @@ private struct SimplifiedTodayView: View {
                 showsChangeSheet = false
                 if startsRun { onStartRun(changedRunIntent(minutes: minutes, reason: reason)) }
             }
-            .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showsActivityCompanion) {
-            TodayActivityCompanionSheet(
-                message: companionInsightMessage,
-                isLoading: isCompanionInsightLoading,
-                activity: activeRunIntent,
-                onApply: { customizedRunIntent = $0 }
-            )
             .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showsThemeChooser) {
@@ -446,10 +483,6 @@ private struct SimplifiedTodayView: View {
                     }
                     Spacer()
                     Menu {
-                        Button("Ask companion", systemImage: "sparkles") {
-                            showsActivityCompanion = true
-                            Task { await loadCompanionTodayMessage(force: true) }
-                        }
                         Button("Change workout", systemImage: "slider.horizontal.3") {
                             showsChangeSheet = true
                         }
@@ -717,22 +750,6 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var companionButton: some View {
-        Button {
-            showsActivityCompanion = true
-            Task { await loadCompanionTodayMessage(force: true) }
-        } label: {
-            Image(systemName: "sparkles")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(theme.accentColor.gradient, in: Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Ask companion about this activity")
-        .accessibilityHint("Get guidance or customize the activity conversationally")
-    }
-
     private func todayStat(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.headline.monospacedDigit())
@@ -753,6 +770,7 @@ private struct SimplifiedTodayView: View {
         let day = Calendar.current.startOfDay(for: Date())
         guard day != currentDay else { return }
         currentDay = day
+        customizedRunIntent = nil
         companionTodayMessage = nil
         companionActivityID = nil
         Task { await loadCompanionTodayMessage(force: true) }
@@ -1310,7 +1328,116 @@ private struct TodayCompanionLine: Identifiable, Codable {
     }
 }
 
-private extension SessionIntent {
+enum TodayActivityCustomizer {
+    static func adjustedActivity(_ currentActivity: SessionIntent, for prompt: String) -> SessionIntent? {
+        let normalized = prompt.lowercased()
+        let requestedGoal = requestedGoal(in: normalized)
+        let effort: (title: String, detail: String, guide: String)? = {
+            if normalized.contains("recovery") || normalized.contains("very easy") {
+                return (
+                    String(localized: "Recovery run"),
+                    String(localized: "very easy"),
+                    String(localized: "Keep this restorative and finish feeling better than you started.")
+                )
+            }
+            if normalized.contains("easy") || normalized.contains("easier") {
+                return (
+                    String(localized: "Easy run"),
+                    String(localized: "conversational effort"),
+                    String(localized: "Relax the pace and keep the effort conversational.")
+                )
+            }
+            if normalized.contains("tempo") || normalized.contains("harder") {
+                return (
+                    String(localized: "Tempo run"),
+                    String(localized: "comfortably hard"),
+                    String(localized: "Stay controlled; this should feel strong, not all-out.")
+                )
+            }
+            return nil
+        }()
+        guard requestedGoal != nil || effort != nil else { return nil }
+
+        let distanceMeters: Double?
+        let durationSeconds: Int?
+        switch requestedGoal {
+        case .distance(let meters):
+            distanceMeters = meters
+            durationSeconds = nil
+        case .duration(let seconds):
+            distanceMeters = nil
+            durationSeconds = seconds
+        case nil:
+            distanceMeters = currentActivity.targetDistanceMeters
+            durationSeconds = currentActivity.targetDurationSeconds
+                ?? (currentActivity.targetDistanceMeters == nil ? currentMinutes(for: currentActivity) * 60 : nil)
+        }
+
+        let goalDetail: String
+        if let distanceMeters {
+            goalDetail = distanceLabel(distanceMeters)
+        } else {
+            goalDetail = "\((durationSeconds ?? currentMinutes(for: currentActivity) * 60) / 60) min"
+        }
+        return SessionIntent(
+            id: "companion-\(UUID().uuidString)",
+            sport: currentActivity.sport,
+            title: effort?.title ?? currentActivity.title,
+            detail: "\(currentActivity.sport.displayName) · \(goalDetail) · \(effort?.detail ?? String(localized: "customized"))",
+            guideLine: effort?.guide ?? currentActivity.guideLine,
+            startLabel: String(localized: "Start activity"),
+            targetDistanceMeters: distanceMeters,
+            targetDurationSeconds: durationSeconds,
+            routeName: currentActivity.routeName,
+            workoutSteps: []
+        )
+    }
+
+    private enum RequestedGoal {
+        case distance(Double)
+        case duration(Int)
+    }
+
+    private static func requestedGoal(in text: String) -> RequestedGoal? {
+        let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*(kilometers?|kilometres?|kms?|km|miles?|mi|hours?|hrs?|hr|h|minutes?|mins?|min|m)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let valueRange = Range(match.range(at: 1), in: text),
+              let unitRange = Range(match.range(at: 2), in: text),
+              let value = Double(text[valueRange]) else { return nil }
+
+        let unit = String(text[unitRange])
+        if unit.hasPrefix("k") {
+            guard (0.1...200).contains(value) else { return nil }
+            return .distance(value * 1_000)
+        }
+        if unit == "mi" || unit.hasPrefix("mile") {
+            guard (0.1...125).contains(value) else { return nil }
+            return .distance(value * 1_609.344)
+        }
+        if unit.hasPrefix("h") {
+            guard (0.1...12).contains(value) else { return nil }
+            return .duration(Int((value * 3_600).rounded()))
+        }
+        guard (1...720).contains(value) else { return nil }
+        return .duration(Int((value * 60).rounded()))
+    }
+
+    private static func currentMinutes(for activity: SessionIntent) -> Int {
+        let seconds = activity.targetDurationSeconds
+            ?? activity.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
+        return max(5, seconds / 60)
+    }
+
+    private static func distanceLabel(_ meters: Double) -> String {
+        let kilometers = meters / 1_000
+        return kilometers.rounded() == kilometers
+            ? "\(Int(kilometers)) km"
+            : String(format: "%.1f km", kilometers)
+    }
+}
+
+extension SessionIntent {
     var summaryLabel: String {
         if let meters = targetDistanceMeters {
             let kilometers = meters / 1_000
@@ -2587,6 +2714,9 @@ private extension RunnerConfidence {
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())
+        .environmentObject(AssistantStore())
+        .environmentObject(AppNavigationStore())
+        .environmentObject(GuideCatalogStore())
         .environmentObject(DailyCheckInStore())
         .environmentObject(PersonalizationStore())
         .environmentObject(TrainingPlanStore())

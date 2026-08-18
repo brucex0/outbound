@@ -1651,6 +1651,23 @@ final class AssistantStore: ObservableObject {
         persistMessages()
     }
 
+    func recordFocusedActivityAdjustment(
+        prompt: String,
+        intent: SessionIntent,
+        context: AssistantContext
+    ) {
+        ensureSeedMessage(context: context)
+        messages.append(AssistantMessage(author: .user, text: prompt, capability: .plan))
+        messages.append(
+            AssistantMessage(
+                author: .assistant,
+                text: String(localized: "Done — I updated today’s workout to \(intent.summaryLabel). You can keep refining it or start when you’re ready."),
+                capability: .plan
+            )
+        )
+        persistMessages()
+    }
+
     private func send(
         _ prompt: String,
         capability: AssistantCapability?,
@@ -1761,6 +1778,7 @@ final class AssistantStore: ObservableObject {
         context: AssistantContext
     ) -> CompanionTask {
         if context.isRecordingActive { return .liveGuidance }
+        if context.currentScreen?.localizedCaseInsensitiveContains("Today") == true { return .adaptToday }
         let normalized = prompt.lowercased()
         if normalized.contains("today") || normalized.contains("short on time") || normalized.contains("tired") || normalized.contains("sore") {
             return .adaptToday
