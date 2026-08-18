@@ -7,6 +7,7 @@ final class GuideCatalogStore: ObservableObject {
     @Published private(set) var templates: [GuideTemplate]
     @Published private(set) var selection: GuideSelection
     @Published private(set) var requiresVoiceSelection = false
+    @Published private(set) var isVoiceSelectionPromptPresented = false
 
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
@@ -61,9 +62,22 @@ final class GuideCatalogStore: ObservableObject {
             hasSavedSelection = false
         }
 
+        let savedVoiceIsCompatible = templates
+            .first(where: { $0.id == selection.templateId })?
+            .voiceOptions
+            .contains(where: { $0.id == selection.voiceId }) == true
+        if hasSavedSelection,
+           savedVoiceIsCompatible,
+           defaults.string(forKey: voiceLanguageKey) == nil {
+            // Migrate selections created before voice-language tracking existed.
+            defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
+        }
+
         normalizeSelection()
         requiresVoiceSelection = !hasSavedSelection
+            || !savedVoiceIsCompatible
             || defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier
+        isVoiceSelectionPromptPresented = requiresVoiceSelection
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
     }
 
@@ -72,7 +86,17 @@ final class GuideCatalogStore: ObservableObject {
         selection.voiceId = id
         defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
         requiresVoiceSelection = false
+        isVoiceSelectionPromptPresented = false
         saveSelection()
+    }
+
+    func requestVoiceSelection() {
+        guard requiresVoiceSelection else { return }
+        isVoiceSelectionPromptPresented = true
+    }
+
+    func dismissVoiceSelectionPrompt() {
+        isVoiceSelectionPromptPresented = false
     }
 
     func setTheme(_ theme: OutboundTheme) {
@@ -94,6 +118,7 @@ final class GuideCatalogStore: ObservableObject {
     func refreshInstalledVoices() {
         if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
             requiresVoiceSelection = true
+            isVoiceSelectionPromptPresented = true
         }
         let voiceOptions = GuideVoice.availableOptions
         guard selectedTemplate.voiceOptions != voiceOptions else { return }

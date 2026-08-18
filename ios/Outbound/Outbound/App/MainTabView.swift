@@ -77,9 +77,15 @@ struct MainTabView: View {
         .fullScreenCover(isPresented: voiceSelectionPresentation) {
             NavigationStack {
                 GuideSelectionView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") {
+                                guideCatalog.dismissVoiceSelectionPrompt()
+                            }
+                        }
+                    }
             }
             .environmentObject(guideCatalog)
-            .interactiveDismissDisabled()
         }
         .onAppear {
             prepareOnboarding()
@@ -125,8 +131,8 @@ struct MainTabView: View {
 
     private var voiceSelectionPresentation: Binding<Bool> {
         Binding(
-            get: { guideCatalog.requiresVoiceSelection && !onboardingPresentation.wrappedValue },
-            set: { _ in }
+            get: { guideCatalog.isVoiceSelectionPromptPresented && !onboardingPresentation.wrappedValue },
+            set: { if !$0 { guideCatalog.dismissVoiceSelectionPrompt() } }
         )
     }
 
@@ -142,6 +148,11 @@ struct MainTabView: View {
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {
+        if guideCatalog.requiresVoiceSelection {
+            guideCatalog.requestVoiceSelection()
+            return
+        }
+
         if let activeLaunch, activitySessionState != .idle {
             self.activeLaunch = activeLaunch
             isActivityVisible = true
