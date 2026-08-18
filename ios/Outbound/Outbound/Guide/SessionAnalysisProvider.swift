@@ -82,6 +82,7 @@ struct SessionNudgePacket: Encodable {
         let persona: String
         let style: String
         let intensity: String
+        let spokenLanguage: String
         let maxWords: Int
     }
 
@@ -141,6 +142,7 @@ extension SessionAnalysisRequest {
                 persona: persona?.template.personality ?? "supportive, concise",
                 style: persona?.template.guidanceStyle ?? "supportive live guidance",
                 intensity: persona?.intensity.displayName ?? GuidanceIntensity.balanced.displayName,
+                spokenLanguage: spokenLanguage.rawValue,
                 maxWords: 18
             ),
             decision: .init(
@@ -153,6 +155,10 @@ extension SessionAnalysisRequest {
                 lastNudges: Array(recentNudges.suffix(3))
             )
         )
+    }
+
+    var spokenLanguage: AppLanguage {
+        persona.map { AppLanguage.language(matching: $0.voice.locale) } ?? AppLanguage.current
     }
 
     private var sessionPhase: String {
@@ -385,6 +391,10 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
     }
 
     private func buildMessage(for request: SessionAnalysisRequest) -> String {
+        if request.spokenLanguage != .english {
+            return localizedMessage(for: request)
+        }
+
         let snapshot = request.snapshot
         let sport = request.persona?.template.sport ?? .run
         let urgency = urgency(for: request)
@@ -450,6 +460,36 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
         }
 
         return parts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func localizedMessage(for request: SessionAnalysisRequest) -> String {
+        let heartRateIsHigh = (request.snapshot.heartRate ?? 0) > 185
+        let paceDelta = request.snapshot.currentPaceSecsPerKm.flatMap { pace in
+            request.profile?.athlete.preferredPaceSecs.map { pace - $0 }
+        }
+
+        switch request.spokenLanguage {
+        case .simplifiedChinese:
+            if heartRateIsHigh { return "心率偏高。稍微放慢一点，调整呼吸，确认身体感觉良好。" }
+            if let paceDelta, paceDelta > 15 { return "稍微加快脚步，平稳地回到目标节奏。" }
+            if let paceDelta, paceDelta < -15 { return "现在有点快。稍微放松，保持后程体力。" }
+            switch request.persona?.intensity ?? .balanced {
+            case .calm: return "保持放松，呼吸平稳，让脚步自然流畅。"
+            case .balanced: return "节奏不错。保持轻快脚步，继续稳稳向前。"
+            case .driven: return "保持挺拔，脚步有力，继续推进。"
+            }
+        case .spanish:
+            if heartRateIsHigh { return "El pulso está alto. Baja un poco el esfuerzo, recupera la respiración y comprueba cómo te sientes." }
+            if let paceDelta, paceDelta > 15 { return "Aumenta el ritmo poco a poco hasta volver al objetivo." }
+            if let paceDelta, paceDelta < -15 { return "Vas un poco rápido. Suelta el esfuerzo y guarda energía para después." }
+            switch request.persona?.intensity ?? .balanced {
+            case .calm: return "Mantente relajado, respira con calma y deja que fluya la zancada."
+            case .balanced: return "Buen ritmo. Mantén los pasos ligeros y sigue avanzando con control."
+            case .driven: return "Mantente erguido, pisa con fuerza y sigue empujando."
+            }
+        case .english:
+            return defaultSteadyCue(for: request)
+        }
     }
 
     private func urgency(for request: SessionAnalysisRequest) -> SessionAnalysisUrgency {

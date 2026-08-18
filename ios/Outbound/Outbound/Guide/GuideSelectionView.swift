@@ -181,7 +181,7 @@ struct GuideSelectionView: View {
         previewSynthesizer = synthesizer
         previewingVoiceID = voice.id
         synthesizer.speak(
-            coachingPreviewText,
+            coachingPreviewText(for: voice),
             voice: voice,
             rate: voice.rate,
             volume: voice.volume
@@ -217,8 +217,9 @@ struct GuideSelectionView: View {
         }
     }
 
-    private var coachingPreviewText: String {
-        switch (AppLanguage.current, guideCatalog.selection.intensity) {
+    private func coachingPreviewText(for voice: GuideVoice) -> String {
+        let voiceLanguage = AppLanguage.language(matching: voice.locale)
+        return switch (voiceLanguage, guideCatalog.selection.intensity) {
         case (.english, .calm):
             String(localized: "guide.preview.en.calm", defaultValue: "You’re doing well. Relax your shoulders, breathe easily, and let the rhythm come to you.")
         case (.english, .balanced):

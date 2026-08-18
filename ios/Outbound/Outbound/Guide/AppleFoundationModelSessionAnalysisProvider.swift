@@ -136,6 +136,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         \(packet)
 
         Requirements:
+        - Write the spoken message only in the language identified by guide.spokenLanguage. Do not answer in English unless that value is en.
         - Match the packet's decision intent and urgency.
         - Use plan, athlete profile, and recent patterns only when they materially improve the cue.
         - Mention time, distance, or pace only if they improve the guidance moment.
