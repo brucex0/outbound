@@ -44,6 +44,15 @@ struct GuideSelectionView: View {
                     }
                 }
 
+                if !downloadedAppleVoicesWithUnspecifiedGender.isEmpty {
+                    Text(String(localized: "guide.voice.downloaded.apple", defaultValue: "Downloaded Apple"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(downloadedAppleVoicesWithUnspecifiedGender) { voice in
+                        voiceButton(voice)
+                    }
+                }
+
                 Text(String(localized: "guide.voice.other_voices", defaultValue: "Other voices"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -138,6 +147,10 @@ struct GuideSelectionView: View {
 
     private var downloadedAppleVoices: [GuideVoice] {
         guideCatalog.selectedTemplate.voiceOptions.filter { $0.appleVoiceIdentifier != nil }
+    }
+
+    private var downloadedAppleVoicesWithUnspecifiedGender: [GuideVoice] {
+        downloadedAppleVoices.filter { $0.genderPresentation == nil }
     }
 
     private var otherVoices: [GuideVoice] {

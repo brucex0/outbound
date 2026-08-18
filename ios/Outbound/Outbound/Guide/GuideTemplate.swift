@@ -161,7 +161,10 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         let maleVoices = rankedVoices(for: .male).map {
             downloadedAppleVoice(from: $0, gender: .male)
         }
-        return femaleVoices + maleVoices
+        let unspecifiedVoices = rankedVoices(for: .unspecified).map {
+            downloadedAppleVoice(from: $0, gender: nil)
+        }
+        return femaleVoices + maleVoices + unspecifiedVoices
     }
 
     private static func localeRank(
@@ -175,7 +178,7 @@ struct GuideVoice: Codable, Hashable, Identifiable {
 
     private static func downloadedAppleVoice(
         from voice: AVSpeechSynthesisVoice,
-        gender: GuideGenderPresentation
+        gender: GuideGenderPresentation?
     ) -> GuideVoice {
         GuideVoice(
             id: "apple-premium-\(voice.identifier)",
