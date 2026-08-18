@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct OutboundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    private let analyticsManager: AnalyticsManager
     @StateObject private var authStore = AuthStore()
     @StateObject private var guideStore = GuideStore()
     @StateObject private var guideCatalogStore = GuideCatalogStore()
@@ -37,7 +38,12 @@ struct OutboundApp: App {
     @StateObject private var pushNotifications = PushNotificationCoordinator.shared
 
     init() {
-        FirebaseBootstrap.configureIfAvailable()
+        let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
+        let manager = AnalyticsManager(providers: [
+            isFirebaseConfigured ? FirebaseAnalyticsProvider() : NoOpAnalyticsProvider()
+        ])
+        analyticsManager = manager
+        Task { await manager.initialize() }
     }
 
     var body: some Scene {
@@ -45,6 +51,7 @@ struct OutboundApp: App {
             rootView
                 .tint(guideCatalogStore.selectedTheme.accentColor)
                 .environment(\.outboundTheme, guideCatalogStore.selectedTheme)
+                .environment(\.analyticsManager, analyticsManager)
                 .environmentObject(appearancePreferences)
                 .preferredColorScheme(appearancePreferences.mode.colorScheme)
         }

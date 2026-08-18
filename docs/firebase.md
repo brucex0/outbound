@@ -19,6 +19,7 @@ Open this when touching Firebase Auth, Google project setup, the Firebase plist,
 ## Local Config
 
 - `ios/Outbound/Outbound/GoogleService-Info.plist` is local and gitignored.
+- Firebase Analytics is linked through Swift Package Manager and accessed only through `Core/Analytics/FirebaseAnalyticsProvider.swift`; features depend on the vendor-neutral `AnalyticsManager`.
 - Xcode's file-system-synchronized app target copies the plist into `Outbound.app` when present.
 - `firebase` CLI is not installed here. Use `gcloud` and Firebase/Identity Toolkit REST APIs if project setup needs inspection or changes.
 - `zxia@snapchat.com` gcloud auth is blocked by Context Aware Access. Use `--account=bruce.xia74@gmail.com`.
