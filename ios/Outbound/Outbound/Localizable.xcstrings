@@ -7774,7 +7774,7 @@
         }
       }
     },
-    "PAST ACTIVITIES" : {
+    "PAST GOUP ACTIVITIES" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -9061,7 +9061,7 @@
         }
       }
     },
-    "RECENT" : {
+    "ACTIVITY FEED" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
