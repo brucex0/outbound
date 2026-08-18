@@ -6,6 +6,7 @@ import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
+import { deliverPushNotification } from "../services/pushNotifications.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -722,8 +723,11 @@ async function blockedUserIDs(userId: string) {
 }
 
 async function createSocialNotification(recipientId: string, actorId: string, type: string, objectId: string, message: string) {
-  await getPrismaClient().socialNotification.create({
+  const notification = await getPrismaClient().socialNotification.create({
     data: { recipientId, actorId, type, objectId, message },
+  });
+  void deliverPushNotification(notification).catch((error) => {
+    console.error("[push] notification delivery failed", { notificationId: notification.id, error });
   });
 }
 

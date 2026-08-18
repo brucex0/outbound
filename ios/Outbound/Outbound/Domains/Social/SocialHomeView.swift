@@ -7,8 +7,10 @@ struct SocialHomeView: View {
     @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var isCreateActivityEventPresented = false
+    @State private var showsNotifications = false
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.connections.filter { $0.status == "accepted" }.count < 3
@@ -80,8 +82,8 @@ struct SocialHomeView: View {
                     }
                     .accessibilityLabel("Social community")
 
-                    NavigationLink {
-                        SocialNotificationsView()
+                    Button {
+                        showsNotifications = true
                     } label: {
                         Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
                     }
@@ -101,6 +103,13 @@ struct SocialHomeView: View {
                     await socialStore.refreshConnections()
                 }
                 await socialStore.refreshNotifications()
+            }
+            .navigationDestination(isPresented: $showsNotifications) {
+                SocialNotificationsView()
+            }
+            .onChange(of: pushNotifications.pendingNotificationID) { _, notificationID in
+                guard notificationID != nil else { return }
+                showsNotifications = true
             }
             .task(id: socialStore.state.posts.map(\.id)) {
                 reconcileSharedActivityMilestones()
@@ -940,6 +949,7 @@ private struct PastActivityEventRow: View {
 
 private struct SocialNotificationsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @State private var selectedNotification: SocialNotificationDTO?
 
     var body: some View {
@@ -978,6 +988,11 @@ private struct SocialNotificationsView: View {
         }
         .task {
             await socialStore.refreshNotifications()
+            if let notificationID = pushNotifications.pendingNotificationID,
+               let notification = socialStore.notifications.first(where: { $0.id == notificationID }) {
+                selectedNotification = notification
+                pushNotifications.consumePendingNotification()
+            }
             await socialStore.markNotificationsRead()
         }
         .refreshable { await socialStore.refreshNotifications() }

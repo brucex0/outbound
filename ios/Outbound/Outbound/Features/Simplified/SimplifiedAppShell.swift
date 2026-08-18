@@ -17,6 +17,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
     let activeSport: SportType?
@@ -115,6 +116,10 @@ struct SimplifiedAppShell: View {
             case .settings, .appearance, .settingsAppleMusic, .settingsAppleHealth, .guideSettings, .activityHistory:
                 selection = .me
             }
+        }
+        .onChange(of: pushNotifications.pendingNotificationID) { _, notificationID in
+            guard notificationID != nil else { return }
+            selection = .social
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

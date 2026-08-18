@@ -61,6 +61,7 @@ Primary flow:
 | Activity-event creation, invitations, discovery, recording, and results | `docs/social.md` | Durable event model, lifecycle, owner/participant behavior, personal activity links, and rollout |
 | Original activity-event interaction wireframe | `docs/prototypes/future-activities-e2e.html` | Early organizer and invitee flow; use as a reference rather than a naming or data-model contract |
 | Social regression status and defect log | `docs/social-qa.md` | Latest seeded UI and real-server Social test coverage, findings, and remaining gaps |
+| In-app inbox, push delivery, device registration, payloads, routing, rollout | `docs/notifications.md` | Shared backend/iOS notification contract, configuration, privacy rules, and deferred scope |
 | Live group run sharing with friend pins on the in-session map | `docs/superpowers/specs/2026-06-20-live-group-run-sharing-design.md` | Product and architecture design for invite-link mutual group sharing, participant presence, map overlays, and rollout |
 | Live group run sharing implementation steps | `docs/superpowers/plans/2026-06-20-live-group-run-sharing.md` | Scoped implementation plan for backend live group sessions, iOS group store, setup controls, and map overlays |
 | Activity start screen polish, goal chips, setup card hierarchy | `docs/superpowers/specs/2026-05-30-start-activity-polish-design.md` | Focused design for fixing wrapped goal chips and tightening the start activity setup UI |

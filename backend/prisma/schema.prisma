@@ -71,6 +71,7 @@ model User {
   socialReports               SocialReport[]
   socialNotifications         SocialNotification[]         @relation("SocialNotificationRecipient")
   socialNotificationsActed    SocialNotification[]         @relation("SocialNotificationActor")
+  pushDevices                 PushDevice[]
   activityEventParticipants   ActivityEventParticipant[]
 
   @@index([normalizedEmail])
@@ -1150,4 +1151,20 @@ model SocialNotification {
 
   @@index([recipientId, createdAt])
   @@index([recipientId, readAt])
+}
+
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  appBundle String
+  locale    String?
+  enabled   Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, enabled])
 }

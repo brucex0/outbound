@@ -34,6 +34,7 @@ struct OutboundApp: App {
     @StateObject private var situationalWeatherStore = SituationalWeatherStore()
     @StateObject private var connectivityStore = ConnectivityStore()
     @StateObject private var appearancePreferences = AppearancePreferences()
+    @StateObject private var pushNotifications = PushNotificationCoordinator.shared
 
     init() {
         FirebaseBootstrap.configureIfAvailable()
@@ -97,6 +98,7 @@ struct OutboundApp: App {
                 .environmentObject(cycleAwareStore)
                 .environmentObject(situationalWeatherStore)
                 .environmentObject(connectivityStore)
+                .environmentObject(pushNotifications)
                 .task {
                     await guideStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
@@ -106,9 +108,13 @@ struct OutboundApp: App {
                     await personalizationStore.refresh()
                     await togetherStore.refresh()
                     await consumePendingInviteIfPossible()
+                    await pushNotifications.activate()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    Task { await activityStore.syncPendingActivitiesIfNeeded() }
+                    Task {
+                        await activityStore.syncPendingActivitiesIfNeeded()
+                        await pushNotifications.activate()
+                    }
                 }
                 .onOpenURL { url in
                     handleIncomingURL(url)

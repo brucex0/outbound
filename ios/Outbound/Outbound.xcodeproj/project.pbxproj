@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
 		DB3A92402F9EE6DA00F9B729 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000032F9EE18E00F9B729 /* FirebaseAuth */; };
+		AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000042F9EE18E00F9B729 /* FirebaseMessaging */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -91,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DB3A92402F9EE6DA00F9B729 /* FirebaseAuth in Frameworks */,
+				AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */,
 				DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -167,6 +169,7 @@
 			packageProductDependencies = (
 				AB0000022F9EE18E00F9B729 /* FirebaseCore */,
 				AB0000032F9EE18E00F9B729 /* FirebaseAuth */,
+				AB0000042F9EE18E00F9B729 /* FirebaseMessaging */,
 			);
 			productName = Outbound;
 			productReference = DB3A91492F9EE18E00F9B729 /* Outbound.app */;
@@ -781,6 +784,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		AB0000042F9EE18E00F9B729 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

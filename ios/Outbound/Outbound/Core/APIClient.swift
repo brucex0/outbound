@@ -319,6 +319,14 @@ final class APIClient {
         try await post("/social/notifications/read-all", body: EmptyBody())
     }
 
+    func registerPushDevice(_ request: PushDeviceRegistrationDTO) async throws -> SocialConnectionMutationDTO {
+        try await put("/notifications/devices", body: request)
+    }
+
+    func unregisterPushDevice(token: String) async throws -> SocialConnectionMutationDTO {
+        try await delete("/notifications/devices/\(token.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? token)")
+    }
+
     func fetchSocialGroups() async throws -> SocialGroupsResponseDTO {
         try await get("/social/groups")
     }
