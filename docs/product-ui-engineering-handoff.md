@@ -55,6 +55,12 @@ Limit custom weights to regular and medium/semibold. Preserve legibility over ex
 - Avoid looping or decorative animation during live activity.
 - Honor Reduce Motion and Reduce Transparency.
 
+### Selection and tap targets
+
+- When tapping a list row selects or opens that row, make the whole available row area tappable rather than only its text or icon.
+- Keep embedded controls such as preview, toggle, menu, disclosure, or secondary-action buttons as independent tap targets. The row's primary tap area should fill only the remaining space and must not overlap or intercept those controls.
+- Preserve a minimum `44 pt` target for every independent control and expose each action separately to accessibility.
+
 ## Shared Components
 
 Implement reusable components rather than screen-specific copies.

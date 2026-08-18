@@ -173,6 +173,8 @@ struct GuideSelectionView: View {
                             .foregroundStyle(.orange)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
