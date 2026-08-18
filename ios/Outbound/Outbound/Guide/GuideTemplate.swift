@@ -104,6 +104,7 @@ struct GuideVoice: Codable, Hashable, Identifiable {
     let volume: Float
 
     var isStandardQuality: Bool { id.hasPrefix("apple-standard-") }
+    var isPremiumOrEnhancedQuality: Bool { id.hasPrefix("apple-high-quality-") }
 
     static var availableOptions: [GuideVoice] {
         downloadedAppleVoices()
@@ -118,7 +119,7 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         let targetRegion = locale.region?.identifier
         return options
             .filter {
-                !$0.isStandardQuality
+                $0.isPremiumOrEnhancedQuality
                     && Locale(identifier: $0.locale).language.languageCode?.identifier == targetLanguage
             }
             .sorted {
