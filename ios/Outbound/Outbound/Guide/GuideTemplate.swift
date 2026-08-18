@@ -106,7 +106,9 @@ struct GuideVoice: Codable, Hashable, Identifiable {
     var isStandardQuality: Bool { id.hasPrefix("apple-standard-") }
 
     static var availableOptions: [GuideVoice] {
-        downloadedAppleVoices() + (standardAppleVoice().map { [$0] } ?? [])
+        downloadedAppleVoices()
+            + siriAppleVoices()
+            + (standardAppleVoice().map { [$0] } ?? [])
     }
 
     static var defaultOption: GuideVoice {
@@ -188,6 +190,7 @@ struct GuideVoice: Codable, Hashable, Identifiable {
             .filter { voice in
                 let voiceLocale = Locale(identifier: voice.language)
                 return voice.quality == .default
+                    && !isSiriVoice(voice)
                     && voiceLocale.language.languageCode?.identifier == targetLanguage
                     && !voice.voiceTraits.contains(.isNoveltyVoice)
                     && !voice.voiceTraits.contains(.isPersonalVoice)
@@ -201,6 +204,32 @@ struct GuideVoice: Codable, Hashable, Identifiable {
             }
             .first
         return voice.map { downloadedAppleVoice(from: $0, gender: genderPresentation(for: $0.gender)) }
+    }
+
+    private static func siriAppleVoices() -> [GuideVoice] {
+        let locale = AppLanguage.speechLocale
+        let targetLanguage = locale.language.languageCode?.identifier
+        let targetRegion = locale.region?.identifier
+        return AVSpeechSynthesisVoice.speechVoices()
+            .filter { voice in
+                voice.quality == .default
+                    && isSiriVoice(voice)
+                    && !voice.voiceTraits.contains(.isNoveltyVoice)
+                    && !voice.voiceTraits.contains(.isPersonalVoice)
+            }
+            .sorted { lhs, rhs in
+                let lhsRank = localeRank(Locale(identifier: lhs.language), targetLanguage: targetLanguage, targetRegion: targetRegion)
+                let rhsRank = localeRank(Locale(identifier: rhs.language), targetLanguage: targetLanguage, targetRegion: targetRegion)
+                return lhsRank == rhsRank
+                    ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                    : lhsRank > rhsRank
+            }
+            .map { downloadedAppleVoice(from: $0, gender: genderPresentation(for: $0.gender)) }
+    }
+
+    private static func isSiriVoice(_ voice: AVSpeechSynthesisVoice) -> Bool {
+        voice.identifier.localizedCaseInsensitiveContains("siri")
+            || voice.name.localizedCaseInsensitiveContains("siri")
     }
 
     private static func genderPresentation(for gender: AVSpeechSynthesisVoiceGender) -> GuideGenderPresentation? {
@@ -225,7 +254,11 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         gender: GuideGenderPresentation?
     ) -> GuideVoice {
         GuideVoice(
-            id: voice.quality == .default ? "apple-standard-\(voice.identifier)" : "apple-high-quality-\(voice.identifier)",
+            id: isSiriVoice(voice)
+                ? "apple-siri-\(voice.identifier)"
+                : voice.quality == .default
+                    ? "apple-standard-\(voice.identifier)"
+                    : "apple-high-quality-\(voice.identifier)",
             displayName: voice.name,
             description: voiceDescription(voice),
             locale: voice.language,
@@ -240,7 +273,9 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         let quality = switch voice.quality {
         case .premium: String(localized: "guide.voice.quality.premium", defaultValue: "Apple Premium")
         case .enhanced: String(localized: "guide.voice.quality.enhanced", defaultValue: "Apple Enhanced")
-        default: String(localized: "guide.voice.quality.standard", defaultValue: "Apple Standard")
+        default: isSiriVoice(voice)
+            ? String(localized: "guide.voice.quality.siri", defaultValue: "Apple Siri")
+            : String(localized: "guide.voice.quality.standard", defaultValue: "Apple Standard")
         }
         let language = Locale.current.localizedString(forIdentifier: voice.language) ?? voice.language
         return "\(quality) · \(language)"
