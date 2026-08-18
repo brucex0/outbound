@@ -48,9 +48,7 @@ private final class InstalledAppleSpeechSynthesizer: NSObject, @preconcurrency A
 
     func speak(_ text: String, voice: GuideVoice, rate: Float, volume: Float) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = voice.appleVoiceIdentifier
-            .flatMap(AVSpeechSynthesisVoice.init(identifier:))
-            ?? AVSpeechSynthesisVoice(language: voice.locale)
+        utterance.voice = Self.installedVoice(for: voice)
         utterance.rate = max(AVSpeechUtteranceMinimumSpeechRate, min(AVSpeechUtteranceMaximumSpeechRate, rate))
         utterance.volume = max(0, min(1, volume))
 
@@ -61,6 +59,19 @@ private final class InstalledAppleSpeechSynthesizer: NSObject, @preconcurrency A
         } catch {
             finishSpeaking()
         }
+    }
+
+    private static func installedVoice(for voice: GuideVoice) -> AVSpeechSynthesisVoice? {
+        guard let identifier = voice.appleVoiceIdentifier else {
+            return AVSpeechSynthesisVoice(language: voice.locale)
+        }
+
+        // Some downloaded Enhanced/Premium voices are present in speechVoices()
+        // even when recreating them with init(identifier:) returns nil. Reuse the
+        // catalog instance so a selected voice such as Bobo does not become the
+        // system's low-quality locale default during playback.
+        return AVSpeechSynthesisVoice.speechVoices().first { $0.identifier == identifier }
+            ?? AVSpeechSynthesisVoice(identifier: identifier)
     }
 
     func stopSpeaking(at boundary: AVSpeechBoundary) {
