@@ -83,6 +83,7 @@ private struct SimplifiedTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
@@ -109,6 +110,10 @@ private struct SimplifiedTodayView: View {
     @State private var showsThemeTip = false
     @State private var showsThemeChooser = false
     @State private var showsUpcomingWorkout = false
+    @State private var showsPlanDetails = false
+    @State private var showsPlanPicker = false
+    @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
+    @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
 
     var body: some View {
         NavigationStack {
@@ -255,6 +260,101 @@ private struct SimplifiedTodayView: View {
             upcomingWorkoutSheet
                 .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showsPlanDetails) {
+            NavigationStack {
+                if let activePlan = trainingPlanStore.activePlan {
+                    if let week = trainingPlanStore.currentWeek {
+                        ActiveTrainingPlanDetailView(
+                            activePlan: activePlan,
+                            week: week,
+                            todaySuggestion: trainingPlanStore.todaySuggestion,
+                            accentColor: theme.accentColor
+                        )
+                    } else {
+                        ActiveTrainingPlanPendingDetailView(activePlan: activePlan, accentColor: theme.accentColor)
+                    }
+                } else {
+                    ActiveTrainingPlanSyncingDetailView(accentColor: theme.accentColor)
+                }
+            }
+        }
+        .sheet(isPresented: $showsPlanPicker) {
+            NavigationStack {
+                TrainingPlanPickerView(
+                    recommendations: trainingPlanStore.planOptions,
+                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
+                    accentColor: theme.accentColor,
+                    onSelectPlan: {
+                        showsPlanPicker = false
+                        selectedPlanRecommendation = $0
+                    },
+                    onUsePlan: { requestPlanActivation($0) }
+                )
+            }
+        }
+        .sheet(item: $selectedPlanRecommendation) { recommendation in
+            NavigationStack {
+                TrainingPlanRecommendationDetailView(
+                    recommendation: recommendation,
+                    accentColor: theme.accentColor,
+                    onUsePlan: { requestPlanActivation(recommendation) },
+                    onMorePlans: { returnToPlanPicker() }
+                )
+            }
+        }
+        .confirmationDialog(
+            "Replace your current training plan?",
+            isPresented: Binding(
+                get: { replacementPlanRecommendation != nil },
+                set: { if !$0 { replacementPlanRecommendation = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Replace plan", role: .destructive) {
+                guard let recommendation = replacementPlanRecommendation else { return }
+                activatePlan(recommendation)
+            }
+            Button("Keep current plan", role: .cancel) { replacementPlanRecommendation = nil }
+        } message: {
+            Text("This replaces your current multi-week schedule with the selected plan. Completed activities stay in your history.")
+        }
+    }
+
+    private func presentPlanPicker() {
+        trainingPlanStore.prepareRecommendations(
+            activities: activityStore.activities,
+            readiness: dailyCheckInStore.readiness,
+            phase: DailyMotivationEngine.phase(for: activityStore.activities)
+        )
+        showsPlanPicker = true
+    }
+
+    private func requestPlanActivation(_ recommendation: TrainingPlanRecommendation) {
+        if trainingPlanStore.activePlan != nil {
+            showsPlanPicker = false
+            selectedPlanRecommendation = nil
+            Task { @MainActor in
+                await Task.yield()
+                replacementPlanRecommendation = recommendation
+            }
+        } else {
+            activatePlan(recommendation)
+        }
+    }
+
+    private func returnToPlanPicker() {
+        selectedPlanRecommendation = nil
+        Task { @MainActor in
+            await Task.yield()
+            presentPlanPicker()
+        }
+    }
+
+    private func activatePlan(_ recommendation: TrainingPlanRecommendation) {
+        trainingPlanStore.acceptRecommendation(recommendation)
+        replacementPlanRecommendation = nil
+        selectedPlanRecommendation = nil
+        showsPlanPicker = false
     }
 
     private var canPresentThemeTip: Bool {
@@ -375,8 +475,51 @@ private struct SimplifiedTodayView: View {
                         onStartRun(activeRunIntent)
                     }
                 }
+                trainingPlanMenu
             }
         }
+    }
+
+    private var trainingPlanMenu: some View {
+        Menu {
+            if trainingPlanStore.activePlan != nil {
+                Button("View plan", systemImage: "calendar") { showsPlanDetails = true }
+                Button("Change plan", systemImage: "arrow.triangle.2.circlepath") { presentPlanPicker() }
+                Divider()
+                Button("End plan", systemImage: "calendar.badge.minus", role: .destructive) {
+                    trainingPlanStore.clearActivePlan()
+                }
+            } else {
+                Button("Choose a plan", systemImage: "calendar.badge.plus") { presentPlanPicker() }
+            }
+        } label: {
+            HStack(spacing: OutboundSpacing.compact) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(theme.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Training plan")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(trainingPlanStore.activePlan?.title ?? String(localized: "Choose a multi-week plan"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
+        }
+        .accessibilityLabel("Training plan")
+        .accessibilityHint(
+            trainingPlanStore.activePlan == nil
+                ? String(localized: "Choose a multi-week training plan")
+                : String(localized: "View, change, or end the current training plan")
+        )
     }
 
     private var inProgressActivityCard: some View {

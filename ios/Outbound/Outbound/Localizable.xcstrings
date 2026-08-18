@@ -14406,6 +14406,72 @@
         }
       }
     },
+    "Change plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cambiar plan" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更换计划" } }
+      }
+    },
+    "Choose a multi-week plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige un plan de varias semanas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择多周训练计划" } }
+      }
+    },
+    "Choose a multi-week training plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige un plan de entrenamiento de varias semanas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择一个多周训练计划" } }
+      }
+    },
+    "Choose a plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elegir un plan" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择计划" } }
+      }
+    },
+    "Keep current plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantener el plan actual" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留当前计划" } }
+      }
+    },
+    "Replace plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reemplazar plan" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "替换计划" } }
+      }
+    },
+    "Replace your current training plan?" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Reemplazar tu plan de entrenamiento actual?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "要替换当前训练计划吗？" } }
+      }
+    },
+    "This replaces your current multi-week schedule with the selected plan. Completed activities stay in your history." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esto reemplaza tu calendario actual de varias semanas por el plan seleccionado. Las actividades completadas permanecen en tu historial." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这会用所选计划替换当前的多周安排。已完成的活动仍会保留在历史记录中。" } }
+      }
+    },
+    "Training plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plan de entrenamiento" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "训练计划" } }
+      }
+    },
+    "View plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver plan" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看计划" } }
+      }
+    },
+    "View, change, or end the current training plan" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver, cambiar o finalizar el plan de entrenamiento actual" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看、更换或结束当前训练计划" } }
+      }
+    },
     "Your rhythm is working." : {
       "localizations" : {
         "es" : {
