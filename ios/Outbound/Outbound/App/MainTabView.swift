@@ -74,6 +74,13 @@ struct MainTabView: View {
             .environmentObject(trainingPlanStore)
             .interactiveDismissDisabled()
         }
+        .fullScreenCover(isPresented: voiceSelectionPresentation) {
+            NavigationStack {
+                GuideSelectionView()
+            }
+            .environmentObject(guideCatalog)
+            .interactiveDismissDisabled()
+        }
         .onAppear {
             prepareOnboarding()
             consumeStoredPreparedActivityIfNeeded()
@@ -113,6 +120,13 @@ struct MainTabView: View {
                 return onboardingStore.isPresented && !isAppTestMode
             },
             set: { onboardingStore.isPresented = $0 }
+        )
+    }
+
+    private var voiceSelectionPresentation: Binding<Bool> {
+        Binding(
+            get: { guideCatalog.requiresVoiceSelection && !onboardingPresentation.wrappedValue },
+            set: { _ in }
         )
     }
 

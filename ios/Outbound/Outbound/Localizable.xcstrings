@@ -5203,6 +5203,20 @@
         }
       }
     },
+    "guide.voice.language_changed.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your app language changed. Choose and preview a compatible voice before spoken coaching resumes." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El idioma de la app ha cambiado. Elige y prueba una voz compatible antes de reanudar las indicaciones habladas." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 语言已更改。请先选择并试听兼容的语音，然后再恢复语音指导。" } }
+      }
+    },
+    "guide.voice.language_changed.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a voice for this language" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una voz para este idioma" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "为当前语言选择语音" } }
+      }
+    },
     "guide.voice.other_voices" : {
       "comment" : "A section title for the other available voices.",
       "extractionState" : "extracted_with_value",

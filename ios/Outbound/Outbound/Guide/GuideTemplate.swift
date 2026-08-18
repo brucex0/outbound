@@ -139,7 +139,9 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         let targetRegion = locale.region?.identifier
         let downloadedVoices = AVSpeechSynthesisVoice.speechVoices()
             .filter { voice in
+                let voiceLocale = Locale(identifier: voice.language)
                 return (voice.quality == .premium || voice.quality == .enhanced)
+                    && voiceLocale.language.languageCode?.identifier == targetLanguage
                     && !voice.voiceTraits.contains(.isNoveltyVoice)
                     && !voice.voiceTraits.contains(.isPersonalVoice)
             }
@@ -212,8 +214,10 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         let targetRegion = locale.region?.identifier
         return AVSpeechSynthesisVoice.speechVoices()
             .filter { voice in
-                voice.quality == .default
+                let voiceLocale = Locale(identifier: voice.language)
+                return voice.quality == .default
                     && isSiriVoice(voice)
+                    && voiceLocale.language.languageCode?.identifier == targetLanguage
                     && !voice.voiceTraits.contains(.isNoveltyVoice)
                     && !voice.voiceTraits.contains(.isPersonalVoice)
             }

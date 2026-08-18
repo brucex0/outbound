@@ -10,6 +10,19 @@ struct GuideSelectionView: View {
 
     var body: some View {
         Form {
+            if guideCatalog.requiresVoiceSelection {
+                Section {
+                    Label(
+                        String(localized: "guide.voice.language_changed.title", defaultValue: "Choose a voice for this language"),
+                        systemImage: "waveform.badge.exclamationmark"
+                    )
+                    .font(.headline)
+                    Text(String(localized: "guide.voice.language_changed.detail", defaultValue: "Your app language changed. Choose and preview a compatible voice before spoken coaching resumes."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section(String(localized: "guide.voice.section.title", defaultValue: "Voice")) {
                 if compatibleDownloadedAppleVoices.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -200,12 +213,7 @@ struct GuideSelectionView: View {
         }
     }
 
-    private var compatibleDownloadedAppleVoices: [GuideVoice] {
-        let targetLanguage = AppLanguage.speechLocale.language.languageCode?.identifier
-        return downloadedAppleVoices.filter {
-            Locale(identifier: $0.locale).language.languageCode?.identifier == targetLanguage
-        }
-    }
+    private var compatibleDownloadedAppleVoices: [GuideVoice] { downloadedAppleVoices }
 
     private var downloadedAppleVoicesWithUnspecifiedGender: [GuideVoice] {
         downloadedAppleVoices.filter { $0.genderPresentation == nil }

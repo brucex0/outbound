@@ -6,9 +6,11 @@ final class GuideCatalogStore: ObservableObject {
     nonisolated static let themeKey = "outbound_theme_v1"
     @Published private(set) var templates: [GuideTemplate]
     @Published private(set) var selection: GuideSelection
+    @Published private(set) var requiresVoiceSelection = false
 
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
+    private let voiceLanguageKey = "guide_catalog_voice_language_v1"
 
     var selectedTemplate: GuideTemplate {
         templates.first { $0.id == selection.templateId } ?? templates[0]
@@ -49,20 +51,27 @@ final class GuideCatalogStore: ObservableObject {
             nudgeFrequency: .normal
         )
 
+        let hasSavedSelection: Bool
         if let data = defaults.data(forKey: selectionKey),
            let decoded = try? JSONDecoder().decode(GuideSelection.self, from: data) {
             selection = decoded
+            hasSavedSelection = true
         } else {
             selection = fallbackSelection
+            hasSavedSelection = false
         }
 
         normalizeSelection()
+        requiresVoiceSelection = !hasSavedSelection
+            || defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
     }
 
     func setVoice(id: String) {
         guard selectedTemplate.voiceOptions.contains(where: { $0.id == id }) else { return }
         selection.voiceId = id
+        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
+        requiresVoiceSelection = false
         saveSelection()
     }
 
@@ -83,6 +92,9 @@ final class GuideCatalogStore: ObservableObject {
     }
 
     func refreshInstalledVoices() {
+        if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
+            requiresVoiceSelection = true
+        }
         let voiceOptions = GuideVoice.availableOptions
         guard selectedTemplate.voiceOptions != voiceOptions else { return }
         templates = templates.map { template in
@@ -117,6 +129,7 @@ final class GuideCatalogStore: ObservableObject {
         var changed = false
         if !template.voiceOptions.contains(where: { $0.id == selection.voiceId }) {
             selection.voiceId = template.defaultVoice.id
+            requiresVoiceSelection = true
             changed = true
         }
         if changed {
