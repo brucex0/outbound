@@ -1427,6 +1427,30 @@ enum AssistantNavigationTarget: String, Codable, Hashable, Identifiable {
     case activityHistory
 
     var id: String { rawValue }
+
+    static func infer(from prompt: String) -> AssistantNavigationTarget? {
+        let lowercased = prompt.lowercased()
+
+        if (lowercased.contains("music") || lowercased.contains("apple music")) &&
+            (lowercased.contains("setting") || lowercased.contains("connect") || lowercased.contains("permission") || lowercased.contains("show me") || lowercased.contains("open")) {
+            return .settingsAppleMusic
+        }
+
+        if (lowercased.contains("health") || lowercased.contains("apple health")) &&
+            (lowercased.contains("setting") || lowercased.contains("permission") || lowercased.contains("show me") || lowercased.contains("open")) {
+            return .settingsAppleHealth
+        }
+
+        if lowercased.contains("guide") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick") || lowercased.contains("open")) {
+            return .guideSettings
+        }
+
+        if lowercased.contains("activity history") || lowercased.contains("my activities") || lowercased.contains("past activities") {
+            return .activityHistory
+        }
+
+        return nil
+    }
 }
 
 enum AssistantAuthor: String, Codable {
@@ -1634,7 +1658,7 @@ final class AssistantStore: ObservableObject {
     ) async -> AssistantNavigationTarget? {
         ensureSeedMessage(context: context)
         let inferredCapability = capability ?? Self.inferCapability(from: prompt)
-        let navigationTarget = Self.inferNavigationTarget(from: prompt)
+        let navigationTarget = AssistantNavigationTarget.infer(from: prompt)
         messages.append(
             AssistantMessage(
                 author: .user,
@@ -1843,30 +1867,6 @@ final class AssistantStore: ObservableObject {
     private func persistMessages() {
         guard let data = try? JSONEncoder().encode(messages) else { return }
         defaults.set(data, forKey: messagesKey)
-    }
-
-    private static func inferNavigationTarget(from prompt: String) -> AssistantNavigationTarget? {
-        let lowercased = prompt.lowercased()
-
-        if (lowercased.contains("music") || lowercased.contains("apple music")) &&
-            (lowercased.contains("setting") || lowercased.contains("connect") || lowercased.contains("permission") || lowercased.contains("show me")) {
-            return .settingsAppleMusic
-        }
-
-        if (lowercased.contains("health") || lowercased.contains("apple health")) &&
-            (lowercased.contains("setting") || lowercased.contains("permission") || lowercased.contains("show me")) {
-            return .settingsAppleHealth
-        }
-
-        if lowercased.contains("guide") && (lowercased.contains("setting") || lowercased.contains("change") || lowercased.contains("pick")) {
-            return .guideSettings
-        }
-
-        if lowercased.contains("activity history") || lowercased.contains("my activities") || lowercased.contains("past activities") {
-            return .activityHistory
-        }
-
-        return nil
     }
 
     private static func navigationReply(for target: AssistantNavigationTarget) -> String {

@@ -1052,6 +1052,7 @@ private struct TodayActivityCompanionSheet: View {
     private static let conversationStorageKey = "today_activity_companion_conversation_v1"
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     let message: String
     let isLoading: Bool
     let activity: SessionIntent
@@ -1144,6 +1145,12 @@ private struct TodayActivityCompanionSheet: View {
         guard !prompt.isEmpty else { return }
         draft = ""
         conversation.append(TodayCompanionLine(text: prompt, isUser: true))
+
+        if let target = AssistantNavigationTarget.infer(from: prompt) {
+            appNavigationStore.open(target)
+            dismiss()
+            return
+        }
 
         if let adjusted = adjustedActivity(for: prompt) {
             currentActivity = adjusted
