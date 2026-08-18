@@ -4,7 +4,7 @@ struct GuideSelectionView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var guideCatalog: GuideCatalogStore
     @State private var previewSynthesizer: GuideSpeechSynthesizer?
-    @State private var isPreviewingVoice = false
+    @State private var previewingVoiceID: String?
     @State private var showsVoiceDownloadHelp = false
     @State private var pendingStandardVoice: GuideVoice?
 
@@ -83,8 +83,8 @@ struct GuideSelectionView: View {
                     previewSelectedVoice()
                 } label: {
                     Label(
-                        isPreviewingVoice ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview") : String(localized: "guide.preview.play", defaultValue: "Play Coaching Preview"),
-                        systemImage: isPreviewingVoice ? "stop.fill" : "play.fill"
+                        isPreviewingSelectedVoice ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview") : String(localized: "guide.preview.play", defaultValue: "Play Coaching Preview"),
+                        systemImage: isPreviewingSelectedVoice ? "stop.fill" : "play.fill"
                     )
                 }
             }
@@ -130,36 +130,81 @@ struct GuideSelectionView: View {
     }
 
     private func voiceButton(_ voice: GuideVoice) -> some View {
-        Button {
-            stopVoicePreview()
-            if voice.isStandardQuality, guideCatalog.selectedVoice.id != voice.id {
-                pendingStandardVoice = voice
-            } else {
-                guideCatalog.setVoice(id: voice.id)
+        HStack(spacing: 12) {
+            Button {
+                stopVoicePreview()
+                if voice.isStandardQuality, guideCatalog.selectedVoice.id != voice.id {
+                    pendingStandardVoice = voice
+                } else {
+                    guideCatalog.setVoice(id: voice.id)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(voice.displayName)
+                            .foregroundStyle(.primary)
+                        Text(voice.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if guideCatalog.selectedVoice.id == voice.id {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
             }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "waveform.circle.fill")
+            .buttonStyle(.plain)
+
+            Button {
+                previewVoice(voice)
+            } label: {
+                Image(systemName: previewingVoiceID == voice.id ? "stop.circle.fill" : "play.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.orange)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                previewingVoiceID == voice.id
+                    ? String(localized: "guide.preview.stop", defaultValue: "Stop Preview")
+                    : String(localized: "guide.preview.voice", defaultValue: "Preview Voice")
+            )
+            .accessibilityHint(voice.displayName)
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(voice.displayName)
-                        .foregroundStyle(.primary)
-                    Text(voice.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    private var isPreviewingSelectedVoice: Bool {
+        previewingVoiceID == guideCatalog.selectedVoice.id
+    }
 
-                Spacer()
+    private func previewVoice(_ voice: GuideVoice) {
+        if previewingVoiceID == voice.id {
+            stopVoicePreview()
+            return
+        }
 
-                if guideCatalog.selectedVoice.id == voice.id {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.orange)
-                }
+        stopVoicePreview()
+        let synthesizer = previewSynthesizer ?? GuideSpeechSynthesizer()
+        synthesizer.eventHandler = { event in
+            if case .didFinish = event {
+                previewingVoiceID = nil
             }
         }
-        .buttonStyle(.plain)
+        previewSynthesizer = synthesizer
+        previewingVoiceID = voice.id
+        synthesizer.speak(
+            coachingPreviewText,
+            voice: voice,
+            rate: voice.rate,
+            volume: voice.volume
+        )
     }
 
     private func downloadedAppleVoices(for gender: GuideGenderPresentation) -> [GuideVoice] {
@@ -192,26 +237,7 @@ struct GuideSelectionView: View {
     }
 
     private func previewSelectedVoice() {
-        if isPreviewingVoice {
-            stopVoicePreview()
-            return
-        }
-
-        let synthesizer = previewSynthesizer ?? GuideSpeechSynthesizer()
-        synthesizer.eventHandler = { event in
-            if case .didFinish = event {
-                isPreviewingVoice = false
-            }
-        }
-        previewSynthesizer = synthesizer
-        isPreviewingVoice = true
-        let voice = guideCatalog.selectedVoice
-        synthesizer.speak(
-            coachingPreviewText,
-            voice: voice,
-            rate: voice.rate,
-            volume: voice.volume
-        )
+        previewVoice(guideCatalog.selectedVoice)
     }
 
     private var coachingPreviewText: String {
@@ -239,7 +265,7 @@ struct GuideSelectionView: View {
 
     private func stopVoicePreview() {
         previewSynthesizer?.stopSpeaking(at: .immediate)
-        isPreviewingVoice = false
+        previewingVoiceID = nil
     }
 
     private var intensityBinding: Binding<GuidanceIntensity> {
