@@ -5205,9 +5205,9 @@
     },
     "guide.voice.language_changed.detail" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your app language changed. Choose and preview a compatible voice before spoken coaching resumes." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "El idioma de la app ha cambiado. Elige y prueba una voz compatible antes de reanudar las indicaciones habladas." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 语言已更改。请先选择并试听兼容的语音，然后再恢复语音指导。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The app language changed, so your previous voice may pronounce coaching incorrectly. Spoken guidance is paused until you choose and preview a compatible voice." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El idioma de la app ha cambiado, por lo que la voz anterior podría pronunciar mal las indicaciones. Las indicaciones habladas están pausadas hasta que elijas y pruebes una voz compatible." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 语言已更改，之前的语音可能无法正确朗读指导内容。在你选择并试听兼容的语音前，语音指导将暂停。" } }
       }
     },
     "guide.voice.language_changed.title" : {
@@ -5215,6 +5215,34 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a voice for this language" } },
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una voz para este idioma" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "为当前语言选择语音" } }
+      }
+    },
+    "guide.voice.required.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose and preview a compatible voice before spoken guidance begins. Standard voices require an additional quality warning." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige y prueba una voz compatible antes de iniciar las indicaciones habladas. Las voces estándar requieren una advertencia adicional sobre su calidad." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请先选择并试听兼容的语音，再开始语音指导。选择标准语音时还会显示额外的质量警告。" } }
+      }
+    },
+    "guide.voice.required.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a voice for spoken guidance" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una voz para las indicaciones" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "为语音指导选择语音" } }
+      }
+    },
+    "guide.voice.unavailable.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The voice you chose is no longer installed or compatible with the app language. Spoken guidance is paused until you choose another voice." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La voz que elegiste ya no está instalada o no es compatible con el idioma de la app. Las indicaciones habladas están pausadas hasta que elijas otra voz." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你选择的语音已不再安装，或与 App 语言不兼容。在你选择其他语音前，语音指导将暂停。" } }
+      }
+    },
+    "guide.voice.unavailable.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your selected voice is unavailable" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La voz seleccionada no está disponible" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "所选语音不可用" } }
       }
     },
     "guide.voice.other_voices" : {

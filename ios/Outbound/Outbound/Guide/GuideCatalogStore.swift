@@ -1,6 +1,12 @@
 import Foundation
 import Combine
 
+enum VoiceSelectionRequirementReason {
+    case appLanguageChanged
+    case selectedVoiceUnavailable
+    case initialSelection
+}
+
 @MainActor
 final class GuideCatalogStore: ObservableObject {
     nonisolated static let themeKey = "outbound_theme_v1"
@@ -8,6 +14,7 @@ final class GuideCatalogStore: ObservableObject {
     @Published private(set) var selection: GuideSelection
     @Published private(set) var requiresVoiceSelection = false
     @Published private(set) var isVoiceSelectionPromptPresented = false
+    @Published private(set) var voiceSelectionRequirementReason: VoiceSelectionRequirementReason?
 
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
@@ -73,10 +80,17 @@ final class GuideCatalogStore: ObservableObject {
             defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
         }
 
+        let confirmedLanguage = defaults.string(forKey: voiceLanguageKey)
         normalizeSelection()
-        requiresVoiceSelection = !hasSavedSelection
-            || !savedVoiceIsCompatible
-            || defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier
+        if !hasSavedSelection {
+            voiceSelectionRequirementReason = .initialSelection
+        } else if confirmedLanguage != nil,
+                  confirmedLanguage != AppLanguage.currentIdentifier {
+            voiceSelectionRequirementReason = .appLanguageChanged
+        } else if !savedVoiceIsCompatible {
+            voiceSelectionRequirementReason = .selectedVoiceUnavailable
+        }
+        requiresVoiceSelection = voiceSelectionRequirementReason != nil
         isVoiceSelectionPromptPresented = requiresVoiceSelection
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
     }
@@ -87,6 +101,7 @@ final class GuideCatalogStore: ObservableObject {
         defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
         requiresVoiceSelection = false
         isVoiceSelectionPromptPresented = false
+        voiceSelectionRequirementReason = nil
         saveSelection()
     }
 
@@ -119,6 +134,7 @@ final class GuideCatalogStore: ObservableObject {
         if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
             requiresVoiceSelection = true
             isVoiceSelectionPromptPresented = true
+            voiceSelectionRequirementReason = .appLanguageChanged
         }
         let voiceOptions = GuideVoice.availableOptions
         guard selectedTemplate.voiceOptions != voiceOptions else { return }
@@ -155,6 +171,7 @@ final class GuideCatalogStore: ObservableObject {
         if !template.voiceOptions.contains(where: { $0.id == selection.voiceId }) {
             selection.voiceId = template.defaultVoice.id
             requiresVoiceSelection = true
+            voiceSelectionRequirementReason = .selectedVoiceUnavailable
             changed = true
         }
         if changed {

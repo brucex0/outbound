@@ -13,11 +13,11 @@ struct GuideSelectionView: View {
             if guideCatalog.requiresVoiceSelection {
                 Section {
                     Label(
-                        String(localized: "guide.voice.language_changed.title", defaultValue: "Choose a voice for this language"),
+                        voiceRequirementTitle,
                         systemImage: "waveform.badge.exclamationmark"
                     )
                     .font(.headline)
-                    Text(String(localized: "guide.voice.language_changed.detail", defaultValue: "Your app language changed. Choose and preview a compatible voice before spoken coaching resumes."))
+                    Text(voiceRequirementDetail)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -210,6 +210,28 @@ struct GuideSelectionView: View {
     private var downloadedAppleVoices: [GuideVoice] {
         guideCatalog.selectedTemplate.voiceOptions.filter {
             $0.appleVoiceIdentifier != nil && !$0.isStandardQuality
+        }
+    }
+
+    private var voiceRequirementTitle: String {
+        switch guideCatalog.voiceSelectionRequirementReason {
+        case .appLanguageChanged:
+            String(localized: "guide.voice.language_changed.title", defaultValue: "Choose a voice for this language")
+        case .selectedVoiceUnavailable:
+            String(localized: "guide.voice.unavailable.title", defaultValue: "Your selected voice is unavailable")
+        case .initialSelection, .none:
+            String(localized: "guide.voice.required.title", defaultValue: "Choose a voice for spoken guidance")
+        }
+    }
+
+    private var voiceRequirementDetail: String {
+        switch guideCatalog.voiceSelectionRequirementReason {
+        case .appLanguageChanged:
+            String(localized: "guide.voice.language_changed.detail", defaultValue: "The app language changed, so your previous voice may pronounce coaching incorrectly. Spoken guidance is paused until you choose and preview a compatible voice.")
+        case .selectedVoiceUnavailable:
+            String(localized: "guide.voice.unavailable.detail", defaultValue: "The voice you chose is no longer installed or compatible with the app language. Spoken guidance is paused until you choose another voice.")
+        case .initialSelection, .none:
+            String(localized: "guide.voice.required.detail", defaultValue: "Choose and preview a compatible voice before spoken guidance begins. Standard voices require an additional quality warning.")
         }
     }
 
