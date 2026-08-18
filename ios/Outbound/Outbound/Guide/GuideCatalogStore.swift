@@ -54,7 +54,7 @@ final class GuideCatalogStore: ObservableObject {
         let fallbackSelection = GuideSelection(
             templateId: fallbackTemplate.id,
             voiceId: fallbackTemplate.defaultVoice.id,
-            theme: .indigo,
+            theme: .victoryGold,
             intensity: .balanced,
             nudgeFrequency: .normal
         )
@@ -163,7 +163,7 @@ final class GuideCatalogStore: ObservableObject {
             selection = GuideSelection(
                 templateId: templates[0].id,
                 voiceId: templates[0].defaultVoice.id,
-                theme: .indigo,
+                theme: .victoryGold,
                 intensity: .balanced,
                 nudgeFrequency: .normal
             )
@@ -219,7 +219,7 @@ struct GuideSelection: Codable, Equatable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         templateId = try values.decode(String.self, forKey: .templateId)
         voiceId = try values.decode(String.self, forKey: .voiceId)
-        theme = try values.decodeIfPresent(OutboundTheme.self, forKey: .theme) ?? .indigo
+        theme = try values.decodeIfPresent(OutboundTheme.self, forKey: .theme) ?? .victoryGold
         intensity = try values.decode(GuidanceIntensity.self, forKey: .intensity)
         nudgeFrequency = try values.decode(NudgeFrequency.self, forKey: .nudgeFrequency)
     }

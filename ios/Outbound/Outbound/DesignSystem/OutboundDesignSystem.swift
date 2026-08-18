@@ -1,11 +1,11 @@
 import SwiftUI
 
 enum OutboundTheme: String, CaseIterable, Codable, Identifiable {
+    case victoryGold
     case indigo
     case ocean
     case forest
     case rose
-    case victoryGold
     case aurora
     case electricLime
     case neonPulse
@@ -115,13 +115,13 @@ enum OutboundTheme: String, CaseIterable, Codable, Identifiable {
         } else if let theme = Self(rawValue: value) {
             self = theme
         } else {
-            self = .indigo
+            self = .victoryGold
         }
     }
 }
 
 private struct OutboundThemeKey: EnvironmentKey {
-    static let defaultValue = OutboundTheme.indigo
+    static let defaultValue = OutboundTheme.victoryGold
 }
 
 extension EnvironmentValues {
@@ -155,7 +155,7 @@ enum OutboundPalette {
 
     private static var currentTheme: OutboundTheme {
         guard let rawValue = UserDefaults.standard.string(forKey: GuideCatalogStore.themeKey),
-              let theme = OutboundTheme(rawValue: rawValue) else { return .indigo }
+              let theme = OutboundTheme(rawValue: rawValue) else { return .victoryGold }
         return theme
     }
 }

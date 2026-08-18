@@ -21,16 +21,16 @@ Open this when adding, changing, or applying an app theme or editing theme disco
 
 | Theme | Personality | Palette direction |
 | --- | --- | --- |
-| Indigo | Confident, polished default | Deep indigo, violet, teal action |
+| Victory Gold | Optimistic, celebratory default | Pale gold, amber, bronze action |
+| Indigo | Confident and polished | Deep indigo, violet, teal action |
 | Ocean | Cool and clear | Cobalt, cyan, blue action |
 | Forest | Grounded and outdoorsy | Evergreen, leaf green, green action |
 | Rose | Warm and expressive | Berry, coral rose, deep rose action |
-| Victory Gold | Optimistic and celebratory | Pale gold, amber, bronze action |
 | Aurora | Luminous and imaginative | Violet, turquoise, pink |
 | Electric Lime | Sporty and fresh | Lime, emerald, deep green action |
 | Neon Pulse | Bold nighttime energy | Hot magenta, electric violet |
 
-The picker order progresses from familiar and calm through warm and celebratory to the most visually energetic choices. Keep Indigo first as the default and preserve this progression when evaluating additions.
+Victory Gold is the first-launch default and appears first in the picker. The remaining themes progress from familiar and calm to the most visually energetic choices.
 
 The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 
