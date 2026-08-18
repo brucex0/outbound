@@ -111,7 +111,11 @@ final class GuideCatalogStore: ObservableObject {
     }
 
     func dismissVoiceSelectionPrompt() {
+        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
+        requiresVoiceSelection = false
         isVoiceSelectionPromptPresented = false
+        voiceSelectionRequirementReason = nil
+        saveSelection()
     }
 
     func setTheme(_ theme: OutboundTheme) {
