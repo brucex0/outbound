@@ -1,7 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { authMiddleware } from "./middleware/auth.js";
 import activities from "./routes/activities.js";
 import assistant from "./routes/assistant.js";
@@ -19,13 +18,19 @@ import invites from "./routes/invites.js";
 import marketing from "./routes/marketing.js";
 import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
+import { rateLimit } from "./middleware/rateLimit.js";
 
 const app = new Hono<AppEnv>();
 
-app.use("*", logger());
 app.use("*", cors({ origin: "*" }));
 app.use("*", localeMiddleware);
+app.use("/v1/*", rateLimit({ name: "api", limit: 300, windowMs: 60_000, key: "ip" }));
 app.use("/v1/*", authMiddleware);
+app.use("/v1/auth/*", rateLimit({ name: "auth", limit: 30, windowMs: 60_000 }));
+app.use("/v1/assistant/*", rateLimit({ name: "assistant", limit: 20, windowMs: 60_000 }));
+app.use("/v1/companion/*", rateLimit({ name: "companion", limit: 20, windowMs: 60_000 }));
+app.use("/v1/guide/*", rateLimit({ name: "guide-ai", limit: 20, windowMs: 60_000 }));
+app.use("/v1/transcribe/*", rateLimit({ name: "transcribe", limit: 10, windowMs: 60_000 }));
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
 app.get("/live/:token", liveShareViewer);

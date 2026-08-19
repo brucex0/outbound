@@ -7,6 +7,7 @@
     "dev": "node --watch dist/index.js",
     "start:local": "npm run build && node scripts/start-local-stack.mjs",
     "start": "node dist/index.js",
+    "load:smoke": "node scripts/load-smoke.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

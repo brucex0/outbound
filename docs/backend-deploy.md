@@ -10,11 +10,11 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Assistant chat works without a database as long as `APP_AI_KEY` is configured.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
-- Hosted Postgres currently lives on the shared Cloud SQL instance `boatshare-20260214-zxia:us-central1:boatshare-db`.
-- The Outbound database on that instance is `outbound`.
+- Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.
+- The database on that instance is `outbound`; the old shared Boatshare database is no longer a runtime dependency.
 - The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
 - User-uploaded avatars use the `outbound-494602-avatars` GCS bucket in `us-central1`; Cloud Run sets `AVATAR_STORAGE_BUCKET=outbound-494602-avatars` and its runtime service account has object access there. Private activity photos use `MEDIA_STORAGE_BUCKET` when set and otherwise fall back to `<project-id>.firebasestorage.app`.
-- Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, and proxies authenticated downloads; bucket objects must not be made public.
+- Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, authenticates each download, and redirects it to a 15-minute signed URL; bucket objects must not be made public. A full Cloud CDN layer remains optional until media egress justifies it.
 
 ## Local Backend Run
 
@@ -55,7 +55,7 @@ Optional overrides:
 - Preferred account: `bruce.xia74@gmail.com`
 - Suggested region: `us-central1`
 - Suggested Cloud Run service name: `outbound-api`
-- Current Cloud Run runtime service account: `186140050970-compute@developer.gserviceaccount.com`
+- Cloud Run runtime service account: `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com`
 
 ## Required APIs
 
@@ -64,18 +64,21 @@ Enable these before the first deploy:
 - `run.googleapis.com`
 - `cloudbuild.googleapis.com`
 - `artifactregistry.googleapis.com`
-
-Optional later, when the backend grows beyond assistant-only testing:
-
 - `secretmanager.googleapis.com`
 - `sqladmin.googleapis.com`
+- `compute.googleapis.com`
+- `servicenetworking.googleapis.com`
+- `monitoring.googleapis.com`
+- `billingbudgets.googleapis.com`
+- `containeranalysis.googleapis.com`
 
 ## Current DB Connection
 
-- Shared Cloud SQL instance: `boatshare-20260214-zxia:us-central1:boatshare-db`
+- Dedicated Cloud SQL instance: `outbound-494602:us-central1:outbound-db`
 - Database: `outbound`
 - Runtime DB user: `outbound_app`
 - `outbound_app` should be treated as an app-owned credential, not a human admin login
+- Runtime connections use the instance's private address with `sslmode=require`, `connection_limit=5`, and `pool_timeout=10`.
 
 ## Deploy Command
 
@@ -91,13 +94,18 @@ Useful overrides:
 - `GCLOUD_ACCOUNT`
 - `REGION`
 - `SERVICE`
+- `RUNTIME_SERVICE_ACCOUNT`
+- `CLOUD_SQL_INSTANCE`
+- `CLOUD_RUN_CONCURRENCY`
+- `CLOUD_RUN_MIN_INSTANCES`
+- `CLOUD_RUN_MAX_INSTANCES`
 - `SOURCE_DIR`
 - `GCLOUD_BIN`
 - `RUN_LOCAL_BUILD=0`
 - `RUN_HEALTH_CHECK=0`
 - `ALLOW_DIRTY_BACKEND=1`
 
-The script runs a local backend build first, deploys `backend/` to Cloud Run, prints the service URL, and checks `/health`.
+The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, one warm instance, and a 20-instance ceiling, then prints the service URL and checks `/health`.
 
 Raw command equivalent:
 
@@ -107,7 +115,11 @@ $HOME/google-cloud-sdk/bin/gcloud run deploy outbound-api \
   --account=bruce.xia74@gmail.com \
   --region=us-central1 \
   --source=backend \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --service-account=outbound-api-runtime@outbound-494602.iam.gserviceaccount.com \
+  --network=default --subnet=default --vpc-egress=private-ranges-only \
+  --concurrency=100 --min=1 --max=20 \
+  --update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest
 ```
 
 Notes:
@@ -117,10 +129,7 @@ Notes:
 
 ## Secret Manager Plan
 
-Goal:
-
-- stop storing `DATABASE_URL` and API keys directly in Cloud Run env config
-- keep runtime secrets machine-readable for Cloud Run without needing humans to know the values
+`DATABASE_URL` and `APP_AI_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables.
 
 Recommended secrets:
 
@@ -130,7 +139,7 @@ Recommended secrets:
 Create the secrets:
 
 ```sh
-printf '%s' 'postgresql://outbound_app:REDACTED@localhost/outbound?host=/cloudsql/boatshare-20260214-zxia:us-central1:boatshare-db' | \
+printf '%s' 'postgresql://outbound_app:REDACTED@PRIVATE_IP:5432/outbound?sslmode=require&connection_limit=5&pool_timeout=10' | \
   $HOME/google-cloud-sdk/bin/gcloud secrets create outbound-database-url \
     --project=outbound-494602 \
     --data-file=-
@@ -150,17 +159,17 @@ printf '%s' 'SECRET_VALUE' | \
     --data-file=-
 ```
 
-Grant Cloud Run access:
+Grant the dedicated runtime identity access:
 
 ```sh
 $HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-database-url \
   --project=outbound-494602 \
-  --member='serviceAccount:186140050970-compute@developer.gserviceaccount.com' \
+  --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
   --role='roles/secretmanager.secretAccessor'
 
 $HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-app-ai-key \
   --project=outbound-494602 \
-  --member='serviceAccount:186140050970-compute@developer.gserviceaccount.com' \
+  --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
   --role='roles/secretmanager.secretAccessor'
 ```
 
@@ -184,7 +193,17 @@ $HOME/google-cloud-sdk/bin/gcloud run jobs update outbound-db-push \
 
 Before executing the schema job, update it to the same image digest as the latest ready `outbound-api` revision. A stale job image can report success while applying an older Prisma schema. The job should run `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes.
 
-After that, remove plaintext secret env vars from the service and job configs if they are still present.
+After that, confirm the service and schema job contain `valueFrom.secretKeyRef`, not plaintext `value` entries.
+
+Provider-side AI-key rotation is separate from Secret Manager migration: create a replacement key in the AI provider, add it as a new `outbound-app-ai-key` version, verify the service, then revoke the old provider key.
+
+## Launch Operations
+
+- Rate limiting is enforced in-process: 300 requests/minute per IP generally, 30/minute on auth, 20/minute on assistant/companion/guide, and 10/minute on transcription. These limits apply per warm instance; use an external shared limiter before adversarial-scale traffic.
+- Run the representative health-path smoke load with `LOAD_TEST_BASE_URL=https://SERVICE_URL npm run load:smoke` from `backend/`. Override `LOAD_TEST_CONCURRENCY` and `LOAD_TEST_REQUESTS` as needed.
+- Verify the uptime check, 5xx alert, Cloud SQL CPU/connections/storage alerts, and monthly budget notification after any project move.
+- Restore test: clone the newest backup into a temporary instance, validate schema and representative rows, record the recovery time, then delete the temporary instance. Never claim recovery readiness from backup configuration alone.
+- Owner access is currently limited to `bruce.xia74@gmail.com` and `cindyx@plainstride.com`. Both accounts must enforce MFA; keep these as emergency administrators and use narrower roles for routine work.
 
 ## Manual Schema Changes
 

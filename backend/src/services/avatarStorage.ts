@@ -35,6 +35,18 @@ export async function readAvatar(userId: string) {
   return { data, contentType: metadata.contentType ?? "image/jpeg" };
 }
 
+export async function signedAvatarURL(userId: string) {
+  const file = bucket().file(avatarStorageKey(userId));
+  const [exists] = await file.exists();
+  if (!exists) return null;
+  const [url] = await file.getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + 15 * 60 * 1_000,
+  });
+  return url;
+}
+
 export async function deleteAvatar(userId: string) {
   await bucket().file(avatarStorageKey(userId)).delete({ ignoreNotFound: true });
 }

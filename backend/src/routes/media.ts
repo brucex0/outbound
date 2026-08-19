@@ -10,7 +10,7 @@ import {
   activityPhotoStorageKey,
   deleteActivityPhoto,
   maximumActivityPhotoBytes,
-  readActivityPhoto,
+  signedActivityPhotoURL,
   saveActivityPhoto,
 } from "../services/activityPhotoStorage.js";
 
@@ -95,11 +95,9 @@ router.get("/activity-photos/:id/content", async (c) => {
     where: { id: c.req.param("id"), activity: { userId: user.id, deletedAt: null } },
   });
   if (!photo) return c.json({ error: "Photo not found." }, 404);
-  const data = await readActivityPhoto(photo.storageKey);
-  if (!data) return c.json({ error: "Photo content not found." }, 404);
-  return new Response(new Uint8Array(data), {
-    headers: { "Content-Type": photo.contentType, "Cache-Control": "private, max-age=3600" },
-  });
+  const url = await signedActivityPhotoURL(photo.storageKey);
+  if (!url) return c.json({ error: "Photo content not found." }, 404);
+  return c.redirect(url, 302);
 });
 
 router.delete("/activity-photos/:id", async (c) => {

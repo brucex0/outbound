@@ -9,21 +9,16 @@ import {
 } from "../services/currentUser.js";
 import type { AppEnv } from "../types/hono.js";
 import { deleteFirebaseUser } from "../services/firebaseAuth.js";
-import { deleteAvatar, readAvatar, saveAvatar } from "../services/avatarStorage.js";
+import { deleteAvatar, saveAvatar, signedAvatarURL } from "../services/avatarStorage.js";
 import { deleteUserActivityPhotos } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 
 router.get("/avatars/:userId", async (c) => {
   try {
-    const avatar = await readAvatar(c.req.param("userId"));
-    if (!avatar) return c.json({ error: "Avatar not found." }, 404);
-    return new Response(new Uint8Array(avatar.data), {
-      headers: {
-        "Content-Type": avatar.contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+    const url = await signedAvatarURL(c.req.param("userId"));
+    if (!url) return c.json({ error: "Avatar not found." }, 404);
+    return c.redirect(url, 302);
   } catch (error) {
     console.error("[avatar] read failed", error);
     return c.json({ error: "Avatar is unavailable." }, 503);

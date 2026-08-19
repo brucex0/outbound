@@ -46,6 +46,18 @@ export async function readActivityPhoto(storageKey: string) {
   return data;
 }
 
+export async function signedActivityPhotoURL(storageKey: string) {
+  const file = bucket().file(storageKey);
+  const [exists] = await file.exists();
+  if (!exists) return null;
+  const [url] = await file.getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + 15 * 60 * 1_000,
+  });
+  return url;
+}
+
 export async function deleteActivityPhoto(storageKey: string) {
   await bucket().file(storageKey).delete({ ignoreNotFound: true });
 }

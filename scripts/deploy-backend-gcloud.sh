@@ -15,6 +15,11 @@ Environment overrides:
   GCLOUD_ACCOUNT          default: bruce.xia74@gmail.com
   REGION                  default: us-central1
   SERVICE                 default: outbound-api
+  RUNTIME_SERVICE_ACCOUNT default: outbound-api-runtime@PROJECT_ID.iam.gserviceaccount.com
+  CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
+  CLOUD_RUN_CONCURRENCY   default: 100
+  CLOUD_RUN_MIN_INSTANCES default: 1
+  CLOUD_RUN_MAX_INSTANCES default: 20
   SOURCE_DIR              default: backend
   GCLOUD_BIN              default: $HOME/google-cloud-sdk/bin/gcloud, then PATH
   NPM_BIN                 optional npm path
@@ -36,6 +41,11 @@ PROJECT_ID="${PROJECT_ID:-outbound-494602}"
 GCLOUD_ACCOUNT="${GCLOUD_ACCOUNT:-bruce.xia74@gmail.com}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-outbound-api}"
+RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-outbound-api-runtime@$PROJECT_ID.iam.gserviceaccount.com}"
+CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
+CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
+CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-1}"
+CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-20}"
 SOURCE_DIR="${SOURCE_DIR:-backend}"
 GCLOUD_BIN="${GCLOUD_BIN:-$HOME/google-cloud-sdk/bin/gcloud}"
 NPM_BIN="${NPM_BIN:-}"
@@ -96,6 +106,15 @@ deploy_args=(
   "--region=$REGION"
   "--source=$SOURCE_DIR"
   --allow-unauthenticated
+  "--service-account=$RUNTIME_SERVICE_ACCOUNT"
+  "--add-cloudsql-instances=$CLOUD_SQL_INSTANCE"
+  "--network=default"
+  "--subnet=default"
+  "--vpc-egress=private-ranges-only"
+  "--concurrency=$CLOUD_RUN_CONCURRENCY"
+  "--min=$CLOUD_RUN_MIN_INSTANCES"
+  "--max=$CLOUD_RUN_MAX_INSTANCES"
+  "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest"
 )
 
 if [[ "$QUIET" == "1" ]]; then
