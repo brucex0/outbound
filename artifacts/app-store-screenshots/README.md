@@ -1,7 +1,7 @@
 # App Store Screenshots
 
-Upload these iPhone 6.9-inch screenshots in filename order. Each PNG is
-1320 × 2868 pixels with no alpha channel.
+Upload these iPhone screenshots in filename order. Each PNG is 1284 × 2778
+pixels with no alpha channel, matching an App Store Connect-supported size.
 
 1. `01-today-dark-gold.png` — completed-run Today overview and next recommendation
 2. `02-adaptive-workout-dark-gold.png` — structured comfortable-run recommendation
