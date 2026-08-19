@@ -153,13 +153,13 @@ struct ActivityDetailView: View {
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
                         statsHeroSection
+                        if !currentActivity.photos.isEmpty { photoSection }
                         if currentActivity.activityEventID != nil { sharedActivitySection }
                         metadataSection
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
                         routeControlsSection
                         if let reflection = currentActivity.reflection { guideHeroCard(reflection) }
-                        if !currentActivity.photos.isEmpty { photoSection }
                     }
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
                 }
@@ -612,6 +612,8 @@ struct ActivityDetailView: View {
                 .padding(.bottom, 16)
             }
         }
+        .background(Color(.systemBackground))
+        .accessibilityIdentifier("ActivityDetailPhotosSection")
     }
 
     // MARK: - Route Privacy

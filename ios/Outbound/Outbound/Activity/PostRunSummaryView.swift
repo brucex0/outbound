@@ -12,8 +12,9 @@ struct PostRunSummaryView: View {
     let workoutID: String
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
-    @State private var selectedPhotoIndices: Set<Int>
-    @State private var isPhotoSelectionPresented = false
+    @State private var draftPhotos: [PostRunPhoto]
+    @State private var isPhotoManagerPresented = false
+    @State private var isCameraPresented = false
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var isSubmitting = false
@@ -34,7 +35,7 @@ struct PostRunSummaryView: View {
         self.workoutID = workoutID
         self.onSave = onSave
         self.onDiscard = onDiscard
-        _selectedPhotoIndices = State(initialValue: Set(photos.indices))
+        _draftPhotos = State(initialValue: photos.map(PostRunPhoto.init))
     }
 
     var body: some View {
@@ -44,7 +45,7 @@ struct PostRunSummaryView: View {
                     heroImage
                     reflectionSection
                     feedbackSection
-                    if !photos.isEmpty { photoReviewSection }
+                    photoReviewSection
                     if let primaryRecognition = recognitionPreviews.first {
                         recognitionSection(primaryRecognition)
                     }
@@ -58,18 +59,23 @@ struct PostRunSummaryView: View {
             
             actionButtons
         }
-        .sheet(isPresented: $isPhotoSelectionPresented) {
-            PhotoSelectionView(
-                photos: photos,
-                selectedPhotoIndices: $selectedPhotoIndices
+        .sheet(isPresented: $isPhotoManagerPresented) {
+            PostRunPhotoManager(
+                photos: $draftPhotos,
+                onTakePhoto: { isCameraPresented = true }
             )
+        }
+        .fullScreenCover(isPresented: $isCameraPresented) {
+            PostRunCameraView { image in
+                draftPhotos.append(PostRunPhoto(image: image, metadata: finishPhotoMetadata))
+            }
         }
     }
 
     private var heroImage: some View {
         Group {
-            if let selectedPhoto = selectedPhotos.first {
-                Image(uiImage: selectedPhoto.0)
+            if let firstPhoto = draftPhotos.first {
+                Image(uiImage: firstPhoto.image)
                     .resizable()
                     .scaledToFill()
             } else {
@@ -255,21 +261,15 @@ struct PostRunSummaryView: View {
         .disabled(true)
     }
 
-    private var selectedPhotos: [(UIImage, PhotoMetadata)] {
-        photos.indices
-            .filter { selectedPhotoIndices.contains($0) }
-            .map { photos[$0] }
-    }
-
-    private var photoSelectionSummary: String {
-        switch selectedPhotos.count {
-        case 0:
-            return String(localized: "summary.photos.none_selected", defaultValue: "None selected")
-        case photos.count:
-            return "\(photos.count) selected"
-        default:
-            return "\(selectedPhotos.count) of \(photos.count) selected"
-        }
+    private var finishPhotoMetadata: PhotoMetadata {
+        PhotoMetadata(
+            takenAt: Date(),
+            paceAtShot: summary.avgPace,
+            hrAtShot: summary.healthMetrics?.averageHeartRateBPM,
+            distAtShot: summary.distanceM,
+            coordinate: summary.trackPoints.last?.coordinate,
+            captureContext: .paused
+        )
     }
 
     private var photoReviewSection: some View {
@@ -278,7 +278,9 @@ struct PostRunSummaryView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
                         .font(.headline)
-                    Text(photoSelectionSummary)
+                    Text(draftPhotos.isEmpty
+                         ? String(localized: "summary.photos.empty", defaultValue: "Add a finish photo")
+                         : String(localized: "\(draftPhotos.count) photos · drag to reorder"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -286,9 +288,14 @@ struct PostRunSummaryView: View {
                 Spacer()
 
                 Button {
-                    isPhotoSelectionPresented = true
+                    isPhotoManagerPresented = true
                 } label: {
-                    Label(String(localized: "summary.photos.manage", defaultValue: "Manage"), systemImage: "slider.horizontal.3")
+                    Label(
+                        draftPhotos.isEmpty
+                            ? String(localized: "summary.photos.take", defaultValue: "Take Photo")
+                            : String(localized: "summary.photos.manage", defaultValue: "Manage"),
+                        systemImage: draftPhotos.isEmpty ? "camera.fill" : "slider.horizontal.3"
+                    )
                         .font(.subheadline.weight(.semibold))
                 }
                 .buttonStyle(.bordered)
@@ -296,13 +303,12 @@ struct PostRunSummaryView: View {
                 .accessibilityIdentifier("ManagePhotosButton")
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(photos.indices, id: \.self) { index in
-                        PostRunPhotoThumbnail(
-                            image: photos[index].0,
-                            isSelected: selectedPhotoIndices.contains(index)
-                        )
+            if !draftPhotos.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(draftPhotos) { photo in
+                            PostRunPhotoThumbnail(image: photo.image)
+                        }
                     }
                 }
             }
@@ -345,7 +351,7 @@ struct PostRunSummaryView: View {
                     }
                 }
                 Task {
-                    let didSave = await onSave(selectedPhotos, reflection)
+                    let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection)
                     if !didSave {
                         isSubmitting = false
                     }
@@ -378,7 +384,6 @@ struct PostRunSummaryView: View {
 
 private struct PostRunPhotoThumbnail: View {
     let image: UIImage
-    let isSelected: Bool
 
     var body: some View {
         Image(uiImage: image)
@@ -386,62 +391,65 @@ private struct PostRunPhotoThumbnail: View {
             .scaledToFill()
             .frame(width: 68, height: 68)
             .clipped()
-            .opacity(isSelected ? 1 : 0.35)
-            .overlay(alignment: .topTrailing) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? .orange : .white)
-                    .padding(5)
-                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
-            }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
-private struct PhotoSelectionView: View {
-    let photos: [(UIImage, PhotoMetadata)]
-    @Binding var selectedPhotoIndices: Set<Int>
-    @Environment(\.dismiss) private var dismiss
+private struct PostRunPhoto: Identifiable {
+    let id: UUID
+    let image: UIImage
+    let metadata: PhotoMetadata
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 3),
-        GridItem(.flexible(), spacing: 3),
-        GridItem(.flexible(), spacing: 3)
-    ]
+    init(id: UUID = UUID(), image: UIImage, metadata: PhotoMetadata) {
+        self.id = id
+        self.image = image
+        self.metadata = metadata
+    }
+
+    init(_ photo: (UIImage, PhotoMetadata)) {
+        self.init(image: photo.0, metadata: photo.1)
+    }
+}
+
+private struct PostRunPhotoManager: View {
+    @Binding var photos: [PostRunPhoto]
+    let onTakePhoto: () -> Void
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 3) {
-                    ForEach(photos.indices, id: \.self) { index in
-                        Button {
-                            togglePhoto(at: index)
-                        } label: {
-                            PhotoSelectionTile(
-                                image: photos[index].0,
-                                isSelected: selectedPhotoIndices.contains(index)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Photo \(index + 1)")
-                        .accessibilityValue(selectedPhotoIndices.contains(index) ? "Selected" : "Not selected")
-                    }
-                }
-                .padding(16)
-            }
-            .navigationTitle(String(localized: "summary.photos.choose.title", defaultValue: "Choose Photos"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(allPhotosSelected ? String(localized: "common.clear", defaultValue: "Clear") : String(localized: "common.select_all", defaultValue: "Select All")) {
-                        if allPhotosSelected {
-                            selectedPhotoIndices.removeAll()
-                        } else {
-                            selectedPhotoIndices = Set(photos.indices)
-                        }
+            List {
+                Section {
+                    Button {
+                        onTakePhoto()
+                    } label: {
+                        Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
                     }
                 }
 
+                if !photos.isEmpty {
+                    Section(String(localized: "summary.photos.reorder", defaultValue: "Photos — drag to reorder")) {
+                        ForEach(photos) { photo in
+                            HStack(spacing: 12) {
+                                Image(uiImage: photo.image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 72, height: 56)
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text(photo.metadata.takenAt, style: .time)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .onDelete { photos.remove(atOffsets: $0) }
+                        .onMove { photos.move(fromOffsets: $0, toOffset: $1) }
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle(String(localized: "summary.photos.manage.title", defaultValue: "Manage Photos"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "common.done", defaultValue: "Done")) {
                         dismiss()
@@ -449,57 +457,66 @@ private struct PhotoSelectionView: View {
                     .fontWeight(.semibold)
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                Text(selectionCountText)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(.bar)
-            }
-        }
-    }
-
-    private var allPhotosSelected: Bool {
-        selectedPhotoIndices.count == photos.count
-    }
-
-    private var selectionCountText: String {
-        "\(selectedPhotoIndices.count) of \(photos.count) selected"
-    }
-
-    private func togglePhoto(at index: Int) {
-        if selectedPhotoIndices.contains(index) {
-            selectedPhotoIndices.remove(index)
-        } else {
-            selectedPhotoIndices.insert(index)
         }
     }
 }
 
-private struct PhotoSelectionTile: View {
-    let image: UIImage
-    let isSelected: Bool
+private struct PostRunCameraView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var camera = CameraController()
+    @State private var isCapturing = false
+    let onCapture: (UIImage) -> Void
 
     var body: some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fill)
-            .clipped()
-            .overlay {
-                if !isSelected {
-                    Color.black.opacity(0.38)
+        ZStack {
+            Color.black.ignoresSafeArea()
+            CameraPreviewLayer(session: camera.session).ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.title3.bold())
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    Spacer()
+                    Button { camera.flipCamera() } label: {
+                        Image(systemName: "camera.rotate.fill")
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
                 }
+                .foregroundStyle(.white)
+                .padding()
+
+                Spacer()
+
+                Button {
+                    guard !isCapturing else { return }
+                    isCapturing = true
+                    camera.capturePhoto { image in
+                        DispatchQueue.main.async {
+                            isCapturing = false
+                            guard let image else { return }
+                            onCapture(image)
+                            dismiss()
+                        }
+                    }
+                } label: {
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 72, height: 72)
+                        .overlay(Circle().stroke(.white.opacity(0.65), lineWidth: 5).padding(-7))
+                }
+                .disabled(isCapturing)
+                .accessibilityLabel(String(localized: "summary.photos.capture", defaultValue: "Take photo"))
+                .padding(.bottom, 32)
             }
-            .overlay(alignment: .topTrailing) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(isSelected ? .orange : .white)
-                    .padding(7)
-                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
-            }
+        }
+        .onAppear { camera.start() }
+        .onDisappear { camera.stop() }
     }
 }
 
