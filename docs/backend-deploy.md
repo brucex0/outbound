@@ -120,7 +120,7 @@ $HOME/google-cloud-sdk/bin/gcloud run deploy outbound-api \
   --network=default --subnet=default --vpc-egress=private-ranges-only \
   --concurrency=100 --min=0 --max=1 \
   --update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest \
-  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride Feedback <feedback@plainstride.com>'
+  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>'
 ```
 
 Notes:
@@ -192,7 +192,7 @@ $HOME/google-cloud-sdk/bin/gcloud run services update outbound-api \
   --project=outbound-494602 \
   --region=us-central1 \
   --set-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest \
-  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride Feedback <feedback@plainstride.com>'
+  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>'
 ```
 
 Wire the Cloud Run job to secrets too:

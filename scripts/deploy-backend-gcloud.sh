@@ -116,7 +116,7 @@ deploy_args=(
   "--max=$CLOUD_RUN_MAX_INSTANCES"
   "--max-instances=$CLOUD_RUN_MAX_INSTANCES"
   "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest"
-  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride Feedback <feedback@plainstride.com>"
+  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>"
 )
 
 if [[ "$QUIET" == "1" ]]; then
