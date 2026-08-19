@@ -191,7 +191,7 @@ $HOME/google-cloud-sdk/bin/gcloud run jobs update outbound-db-push \
   --set-secrets=DATABASE_URL=outbound-database-url:latest
 ```
 
-Before executing the schema job, update it to the same image digest as the latest ready `outbound-api` revision. A stale job image can report success while applying an older Prisma schema. The job should run `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes.
+Before executing the schema job, update it to the same image digest as the latest ready `outbound-api` revision. A stale job image can report success while applying an older Prisma schema. The job should run `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes. `db:push` skips Prisma Client generation because the immutable runtime image already contains the generated client and runs as a non-root user.
 
 After that, confirm the service and schema job contain `valueFrom.secretKeyRef`, not plaintext `value` entries.
 

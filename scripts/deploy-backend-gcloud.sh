@@ -107,13 +107,14 @@ deploy_args=(
   "--source=$SOURCE_DIR"
   --allow-unauthenticated
   "--service-account=$RUNTIME_SERVICE_ACCOUNT"
-  "--add-cloudsql-instances=$CLOUD_SQL_INSTANCE"
+  "--set-cloudsql-instances=$CLOUD_SQL_INSTANCE"
   "--network=default"
   "--subnet=default"
   "--vpc-egress=private-ranges-only"
   "--concurrency=$CLOUD_RUN_CONCURRENCY"
   "--min=$CLOUD_RUN_MIN_INSTANCES"
   "--max=$CLOUD_RUN_MAX_INSTANCES"
+  "--max-instances=$CLOUD_RUN_MAX_INSTANCES"
   "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest"
 )
 
