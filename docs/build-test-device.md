@@ -16,6 +16,14 @@ Open this when validating changes, installing on device, editing signing setting
 - To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for Plainstride Labs Inc. (`WT54K7D7VH`), use Manage Certificates to create an Apple Development certificate if needed, then select both the `Outbound` app target and `OutboundLiveActivityExtension` target and keep Automatically manage signing enabled with team `WT54K7D7VH`.
 - If Xcode offers to register `Bruce main` or create/download provisioning profiles during the next build, allow it.
 
+If a device build fails because `codesign` cannot access the signing key in the login keychain, run:
+
+```sh
+./scripts/fix-codesign-keychain.sh
+```
+
+Enter the Mac login password when prompted. The helper unlocks `~/Library/Keychains/login.keychain-db` and grants Apple tooling and `codesign` access to its keys. It does not store or print the password.
+
 ## Device IDs
 
 - User device name: `Bruce main`.
