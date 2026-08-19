@@ -681,11 +681,17 @@ private struct SimplifiedTodayView: View {
         guard let dayLabel = trainingPlanStore.todaySuggestion?.workout.dayLabel,
               !dayLabel.isEmpty,
               dayLabel.localizedCaseInsensitiveCompare("Today") != .orderedSame
-        else { return String(localized: "Next recommendation") }
+        else { return String(localized: "Up next") }
 
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
-        let tomorrowLabel = tomorrow.formatted(.dateTime.weekday(.abbreviated))
-        return dayLabel.localizedCaseInsensitiveCompare(tomorrowLabel) == .orderedSame
+        let tomorrowLabels = [
+            String(localized: "Tomorrow"),
+            tomorrow.formatted(.dateTime.weekday(.abbreviated)),
+            tomorrow.formatted(.dateTime.weekday(.wide))
+        ]
+        return tomorrowLabels.contains {
+            dayLabel.localizedCaseInsensitiveCompare($0) == .orderedSame
+        }
             ? String(localized: "Tomorrow")
             : dayLabel
     }
