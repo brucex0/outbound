@@ -5,7 +5,7 @@ pixels with no alpha channel, matching an App Store Connect-supported size.
 
 1. `01-today-dark-gold.png` — completed-run Today overview and next recommendation
 2. `02-adaptive-workout-dark-gold.png` — structured comfortable-run recommendation
-3. `03-live-10k-dark-gold.png` — seeded live 10K with route and performance metrics
+3. `03-live-10k-dark-gold.png` — realistic live 10K progression with route and performance metrics
 4. `04-progress-dark-gold.png` — weekly progress, learned duration, and recent runs
 5. `05-group-run-details-dark-gold.png` — group-run logistics, attendance, and training fit
 6. `06-social-dark-gold.png` — connections, upcoming group run, and running club

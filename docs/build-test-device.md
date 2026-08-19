@@ -75,7 +75,7 @@ xcodebuild -quiet \
   test
 ```
 
-The fixture opens an active map session with 10.00 km, 1:00:00 elapsed time, 6:00/km pace, 82 m elevation gain, 154 bpm heart rate, and a deterministic San Francisco route. The test verifies pause, resume, finish, summary metrics, and discard. The seed code and launch trigger are compiled only in Debug; Release builds do not contain them.
+The fixture opens a 10 km goal in progress at 7.82 km, 45:53 elapsed time, 5:41/km current pace, 61 m elevation gain, 152 bpm heart rate, and a deterministic San Francisco street loop. The completed summary reports a 5:52/km average pace. The test verifies pause, resume, finish, summary metrics, and discard. The seed code and launch trigger are compiled only in Debug; Release builds do not contain them.
 
 To exercise the same lifecycle manually on `Bruce main` while using the Firebase test account already signed into the app:
 

@@ -167,11 +167,11 @@ final class OutboundUITests: XCTestCase {
 
         app.buttons["Quick start"].tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Seeded live 10K"].exists)
-        XCTAssertTrue(app.staticTexts["10/10km"].exists)
-        XCTAssertTrue(app.staticTexts["6:00 /km"].exists)
-        XCTAssertTrue(app.staticTexts["82"].exists)
-        XCTAssertTrue(app.staticTexts["154"].exists)
+        XCTAssertTrue(app.staticTexts["Morning 10K"].exists)
+        XCTAssertTrue(app.staticTexts["7.8/10km"].exists)
+        XCTAssertTrue(app.staticTexts["5:41 /km"].exists)
+        XCTAssertTrue(app.staticTexts["61"].exists)
+        XCTAssertTrue(app.staticTexts["152"].exists)
         XCTAssertTrue(app.buttons["Show Camera"].exists)
         XCTAssertTrue(app.buttons["Recenter Map"].exists)
 
@@ -184,9 +184,9 @@ final class OutboundUITests: XCTestCase {
         app.buttons["Finish"].tap()
 
         XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["10.00"].exists)
-        XCTAssertTrue(app.staticTexts["6:00 /km"].exists)
-        XCTAssertTrue(app.staticTexts["154"].exists)
+        XCTAssertTrue(app.staticTexts["7.82"].exists)
+        XCTAssertTrue(app.staticTexts["5:52 /km"].exists)
+        XCTAssertTrue(app.staticTexts["152"].exists)
         app.buttons["Discard activity"].tap()
         XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
     }

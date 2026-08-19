@@ -331,9 +331,9 @@ struct RecordView: View {
         let intent = SessionIntent(
             id: "ui-test-live-10k",
             sport: .run,
-            title: "Seeded live 10K",
-            detail: "Run • 10 km target",
-            guideLine: "A deterministic 10K live run for UI testing.",
+            title: String(localized: "session.seed.live_10k.title", defaultValue: "Morning 10K"),
+            detail: String(localized: "session.seed.live_10k.detail", defaultValue: "Run • 10 km target"),
+            guideLine: String(localized: "session.seed.live_10k.guide", defaultValue: "Stay relaxed now, then build through the final 2 km."),
             startLabel: "Start now",
             targetDistanceMeters: 10_000
         )

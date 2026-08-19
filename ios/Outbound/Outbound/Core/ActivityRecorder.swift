@@ -146,11 +146,11 @@ final class ActivityRecorder: ObservableObject {
 
 #if DEBUG
     func seedLiveRunForUITest(
-        elapsedSeconds: Int = 3_600,
-        distanceMeters: Double = 10_000,
-        elevationGainMeters: Double = 82,
-        currentPaceSecsPerKm: Double = 360,
-        heartRate: Int = 154
+        elapsedSeconds: Int = 2_753,
+        distanceMeters: Double = 7_820,
+        elevationGainMeters: Double = 61,
+        currentPaceSecsPerKm: Double = 341,
+        heartRate: Int = 152
     ) {
         timer?.cancel()
         let now = Date()
@@ -182,27 +182,51 @@ final class ActivityRecorder: ObservableObject {
 
     private static func seeded10KRoute(endingAt endDate: Date) -> [CLLocation] {
         let coordinates: [(Double, Double, Double)] = [
-            (37.8078, -122.4750, 8),
-            (37.8061, -122.4660, 13),
-            (37.8032, -122.4568, 20),
-            (37.7994, -122.4477, 31),
-            (37.7950, -122.4390, 39),
-            (37.7900, -122.4310, 48),
-            (37.7846, -122.4239, 56),
-            (37.7790, -122.4174, 65),
-            (37.7732, -122.4118, 72),
-            (37.7671, -122.4073, 82),
-            (37.7608, -122.4041, 90),
+            (37.76060, -122.40435, 50),
+            (37.76210, -122.40435, 48),
+            (37.76360, -122.40435, 45),
+            (37.76510, -122.40435, 42),
+            (37.76660, -122.40435, 39),
+            (37.76660, -122.40710, 40),
+            (37.76660, -122.40985, 42),
+            (37.76660, -122.41260, 45),
+            (37.76660, -122.41535, 48),
+            (37.76660, -122.41810, 51),
+            (37.76660, -122.42085, 54),
+            (37.76660, -122.42360, 57),
+            (37.76660, -122.42635, 60),
+            (37.76660, -122.42910, 62),
+            (37.76660, -122.43185, 64),
+            (37.76460, -122.43185, 62),
+            (37.76260, -122.43185, 59),
+            (37.76060, -122.43185, 55),
+            (37.75860, -122.43185, 51),
+            (37.75660, -122.43185, 47),
+            (37.75460, -122.43185, 43),
+            (37.75260, -122.43185, 39),
+            (37.75260, -122.42880, 38),
+            (37.75260, -122.42575, 37),
+            (37.75260, -122.42270, 36),
+            (37.75260, -122.41965, 35),
+            (37.75260, -122.41660, 34),
+            (37.75260, -122.41355, 33),
+            (37.75260, -122.41050, 32),
+            (37.75260, -122.40745, 31),
+            (37.75260, -122.40435, 30),
+            (37.75460, -122.40435, 34),
+            (37.75660, -122.40435, 39),
+            (37.75860, -122.40435, 45),
+            (37.76060, -122.40435, 50),
         ]
-        let interval = TimeInterval(3_600 / max(1, coordinates.count - 1))
+        let interval = TimeInterval(2_753 / max(1, coordinates.count - 1))
         return coordinates.enumerated().map { index, point in
             CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: point.0, longitude: point.1),
                 altitude: point.2,
                 horizontalAccuracy: 5,
                 verticalAccuracy: 5,
-                course: 170,
-                speed: 2.78,
+                course: 180,
+                speed: 2.93,
                 timestamp: endDate.addingTimeInterval(-interval * Double(coordinates.count - 1 - index))
             )
         }
