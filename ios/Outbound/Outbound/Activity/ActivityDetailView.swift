@@ -20,6 +20,8 @@ struct ActivityDetailView: View {
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
     @State private var sheetDragHeight: CGFloat?
     @State private var showsCollapsedSheetContent = false
+    @State private var showsPhotos = false
+    @State private var selectedPhotoPage = 0
 
     private var currentActivity: SavedActivity {
         activityStore.activity(id: activity.id) ?? activity
@@ -77,17 +79,19 @@ struct ActivityDetailView: View {
             let interactiveSheetHeight = sheetDragHeight ?? sheetHeight
 
             ZStack(alignment: .bottom) {
-                ActivityRouteMapView(
-                    routeCoordinates: routeCoordinates,
-                    paceSegments: paceSegments,
-                    photos: currentActivity.photos,
-                    bottomInset: interactiveSheetHeight,
-                    isRouteProminent: sheetDetent != .expanded
-                )
-                .ignoresSafeArea()
+                backgroundMedia(bottomInset: interactiveSheetHeight)
 
                 activitySheet(height: interactiveSheetHeight, proxy: proxy)
                     .simultaneousGesture(sheetDragGesture(in: proxy))
+
+                if !currentActivity.photos.isEmpty && !isExpandedMediaToggleHidden {
+                    mediaToggleButton
+                        .position(
+                            x: proxy.size.width - 54,
+                            y: max(54, proxy.size.height - interactiveSheetHeight)
+                        )
+                        .zIndex(2)
+                }
             }
             .ignoresSafeArea(.container, edges: .bottom)
         }
@@ -134,6 +138,87 @@ struct ActivityDetailView: View {
                 .environmentObject(activityStore)
                 .environmentObject(gearStore)
         }
+        .onChange(of: currentActivity.photos.count) { _, count in
+            if count == 0 {
+                showsPhotos = false
+                selectedPhotoPage = 0
+            } else if selectedPhotoPage >= count {
+                selectedPhotoPage = max(0, count - 1)
+            }
+        }
+    }
+
+    private var isExpandedMediaToggleHidden: Bool {
+        sheetDetent == .expanded && sheetDragHeight == nil
+    }
+
+    @ViewBuilder
+    private func backgroundMedia(bottomInset: CGFloat) -> some View {
+        if showsPhotos && !currentActivity.photos.isEmpty {
+            ZStack {
+                Color.black
+                TabView(selection: $selectedPhotoPage) {
+                    ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
+                        if let url = activityStore.imageURL(for: photo) {
+                            LocalImageView(url: url) { Color.black }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .clipped()
+                                .tag(index)
+                        }
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: currentActivity.photos.count > 1 ? .automatic : .never))
+            }
+            .ignoresSafeArea()
+            .transition(.opacity)
+        } else {
+            ActivityRouteMapView(
+                routeCoordinates: routeCoordinates,
+                paceSegments: paceSegments,
+                photos: currentActivity.photos,
+                bottomInset: bottomInset,
+                isRouteProminent: sheetDetent != .expanded
+            )
+            .ignoresSafeArea()
+            .transition(.opacity)
+        }
+    }
+
+    private var mediaToggleButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showsPhotos.toggle()
+            }
+        } label: {
+            Group {
+                if showsPhotos {
+                    ActivityRouteMapView(
+                        routeCoordinates: routeCoordinates,
+                        paceSegments: paceSegments,
+                        photos: [],
+                        bottomInset: 0,
+                        isRouteProminent: true
+                    )
+                    .allowsHitTesting(false)
+                } else if let photo = currentActivity.photos.first,
+                          let url = activityStore.imageURL(for: photo) {
+                    LocalImageView(url: url) { Color(.secondarySystemBackground) }
+                }
+            }
+            .frame(width: 68, height: 68)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(.white, lineWidth: 2)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 6, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(showsPhotos
+            ? String(localized: "activity.media.show_map", defaultValue: "Show route map")
+            : String(localized: "activity.media.show_photos", defaultValue: "Show activity photos"))
+        .accessibilityIdentifier("ActivityDetailMediaToggle")
     }
 
     // MARK: - Sheet
@@ -155,8 +240,6 @@ struct ActivityDetailView: View {
 
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
-                        activityMediaPager
-                        photoManagementRow
                         statsHeroSection
                         if currentActivity.activityEventID != nil { sharedActivitySection }
                         metadataSection
@@ -583,52 +666,6 @@ struct ActivityDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.top, 16)
-    }
-
-    // MARK: - Media
-
-    private var activityMediaPager: some View {
-        TabView {
-            ActivityRouteMapView(
-                routeCoordinates: routeCoordinates,
-                paceSegments: paceSegments,
-                photos: [],
-                bottomInset: 0,
-                isRouteProminent: true
-            )
-            .allowsHitTesting(false)
-            .tag("route")
-
-            ForEach(currentActivity.photos) { photo in
-                if let url = activityStore.imageURL(for: photo) {
-                    LocalImageView(url: url) { Color(.systemGroupedBackground) }
-                        .scaledToFill()
-                        .clipped()
-                        .tag(photo.id.uuidString)
-                }
-            }
-        }
-        .tabViewStyle(.page(indexDisplayMode: .automatic))
-        .frame(height: 260)
-        .accessibilityIdentifier("ActivityDetailPhotosSection")
-    }
-
-    private var photoManagementRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(String(localized: "activity.photos.title", defaultValue: "Photos"))
-                    .font(.headline)
-                Text(String(localized: "\(currentActivity.photos.count) photos"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text(String(localized: "activity.photos.edit_hint", defaultValue: "Edit activity to manage"))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.orange)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Route Privacy

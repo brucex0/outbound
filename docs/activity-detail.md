@@ -15,7 +15,7 @@ The current view is a Strava-style layered detail page:
 5. **Collapsible splits** — per-km/mile breakdown
 6. **Route controls** — persistent navigation-bar Share action plus an inline privacy badge; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Guide reflection** — full card with reflection title/body and optional nudge
-8. **Photos** — horizontal story strip directly below the stats so saved photos remain visible at the default sheet position
+8. **Photos** — a thumbnail overlapping the sheet edge toggles the full-screen background between the route map and a swipeable photo pager
 
 The Share Activity Card action renders a 9:16 image built from a full-bleed muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid in a Strava-style lower gradient. The lower-right branding includes a scannable canonical referral URL that opens an installed app or offers the appropriate App Store, Play Store, iOS beta, and Android beta destinations configured on the backend. The system Share Sheet receives the rendered image directly so it offers photo-specific actions such as Save Image, while Copy and messaging apps cannot mistake a secondary URL payload for an extensionless attachment. If referral creation is unavailable, the QR code uses the stable `https://run.plainstride.com/invite` landing link; if a route snapshot cannot be created, rendering falls back to a stats-only card so sharing still succeeds.
 
@@ -134,8 +134,8 @@ The layout uses a persistent full-screen route map with a bottom information she
 3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
-6. **Content order** — route/photo pager, photo management summary, stats, elevation, splits, route controls, guide card
-7. **Media layout** — the route map is always the first page, saved photos follow as full-size swipeable pages, and thumbnail strips are not used
+6. **Content order** — stats, elevation, splits, route controls, guide card
+7. **Media layout** — the route map remains the default full-screen background; a Strava-style thumbnail overlapping the sheet edge switches the background to a swipeable full-screen photo pager, and changes to a map preview while photos are shown
 8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity
 9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
 10. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
