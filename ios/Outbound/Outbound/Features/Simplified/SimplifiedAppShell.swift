@@ -7,6 +7,14 @@ enum SimplifiedAppTab: Hashable {
     case social
     case today
     case me
+
+    var feedbackPageName: String {
+        switch self {
+        case .social: "Social"
+        case .today: "Today"
+        case .me: "Me"
+        }
+    }
 }
 
 struct SimplifiedAppShell: View {
@@ -21,6 +29,7 @@ struct SimplifiedAppShell: View {
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
     let activeSport: SportType?
+    @Binding var feedbackPage: String
     let onStartRun: (SessionIntent?) -> Void
     @State private var selection: SimplifiedAppTab = .today
     @State private var showsAssistant = false
@@ -49,6 +58,9 @@ struct SimplifiedAppShell: View {
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
+        .onChange(of: selection, initial: true) { _, tab in
+            feedbackPage = tab.feedbackPageName
+        }
         .overlay(alignment: .bottomLeading) {
             Button {
                 showsAssistant = true
@@ -2130,7 +2142,7 @@ private struct SimplifiedSettingsView: View {
             }
             Section {
                 Button {
-                    FeedbackTrigger.present()
+                    FeedbackTrigger.present(currentPage: "Settings")
                 } label: {
                     Label("Send feedback", systemImage: "ladybug")
                 }
@@ -2760,6 +2772,7 @@ private extension RunnerConfidence {
         activitySessionState: .idle,
         activityElapsedSeconds: 0,
         activeSport: nil,
+        feedbackPage: .constant("Today"),
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())

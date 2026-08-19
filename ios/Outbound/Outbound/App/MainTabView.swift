@@ -18,13 +18,14 @@ struct MainTabView: View {
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
+    @State private var feedbackPage = "Today"
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             currentContent
         }
         .background(Color(.systemGroupedBackground))
-        .feedbackReporter(isShakeDisabled: activitySessionState != .idle)
+        .feedbackReporter(isShakeDisabled: activitySessionState != .idle, currentPage: feedbackPage)
         .overlay(alignment: .bottomTrailing) {
             if !isActivityVisible && activitySessionState != .idle {
                 ActivityPortalButton(
@@ -141,7 +142,8 @@ struct MainTabView: View {
         SimplifiedAppShell(
             activitySessionState: activitySessionState,
             activityElapsedSeconds: activityElapsedSeconds,
-            activeSport: activeLaunch?.intent?.sport
+            activeSport: activeLaunch?.intent?.sport,
+            feedbackPage: $feedbackPage
         ) { intent in
             presentActivity(intent: intent)
         }

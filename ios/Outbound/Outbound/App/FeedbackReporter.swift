@@ -4,8 +4,8 @@ import UIKit
 enum FeedbackTrigger {
     static let notification = Notification.Name("plainstride.presentFeedback")
 
-    static func present() {
-        NotificationCenter.default.post(name: notification, object: nil)
+    static func present(currentPage: String? = nil) {
+        NotificationCenter.default.post(name: notification, object: currentPage)
     }
 }
 
@@ -32,9 +32,11 @@ private enum FeedbackKind: String, CaseIterable, Identifiable {
 
 struct FeedbackReporterModifier: ViewModifier {
     let isShakeDisabled: Bool
+    let currentPage: String
     @State private var isPresented = false
     @State private var screenshot: UIImage?
     @State private var firstShakeAt: Date?
+    @State private var presentedPage = "Unknown"
 
     private let doubleShakeInterval: TimeInterval = 3
 
@@ -47,8 +49,8 @@ struct FeedbackReporterModifier: ViewModifier {
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
             }
-            .onReceive(NotificationCenter.default.publisher(for: FeedbackTrigger.notification)) { _ in
-                presentFeedback()
+            .onReceive(NotificationCenter.default.publisher(for: FeedbackTrigger.notification)) { notification in
+                presentFeedback(pageOverride: notification.object as? String)
             }
             .onChange(of: isShakeDisabled) { _, isDisabled in
                 if isDisabled {
@@ -56,7 +58,7 @@ struct FeedbackReporterModifier: ViewModifier {
                 }
             }
             .sheet(isPresented: $isPresented) {
-                FeedbackForm(screenshot: screenshot)
+                FeedbackForm(screenshot: screenshot, currentPage: presentedPage)
             }
     }
 
@@ -71,16 +73,17 @@ struct FeedbackReporterModifier: ViewModifier {
         presentFeedback()
     }
 
-    private func presentFeedback() {
+    private func presentFeedback(pageOverride: String? = nil) {
         guard !isPresented else { return }
+        presentedPage = pageOverride ?? currentPage
         screenshot = FeedbackScreenshot.capture()
         isPresented = true
     }
 }
 
 extension View {
-    func feedbackReporter(isShakeDisabled: Bool = false) -> some View {
-        modifier(FeedbackReporterModifier(isShakeDisabled: isShakeDisabled))
+    func feedbackReporter(isShakeDisabled: Bool = false, currentPage: String) -> some View {
+        modifier(FeedbackReporterModifier(isShakeDisabled: isShakeDisabled, currentPage: currentPage))
     }
 }
 
@@ -93,9 +96,11 @@ private struct FeedbackForm: View {
     @State private var isAnnotating = false
     @State private var isSubmitting = false
     @State private var toast: FeedbackToast?
+    private let currentPage: String
 
-    init(screenshot: UIImage?) {
+    init(screenshot: UIImage?, currentPage: String) {
         _screenshot = State(initialValue: screenshot)
+        self.currentPage = currentPage
     }
 
     var body: some View {
@@ -118,7 +123,7 @@ private struct FeedbackForm: View {
                 Section {
                     Toggle("Include app and device details", isOn: $includesDiagnostics)
                 } footer: {
-                    Text("This includes the app version, device type, and iOS version. It does not include health, location, or account data.")
+                    Text("This includes the app version, specific device model, and iOS version. Your account ID, email, and current page are attached to every report. Health and location data are never included.")
                 }
 
                 if let screenshot {
@@ -203,6 +208,7 @@ private struct FeedbackForm: View {
         let request = FeedbackSubmissionRequest(
             kind: kind.apiValue,
             message: trimmedMessage,
+            currentPage: currentPage,
             diagnostics: includesDiagnostics ? FeedbackDiagnostics.summary : nil,
             screenshotBase64: screenshot?.jpegData(compressionQuality: 0.82)?.base64EncodedString(),
             screenshotContentType: screenshot == nil ? nil : "image/jpeg"
@@ -231,6 +237,7 @@ private struct FeedbackForm: View {
 struct FeedbackSubmissionRequest: Encodable {
     let kind: String
     let message: String
+    let currentPage: String
     let diagnostics: String?
     let screenshotBase64: String?
     let screenshotContentType: String?
@@ -399,8 +406,31 @@ private enum FeedbackDiagnostics {
         let version = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = info?["CFBundleVersion"] as? String ?? "Unknown"
         let device = UIDevice.current
-        return "App: \(version) (\(build))\nDevice: \(device.model)\niOS: \(device.systemVersion)"
+        return "App: \(version) (\(build))\nDevice: \(DeviceModel.displayName)\niOS: \(device.systemVersion)"
     }
+}
+
+private enum DeviceModel {
+    static var displayName: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let identifier = withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
+        }
+        let resolvedIdentifier = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? identifier
+        let name = names[resolvedIdentifier] ?? "iPhone"
+        return "\(name) (\(resolvedIdentifier))"
+    }
+
+    private static let names: [String: String] = [
+        "iPhone15,2": "iPhone 14 Pro", "iPhone15,3": "iPhone 14 Pro Max",
+        "iPhone15,4": "iPhone 15", "iPhone15,5": "iPhone 15 Plus",
+        "iPhone16,1": "iPhone 15 Pro", "iPhone16,2": "iPhone 15 Pro Max",
+        "iPhone17,1": "iPhone 16 Pro", "iPhone17,2": "iPhone 16 Pro Max",
+        "iPhone17,3": "iPhone 16", "iPhone17,4": "iPhone 16 Plus", "iPhone17,5": "iPhone 16e",
+        "iPhone18,1": "iPhone 17 Pro", "iPhone18,2": "iPhone 17 Pro Max",
+        "iPhone18,3": "iPhone 17", "iPhone18,4": "iPhone Air"
+    ]
 }
 
 private struct ShakeDetector: UIViewControllerRepresentable {

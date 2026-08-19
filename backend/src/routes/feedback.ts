@@ -9,6 +9,7 @@ const router = new Hono<AppEnv>();
 const feedbackSchema = z.object({
   kind: z.enum(["bug", "suggestion"]),
   message: z.string().trim().min(1).max(5_000),
+  currentPage: z.string().trim().min(1).max(200),
   diagnostics: z.string().max(2_000).nullable().optional(),
   screenshotBase64: z.string().max(8_000_000).nullable().optional(),
   screenshotContentType: z.literal("image/jpeg").nullable().optional(),
@@ -32,12 +33,13 @@ router.post("/", zValidator("json", feedbackSchema), async (c) => {
     return c.json({ error: "Screenshot is too large." }, 413);
   }
 
-  const reporter = identity.email ?? identity.firebaseUid;
   const sections = [
     body.message,
     "",
     `Type: ${body.kind}`,
-    `Reporter: ${reporter}`,
+    `User ID: ${identity.firebaseUid}`,
+    `User email: ${identity.email ?? "Unavailable"}`,
+    `Current page: ${body.currentPage}`,
     ...(body.diagnostics ? ["", body.diagnostics] : []),
   ];
   const delivery = await fetch("https://api.resend.com/emails", {
