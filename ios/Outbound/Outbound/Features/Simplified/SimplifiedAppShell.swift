@@ -198,6 +198,7 @@ private struct SimplifiedTodayView: View {
                         }
 
                         upcomingWorkoutButton
+                        trainingPlanMenu
                     } else if let activityEventToday {
                         activityEventCard(activityEventToday)
                         quickRunButton
@@ -2050,25 +2051,6 @@ private struct SimplifiedSettingsView: View {
                 if let label = authStore.currentLoginLabel {
                     LabeledContent("Signed in as", value: label)
                 }
-                if !authStore.connectedProviderLabels.isEmpty {
-                    LabeledContent("Sign-in methods", value: authStore.connectedProviderLabels.joined(separator: ", "))
-                }
-                if authStore.isFirebaseConfigured, authStore.user != nil, !authStore.isGoogleLinked {
-                    Button {
-                        Task { await authStore.connectGoogleAccount() }
-                    } label: {
-                        Label("Connect Google", systemImage: "globe")
-                    }
-                    .disabled(authStore.isBusy)
-                }
-                if authStore.isAppleSignInAvailable, authStore.user != nil, !authStore.isAppleLinked {
-                    Button {
-                        Task { await authStore.connectAppleAccount() }
-                    } label: {
-                        Label("Connect Apple", systemImage: "apple.logo")
-                    }
-                    .disabled(authStore.isBusy)
-                }
                 if let error = authStore.authError {
                     Text(error)
                         .font(.caption)
@@ -2077,24 +2059,16 @@ private struct SimplifiedSettingsView: View {
                 Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                     confirmsSignOut = true
                 }
-                Button("Delete Account", systemImage: "trash", role: .destructive) {
-                    confirmsAccountDeletion = true
-                }
-                .disabled(authStore.isBusy)
             }
             Section("Profile") {
                 NavigationLink {
-                    SimplifiedProfileEditorView(
-                        initialProfile: profile,
-                        onProfileUpdated: onProfileUpdated
+                    BioSettingsView(
+                        profile: profile,
+                        onProfileUpdated: onProfileUpdated,
+                        onTrainingProfileUpdated: onTrainingProfileUpdated
                     )
                 } label: {
-                    Label("Name and running bio", systemImage: "person.crop.circle")
-                }
-                NavigationLink {
-                    TrainingProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
-                } label: {
-                    Label("Training profile", systemImage: "heart.text.square")
+                    Label("Bio", systemImage: "person.crop.circle")
                 }
                 NavigationLink {
                     CompanionMemoryView()
@@ -2191,6 +2165,15 @@ private struct SimplifiedSettingsView: View {
             Section {
                 Text("Plainstride keeps private health details on this device and never shows them in Together.")
                     .font(.footnote).foregroundStyle(.secondary)
+                LabeledContent("Version", value: appVersion)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Delete account") {
+                    confirmsAccountDeletion = true
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .disabled(authStore.isBusy)
             }
         }
         .navigationTitle("Settings")
@@ -2217,6 +2200,34 @@ private struct SimplifiedSettingsView: View {
             return trainingProfileSex == .male
         }
         return onboardingStore.completedProfile?.bodyProfile.sex == .male
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        return build.map { "\(version) (\($0))" } ?? version
+    }
+}
+
+private struct BioSettingsView: View {
+    let profile: AppUserProfileDTO?
+    let onProfileUpdated: (AppUserProfileDTO) -> Void
+    let onTrainingProfileUpdated: (TrainingProfileDTO) -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                NavigationLink("Name, photo, and bio") {
+                    SimplifiedProfileEditorView(initialProfile: profile, onProfileUpdated: onProfileUpdated)
+                }
+                NavigationLink("Training details") {
+                    TrainingProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
+                }
+            } footer: {
+                Text("Your public bio and private personalization details live together here.")
+            }
+        }
+        .navigationTitle("Bio")
     }
 }
 

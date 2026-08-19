@@ -11,6 +11,7 @@ struct SocialHomeView: View {
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var isCreateActivityEventPresented = false
     @State private var showsNotifications = false
+    @State private var toastMessage: String?
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.connections.filter { $0.status == "accepted" }.count < 3
@@ -117,6 +118,25 @@ struct SocialHomeView: View {
             .onChange(of: pushNotifications.pendingNotificationID) { _, notificationID in
                 guard notificationID != nil else { return }
                 showsNotifications = true
+            }
+            .overlay(alignment: .top) {
+                if let toastMessage {
+                    Label(toastMessage, systemImage: "exclamationmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: toastMessage)
+            .task(id: toastMessage) {
+                guard toastMessage != nil else { return }
+                try? await Task.sleep(for: .seconds(2.2))
+                guard !Task.isCancelled else { return }
+                toastMessage = nil
             }
             .task(id: socialStore.state.posts.map(\.id)) {
                 reconcileSharedActivityMilestones()
@@ -467,7 +487,11 @@ struct SocialHomeView: View {
 
     private func toggleCheer(on post: TogetherPostDTO) async {
         let addsSupport = !post.currentUserCheered
-        guard await socialStore.toggleCheer(on: post), addsSupport else { return }
+        guard await socialStore.toggleCheer(on: post) else {
+            toastMessage = String(localized: "Could not update cheer. Try again.")
+            return
+        }
+        guard addsSupport else { return }
         _ = socialRecognitionStore.registerSupport(for: post.id)
     }
 
@@ -1177,6 +1201,8 @@ private struct SocialCommentsView: View {
     @Environment(\.dismiss) private var dismiss
     let post: TogetherPostDTO
     @State private var draft = ""
+    @State private var failedDraft: String?
+    @State private var toastMessage: String?
 
     private var comments: [TogetherCommentDTO] {
         socialStore.commentsByPostID[post.id] ?? post.comments
@@ -1225,6 +1251,9 @@ private struct SocialCommentsView: View {
                         Task {
                             if await socialStore.addComment(body, to: post) {
                                 _ = socialRecognitionStore.registerSupport(for: post.id)
+                            } else {
+                                failedDraft = body
+                                toastMessage = String(localized: "Comment failed to post. Tap to try again.")
                             }
                         }
                     } label: {
@@ -1241,6 +1270,23 @@ private struct SocialCommentsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .task { await socialStore.loadComments(for: post) }
+            .overlay(alignment: .top) {
+                if let toastMessage {
+                    Button {
+                        if let failedDraft { draft = failedDraft }
+                        self.toastMessage = nil
+                    } label: {
+                        Label(toastMessage, systemImage: "exclamationmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(.regularMaterial, in: Capsule())
+                            .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+                }
+            }
         }
     }
 }

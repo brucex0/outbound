@@ -182,8 +182,9 @@ final class TogetherStore: ObservableObject {
     @discardableResult
     func toggleCheer(on post: TogetherPostDTO) async -> Bool {
         guard !isSocialMutationPending else { return false }
+        let originalState = state
+        state = replacing(post: post, cheered: !post.currentUserCheered)
         if isUITestSeedData {
-            state = replacing(post: post, cheered: !post.currentUserCheered)
             return true
         }
         isSocialMutationPending = true
@@ -194,9 +195,10 @@ final class TogetherStore: ObservableObject {
             } else {
                 _ = try await api.cheerSocialPost(postID: post.id)
             }
-            await refresh()
+            persist()
             return true
         } catch {
+            state = originalState
             errorMessage = error.localizedDescription
             return false
         }
@@ -219,18 +221,30 @@ final class TogetherStore: ObservableObject {
     func addComment(_ body: String, to post: TogetherPostDTO) async -> Bool {
         let cleaned = body.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return false }
+        let originalComments = commentsByPostID[post.id]
+        let originalState = state
+        let optimisticComment = TogetherCommentDTO(
+            id: "pending-\(UUID().uuidString)",
+            body: cleaned,
+            createdAt: Date(),
+            author: SocialPersonDTO(id: "current-user", username: "you", displayName: "You", avatarUrl: nil),
+            canDelete: false
+        )
+        var comments = commentsByPostID[post.id] ?? post.comments
+        comments.append(optimisticComment)
+        commentsByPostID[post.id] = comments
+        state = replacing(post: post, commentCountDelta: 1)
         if isUITestSeedData {
-            var comments = commentsByPostID[post.id] ?? post.comments
-            comments.append(Self.uiTestComment(body: cleaned))
-            commentsByPostID[post.id] = comments
             return true
         }
         do {
             _ = try await api.commentOnSocialPost(postID: post.id, body: cleaned)
             await loadComments(for: post)
-            await refresh()
+            persist()
             return true
         } catch {
+            commentsByPostID[post.id] = originalComments
+            state = originalState
             errorMessage = error.localizedDescription
             return false
         }
@@ -627,6 +641,25 @@ final class TogetherStore: ObservableObject {
                 reactionCount: max(0, current.reactionCount + (cheered ? 1 : -1)),
                 currentUserCheered: cheered,
                 commentCount: current.commentCount,
+                comments: current.comments
+            )
+        }
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts)
+    }
+
+    private func replacing(post: TogetherPostDTO, commentCountDelta: Int) -> TogetherResponseDTO {
+        let posts = state.posts.map { current in
+            guard current.id == post.id else { return current }
+            return TogetherPostDTO(
+                id: current.id,
+                caption: current.caption,
+                createdAt: current.createdAt,
+                isCurrentUser: current.isCurrentUser,
+                user: current.user,
+                activity: current.activity,
+                reactionCount: current.reactionCount,
+                currentUserCheered: current.currentUserCheered,
+                commentCount: max(0, current.commentCount + commentCountDelta),
                 comments: current.comments
             )
         }
