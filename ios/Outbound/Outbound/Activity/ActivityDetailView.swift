@@ -152,8 +152,9 @@ struct ActivityDetailView: View {
 
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
+                        activityMediaPager
+                        photoManagementRow
                         statsHeroSection
-                        if !currentActivity.photos.isEmpty { photoSection }
                         if currentActivity.activityEventID != nil { sharedActivitySection }
                         metadataSection
                         elevationProfileSection
@@ -581,39 +582,50 @@ struct ActivityDetailView: View {
         .padding(.top, 16)
     }
 
-    // MARK: - Photos
+    // MARK: - Media
 
-    private var photoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "activity.photos.title", defaultValue: "Photos"))
-                .font(.headline)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+    private var activityMediaPager: some View {
+        TabView {
+            ActivityRouteMapView(
+                routeCoordinates: routeCoordinates,
+                paceSegments: paceSegments,
+                photos: [],
+                bottomInset: 0,
+                isRouteProminent: true
+            )
+            .allowsHitTesting(false)
+            .tag("route")
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(currentActivity.photos) { photo in
-                        if let url = activityStore.imageURL(for: photo) {
-                            VStack(spacing: 4) {
-                                LocalImageView(url: url) {
-                                    Color(.systemGroupedBackground)
-                                }
-                                .frame(width: 200, height: 160)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                                Text("At \(unitSystem.distanceValue(meters: photo.distAtShot), specifier: "%.1f") \(unitSystem.distanceUnit)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+            ForEach(currentActivity.photos) { photo in
+                if let url = activityStore.imageURL(for: photo) {
+                    LocalImageView(url: url) { Color(.systemGroupedBackground) }
+                        .scaledToFill()
+                        .clipped()
+                        .tag(photo.id.uuidString)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
         }
-        .background(Color(.systemBackground))
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
+        .frame(height: 260)
         .accessibilityIdentifier("ActivityDetailPhotosSection")
+    }
+
+    private var photoManagementRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(String(localized: "activity.photos.title", defaultValue: "Photos"))
+                    .font(.headline)
+                Text(String(localized: "\(currentActivity.photos.count) photos"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(String(localized: "activity.photos.edit_hint", defaultValue: "Edit activity to manage"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Route Privacy
@@ -1120,6 +1132,7 @@ private struct EditActivityView: View {
     @State private var shoeID: UUID?
     @State private var isSaving = false
     @State private var saveError: String?
+    @State private var isPhotoManagerPresented = false
 
     init(activity: SavedActivity) {
         self.activity = activity
@@ -1150,6 +1163,17 @@ private struct EditActivityView: View {
                         }
                     }
                 }
+
+                Section(String(localized: "activity.photos.title", defaultValue: "Photos")) {
+                    Button {
+                        isPhotoManagerPresented = true
+                    } label: {
+                        Label(
+                            String(localized: "summary.photos.manage", defaultValue: "Manage Photos"),
+                            systemImage: "photo.on.rectangle.angled"
+                        )
+                    }
+                }
             }
             .navigationTitle("Edit Activity")
             .navigationBarTitleDisplayMode(.inline)
@@ -1173,6 +1197,10 @@ private struct EditActivityView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(saveError ?? "Try again.")
+        }
+        .sheet(isPresented: $isPhotoManagerPresented) {
+            SavedActivityPhotoManager(activity: activity)
+                .environmentObject(activityStore)
         }
     }
 
@@ -1203,6 +1231,114 @@ private struct EditActivityView: View {
                 distanceM: distanceM,
                 durationSecs: durationSecs,
                 gear: gearStore.attachment(for: selectedShoe)
+            )
+            dismiss()
+        } catch {
+            saveError = error.localizedDescription
+        }
+    }
+}
+
+private struct SavedActivityPhotoManager: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var activityStore: ActivityStore
+    let activity: SavedActivity
+    @State private var keptPhotos: [SavedPhoto]
+    @State private var newPhotos: [PostRunPhoto] = []
+    @State private var isCameraPresented = false
+    @State private var isSaving = false
+    @State private var saveError: String?
+
+    init(activity: SavedActivity) {
+        self.activity = activity
+        _keptPhotos = State(initialValue: activity.photos)
+    }
+
+    private var photoMetadata: PhotoMetadata {
+        PhotoMetadata(
+            takenAt: Date(),
+            paceAtShot: activity.avgPace,
+            hrAtShot: activity.healthMetrics?.averageHeartRateBPM,
+            distAtShot: activity.distanceM,
+            coordinate: activity.routeCoordinates.last,
+            captureContext: .paused
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button { isCameraPresented = true } label: {
+                        Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
+                    }
+                }
+
+                if !keptPhotos.isEmpty || !newPhotos.isEmpty {
+                    Section(String(localized: "summary.photos.reorder", defaultValue: "Photos — drag to reorder")) {
+                        ForEach(keptPhotos) { photo in
+                            HStack(spacing: 12) {
+                                if let url = activityStore.imageURL(for: photo) {
+                                    LocalImageView(url: url) { Color(.systemGroupedBackground) }
+                                        .frame(width: 72, height: 56)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                Text(photo.takenAt, style: .time).foregroundStyle(.secondary)
+                            }
+                        }
+                        .onDelete { keptPhotos.remove(atOffsets: $0) }
+                        .onMove { keptPhotos.move(fromOffsets: $0, toOffset: $1) }
+
+                        ForEach(newPhotos) { photo in
+                            HStack(spacing: 12) {
+                                Image(uiImage: photo.image)
+                                    .resizable().scaledToFill()
+                                    .frame(width: 72, height: 56).clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text(photo.metadata.takenAt, style: .time).foregroundStyle(.secondary)
+                            }
+                        }
+                        .onDelete { newPhotos.remove(atOffsets: $0) }
+                        .onMove { newPhotos.move(fromOffsets: $0, toOffset: $1) }
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle(String(localized: "summary.photos.manage.title", defaultValue: "Manage Photos"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "common.cancel", defaultValue: "Cancel")) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? String(localized: "common.saving", defaultValue: "Saving…") : String(localized: "common.done", defaultValue: "Done")) {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving)
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $isCameraPresented) {
+            PostRunCameraView { image in
+                newPhotos.append(PostRunPhoto(image: image, metadata: photoMetadata))
+            }
+        }
+        .alert(String(localized: "activity.photos.save_error", defaultValue: "Couldn’t update photos"), isPresented: Binding(
+            get: { saveError != nil }, set: { if !$0 { saveError = nil } }
+        )) {
+            Button(String(localized: "common.ok", defaultValue: "OK"), role: .cancel) {}
+        } message: { Text(saveError ?? "") }
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await activityStore.updatePhotos(
+                for: activity,
+                keeping: keptPhotos,
+                adding: newPhotos.map { ($0.image, $0.metadata) }
             )
             dismiss()
         } catch {

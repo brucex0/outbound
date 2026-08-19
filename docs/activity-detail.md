@@ -134,12 +134,14 @@ The layout uses a persistent full-screen route map with a bottom information she
 3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
-6. **Content order** — stats, elevation, splits, route controls, guide card, photos
-7. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
-8. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
-9. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras
-10. **Splits layout** — Strava-style table with distance index, pace-as-time, proportional blue bar, and optional elevation delta; do not show a separate time column
-11. **Persistent actions** — keep Share and Edit visible beside each other in the trailing navigation bar at every sheet detent
+6. **Content order** — route/photo pager, photo management summary, stats, elevation, splits, route controls, guide card
+7. **Media layout** — the route map is always the first page, saved photos follow as full-size swipeable pages, and thumbnail strips are not used
+8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity
+9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
+10. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
+11. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras
+12. **Splits layout** — Strava-style table with distance index, pace-as-time, proportional blue bar, and optional elevation delta; do not show a separate time column
+13. **Persistent actions** — keep Share and Edit visible beside each other in the trailing navigation bar at every sheet detent
 
 Safe-area strategy:
 - The map ignores container safe areas so it feels full screen.

@@ -158,6 +158,26 @@ final class ActivityStore: ObservableObject {
         }
     }
 
+    func updatePhotos(
+        for activity: SavedActivity,
+        keeping photos: [SavedPhoto],
+        adding captures: [(UIImage, PhotoMetadata)]
+    ) async throws {
+        let current = self.activity(id: activity.id) ?? activity
+        let keptIDs = Set(photos.map(\.id))
+        for removed in current.photos where !keptIDs.contains(removed.id) {
+            if let remotePhotoID = removed.remotePhotoId {
+                try await api.deleteActivityPhoto(id: remotePhotoID)
+            }
+        }
+        let updated = try await persistence.updatePhotos(for: current, keeping: photos, adding: captures)
+        activityRevision += 1
+        if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+            activities[index] = updated
+        }
+        Task { await syncActivityIfPossible(id: updated.id) }
+    }
+
     func syncPendingActivitiesIfNeeded() async {
         guard AuthStore.currentUserId != nil else { return }
         guard !isSyncing else { return }

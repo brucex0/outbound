@@ -74,6 +74,14 @@ actor ActivityPersistence {
     func saveDownloadedPhoto(_ data: Data, remote: RemoteActivityPhoto, activityID: UUID) throws -> SavedPhoto {
         try LocalActivityStore.saveDownloadedPhoto(data, remote: remote, activityID: activityID)
     }
+
+    func updatePhotos(
+        for activity: SavedActivity,
+        keeping photos: [SavedPhoto],
+        adding captures: [(UIImage, PhotoMetadata)]
+    ) throws -> SavedActivity {
+        try LocalActivityStore.updatePhotos(for: activity, keeping: photos, adding: captures)
+    }
 }
 
 private nonisolated enum LocalActivityStore {
@@ -169,6 +177,76 @@ private nonisolated enum LocalActivityStore {
         guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
         activities[index] = activity
         try saveManifest(activities)
+    }
+
+    static func updatePhotos(
+        for activity: SavedActivity,
+        keeping photos: [SavedPhoto],
+        adding captures: [(UIImage, PhotoMetadata)]
+    ) throws -> SavedActivity {
+        let keptIDs = Set(photos.map(\.id))
+        for removed in activity.photos where !keptIDs.contains(removed.id) {
+            let url = imageURL(for: removed)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+        }
+
+        let photoDirectory = try directory(for: activity.id).appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: photoDirectory, withIntermediateDirectories: true)
+        let addedPhotos = try captures.compactMap { capture -> SavedPhoto? in
+            let id = UUID()
+            let fileName = "photo-\(id.uuidString).jpg"
+            guard let data = capture.0.jpegData(compressionQuality: 0.9) else { return nil }
+            try data.write(to: photoDirectory.appendingPathComponent(fileName), options: .atomic)
+            return SavedPhoto(
+                id: id,
+                takenAt: capture.1.takenAt,
+                paceAtShot: capture.1.paceAtShot,
+                hrAtShot: capture.1.hrAtShot,
+                distAtShot: capture.1.distAtShot,
+                coordinate: capture.1.coordinate.map { SavedCoordinate(coordinate: $0) },
+                captureContext: capture.1.captureContext,
+                relativePath: "\(activity.id.uuidString)/photos/\(fileName)",
+                remotePhotoId: nil,
+                remoteUploadedAt: nil
+            )
+        }
+        let updated = SavedActivity(
+            id: activity.id,
+            activityType: activity.activityType,
+            title: activity.title,
+            guideNudge: activity.guideNudge,
+            reflection: activity.reflection,
+            createdAt: activity.createdAt,
+            startedAt: activity.startedAt,
+            endedAt: activity.endedAt,
+            durationSecs: activity.durationSecs,
+            distanceM: activity.distanceM,
+            avgPace: activity.avgPace,
+            elevationGainM: activity.elevationGainM,
+            healthMetrics: activity.healthMetrics,
+            goal: activity.goal,
+            source: activity.source,
+            gear: activity.gear,
+            manualEdits: activity.manualEdits,
+            indoor: activity.indoor,
+            cadence: activity.cadence,
+            heartRateZones: activity.heartRateZones,
+            activityEventID: activity.activityEventID,
+            route: activity.route,
+            photos: photos + addedPhotos,
+            sync: SavedActivitySyncState(
+                clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
+                serverActivityId: activity.sync?.serverActivityId,
+                lastAttemptAt: activity.sync?.lastAttemptAt,
+                syncedAt: nil,
+                lastError: nil,
+                localUpdatedAt: Date()
+            )
+        )
+        try replace(updated)
+        return updated
     }
 
     static func replaceOrInsert(_ activity: SavedActivity) throws {

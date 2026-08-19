@@ -59,6 +59,10 @@ final class APIClient {
         try await post("/media/activity-photos", body: request)
     }
 
+    func deleteActivityPhoto(id: String) async throws {
+        let _: ActivityDeleteResponse = try await delete("/media/activity-photos/\(id)")
+    }
+
     func downloadActivityPhoto(id: String) async throws -> Data {
         var req = URLRequest(url: url(for: "/media/activity-photos/\(id)/content"))
         configureLocale(on: &req)

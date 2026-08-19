@@ -14,7 +14,6 @@ struct PostRunSummaryView: View {
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
     @State private var isPhotoManagerPresented = false
-    @State private var isCameraPresented = false
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var isSubmitting = false
@@ -42,7 +41,7 @@ struct PostRunSummaryView: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: 0) {
-                    heroImage
+                    mediaPager
                     reflectionSection
                     feedbackSection
                     photoReviewSection
@@ -50,7 +49,6 @@ struct PostRunSummaryView: View {
                         recognitionSection(primaryRecognition)
                     }
                     statsSection
-                    if summary.trackPoints.count > 1 { routeMap }
                     motivationSection
                 }
                 .padding(.bottom, 100)
@@ -62,30 +60,35 @@ struct PostRunSummaryView: View {
         .sheet(isPresented: $isPhotoManagerPresented) {
             PostRunPhotoManager(
                 photos: $draftPhotos,
-                onTakePhoto: { isCameraPresented = true }
+                photoMetadata: finishPhotoMetadata
             )
-        }
-        .fullScreenCover(isPresented: $isCameraPresented) {
-            PostRunCameraView { image in
-                draftPhotos.append(PostRunPhoto(image: image, metadata: finishPhotoMetadata))
-            }
         }
     }
 
-    private var heroImage: some View {
-        Group {
-            if let firstPhoto = draftPhotos.first {
-                Image(uiImage: firstPhoto.image)
+    private var mediaPager: some View {
+        TabView {
+            if summary.trackPoints.count > 1 {
+                routeMap
+                    .tag("route")
+            }
+            ForEach(draftPhotos) { photo in
+                Image(uiImage: photo.image)
                     .resizable()
                     .scaledToFill()
-            } else {
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .tag(photo.id.uuidString)
+            }
+            if summary.trackPoints.count <= 1 && draftPhotos.isEmpty {
                 LinearGradient(
                     colors: [.orange.opacity(0.8), .red.opacity(0.6)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
+                .tag("placeholder")
             }
         }
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
         .frame(height: 280)
         .clipped()
         .overlay(alignment: .bottom) {
@@ -257,7 +260,7 @@ struct PostRunSummaryView: View {
             MapPolyline(coordinates: summary.trackPoints.map(\.coordinate))
                 .stroke(.orange, lineWidth: 4)
         }
-        .frame(height: 200)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .disabled(true)
     }
 
@@ -280,7 +283,7 @@ struct PostRunSummaryView: View {
                         .font(.headline)
                     Text(draftPhotos.isEmpty
                          ? String(localized: "summary.photos.empty", defaultValue: "Add a finish photo")
-                         : String(localized: "\(draftPhotos.count) photos · drag to reorder"))
+                         : String(localized: "\(draftPhotos.count) photos"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -301,16 +304,6 @@ struct PostRunSummaryView: View {
                 .buttonStyle(.bordered)
                 .tint(.orange)
                 .accessibilityIdentifier("ManagePhotosButton")
-            }
-
-            if !draftPhotos.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(draftPhotos) { photo in
-                            PostRunPhotoThumbnail(image: photo.image)
-                        }
-                    }
-                }
             }
         }
         .padding(16)
@@ -382,20 +375,7 @@ struct PostRunSummaryView: View {
     }
 }
 
-private struct PostRunPhotoThumbnail: View {
-    let image: UIImage
-
-    var body: some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .frame(width: 68, height: 68)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-}
-
-private struct PostRunPhoto: Identifiable {
+struct PostRunPhoto: Identifiable {
     let id: UUID
     let image: UIImage
     let metadata: PhotoMetadata
@@ -411,17 +391,18 @@ private struct PostRunPhoto: Identifiable {
     }
 }
 
-private struct PostRunPhotoManager: View {
+struct PostRunPhotoManager: View {
     @Binding var photos: [PostRunPhoto]
-    let onTakePhoto: () -> Void
+    let photoMetadata: PhotoMetadata
     @Environment(\.dismiss) private var dismiss
+    @State private var isCameraPresented = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     Button {
-                        onTakePhoto()
+                        isCameraPresented = true
                     } label: {
                         Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
                     }
@@ -458,10 +439,15 @@ private struct PostRunPhotoManager: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $isCameraPresented) {
+            PostRunCameraView { image in
+                photos.append(PostRunPhoto(image: image, metadata: photoMetadata))
+            }
+        }
     }
 }
 
-private struct PostRunCameraView: View {
+struct PostRunCameraView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var camera = CameraController()
     @State private var isCapturing = false
