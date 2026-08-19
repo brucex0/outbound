@@ -11,6 +11,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
     @State private var shareURL: URL?
+    @State private var shareImage: UIImage?
     @State private var shareError: ShareRouteError?
     @State private var isPreparingShareCard = false
     @State private var showSplits = false
@@ -119,7 +120,9 @@ struct ActivityDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar(.visible, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
-            if let shareURL {
+            if let shareImage {
+                ShareSheet(activityItems: [shareImage])
+            } else if let shareURL {
                 ShareSheet(activityItems: [shareURL])
             }
         }
@@ -653,9 +656,10 @@ struct ActivityDetailView: View {
 
     private var isShareSheetPresented: Binding<Bool> {
         Binding(
-            get: { shareURL != nil },
+            get: { shareImage != nil || shareURL != nil },
             set: { isPresented in
                 if !isPresented {
+                    shareImage = nil
                     shareURL = nil
                 }
             }
@@ -669,12 +673,12 @@ struct ActivityDetailView: View {
             do {
                 let referralURL = (try? await APIClient.shared.createReferralLink())?.url
                     ?? PlainstrideLinks.appInvitation
-                let cardURL = try await ActivityShareCardRenderer.exportCard(
+                let cardImage = try await ActivityShareCardRenderer.renderCard(
                     activity: currentActivity,
                     unitSystem: unitSystem,
                     referralURL: referralURL
                 )
-                shareURL = cardURL
+                shareImage = cardImage
             } catch {
                 shareError = ShareRouteError(message: error.localizedDescription)
             }
