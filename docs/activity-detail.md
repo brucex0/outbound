@@ -17,6 +17,8 @@ The current view is a Strava-style layered detail page:
 7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — a thumbnail overlapping the sheet edge toggles the full-screen background between the route map and a swipeable photo pager
 
+Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. Like Strava, the Social presentation keeps the same map, stats, route analysis, and Share action, inserts a tappable author card and caption into the sheet, and pins Cheer and comment controls at the bottom. Ownership gates editing, while unavailable private source/gear metadata, route privacy, and guide reflection are omitted.
+
 The Share Activity Card action renders a 9:16 image built from a full-bleed muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid in a Strava-style lower gradient. The lower-right branding includes a scannable canonical referral URL that opens an installed app or offers the appropriate App Store, Play Store, iOS beta, and Android beta destinations configured on the backend. The system Share Sheet receives the rendered image directly so it offers photo-specific actions such as Save Image, while Copy and messaging apps cannot mistake a secondary URL payload for an extensionless attachment. If referral creation is unavailable, the QR code uses the stable `https://run.plainstride.com/invite` landing link; if a route snapshot cannot be created, rendering falls back to a stats-only card so sharing still succeeds.
 
 Limitations vs Strava and category expectations:

@@ -1195,7 +1195,7 @@ private struct SocialNotificationDetailView: View {
     }
 }
 
-private struct SocialCommentsView: View {
+struct SocialCommentsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @Environment(\.dismiss) private var dismiss
@@ -1577,68 +1577,148 @@ private struct SocialPersonProfileView: View {
 }
 
 private struct SocialActivityDetailView: View {
-    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let post: TogetherPostDTO
     @State private var showsComments = false
+    @State private var toastMessage: String?
 
+    private var currentPost: TogetherPostDTO {
+        socialStore.state.posts.first(where: { $0.id == post.id }) ?? post
+    }
+
+    @ViewBuilder
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                NavigationLink {
-                    SocialPersonProfileView(person: post.user)
-                } label: {
-                    HStack {
-                        SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
-                        VStack(alignment: .leading) {
-                            Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
-                            Text(post.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                    }
-                    .contentShape(Rectangle())
+        if let activity = currentPost.activity {
+            ActivityDetailView(
+                activity: activity.savedActivity(createdAt: currentPost.createdAt),
+                usesStoredActivity: false,
+                showsShareControl: true,
+                showsEditControl: false,
+                showsPrivateDetails: false,
+                supplementalContent: AnyView(socialCard)
+            )
+            .sheet(isPresented: $showsComments) { SocialCommentsView(post: currentPost) }
+            .safeAreaInset(edge: .bottom, spacing: 0) { socialActionBar }
+            .overlay(alignment: .top) {
+                if let toastMessage {
+                    Text(toastMessage)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .buttonStyle(.plain)
-
-                if let activity = post.activity {
-                    SocialRouteMap(route: activity.route)
-                        .frame(height: 300)
-                        .clipShape(RoundedRectangle(cornerRadius: OutboundRadius.card, style: .continuous))
-                    HStack {
-                        detailStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                        detailStat(activity.durationSecs.map(duration) ?? "—", "Time")
-                        detailStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
-                    }
-                }
-                if let caption = post.caption, !caption.isEmpty { Text(caption).font(.body) }
-                Button { showsComments = true } label: {
-                    Label("View \(post.commentCount) comments", systemImage: "bubble.left")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.bordered)
             }
-            .padding(OutboundSpacing.screen)
+        } else {
+            ContentUnavailableView(
+                String(localized: "Activity unavailable"),
+                systemImage: "figure.run",
+                description: Text(String(localized: "This shared activity is no longer available."))
+            )
         }
-        .background(OutboundPalette.background)
-        .navigationTitle(post.activity?.title ?? String(localized: "Activity"))
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showsComments) { SocialCommentsView(post: post) }
     }
 
-    private func detailStat(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value).font(.headline.monospacedDigit())
-            Text(label).font(.caption).foregroundStyle(.secondary)
+    private var socialCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            NavigationLink {
+                SocialPersonProfileView(person: currentPost.user)
+            } label: {
+                HStack(spacing: 12) {
+                    SocialAvatar(name: currentPost.user.displayName, avatarURL: currentPost.user.avatarUrl)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(currentPost.user.displayName).font(.headline).foregroundStyle(.primary)
+                        Text(currentPost.createdAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if let caption = currentPost.caption, !caption.isEmpty {
+                Text(caption).font(.body)
+            }
+
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
 
-    private func duration(_ seconds: Int) -> String {
-        let hours = seconds / 3_600
-        let minutes = (seconds % 3_600) / 60
-        let remaining = seconds % 60
-        return hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, remaining) : String(format: "%d:%02d", minutes, remaining)
+    private var socialActionBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                Task { await toggleCheer() }
+            } label: {
+                Label("\(currentPost.reactionCount)", systemImage: currentPost.currentUserCheered ? "heart.fill" : "heart")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(SocialFeedActionButtonStyle(isActive: currentPost.currentUserCheered))
+            .disabled(socialStore.isSocialMutationPending)
+            .accessibilityLabel(currentPost.currentUserCheered ? String(localized: "Remove cheer") : String(localized: "Cheer"))
+            .accessibilityValue("\(currentPost.reactionCount)")
+
+            Button { showsComments = true } label: {
+                Label("\(currentPost.commentCount)", systemImage: "bubble.left")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(SocialFeedActionButtonStyle())
+            .accessibilityLabel(String(localized: "Comments"))
+            .accessibilityValue("\(currentPost.commentCount)")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+    }
+
+    private func toggleCheer() async {
+        let addsSupport = !currentPost.currentUserCheered
+        guard await socialStore.toggleCheer(on: currentPost) else {
+            withAnimation { toastMessage = String(localized: "Could not update cheer. Try again.") }
+            return
+        }
+        if addsSupport { _ = socialRecognitionStore.registerSupport(for: currentPost.id) }
+    }
+}
+
+private extension TogetherActivityDTO {
+    func savedActivity(createdAt: Date) -> SavedActivity {
+        let duration = max(0, durationSecs ?? 0)
+        let startedAt = createdAt.addingTimeInterval(TimeInterval(-duration))
+        let coordinates = route?.geometry.coordinates ?? []
+        let routePoints = coordinates.enumerated().compactMap { index, coordinate -> SavedRoutePoint? in
+            guard coordinate.count >= 2 else { return nil }
+            let progress = coordinates.count > 1 ? Double(index) / Double(coordinates.count - 1) : 0
+            return SavedRoutePoint(
+                timestamp: startedAt.addingTimeInterval(TimeInterval(duration) * progress),
+                latitude: coordinate[1],
+                longitude: coordinate[0],
+                altitude: nil,
+                verticalAccuracy: nil
+            )
+        }
+        return SavedActivity(
+            id: UUID(uuidString: id) ?? UUID(),
+            title: title ?? String(localized: "Activity"),
+            guideNudge: "",
+            reflection: nil,
+            createdAt: createdAt,
+            startedAt: startedAt,
+            endedAt: createdAt,
+            durationSecs: duration,
+            distanceM: max(0, distanceM ?? 0),
+            avgPace: avgPace,
+            route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
+            photos: [],
+            sync: nil
+        )
     }
 }
 

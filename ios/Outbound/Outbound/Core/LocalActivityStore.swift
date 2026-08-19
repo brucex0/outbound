@@ -629,6 +629,20 @@ nonisolated struct SavedRoutePoint: Codable, Hashable {
     let altitude: Double?
     let verticalAccuracy: Double?
 
+    nonisolated init(
+        timestamp: Date,
+        latitude: Double,
+        longitude: Double,
+        altitude: Double?,
+        verticalAccuracy: Double?
+    ) {
+        self.timestamp = timestamp
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
+        self.verticalAccuracy = verticalAccuracy
+    }
+
     nonisolated init(location: CLLocation) {
         timestamp = location.timestamp
         latitude = location.coordinate.latitude

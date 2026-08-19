@@ -7,6 +7,11 @@ import UIKit
 
 struct ActivityDetailView: View {
     let activity: SavedActivity
+    private let usesStoredActivity: Bool
+    private let showsShareControl: Bool
+    private let showsEditControl: Bool
+    private let showsPrivateDetails: Bool
+    private let supplementalContent: AnyView?
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
@@ -23,8 +28,25 @@ struct ActivityDetailView: View {
     @State private var showsPhotos = false
     @State private var selectedPhotoPage = 0
 
+    init(
+        activity: SavedActivity,
+        usesStoredActivity: Bool = true,
+        showsShareControl: Bool = true,
+        showsEditControl: Bool = true,
+        showsPrivateDetails: Bool = true,
+        supplementalContent: AnyView? = nil
+    ) {
+        self.activity = activity
+        self.usesStoredActivity = usesStoredActivity
+        self.showsShareControl = showsShareControl
+        self.showsEditControl = showsEditControl
+        self.showsPrivateDetails = showsPrivateDetails
+        self.supplementalContent = supplementalContent
+    }
+
     private var currentActivity: SavedActivity {
-        activityStore.activity(id: activity.id) ?? activity
+        guard usesStoredActivity else { return activity }
+        return activityStore.activity(id: activity.id) ?? activity
     }
 
     private var unitSystem: MeasurementUnitSystem { measurementPreferences.unitSystem }
@@ -99,26 +121,30 @@ struct ActivityDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    shareActivityCard()
-                } label: {
-                    if isPreparingShareCard {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
+                if showsShareControl {
+                    Button {
+                        shareActivityCard()
+                    } label: {
+                        if isPreparingShareCard {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                        }
                     }
+                    .disabled(isPreparingShareCard)
+                    .accessibilityLabel(isPreparingShareCard
+                                        ? String(localized: "activity.share.preparing", defaultValue: "Preparing activity to share")
+                                        : String(localized: "activity.share", defaultValue: "Share activity"))
                 }
-                .disabled(isPreparingShareCard)
-                .accessibilityLabel(isPreparingShareCard
-                                    ? String(localized: "activity.share.preparing", defaultValue: "Preparing activity to share")
-                                    : String(localized: "activity.share", defaultValue: "Share activity"))
 
-                Button {
-                    isEditPresented = true
-                } label: {
-                    Image(systemName: "pencil")
+                if showsEditControl {
+                    Button {
+                        isEditPresented = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .accessibilityLabel(String(localized: "activity.edit", defaultValue: "Edit activity"))
                 }
-                .accessibilityLabel(String(localized: "activity.edit", defaultValue: "Edit activity"))
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -241,12 +267,13 @@ struct ActivityDetailView: View {
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
                         statsHeroSection
+                        if let supplementalContent { supplementalContent }
                         if currentActivity.activityEventID != nil { sharedActivitySection }
-                        metadataSection
+                        if showsPrivateDetails { metadataSection }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
-                        routeControlsSection
-                        if let reflection = currentActivity.reflection { guideHeroCard(reflection) }
+                        if showsPrivateDetails { routeControlsSection }
+                        if showsPrivateDetails, let reflection = currentActivity.reflection { guideHeroCard(reflection) }
                     }
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
                 }
