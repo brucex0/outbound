@@ -1,3 +1,4 @@
+import MessageUI
 import SwiftUI
 import UIKit
 
@@ -24,14 +25,18 @@ private enum FeedbackKind: String, CaseIterable, Identifiable {
 }
 
 struct FeedbackReporterModifier: ViewModifier {
+    let isShakeDisabled: Bool
     @State private var isPresented = false
     @State private var screenshot: UIImage?
+    @State private var firstShakeAt: Date?
+
+    private let doubleShakeInterval: TimeInterval = 3
 
     func body(content: Content) -> some View {
         content
             .background {
-                ShakeDetector {
-                    presentFeedback()
+                ShakeDetector(isEnabled: !isShakeDisabled) {
+                    registerShake()
                 }
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
@@ -39,9 +44,25 @@ struct FeedbackReporterModifier: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: FeedbackTrigger.notification)) { _ in
                 presentFeedback()
             }
+            .onChange(of: isShakeDisabled) { _, isDisabled in
+                if isDisabled {
+                    firstShakeAt = nil
+                }
+            }
             .sheet(isPresented: $isPresented) {
                 FeedbackForm(screenshot: screenshot)
             }
+    }
+
+    private func registerShake() {
+        let now = Date()
+        guard let firstShakeAt, now.timeIntervalSince(firstShakeAt) <= doubleShakeInterval else {
+            self.firstShakeAt = now
+            return
+        }
+
+        self.firstShakeAt = nil
+        presentFeedback()
     }
 
     private func presentFeedback() {
@@ -52,8 +73,8 @@ struct FeedbackReporterModifier: ViewModifier {
 }
 
 extension View {
-    func feedbackReporter() -> some View {
-        modifier(FeedbackReporterModifier())
+    func feedbackReporter(isShakeDisabled: Bool = false) -> some View {
+        modifier(FeedbackReporterModifier(isShakeDisabled: isShakeDisabled))
     }
 }
 
@@ -62,7 +83,8 @@ private struct FeedbackForm: View {
     @State private var kind: FeedbackKind = .bug
     @State private var message = ""
     @State private var includesDiagnostics = true
-    @State private var sharedReport: FeedbackReport?
+    @State private var emailedReport: FeedbackReport?
+    @State private var showsMailUnavailableAlert = false
     @State private var screenshot: UIImage?
     @State private var isAnnotating = false
 
@@ -114,14 +136,18 @@ private struct FeedbackForm: View {
 
                 Section {
                     Button {
-                        sharedReport = FeedbackReport(text: reportText, screenshot: screenshot)
+                        if MFMailComposeViewController.canSendMail() {
+                            emailedReport = FeedbackReport(text: reportText, screenshot: screenshot)
+                        } else {
+                            showsMailUnavailableAlert = true
+                        }
                     } label: {
-                        Label("Share report", systemImage: "paperplane.fill")
+                        Label("Email report", systemImage: "envelope.fill")
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .disabled(trimmedMessage.isEmpty)
                 } footer: {
-                    Text("Choose Mail, Messages, or another app to send the report to the Plainstride team.")
+                    Text("Your report will be addressed to info@plainstride.com.")
                 }
             }
             .navigationTitle("Send feedback")
@@ -131,8 +157,15 @@ private struct FeedbackForm: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(item: $sharedReport) { report in
-                SystemShareSheet(activityItems: report.activityItems)
+            .sheet(item: $emailedReport) { report in
+                FeedbackMailComposer(report: report) {
+                    emailedReport = nil
+                }
+            }
+            .alert("Mail isn’t set up", isPresented: $showsMailUnavailableAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Set up an email account in Mail, then try again.")
             }
             .fullScreenCover(isPresented: $isAnnotating) {
                 if let screenshot {
@@ -167,8 +200,45 @@ private struct FeedbackReport: Identifiable {
     let text: String
     let screenshot: UIImage?
 
-    var activityItems: [Any] {
-        if let screenshot { [text, screenshot] } else { [text] }
+}
+
+private struct FeedbackMailComposer: UIViewControllerRepresentable {
+    let report: FeedbackReport
+    let onFinish: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onFinish: onFinish)
+    }
+
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let composer = MFMailComposeViewController()
+        composer.mailComposeDelegate = context.coordinator
+        composer.setToRecipients(["info@plainstride.com"])
+        composer.setSubject(String(localized: "Plainstride feedback"))
+        composer.setMessageBody(report.text, isHTML: false)
+        if let screenshot = report.screenshot, let data = screenshot.jpegData(compressionQuality: 0.9) {
+            composer.addAttachmentData(data, mimeType: "image/jpeg", fileName: "plainstride-feedback.jpg")
+        }
+        return composer
+    }
+
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+
+    final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        private let onFinish: () -> Void
+
+        init(onFinish: @escaping () -> Void) {
+            self.onFinish = onFinish
+        }
+
+        func mailComposeController(
+            _ controller: MFMailComposeViewController,
+            didFinishWith result: MFMailComposeResult,
+            error: Error?
+        ) {
+            controller.dismiss(animated: true)
+            onFinish()
+        }
     }
 }
 
@@ -315,20 +385,24 @@ private enum FeedbackDiagnostics {
 }
 
 private struct ShakeDetector: UIViewControllerRepresentable {
+    let isEnabled: Bool
     let onShake: () -> Void
 
     func makeUIViewController(context: Context) -> ShakeDetectorViewController {
         let controller = ShakeDetectorViewController()
+        controller.isEnabled = isEnabled
         controller.onShake = onShake
         return controller
     }
 
     func updateUIViewController(_ controller: ShakeDetectorViewController, context: Context) {
+        controller.isEnabled = isEnabled
         controller.onShake = onShake
     }
 }
 
 private final class ShakeDetectorViewController: UIViewController {
+    var isEnabled = true
     var onShake: (() -> Void)?
 
     override var canBecomeFirstResponder: Bool { true }
@@ -340,7 +414,7 @@ private final class ShakeDetectorViewController: UIViewController {
 
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         super.motionEnded(motion, with: event)
-        guard motion == .motionShake else { return }
+        guard motion == .motionShake, isEnabled else { return }
         onShake?()
     }
 }

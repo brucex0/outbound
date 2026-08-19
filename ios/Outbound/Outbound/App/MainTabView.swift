@@ -24,7 +24,7 @@ struct MainTabView: View {
             currentContent
         }
         .background(Color(.systemGroupedBackground))
-        .feedbackReporter()
+        .feedbackReporter(isShakeDisabled: activitySessionState != .idle)
         .overlay(alignment: .bottomTrailing) {
             if !isActivityVisible && activitySessionState != .idle {
                 ActivityPortalButton(

@@ -4286,6 +4286,22 @@
         }
       }
     },
+    "Email report" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar informe por correo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过邮件发送报告"
+          }
+        }
+      }
+    },
     "Enable Camera for Plainstride in Settings to record with the live preview." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6441,6 +6457,22 @@
         }
       }
     },
+    "Mail isn’t set up" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mail no está configurado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未设置“邮件”"
+          }
+        }
+      }
+    },
     "Manage" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8337,6 +8369,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "电话号码"
+          }
+        }
+      }
+    },
+    "Plainstride feedback" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios sobre Plainstride"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plainstride 反馈"
           }
         }
       }
@@ -10728,6 +10776,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置下一个重点"
+          }
+        }
+      }
+    },
+    "Set up an email account in Mail, then try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura una cuenta de correo en Mail e inténtalo de nuevo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“邮件”中设置电子邮件账户，然后重试。"
           }
         }
       }
@@ -14111,18 +14175,18 @@
         }
       }
     },
-    "You can also shake your iPhone anywhere in the app to report a bug or share a suggestion." : {
+    "You can also shake your iPhone twice when an activity isn’t recording." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "También puedes agitar tu iPhone en cualquier parte de la aplicación para informar un error o compartir una sugerencia."
+            "value" : "También puedes agitar tu iPhone dos veces cuando no se esté grabando una actividad."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你也可以在应用中的任何页面摇动 iPhone，报告问题或提出建议。"
+            "value" : "未在记录活动时，你也可以摇晃 iPhone 两次。"
           }
         }
       }
@@ -14389,6 +14453,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "跑步伙伴发现了这一点"
+          }
+        }
+      }
+    },
+    "Your report will be addressed to info@plainstride.com." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu informe se dirigirá a info@plainstride.com."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的报告将发送至 info@plainstride.com。"
           }
         }
       }

@@ -2137,7 +2137,7 @@ private struct SimplifiedSettingsView: View {
             } header: {
                 Text("Help")
             } footer: {
-                Text("You can also shake your iPhone anywhere in the app to report a bug or share a suggestion.")
+                Text("You can also shake your iPhone twice when an activity isn’t recording.")
             }
             Section("Gear") {
                 GearSettingsCard()

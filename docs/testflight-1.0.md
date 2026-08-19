@@ -45,7 +45,7 @@ Please report crashes, permission loops, missing activity data, inaccurate state
 
 ### How to Report Feedback
 
-From any main Plainstride screen, shake your iPhone to open **Send feedback**. Choose **Bug** or **Suggestion**, describe what happened, and optionally include app/device details. Plainstride automatically captures the screen you were viewing; you can annotate it with the red marker, undo marks, or remove the screenshot before sharing. Tap **Share report**, then choose Mail, Messages, or another sharing app.
+When no activity is recording, shake your iPhone twice within three seconds to open **Send feedback**. Choose **Bug** or **Suggestion**, describe what happened, and optionally include app/device details. Plainstride automatically captures the screen you were viewing; you can annotate it with the red marker, undo marks, or remove the screenshot. Tap **Email report** to open a message addressed to `info@plainstride.com`.
 
 If shaking is inconvenient or unavailable, open **Me > Settings > Send feedback** instead.
 
