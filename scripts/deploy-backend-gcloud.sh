@@ -18,8 +18,8 @@ Environment overrides:
   RUNTIME_SERVICE_ACCOUNT default: outbound-api-runtime@PROJECT_ID.iam.gserviceaccount.com
   CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
   CLOUD_RUN_CONCURRENCY   default: 100
-  CLOUD_RUN_MIN_INSTANCES default: 1
-  CLOUD_RUN_MAX_INSTANCES default: 20
+  CLOUD_RUN_MIN_INSTANCES default: 0 (scale to zero before public release)
+  CLOUD_RUN_MAX_INSTANCES default: 1
   SOURCE_DIR              default: backend
   GCLOUD_BIN              default: $HOME/google-cloud-sdk/bin/gcloud, then PATH
   NPM_BIN                 optional npm path
@@ -44,8 +44,8 @@ SERVICE="${SERVICE:-outbound-api}"
 RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-outbound-api-runtime@$PROJECT_ID.iam.gserviceaccount.com}"
 CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
-CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-1}"
-CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-20}"
+CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
+CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-1}"
 SOURCE_DIR="${SOURCE_DIR:-backend}"
 GCLOUD_BIN="${GCLOUD_BIN:-$HOME/google-cloud-sdk/bin/gcloud}"
 NPM_BIN="${NPM_BIN:-}"

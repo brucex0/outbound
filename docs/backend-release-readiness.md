@@ -5,7 +5,7 @@ Open this when deciding how to host the public backend, sizing the database, or 
 ## Current Setup
 
 - Cloud Build builds the backend container; Cloud Run hosts the Hono API in `us-central1`.
-- Cloud Run has 1 vCPU, 512 MiB memory, concurrency 100, one warm instance, a 20-instance ceiling, private VPC egress, and a dedicated runtime service account.
+- Cloud Run has 1 vCPU, 512 MiB memory, concurrency 100, scale-to-zero enabled, a one-instance ceiling, private VPC egress, and a dedicated runtime service account. This intentionally favors minimal pre-release cost over cold-start latency or horizontal capacity.
 - Prisma connects to the dedicated, zonal `db-g1-small` Cloud SQL instance over private IP with a five-connection per-instance pool ceiling.
 - Cloud Storage holds private activity photos and avatars.
 - Firebase provides authentication; the API also calls an external AI provider.

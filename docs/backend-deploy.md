@@ -105,7 +105,7 @@ Useful overrides:
 - `RUN_HEALTH_CHECK=0`
 - `ALLOW_DIRTY_BACKEND=1`
 
-The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, one warm instance, and a 20-instance ceiling, then prints the service URL and checks `/health`.
+The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, scale-to-zero enabled, and a one-instance ceiling, then prints the service URL and checks `/health`. These are the pre-release minimal-cost defaults; raise the minimum and maximum through the documented overrides when public-release traffic requires it.
 
 Raw command equivalent:
 
@@ -118,7 +118,7 @@ $HOME/google-cloud-sdk/bin/gcloud run deploy outbound-api \
   --allow-unauthenticated \
   --service-account=outbound-api-runtime@outbound-494602.iam.gserviceaccount.com \
   --network=default --subnet=default --vpc-egress=private-ranges-only \
-  --concurrency=100 --min=1 --max=20 \
+  --concurrency=100 --min=0 --max=1 \
   --update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest
 ```
 
