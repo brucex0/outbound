@@ -202,7 +202,7 @@ Provider-side AI-key rotation is separate from Secret Manager migration: create 
 - Rate limiting is enforced in-process: 300 requests/minute per IP generally, 30/minute on auth, 20/minute on assistant/companion/guide, and 10/minute on transcription. These limits apply per warm instance; use an external shared limiter before adversarial-scale traffic.
 - Run the representative health-path smoke load with `LOAD_TEST_BASE_URL=https://SERVICE_URL npm run load:smoke` from `backend/`. Override `LOAD_TEST_CONCURRENCY` and `LOAD_TEST_REQUESTS` as needed.
 - Verify the uptime check, 5xx alert, Cloud SQL CPU/connections/storage alerts, and monthly budget notification after any project move.
-- Restore test: clone the newest backup into a temporary instance, validate schema and representative rows, record the recovery time, then delete the temporary instance. Never claim recovery readiness from backup configuration alone.
+- Restore test: clone the newest backup into a temporary instance, validate schema and representative rows, record the recovery time, then delete the temporary instance. The first drill completed August 18, 2026 using a 01:35 UTC point-in-time clone; all 10 seeded training-plan templates were present. Repeat this drill before launch after any material schema or backup-policy change.
 - Owner access is currently limited to `bruce.xia74@gmail.com` and `cindyx@plainstride.com`. Both accounts must enforce MFA; keep these as emergency administrators and use narrower roles for routine work.
 
 ## Manual Schema Changes

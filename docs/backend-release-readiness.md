@@ -14,6 +14,7 @@ Open this when deciding how to host the public backend, sizing the database, or 
 - A three-region uptime check and email-backed uptime/5xx alerts are active. A billing-account administrator must still create the monthly budget because project Owner access does not grant budget administration on the billing account.
 - Application rate limits protect general API, auth, AI, and transcription traffic. They are per instance; move to a shared limiter when adversarial traffic or scale makes global enforcement necessary.
 - Private photo and avatar reads redirect to 15-minute signed Cloud Storage URLs. A full external HTTPS load balancer and Cloud CDN can be added when measured media egress justifies it.
+- Recovery drill completed August 18, 2026: an on-demand backup succeeded, a 01:35 UTC point-in-time clone completed, and an isolated validation job found all 10 seeded training-plan templates. Temporary drill resources were deleted afterward.
 
 ## Recommended Public-Launch Setup
 
