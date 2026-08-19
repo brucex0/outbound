@@ -119,7 +119,8 @@ $HOME/google-cloud-sdk/bin/gcloud run deploy outbound-api \
   --service-account=outbound-api-runtime@outbound-494602.iam.gserviceaccount.com \
   --network=default --subnet=default --vpc-egress=private-ranges-only \
   --concurrency=100 --min=0 --max=1 \
-  --update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest
+  --update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest \
+  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride Feedback <feedback@plainstride.com>'
 ```
 
 Notes:
@@ -129,12 +130,13 @@ Notes:
 
 ## Secret Manager Plan
 
-`DATABASE_URL` and `APP_AI_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables.
+`DATABASE_URL`, `APP_AI_KEY`, and `RESEND_API_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables. Set `FEEDBACK_EMAIL_FROM` to a sender on a verified mail-provider domain; `FEEDBACK_EMAIL_TO` is optional and defaults to the private product-feedback inbox.
 
 Recommended secrets:
 
 - `outbound-database-url`
 - `outbound-app-ai-key`
+- `outbound-resend-api-key`
 
 Create the secrets:
 
@@ -146,6 +148,11 @@ printf '%s' 'postgresql://outbound_app:REDACTED@PRIVATE_IP:5432/outbound?sslmode
 
 printf '%s' 'REDACTED_APP_AI_KEY' | \
   $HOME/google-cloud-sdk/bin/gcloud secrets create outbound-app-ai-key \
+    --project=outbound-494602 \
+    --data-file=-
+
+printf '%s' 'REDACTED_RESEND_API_KEY' | \
+  $HOME/google-cloud-sdk/bin/gcloud secrets create outbound-resend-api-key \
     --project=outbound-494602 \
     --data-file=-
 ```
@@ -171,6 +178,11 @@ $HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-app-ai
   --project=outbound-494602 \
   --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
   --role='roles/secretmanager.secretAccessor'
+
+$HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-resend-api-key \
+  --project=outbound-494602 \
+  --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
 ```
 
 Wire the Cloud Run service to secrets:
@@ -179,7 +191,8 @@ Wire the Cloud Run service to secrets:
 $HOME/google-cloud-sdk/bin/gcloud run services update outbound-api \
   --project=outbound-494602 \
   --region=us-central1 \
-  --set-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest
+  --set-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest \
+  --update-env-vars='FEEDBACK_EMAIL_FROM=Plainstride Feedback <feedback@plainstride.com>'
 ```
 
 Wire the Cloud Run job to secrets too:

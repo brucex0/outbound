@@ -3304,6 +3304,22 @@
         }
       }
     },
+    "Could not submit report. Try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo enviar el informe. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法提交报告，请重试。"
+          }
+        }
+      }
+    },
     "Could not save profile. Try again." : {
       "localizations" : {
         "es" : {
@@ -4286,18 +4302,34 @@
         }
       }
     },
-    "Email report" : {
+    "Submit report" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enviar informe por correo"
+            "value" : "Enviar informe"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "通过邮件发送报告"
+            "value" : "提交报告"
+          }
+        }
+      }
+    },
+    "Submitting…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在提交…"
           }
         }
       }
@@ -6457,22 +6489,6 @@
         }
       }
     },
-    "Mail isn’t set up" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mail no está configurado"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尚未设置“邮件”"
-          }
-        }
-      }
-    },
     "Manage" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8373,22 +8389,6 @@
         }
       }
     },
-    "Plainstride feedback" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comentarios sobre Plainstride"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plainstride 反馈"
-          }
-        }
-      }
-    },
     "Photo %lld" : {
       "localizations" : {
         "es" : {
@@ -9752,6 +9752,22 @@
         }
       }
     },
+    "Report submitted" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informe enviado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "报告已提交"
+          }
+        }
+      }
+    },
     "Requested" : {
       "localizations" : {
         "es" : {
@@ -10776,22 +10792,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置下一个重点"
-          }
-        }
-      }
-    },
-    "Set up an email account in Mail, then try again." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configura una cuenta de correo en Mail e inténtalo de nuevo."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请在“邮件”中设置电子邮件账户，然后重试。"
           }
         }
       }
@@ -14453,22 +14453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "跑步伙伴发现了这一点"
-          }
-        }
-      }
-    },
-    "Your report will be addressed to info@plainstride.com." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu informe se dirigirá a info@plainstride.com."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你的报告将发送至 info@plainstride.com。"
           }
         }
       }

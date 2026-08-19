@@ -210,6 +210,18 @@ Current API shape:
 - `DELETE /v1/guide/plans/active`
 - `GET /v1/guide/today`
 
+### Feedback
+
+Responsibilities:
+
+- accept authenticated in-app bug reports and suggestions
+- relay optional app/device diagnostics and the user-approved screenshot by email without database storage
+- keep delivery and storage mechanics out of the client UI
+
+Current API shape:
+
+- `POST /v1/feedback`
+
 Next plan work:
 
 - persist readiness check-ins instead of accepting readiness only as request context

@@ -367,6 +367,10 @@ final class APIClient {
         try await post("/personalization/cycle-signal", body: request)
     }
 
+    func submitFeedback(_ request: FeedbackSubmissionRequest) async throws -> FeedbackSubmissionResponse {
+        try await post("/feedback", body: request)
+    }
+
     func fetchMyProfile() async throws -> AppUserProfileDTO {
         try await get("/auth/me")
     }

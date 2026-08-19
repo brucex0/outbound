@@ -210,7 +210,7 @@ router.get("/support", (c) => c.html(pageShell({
       <p class="eyebrow">Support</p>
       <h1>We're here for the run.</h1>
       <p class="lede">Plainstride is currently in TestFlight beta. Your feedback helps us make every part of the experience clearer and more dependable.</p>
-      <div class="legal-card"><h3>Report a bug or suggestion</h3><p>From any main Plainstride screen, shake your iPhone to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then share the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
+      <div class="legal-card"><h3>Report a bug or suggestion</h3><p>When no activity is recording, shake your iPhone twice to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then submit the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
       <h2>Common beta questions</h2>
       <h3>How do I install Plainstride?</h3><p>Install Apple's TestFlight app, then open the private invitation sent by the Plainstride team. Test builds remain available for up to 90 days.</p>
       <h3>Why is a permission requested?</h3><p>Location records an outdoor activity and can provide local running conditions. Apple Health import and workout saving, camera photos, voice commands, Apple Music, and live sharing are optional and requested only when you use the related feature.</p>

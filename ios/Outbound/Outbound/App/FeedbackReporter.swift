@@ -1,4 +1,3 @@
-import MessageUI
 import SwiftUI
 import UIKit
 
@@ -15,6 +14,13 @@ private enum FeedbackKind: String, CaseIterable, Identifiable {
     case suggestion = "Suggestion"
 
     var id: Self { self }
+
+    var apiValue: String {
+        switch self {
+        case .bug: "bug"
+        case .suggestion: "suggestion"
+        }
+    }
 
     var symbol: String {
         switch self {
@@ -83,10 +89,10 @@ private struct FeedbackForm: View {
     @State private var kind: FeedbackKind = .bug
     @State private var message = ""
     @State private var includesDiagnostics = true
-    @State private var emailedReport: FeedbackReport?
-    @State private var showsMailUnavailableAlert = false
     @State private var screenshot: UIImage?
     @State private var isAnnotating = false
+    @State private var isSubmitting = false
+    @State private var toast: FeedbackToast?
 
     init(screenshot: UIImage?) {
         _screenshot = State(initialValue: screenshot)
@@ -136,18 +142,23 @@ private struct FeedbackForm: View {
 
                 Section {
                     Button {
-                        if MFMailComposeViewController.canSendMail() {
-                            emailedReport = FeedbackReport(text: reportText, screenshot: screenshot)
-                        } else {
-                            showsMailUnavailableAlert = true
-                        }
+                        submitReport()
                     } label: {
-                        Label("Email report", systemImage: "envelope.fill")
-                            .frame(maxWidth: .infinity, alignment: .center)
+                        HStack {
+                            if isSubmitting {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                            }
+                            Text(
+                                isSubmitting
+                                    ? String(localized: "Submitting…")
+                                    : String(localized: "Submit report")
+                            )
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
-                    .disabled(trimmedMessage.isEmpty)
-                } footer: {
-                    Text("Your report will be addressed to info@plainstride.com.")
+                    .disabled(trimmedMessage.isEmpty || isSubmitting)
                 }
             }
             .navigationTitle("Send feedback")
@@ -156,16 +167,6 @@ private struct FeedbackForm: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-            }
-            .sheet(item: $emailedReport) { report in
-                FeedbackMailComposer(report: report) {
-                    emailedReport = nil
-                }
-            }
-            .alert("Mail isn’t set up", isPresented: $showsMailUnavailableAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Set up an email account in Mail, then try again.")
             }
             .fullScreenCover(isPresented: $isAnnotating) {
                 if let screenshot {
@@ -177,6 +178,15 @@ private struct FeedbackForm: View {
                     }
                 }
             }
+            .overlay(alignment: .bottom) {
+                if let toast {
+                    FeedbackToastView(toast: toast)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: toast)
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -186,59 +196,68 @@ private struct FeedbackForm: View {
         message.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var reportText: String {
-        var sections = ["Plainstride \(kind.rawValue)", "", trimmedMessage]
-        if includesDiagnostics {
-            sections.append(contentsOf: ["", "---", FeedbackDiagnostics.summary])
+    private func submitReport() {
+        guard !isSubmitting, !trimmedMessage.isEmpty else { return }
+        isSubmitting = true
+        toast = nil
+        let request = FeedbackSubmissionRequest(
+            kind: kind.apiValue,
+            message: trimmedMessage,
+            diagnostics: includesDiagnostics ? FeedbackDiagnostics.summary : nil,
+            screenshotBase64: screenshot?.jpegData(compressionQuality: 0.82)?.base64EncodedString(),
+            screenshotContentType: screenshot == nil ? nil : "image/jpeg"
+        )
+
+        Task {
+            do {
+                _ = try await APIClient.shared.submitFeedback(request)
+                isSubmitting = false
+                toast = FeedbackToast(text: String(localized: "Report submitted"), isError: false)
+                try? await Task.sleep(for: .seconds(1.2))
+                dismiss()
+            } catch {
+                isSubmitting = false
+                toast = FeedbackToast(
+                    text: String(localized: "Could not submit report. Try again."),
+                    isError: true
+                )
+                try? await Task.sleep(for: .seconds(3))
+                toast = nil
+            }
         }
-        return sections.joined(separator: "\n")
     }
 }
 
-private struct FeedbackReport: Identifiable {
-    let id = UUID()
+struct FeedbackSubmissionRequest: Encodable {
+    let kind: String
+    let message: String
+    let diagnostics: String?
+    let screenshotBase64: String?
+    let screenshotContentType: String?
+}
+
+struct FeedbackSubmissionResponse: Decodable {
+    let id: String
+    let status: String
+}
+
+private struct FeedbackToast: Equatable {
     let text: String
-    let screenshot: UIImage?
-
+    let isError: Bool
 }
 
-private struct FeedbackMailComposer: UIViewControllerRepresentable {
-    let report: FeedbackReport
-    let onFinish: () -> Void
+private struct FeedbackToastView: View {
+    let toast: FeedbackToast
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onFinish: onFinish)
-    }
-
-    func makeUIViewController(context: Context) -> MFMailComposeViewController {
-        let composer = MFMailComposeViewController()
-        composer.mailComposeDelegate = context.coordinator
-        composer.setToRecipients(["info@plainstride.com"])
-        composer.setSubject(String(localized: "Plainstride feedback"))
-        composer.setMessageBody(report.text, isHTML: false)
-        if let screenshot = report.screenshot, let data = screenshot.jpegData(compressionQuality: 0.9) {
-            composer.addAttachmentData(data, mimeType: "image/jpeg", fileName: "plainstride-feedback.jpg")
-        }
-        return composer
-    }
-
-    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
-
-    final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
-        private let onFinish: () -> Void
-
-        init(onFinish: @escaping () -> Void) {
-            self.onFinish = onFinish
-        }
-
-        func mailComposeController(
-            _ controller: MFMailComposeViewController,
-            didFinishWith result: MFMailComposeResult,
-            error: Error?
-        ) {
-            controller.dismiss(animated: true)
-            onFinish()
-        }
+    var body: some View {
+        Label(toast.text, systemImage: toast.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(toast.isError ? Color.red : Color.green, in: Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+            .accessibilityAddTraits(.isStaticText)
     }
 }
 
