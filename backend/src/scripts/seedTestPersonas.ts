@@ -95,9 +95,9 @@ async function seedTestPersonas() {
   });
 
   const activeActivities = await Promise.all([
-    createActivity(activeRunner.id, "e2e-active-easy", "Easy neighborhood run", daysAgo(now, 2), 32 * 60, 5_100, 376),
-    createActivity(activeRunner.id, "e2e-active-tempo", "Steady tempo", daysAgo(now, 5), 41 * 60, 7_000, 351),
-    createActivity(activeRunner.id, "e2e-active-long", "Saturday long run", daysAgo(now, 9), 64 * 60, 10_200, 376),
+    createActivity(activeRunner.id, "a11c7100-0000-4000-8000-000000000001", "Easy neighborhood run", daysAgo(now, 2), 32 * 60, 5_100, 376),
+    createActivity(activeRunner.id, "a11c7100-0000-4000-8000-000000000002", "Steady tempo", daysAgo(now, 5), 41 * 60, 7_000, 351),
+    createActivity(activeRunner.id, "a11c7100-0000-4000-8000-000000000003", "Saturday long run", daysAgo(now, 9), 64 * 60, 10_200, 376),
   ]);
   await seedActivityPhotos(activeRunner.id, activeActivities, now);
   await prisma.runnerInsight.createMany({
