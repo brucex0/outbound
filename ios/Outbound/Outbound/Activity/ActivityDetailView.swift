@@ -26,7 +26,6 @@ struct ActivityDetailView: View {
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
     @State private var sheetDragHeight: CGFloat?
     @State private var showsCollapsedSheetContent = false
-    @State private var showsPhotos = false
     @State private var selectedPhotoPage = 0
     @State private var lightboxPhotoIndex: Int?
 
@@ -104,15 +103,6 @@ struct ActivityDetailView: View {
 
                 activitySheet(height: interactiveSheetHeight, proxy: proxy)
                     .simultaneousGesture(sheetDragGesture(in: proxy))
-
-                if !currentActivity.photos.isEmpty && !isExpandedMediaToggleHidden {
-                    mediaToggleButton
-                        .position(
-                            x: proxy.size.width - 54,
-                            y: max(54, proxy.size.height - interactiveSheetHeight)
-                        )
-                        .zIndex(2)
-                }
             }
             .ignoresSafeArea(.container, edges: .bottom)
         }
@@ -173,7 +163,6 @@ struct ActivityDetailView: View {
         }
         .onChange(of: currentActivity.photos.count) { _, count in
             if count == 0 {
-                showsPhotos = false
                 selectedPhotoPage = 0
             } else if selectedPhotoPage >= count {
                 selectedPhotoPage = max(0, count - 1)
@@ -181,78 +170,16 @@ struct ActivityDetailView: View {
         }
     }
 
-    private var isExpandedMediaToggleHidden: Bool {
-        sheetDetent == .expanded && sheetDragHeight == nil
-    }
-
-    @ViewBuilder
     private func backgroundMedia(bottomInset: CGFloat) -> some View {
-        if showsPhotos && !currentActivity.photos.isEmpty {
-            ZStack {
-                Color.black
-                TabView(selection: $selectedPhotoPage) {
-                    ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
-                        if let url = activityStore.imageURL(for: photo) {
-                            LocalImageView(url: url) { Color.black }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .clipped()
-                                .tag(index)
-                        }
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: currentActivity.photos.count > 1 ? .automatic : .never))
-            }
-            .ignoresSafeArea()
-            .transition(.opacity)
-        } else {
-            ActivityRouteMapView(
-                routeCoordinates: routeCoordinates,
-                paceSegments: paceSegments,
-                photos: currentActivity.photos,
-                bottomInset: bottomInset,
-                isRouteProminent: sheetDetent != .expanded,
-                selectedPhotoID: selectedPhotoID
-            )
-            .ignoresSafeArea()
-            .transition(.opacity)
-        }
-    }
-
-    private var mediaToggleButton: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                showsPhotos.toggle()
-            }
-        } label: {
-            Group {
-                if showsPhotos {
-                    ActivityRouteMapView(
-                        routeCoordinates: routeCoordinates,
-                        paceSegments: paceSegments,
-                        photos: [],
-                        bottomInset: 0,
-                        isRouteProminent: true
-                    )
-                    .allowsHitTesting(false)
-                } else if let photo = currentActivity.photos.first,
-                          let url = activityStore.imageURL(for: photo) {
-                    LocalImageView(url: url) { Color(.secondarySystemBackground) }
-                }
-            }
-            .frame(width: 68, height: 68)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(.white, lineWidth: 2)
-            }
-            .shadow(color: .black.opacity(0.28), radius: 6, y: 3)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(showsPhotos
-            ? String(localized: "activity.media.show_map", defaultValue: "Show route map")
-            : String(localized: "activity.media.show_photos", defaultValue: "Show activity photos"))
-        .accessibilityIdentifier("ActivityDetailMediaToggle")
+        ActivityRouteMapView(
+            routeCoordinates: routeCoordinates,
+            paceSegments: paceSegments,
+            photos: currentActivity.photos,
+            bottomInset: bottomInset,
+            isRouteProminent: sheetDetent != .expanded,
+            selectedPhotoID: selectedPhotoID
+        )
+        .ignoresSafeArea()
     }
 
     // MARK: - Sheet
