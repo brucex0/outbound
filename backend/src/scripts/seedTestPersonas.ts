@@ -192,6 +192,7 @@ async function createAppUser(persona: (typeof personas)[keyof typeof personas]) 
 }
 
 function createActivity(userId: string, clientActivityId: string, title: string, startedAt: Date, durationSecs: number, distanceM: number, avgPace: number) {
+  const endedAt = new Date(startedAt.getTime() + durationSecs * 1000);
   return prisma.activity.create({
     data: {
       userId,
@@ -200,13 +201,14 @@ function createActivity(userId: string, clientActivityId: string, title: string,
       type: "running",
       title,
       startedAt,
-      endedAt: new Date(startedAt.getTime() + durationSecs * 1000),
+      endedAt,
       durationSecs,
       distanceM,
       avgPace,
       elevationM: 42,
       calories: Math.round(distanceM / 10),
       route: makeSeedRoute(startedAt, durationSecs, distanceM, Number(clientActivityId.at(-1)) - 1),
+      clientUpdatedAt: endedAt,
     },
   });
 }
