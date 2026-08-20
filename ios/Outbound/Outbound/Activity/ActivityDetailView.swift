@@ -204,10 +204,9 @@ struct ActivityDetailView: View {
                         if let supplementalContent { supplementalContent }
                         statsHeroSection
                         if currentActivity.activityEventID != nil { sharedActivitySection }
-                        if showsPrivateDetails { metadataSection }
+                        if showsPrivateDetails, showsMetadataSection { metadataSection }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
-                        if showsPrivateDetails { routeControlsSection }
                         if showsPrivateDetails { guideHeroCard(currentActivity.reflection) }
                         if let bottomContent { bottomContent }
                     }
@@ -524,11 +523,13 @@ struct ActivityDetailView: View {
 
     private var metadataSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ActivityMetadataRow(
-                icon: sourceIcon,
-                title: sourceTitle,
-                detail: currentActivity.source.deviceName ?? sourceDetail
-            )
+            if currentActivity.source.kind != .outbound {
+                ActivityMetadataRow(
+                    icon: sourceIcon,
+                    title: sourceTitle,
+                    detail: currentActivity.source.deviceName ?? sourceDetail
+                )
+            }
 
             if let gear = currentActivity.gear {
                 ActivityMetadataRow(icon: "shoeprints.fill", title: String(localized: "activity.meta.shoes", defaultValue: "Shoes"), detail: gear.shoeName)
@@ -556,6 +557,15 @@ struct ActivityDetailView: View {
         }
         .padding(16)
         .background(Color(.systemBackground))
+    }
+
+    private var showsMetadataSection: Bool {
+        currentActivity.source.kind != .outbound
+            || currentActivity.gear != nil
+            || currentActivity.indoor?.isIndoor == true
+            || currentActivity.cadence?.averageStepsPerMinute != nil
+            || currentActivity.cadence?.maxStepsPerMinute != nil
+            || currentActivity.heartRateZones != nil
     }
 
     private var sourceTitle: String {
@@ -701,27 +711,6 @@ struct ActivityDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.top, 16)
-    }
-
-    // MARK: - Route Privacy
-
-    @ViewBuilder
-    private var routeControlsSection: some View {
-        if currentActivity.hasRoute {
-            HStack {
-                Label(String(localized: "activity.route.private", defaultValue: "Private"), systemImage: "lock.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(Capsule())
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
     }
 
     // MARK: - Share Sheet

@@ -13,7 +13,7 @@ The current view is a Strava-style layered detail page:
 3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
 4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
-6. **Route controls** — persistent navigation-bar Share action plus an inline privacy badge; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
+6. **Route actions** — persistent navigation-bar Share action; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
 
@@ -140,7 +140,7 @@ The layout uses a persistent full-screen route map with a bottom information she
 3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
-6. **Content order** — stats, elevation, splits, route controls, guide card
+6. **Content order** — stats, elevation, splits, activity metadata when relevant, guide card
 7. **Media layout** — the route map remains the full-screen background without a floating thumbnail; the sheet owns a horizontal photo strip, the active photo drives the selected map annotation, and a second tap opens the immersive lightbox
 8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity
 9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
