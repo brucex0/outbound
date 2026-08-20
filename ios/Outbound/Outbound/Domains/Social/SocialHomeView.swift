@@ -1890,7 +1890,7 @@ private struct SocialMilestoneCard: View {
                 .shadow(color: .orange.opacity(0.22), radius: 7, y: 3)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Guide noticed this")
+                    Text("Milestone unlocked")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.orange)
                     Text(preview.title)
