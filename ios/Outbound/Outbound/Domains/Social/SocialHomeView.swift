@@ -1746,6 +1746,27 @@ private extension TogetherActivityDTO {
                 verticalAccuracy: nil
             )
         }
+        let savedPhotos = (photos ?? []).compactMap { photo -> SavedPhoto? in
+            guard let clientPhotoID = UUID(uuidString: photo.clientPhotoId),
+                  let url = photo.url else { return nil }
+            let coordinate = photo.latitude.flatMap { latitude in
+                photo.longitude.map { longitude in
+                    SavedCoordinate(latitude: latitude, longitude: longitude)
+                }
+            }
+            return SavedPhoto(
+                id: clientPhotoID,
+                takenAt: photo.takenAt,
+                paceAtShot: photo.paceAtShot,
+                hrAtShot: photo.hrAtShot,
+                distAtShot: photo.distAtShot ?? 0,
+                coordinate: coordinate,
+                captureContext: photo.captureContext.flatMap(PhotoCaptureContext.init(rawValue:)) ?? .active,
+                relativePath: url.absoluteString,
+                remotePhotoId: photo.id,
+                remoteUploadedAt: photo.takenAt
+            )
+        }
         return SavedActivity(
             id: UUID(uuidString: id) ?? UUID(),
             title: title ?? String(localized: "Activity"),
@@ -1758,7 +1779,7 @@ private extension TogetherActivityDTO {
             distanceM: max(0, distanceM ?? 0),
             avgPace: avgPace,
             route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
-            photos: [],
+            photos: savedPhotos,
             sync: nil
         )
     }

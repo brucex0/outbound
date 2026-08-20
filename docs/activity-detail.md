@@ -19,6 +19,8 @@ The current view is a Strava-style layered detail page:
 
 Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing, while unavailable private source/gear metadata and route privacy are omitted.
 
+Connection photos are delivered in the visible social-post payload as ordered metadata plus 15-minute signed read URLs. Storage keys never cross the social response boundary. The iOS adapter maps those records into the shared photo-strip model, and the shared image view supports both local file URLs and signed HTTPS media.
+
 The Share Activity Card action renders a 9:16 image built from a full-bleed muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid in a Strava-style lower gradient. The lower-right branding includes a scannable canonical referral URL that opens an installed app or offers the appropriate App Store, Play Store, iOS beta, and Android beta destinations configured on the backend. The system Share Sheet receives the rendered image directly so it offers photo-specific actions such as Save Image, while Copy and messaging apps cannot mistake a secondary URL payload for an extensionless attachment. If referral creation is unavailable, the QR code uses the stable `https://run.plainstride.com/invite` landing link; if a route snapshot cannot be created, rendering falls back to a stats-only card so sharing still succeeds.
 
 Limitations vs Strava and category expectations:
@@ -107,7 +109,7 @@ Splits are computed on-the-fly by iterating route points, computing cumulative d
 
 ## Backend Impact
 
-No backend changes required for Phase 1. All features are computed locally:
+Most analysis features are computed locally:
 
 - **Elevation profile** — computed from persisted `SavedRoutePoint.altitude` values
 - **Splits** — computed from route points via haversine + timestamp arithmetic
@@ -115,6 +117,8 @@ No backend changes required for Phase 1. All features are computed locally:
 - **Photo map pins** — use existing `SavedPhoto.coordinate`
 - **Guide hero card** — use existing `SavedActivity.reflection`
 - **Bottom toolbar** — use existing `ActivityStore.exportRoute()`
+
+Social activity photos require the backend Social response to select post activity photos and issue short-lived signed media URLs for authorized viewers.
 
 Future phases needing backend:
 - **Comparison to previous on same route** — needs route similarity matching (server-side or local)

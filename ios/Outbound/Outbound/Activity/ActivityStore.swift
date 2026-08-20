@@ -77,7 +77,11 @@ final class ActivityStore: ObservableObject {
     }
 
     func imageURL(for photo: SavedPhoto) -> URL? {
-        ActivityPersistence.imageURL(for: photo)
+        if let remoteURL = URL(string: photo.relativePath),
+           ["http", "https"].contains(remoteURL.scheme?.lowercased() ?? "") {
+            return remoteURL
+        }
+        return ActivityPersistence.imageURL(for: photo)
     }
 
     func activity(id: UUID) -> SavedActivity? {

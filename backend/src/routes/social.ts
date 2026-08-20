@@ -7,6 +7,7 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
+import { signedActivityPhotoURL } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -87,7 +88,7 @@ async function socialHome(c: Context<AppEnv>) {
       },
       include: {
         user: { select: socialPersonSelect },
-        activity: { select: socialActivitySelect },
+        activity: { select: socialPostActivitySelect },
         reactions: { select: { id: true, userId: true, type: true } },
         comments: {
           include: { author: { select: socialPersonSelect } },
@@ -105,7 +106,7 @@ async function socialHome(c: Context<AppEnv>) {
     upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
-    posts: posts.map((post) => postPayload(post, user.id)),
+    posts: await Promise.all(posts.map((post) => postPayload(post, user.id))),
   });
 }
 
@@ -612,7 +613,7 @@ router.post("/activity-shares", zValidator("json", z.object({ activityId: z.stri
         data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility },
         include: socialPostInclude,
       });
-  return c.json(postPayload(post, user.id), existingPost ? 200 : 201);
+  return c.json(await postPayload(post, user.id), existingPost ? 200 : 201);
 });
 
 router.put("/posts/:id/cheer", async (c) => {
@@ -753,6 +754,25 @@ const socialActivitySelect = {
   route: true,
 } as const;
 
+const socialPostActivitySelect = {
+  ...socialActivitySelect,
+  photos: {
+    select: {
+      id: true,
+      clientPhotoId: true,
+      storageKey: true,
+      takenAt: true,
+      paceAtShot: true,
+      hrAtShot: true,
+      distAtShot: true,
+      lat: true,
+      lng: true,
+      captureContext: true,
+    },
+    orderBy: { takenAt: "asc" as const },
+  },
+} as const;
+
 function connectionPayload(
   connection: {
     id: string;
@@ -774,7 +794,7 @@ function connectionPayload(
 
 const socialPostInclude = {
   user: { select: socialPersonSelect },
-  activity: { select: socialActivitySelect },
+  activity: { select: socialPostActivitySelect },
   reactions: { select: { id: true, userId: true, type: true } },
   comments: {
     include: { author: { select: socialPersonSelect } },
@@ -784,7 +804,24 @@ const socialPostInclude = {
   _count: { select: { comments: true } },
 } as const;
 
-function postPayload(post: any, currentUserId: string) {
+async function postPayload(post: any, currentUserId: string) {
+  const activity = post.activity
+    ? {
+        ...post.activity,
+        photos: await Promise.all(post.activity.photos.map(async (photo: any) => ({
+          id: photo.id,
+          clientPhotoId: photo.clientPhotoId,
+          url: await signedActivityPhotoURL(photo.storageKey),
+          takenAt: photo.takenAt,
+          paceAtShot: photo.paceAtShot,
+          hrAtShot: photo.hrAtShot,
+          distAtShot: photo.distAtShot,
+          latitude: photo.lat,
+          longitude: photo.lng,
+          captureContext: photo.captureContext,
+        }))),
+      }
+    : null;
   return {
     id: post.id,
     caption: post.caption,
@@ -792,7 +829,7 @@ function postPayload(post: any, currentUserId: string) {
     visibility: post.visibility,
     isCurrentUser: post.userId === currentUserId,
     user: post.user,
-    activity: post.activity,
+    activity,
     reactionCount: post.reactions.length,
     currentUserCheered: post.reactions.some((reaction: { userId: string }) => reaction.userId === currentUserId),
     commentCount: post._count.comments,

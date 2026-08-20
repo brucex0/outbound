@@ -212,6 +212,38 @@ struct TogetherActivityDTO: Codable, Sendable {
     let distanceM: Double?
     let avgPace: Double?
     let route: TogetherActivityRouteDTO?
+    let photos: [TogetherActivityPhotoDTO]?
+
+    init(
+        id: String,
+        title: String?,
+        durationSecs: Int?,
+        distanceM: Double?,
+        avgPace: Double?,
+        route: TogetherActivityRouteDTO?,
+        photos: [TogetherActivityPhotoDTO]? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.durationSecs = durationSecs
+        self.distanceM = distanceM
+        self.avgPace = avgPace
+        self.route = route
+        self.photos = photos
+    }
+}
+
+struct TogetherActivityPhotoDTO: Codable, Sendable {
+    let id: String
+    let clientPhotoId: String
+    let url: URL?
+    let takenAt: Date
+    let paceAtShot: Double?
+    let hrAtShot: Int?
+    let distAtShot: Double?
+    let latitude: Double?
+    let longitude: Double?
+    let captureContext: String?
 }
 
 struct TogetherActivityRouteDTO: Codable, Sendable {
