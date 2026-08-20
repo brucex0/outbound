@@ -9,6 +9,7 @@ else
 fi
 TARGET_DEVICE_NAME="${TARGET_DEVICE_NAME:-Bruce main}"
 CORE_DEVICE_ID="${CORE_DEVICE_ID:-591E461F-4950-5FBD-A797-4777F1E83532}"
+SIMULATOR_ID="${SIMULATOR_ID:-}"
 BUNDLE_ID="plainstride.outbound"
 EXTENSION_BUNDLE_ID="${BUNDLE_ID}.liveactivity"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
@@ -21,6 +22,7 @@ build_only=false
 launch_after_install=false
 enable_social=false
 enable_test_personas=false
+target_simulator=false
 local_development_host="${OUTBOUND_LOCAL_HOST:-}"
 
 timestamp() {
@@ -42,11 +44,12 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--build-only] [--launch] [--with-test-personas] [--with-social|--without-social]
+Usage: $0 [--simulator] [--build-only] [--launch] [--with-test-personas] [--with-social|--without-social]
 
-Build and install Outbound on Bruce main.
+Build and install Outbound on Bruce main or an iOS Simulator.
 
 Options:
+  --simulator       Target an iOS Simulator instead of Bruce main.
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
   --with-test-personas
@@ -60,6 +63,8 @@ Environment:
   DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp.
   TARGET_DEVICE_NAME Defaults to Bruce main.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
+  SIMULATOR_ID       Optional simulator UUID. Defaults to the first available
+                     iPhone simulator when --simulator is used.
   DEVELOPMENT_TEAM   Defaults to ${DEVELOPMENT_TEAM}.
   OTHER_SWIFT_FLAGS  Preserved when --with-social appends the Social flag.
   OUTBOUND_LOCAL_HOST
@@ -80,6 +85,54 @@ detect_local_development_host() {
     fi
   done
 
+  return 1
+}
+
+detect_simulator_id() {
+  xcrun simctl list devices available | awk '
+    /iPhone/ && /(Booted|Shutdown)/ {
+      for (field = 1; field <= NF; field++) {
+        if ($field ~ /^\([0-9A-Fa-f-]{36}\)$/) {
+          gsub(/[()]/, "", $field)
+          print $field
+          exit
+        }
+      }
+    }
+  '
+}
+
+start_firebase_auth_emulator_if_needed() {
+  local emulator_url="http://127.0.0.1:9099/"
+  local emulator_log="${TMPDIR:-/tmp}/plainstride-firebase-auth-emulator.log"
+  local emulator_pid
+
+  if curl --silent --fail --max-time 1 "$emulator_url" >/dev/null 2>&1; then
+    log "Firebase Auth Emulator: already running"
+    return 0
+  fi
+
+  log "Starting Firebase Auth Emulator..."
+  nohup npx --yes firebase-tools emulators:start \
+    --only auth \
+    --project outbound-494602 \
+    --config firebase.json \
+    >"$emulator_log" 2>&1 &
+  emulator_pid=$!
+
+  for _ in {1..90}; do
+    if curl --silent --fail --max-time 1 "$emulator_url" >/dev/null 2>&1; then
+      log "Firebase Auth Emulator: ready (log: ${emulator_log})"
+      return 0
+    fi
+    if ! kill -0 "$emulator_pid" 2>/dev/null; then
+      echo "Firebase Auth Emulator exited before becoming ready. See ${emulator_log}." >&2
+      return 1
+    fi
+    sleep 1
+  done
+
+  echo "Timed out waiting for Firebase Auth Emulator. See ${emulator_log}." >&2
   return 1
 }
 
@@ -139,6 +192,9 @@ report_signing_inputs() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --simulator)
+      target_simulator=true
+      ;;
     --build-only)
       build_only=true
       ;;
@@ -172,7 +228,17 @@ if [[ "$enable_test_personas" == true && "$launch_after_install" != true ]]; the
   exit 2
 fi
 
-if [[ "$enable_test_personas" == true && -z "$local_development_host" ]]; then
+if [[ "$target_simulator" == true && "$build_only" != true && -z "$SIMULATOR_ID" ]]; then
+  SIMULATOR_ID="$(detect_simulator_id)"
+  if [[ -z "$SIMULATOR_ID" ]]; then
+    echo "No available iPhone simulator was found." >&2
+    exit 1
+  fi
+fi
+
+if [[ "$enable_test_personas" == true && "$target_simulator" == true ]]; then
+  local_development_host="127.0.0.1"
+elif [[ "$enable_test_personas" == true && -z "$local_development_host" ]]; then
   local_development_host="$(detect_local_development_host || true)"
   if [[ -z "$local_development_host" ]]; then
     echo "Could not detect a Mac LAN address on en0 or en1." >&2
@@ -183,9 +249,24 @@ fi
 
 cd "$ROOT_DIR"
 
-log "Starting build helper for ${TARGET_DEVICE_NAME}"
+if [[ "$enable_test_personas" == true ]]; then
+  start_firebase_auth_emulator_if_needed
+fi
+
+if [[ "$target_simulator" == true ]]; then
+  target_description="iOS Simulator"
+  [[ -z "$SIMULATOR_ID" ]] || target_description="iOS Simulator ${SIMULATOR_ID}"
+else
+  target_description="$TARGET_DEVICE_NAME"
+fi
+
+log "Starting build helper for ${target_description}"
 log "DerivedData: ${DERIVED_DATA_PATH}"
-log "CoreDevice ID: ${CORE_DEVICE_ID}"
+if [[ "$target_simulator" == true ]]; then
+  [[ -z "$SIMULATOR_ID" ]] || log "Simulator ID: ${SIMULATOR_ID}"
+else
+  log "CoreDevice ID: ${CORE_DEVICE_ID}"
+fi
 if [[ "$enable_social" == true ]]; then
   log "Social: enabled"
 else
@@ -204,23 +285,34 @@ else
     mode_description="${mode_description}, then launch"
   fi
   log "Mode: ${mode_description}"
-  log "Signing team: ${DEVELOPMENT_TEAM}"
-  report_signing_inputs
+  if [[ "$target_simulator" == true ]]; then
+    log "Signing: simulator"
+  else
+    log "Signing team: ${DEVELOPMENT_TEAM}"
+    report_signing_inputs
+  fi
 fi
 
-log "Building Outbound for ${TARGET_DEVICE_NAME}..."
+log "Building Outbound for ${target_description}..."
+if [[ "$target_simulator" == true ]]; then
+  build_destination='generic/platform=iOS Simulator'
+  build_product_directory='Debug-iphonesimulator'
+else
+  build_destination='generic/platform=iOS'
+  build_product_directory='Debug-iphoneos'
+fi
 build_args=(
   xcodebuild
   -project ios/Outbound/Outbound.xcodeproj
   -scheme Outbound
-  -destination 'generic/platform=iOS'
+  -destination "$build_destination"
   -derivedDataPath "$DERIVED_DATA_PATH"
   -showBuildTimingSummary
 )
 
 if [[ "$build_only" == true ]]; then
   build_args+=(CODE_SIGNING_ALLOWED=NO)
-else
+elif [[ "$target_simulator" != true ]]; then
   build_args+=(-allowProvisioningUpdates DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM")
 fi
 
@@ -233,7 +325,7 @@ build_args+=(build)
 
 run_with_prefix "[build]" "${build_args[@]}"
 
-APP_PATH="${DERIVED_DATA_PATH}/Build/Products/Debug-iphoneos/Outbound.app"
+APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${build_product_directory}/Outbound.app"
 log "Build finished"
 log "App path: ${APP_PATH}"
 
@@ -242,36 +334,62 @@ if [[ "$build_only" == true ]]; then
   exit 0
 fi
 
-log "Checking device availability..."
-if ! xcrun devicectl list devices --hide-headers | grep -Fq "$CORE_DEVICE_ID"; then
-  echo "Configured CoreDevice ID not currently available: ${CORE_DEVICE_ID}" >&2
-  echo "Set CORE_DEVICE_ID to the current identifier for ${TARGET_DEVICE_NAME} from:" >&2
-  echo "  xcrun devicectl list devices" >&2
-  exit 1
+if [[ "$target_simulator" == true ]]; then
+  simulator_state="$(xcrun simctl list devices | awk -v id="$SIMULATOR_ID" 'index($0, id) { print; exit }')"
+  if [[ -z "$simulator_state" ]]; then
+    echo "Configured simulator is unavailable: ${SIMULATOR_ID}" >&2
+    exit 1
+  fi
+  if [[ "$simulator_state" != *"(Booted)"* ]]; then
+    log "Booting iOS Simulator ${SIMULATOR_ID}..."
+    run_with_prefix "[boot]" xcrun simctl boot "$SIMULATOR_ID"
+  fi
+  run_with_prefix "[boot]" xcrun simctl bootstatus "$SIMULATOR_ID" -b
+  log "Installing Outbound on iOS Simulator..."
+  run_with_prefix "[install]" xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
+else
+  log "Checking device availability..."
+  if ! xcrun devicectl list devices --hide-headers | grep -Fq "$CORE_DEVICE_ID"; then
+    echo "Configured CoreDevice ID not currently available: ${CORE_DEVICE_ID}" >&2
+    echo "Set CORE_DEVICE_ID to the current identifier for ${TARGET_DEVICE_NAME} from:" >&2
+    echo "  xcrun devicectl list devices" >&2
+    exit 1
+  fi
+
+  log "Installing Outbound on ${TARGET_DEVICE_NAME}..."
+  run_with_prefix "[install]" xcrun devicectl device install app \
+    --device "$CORE_DEVICE_ID" \
+    "$APP_PATH"
 fi
 
-log "Installing Outbound on ${TARGET_DEVICE_NAME}..."
-run_with_prefix "[install]" xcrun devicectl device install app \
-  --device "$CORE_DEVICE_ID" \
-  "$APP_PATH"
-
 if [[ "$launch_after_install" == true ]]; then
-  log "Launching Outbound on ${TARGET_DEVICE_NAME}..."
-  launch_args=(
-    xcrun devicectl device process launch
-    --device "$CORE_DEVICE_ID"
-  )
-  if [[ "$enable_test_personas" == true ]]; then
-    launch_args+=(
-      --terminate-existing
-      "$BUNDLE_ID"
-      --
-      -OutboundUseFirebaseAuthEmulator
-      -OutboundFirebaseAuthEmulatorHost "$local_development_host"
-      -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
-    )
+  log "Launching Outbound on ${target_description}..."
+  if [[ "$target_simulator" == true ]]; then
+    launch_args=(xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID")
+    if [[ "$enable_test_personas" == true ]]; then
+      launch_args+=(
+        -OutboundUseFirebaseAuthEmulator
+        -OutboundFirebaseAuthEmulatorHost "$local_development_host"
+        -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
+      )
+    fi
   else
-    launch_args+=("$BUNDLE_ID")
+    launch_args=(
+      xcrun devicectl device process launch
+      --device "$CORE_DEVICE_ID"
+    )
+    if [[ "$enable_test_personas" == true ]]; then
+      launch_args+=(
+        --terminate-existing
+        "$BUNDLE_ID"
+        --
+        -OutboundUseFirebaseAuthEmulator
+        -OutboundFirebaseAuthEmulatorHost "$local_development_host"
+        -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
+      )
+    else
+      launch_args+=("$BUNDLE_ID")
+    fi
   fi
   run_with_prefix "[launch]" "${launch_args[@]}"
 fi

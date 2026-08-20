@@ -124,6 +124,15 @@ Preferred shortcut:
 ./scripts/build-install-bruce-main.sh
 ```
 
+Target the first available iPhone simulator instead:
+
+```sh
+./scripts/build-install-bruce-main.sh --simulator --launch
+```
+
+Set `SIMULATOR_ID` to select a specific simulator. The helper boots it when
+needed, installs the app, and launches it without requiring Xcode.
+
 The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
 For install builds, it reports missing local signing inputs and still runs `xcodebuild -allowProvisioningUpdates` so Xcode can refresh certificates and provisioning profiles from the signed-in account.
 
@@ -173,11 +182,21 @@ local Firebase Auth Emulator and API:
 ./scripts/build-install-bruce-main.sh --launch --with-test-personas
 ```
 
+For Simulator, add `--simulator`; the helper uses localhost automatically:
+
+```sh
+./scripts/build-install-bruce-main.sh --simulator --launch --with-test-personas
+```
+
+When `--with-test-personas` is present, the helper reuses an Auth Emulator
+already listening on port `9099` or starts one in the background and waits for
+it to become ready. The local API still needs to be started separately.
+
 The helper detects the Mac's LAN address from `en0` or `en1` and passes it to
 the app. Set `OUTBOUND_LOCAL_HOST` explicitly if the phone must use a different
-reachable address. Start the emulator and local backend first as described in
-`docs/firebase.md`; the phone and Mac must be on a network that permits local
-device connections.
+reachable address. Start the local backend first as described in
+`docs/firebase.md`; the helper starts the Auth Emulator. The phone and Mac must
+be on a network that permits local device connections.
 
 Underlying commands:
 

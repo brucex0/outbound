@@ -134,5 +134,8 @@ Mac's LAN address:
 ```
 
 Override detection with `OUTBOUND_LOCAL_HOST=<mac-lan-address>` when needed.
+The helper also starts the Firebase Auth Emulator when port `9099` is not
+already serving it. Add `--simulator` to build, install, and launch on the first
+available iPhone simulator using localhost instead.
 
 Stopping the emulator clears its accounts unless import/export persistence is added. Production and Release builds never expose persona login or honor these Debug-only routing arguments.
