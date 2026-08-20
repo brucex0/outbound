@@ -42,20 +42,27 @@ async function seedTestPersonas() {
   const values = Object.values(personas);
 
   const existingUsers = await prisma.user.findMany({
-    where: { firebaseUid: { in: values.map((persona) => persona.uid) } },
+    where: {
+      OR: [
+        { firebaseUid: { in: values.map((persona) => persona.uid) } },
+        { normalizedEmail: { in: values.map((persona) => persona.email) } },
+        { username: { in: values.map((persona) => persona.username) } },
+      ],
+    },
     select: { id: true },
   });
   await Promise.all(existingUsers.map((user) => deleteUserActivityPhotos(user.id)));
-  await prisma.user.deleteMany({ where: { firebaseUid: { in: values.map((persona) => persona.uid) } } });
+  await prisma.user.deleteMany({ where: { id: { in: existingUsers.map((user) => user.id) } } });
   await prisma.club.deleteMany({ where: { name: "Plainstride E2E Run Club" } });
   await prisma.club.deleteMany({ where: { name: "Sunset E2E Striders" } });
 
   for (const persona of values) {
-    try {
-      await auth.deleteUser(persona.uid);
-    } catch (error: any) {
-      if (error?.code !== "auth/user-not-found") throw error;
-    }
+    const staleUIDs = new Set<string>();
+    const existingByUID = await getAuthUserUID(() => auth.getUser(persona.uid));
+    const existingByEmail = await getAuthUserUID(() => auth.getUserByEmail(persona.email));
+    if (existingByUID) staleUIDs.add(existingByUID);
+    if (existingByEmail) staleUIDs.add(existingByEmail);
+    await Promise.all([...staleUIDs].map((uid) => auth.deleteUser(uid)));
     await auth.createUser({
       uid: persona.uid,
       email: persona.email,
@@ -155,6 +162,15 @@ async function seedTestPersonas() {
   await prisma.socialBlock.create({ data: { blockerId: socialRunner.id, blockedId: blockedRunner.id } });
 
   return { users: values.length, activities: activeActivities.length, clubs: 2 };
+}
+
+async function getAuthUserUID(fetchUser: () => Promise<{ uid: string }>) {
+  try {
+    return (await fetchUser()).uid;
+  } catch (error: any) {
+    if (error?.code === "auth/user-not-found") return null;
+    throw error;
+  }
 }
 
 async function createAppUser(persona: (typeof personas)[keyof typeof personas]) {
