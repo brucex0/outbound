@@ -1025,6 +1025,7 @@ private struct SocialNotificationsView: View {
                 pushNotifications.consumePendingNotification()
             }
             await socialStore.markNotificationsRead()
+            await pushNotifications.clearAppIconBadge()
         }
         .refreshable { await socialStore.refreshNotifications() }
     }

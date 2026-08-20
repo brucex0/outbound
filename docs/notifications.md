@@ -52,6 +52,7 @@ Creating the inbox record succeeds independently of push. Delivery errors are lo
 - `PushNotificationCoordinator` owns authorization, APNs/FCM registration, backend synchronization, and pending tap state.
 - `AppDelegate` bridges APNs and Firebase Messaging callbacks and presents system banners in the foreground.
 - Registration occurs after authentication and retries on foreground activation.
+- The app icon badge is cleared whenever the authenticated app becomes active and after the Social notification inbox is marked read.
 - A notification tap sets `pendingNotificationID`; the app selects Social, opens Notifications, refreshes the inbox, and routes to the matching notification detail when present.
 - User-facing permission text is provided by the system. Any future custom permission primer must use localized strings.
 

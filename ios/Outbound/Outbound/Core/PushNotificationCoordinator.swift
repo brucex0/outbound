@@ -20,6 +20,7 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
 
     func activate() async {
         let center = UNUserNotificationCenter.current()
+        await clearAppIconBadge(using: center)
         let settings = await center.notificationSettings()
         if settings.authorizationStatus == .notDetermined {
             _ = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
@@ -41,6 +42,14 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
 
     func consumePendingNotification() {
         pendingNotificationID = nil
+    }
+
+    func clearAppIconBadge() async {
+        await clearAppIconBadge(using: UNUserNotificationCenter.current())
+    }
+
+    private func clearAppIconBadge(using center: UNUserNotificationCenter) async {
+        try? await center.setBadgeCount(0)
     }
 
     private func register(token: String) async {
