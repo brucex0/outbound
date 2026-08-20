@@ -193,8 +193,60 @@ async function createAppUser(persona: (typeof personas)[keyof typeof personas]) 
 
 function createActivity(userId: string, clientActivityId: string, title: string, startedAt: Date, durationSecs: number, distanceM: number, avgPace: number) {
   return prisma.activity.create({
-    data: { userId, clientActivityId, syncSource: "e2e-seed", type: "running", title, startedAt, endedAt: new Date(startedAt.getTime() + durationSecs * 1000), durationSecs, distanceM, avgPace, elevationM: 42, calories: Math.round(distanceM / 10) },
+    data: {
+      userId,
+      clientActivityId,
+      syncSource: "e2e-seed",
+      type: "running",
+      title,
+      startedAt,
+      endedAt: new Date(startedAt.getTime() + durationSecs * 1000),
+      durationSecs,
+      distanceM,
+      avgPace,
+      elevationM: 42,
+      calories: Math.round(distanceM / 10),
+      route: makeSeedRoute(startedAt, durationSecs, distanceM, Number(clientActivityId.at(-1)) - 1),
+    },
   });
+}
+
+function makeSeedRoute(startedAt: Date, durationSecs: number, distanceM: number, variant: number) {
+  const centers = [
+    { latitude: 37.7694, longitude: -122.4862 },
+    { latitude: 37.8067, longitude: -122.4050 },
+    { latitude: 37.7606, longitude: -122.4181 },
+  ];
+  const center = centers[variant] ?? centers[0];
+  const pointCount = 33;
+  const radiusM = distanceM / (2 * Math.PI);
+  const latitudeDegreesPerMeter = 1 / 111_320;
+  const longitudeDegreesPerMeter = 1 / (111_320 * Math.cos(center.latitude * Math.PI / 180));
+  const coordinates: number[][] = [];
+  const timestamps: string[] = [];
+  const verticalAccuracy: number[] = [];
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const progress = index / (pointCount - 1);
+    const angle = progress * 2 * Math.PI;
+    const shape = 1 + 0.08 * Math.sin(angle * 3 + variant);
+    const northM = Math.sin(angle) * radiusM * 0.72 * shape;
+    const eastM = Math.cos(angle) * radiusM * 1.38 * shape;
+    const altitude = 24 + variant * 8 + 12 * Math.sin(angle * 2 + variant * 0.7);
+    coordinates.push([
+      center.longitude + eastM * longitudeDegreesPerMeter,
+      center.latitude + northM * latitudeDegreesPerMeter,
+      Math.round(altitude * 10) / 10,
+    ]);
+    timestamps.push(new Date(startedAt.getTime() + progress * durationSecs * 1_000).toISOString());
+    verticalAccuracy.push(5);
+  }
+
+  return {
+    type: "Feature",
+    geometry: { type: "LineString", coordinates },
+    properties: { visibility: "private", timestamps, verticalAccuracy },
+  };
 }
 
 async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType<typeof createActivity>>[], now: Date) {
