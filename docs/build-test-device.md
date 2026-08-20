@@ -166,6 +166,19 @@ Build, install, and launch:
 ./scripts/build-install-bruce-main.sh --launch
 ```
 
+To launch on `Bruce main` with the Debug test-persona picker connected to the
+local Firebase Auth Emulator and API:
+
+```sh
+./scripts/build-install-bruce-main.sh --launch --with-test-personas
+```
+
+The helper detects the Mac's LAN address from `en0` or `en1` and passes it to
+the app. Set `OUTBOUND_LOCAL_HOST` explicitly if the phone must use a different
+reachable address. Start the emulator and local backend first as described in
+`docs/firebase.md`; the phone and Mac must be on a network that permits local
+device connections.
+
 Underlying commands:
 
 ```sh

@@ -20,6 +20,8 @@ PROFILE_DIRS=(
 build_only=false
 launch_after_install=false
 enable_social=false
+enable_test_personas=false
+local_development_host="${OUTBOUND_LOCAL_HOST:-}"
 
 timestamp() {
   date '+%H:%M:%S'
@@ -40,13 +42,16 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--build-only] [--launch] [--with-social|--without-social]
+Usage: $0 [--build-only] [--launch] [--with-test-personas] [--with-social|--without-social]
 
 Build and install Outbound on Bruce main.
 
 Options:
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
+  --with-test-personas
+                    Route a launched Debug app to the local Firebase Auth
+                    Emulator and API. Requires --launch.
   --with-social     Enable the Social tab with OUTBOUND_ENABLE_SOCIAL.
   --without-social  Disable Social tab. This is the default beta-safe build.
   -h, --help        Show this help.
@@ -57,7 +62,25 @@ Environment:
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
   DEVELOPMENT_TEAM   Defaults to ${DEVELOPMENT_TEAM}.
   OTHER_SWIFT_FLAGS  Preserved when --with-social appends the Social flag.
+  OUTBOUND_LOCAL_HOST
+                      Mac LAN address reachable from the phone. Auto-detected
+                      from en0 or en1 when --with-test-personas is used.
 USAGE
+}
+
+detect_local_development_host() {
+  local interface
+  local detected_host
+
+  for interface in en0 en1; do
+    detected_host="$(ipconfig getifaddr "$interface" 2>/dev/null || true)"
+    if [[ -n "$detected_host" ]]; then
+      printf '%s\n' "$detected_host"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 has_signing_identity_for_team() {
@@ -122,6 +145,9 @@ while [[ $# -gt 0 ]]; do
     --launch)
       launch_after_install=true
       ;;
+    --with-test-personas)
+      enable_test_personas=true
+      ;;
     --with-social)
       enable_social=true
       ;;
@@ -141,6 +167,20 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ "$enable_test_personas" == true && "$launch_after_install" != true ]]; then
+  echo "--with-test-personas requires --launch." >&2
+  exit 2
+fi
+
+if [[ "$enable_test_personas" == true && -z "$local_development_host" ]]; then
+  local_development_host="$(detect_local_development_host || true)"
+  if [[ -z "$local_development_host" ]]; then
+    echo "Could not detect a Mac LAN address on en0 or en1." >&2
+    echo "Set OUTBOUND_LOCAL_HOST to the address reachable from ${TARGET_DEVICE_NAME}." >&2
+    exit 1
+  fi
+fi
+
 cd "$ROOT_DIR"
 
 log "Starting build helper for ${TARGET_DEVICE_NAME}"
@@ -150,6 +190,10 @@ if [[ "$enable_social" == true ]]; then
   log "Social: enabled"
 else
   log "Social: disabled"
+fi
+if [[ "$enable_test_personas" == true ]]; then
+  log "Test personas: Firebase Auth Emulator at ${local_development_host}:9099"
+  log "Local API: http://${local_development_host}:3000/v1"
 fi
 if [[ "$build_only" == true ]]; then
   log "Mode: build only"
@@ -213,9 +257,23 @@ run_with_prefix "[install]" xcrun devicectl device install app \
 
 if [[ "$launch_after_install" == true ]]; then
   log "Launching Outbound on ${TARGET_DEVICE_NAME}..."
-  run_with_prefix "[launch]" xcrun devicectl device process launch \
-    --device "$CORE_DEVICE_ID" \
-    "$BUNDLE_ID"
+  launch_args=(
+    xcrun devicectl device process launch
+    --device "$CORE_DEVICE_ID"
+  )
+  if [[ "$enable_test_personas" == true ]]; then
+    launch_args+=(
+      --terminate-existing
+      "$BUNDLE_ID"
+      --
+      -OutboundUseFirebaseAuthEmulator
+      -OutboundFirebaseAuthEmulatorHost "$local_development_host"
+      -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
+    )
+  else
+    launch_args+=("$BUNDLE_ID")
+  fi
+  run_with_prefix "[launch]" "${launch_args[@]}"
 fi
 
 log "Done."

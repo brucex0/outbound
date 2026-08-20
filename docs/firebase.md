@@ -82,6 +82,10 @@ Start the Auth Emulator from the repository root:
 npx --yes firebase-tools emulators:start --only auth --project outbound-494602
 ```
 
+The checked-in emulator configuration binds Auth to `0.0.0.0` so a physical
+device on the same trusted local network can reach it. The Emulator UI remains
+bound to localhost.
+
 Start the local backend in a second terminal. Firebase Admin accepts emulator tokens only when `FIREBASE_AUTH_EMULATOR_HOST` is set:
 
 ```sh
@@ -120,6 +124,15 @@ In the Debug scheme's Run arguments, add:
 http://127.0.0.1:3000/v1
 ```
 
-The defaults target an iOS Simulator on the same Mac. For a physical iPhone, also pass `-OutboundFirebaseAuthEmulatorHost` followed by the Mac's LAN address, use that address in `-OutboundAPIBaseURL`, and configure the emulator/backend to listen on a reachable interface.
+The defaults target an iOS Simulator on the same Mac. For a physical iPhone, also pass `-OutboundFirebaseAuthEmulatorHost` followed by the Mac's LAN address and use that address in `-OutboundAPIBaseURL`.
+
+The device build helper supplies those launch arguments and auto-detects the
+Mac's LAN address:
+
+```sh
+./scripts/build-install-bruce-main.sh --launch --with-test-personas
+```
+
+Override detection with `OUTBOUND_LOCAL_HOST=<mac-lan-address>` when needed.
 
 Stopping the emulator clears its accounts unless import/export persistence is added. Production and Release builds never expose persona login or honor these Debug-only routing arguments.
