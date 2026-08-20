@@ -1,7 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getAuth } from "firebase-admin/auth";
 import { getFirebaseApp } from "../services/firebaseAuth.js";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
+import { activityPhotoSHA256, activityPhotoStorageKey, deleteUserActivityPhotos, saveActivityPhoto } from "../services/activityPhotoStorage.js";
 
 const prisma = new PrismaClient();
 const password = "plainstride-test-persona";
@@ -38,6 +41,11 @@ async function seedTestPersonas() {
   const auth = getAuth(getFirebaseApp());
   const values = Object.values(personas);
 
+  const existingUsers = await prisma.user.findMany({
+    where: { firebaseUid: { in: values.map((persona) => persona.uid) } },
+    select: { id: true },
+  });
+  await Promise.all(existingUsers.map((user) => deleteUserActivityPhotos(user.id)));
   await prisma.user.deleteMany({ where: { firebaseUid: { in: values.map((persona) => persona.uid) } } });
   await prisma.club.deleteMany({ where: { name: "Plainstride E2E Run Club" } });
   await prisma.club.deleteMany({ where: { name: "Sunset E2E Striders" } });
@@ -84,6 +92,7 @@ async function seedTestPersonas() {
     createActivity(activeRunner.id, "e2e-active-tempo", "Steady tempo", daysAgo(now, 5), 41 * 60, 7_000, 351),
     createActivity(activeRunner.id, "e2e-active-long", "Saturday long run", daysAgo(now, 9), 64 * 60, 10_200, 376),
   ]);
+  await seedActivityPhotos(activeRunner.id, activeActivities, now);
   await prisma.runnerInsight.createMany({
     data: [
       { userId: activeRunner.id, stableKey: "preferred_time", kind: "schedule", label: "Best rhythm", value: "Morning runs", confidence: "medium", evidenceCount: 3 },
@@ -170,6 +179,37 @@ function createActivity(userId: string, clientActivityId: string, title: string,
   return prisma.activity.create({
     data: { userId, clientActivityId, syncSource: "e2e-seed", type: "running", title, startedAt, endedAt: new Date(startedAt.getTime() + durationSecs * 1000), durationSecs, distanceM, avgPace, elevationM: 42, calories: Math.round(distanceM / 10) },
   });
+}
+
+async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType<typeof createActivity>>[], now: Date) {
+  const seeds = [
+    { file: "coastal-trail.jpg", clientPhotoId: "2bb48b3c-8edc-49de-b109-7f96203113aa", pace: 365, heartRate: 144, distance: 2_400 },
+    { file: "waterfront-run.jpg", clientPhotoId: "22cb6d92-c7e8-494b-a0bb-1598dc0092b7", pace: 348, heartRate: 151, distance: 3_600 },
+    { file: "park-after-rain.jpg", clientPhotoId: "89df25b7-c636-4db7-b67f-29021d5f8e2b", pace: 378, heartRate: 139, distance: 6_800 },
+  ];
+
+  await Promise.all(seeds.map(async (seed, index) => {
+    const activity = activities[index];
+    const data = await readFile(path.resolve(process.cwd(), "src", "scripts", "assets", "running-photos", seed.file));
+    const storageKey = activityPhotoStorageKey(userId, activity.id, seed.clientPhotoId);
+    await saveActivityPhoto(storageKey, data);
+    await prisma.photo.create({
+      data: {
+        activityId: activity.id,
+        clientPhotoId: seed.clientPhotoId,
+        storageKey,
+        contentType: "image/jpeg",
+        byteSize: data.length,
+        sha256: activityPhotoSHA256(data),
+        url: "",
+        takenAt: new Date(activity.startedAt.getTime() + Math.min(20 * 60, (activity.durationSecs ?? 0) / 2) * 1_000),
+        paceAtShot: seed.pace,
+        hrAtShot: seed.heartRate,
+        distAtShot: seed.distance,
+        captureContext: "active",
+      },
+    });
+  }));
 }
 
 function daysAgo(origin: Date, days: number) {

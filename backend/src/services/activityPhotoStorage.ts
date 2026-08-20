@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { getStorage } from "firebase-admin/storage";
 import { getFirebaseApp } from "./firebaseAuth.js";
 
@@ -17,6 +19,12 @@ function bucket() {
   return getStorage(getFirebaseApp()).bucket(bucketName);
 }
 
+function localMediaPath(storageKey: string) {
+  if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) return null;
+  const root = process.env.OUTBOUND_LOCAL_MEDIA_DIR ?? path.resolve(process.cwd(), ".local", "media");
+  return path.join(root, ...storageKey.split("/"));
+}
+
 export function activityPhotoStorageKey(userId: string, activityId: string, clientPhotoId: string) {
   return `activity-photos/${userId}/${activityId}/${clientPhotoId}.jpg`;
 }
@@ -32,6 +40,12 @@ export async function saveActivityPhoto(storageKey: string, data: Buffer) {
   if (data[0] !== 0xff || data[1] !== 0xd8 || data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9) {
     throw new Error("Activity photo must be a valid JPEG.");
   }
+  const localPath = localMediaPath(storageKey);
+  if (localPath) {
+    await mkdir(path.dirname(localPath), { recursive: true });
+    await writeFile(localPath, data);
+    return;
+  }
   await bucket().file(storageKey).save(data, {
     resumable: false,
     metadata: { contentType: "image/jpeg", cacheControl: "private, max-age=3600" },
@@ -39,6 +53,15 @@ export async function saveActivityPhoto(storageKey: string, data: Buffer) {
 }
 
 export async function readActivityPhoto(storageKey: string) {
+  const localPath = localMediaPath(storageKey);
+  if (localPath) {
+    try {
+      return await readFile(localPath);
+    } catch (error: any) {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    }
+  }
   const file = bucket().file(storageKey);
   const [exists] = await file.exists();
   if (!exists) return null;
@@ -47,6 +70,7 @@ export async function readActivityPhoto(storageKey: string) {
 }
 
 export async function signedActivityPhotoURL(storageKey: string) {
+  if (localMediaPath(storageKey)) return null;
   const file = bucket().file(storageKey);
   const [exists] = await file.exists();
   if (!exists) return null;
@@ -59,6 +83,11 @@ export async function signedActivityPhotoURL(storageKey: string) {
 }
 
 export async function deleteActivityPhoto(storageKey: string) {
+  const localPath = localMediaPath(storageKey);
+  if (localPath) {
+    await rm(localPath, { force: true });
+    return;
+  }
   await bucket().file(storageKey).delete({ ignoreNotFound: true });
 }
 
@@ -67,5 +96,10 @@ export async function deleteActivityPhotos(storageKeys: string[]) {
 }
 
 export async function deleteUserActivityPhotos(userId: string) {
+  const localPath = localMediaPath(`activity-photos/${userId}`);
+  if (localPath) {
+    await rm(localPath, { recursive: true, force: true });
+    return;
+  }
   await bucket().deleteFiles({ prefix: `activity-photos/${userId}/` });
 }

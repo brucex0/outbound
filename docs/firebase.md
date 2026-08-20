@@ -104,7 +104,7 @@ npm run seed:e2e
 The command refuses non-local Auth Emulator and database hosts. It deletes and recreates only the reserved test identities before inserting deterministic data:
 
 - New Runner: authenticated account with no onboarding or activity history.
-- Active Runner: completed runner profile, calibration, three activities, and learned insights.
+- Active Runner: completed runner profile, calibration, three activities with screenshot-ready running photos, and learned insights.
 - Social Runner: completed runner profile, accepted and pending connections, joined and discoverable groups, an upcoming group run with RSVP, feed interaction, notifications, an invitation, and a blocked runner.
 - Blocked Runner: completed runner profile reserved as the deterministic block-list target for Social Runner.
 
