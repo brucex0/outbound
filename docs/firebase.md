@@ -126,6 +126,8 @@ http://127.0.0.1:3000/v1
 
 The defaults target an iOS Simulator on the same Mac. For a physical iPhone, also pass `-OutboundFirebaseAuthEmulatorHost` followed by the Mac's LAN address and use that address in `-OutboundAPIBaseURL`.
 
+In Debug builds, enabling `-OutboundUseFirebaseAuthEmulator` also defaults the API base URL to `http://<emulator-host>:3000/v1` when `-OutboundAPIBaseURL` is omitted. This keeps unsigned emulator ID tokens away from the production API. An explicit API base URL still takes precedence.
+
 The device build helper supplies those launch arguments and auto-detects the
 Mac's LAN address:
 

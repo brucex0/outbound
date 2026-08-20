@@ -15,13 +15,26 @@ final class APIClient {
             else { return nil }
             return arguments[index + 1]
         }()
+        let authEmulatorBaseURL: String? = {
+            guard arguments.contains("-OutboundUseFirebaseAuthEmulator") else { return nil }
+            let host: String
+            if let index = arguments.firstIndex(of: "-OutboundFirebaseAuthEmulatorHost"),
+               arguments.indices.contains(index + 1) {
+                host = arguments[index + 1]
+            } else {
+                host = "127.0.0.1"
+            }
+            return "http://\(host):3000/v1"
+        }()
         #else
         let debugBaseURL: String? = nil
+        let authEmulatorBaseURL: String? = nil
         #endif
         let configuredBaseURL =
             Bundle.main.object(forInfoDictionaryKey: "OutboundAPIBaseURL") as? String
         let baseURLString = configuredBaseURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedBaseURL = debugBaseURL
+            ?? authEmulatorBaseURL
             ?? (baseURLString?.isEmpty == false ? baseURLString : nil)
             ?? "https://api.outbound.run/v1"
         guard let url = URL(string: resolvedBaseURL) else {
