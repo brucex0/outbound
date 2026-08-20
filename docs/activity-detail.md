@@ -15,9 +15,9 @@ The current view is a Strava-style layered detail page:
 5. **Collapsible splits** — per-km/mile breakdown
 6. **Route controls** — persistent navigation-bar Share action plus an inline privacy badge; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Guide reflection** — full card with reflection title/body and optional nudge
-8. **Photos** — a thumbnail overlapping the sheet edge toggles the full-screen background between the route map and a swipeable photo pager
+8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
 
-Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. Like Strava, the Social presentation keeps the same map, stats, route analysis, and Share action, inserts a tappable author card and caption into the sheet, and pins Cheer and comment controls at the bottom. Ownership gates editing, while unavailable private source/gear metadata, route privacy, and guide reflection are omitted.
+Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing, while unavailable private source/gear metadata and route privacy are omitted.
 
 The Share Activity Card action renders a 9:16 image built from a full-bleed muted `MKMapSnapshotter` route screenshot with the recorded route drawn over it and key stats overlaid in a Strava-style lower gradient. The lower-right branding includes a scannable canonical referral URL that opens an installed app or offers the appropriate App Store, Play Store, iOS beta, and Android beta destinations configured on the backend. The system Share Sheet receives the rendered image directly so it offers photo-specific actions such as Save Image, while Copy and messaging apps cannot mistake a secondary URL payload for an extensionless attachment. If referral creation is unavailable, the QR code uses the stable `https://run.plainstride.com/invite` landing link; if a route snapshot cannot be created, rendering falls back to a stats-only card so sharing still succeeds.
 
@@ -137,7 +137,7 @@ The layout uses a persistent full-screen route map with a bottom information she
 4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
 6. **Content order** — stats, elevation, splits, route controls, guide card
-7. **Media layout** — the route map remains the default full-screen background; a Strava-style thumbnail overlapping the sheet edge switches the background to a swipeable full-screen photo pager, and changes to a map preview while photos are shown
+7. **Media layout** — the route map remains the full-screen background; the sheet owns a full-height horizontal photo strip, the active photo drives the selected map annotation, and a second tap opens the immersive lightbox
 8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity
 9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
 10. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content

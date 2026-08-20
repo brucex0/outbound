@@ -12,6 +12,7 @@ struct ActivityDetailView: View {
     private let showsEditControl: Bool
     private let showsPrivateDetails: Bool
     private let supplementalContent: AnyView?
+    private let bottomContent: AnyView?
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
@@ -27,6 +28,7 @@ struct ActivityDetailView: View {
     @State private var showsCollapsedSheetContent = false
     @State private var showsPhotos = false
     @State private var selectedPhotoPage = 0
+    @State private var lightboxPhotoIndex: Int?
 
     init(
         activity: SavedActivity,
@@ -34,7 +36,8 @@ struct ActivityDetailView: View {
         showsShareControl: Bool = true,
         showsEditControl: Bool = true,
         showsPrivateDetails: Bool = true,
-        supplementalContent: AnyView? = nil
+        supplementalContent: AnyView? = nil,
+        bottomContent: AnyView? = nil
     ) {
         self.activity = activity
         self.usesStoredActivity = usesStoredActivity
@@ -42,6 +45,7 @@ struct ActivityDetailView: View {
         self.showsEditControl = showsEditControl
         self.showsPrivateDetails = showsPrivateDetails
         self.supplementalContent = supplementalContent
+        self.bottomContent = bottomContent
     }
 
     private var currentActivity: SavedActivity {
@@ -62,23 +66,18 @@ struct ActivityDetailView: View {
     }
 
     private var activityStats: [DetailActivityStat] {
-        var stats = [
+        [
             DetailActivityStat(label: "Distance", value: primaryStat),
+            DetailActivityStat(
+                label: String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
+                value: currentActivity.avgPace?.paceString(for: unitSystem) ?? "—"
+            ),
+            DetailActivityStat(label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"), value: currentActivity.durationSecs.formatted()),
+            DetailActivityStat(
+                label: String(localized: "activity.metric.elevation_gain", defaultValue: "Elev Gain"),
+                value: currentActivity.elevationGainM.map { unitSystem.elevationString(meters: $0) } ?? "—"
+            ),
         ]
-        if let pace = currentActivity.avgPace {
-            stats.append(DetailActivityStat(label: "Avg Pace", value: pace.paceString(for: unitSystem)))
-        }
-        stats.append(DetailActivityStat(label: "Moving Time", value: currentActivity.durationSecs.formatted()))
-        if let elevationGainM = currentActivity.elevationGainM {
-            stats.append(DetailActivityStat(label: "Elev Gain", value: unitSystem.elevationString(meters: elevationGainM)))
-        }
-        if let maxElevation = maxElevationMeters(from: elevationProfilePoints) {
-            stats.append(DetailActivityStat(label: "Max Elevation", value: unitSystem.elevationString(meters: maxElevation)))
-        }
-        if let hr = currentActivity.healthMetrics?.averageHeartRateBPM {
-            stats.append(DetailActivityStat(label: "Avg HR", value: "\(hr) bpm"))
-        }
-        return stats
     }
 
     private var splits: [ActivitySplit] {
@@ -164,6 +163,14 @@ struct ActivityDetailView: View {
                 .environmentObject(activityStore)
                 .environmentObject(gearStore)
         }
+        .fullScreenCover(isPresented: lightboxIsPresented) {
+            ActivityPhotoLightbox(
+                photos: currentActivity.photos,
+                selectedIndex: $selectedPhotoPage,
+                imageURL: activityStore.imageURL(for:),
+                onClose: { lightboxPhotoIndex = nil }
+            )
+        }
         .onChange(of: currentActivity.photos.count) { _, count in
             if count == 0 {
                 showsPhotos = false
@@ -203,7 +210,8 @@ struct ActivityDetailView: View {
                 paceSegments: paceSegments,
                 photos: currentActivity.photos,
                 bottomInset: bottomInset,
-                isRouteProminent: sheetDetent != .expanded
+                isRouteProminent: sheetDetent != .expanded,
+                selectedPhotoID: selectedPhotoID
             )
             .ignoresSafeArea()
             .transition(.opacity)
@@ -266,14 +274,15 @@ struct ActivityDetailView: View {
 
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
-                        statsHeroSection
                         if let supplementalContent { supplementalContent }
+                        statsHeroSection
                         if currentActivity.activityEventID != nil { sharedActivitySection }
                         if showsPrivateDetails { metadataSection }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
                         if showsPrivateDetails { routeControlsSection }
-                        if showsPrivateDetails, let reflection = currentActivity.reflection { guideHeroCard(reflection) }
+                        if showsPrivateDetails { guideHeroCard(currentActivity.reflection) }
+                        if let bottomContent { bottomContent }
                     }
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 24)
                 }
@@ -495,6 +504,10 @@ struct ActivityDetailView: View {
                 .padding(.horizontal, 20)
                 .lineLimit(2)
 
+            if !currentActivity.photos.isEmpty {
+                activityPhotoStrip
+            }
+
             LazyVGrid(
                 columns: [
                     GridItem(.flexible(), spacing: 20),
@@ -503,7 +516,7 @@ struct ActivityDetailView: View {
                 alignment: .leading,
                 spacing: 18
             ) {
-                ForEach(activityStats) { stat in
+                ForEach(Array(activityStats.prefix(4))) { stat in
                     DetailStatCell(label: stat.label, value: stat.value)
                 }
             }
@@ -512,6 +525,74 @@ struct ActivityDetailView: View {
         .padding(.top, 22)
         .padding(.bottom, 24)
         .background(Color(.systemBackground))
+    }
+
+    private var selectedPhotoID: UUID? {
+        currentActivity.photos.indices.contains(selectedPhotoPage)
+            ? currentActivity.photos[selectedPhotoPage].id
+            : nil
+    }
+
+    private var lightboxIsPresented: Binding<Bool> {
+        Binding(
+            get: { lightboxPhotoIndex != nil },
+            set: { if !$0 { lightboxPhotoIndex = nil } }
+        )
+    }
+
+    private var activityPhotoStrip: some View {
+        ScrollViewReader { reader in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
+                        Button {
+                            if selectedPhotoPage == index {
+                                lightboxPhotoIndex = index
+                            } else {
+                                withAnimation(.snappy) { selectedPhotoPage = index }
+                            }
+                        } label: {
+                            ZStack(alignment: .bottomLeading) {
+                                if let url = activityStore.imageURL(for: photo) {
+                                    LocalImageView(url: url) { Color(.secondarySystemBackground) }
+                                }
+                                LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
+                                Text(photoCaption(photo, index: index, compact: true))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(8)
+                            }
+                            .frame(width: 116, height: 104)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(photo.id == selectedPhotoID ? Color.orange : Color.clear, lineWidth: 3)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .id(photo.id)
+                        .accessibilityLabel(photoCaption(photo, index: index, compact: false))
+                        .accessibilityHint(photo.id == selectedPhotoID
+                            ? String(localized: "activity.photos.open", defaultValue: "Open photo full screen")
+                            : String(localized: "activity.photos.locate", defaultValue: "Show this photo on the map"))
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .frame(height: 104)
+            .onChange(of: selectedPhotoPage) { _, index in
+                guard currentActivity.photos.indices.contains(index) else { return }
+                withAnimation(.snappy) { reader.scrollTo(currentActivity.photos[index].id, anchor: .center) }
+            }
+        }
+    }
+
+    private func photoCaption(_ photo: SavedPhoto, index: Int, compact: Bool) -> String {
+        if index == 0 { return String(localized: "activity.photos.start", defaultValue: "Start") }
+        if index == currentActivity.photos.count - 1 { return String(localized: "activity.photos.finish", defaultValue: "Finish") }
+        let distance = unitSystem.distanceString(meters: photo.distAtShot, fractionDigits: 1)
+        return compact ? distance : String(localized: "Photo at \(distance)")
     }
 
     private var metadataSection: some View {
@@ -652,7 +733,7 @@ struct ActivityDetailView: View {
 
     // MARK: - Guide Hero Card
 
-    private func guideHeroCard(_ reflection: FinishReflection) -> some View {
+    private func guideHeroCard(_ reflection: FinishReflection?) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "figure.run.circle.fill")
@@ -660,7 +741,7 @@ struct ActivityDetailView: View {
                     .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(reflection.title)
+                    Text(reflection?.title ?? String(localized: "activity.guide.reflection_title", defaultValue: "A moment to reflect"))
                         .font(.subheadline.weight(.semibold))
                     Text(String(localized: "activity.guide.companion", defaultValue: "Your companion"))
                         .font(.caption2)
@@ -668,7 +749,7 @@ struct ActivityDetailView: View {
                 }
             }
 
-            Text(reflection.body)
+            Text(reflection?.body ?? String(localized: "activity.guide.reflection_body", defaultValue: "You showed up and added another honest effort to your story. Notice what felt strong and carry that into the next one."))
                 .font(.subheadline)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -822,6 +903,71 @@ private enum ActivityDetailSheetDetent: CaseIterable {
     }
 }
 
+// MARK: - Photo Lightbox
+
+private struct ActivityPhotoLightbox: View {
+    let photos: [SavedPhoto]
+    @Binding var selectedIndex: Int
+    let imageURL: (SavedPhoto) -> URL?
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            TabView(selection: $selectedIndex) {
+                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                    if let url = imageURL(photo) {
+                        LocalImageView(url: url) { Color.black }
+                            .scaledToFit()
+                            .padding(.vertical, 72)
+                            .tag(index)
+                    }
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            VStack {
+                HStack {
+                    Text(String(localized: "Photo \(selectedIndex + 1) of \(photos.count)"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.8))
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .accessibilityLabel(String(localized: "activity.photos.close", defaultValue: "Close photo"))
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                Spacer()
+
+                if photos.indices.contains(selectedIndex) {
+                    let photo = photos[selectedIndex]
+                    Text(lightboxCaption(photo, index: selectedIndex))
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 24)
+                }
+            }
+        }
+        .statusBarHidden()
+    }
+
+    private func lightboxCaption(_ photo: SavedPhoto, index: Int) -> String {
+        if index == 0 { return String(localized: "activity.photos.trailhead_start", defaultValue: "Trailhead start") }
+        if index == photos.count - 1 { return String(localized: "activity.photos.finish_line", defaultValue: "Finish line") }
+        return String(localized: "Activity moment \(index + 1)")
+    }
+}
+
 // MARK: - Route Map
 
 private struct ActivityRouteMapView: View {
@@ -830,6 +976,7 @@ private struct ActivityRouteMapView: View {
     let photos: [SavedPhoto]
     let bottomInset: CGFloat
     let isRouteProminent: Bool
+    var selectedPhotoID: UUID? = nil
 
     var body: some View {
         Group {
@@ -839,7 +986,8 @@ private struct ActivityRouteMapView: View {
                     paceSegments: paceSegments,
                     photos: photos,
                     bottomInset: bottomInset,
-                    isRouteProminent: isRouteProminent
+                    isRouteProminent: isRouteProminent,
+                    selectedPhotoID: selectedPhotoID
                 )
             } else {
                 Color(.systemGroupedBackground)
@@ -864,6 +1012,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
     let photos: [SavedPhoto]
     let bottomInset: CGFloat
     let isRouteProminent: Bool
+    let selectedPhotoID: UUID?
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
@@ -882,6 +1031,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         context.coordinator.photos = photos
         context.coordinator.bottomInset = bottomInset
         context.coordinator.isRouteProminent = isRouteProminent
+        context.coordinator.selectedPhotoID = selectedPhotoID
         context.coordinator.refresh(mapView)
     }
 
@@ -895,6 +1045,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         var photos: [SavedPhoto] = []
         var bottomInset: CGFloat = 0
         var isRouteProminent = true
+        var selectedPhotoID: UUID?
 
         private var previousRouteSignature: String?
         private var previousPhotoSignature: String?
@@ -902,6 +1053,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         private var previousProminence: Bool?
         private var previousMapSize: CGSize?
         private var hasSetInitialRegion = false
+        private var previousSelectedPhotoID: UUID?
 
         func refresh(_ mapView: MKMapView) {
             let routeSignature = "\(routeCoordinates.count)-\(routeCoordinates.first?.latitude ?? 0)-\(routeCoordinates.last?.longitude ?? 0)-\(isRouteProminent)"
@@ -916,6 +1068,11 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                 mapView.removeAnnotations(mapView.annotations)
                 mapView.addAnnotations(photos.compactMap(ActivityRoutePhotoAnnotation.init(photo:)))
                 previousPhotoSignature = photoSignature
+            }
+
+            if selectedPhotoID != previousSelectedPhotoID {
+                updateSelectedPhoto(in: mapView)
+                previousSelectedPhotoID = selectedPhotoID
             }
 
             let insetChanged = abs((previousBottomInset ?? -1) - bottomInset) > 6
@@ -946,7 +1103,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            guard annotation is ActivityRoutePhotoAnnotation else { return nil }
+            guard let photoAnnotation = annotation as? ActivityRoutePhotoAnnotation else { return nil }
             let identifier = "activity-photo"
             let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
                 ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
@@ -956,8 +1113,28 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                 markerView.markerTintColor = .systemOrange
                 markerView.glyphTintColor = .white
                 markerView.displayPriority = .required
+                markerView.transform = photoAnnotation.photoID == selectedPhotoID
+                    ? CGAffineTransform(scaleX: 1.22, y: 1.22)
+                    : .identity
             }
             return view
+        }
+
+        private func updateSelectedPhoto(in mapView: MKMapView) {
+            for annotation in mapView.annotations {
+                guard let photoAnnotation = annotation as? ActivityRoutePhotoAnnotation,
+                      let view = mapView.view(for: annotation) else { continue }
+                UIView.animate(withDuration: 0.22) {
+                    view.transform = photoAnnotation.photoID == self.selectedPhotoID
+                        ? CGAffineTransform(scaleX: 1.22, y: 1.22)
+                        : .identity
+                }
+            }
+            guard let selectedPhotoID,
+                  let annotation = mapView.annotations.compactMap({ $0 as? ActivityRoutePhotoAnnotation })
+                    .first(where: { $0.photoID == selectedPhotoID }) else { return }
+            mapView.setCenter(annotation.coordinate, animated: true)
+            mapView.selectAnnotation(annotation, animated: true)
         }
 
         private func addRouteOverlays(to mapView: MKMapView) {
@@ -1022,9 +1199,11 @@ private final class ActivityRoutePolyline: MKPolyline {
 
 private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
+    let photoID: UUID
 
     nonisolated init?(photo: SavedPhoto) {
         guard let photoCoordinate = photo.coordinate else { return nil }
+        photoID = photo.id
         coordinate = CLLocationCoordinate2D(
             latitude: photoCoordinate.latitude,
             longitude: photoCoordinate.longitude

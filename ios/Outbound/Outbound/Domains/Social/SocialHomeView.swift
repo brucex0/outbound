@@ -1215,13 +1215,16 @@ struct SocialCommentsView: View {
                     ContentUnavailableView("No comments yet", systemImage: "bubble.left", description: Text("Add the first bit of encouragement."))
                 } else {
                     ForEach(comments) { comment in
-                        HStack(alignment: .top) {
+                        HStack(alignment: .top, spacing: 12) {
+                            SocialAvatar(name: comment.author.displayName, avatarURL: comment.author.avatarUrl)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(comment.author.displayName).font(.headline)
+                                HStack(spacing: 6) {
+                                    Text(comment.author.displayName).font(.subheadline.weight(.semibold))
+                                    Text(comment.createdAt.formatted(.relative(presentation: .named)))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                                 Text(comment.body)
-                                Text(comment.createdAt.formatted(.relative(presentation: .named)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
                             Menu {
@@ -1243,7 +1246,7 @@ struct SocialCommentsView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 HStack {
-                    TextField("Add encouragement", text: $draft)
+                    TextField(String(localized: "Add a comment…"), text: $draft)
                         .textFieldStyle(.roundedBorder)
                     Button {
                         let body = draft
@@ -1266,9 +1269,14 @@ struct SocialCommentsView: View {
                 .padding()
                 .background(.bar)
             }
-            .navigationTitle("Comments")
+            .navigationTitle("\(String(localized: "Comments")) (\(comments.count))")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(String(localized: "Close comments"))
+                }
+            }
             .task { await socialStore.loadComments(for: post) }
             .overlay(alignment: .top) {
                 if let toastMessage {
@@ -1596,10 +1604,14 @@ private struct SocialActivityDetailView: View {
                 showsShareControl: true,
                 showsEditControl: false,
                 showsPrivateDetails: false,
-                supplementalContent: AnyView(socialCard)
+                supplementalContent: AnyView(socialCard),
+                bottomContent: AnyView(socialCompanionCard)
             )
-            .sheet(isPresented: $showsComments) { SocialCommentsView(post: currentPost) }
-            .safeAreaInset(edge: .bottom, spacing: 0) { socialActionBar }
+            .sheet(isPresented: $showsComments) {
+                SocialCommentsView(post: currentPost)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .overlay(alignment: .top) {
                 if let toastMessage {
                     Text(toastMessage)
@@ -1647,6 +1659,8 @@ private struct SocialActivityDetailView: View {
                 Text(caption).font(.body)
             }
 
+            socialActionBar
+
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
@@ -1657,7 +1671,11 @@ private struct SocialActivityDetailView: View {
             Button {
                 Task { await toggleCheer() }
             } label: {
-                Label("\(currentPost.reactionCount)", systemImage: currentPost.currentUserCheered ? "heart.fill" : "heart")
+                Label {
+                    Text("\(String(localized: "Cheers")) · \(currentPost.reactionCount)")
+                } icon: {
+                    Image(systemName: currentPost.currentUserCheered ? "heart.fill" : "heart")
+                }
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(SocialFeedActionButtonStyle(isActive: currentPost.currentUserCheered))
@@ -1666,16 +1684,40 @@ private struct SocialActivityDetailView: View {
             .accessibilityValue("\(currentPost.reactionCount)")
 
             Button { showsComments = true } label: {
-                Label("\(currentPost.commentCount)", systemImage: "bubble.left")
+                Label {
+                    Text("\(String(localized: "Comments")) · \(currentPost.commentCount)")
+                } icon: {
+                    Image(systemName: "bubble.left")
+                }
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(SocialFeedActionButtonStyle())
             .accessibilityLabel(String(localized: "Comments"))
             .accessibilityValue("\(currentPost.commentCount)")
         }
+    }
+
+    private var socialCompanionCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                Text(String(localized: "activity.social.companion.title", defaultValue: "Great hustle."))
+                    .font(.subheadline.weight(.semibold))
+                Text(String(localized: "activity.guide.companion", defaultValue: "Your companion"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(.orange)
+
+            Text(String(localized: "\(currentPost.user.displayName) put in a strong effort. Send a cheer to keep the momentum going!"))
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(Color.orange.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.bar)
+        .padding(.top, 16)
     }
 
     private func toggleCheer() async {
