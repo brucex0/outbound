@@ -98,6 +98,14 @@ struct CompanionDecidedActionDTO: Codable, Sendable {
     let id: String
     let status: String
     let explanation: String
+    let afterState: CompanionActionAfterStateDTO?
+}
+
+struct CompanionActionAfterStateDTO: Codable, Sendable {
+    let workoutId: String?
+    let durationSeconds: Int?
+    let title: String?
+    let summary: String?
 }
 
 struct CompanionMemoryDTO: Codable, Identifiable, Sendable {

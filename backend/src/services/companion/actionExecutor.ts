@@ -60,15 +60,43 @@ export async function decideAndExecuteAgentAction(
   let afterState: Prisma.InputJsonValue | undefined;
   let rollback: Prisma.InputJsonValue | undefined;
   if (proposal.actionType === "shorten_workout" && proposal.workoutId && proposal.durationMinutes) {
-    const workout = await prisma.plannedWorkout.findFirst({ where: { id: proposal.workoutId, userId, status: "planned" } });
-    if (!workout) throw new Error("Planned workout is no longer available.");
-    const nextDurationSeconds = proposal.durationMinutes * 60;
-    beforeState = { workoutId: workout.id, durationSeconds: workout.durationSeconds, title: workout.title };
-    const updated = await prisma.plannedWorkout.update({
-      where: { id: workout.id },
-      data: { durationSeconds: nextDurationSeconds, title: replaceDuration(workout.title, proposal.durationMinutes) },
+    const durationMinutes = proposal.durationMinutes;
+    const workout = await prisma.plannedWorkout.findFirst({
+      where: { id: proposal.workoutId, userId, status: "planned" },
+      include: { blocks: { include: { steps: true } } },
     });
-    afterState = { workoutId: updated.id, durationSeconds: updated.durationSeconds, title: updated.title };
+    if (!workout) throw new Error("Planned workout is no longer available.");
+    const nextDurationSeconds = durationMinutes * 60;
+    beforeState = { workoutId: workout.id, durationSeconds: workout.durationSeconds, title: workout.title };
+    const ratio = nextDurationSeconds / workout.durationSeconds;
+    const updated = await prisma.$transaction(async (tx) => {
+      for (const block of workout.blocks) {
+        if (block.durationSeconds) {
+          await tx.workoutBlock.update({
+            where: { id: block.id },
+            data: { durationSeconds: Math.max(1, Math.round(block.durationSeconds * ratio)) },
+          });
+        }
+        for (const step of block.steps) {
+          if (step.durationSeconds) {
+            await tx.workoutStep.update({
+              where: { id: step.id },
+              data: { durationSeconds: Math.max(1, Math.round(step.durationSeconds * ratio)) },
+            });
+          }
+        }
+      }
+      return tx.plannedWorkout.update({
+        where: { id: workout.id },
+        data: { durationSeconds: nextDurationSeconds, title: replaceDuration(workout.title, durationMinutes) },
+      });
+    });
+    afterState = {
+      workoutId: updated.id,
+      durationSeconds: updated.durationSeconds,
+      title: updated.title,
+      summary: `Duration changed from ${Math.round(workout.durationSeconds / 60)} to ${durationMinutes} minutes; timed blocks and steps were resized to fit.`,
+    };
     rollback = beforeState;
   } else {
     throw new Error("Unsupported companion action.");
@@ -100,4 +128,3 @@ function replaceDuration(title: string, minutes: number) {
     ? title.replace(/·\s*\d+\s*min\s*$/i, `· ${minutes} min`)
     : `${title} · ${minutes} min`;
 }
-

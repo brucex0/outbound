@@ -492,6 +492,7 @@ struct AssistantView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var goalStore: GoalStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @StateObject private var voiceCommandStore = AssistantVoiceCommandStore()
     @State private var hasHandledVoiceActivityCommand = false
     @State private var pendingVoiceCommandTask: Task<Void, Never>?
@@ -636,7 +637,14 @@ struct AssistantView: View {
                         }
                         .buttonStyle(.bordered)
                         Button(confirmation.acceptLabel) {
-                            Task { await assistantStore.decidePendingCompanionAction(accept: true) }
+                            Task {
+                                await assistantStore.decidePendingCompanionAction(
+                                    accept: true,
+                                    afterSuccessfulUpdate: {
+                                        try await trainingPlanStore.refetchAfterWorkoutMutation()
+                                    }
+                                )
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(personaAccentColor)
@@ -730,7 +738,8 @@ struct AssistantView: View {
             currentGoalSummary: goalStore.progress?.summaryLine,
             currentScreen: screenName,
             isRecordingActive: isRecordingActive,
-            timeZoneIdentifier: TimeZone.current.identifier
+            timeZoneIdentifier: TimeZone.current.identifier,
+            currentWorkoutID: focusedActivity?.id
         )
     }
 
@@ -817,18 +826,6 @@ struct AssistantView: View {
     private func sendDraft() async {
         let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
-
-        if let focusedActivity,
-           let adjusted = TodayActivityCustomizer.adjustedActivity(focusedActivity, for: prompt) {
-            assistantStore.draft = ""
-            assistantStore.recordFocusedActivityAdjustment(
-                prompt: prompt,
-                intent: adjusted,
-                context: assistantContext
-            )
-            onApplyFocusedActivity?(adjusted)
-            return
-        }
 
         if handleActivityCommandIfPresent(prompt) { return }
         if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {

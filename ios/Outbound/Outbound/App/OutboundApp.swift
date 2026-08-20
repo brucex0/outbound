@@ -652,6 +652,13 @@ final class TrainingPlanStore: ObservableObject {
         }
     }
 
+    func refetchAfterWorkoutMutation(now: Date = Date()) async throws {
+        refreshTask?.cancel()
+        let state = try await api.fetchTrainingPlanState(readiness: lastReadiness)
+        try Task.checkCancellation()
+        applyServerState(state, now: now)
+    }
+
     func prepareRecommendations(
         activities: [SavedActivity],
         readiness: DailyReadiness?,
@@ -1552,6 +1559,7 @@ struct AssistantContext {
     let currentScreen: String?
     let isRecordingActive: Bool
     let timeZoneIdentifier: String
+    let currentWorkoutID: String?
 }
 
 @MainActor
@@ -1678,13 +1686,26 @@ final class AssistantStore: ObservableObject {
         ensureSeedMessage(context: context)
     }
 
-    func decidePendingCompanionAction(accept: Bool) async {
+    func decidePendingCompanionAction(
+        accept: Bool,
+        afterSuccessfulUpdate: (() async throws -> Void)? = nil
+    ) async {
         guard let confirmation = pendingCompanionConfirmation else { return }
         do {
             let response = try await APIClient.shared.decideCompanionAction(id: confirmation.actionId, accept: accept)
-            let text = accept && response.action.status == "executed"
-                ? "Done. I applied the change to your plan."
-                : "Kept the original workout."
+            let didExecute = accept && response.action.status == "executed"
+            if didExecute {
+                try await afterSuccessfulUpdate?()
+            }
+            let text: String
+            if didExecute {
+                let summary = response.action.afterState?.summary ?? response.action.explanation
+                text = String(localized: "Done — I updated today’s workout. \(summary)")
+            } else if accept {
+                text = String(localized: "I couldn’t apply that change, so your original workout is unchanged.")
+            } else {
+                text = String(localized: "Kept the original workout.")
+            }
             messages.append(AssistantMessage(author: .assistant, text: text, capability: .plan))
             pendingCompanionConfirmation = nil
             persistMessages()
@@ -1793,7 +1814,7 @@ final class AssistantStore: ObservableObject {
                 recentMessages: recentMessagesForAPI().map {
                     CompanionPriorMessageDTO(role: $0.role, text: $0.text)
                 },
-                currentEntityIds: [],
+                currentEntityIds: context.currentWorkoutID.map { [$0] } ?? [],
                 clientCapabilities: ["action-confirmation", "memory-controls", "context-receipt"],
                 isOffline: false,
                 timeZoneIdentifier: context.timeZoneIdentifier,
