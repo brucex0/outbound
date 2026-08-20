@@ -190,13 +190,17 @@ For Simulator, add `--simulator`; the helper uses localhost automatically:
 
 When `--with-test-personas` is present, the helper reuses an Auth Emulator
 already listening on port `9099` or starts one in the background and waits for
-it to become ready. The local API still needs to be started separately.
+it to become ready. It also reuses or starts the local backend stack, including
+embedded PostgreSQL on port `54329` and the API on port `3000`. Persona seeding
+remains explicit because it resets deterministic test data.
+If it finds this repository's stale local API without its embedded database,
+the helper stops that stale API gracefully and restarts the complete stack. It
+does not stop unrelated processes occupying the required ports.
 
 The helper detects the Mac's LAN address from `en0` or `en1` and passes it to
 the app. Set `OUTBOUND_LOCAL_HOST` explicitly if the phone must use a different
-reachable address. Start the local backend first as described in
-`docs/firebase.md`; the helper starts the Auth Emulator. The phone and Mac must
-be on a network that permits local device connections.
+reachable address. The phone and Mac must be on a network that permits local
+device connections.
 
 Underlying commands:
 

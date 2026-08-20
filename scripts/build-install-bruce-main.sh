@@ -136,6 +136,84 @@ start_firebase_auth_emulator_if_needed() {
   return 1
 }
 
+start_local_backend_if_needed() {
+  local api_url="http://127.0.0.1:3000/health"
+  local backend_log="${TMPDIR:-/tmp}/plainstride-local-backend.log"
+  local backend_job_label="plainstride.local-backend"
+  local api_ready=false
+  local database_ready=false
+
+  if curl --silent --fail --max-time 1 "$api_url" >/dev/null 2>&1; then
+    api_ready=true
+  fi
+  if nc -z 127.0.0.1 54329 >/dev/null 2>&1; then
+    database_ready=true
+  fi
+
+  if [[ "$api_ready" == true && "$database_ready" == true ]]; then
+    log "Local backend: already running"
+    return 0
+  fi
+
+  if [[ "$api_ready" == true && "$database_ready" != true ]]; then
+    local api_pid
+    local api_command
+    local api_working_directory
+
+    api_pid="$(lsof -nP -t -iTCP:3000 -sTCP:LISTEN 2>/dev/null | head -n 1)"
+    api_command="$(ps -p "$api_pid" -o command= 2>/dev/null || true)"
+    api_working_directory="$(lsof -a -p "$api_pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+
+    if [[ -n "$api_pid" \
+      && "$api_command" == *"node scripts/start-local-stack.mjs"* \
+      && "$api_working_directory" == "$ROOT_DIR/backend" ]]; then
+      log "Restarting stale local backend ${api_pid}; embedded PostgreSQL is unavailable..."
+      kill -TERM "$api_pid"
+      for _ in {1..15}; do
+        if ! nc -z 127.0.0.1 3000 >/dev/null 2>&1; then
+          api_ready=false
+          break
+        fi
+        sleep 1
+      done
+      if [[ "$api_ready" == true ]]; then
+        echo "The stale local backend did not stop cleanly. Stop process ${api_pid} and retry." >&2
+        return 1
+      fi
+    fi
+  fi
+
+  if [[ "$api_ready" == true || "$database_ready" == true ]]; then
+    echo "The local backend is only partially available on ports 3000 and 54329." >&2
+    echo "Stop the existing local process and retry, or start the full stack manually." >&2
+    return 1
+  fi
+
+  log "Starting embedded PostgreSQL and local API..."
+  launchctl remove "$backend_job_label" >/dev/null 2>&1 || true
+  launchctl submit -l "$backend_job_label" -- \
+    /usr/bin/env "PATH=$PATH" \
+    /bin/bash -c \
+    'cd "$1" && exec env FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIREBASE_PROJECT_ID=outbound-494602 npm run start:local >>"$2" 2>&1' \
+    _ "$ROOT_DIR/backend" "$backend_log"
+
+  for _ in {1..180}; do
+    if curl --silent --fail --max-time 1 "$api_url" >/dev/null 2>&1 \
+      && nc -z 127.0.0.1 54329 >/dev/null 2>&1; then
+      log "Local backend: ready (log: ${backend_log})"
+      return 0
+    fi
+    if ! launchctl list "$backend_job_label" >/dev/null 2>&1; then
+      echo "Local backend exited before becoming ready. See ${backend_log}." >&2
+      return 1
+    fi
+    sleep 1
+  done
+
+  echo "Timed out waiting for the local backend. See ${backend_log}." >&2
+  return 1
+}
+
 has_signing_identity_for_team() {
   security find-identity -p codesigning -v 2>/dev/null | grep -Eq "(Apple Development|iPhone Developer): .*\(${DEVELOPMENT_TEAM}\)"
 }
@@ -251,6 +329,7 @@ cd "$ROOT_DIR"
 
 if [[ "$enable_test_personas" == true ]]; then
   start_firebase_auth_emulator_if_needed
+  start_local_backend_if_needed
 fi
 
 if [[ "$target_simulator" == true ]]; then
