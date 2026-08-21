@@ -174,9 +174,16 @@ final class VirtualGuide: NSObject, ObservableObject {
         runAnalysis(for: snapshot)
     }
 
-    func announceStartCountdown(_ text: String) {
-        synthesizer.stopSpeaking(at: .immediate)
-        speak(text, urgency: .opportunity)
+    func announceStartCountdown(_ texts: [String]) {
+        guard speechEnabled else { return }
+
+        let voice = persona?.voice ?? GuideVoice.defaultOption
+        synthesizer.speakSequence(
+            texts,
+            voice: voice,
+            rate: speechRate(for: voice, urgency: .opportunity),
+            volume: voice.volume
+        )
     }
 
     // MARK: - Private

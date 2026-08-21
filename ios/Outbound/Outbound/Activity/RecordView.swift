@@ -370,13 +370,14 @@ struct RecordView: View {
 
     private func beginStartCountdown() {
         countdownTask?.cancel()
+        guide.announceStartCountdown(ActivityStartCountdownStep.sequence.map(\.spokenText))
         countdownTask = Task { @MainActor in
             for step in ActivityStartCountdownStep.sequence {
                 guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: reduceMotion ? 0.12 : 0.22)) {
                     countdownStep = step
                 }
-                announceCountdownStep(step)
+                announceCountdownFeedback(step)
 
                 do {
                     try await Task.sleep(nanoseconds: step.durationNanoseconds)
@@ -390,8 +391,7 @@ struct RecordView: View {
         }
     }
 
-    private func announceCountdownStep(_ step: ActivityStartCountdownStep) {
-        guide.announceStartCountdown(step.spokenText)
+    private func announceCountdownFeedback(_ step: ActivityStartCountdownStep) {
         #if os(iOS)
         UIAccessibility.post(notification: .announcement, argument: step.accessibilityText)
         switch step {
