@@ -25,6 +25,15 @@ export async function resolveAuthenticatedAppUser(auth: AuthContext, profile: Re
       await tx.authIdentity.update({ where: { id: existing.id }, data: {
         email: auth.email, normalizedEmail, emailVerified: auth.emailVerified, displayName: auth.name,
       }});
+      const recoveredName = auth.name?.trim().slice(0, 50);
+      const shouldRecoverName = existing.user.displayName === "Runner" && recoveredName;
+      const verifiedEmail = auth.emailVerified ? normalizedEmail : existing.user.normalizedEmail;
+      if (shouldRecoverName || verifiedEmail !== existing.user.normalizedEmail) {
+        return tx.user.update({ where: { id: existing.user.id }, data: {
+          displayName: shouldRecoverName || existing.user.displayName,
+          normalizedEmail: verifiedEmail,
+        }});
+      }
       return existing.user;
     }
     const username = await uniqueUsername(tx, profile.username ?? auth.name ?? auth.email?.split("@")[0] ?? "runner");

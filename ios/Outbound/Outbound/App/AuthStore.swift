@@ -47,6 +47,7 @@ final class AuthStore: ObservableObject {
             let credential = try await self.makeAppleCredential()
             let session = try await APIClient.shared.createAppleSession(credential.sessionRequest)
             try await SessionCoordinator.shared.replace(session)
+            AppleProfileCache.remove(for: credential.userIdentifier)
             self.apply(session)
         }
     }
@@ -111,7 +112,7 @@ private enum AppleAuthorizationError: LocalizedError {
 
 private struct AppleCredentialResult {
     let identityToken: String; let authorizationCode: String; let rawNonce: String
-    let givenName: String?; let familyName: String?
+    let userIdentifier: String; let givenName: String?; let familyName: String?
     var sessionRequest: AppleSessionRequest { .init(identityToken: identityToken, authorizationCode: authorizationCode, rawNonce: rawNonce,
         givenName: givenName, familyName: familyName, deviceLabel: UIDevice.current.name) }
 }
@@ -133,8 +134,11 @@ private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationCont
         guard let value = authorization.credential as? ASAuthorizationAppleIDCredential,
               let nonce, let tokenData = value.identityToken, let token = String(data: tokenData, encoding: .utf8),
               let codeData = value.authorizationCode, let code = String(data: codeData, encoding: .utf8) else { resume(AppleAuthorizationError.invalidIdentityToken); return }
+        let receivedProfile = AppleProfileCache.Profile(givenName: value.fullName?.givenName, familyName: value.fullName?.familyName)
+        if receivedProfile.hasName { try? AppleProfileCache.save(receivedProfile, for: value.user) }
+        let profile = receivedProfile.hasName ? receivedProfile : (AppleProfileCache.load(for: value.user) ?? receivedProfile)
         continuation?.resume(returning: .init(identityToken: token, authorizationCode: code, rawNonce: nonce,
-            givenName: value.fullName?.givenName, familyName: value.fullName?.familyName)); continuation = nil; self.nonce = nil
+            userIdentifier: value.user, givenName: profile.givenName, familyName: profile.familyName)); continuation = nil; self.nonce = nil
     }
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) { resume(error) }
     private func resume(_ error: Error) { continuation?.resume(throwing: error); continuation = nil; nonce = nil }
@@ -144,4 +148,38 @@ private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationCont
         while result.count < length { var byte: UInt8 = 0; guard SecRandomCopyBytes(kSecRandomDefault, 1, &byte) == errSecSuccess else { throw AppleAuthorizationError.randomNonceGenerationFailed }; if byte < chars.count { result.append(chars[Int(byte)]) } }
         return result
     }
+}
+
+private enum AppleProfileCache {
+    struct Profile: Codable {
+        let givenName: String?; let familyName: String?
+        var hasName: Bool { givenName?.isEmpty == false || familyName?.isEmpty == false }
+    }
+
+    private static let service = "run.plainstride.apple-profile"
+    private static func query(for userIdentifier: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+         kSecAttrAccount as String: userIdentifier]
+    }
+    static func load(for userIdentifier: String) -> Profile? {
+        var query = query(for: userIdentifier)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+        return try? JSONDecoder().decode(Profile.self, from: data)
+    }
+    static func save(_ profile: Profile, for userIdentifier: String) throws {
+        let data = try JSONEncoder().encode(profile)
+        let base = query(for: userIdentifier)
+        let attributes: [String: Any] = [kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        let status = SecItemUpdate(base as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = base; attributes.forEach { item[$0.key] = $0.value }
+            guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { return }
+        }
+    }
+    static func remove(for userIdentifier: String) { SecItemDelete(query(for: userIdentifier) as CFDictionary) }
 }
