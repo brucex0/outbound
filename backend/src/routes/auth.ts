@@ -223,9 +223,16 @@ router.delete("/me", zValidator("json", z.object({ identityToken: z.string().min
 
 function authError(c: any, error: unknown) {
   const code = error instanceof Error ? error.message : "authentication_unavailable";
-  const status = code === "provider_unavailable" || code === "authentication_unavailable" ? 503 : 401;
-  console.warn("[auth] request rejected", { code });
-  return c.json({ error: status === 503 ? "Authentication is temporarily unavailable." : "The provider credential is invalid.", code }, status);
+  if (code === "invalid_provider_credential") {
+    console.warn("[auth] request rejected", { code });
+    return c.json({ error: "The provider credential is invalid.", code }, 401);
+  }
+  if (code === "provider_unavailable" || code === "authentication_unavailable") {
+    console.warn("[auth] request rejected", { code });
+    return c.json({ error: "Authentication is temporarily unavailable.", code }, 503);
+  }
+  console.error("[auth] unexpected authentication failure", error);
+  return c.json({ error: "Authentication is temporarily unavailable.", code: "authentication_unavailable" }, 503);
 }
 
 export default router;
