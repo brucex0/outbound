@@ -16,6 +16,10 @@ Environment overrides:
   REGION                  default: us-central1
   SERVICE                 default: outbound-api
   RUNTIME_SERVICE_ACCOUNT default: outbound-api-runtime@PROJECT_ID.iam.gserviceaccount.com
+  APPLE_CLIENT_ID         default: plainstride.outbound
+  APPLE_TEAM_ID           default: WT54K7D7VH
+  APPLE_KEY_ID            default: 8Z4P665DD3
+  AUTH_ACCESS_KEY_ID      default: production-v1
   CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
   CLOUD_RUN_CONCURRENCY   default: 100
   CLOUD_RUN_MIN_INSTANCES default: 0 (scale to zero before public release)
@@ -42,6 +46,10 @@ GCLOUD_ACCOUNT="${GCLOUD_ACCOUNT:-bruce.xia74@gmail.com}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-outbound-api}"
 RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-outbound-api-runtime@$PROJECT_ID.iam.gserviceaccount.com}"
+APPLE_CLIENT_ID="${APPLE_CLIENT_ID:-plainstride.outbound}"
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-WT54K7D7VH}"
+APPLE_KEY_ID="${APPLE_KEY_ID:-8Z4P665DD3}"
+AUTH_ACCESS_KEY_ID="${AUTH_ACCESS_KEY_ID:-production-v1}"
 CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
 CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
@@ -116,7 +124,7 @@ deploy_args=(
   "--max=$CLOUD_RUN_MAX_INSTANCES"
   "--max-instances=$CLOUD_RUN_MAX_INSTANCES"
   "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest,APPLE_PRIVATE_KEY=outbound-apple-private-key:latest,AUTH_ACCESS_PRIVATE_KEY=outbound-auth-access-private-key:latest,AUTH_ACCESS_PUBLIC_KEYS=outbound-auth-access-public-keys:latest"
-  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>,APPLE_CLIENT_ID=plainstride.outbound,AUTH_ACCESS_KEY_ID=production-v1,AUTH_ACCEPT_LEGACY_FIREBASE=true"
+  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>,APPLE_CLIENT_ID=$APPLE_CLIENT_ID,APPLE_TEAM_ID=$APPLE_TEAM_ID,APPLE_KEY_ID=$APPLE_KEY_ID,AUTH_ACCESS_KEY_ID=$AUTH_ACCESS_KEY_ID,AUTH_ACCEPT_LEGACY_FIREBASE=true"
 )
 
 if [[ "$QUIET" == "1" ]]; then

@@ -142,6 +142,27 @@ Recommended secrets:
 - `outbound-app-ai-key`
 - `outbound-resend-api-key`
 
+Provision first-party production authentication in one pass after downloading
+the Apple `.p8` key:
+
+```sh
+APPLE_PRIVATE_KEY_FILE=/secure/path/AuthKey_8Z4P665DD3.p8 \
+  ./scripts/provision-production-auth.sh
+```
+
+When the three authentication secrets and IAM bindings already exist, configure
+Cloud Run, deploy, and verify health without replacing any secret versions:
+
+```sh
+CONFIGURE_ONLY=1 ./scripts/provision-production-auth.sh
+```
+
+The production defaults are Apple client ID `plainstride.outbound`, Team ID
+`WT54K7D7VH`, Apple Key ID `8Z4P665DD3`, and access-token key ID
+`production-v1`. Override them through the same-named environment variables.
+The script deliberately refuses to overwrite existing secrets; signing-key
+rotation requires overlapping current and previous public keys.
+
 Create the secrets:
 
 ```sh
