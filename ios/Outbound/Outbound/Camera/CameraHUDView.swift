@@ -526,6 +526,7 @@ struct ShutterButton: View {
 struct SessionStatusCard: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var connectivityStore: ConnectivityStore
+    @Environment(\.outboundTheme) private var theme
 
     let state: RecordingState
     let isCompact: Bool
@@ -569,13 +570,13 @@ struct SessionStatusCard: View {
                 .padding(12)
             }
         }
-        .background(.white)
+        .background(OutboundPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.06), lineWidth: 0.8)
+                .strokeBorder(theme.accentColor.opacity(0.18), lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.24), radius: 18, y: 8)
+        .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: 8)
         .accessibilityIdentifier("CameraDataOverlay")
     }
 
@@ -610,7 +611,7 @@ struct SessionStatusCard: View {
             Image(systemName: "stop.fill")
                 .font(.callout.weight(.bold))
         }
-        .buttonStyle(SessionIconButtonStyle(background: .black, foreground: .white, size: 40))
+        .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: 40))
         .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
     }
 
@@ -623,7 +624,7 @@ struct SessionStatusCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(activityTitle)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .accessibilityLabel(activityTitle)
@@ -641,7 +642,7 @@ struct SessionStatusCard: View {
                 Button(action: onFinish) {
                     Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
                 }
-                .buttonStyle(SessionMiniCapsuleButtonStyle(background: .black, foreground: .white))
+                .buttonStyle(SessionMiniCapsuleButtonStyle(background: theme.actionColor, foreground: .white))
             }
 
             musicMenu
@@ -692,14 +693,19 @@ struct SessionStatusCard: View {
         if currentStepProgress != nil || displayIntent.routeName?.isEmpty == false {
             HStack(spacing: 8) {
                 if let stepProgress = currentStepProgress {
-                    SessionMiniCountdown(
-                        symbolName: "list.bullet",
-                        text: stepCountdownText(stepProgress)
+                    SessionStepCountdown(
+                        progressText: String(
+                            localized: "session.step.progress",
+                            defaultValue: "\(stepProgress.index + 1) of \(stepProgress.count)"
+                        ),
+                        title: stepProgress.step.label,
+                        remainingText: stepRemainingText(stepProgress),
+                        tint: theme.accentColor
                     )
                 }
 
                 if let routeName = displayIntent.routeName, !routeName.isEmpty {
-                    SessionMiniCountdown(symbolName: "map.fill", text: routeName)
+                    SessionMiniCountdown(symbolName: "map.fill", text: routeName, tint: theme.accentColor)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -714,21 +720,21 @@ struct SessionStatusCard: View {
                 Image(systemName: "record.circle.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
+            .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.start.accessibility", defaultValue: "Start activity"))
         case .active:
             Button(action: onPause) {
                 Image(systemName: "pause.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
+            .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.pause.accessibility", defaultValue: "Pause activity"))
         case .paused:
             Button(action: onResume) {
                 Image(systemName: "play.fill")
                     .font(.title3.weight(.bold))
             }
-            .buttonStyle(SessionIconButtonStyle(background: .orange, foreground: .white, size: size))
+            .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.resume.accessibility", defaultValue: "Resume activity"))
         }
     }
@@ -867,7 +873,7 @@ struct SessionStatusCard: View {
         return (steps.count - 1, steps.count, finalStep, 1)
     }
 
-    private func stepCountdownText(
+    private func stepRemainingText(
         _ stepProgress: (index: Int, count: Int, step: SessionIntentStep, progress: Double)
     ) -> String {
         let elapsedBeforeStep = displayIntent.workoutSteps
@@ -875,7 +881,7 @@ struct SessionStatusCard: View {
             .reduce(0) { $0 + max(0, $1.durationSeconds) }
         let elapsedInStep = max(0, elapsedSeconds - elapsedBeforeStep)
         let remaining = max(0, stepProgress.step.durationSeconds - elapsedInStep)
-        return "\(stepProgress.index + 1)/\(stepProgress.count) \(stepProgress.step.label) \(remaining.formatted())"
+        return remaining.formatted()
     }
 
     private func compactDistanceProgressText(targetMeters: Double) -> String {
@@ -912,9 +918,9 @@ struct SessionStatusCard: View {
 
     private var statusColor: Color {
         switch state {
-        case .idle: return .orange
-        case .active: return .orange
-        case .paused: return Color(red: 0.95, green: 0.78, blue: 0.26)
+        case .idle: return theme.accentColor
+        case .active: return theme.accentColor
+        case .paused: return theme.secondaryColor
         }
     }
 }
@@ -944,7 +950,7 @@ private struct SessionMetricColumn: View {
             Text(value)
                 .font(.system(size: value.contains("/") ? 16 : 18, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.black)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
@@ -961,15 +967,49 @@ private struct SessionMetricColumn: View {
     }
 }
 
+private struct SessionStepCountdown: View {
+    let progressText: String
+    let title: String
+    let remainingText: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(progressText)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 7)
+                .frame(height: 24)
+                .background(tint.opacity(0.12), in: Capsule())
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Spacer(minLength: 4)
+
+            Label(remainingText, systemImage: "clock")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct SessionMiniCountdown: View {
     let symbolName: String
     let text: String
+    let tint: Color
 
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: symbolName)
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(tint)
 
             Text(text)
                 .font(.caption2.weight(.semibold))
