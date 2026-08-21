@@ -1757,6 +1757,23 @@ final class AssistantStore: ObservableObject {
         persistMessages()
     }
 
+    func recordManualWorkoutTurn(userText: String, assistantText: String) {
+        messages.append(AssistantMessage(author: .user, text: userText, capability: .plan))
+        messages.append(AssistantMessage(author: .assistant, text: assistantText, capability: .plan))
+        persistMessages()
+    }
+
+    func recordManualWorkoutSaved(title: String) {
+        messages.append(
+            AssistantMessage(
+                author: .assistant,
+                text: String(localized: "Done — I logged \(title)."),
+                capability: .plan
+            )
+        )
+        persistMessages()
+    }
+
     private func send(
         _ prompt: String,
         capability: AssistantCapability?,

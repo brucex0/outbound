@@ -493,9 +493,12 @@ struct AssistantView: View {
     @EnvironmentObject private var goalStore: GoalStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var gearStore: GearStore
     @StateObject private var voiceCommandStore = AssistantVoiceCommandStore()
     @State private var hasHandledVoiceActivityCommand = false
     @State private var pendingVoiceCommandTask: Task<Void, Never>?
+    @State private var pendingManualWorkoutDraft: ManualWorkoutDraft?
+    @State private var showsManualWorkoutEntry = false
 
     let screenName: String
     let isRecordingActive: Bool
@@ -541,6 +544,15 @@ struct AssistantView: View {
                     withAnimation(.easeOut(duration: 0.22)) {
                         proxy.scrollTo(lastID, anchor: .bottom)
                     }
+                }
+                .sheet(isPresented: $showsManualWorkoutEntry) {
+                    ManualWorkoutEntryView(draft: pendingManualWorkoutDraft ?? ManualWorkoutDraft()) { activity in
+                        assistantStore.recordManualWorkoutSaved(title: activity.title)
+                        pendingManualWorkoutDraft = nil
+                    }
+                    .environmentObject(activityStore)
+                    .environmentObject(gearStore)
+                    .environmentObject(measurementPreferences)
                 }
             }
         }
@@ -648,6 +660,26 @@ struct AssistantView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(personaAccentColor)
+                    }
+                }
+                .padding(12)
+                .background(personaAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+            }
+
+            if let draft = pendingManualWorkoutDraft, draft.firstMissingField == nil {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Workout ready to review", systemImage: "figure.run.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(personaAccentColor)
+                    Text(manualWorkoutSummary(draft))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button("Cancel", role: .cancel) { pendingManualWorkoutDraft = nil }
+                            .buttonStyle(.bordered)
+                        Button("Review and Save") { showsManualWorkoutEntry = true }
+                            .buttonStyle(.borderedProminent)
+                            .tint(personaAccentColor)
                     }
                 }
                 .padding(12)
@@ -808,6 +840,12 @@ struct AssistantView: View {
             .compactMap { $0 }
         }
         return [
+            AssistantSuggestion(
+                id: "log-workout",
+                capability: .plan,
+                title: String(localized: "Log a workout"),
+                prompt: String(localized: "Log a workout I already completed")
+            ),
             assistantStore.suggestions.first { $0.capability == .plan },
             assistantStore.suggestions.first { $0.capability == .navigate },
             assistantStore.suggestions.first { $0.capability == .support },
@@ -827,10 +865,39 @@ struct AssistantView: View {
         let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
 
+        if handleManualWorkoutPromptIfPresent(prompt) { return }
         if handleActivityCommandIfPresent(prompt) { return }
         if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
             routeThroughApp(target)
         }
+    }
+
+    @discardableResult
+    private func handleManualWorkoutPromptIfPresent(_ prompt: String) -> Bool {
+        guard pendingManualWorkoutDraft != nil || ManualWorkoutPromptParser.beginsWorkoutLog(prompt) else {
+            return false
+        }
+        let parsed = ManualWorkoutPromptParser.parse(prompt, into: pendingManualWorkoutDraft ?? ManualWorkoutDraft())
+        pendingManualWorkoutDraft = parsed
+        assistantStore.draft = ""
+        let reply: String
+        if let missing = parsed.firstMissingField {
+            reply = missing.question
+        } else {
+            reply = String(localized: "I have the workout details. Review them before I save anything.")
+            showsManualWorkoutEntry = true
+        }
+        assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: reply)
+        return true
+    }
+
+    private func manualWorkoutSummary(_ draft: ManualWorkoutDraft) -> String {
+        let type = (draft.activityType ?? .running).manualEntryTitle
+        let duration = draft.durationMinutes ?? 0
+        if let distance = draft.distanceMeters, distance > 0 {
+            return String(localized: "\(type) · \(duration) min · \(measurementPreferences.unitSystem.distanceString(meters: distance, fractionDigits: 2))")
+        }
+        return String(localized: "\(type) · \(duration) min")
     }
 
     private var contextLine: String {

@@ -4,6 +4,21 @@
     "" : {
 
     },
+    "Add Workout" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadir entrenamiento" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加锻炼" } } } },
+    "Couldn’t save workout" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo guardar el entrenamiento" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法保存锻炼" } } } },
+    "Date and time" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Fecha y hora" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "日期和时间" } } } },
+    "How long did the workout take?" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Cuánto duró el entrenamiento?" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这次锻炼用了多长时间？" } } } },
+    "I have the workout details. Review them before I save anything." : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Ya tengo los detalles. Revísalos antes de guardar el entrenamiento." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "我已整理好锻炼详情。保存前请先确认。" } } } },
+    "Indoor workout" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamiento en interior" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "室内锻炼" } } } },
+    "Log a workout" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Registrar un entrenamiento" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记录锻炼" } } } },
+    "Log a workout I already completed" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Registrar un entrenamiento que ya completé" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记录一次已完成的锻炼" } } } },
+    "Manual entry" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrada manual" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "手动记录" } } } },
+    "Manual workouts count toward your progress but do not include a GPS route." : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Los entrenamientos manuales cuentan para tu progreso, pero no incluyen una ruta GPS." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "手动锻炼会计入进度，但不包含 GPS 路线。" } } } },
+    "Review and Save" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Revisar y guardar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "确认并保存" } } } },
+    "Title (optional)" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Título (opcional)" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标题（可选）" } } } },
+    "What kind of workout was it—run, ride, walk, hike, or swim?" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Qué tipo de entrenamiento fue: carrera, ciclismo, caminata, senderismo o natación?" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这是什么锻炼——跑步、骑行、步行、徒步还是游泳？" } } } },
+    "Workout added" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamiento añadido" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已添加锻炼" } } } },
+    "Workout ready to review" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamiento listo para revisar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "锻炼已可确认" } } } },
     "Apple sign-in could not be completed. Please try again." : {
       "localizations" : {
         "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo completar el inicio de sesión con Apple. Inténtalo de nuevo." } },

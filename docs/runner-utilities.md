@@ -233,10 +233,10 @@ Implemented locally:
 - `RecordView` can mark treadmill/indoor sessions and attaches the default shoe on save.
 - `ActivityDetailView` shows source, shoe, indoor, cadence, and HR-zone metadata and has a focused edit sheet for title, date, distance, duration, and shoe.
 - `ProgressStatsEngine` computes PR history and race predictions; `ProgressView` renders PRs, predictions, and shoe mileage.
+- Progress includes an Add Workout form for route-free manual activities. The main assistant recognizes workout-log requests, asks for missing sport or duration, and opens the same editable confirmation form before saving.
 
 Still future work:
 
 - real backend/import source sync for Strava, FIT, TCX, Garmin, and Apple Health writes
 - true HR-zone distributions from samples rather than saved summaries/estimates
 - imported cadence ingestion and live cadence sensor support
-- fuller manual activity creation outside of post-save editing

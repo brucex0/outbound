@@ -6,6 +6,8 @@ struct RunnerProgressView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var gearStore: GearStore
     @State private var selectedTab: RunnerProgressTab = .now
+    @State private var showsManualWorkoutEntry = false
+    @State private var saveToast: String?
 
     private var snapshot: ProgressStatsSnapshot {
         ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
@@ -30,6 +32,32 @@ struct RunnerProgressView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Progress")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showsManualWorkoutEntry = true
+                } label: {
+                    Label("Add Workout", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showsManualWorkoutEntry) {
+            ManualWorkoutEntryView { _ in showSaveToast() }
+                .environmentObject(activityStore)
+                .environmentObject(gearStore)
+                .environmentObject(measurementPreferences)
+        }
+        .overlay(alignment: .top) {
+            if let saveToast {
+                Text(saveToast)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
     }
 
     private var progressTabs: some View {
@@ -228,6 +256,14 @@ struct RunnerProgressView: View {
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func showSaveToast() {
+        withAnimation { saveToast = String(localized: "Workout added") }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { saveToast = nil }
+        }
     }
 }
 
