@@ -1765,9 +1765,12 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var gearStore: GearStore
     @State private var profile: AppUserProfileDTO?
     @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
+    @State private var showsManualWorkoutEntry = false
+    @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -1890,6 +1893,12 @@ private struct SimplifiedMeView: View {
                             HStack {
                                 Text("RECENT RUNS").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                                 Spacer()
+                                Button {
+                                    showsManualWorkoutEntry = true
+                                } label: {
+                                    Label("Add Workout", systemImage: "plus")
+                                }
+                                .font(.subheadline.weight(.semibold))
                                 NavigationLink("See all") { ActivityHistoryView() }.font(.subheadline)
                             }
                             if activityStore.activities.isEmpty {
@@ -1936,6 +1945,23 @@ private struct SimplifiedMeView: View {
                         }
                 }
             }
+            .sheet(isPresented: $showsManualWorkoutEntry) {
+                ManualWorkoutEntryView { _ in showManualWorkoutToast() }
+                    .environmentObject(activityStore)
+                    .environmentObject(gearStore)
+                    .environmentObject(measurementPreferences)
+            }
+            .overlay(alignment: .top) {
+                if let manualWorkoutToast {
+                    Text(manualWorkoutToast)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     GlobalConditionsButton()
@@ -1958,6 +1984,14 @@ private struct SimplifiedMeView: View {
     private func loadProfile() async {
         profile = try? await APIClient.shared.fetchMyProfile()
         UserAvatarPersistence.save(profile?.avatarUrl, for: AuthStore.currentUserId)
+    }
+
+    private func showManualWorkoutToast() {
+        withAnimation { manualWorkoutToast = String(localized: "Workout added") }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { manualWorkoutToast = nil }
+        }
     }
 
     @ViewBuilder
