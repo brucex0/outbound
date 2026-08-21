@@ -598,7 +598,10 @@ struct AssistantView: View {
             ForEach(compactSuggestions) { suggestion in
                 Button {
                     Task {
-                        if focusedActivity != nil {
+                        if suggestion.id == "log-workout" {
+                            assistantStore.draft = suggestion.prompt
+                            await sendDraft()
+                        } else if focusedActivity != nil {
                             assistantStore.draft = suggestion.prompt
                             await sendDraft()
                         } else if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {

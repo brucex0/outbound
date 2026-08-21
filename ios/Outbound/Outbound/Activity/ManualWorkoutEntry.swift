@@ -36,7 +36,7 @@ enum ManualWorkoutPromptParser {
         let value = text.lowercased()
         let actions = ["log", "add", "record", "save", "registr", "añad", "agreg", "记录", "添加", "保存"]
         let workouts = ["workout", "activity", "run", "ride", "walk", "hike", "swim", "entren", "actividad", "correr", "corrí", "bicic", "camin", "nad", "锻炼", "运动", "跑", "骑", "走", "游泳"]
-        let pastWorkout = ["yesterday", "completed", "finished", "i did", "i ran", "i rode", "i walked", "i hiked", "i swam", "ayer", "corrí", "completé", "昨天", "完成了", "跑了", "骑了", "走了", "游了"]
+        let pastWorkout = ["yesterday", "this morning", "earlier today", "completed", "finished", "i did", "i ran", "i rode", "i walked", "i hiked", "i swam", "ayer", "corrí", "completé", "昨天", "完成了", "跑了", "骑了", "走了", "游了"]
             .contains(where: value.contains)
         return workouts.contains(where: value.contains)
             && (actions.contains(where: value.contains) || pastWorkout)
@@ -76,7 +76,25 @@ enum ManualWorkoutPromptParser {
             draft.distanceMeters = miles * 1_609.344
         }
 
+        if draft.durationMinutes == nil,
+           let distanceMeters = draft.distanceMeters,
+           let paceMinutes = paceMinutesPerDistanceUnit(in: value) {
+            let distance = paceMinutes.isPerMile ? distanceMeters / 1_609.344 : distanceMeters / 1_000
+            draft.durationMinutes = max(1, Int((distance * paceMinutes.value).rounded()))
+        }
+
         return draft
+    }
+
+    private static func paceMinutesPerDistanceUnit(in value: String) -> (value: Double, isPerMile: Bool)? {
+        let pattern = #"([0-9]+(?:[\.,][0-9]+)?)\s*(?:minutes|minute|mins|min)?\s*(?:per\s*)?(mile|mi|kilometer|kilometre|km)?\s*pace"#
+        guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = expression.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)),
+              let valueRange = Range(match.range(at: 1), in: value),
+              let pace = Double(value[valueRange].replacingOccurrences(of: ",", with: ".")) else { return nil }
+        let unit = Range(match.range(at: 2), in: value).map { String(value[$0]) }
+        let distanceUsesMiles = value.range(of: #"\b(?:miles?|mi)\b"#, options: .regularExpression) != nil
+        return (pace, unit.map { $0 == "mile" || $0 == "mi" } ?? distanceUsesMiles)
     }
 
     private static func containsAny(_ value: String, _ candidates: [String]) -> Bool {
