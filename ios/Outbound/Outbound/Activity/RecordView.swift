@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 enum SessionPage: String {
     case camera
@@ -33,6 +34,8 @@ struct RecordView: View {
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
+    @State private var isPreActivityCameraPresented = false
+    @State private var selectedPreActivityPhotoItem: PhotosPickerItem?
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
@@ -255,6 +258,23 @@ struct RecordView: View {
         .sheet(isPresented: $showsVoiceDownloadHelp) {
             AppleVoiceDownloadHelpView()
         }
+        .fullScreenCover(isPresented: $isPreActivityCameraPresented) {
+            PostRunCameraView { image in
+                replacePreActivityPhoto(with: image)
+            }
+        }
+        .onChange(of: selectedPreActivityPhotoItem) { _, item in
+            guard let item else { return }
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data)
+                else { return }
+                await MainActor.run {
+                    replacePreActivityPhoto(with: image)
+                    selectedPreActivityPhotoItem = nil
+                }
+            }
+        }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
             if customGoalKind == .distance {
                 TextField(String(localized: "record.goal.distance_km", defaultValue: "Distance in km"), text: $customDistanceText)
@@ -363,7 +383,6 @@ struct RecordView: View {
     }
 
     private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
-        capturedPhotos = []
         pendingActivity = nil
         activePage = preferredSessionPage
         activeIntent = plannedIntent
@@ -699,6 +718,8 @@ struct RecordView: View {
             .background(Color.orange.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
+            preActivityPhotoCard
+
             VStack(spacing: 14) {
                 if intent.workoutSteps.isEmpty {
                     sessionGoalCard(for: intent)
@@ -728,6 +749,96 @@ struct RecordView: View {
             .buttonStyle(.plain)
             sessionOptionsCard
         }
+    }
+
+    private var preActivityPhotoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let photo = preActivityPhoto {
+                Image(uiImage: photo)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 180)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                HStack(spacing: 10) {
+                    Button {
+                        isPreActivityCameraPresented = true
+                    } label: {
+                        Label(String(localized: "record.photo.retake", defaultValue: "Retake"), systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    Button(role: .destructive) {
+                        removePreActivityPhoto()
+                    } label: {
+                        Label(String(localized: "record.photo.remove", defaultValue: "Remove"), systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.bordered)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        isPreActivityCameraPresented = true
+                    } label: {
+                        Label(preActivityPhotoActionTitle, systemImage: "camera.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+
+                    PhotosPicker(selection: $selectedPreActivityPhotoItem, matching: .images) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.headline)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(String(localized: "record.photo.choose", defaultValue: "Choose a photo"))
+                }
+
+                Text(String(localized: "record.photo.optional_detail", defaultValue: "Optional — add a photo before you start."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+    }
+
+    private var preActivityPhotoActionTitle: String {
+        if liveGroupStore.isSharing {
+            return String(localized: "record.photo.take_group", defaultValue: "Take group photo")
+        }
+        return String(localized: "record.photo.take", defaultValue: "Take photo")
+    }
+
+    private var preActivityPhoto: UIImage? {
+        capturedPhotos.last(where: { $0.1.captureContext == .preActivity })?.0
+    }
+
+    private func replacePreActivityPhoto(with image: UIImage) {
+        removePreActivityPhoto()
+        capturedPhotos.append((
+            image,
+            PhotoMetadata(
+                takenAt: Date(),
+                paceAtShot: nil,
+                hrAtShot: nil,
+                distAtShot: 0,
+                coordinate: nil,
+                captureContext: .preActivity
+            )
+        ))
+    }
+
+    private func removePreActivityPhoto() {
+        capturedPhotos.removeAll { $0.1.captureContext == .preActivity }
     }
 
     private var sessionOptionsCard: some View {
