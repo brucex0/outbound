@@ -7,14 +7,26 @@ import UniformTypeIdentifiers
 enum CommunityRouteLibraryMode { case discover, mine }
 
 struct CommunityRouteLibraryView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: CommunityRouteStore
     @StateObject private var locator = RouteDiscoveryLocator()
     @State private var query = ""
     @State private var importsFile = false
     @State private var importedRoute: PreparedRoute?
+    @State private var selectedRoute: PreparedRoute?
     let mode: CommunityRouteLibraryMode
+    private let onSelect: ((PreparedRoute) -> Void)?
 
-    init(mode: CommunityRouteLibraryMode = .discover) { self.mode = mode }
+    init(mode: CommunityRouteLibraryMode = .discover) {
+        self.mode = mode
+        onSelect = nil
+    }
+
+    init(selection: PreparedRoute?, onSelect: @escaping (PreparedRoute) -> Void) {
+        mode = .discover
+        self.onSelect = onSelect
+        _selectedRoute = State(initialValue: selection)
+    }
 
     private var routes: [CommunityRoute] { mode == .mine ? store.mine : store.discovered }
 
@@ -29,11 +41,7 @@ struct CommunityRouteLibraryView: View {
             if !store.imported.isEmpty {
                 Section("Imported routes") {
                     ForEach(store.imported) { route in
-                        NavigationLink {
-                            PreparedRoutePreview(route: route)
-                        } label: {
-                            ImportedRouteRow(route: route)
-                        }
+                        routeDestination(route: route) { ImportedRouteRow(route: route) }
                         .swipeActions {
                             Button(role: .destructive) {
                                 store.deleteImported(route)
@@ -47,10 +55,29 @@ struct CommunityRouteLibraryView: View {
             Section(mode == .mine ? String(localized: "Saved and published") : String(localized: "Community routes")) {
                 if store.isLoading && routes.isEmpty { ProgressView().frame(maxWidth: .infinity) }
                 else if routes.isEmpty { ContentUnavailableView(mode == .mine ? "No saved routes" : "No routes found", systemImage: "map", description: Text(mode == .mine ? "Publish a route from one of your activities or save a community route." : "Try another search or import a route to follow.")) }
-                else { ForEach(routes) { route in NavigationLink { CommunityRouteDetailView(route: route) } label: { CommunityRouteRow(route: route) } } }
+                else {
+                    ForEach(routes) { route in
+                        routeDestination(route: route.prepared) { CommunityRouteRow(route: route) }
+                    }
+                }
             }
         }
-        .navigationTitle(mode == .mine ? "My Routes" : "Explore Routes")
+        .navigationTitle(onSelect == nil ? (mode == .mine ? "My Routes" : "Explore Routes") : "Select Route")
+        .toolbar {
+            if onSelect != nil {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        guard let selectedRoute else { return }
+                        onSelect?(selectedRoute)
+                        dismiss()
+                    }
+                    .disabled(selectedRoute == nil)
+                }
+            }
+        }
         .searchable(text: $query, prompt: "Route or location")
         .onSubmit(of: .search) { Task { await store.search(query) } }
         .task { if mode == .mine { await store.refreshMine() } else { await store.refreshDiscovery() } }
@@ -65,6 +92,30 @@ struct CommunityRouteLibraryView: View {
         }
         .navigationDestination(item: $importedRoute) { route in PreparedRoutePreview(route: route) }
         .overlay(alignment: .top) { if let message = store.errorMessage { RouteToast(message: message).onTapGesture { store.errorMessage = nil } } }
+    }
+
+    @ViewBuilder
+    private func routeDestination<Row: View>(route: PreparedRoute, @ViewBuilder row: () -> Row) -> some View {
+        if onSelect != nil {
+            Button {
+                selectedRoute = route
+            } label: {
+                HStack {
+                    row()
+                    Spacer()
+                    if selectedRoute?.id == route.id {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else if route.source == .imported {
+            NavigationLink { PreparedRoutePreview(route: route) } label: { row() }
+        } else if let communityRoute = routes.first(where: { $0.id == route.id }) {
+            NavigationLink { CommunityRouteDetailView(route: communityRoute) } label: { row() }
+        }
     }
 }
 
@@ -136,7 +187,7 @@ private struct PreparedRoutePreview: View {
             VStack(spacing: 5) { Text(route.name).font(.title2.bold()); Text("Imported routes stay private on this device until you complete and save your own activity.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center) }
             Button { store.launch(route) } label: { Label("Use for Activity", systemImage: "figure.run").frame(maxWidth: .infinity, minHeight: 48) }.buttonStyle(.borderedProminent).tint(.orange)
             Button(role: .destructive) { store.deleteImported(route) } label: { Label("Delete Imported Route", systemImage: "trash") }.buttonStyle(.bordered).frame(maxWidth: .infinity)
-        }.padding().navigationTitle("Import Route").navigationBarTitleDisplayMode(.inline)
+        }.padding().navigationTitle("Preview Route").navigationBarTitleDisplayMode(.inline)
     }
 }
 

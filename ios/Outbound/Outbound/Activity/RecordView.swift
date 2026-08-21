@@ -232,7 +232,11 @@ struct RecordView: View {
             )
         }
         .sheet(isPresented: $showsRouteLibrary) {
-            NavigationStack { CommunityRouteLibraryView() }
+            NavigationStack {
+                CommunityRouteLibraryView(selection: plannedIntent?.preparedRoute) { route in
+                    applyRoute(route)
+                }
+            }
         }
         .sheet(isPresented: $isAssistantPresented) {
             AssistantView(
@@ -1210,6 +1214,24 @@ struct RecordView: View {
         let currentIntent = plannedIntent ?? .freestyleRun
         plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
         selectedGoalMode = SessionGoalMode(goal: goal)
+    }
+
+    private func applyRoute(_ route: PreparedRoute) {
+        let currentIntent = plannedIntent ?? .freestyleRun
+        plannedIntent = SessionIntent(
+            id: currentIntent.id,
+            sport: currentIntent.sport,
+            title: currentIntent.title,
+            detail: currentIntent.detail,
+            guideLine: currentIntent.guideLine,
+            startLabel: currentIntent.startLabel,
+            targetDistanceMeters: currentIntent.targetDistanceMeters,
+            targetDurationSeconds: currentIntent.targetDurationSeconds,
+            routeName: route.name,
+            preparedRoute: route,
+            workoutSteps: currentIntent.workoutSteps,
+            activityEvent: currentIntent.activityEvent
+        )
     }
 
     private func applySmartGoalDefaultIfNeeded() {
