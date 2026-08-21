@@ -24,6 +24,7 @@ struct RecordView: View {
     @EnvironmentObject var onboardingStore: OnboardingStore
     @EnvironmentObject var socialStore: TogetherStore
     @EnvironmentObject var connectivityStore: ConnectivityStore
+    @EnvironmentObject var communityRouteStore: CommunityRouteStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -57,6 +58,7 @@ struct RecordView: View {
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
     @State private var showsVoiceDownloadHelp = false
+    @State private var showsRouteLibrary = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -228,6 +230,9 @@ struct RecordView: View {
                 },
                 onDiscard: discardPendingActivity
             )
+        }
+        .sheet(isPresented: $showsRouteLibrary) {
+            NavigationStack { CommunityRouteLibraryView() }
         }
         .sheet(isPresented: $isAssistantPresented) {
             AssistantView(
@@ -704,6 +709,18 @@ struct RecordView: View {
             }
 
             musicSetupCard
+            Button {
+                showsRouteLibrary = true
+            } label: {
+                HStack {
+                    Label(intent.preparedRoute?.name ?? String(localized: "Choose a route"), systemImage: "map")
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: startSetupCardCornerRadius))
+            }
+            .buttonStyle(.plain)
             sessionOptionsCard
         }
     }

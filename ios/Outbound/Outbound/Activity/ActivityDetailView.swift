@@ -16,6 +16,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
+    @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     @State private var shareURL: URL?
     @State private var shareImage: UIImage?
     @State private var shareError: ShareRouteError?
@@ -28,6 +29,8 @@ struct ActivityDetailView: View {
     @State private var showsCollapsedSheetContent = false
     @State private var selectedPhotoPage = 0
     @State private var lightboxPhotoIndex: Int?
+    @State private var isPublishRoutePresented = false
+    @State private var publishedRouteMessage: String?
 
     init(
         activity: SavedActivity,
@@ -126,6 +129,15 @@ struct ActivityDetailView: View {
                                         : String(localized: "activity.share", defaultValue: "Share activity"))
                 }
 
+                if showsEditControl && currentActivity.routePoints.count > 1 {
+                    Button {
+                        isPublishRoutePresented = true
+                    } label: {
+                        Image(systemName: "map.badge.plus")
+                    }
+                    .accessibilityLabel(String(localized: "Save route to the community"))
+                }
+
                 if showsEditControl {
                     Button {
                         isEditPresented = true
@@ -135,6 +147,26 @@ struct ActivityDetailView: View {
                     .accessibilityLabel(String(localized: "activity.edit", defaultValue: "Edit activity"))
                 }
             }
+        }
+        .sheet(isPresented: $isPublishRoutePresented) {
+            PublishRouteSheet(activity: currentActivity) { name in
+                guard let route = await communityRouteStore.publish(activity: currentActivity, name: name) else { return false }
+                publishedRouteMessage = String(localized: "\(route.name) is now available to the community.")
+                return true
+            }
+        }
+        .overlay(alignment: .top) {
+            if let publishedRouteMessage {
+                Text(publishedRouteMessage)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule()).shadow(radius: 8).padding(.top, 8)
+            }
+        }
+        .task(id: publishedRouteMessage) {
+            guard publishedRouteMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            publishedRouteMessage = nil
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar(.visible, for: .navigationBar)
@@ -754,6 +786,46 @@ struct ActivityDetailView: View {
                 shareError = ShareRouteError(message: error.localizedDescription)
             }
         }
+    }
+}
+
+private struct PublishRouteSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let activity: SavedActivity
+    let onPublish: (String) async -> Bool
+    @State private var name: String
+    @State private var isPublishing = false
+
+    init(activity: SavedActivity, onPublish: @escaping (String) async -> Bool) {
+        self.activity = activity
+        self.onPublish = onPublish
+        _name = State(initialValue: activity.title)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Route name") { TextField("Route name", text: $name) }
+                Section {
+                    Label("Everyone can discover and save this route.", systemImage: "globe.americas.fill")
+                    Text("Plainstride removes activity times and trims the beginning and end of longer routes before publishing.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                } header: { Text("Public route") }
+            }
+            .navigationTitle("Save Route")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isPublishing ? "Publishing…" : "Publish") {
+                        isPublishing = true
+                        Task { if await onPublish(name.trimmingCharacters(in: .whitespacesAndNewlines)) { dismiss() } else { isPublishing = false } }
+                    }
+                    .disabled(isPublishing || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 // MARK: - Sheet Detents

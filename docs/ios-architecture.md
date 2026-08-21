@@ -62,6 +62,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `activities.json`: manifest containing `SavedActivity` entries with a canonical activity type (`running`, `cycling`, `hiking`, `walking`, or `swimming`), source attribution, optional gear/indoor/manual-edit/cadence/heart-rate-zone metadata, optional per-session goal metadata, post-activity finish reflections, compact canonical route data for saved activities, and saved photo metadata. Older manifests without a type load as `running`; raw `trackPoints` and legacy guide nudges also retain backward-compatible decoding.
 - Per-activity photo files are stored locally as JPEGs under `<activity-id>/photos/`; remote copies use `activity-photos/<user-id>/<server-activity-id>/<client-photo-id>.jpg` and are served only through authenticated API routes.
 - `Core/LocalActivityStore.swift`: also contains the canonical route model plus on-demand route export helpers for `GPX` and `GeoJSON`, so the app stores compact route data and only materializes share files when needed.
+- `Routes/CommunityRouteStore.swift` and `Routes/CommunityRouteViews.swift`: own the server-backed public route library, nearby/search/My Routes surfaces, owner-only publication from saved activity detail, bookmarks, GPX/GeoJSON preparation, and route launch into the shared recorder. See `docs/route-saving-sharing.md` for privacy and ownership rules.
 
 ## Progress
 

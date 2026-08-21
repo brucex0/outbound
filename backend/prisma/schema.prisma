@@ -74,6 +74,8 @@ model User {
   socialNotificationsActed    SocialNotification[]         @relation("SocialNotificationActor")
   pushDevices                 PushDevice[]
   activityEventParticipants   ActivityEventParticipant[]
+  routesOwned                 Route[]
+  routeBookmarks              RouteBookmark[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -185,6 +187,7 @@ model Activity {
   workoutCompletions         WorkoutCompletion[]
   moments                    Moment[]
   activityEventParticipation ActivityEventParticipant?
+  publishedRoute             Route?
 
   // AI guide analysis generated after activity
   guideAnalysis Json?
@@ -193,6 +196,51 @@ model Activity {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([userId, clientActivityId])
+}
+
+model Route {
+  id               String   @id @default(cuid())
+  ownerId          String
+  owner            User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sourceActivityId String   @unique
+  sourceActivity   Activity @relation(fields: [sourceActivityId], references: [id], onDelete: Restrict)
+  name             String
+  description      String?
+  activityType     String
+  visibility       String   @default("public") // public | unlisted | private
+  status           String   @default("active") // active | archived
+  geometry         Json     // share-safe GeoJSON LineString; never contains timestamps
+  distanceM        Float
+  elevationGainM   Float?
+  routeShape       String   @default("point_to_point")
+  startLatitude    Float
+  startLongitude   Float
+  minLatitude      Float
+  maxLatitude      Float
+  minLongitude     Float
+  maxLongitude     Float
+  bookmarkCount    Int      @default(0)
+  completionCount  Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  bookmarks RouteBookmark[]
+
+  @@index([visibility, status, startLatitude, startLongitude])
+  @@index([ownerId, updatedAt])
+  @@index([activityType, visibility, status])
+}
+
+model RouteBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routeId   String
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, routeId])
+  @@index([userId, createdAt])
 }
 
 model SafetyLiveShare {

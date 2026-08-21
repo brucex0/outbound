@@ -26,6 +26,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
+    @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
     let activeSport: SportType?
@@ -133,6 +134,16 @@ struct SimplifiedAppShell: View {
             guard notificationID != nil else { return }
             selection = .social
         }
+        .onChange(of: communityRouteStore.pendingLaunch) { _, route in
+            guard let route else { return }
+            onStartRun(SessionIntent(
+                id: "route-\(route.id)", sport: .run, title: route.name,
+                detail: String(localized: "Follow a selected route"),
+                guideLine: String(localized: "Keep the route visible and run it your way."),
+                startLabel: String(localized: "Start route"), routeName: route.name, preparedRoute: route
+            ))
+            communityRouteStore.consumeLaunch()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
@@ -222,6 +233,15 @@ private struct SimplifiedTodayView: View {
                     if activitySessionState != .idle {
                         inProgressActivityCard
                     }
+
+                    NavigationLink {
+                        CommunityRouteLibraryView()
+                    } label: {
+                        Label("Explore routes", systemImage: "map.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
 
                 }
                 .padding(.horizontal, OutboundSpacing.screen)
@@ -1817,6 +1837,18 @@ private struct SimplifiedMeView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    NavigationLink {
+                        CommunityRouteLibraryView(mode: .mine)
+                    } label: {
+                        OutboundCard {
+                            HStack {
+                                Label("My Routes", systemImage: "map.fill").font(.headline)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                     if !personalizationStore.snapshot.insights.isEmpty {
                         OutboundCard {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {

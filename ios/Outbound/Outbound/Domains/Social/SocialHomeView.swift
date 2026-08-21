@@ -82,6 +82,12 @@ struct SocialHomeView: View {
                         } label: {
                             Label("Groups", systemImage: "person.3")
                         }
+
+                        NavigationLink {
+                            CommunityRouteLibraryView()
+                        } label: {
+                            Label("Explore routes", systemImage: "map")
+                        }
                     } label: {
                         Image(systemName: "person.2.circle")
                     }

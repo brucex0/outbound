@@ -1,77 +1,87 @@
-# Route Saving And Sharing Requirements
+# Community Route Library
 
-Open this when implementing saved routes, route export, route sharing, or route storage policies.
+Open this when implementing saved routes, route discovery, route import/export, route privacy, or route-guided recording.
 
-## Product Goals
+## Product Contract
 
-- Save route data as real GPS points, not only as a screenshot or preview image.
-- Let users export and share recorded routes from activity detail.
-- Let route storage remain lightweight enough for long workouts such as marathon-length runs.
-- Preserve a future path toward friend/public route sharing if backend support is added later.
+- Routes are a first-class community object available from Today, activity setup, Social, and Me.
+- Every route published by the current product is public and discoverable. The data model retains `public`, `unlisted`, and `private` visibility values for future use, but the UI does not offer visibility controls yet.
+- `Save Route` appears only on the signed-in runner's own saved activity. A runner cannot republish somebody else's activity as their route.
+- Saving a community route creates an independent canonical route. Deleting the source activity does not silently delete the published route.
+- Saving another runner's route creates a bookmark; it does not copy geometry or transfer ownership.
+- GPX and GeoJSON import creates a prepared route for planning and recording. Imported geometry cannot be published directly. After the runner records and saves their own activity, that activity becomes eligible for `Save Route`.
 
-## Route Data Requirements
+## Discovery UX
 
-- A saved route must be an ordered list of valid GPS points that can be replotted as a map polyline.
-- Each point must include at minimum:
-  - `latitude`
-  - `longitude`
-  - `timestamp`
-- Route points should also persist `altitude` and `verticalAccuracy` when Core Location provides them so activity detail can render a real elevation profile.
-- Point order must be preserved exactly so route playback and plotting remain correct.
-- Optional future fields such as `speed` or `horizontalAccuracy` should be added only if they unlock a concrete product need.
+- Today exposes `Explore routes` beside the primary workout and Quick Start actions.
+- Activity setup exposes `Choose a route` so a route can be combined with a freestyle or planned workout.
+- Social's community menu links to route discovery and Social may show nearby/popular route cards.
+- Me exposes `My Routes`, containing routes owned or bookmarked by the runner.
+- Discovery supports nearby results, text/location search, current map area, distance, elevation, activity type, and route shape as the dataset grows.
+- Route detail shows the map, distance, elevation, shape, creator, saves, completions, and `Start Route`.
 
-## Saved Route Experience
+## Canonical Data
 
-- The app should save route data together with each saved activity.
-- Route-related UX should live on saved activity detail rather than in a separate saved-routes library for V1.
-- Opening an activity with route data should show a full map plus route-related activity details.
+- A route is an ordered list of valid longitude/latitude pairs with optional altitude.
+- Activity timestamps, pauses, photos, and other private activity metadata never enter the community-route response.
+- The server owns public route geometry, summary metrics, ownership, lifecycle, visibility, and aggregate popularity.
+- Local iOS state is a cache plus prepared-import state, not the source of truth for published routes.
+- GPX and GeoJSON are generated or parsed at the boundary; verbose export text is not the canonical stored form.
 
-## Sharing Requirements
+## Privacy And Safety
 
-- Each saved route should support share actions from inside the app.
-- The route should be shareable as real route data in a standard format such as `GPX` or `GeoJSON`.
-- A preview image or share card is optional and secondary to the canonical route data.
-- Sharing modes should be modeled as:
-  - `Private`
-  - `Friends`
-  - `Public`
+- Publication requires an explicit confirmation that the route will be visible to everyone.
+- Before publication, the server removes timestamps and trims approximately 150 meters from each end of routes longer than 600 meters.
+- The client previews the public geometry returned by the server rather than assuming the complete private activity track was published.
+- Community APIs expose creator profile attribution but not the source activity ID.
+- Route discovery must not imply that a creator is currently present on the route.
+- Configurable home/work privacy zones remain required before offering more precise public sharing controls.
 
-## Sharing Scope Notes
+## Backend Model
 
-- `Friends` and `Public` are valid product requirements even if backend support is not implemented yet.
-- In the short term, the app can support local save plus external export/share flows.
-- True friend-only and public sharing will eventually require backend storage, permissions, and share-link infrastructure.
+- `Route` owns public geometry, owner, source activity, activity type, visibility, status, bounds, distance, elevation, shape, and aggregate counts.
+- `RouteBookmark` associates one user with one canonical route.
+- `sourceActivityId` is unique and owner-verified at publication time.
+- Visibility supports `public`, `unlisted`, or `private`; current creation always writes `public`.
+- Status supports soft removal so bookmarks can disappear without corrupting historical activity data.
 
-## Storage Requirements
+Primary API:
 
-- Route storage must scale to long activities without saving unnecessary point density.
-- The canonical saved route should be a compact native representation rather than a permanently stored verbose text export.
-- `GPX` and `GeoJSON` should be generated on demand when the user exports or shares a route.
-- The saved route must stay accurate enough for:
-  - in-app route previews
-  - full saved-route map rendering
-  - export and sharing
+```text
+POST   /v1/routes/from-activity/:activityId
+GET    /v1/routes/nearby?latitude=&longitude=&radiusKm=
+GET    /v1/routes/search?q=
+GET    /v1/routes/mine
+GET    /v1/routes/:id
+PATCH  /v1/routes/:id
+DELETE /v1/routes/:id
+PUT    /v1/routes/:id/bookmark
+DELETE /v1/routes/:id/bookmark
+```
 
-## Simplification Rules
+Nearby search initially uses indexed start coordinates and a bounded latitude/longitude window, then sorts by exact haversine distance. PostGIS is the scale-up path.
 
-- Do not persist every raw GPS callback if it adds little visual or product value.
-- Always keep the first and last point.
-- Keep points when enough distance has elapsed since the last kept point.
-- Keep points when enough time has elapsed since the last kept point.
-- Keep meaningful turns so the route shape remains faithful.
-- Drop redundant near-duplicate or nearly collinear points when they do not materially change the displayed route.
+## iOS Boundaries
 
-## Recommended V1 Direction
+- `CommunityRouteStore` owns discovery, owned/bookmarked routes, publishing, bookmarking, and offline display state.
+- `CommunityRoute` is the share-safe API contract and contains no activity timestamp data.
+- `PreparedRoute` represents a selected community route or locally imported GPX/GeoJSON route.
+- `SessionIntent` carries optional prepared route geometry independently from `ActivityRecorder.trackPoints`.
+- `LiveMapView` draws the planned route behind the actual recorded trail. The recorder never treats planned geometry as completed activity data.
+- V1 is visual route following. Turn-by-turn directions and off-route alerts are separate work.
 
-- Persist a simplified but map-accurate ordered route locally with `latitude`, `longitude`, `timestamp`, and available elevation metadata.
-- Use that stored route as the canonical source for in-app map rendering and sharing.
-- Export standard share formats only when requested.
-- Keep route UI attached to activity detail first, then add broader sharing surfaces later if product needs it.
+## Import Validation
 
-## Current V1 Implementation
+- Accept GPX track/route points and GeoJSON LineString geometry.
+- Reject invalid coordinates, unsupported geometry, and files with fewer than two valid points.
+- Preserve point order and altitude when present.
+- Derive distance/elevation summaries locally for preview.
+- Imported routes stay device-local until represented by the user's own completed activity.
 
-- Saving an activity also saves the simplified canonical route needed for in-app route rendering.
-- The post-run save flow does not expose a separate route toggle because saved activity detail depends on persisted route data.
-- Route export lives on saved activity detail and supports on-demand `GPX` and `GeoJSON` export through the iOS share sheet.
-- The Me/Profile screen focuses on `My Activities` rather than a separate saved-routes library.
-- Older saved activities that only contain raw `trackPoints` are upgraded at read time into the canonical route model.
+## Database Update
+
+```sh
+cd backend
+npm run db:generate
+npm run db:push -- --accept-data-loss
+```

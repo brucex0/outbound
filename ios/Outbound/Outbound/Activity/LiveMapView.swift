@@ -25,6 +25,10 @@ struct LiveMapView: View {
     var body: some View {
         ZStack {
             Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
+                if plannedRouteCoordinates.count > 1 {
+                    MapPolyline(coordinates: plannedRouteCoordinates)
+                        .stroke(.blue.opacity(0.35), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round, dash: [10, 7]))
+                }
                 if let startCoordinate {
                     Annotation("Trail Start", coordinate: startCoordinate) {
                         Circle()
@@ -183,6 +187,10 @@ struct LiveMapView: View {
 
     private var trailCoordinates: [CLLocationCoordinate2D] {
         locationManager.trackPoints.map(\.coordinate)
+    }
+
+    private var plannedRouteCoordinates: [CLLocationCoordinate2D] {
+        intent?.preparedRoute?.points.map(\.locationCoordinate) ?? []
     }
 
     private var startCoordinate: CLLocationCoordinate2D? {

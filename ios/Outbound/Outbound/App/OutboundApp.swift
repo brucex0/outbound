@@ -36,6 +36,7 @@ struct OutboundApp: App {
     @StateObject private var connectivityStore = ConnectivityStore()
     @StateObject private var appearancePreferences = AppearancePreferences()
     @StateObject private var pushNotifications = PushNotificationCoordinator.shared
+    @StateObject private var communityRouteStore = CommunityRouteStore()
 
     init() {
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
@@ -106,6 +107,7 @@ struct OutboundApp: App {
                 .environmentObject(situationalWeatherStore)
                 .environmentObject(connectivityStore)
                 .environmentObject(pushNotifications)
+                .environmentObject(communityRouteStore)
                 .task {
                     await guideStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()

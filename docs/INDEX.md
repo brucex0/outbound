@@ -56,7 +56,7 @@ Primary flow:
 | Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
 | Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |
 | Goal setting, weekly progress, and guide-led focus flows | `docs/goals-progress.md` | Product and implementation spec for local-first goals, progress tracking, and conversational setup |
-| Saved routes, route export, sharing requirements, storage efficiency | `docs/route-saving-sharing.md` | Product requirements for canonical route data, saved-route UX, sharing modes, and route simplification/storage rules |
+| Community route discovery, owner publishing, bookmarks, import/export, route privacy | `docs/route-saving-sharing.md` | Public route-library UX, backend model/API, safety trimming, GPX/GeoJSON preparation, and route-guided recording |
 | Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
 | Activity-event creation, invitations, discovery, recording, and results | `docs/social.md` | Durable event model, lifecycle, owner/participant behavior, personal activity links, and rollout |

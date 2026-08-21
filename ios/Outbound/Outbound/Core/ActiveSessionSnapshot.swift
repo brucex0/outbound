@@ -46,6 +46,7 @@ struct SessionIntent: Identifiable, Hashable {
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
     let routeName: String?
+    let preparedRoute: PreparedRoute?
     let workoutSteps: [SessionIntentStep]
     let activityEvent: ActivityEventLaunchContext?
 
@@ -59,6 +60,7 @@ struct SessionIntent: Identifiable, Hashable {
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
         routeName: String? = nil,
+        preparedRoute: PreparedRoute? = nil,
         workoutSteps: [SessionIntentStep] = [],
         activityEvent: ActivityEventLaunchContext? = nil
     ) {
@@ -71,6 +73,7 @@ struct SessionIntent: Identifiable, Hashable {
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
         self.routeName = routeName
+        self.preparedRoute = preparedRoute
         self.workoutSteps = workoutSteps
         self.activityEvent = activityEvent
     }

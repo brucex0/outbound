@@ -17,6 +17,7 @@ import safety, { liveShareViewer } from "./routes/safety.js";
 import invites from "./routes/invites.js";
 import marketing from "./routes/marketing.js";
 import feedback from "./routes/feedback.js";
+import routes from "./routes/routes.js";
 import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -59,6 +60,7 @@ app.route("/v1/safety", safety);
 app.route("/v1/live", live);
 app.route("/v1/transcribe", transcribeRoutes);
 app.route("/v1/feedback", feedback);
+app.route("/v1/routes", routes);
 
 const port = Number(process.env.PORT ?? 3000);
 console.log(`Plainstride API running on port ${port}`);

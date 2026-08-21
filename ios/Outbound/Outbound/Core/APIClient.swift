@@ -64,6 +64,33 @@ final class APIClient {
         try await delete("/activities/\(id)")
     }
 
+    func fetchCommunityRoutes(query: String = "") async throws -> CommunityRouteListResponse {
+        try await get("/routes/search", queryItems: query.isEmpty ? [] : [URLQueryItem(name: "q", value: query)])
+    }
+
+    func fetchMyRoutes() async throws -> CommunityRouteListResponse {
+        try await get("/routes/mine")
+    }
+
+    func fetchNearbyRoutes(latitude: Double, longitude: Double, radiusKM: Double = 25) async throws -> CommunityRouteListResponse {
+        try await get("/routes/nearby", queryItems: [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKM))
+        ])
+    }
+
+    func publishRoute(activityID: String, name: String) async throws -> CommunityRoute {
+        try await post("/routes/from-activity/\(activityID)", body: PublishCommunityRouteRequest(name: name))
+    }
+
+    func setRouteBookmark(id: String, bookmarked: Bool) async throws -> RouteBookmarkResponse {
+        if bookmarked {
+            return try await put("/routes/\(id)/bookmark", body: EmptyBody())
+        }
+        return try await delete("/routes/\(id)/bookmark")
+    }
+
     func uploadActivityPhoto(_ request: ActivityPhotoUploadRequest) async throws -> RemoteActivityPhoto {
         try await post("/media/activity-photos", body: request)
     }
