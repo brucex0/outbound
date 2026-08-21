@@ -14,16 +14,19 @@ struct CommunityRouteLibraryView: View {
     @State private var importsFile = false
     @State private var importedRoute: PreparedRoute?
     @State private var selectedRoute: PreparedRoute?
+    private let initialSelection: PreparedRoute?
     let mode: CommunityRouteLibraryMode
-    private let onSelect: ((PreparedRoute) -> Void)?
+    private let onSelect: ((PreparedRoute?) -> Void)?
 
     init(mode: CommunityRouteLibraryMode = .discover) {
         self.mode = mode
+        initialSelection = nil
         onSelect = nil
     }
 
-    init(selection: PreparedRoute?, onSelect: @escaping (PreparedRoute) -> Void) {
+    init(selection: PreparedRoute?, onSelect: @escaping (PreparedRoute?) -> Void) {
         mode = .discover
+        initialSelection = selection
         self.onSelect = onSelect
         _selectedRoute = State(initialValue: selection)
     }
@@ -69,12 +72,11 @@ struct CommunityRouteLibraryView: View {
                     Button("Close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        guard let selectedRoute else { return }
+                    Button(selectedRoute == nil ? "Remove Route" : "Use This Route") {
                         onSelect?(selectedRoute)
                         dismiss()
                     }
-                    .disabled(selectedRoute == nil)
+                    .disabled(selectedRoute == nil && initialSelection == nil)
                 }
             }
         }
@@ -98,7 +100,7 @@ struct CommunityRouteLibraryView: View {
     private func routeDestination<Row: View>(route: PreparedRoute, @ViewBuilder row: () -> Row) -> some View {
         if onSelect != nil {
             Button {
-                selectedRoute = route
+                selectedRoute = selectedRoute?.id == route.id ? nil : route
             } label: {
                 HStack {
                     row()

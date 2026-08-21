@@ -14,7 +14,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 ## Discovery UX
 
 - Today exposes `Explore routes` beside the primary workout and Quick Start actions.
-- Activity setup exposes `Choose a route` so a route can be combined with a freestyle or planned workout. Its route picker supports direct row selection, keeps the choice pending until `Done`, and offers `Close` to leave the activity unchanged.
+- Activity setup exposes `Choose a route` so a route can be combined with a freestyle or planned workout. Its route picker supports direct row selection, lets the selected row be tapped again to remove the route, keeps the choice pending until confirmation, and closes after applying the choice. `Close` leaves the activity unchanged.
 - Social's community menu links to route discovery and Social may show nearby/popular route cards.
 - Me exposes `My Routes`, containing routes owned or bookmarked by the runner.
 - Discovery supports nearby results, text/location search, current map area, distance, elevation, activity type, and route shape as the dataset grows.

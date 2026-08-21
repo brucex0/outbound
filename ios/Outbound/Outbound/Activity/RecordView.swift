@@ -235,6 +235,7 @@ struct RecordView: View {
             NavigationStack {
                 CommunityRouteLibraryView(selection: plannedIntent?.preparedRoute) { route in
                     applyRoute(route)
+                    showsRouteLibrary = false
                 }
             }
         }
@@ -1216,7 +1217,7 @@ struct RecordView: View {
         selectedGoalMode = SessionGoalMode(goal: goal)
     }
 
-    private func applyRoute(_ route: PreparedRoute) {
+    private func applyRoute(_ route: PreparedRoute?) {
         let currentIntent = plannedIntent ?? .freestyleRun
         plannedIntent = SessionIntent(
             id: currentIntent.id,
@@ -1227,7 +1228,7 @@ struct RecordView: View {
             startLabel: currentIntent.startLabel,
             targetDistanceMeters: currentIntent.targetDistanceMeters,
             targetDurationSeconds: currentIntent.targetDurationSeconds,
-            routeName: route.name,
+            routeName: route?.name,
             preparedRoute: route,
             workoutSteps: currentIntent.workoutSteps,
             activityEvent: currentIntent.activityEvent
