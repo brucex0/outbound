@@ -286,6 +286,11 @@ struct RecordView: View {
     private func startRecording() {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
+        guideCatalog.refreshInstalledVoices()
+        guard !guideCatalog.requiresVoiceSelection else {
+            guideCatalog.requestVoiceSelection()
+            return
+        }
         isStartingActivity = true
         let intent = plannedIntent
         beginRecordingAfterLiveShareSetup()

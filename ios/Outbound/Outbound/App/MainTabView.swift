@@ -149,11 +149,6 @@ struct MainTabView: View {
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {
-        if guideCatalog.requiresVoiceSelection {
-            guideCatalog.requestVoiceSelection()
-            return
-        }
-
         if let activeLaunch, activitySessionState != .idle {
             self.activeLaunch = activeLaunch
             isActivityVisible = true

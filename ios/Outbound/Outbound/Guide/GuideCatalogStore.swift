@@ -91,7 +91,7 @@ final class GuideCatalogStore: ObservableObject {
             voiceSelectionRequirementReason = .selectedVoiceUnavailable
         }
         requiresVoiceSelection = voiceSelectionRequirementReason != nil
-        isVoiceSelectionPromptPresented = requiresVoiceSelection
+        resolveVoiceSelectionRequirementWithInstalledVoice()
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
     }
 
@@ -137,25 +137,39 @@ final class GuideCatalogStore: ObservableObject {
     func refreshInstalledVoices() {
         if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
             requiresVoiceSelection = true
-            isVoiceSelectionPromptPresented = true
             voiceSelectionRequirementReason = .appLanguageChanged
         }
         let voiceOptions = GuideVoice.availableOptions
-        guard selectedTemplate.voiceOptions != voiceOptions else { return }
-        templates = templates.map { template in
-            GuideTemplate(
-                id: template.id,
-                sport: template.sport,
-                displayName: template.displayName,
-                tagline: template.tagline,
-                personality: template.personality,
-                guidanceStyle: template.guidanceStyle,
-                defaultVoiceId: template.defaultVoiceId,
-                voiceOptions: voiceOptions,
-                systemPromptSeed: template.systemPromptSeed
-            )
+        if selectedTemplate.voiceOptions != voiceOptions {
+            templates = templates.map { template in
+                GuideTemplate(
+                    id: template.id,
+                    sport: template.sport,
+                    displayName: template.displayName,
+                    tagline: template.tagline,
+                    personality: template.personality,
+                    guidanceStyle: template.guidanceStyle,
+                    defaultVoiceId: template.defaultVoiceId,
+                    voiceOptions: voiceOptions,
+                    systemPromptSeed: template.systemPromptSeed
+                )
+            }
+            normalizeSelection()
         }
-        normalizeSelection()
+        resolveVoiceSelectionRequirementWithInstalledVoice()
+    }
+
+    private func resolveVoiceSelectionRequirementWithInstalledVoice() {
+        guard requiresVoiceSelection,
+              let installedVoice = selectedTemplate.voiceOptions.first(where: \.isPremiumOrEnhancedQuality)
+        else { return }
+
+        selection.voiceId = installedVoice.id
+        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
+        requiresVoiceSelection = false
+        isVoiceSelectionPromptPresented = false
+        voiceSelectionRequirementReason = nil
+        saveSelection()
     }
 
     private func normalizeSelection() {
