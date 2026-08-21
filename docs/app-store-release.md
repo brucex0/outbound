@@ -46,6 +46,17 @@ Run the repository helper from a clean tracked worktree:
 
 The helper increments the app and Live Activity extension build number, updates `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
 
+For reliable command-line authentication, create an App Store Connect API key with the access needed to upload builds, keep its `.p8` file outside the repository, and provide all three values:
+
+```sh
+ASC_KEY_PATH=/secure/path/AuthKey_KEYID.p8 \
+ASC_KEY_ID=KEYID \
+ASC_ISSUER_ID=00000000-0000-0000-0000-000000000000 \
+./scripts/publish-testflight.sh
+```
+
+When these values are omitted, the helper falls back to the Apple Account saved in Xcode. API-key values are passed directly to `xcodebuild`; they are not copied into the repository or archive.
+
 Preview the next build number without changing files:
 
 ```sh
@@ -59,7 +70,7 @@ current number explicitly:
 ./scripts/publish-testflight.sh --build-number 10
 ```
 
-If command-line upload cannot use the saved Apple Account, the script preserves the verified archive and prints the exact Organizer fallback. After Apple processes the upload, add test notes and assign the build to the intended external TestFlight group in App Store Connect.
+If command-line upload cannot authenticate, the script preserves the verified archive and prints the exact Organizer fallback. A `Failed to Use Accounts` error means the saved-account fallback could not find App Store Connect access for the configured team; use the API-key environment variables above for future unattended uploads. After Apple processes the upload, add test notes and assign the build to the intended external TestFlight group in App Store Connect.
 
 ## App Store Connect Checklist
 

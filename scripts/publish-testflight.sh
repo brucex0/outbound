@@ -48,6 +48,9 @@ Environment:
   DEVELOPMENT_TEAM  Apple Developer team. Defaults to WT54K7D7VH.
   ARCHIVE_PATH      Optional explicit .xcarchive path. The default is placed
                     in Xcode Organizer's standard Archives directory.
+  ASC_KEY_PATH      Optional App Store Connect API private-key (.p8) path.
+  ASC_KEY_ID        Key ID paired with ASC_KEY_PATH.
+  ASC_ISSUER_ID     Issuer ID paired with ASC_KEY_PATH.
 
 The upload is eligible for external TestFlight testing. App Store Connect may
 still require processing, test notes, group assignment, or Beta App Review.
@@ -83,6 +86,23 @@ cd "$ROOT_DIR"
 for tool in git ruby xcodebuild plutil; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool not found: $tool"
 done
+
+asc_key_path="${ASC_KEY_PATH:-}"
+asc_key_id="${ASC_KEY_ID:-}"
+asc_issuer_id="${ASC_ISSUER_ID:-}"
+authentication_args=()
+
+if [[ -n "$asc_key_path" || -n "$asc_key_id" || -n "$asc_issuer_id" ]]; then
+  [[ -n "$asc_key_path" && -n "$asc_key_id" && -n "$asc_issuer_id" ]] || \
+    fail "ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID must be set together"
+  [[ -f "$asc_key_path" && -r "$asc_key_path" ]] || \
+    fail "App Store Connect API key is not a readable file: $asc_key_path"
+  authentication_args=(
+    -authenticationKeyPath "$asc_key_path"
+    -authenticationKeyID "$asc_key_id"
+    -authenticationKeyIssuerID "$asc_issuer_id"
+  )
+fi
 
 [[ -f "$PROJECT_FILE" ]] || fail "Xcode project file not found: $PROJECT_FILE"
 [[ -f "$RELEASE_DOC" ]] || fail "release document not found: $RELEASE_DOC"
@@ -227,6 +247,11 @@ mkdir -p "$(dirname "$archive_path")"
 
 log "Creating signed App Store archive..."
 log "Archive: $archive_path"
+if (( ${#authentication_args[@]} > 0 )); then
+  log "Using App Store Connect API key ${asc_key_id}"
+else
+  log "Using the Apple Account saved in Xcode"
+fi
 xcodebuild -quiet \
   -project "$PROJECT_PATH" \
   -scheme "$SCHEME" \
@@ -234,6 +259,7 @@ xcodebuild -quiet \
   -destination 'generic/platform=iOS' \
   -archivePath "$archive_path" \
   -allowProvisioningUpdates \
+  "${authentication_args[@]}" \
   archive
 
 archived_version="$(plutil -extract ApplicationProperties.CFBundleShortVersionString raw -o - "$archive_path/Info.plist")"
@@ -277,10 +303,13 @@ if ! xcodebuild \
   -archivePath "$archive_path" \
   -exportPath "$export_path" \
   -exportOptionsPlist "$export_options" \
-  -allowProvisioningUpdates; then
+  -allowProvisioningUpdates \
+  "${authentication_args[@]}"; then
   printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
   printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
-  printf 'If Xcode reports "Failed to Use Accounts", refresh the Plainstride Apple Account in Xcode Settings > Apple Accounts.\n' >&2
+  if (( ${#authentication_args[@]} == 0 )); then
+    printf 'For reliable command-line uploads, set ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID to an App Store Connect API key.\n' >&2
+  fi
   exit 1
 fi
 
