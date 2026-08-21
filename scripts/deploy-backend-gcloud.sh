@@ -115,8 +115,8 @@ deploy_args=(
   "--min=$CLOUD_RUN_MIN_INSTANCES"
   "--max=$CLOUD_RUN_MAX_INSTANCES"
   "--max-instances=$CLOUD_RUN_MAX_INSTANCES"
-  "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest"
-  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>"
+  "--update-secrets=DATABASE_URL=outbound-database-url:latest,APP_AI_KEY=outbound-app-ai-key:latest,RESEND_API_KEY=outbound-resend-api-key:latest,APPLE_PRIVATE_KEY=outbound-apple-private-key:latest,AUTH_ACCESS_PRIVATE_KEY=outbound-auth-access-private-key:latest,AUTH_ACCESS_PUBLIC_KEYS=outbound-auth-access-public-keys:latest"
+  "--update-env-vars=FEEDBACK_EMAIL_FROM=Plainstride <info@plainstride.com>,APPLE_CLIENT_ID=plainstride.outbound,AUTH_ACCESS_KEY_ID=production-v1,AUTH_ACCEPT_LEGACY_FIREBASE=true"
 )
 
 if [[ "$QUIET" == "1" ]]; then

@@ -1,5 +1,10 @@
 export type AuthContext = {
-  firebaseUid: string;
+  subject: string;
+  authenticationKind: "plainstride" | "provider";
+  provider: "plainstride" | "firebase" | "apple" | "google";
+  providerSubject: string;
+  internalUserId: string | null;
+  sessionId: string | null;
   email: string | null;
   emails: string[];
   emailVerified: boolean;
@@ -7,8 +12,6 @@ export type AuthContext = {
   picture: string | null;
   phoneNumber: string | null;
   phoneNumbers: string[];
-  providerIds: string[];
-  signInProvider: string | null;
 };
 
 export type AppEnv = {

@@ -102,9 +102,9 @@ To exercise the same lifecycle manually on `Bruce main` while using the Firebase
 3. If the app is signed out, sign in normally with the test account. On Today, tap **Quick start**. Opening the recording screen activates the seeded live run immediately; no countdown, GPS movement, HealthKit sample, or hour-long wait is required.
 4. Confirm the map route and metrics, then use **Pause**, **Resume**, **Pause**, and **Finish**. On the summary, choose **Discard activity** unless the seeded run is intentionally meant to be saved and synchronized to the test account.
 
-Launching the app normally afterward, including with `./scripts/build-install-bruce-main.sh --launch`, omits the seed flag. The flag does not replace or bypass Firebase authentication on a physical device.
+Launching the app normally afterward, including with `./scripts/build-install-bruce-main.sh --launch`, omits the seed flag. The flag does not replace or bypass first-party authentication on a physical device.
 
-Run the automated local server E2E test with one seeded persona. The runner starts and stops Firebase Auth, the local API, and embedded PostgreSQL; resets deterministic seed data; obtains a real emulator ID token; then verifies authenticated account, activity, and social API state:
+Run the automated local server E2E test with one seeded persona. The runner starts the local API and embedded PostgreSQL, resets deterministic seed data, obtains a first-party session from the debug-only endpoint, then verifies authenticated account, activity, and social API state:
 
 ```sh
 ./scripts/run-local-e2e.sh new
@@ -112,7 +112,7 @@ Run the automated local server E2E test with one seeded persona. The runner star
 ./scripts/run-local-e2e.sh social
 ```
 
-API and database ports can be overridden with `OUTBOUND_E2E_API_PORT` and `OUTBOUND_E2E_DATABASE_PORT`; Firebase Auth uses the repository's configured emulator port `9099`. The script refuses occupied ports and prints its temporary log directory on completion. This command tests the real local authentication and server boundary; simulator UI tests remain separate.
+API and database ports can be overridden with `OUTBOUND_E2E_API_PORT` and `OUTBOUND_E2E_DATABASE_PORT`. The script refuses occupied ports and prints its temporary log directory on completion. This command tests the real local first-party session boundary; simulator UI tests remain separate.
 
 The simulator ID above is the current available `iPhone 17` simulator used for stable UI test runs. If that simulator disappears, rerun `xcodebuild` once to inspect the available destination list and refresh this doc.
 
@@ -175,8 +175,7 @@ Build, install, and launch:
 ./scripts/build-install-bruce-main.sh --launch
 ```
 
-To launch on `Bruce main` with the Debug test-persona picker connected to the
-local Firebase Auth Emulator and API:
+To launch on `Bruce main` with the Debug test-persona picker connected to the local API's first-party session endpoint:
 
 ```sh
 ./scripts/build-install-bruce-main.sh --launch --with-test-personas
@@ -188,11 +187,9 @@ For Simulator, add `--simulator`; the helper uses localhost automatically:
 ./scripts/build-install-bruce-main.sh --simulator --launch --with-test-personas
 ```
 
-When `--with-test-personas` is present, the helper reuses an Auth Emulator
-already listening on port `9099` or starts one in the background and waits for
-it to become ready. It also reuses or starts the local backend stack, including
+When `--with-test-personas` is present, the helper reuses or starts the local backend stack, including
 embedded PostgreSQL on port `54329` and the API on port `3000`. Persona seeding
-remains explicit because it resets deterministic test data.
+remains explicit because it resets deterministic test data. Production startup rejects the debug-persona flag.
 If it finds this repository's stale local API without its embedded database,
 the helper stops that stale API gracefully and restarts the complete stack. It
 does not stop unrelated processes occupying the required ports.

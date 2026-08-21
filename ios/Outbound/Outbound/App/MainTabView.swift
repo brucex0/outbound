@@ -1,4 +1,3 @@
-import FirebaseAuth
 import SwiftUI
 
 struct MainTabView: View {
@@ -117,7 +116,7 @@ struct MainTabView: View {
     }
 
     private var onboardingIdentity: String {
-        authStore.user?.uid ?? authStore.localSessionLabel ?? "local"
+        authStore.user?.id ?? authStore.localSessionLabel ?? "local"
     }
 
     private var onboardingPresentation: Binding<Bool> {

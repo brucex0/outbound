@@ -23,11 +23,16 @@ import { rateLimit } from "./middleware/rateLimit.js";
 
 const app = new Hono<AppEnv>();
 
+if (process.env.NODE_ENV === "production" && process.env.AUTH_ENABLE_DEBUG_PERSONAS === "true") {
+  throw new Error("AUTH_ENABLE_DEBUG_PERSONAS must not be enabled in production");
+}
+
 app.use("*", cors({ origin: "*" }));
 app.use("*", localeMiddleware);
 app.use("/v1/*", rateLimit({ name: "api", limit: 300, windowMs: 60_000, key: "ip" }));
 app.use("/v1/*", authMiddleware);
 app.use("/v1/auth/*", rateLimit({ name: "auth", limit: 30, windowMs: 60_000 }));
+app.use("/v1/auth/refresh", rateLimit({ name: "auth-refresh", limit: 10, windowMs: 60_000, key: "ip" }));
 app.use("/v1/assistant/*", rateLimit({ name: "assistant", limit: 20, windowMs: 60_000 }));
 app.use("/v1/companion/*", rateLimit({ name: "companion", limit: 20, windowMs: 60_000 }));
 app.use("/v1/guide/*", rateLimit({ name: "guide-ai", limit: 20, windowMs: 60_000 }));

@@ -24,15 +24,20 @@ A mainland launch should therefore be treated as a market/infrastructure project
 
 ## Authentication Findings
 
-### Existing Firebase Auth
+### First-Party Authentication
 
-- Firebase currently brokers Apple and Google identities, issues and refreshes Firebase ID tokens, and gives the backend a common verification path.
-- Adding WeChat through Firebase custom authentication would still require the client to contact Firebase to establish and refresh its Firebase session. That does not remove Firebase from the critical path.
-- Firebase email/password or Firebase phone authentication would have the same dependency and should not be presented as a mainland-reliability solution.
+The iOS authentication path no longer contacts Firebase or Google. Native Sign in with Apple credentials go directly to the Plainstride backend, which verifies Apple and issues first-party sessions. This removes the former client-to-Google authentication dependency.
 
-### Direct Provider Authentication
+This does not complete mainland readiness: Apple reachability, API hosting, ICP and distribution work, media delivery, privacy compliance, and notification routing still require separate validation.
 
-If Firebase Auth is removed in the future, Outbound can authenticate providers directly:
+### Legacy Firebase Auth
+
+- The backend can temporarily accept existing beta Firebase ID tokens when `AUTH_ACCEPT_LEGACY_FIREBASE=true`.
+- This compatibility path is not used by the current iOS client and should be disabled after beta identities are reset or legacy traffic ends.
+
+### Future Provider Authentication
+
+Plainstride can add other providers to the same first-party session boundary:
 
 - Apple: the iOS app obtains the Apple identity token and authorization code; the backend verifies the token and creates an Outbound session.
 - Google: the native Google SDK obtains an ID token; the backend verifies it and creates an Outbound session. Google login remains unsuitable as the only mainland option.
@@ -41,7 +46,7 @@ If Firebase Auth is removed in the future, Outbound can authenticate providers d
 - WeChat: requires a verified WeChat Open Platform account, an approved mobile app, native SDK integration, and server-side exchange of the temporary authorization code. Keep the AppSecret on the server.
 - Chinese phone numbers: dependable SMS generally requires a China-capable provider, business verification, approved message templates, consent/privacy work, abuse controls, and delivery testing by carrier.
 
-An Outbound-owned session system would need short-lived access tokens, rotating refresh tokens, secure Keychain storage, hashed refresh-token records, session revocation, provider linking, account deletion, and a migration path for existing Firebase identities.
+The implemented session system uses short-lived access tokens, rotating refresh tokens, device-only Keychain storage, hashed refresh-token records, session revocation, and provider-neutral identities. Future provider linking must prove both identities and cannot rely only on email equality.
 
 ## Backend Availability
 

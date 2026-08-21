@@ -1,13 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getAuth } from "firebase-admin/auth";
-import { getFirebaseApp } from "../services/firebaseAuth.js";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
 import { activityPhotoSHA256, activityPhotoStorageKey, deleteUserActivityPhotos, saveActivityPhoto } from "../services/activityPhotoStorage.js";
 
 const prisma = new PrismaClient();
-const password = "plainstride-test-persona";
 
 const personas = {
   newRunner: {
@@ -15,30 +12,33 @@ const personas = {
     email: "new-runner@plainstride.test",
     username: "test-new-runner",
     displayName: "New Runner",
+    apiValue: "new",
   },
   activeRunner: {
     uid: "plainstride-test-active-runner",
     email: "active-runner@plainstride.test",
     username: "test-active-runner",
     displayName: "Avery Runner",
+    apiValue: "active",
   },
   socialRunner: {
     uid: "plainstride-test-social-runner",
     email: "social-runner@plainstride.test",
     username: "test-social-runner",
     displayName: "Sage Runner",
+    apiValue: "social",
   },
   blockedRunner: {
     uid: "plainstride-test-blocked-runner",
     email: "blocked-runner@plainstride.test",
     username: "test-blocked-runner",
     displayName: "Blocked Runner",
+    apiValue: "blocked",
   },
 } as const;
 
 async function seedTestPersonas() {
   assertLocalOnly();
-  const auth = getAuth(getFirebaseApp());
   const values = Object.values(personas);
 
   const existingUsers = await prisma.user.findMany({
@@ -55,22 +55,6 @@ async function seedTestPersonas() {
   await prisma.user.deleteMany({ where: { id: { in: existingUsers.map((user) => user.id) } } });
   await prisma.club.deleteMany({ where: { name: "Plainstride E2E Run Club" } });
   await prisma.club.deleteMany({ where: { name: "Sunset E2E Striders" } });
-
-  for (const persona of values) {
-    const staleUIDs = new Set<string>();
-    const existingByUID = await getAuthUserUID(() => auth.getUser(persona.uid));
-    const existingByEmail = await getAuthUserUID(() => auth.getUserByEmail(persona.email));
-    if (existingByUID) staleUIDs.add(existingByUID);
-    if (existingByEmail) staleUIDs.add(existingByEmail);
-    await Promise.all([...staleUIDs].map((uid) => auth.deleteUser(uid)));
-    await auth.createUser({
-      uid: persona.uid,
-      email: persona.email,
-      emailVerified: true,
-      password,
-      displayName: persona.displayName,
-    });
-  }
 
   const newRunner = await createAppUser(personas.newRunner);
   const activeRunner = await createAppUser(personas.activeRunner);
@@ -164,19 +148,15 @@ async function seedTestPersonas() {
   return { users: values.length, activities: activeActivities.length, clubs: 2 };
 }
 
-async function getAuthUserUID(fetchUser: () => Promise<{ uid: string }>) {
-  try {
-    return (await fetchUser()).uid;
-  } catch (error: any) {
-    if (error?.code === "auth/user-not-found") return null;
-    throw error;
-  }
-}
-
 async function createAppUser(persona: (typeof personas)[keyof typeof personas]) {
-  return resolveAuthenticatedAppUser(
+  const user = await resolveAuthenticatedAppUser(
     {
-      firebaseUid: persona.uid,
+      subject: `debug:${persona.apiValue}`,
+      authenticationKind: "provider",
+      provider: "firebase",
+      providerSubject: `debug:${persona.apiValue}`,
+      internalUserId: null,
+      sessionId: null,
       email: persona.email,
       emails: [persona.email],
       emailVerified: true,
@@ -184,11 +164,11 @@ async function createAppUser(persona: (typeof personas)[keyof typeof personas]) 
       picture: null,
       phoneNumber: null,
       phoneNumbers: [],
-      providerIds: ["email"],
-      signInProvider: "password",
     },
     { username: persona.username, displayName: persona.displayName }
   );
+  if (!user) throw new Error(`Failed to create ${persona.email}`);
+  return user;
 }
 
 function createActivity(userId: string, clientActivityId: string, title: string, startedAt: Date, durationSecs: number, distanceM: number, avgPace: number) {
@@ -291,11 +271,7 @@ function daysFromNow(origin: Date, days: number) {
 }
 
 function assertLocalOnly() {
-  const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
   const databaseURL = process.env.DATABASE_URL ?? "";
-  if (!emulatorHost || !/^(127\.0\.0\.1|localhost):\d+$/.test(emulatorHost)) {
-    throw new Error("Refusing to seed: FIREBASE_AUTH_EMULATOR_HOST must point to localhost.");
-  }
   if (!/@(127\.0\.0\.1|localhost):/.test(databaseURL)) {
     throw new Error("Refusing to seed: DATABASE_URL must point to localhost.");
   }

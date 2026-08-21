@@ -1,10 +1,8 @@
 import Foundation
-import FirebaseAuth
 
 final class APIClient {
     static let shared = APIClient()
     private let base: URL
-    private var authToken: String?
 
     private init() {
         #if DEBUG
@@ -16,9 +14,9 @@ final class APIClient {
             return arguments[index + 1]
         }()
         let authEmulatorBaseURL: String? = {
-            guard arguments.contains("-OutboundUseFirebaseAuthEmulator") else { return nil }
+            guard arguments.contains("-OutboundEnableDebugPersonas") else { return nil }
             let host: String
-            if let index = arguments.firstIndex(of: "-OutboundFirebaseAuthEmulatorHost"),
+            if let index = arguments.firstIndex(of: "-OutboundLocalAPIHost"),
                arguments.indices.contains(index + 1) {
                 host = arguments[index + 1]
             } else {
@@ -42,8 +40,6 @@ final class APIClient {
         }
         self.base = url
     }
-
-    func setToken(_ token: String?) { authToken = token }
 
     func fetchGuideProfile(userId: String) async throws -> GuideProfile {
         try await get("/guide/\(userId)/profile")
@@ -82,7 +78,7 @@ final class APIClient {
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await authenticatedData(for: req)
         try validate(response: response, data: data)
         return data
     }
@@ -399,8 +395,24 @@ final class APIClient {
         )
     }
 
-    func deleteMyAccount() async throws {
-        let _: AccountDeletionResponse = try await delete("/auth/me")
+    func createAppleSession(_ request: AppleSessionRequest) async throws -> AuthSession {
+        try await unauthenticatedPost("/auth/apple", body: request)
+    }
+
+    func createDebugPersonaSession(_ request: DebugPersonaSessionRequest) async throws -> AuthSession {
+        try await unauthenticatedPost("/auth/debug/persona", body: request)
+    }
+
+    func refreshSession(refreshToken: String) async throws -> AuthSession {
+        try await unauthenticatedPost("/auth/refresh", body: RefreshSessionRequest(refreshToken: refreshToken))
+    }
+
+    func logout(refreshToken: String?) async throws {
+        let _: LogoutResponse = try await post("/auth/logout", body: LogoutSessionRequest(refreshToken: refreshToken))
+    }
+
+    func deleteMyAccount(_ request: DeleteAccountRequest) async throws {
+        let _: AccountDeletionResponse = try await delete("/auth/me", body: request)
     }
 
     func createLiveShare(_ request: LiveShareCreateRequest) async throws -> LiveShareCreateResponse {
@@ -460,7 +472,7 @@ final class APIClient {
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await authenticatedData(for: req)
         try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
     }
@@ -473,6 +485,17 @@ final class APIClient {
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        req.httpBody = try encoder.encode(body)
+        let (data, response) = try await authenticatedData(for: req)
+        try validate(response: response, data: data)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func unauthenticatedPost<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        var req = URLRequest(url: url(for: path))
+        req.httpMethod = "POST"
+        configureLocale(on: &req)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try encoder.encode(body)
         let (data, response) = try await URLSession.shared.data(for: req)
         try validate(response: response, data: data)
@@ -488,7 +511,7 @@ final class APIClient {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         req.httpBody = try encoder.encode(body)
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await authenticatedData(for: req)
         try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
     }
@@ -502,7 +525,7 @@ final class APIClient {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         req.httpBody = try encoder.encode(body)
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await authenticatedData(for: req)
         try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
     }
@@ -517,7 +540,19 @@ final class APIClient {
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await authenticatedData(for: req)
+        try validate(response: response, data: data)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func delete<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        var req = URLRequest(url: url(for: path))
+        req.httpMethod = "DELETE"
+        configureLocale(on: &req)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = try await resolvedAuthToken() { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        req.httpBody = try encoder.encode(body)
+        let (data, response) = try await authenticatedData(for: req)
         try validate(response: response, data: data)
         return try decoder.decode(T.self, from: data)
     }
@@ -537,13 +572,16 @@ final class APIClient {
     }
 
     private func resolvedAuthToken() async throws -> String? {
-        if FirebaseBootstrap.isConfigured, let user = Auth.auth().currentUser {
-            let refreshedToken = try await user.getIDToken()
-            authToken = refreshedToken
-            return refreshedToken
-        }
+        try await SessionCoordinator.shared.accessToken()
+    }
 
-        return authToken
+    private func authenticatedData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let first = try await URLSession.shared.data(for: request)
+        guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
+              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized() else { return first }
+        var replay = request
+        replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
+        return try await URLSession.shared.data(for: replay)
     }
 
     private func configureLocale(on request: inout URLRequest) {
@@ -607,7 +645,10 @@ private struct APIErrorPayload: Decodable {
 
 private struct AccountDeletionResponse: Decodable {
     let deleted: Bool
+    let appleRevocationConfirmed: Bool?
 }
+
+private struct LogoutResponse: Decodable { let loggedOut: Bool }
 
 private extension PlanningAPIStateResponse {
     func trainingPlanState(
@@ -1054,7 +1095,6 @@ struct AssistantChatRequest: Encodable {
     let capability: String
     let context: AssistantChatAPIContext
     let messages: [AssistantChatAPIPriorMessage]
-    let firebaseUid: String?
 }
 
 struct AssistantChatAPIContext: Encodable {

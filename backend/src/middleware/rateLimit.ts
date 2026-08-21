@@ -19,7 +19,7 @@ export function rateLimit(options: {
     const auth = c.get("auth");
     const forwardedFor = c.req.header("X-Forwarded-For")?.split(",")[0]?.trim();
     const clientIP = forwardedFor || "unknown";
-    const principal = options.key === "ip" ? clientIP : auth?.firebaseUid || clientIP;
+    const principal = options.key === "ip" ? clientIP : auth?.internalUserId || auth?.providerSubject || clientIP;
     const key = `${options.name}:${principal}`;
     const current = buckets.get(key);
     const bucket = !current || current.resetAt <= now

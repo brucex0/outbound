@@ -37,7 +37,7 @@ router.post("/", zValidator("json", feedbackSchema), async (c) => {
     body.message,
     "",
     `Type: ${body.kind}`,
-    `User ID: ${identity.firebaseUid}`,
+    `User ID: ${identity.internalUserId ?? identity.providerSubject}`,
     `User email: ${identity.email ?? "Unavailable"}`,
     `Current page: ${body.currentPage}`,
     ...(body.diagnostics ? ["", body.diagnostics] : []),

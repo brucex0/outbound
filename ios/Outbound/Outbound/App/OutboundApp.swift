@@ -1839,8 +1839,7 @@ final class AssistantStore: ObservableObject {
                     isRecordingActive: context.isRecordingActive,
                     timeZoneIdentifier: context.timeZoneIdentifier
                 ),
-                messages: recentMessagesForAPI(),
-                firebaseUid: AuthStore.currentUserId
+                messages: recentMessagesForAPI()
             ))
             let message = remote.message.trimmingCharacters(in: .whitespacesAndNewlines)
             if !message.isEmpty, !Self.isGenericFailureReply(message) {

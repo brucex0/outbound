@@ -1,4 +1,4 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -21,6 +21,12 @@ loadEnvFileIfPresent(path.join(backendDir, ".env"));
 loadEnvFileIfPresent(path.join(backendDir, ".env.local"));
 
 process.env.DATABASE_URL = databaseUrl;
+process.env.AUTH_ACCESS_KEY_ID ??= "local-development-v1";
+process.env.AUTH_ACCESS_PRIVATE_KEY ??= await readFile(path.join(backendDir, "config", "dev-auth-private.pem"), "utf8");
+process.env.AUTH_ACCESS_PUBLIC_KEYS ??= JSON.stringify({
+  "local-development-v1": await readFile(path.join(backendDir, "config", "dev-auth-public.pem"), "utf8"),
+});
+process.env.AUTH_ENABLE_DEBUG_PERSONAS ??= "true";
 
 const postgres = new EmbeddedPostgres({
   databaseDir: dataDir,

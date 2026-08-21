@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id              String   @id @default(cuid())
-  firebaseUid     String   @unique
+  firebaseUid     String?  @unique
   normalizedEmail String?
   normalizedPhone String?
   username        String   @unique
@@ -24,6 +24,7 @@ model User {
 
   activities                  Activity[]
   authIdentities              AuthIdentity[]
+  authSessions                AuthSession[]
   guideProfile                GuideProfile?
   trainingGoals               TrainingGoal[]
   trainingPlans               TrainingPlan[]
@@ -83,23 +84,40 @@ model AuthIdentity {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firebaseUid    String   @unique
-  providerId     String
-  signInProvider String?
-  providerIds    String[] @default([])
+  provider        String
+  providerSubject String
 
   email           String?
   normalizedEmail String?
   emailVerified   Boolean @default(false)
-  phoneNumber     String?
-  normalizedPhone String?
+  displayName     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([normalizedEmail])
-  @@index([normalizedPhone])
+  @@unique([provider, providerSubject])
+}
+
+model AuthSession {
+  id                       String    @id @default(cuid())
+  userId                   String
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId                 String
+  refreshTokenHash         String    @unique
+  previousRefreshTokenHash String?
+  platform                 String
+  deviceLabel              String?
+  createdAt                DateTime  @default(now())
+  lastUsedAt               DateTime  @default(now())
+  expiresAt                DateTime
+  revokedAt                DateTime?
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([previousRefreshTokenHash])
+  @@index([expiresAt])
 }
 
 model GuideProfile {

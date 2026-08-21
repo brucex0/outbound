@@ -53,8 +53,8 @@ Options:
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
   --with-test-personas
-                    Route a launched Debug app to the local Firebase Auth
-                    Emulator and API. Requires --launch.
+                    Route a launched Debug app to the local API and enable its
+                    first-party persona picker. Requires --launch.
   --with-social     Enable the Social tab with OUTBOUND_ENABLE_SOCIAL.
   --without-social  Disable Social tab. This is the default beta-safe build.
   -h, --help        Show this help.
@@ -100,40 +100,6 @@ detect_simulator_id() {
       }
     }
   '
-}
-
-start_firebase_auth_emulator_if_needed() {
-  local emulator_url="http://127.0.0.1:9099/"
-  local emulator_log="${TMPDIR:-/tmp}/plainstride-firebase-auth-emulator.log"
-  local emulator_pid
-
-  if curl --silent --fail --max-time 1 "$emulator_url" >/dev/null 2>&1; then
-    log "Firebase Auth Emulator: already running"
-    return 0
-  fi
-
-  log "Starting Firebase Auth Emulator..."
-  nohup npx --yes firebase-tools emulators:start \
-    --only auth \
-    --project outbound-494602 \
-    --config firebase.json \
-    >"$emulator_log" 2>&1 &
-  emulator_pid=$!
-
-  for _ in {1..90}; do
-    if curl --silent --fail --max-time 1 "$emulator_url" >/dev/null 2>&1; then
-      log "Firebase Auth Emulator: ready (log: ${emulator_log})"
-      return 0
-    fi
-    if ! kill -0 "$emulator_pid" 2>/dev/null; then
-      echo "Firebase Auth Emulator exited before becoming ready. See ${emulator_log}." >&2
-      return 1
-    fi
-    sleep 1
-  done
-
-  echo "Timed out waiting for Firebase Auth Emulator. See ${emulator_log}." >&2
-  return 1
 }
 
 start_local_backend_if_needed() {
@@ -328,7 +294,6 @@ fi
 cd "$ROOT_DIR"
 
 if [[ "$enable_test_personas" == true ]]; then
-  start_firebase_auth_emulator_if_needed
   start_local_backend_if_needed
 fi
 
@@ -352,7 +317,7 @@ else
   log "Social: disabled"
 fi
 if [[ "$enable_test_personas" == true ]]; then
-  log "Test personas: Firebase Auth Emulator at ${local_development_host}:9099"
+  log "Test personas: first-party debug sessions enabled"
   log "Local API: http://${local_development_host}:3000/v1"
 fi
 if [[ "$build_only" == true ]]; then
@@ -447,8 +412,8 @@ if [[ "$launch_after_install" == true ]]; then
     launch_args=(xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID")
     if [[ "$enable_test_personas" == true ]]; then
       launch_args+=(
-        -OutboundUseFirebaseAuthEmulator
-        -OutboundFirebaseAuthEmulatorHost "$local_development_host"
+        -OutboundEnableDebugPersonas
+        -OutboundLocalAPIHost "$local_development_host"
         -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
       )
     fi
@@ -462,8 +427,8 @@ if [[ "$launch_after_install" == true ]]; then
         --terminate-existing
         "$BUNDLE_ID"
         --
-        -OutboundUseFirebaseAuthEmulator
-        -OutboundFirebaseAuthEmulatorHost "$local_development_host"
+        -OutboundEnableDebugPersonas
+        -OutboundLocalAPIHost "$local_development_host"
         -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
       )
     else

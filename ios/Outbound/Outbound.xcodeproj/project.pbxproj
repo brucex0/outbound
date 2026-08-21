@@ -7,10 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
-		DB3A92402F9EE6DA00F9B729 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000032F9EE18E00F9B729 /* FirebaseAuth */; };
 		AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000042F9EE18E00F9B729 /* FirebaseMessaging */; };
 		AB0000072F9EE18E00F9B729 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000062F9EE18E00F9B729 /* FirebaseAnalytics */; };
+		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -93,7 +92,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB0000072F9EE18E00F9B729 /* FirebaseAnalytics in Frameworks */,
-				DB3A92402F9EE6DA00F9B729 /* FirebaseAuth in Frameworks */,
 				AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */,
 				DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */,
 			);
@@ -171,7 +169,6 @@
 			packageProductDependencies = (
 				AB0000062F9EE18E00F9B729 /* FirebaseAnalytics */,
 				AB0000022F9EE18E00F9B729 /* FirebaseCore */,
-				AB0000032F9EE18E00F9B729 /* FirebaseAuth */,
 				AB0000042F9EE18E00F9B729 /* FirebaseMessaging */,
 			);
 			productName = Outbound;
@@ -526,7 +523,7 @@
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					-ObjC,
+					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -565,7 +562,7 @@
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					-ObjC,
+					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -790,11 +787,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
-		};
-		AB0000032F9EE18E00F9B729 /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
 		};
 		AB0000042F9EE18E00F9B729 /* FirebaseMessaging */ = {
 			isa = XCSwiftPackageProductDependency;

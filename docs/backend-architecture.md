@@ -15,7 +15,7 @@ Current strengths:
 
 - assistant chat already works without a database
 - database-backed routes are grouped by domain instead of one large file
-- iOS already sends a Firebase bearer token to `APIClient`
+- iOS sends a Plainstride access token obtained from a Keychain-backed first-party session
 - guide profile rebuild logic exists and can evolve instead of being rewritten
 - authenticated activity ingest now has an initial idempotent path using client-generated activity IDs
 
@@ -57,7 +57,7 @@ Core components:
 - `db`: Postgres via Prisma for durable product state
 - `media storage`: Google Cloud Storage for activity photos and future derived media
 - `jobs`: async workers for guide analysis, plan recompute, feed fanout, and notifications
-- `auth`: Firebase Auth token verification on every authenticated route
+- `auth`: Plainstride access-token verification, with temporary opt-in legacy Firebase verification
 
 This is still one product backend, but with explicit module boundaries:
 
@@ -97,10 +97,11 @@ Backend should own:
 
 Responsibilities:
 
-- verify Firebase bearer tokens
-- map `firebaseUid` to an internal `User`
+- verify asymmetric Plainstride access tokens and optionally accept legacy Firebase bearer tokens
+- map `(provider, providerSubject)` identities to an internal `User`
+- issue 15-minute access tokens and atomically rotate opaque 30-day refresh tokens
 - provide authenticated `me` endpoints
-- delete the authenticated user's relational data and Firebase identity through `DELETE /v1/auth/me`
+- delete the authenticated user's relational data and revoke Apple authorization through a recently reauthorized `DELETE /v1/auth/me`
 
 Rules:
 
@@ -365,7 +366,7 @@ Implementation target:
 
 - add auth middleware that verifies Firebase ID tokens with `firebase-admin`
 - attach Firebase identity metadata to request context and resolve it to an internal `User`
-- keep `AuthIdentity` rows for each Firebase UID/provider combination, with normalized email and phone indexes for account linking
+- keep one `AuthIdentity` row per unique provider subject; email equality alone never links established accounts
 - introduce authenticated endpoints that no longer take `userId` in the path for self-service routes
 
 Preferred route style:

@@ -1,5 +1,4 @@
 import UIKit
-import FirebaseAuth
 import FirebaseMessaging
 import UserNotifications
 
@@ -34,14 +33,5 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didReceive response: UNNotificationResponse
     ) async {
         await MainActor.run { PushNotificationCoordinator.shared.receivedNotification(userInfo: response.notification.request.content.userInfo) }
-    }
-    func application(
-        _ app: UIApplication,
-        open url: URL,
-        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
-    ) -> Bool {
-        let handled = Auth.auth().canHandle(url)
-        print("[Plainstride][AppDelegate] openURL handled=\(handled) url=\(url.absoluteString)")
-        return handled
     }
 }

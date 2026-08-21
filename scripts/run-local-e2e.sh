@@ -5,12 +5,10 @@ script_dir=${0:A:h}
 repo_dir=${script_dir:h}
 backend_dir="$repo_dir/backend"
 persona="${1:-}"
-auth_port=9099
 api_port="${OUTBOUND_E2E_API_PORT:-3010}"
 database_port="${OUTBOUND_E2E_DATABASE_PORT:-54329}"
 project_id=outbound-494602
 log_dir=$(mktemp -d "${TMPDIR:-/tmp}/plainstride-e2e.XXXXXX")
-auth_pid=""
 api_pid=""
 
 usage() {
@@ -34,10 +32,8 @@ cleanup() {
   local exit_code=$?
   trap - EXIT INT TERM
   [[ -n "$api_pid" ]] && kill -INT "$api_pid" 2>/dev/null || true
-  [[ -n "$auth_pid" ]] && kill -INT "$auth_pid" 2>/dev/null || true
   sleep 2
   [[ -n "$api_pid" ]] && kill -TERM "$api_pid" 2>/dev/null || true
-  [[ -n "$auth_pid" ]] && kill -TERM "$auth_pid" 2>/dev/null || true
   if (( exit_code == 0 )); then
     print "Local server E2E passed for persona '$persona'. Logs: $log_dir"
   else
@@ -54,20 +50,12 @@ case "$persona" in
   *) usage >&2; exit 2 ;;
 esac
 
-for port in "$auth_port" 4000 4400 4500 "$api_port" "$database_port"; do
+for port in "$api_port" "$database_port"; do
   if nc -z 127.0.0.1 "$port" 2>/dev/null; then
     print "Port $port is already in use; stop that service or override the API/database E2E ports." >&2
     exit 1
   fi
 done
-
-print "Starting Firebase Auth Emulator..."
-(
-  cd "$repo_dir"
-  exec npx --yes firebase-tools emulators:start --only auth --project "$project_id" --config firebase.json
-) >"$log_dir/firebase.log" 2>&1 &
-auth_pid=$!
-wait_for_url "http://127.0.0.1:$auth_port/" "$auth_pid" "Firebase Auth Emulator"
 
 print "Building and starting local API..."
 (cd "$backend_dir" && npm run build) >"$log_dir/api-build.log" 2>&1
@@ -76,8 +64,7 @@ print "Building and starting local API..."
   exec env \
     PORT="$api_port" \
     OUTBOUND_PG_PORT="$database_port" \
-    FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$auth_port" \
-    FIREBASE_PROJECT_ID="$project_id" \
+    AUTH_ENABLE_DEBUG_PERSONAS="true" \
     node scripts/start-local-stack.mjs
 ) >"$log_dir/api.log" 2>&1 &
 api_pid=$!
@@ -87,20 +74,18 @@ database_url="postgresql://outbound:outbound@127.0.0.1:$database_port/outbound?s
 print "Resetting deterministic persona data..."
 (
   cd "$backend_dir"
-  FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$auth_port" \
-  FIREBASE_PROJECT_ID="$project_id" \
   DATABASE_URL="$database_url" \
   npm run seed:e2e
 ) >"$log_dir/seed.log" 2>&1
 
-print "Authenticating '$persona' through Firebase..."
+print "Authenticating '$persona' through the first-party debug endpoint..."
 curl --silent --show-error --fail-with-body \
   -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$email\",\"password\":\"plainstride-test-persona\",\"returnSecureToken\":true}" \
-  "http://127.0.0.1:$auth_port/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key" \
+  -d "{\"persona\":\"$persona\",\"platform\":\"ios\",\"deviceLabel\":\"local-e2e\"}" \
+  "http://127.0.0.1:$api_port/v1/auth/debug/persona" \
   >"$log_dir/auth.json"
 
-token=$(node -e 'const fs=require("fs"); const value=JSON.parse(fs.readFileSync(process.argv[1])); if (!value.idToken) process.exit(1); process.stdout.write(value.idToken)' "$log_dir/auth.json")
+token=$(node -e 'const fs=require("fs"); const value=JSON.parse(fs.readFileSync(process.argv[1])); if (!value.accessToken) process.exit(1); process.stdout.write(value.accessToken)' "$log_dir/auth.json")
 api_base="http://127.0.0.1:$api_port/v1"
 for endpoint in auth/me activities social/home social/connections social/groups social/notifications social/blocks; do
   file_name=${endpoint//\//-}
@@ -125,7 +110,7 @@ const fail = message => { throw new Error(`[${persona}] ${message}`); };
 
 const expectedNames = { new: "New Runner", active: "Avery Runner", social: "Sage Runner" };
 if (me.displayName !== expectedNames[persona]) fail(`expected displayName ${expectedNames[persona]}, got ${me.displayName}`);
-if (!me.id || !me.firebaseUid) fail("missing backend user identity");
+if (!me.id) fail("missing backend user identity");
 
 if (persona === "new") {
   if (activities.length !== 0) fail(`expected 0 activities, got ${activities.length}`);
@@ -153,8 +138,8 @@ NODE
 
 if [[ "$persona" == "social" ]]; then
   print "Exercising Social server mutations..."
-  node - "$api_base" "$token" "$auth_port" <<'NODE'
-const [apiBase, token, authPort] = process.argv.slice(2);
+  node - "$api_base" "$token" <<'NODE'
+const [apiBase, token] = process.argv.slice(2);
 const headers = { Authorization: `Bearer ${token}` };
 const fail = message => { throw new Error(`[social mutations] ${message}`); };
 const request = async (path, options = {}, expected = [200]) => {
@@ -249,14 +234,14 @@ const request = async (path, options = {}, expected = [200]) => {
   connections = (await request("/social/connections")).connections;
   if (connections.some(item => item.id === incoming.id)) fail("removing a connection did not persist");
 
-  const authResponse = await fetch(`http://127.0.0.1:${authPort}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key`, {
+  const authResponse = await fetch(`${apiBase}/auth/debug/persona`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "active-runner@plainstride.test", password: "plainstride-test-persona", returnSecureToken: true }),
+    body: JSON.stringify({ persona: "active", platform: "ios", deviceLabel: "local-e2e" }),
   });
   const activeAuth = await authResponse.json();
-  if (!authResponse.ok || !activeAuth.idToken) fail("could not authenticate Active Runner for activity sharing");
-  const activeHeaders = { Authorization: `Bearer ${activeAuth.idToken}` };
+  if (!authResponse.ok || !activeAuth.accessToken) fail("could not authenticate Active Runner for activity sharing");
+  const activeHeaders = { Authorization: `Bearer ${activeAuth.accessToken}` };
   const activitiesResponse = await fetch(`${apiBase}/activities`, { headers: activeHeaders });
   const activeActivities = await activitiesResponse.json();
   const activity = activeActivities.activities?.[0];

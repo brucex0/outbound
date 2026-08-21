@@ -61,13 +61,6 @@ struct AuthView: View {
                         }
                     }
 
-                    providerButton("Continue with Google", icon: {
-                        Text("G").font(.headline)
-                    }, action: {
-                        Task { await authStore.signInWithGoogle() }
-                    })
-                    .disabled(!authStore.isFirebaseConfigured || authStore.isBusy)
-
                     #if DEBUG
                     Menu {
                         ForEach(AuthStore.TestPersona.allCases) { persona in
@@ -82,9 +75,9 @@ struct AuthView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(authStore.isBusy)
-                    .accessibilityHint(authStore.isUsingAuthEmulator
-                        ? "Choose a local Firebase Emulator test user"
-                        : "Requires the Firebase Auth Emulator launch argument")
+                    .accessibilityHint(authStore.isUsingDebugPersonas
+                        ? "Choose a local debug persona"
+                        : "Requires debug-persona launch configuration")
                     #endif
 
                     if authStore.isBusy {
@@ -136,11 +129,8 @@ struct AuthView: View {
 
     private var statusMessage: String? {
         if let error = authStore.authError { return error }
-        if !authStore.isFirebaseConfigured {
-            return "Sign in is unavailable in this build."
-        }
         if !authStore.isAppleSignInAvailable {
-            return "Apple sign-in is unavailable. Continue with Google."
+            return "Apple sign-in is unavailable in this build."
         }
         return nil
     }

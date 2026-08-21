@@ -43,7 +43,6 @@ router.post(
       capability: assistantCapabilitySchema,
       context: assistantContextSchema,
       messages: z.array(assistantMessageSchema).max(16).default([]),
-      firebaseUid: z.string().nullish(),
     })
   ),
   async (c) => {
@@ -103,7 +102,7 @@ router.post(
       capability: body.capability,
       context: body.context,
       messages: body.messages,
-      firebaseUid: auth?.firebaseUid ?? body.firebaseUid ?? undefined,
+      firebaseUid: auth?.internalUserId ?? auth?.providerSubject ?? undefined,
       activityContext: activityTools?.context,
       locale: c.get("locale"),
     });

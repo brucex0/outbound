@@ -1,8 +1,7 @@
-import Foundation
-import Combine
-import FirebaseAuth
 import AuthenticationServices
+import Combine
 import CryptoKit
+import Foundation
 import Security
 import UIKit
 
@@ -10,842 +9,139 @@ import UIKit
 final class AuthStore: ObservableObject {
     #if DEBUG
     enum TestPersona: String, CaseIterable, Identifiable {
-        case newRunner = "New Runner"
-        case activeRunner = "Active Runner"
-        case socialRunner = "Social Runner"
-
+        case newRunner = "New Runner", activeRunner = "Active Runner", socialRunner = "Social Runner"
         var id: String { rawValue }
-        var email: String {
-            switch self {
-            case .newRunner: "new-runner@plainstride.test"
-            case .activeRunner: "active-runner@plainstride.test"
-            case .socialRunner: "social-runner@plainstride.test"
-            }
-        }
+        var apiValue: String { switch self { case .newRunner: "new"; case .activeRunner: "active"; case .socialRunner: "social" } }
     }
     #endif
 
-    enum Backend {
-        case firebase
-        case local
-    }
-
-    struct PendingFederatedLink: Equatable {
-        let email: String
-        let providerName: String
-    }
-
     @Published var isAuthenticated = false
-    @Published var isFirebaseConfigured = FirebaseBootstrap.isConfigured
     @Published var isBusy = false
     @Published var authError: String?
-    @Published var user: FirebaseAuth.User?
+    @Published var user: AuthenticatedUser?
     @Published var localSessionLabel: String?
-    @Published private(set) var pendingFederatedLink: PendingFederatedLink?
-    @Published private(set) var backend: Backend = .local
+    private var appleCoordinator: AppleAuthorizationCoordinator?
 
-    private var authStateListener: AuthStateDidChangeListenerHandle?
-    private var pendingFederatedCredential: AuthCredential?
-    private var appleAuthorizationCoordinator: AppleAuthorizationCoordinator?
-    private static let installationMarkerKey = "outbound_installation_seen_v1"
-
-    static var currentUserId: String? {
-        guard FirebaseBootstrap.isConfigured else { return nil }
-        return Auth.auth().currentUser?.uid
-    }
+    static var currentUserId: String? { cachedUserID }
+    private static var cachedUserID: String?
+    var currentLoginLabel: String? { user?.email ?? user?.displayName ?? localSessionLabel }
+    var connectedProviderLabels: [String] { user == nil ? [] : [String(localized: "Apple")] }
+    var isAppleSignInAvailable: Bool { Self.hasAppleSignInEntitlement() }
+    var isUsingDebugPersonas: Bool { ProcessInfo.processInfo.arguments.contains("-OutboundEnableDebugPersonas") }
 
     init() {
-        if ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
-            backend = .local
-            isAuthenticated = true
-            user = nil
-            localSessionLabel = "UI test session"
-            APIClient.shared.setToken(nil)
-            return
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDisableAuthentication") || ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
+            isAuthenticated = true; localSessionLabel = "UI test session"; return
         }
-
-        isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
-        backend = isFirebaseConfigured ? .firebase : .local
-
-        let defaults = UserDefaults.standard
-        let hasPriorOutboundData = defaults.dictionaryRepresentation().keys.contains { key in
-            key.hasPrefix("new_user_onboarding_")
-                || key.hasPrefix("training_plan_store_")
-                || key.hasPrefix("personalization_")
-                || key == "measurement_unit_system_v1"
+        Task { [weak self] in
+            guard let session = await SessionCoordinator.shared.storedSession(), session.isRefreshUsable else { return }
+            self?.apply(session)
         }
-        let isFreshInstallation = !defaults.bool(forKey: Self.installationMarkerKey) && !hasPriorOutboundData
-        defaults.set(true, forKey: Self.installationMarkerKey)
-
-        if !isFirebaseConfigured {
-            isAuthenticated = false
-            localSessionLabel = nil
-            return
-        }
-
-        // Firebase Auth uses Keychain storage, which can survive deleting the app.
-        // A missing app-install marker means local app data was reset, so require
-        // an explicit provider sign-in instead of silently reviving that session.
-        if isFreshInstallation, Auth.auth().currentUser != nil {
-            try? Auth.auth().signOut()
-        }
-
-        user = Auth.auth().currentUser
-        isAuthenticated = user != nil
-
-        authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in
-                self?.user = user
-                self?.isAuthenticated = user != nil
-                self?.localSessionLabel = nil
-                let token = try? await user?.getIDToken()
-                APIClient.shared.setToken(token)
-            }
+        NotificationCenter.default.addObserver(forName: .outboundAuthenticationExpired, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.clearPresentation() }
         }
     }
 
-    deinit {
-        if FirebaseBootstrap.isConfigured, let authStateListener {
-            Auth.auth().removeStateDidChangeListener(authStateListener)
-        }
-    }
-
-    var currentLoginLabel: String? {
-        if let user {
-            if let email = user.email {
-                return Self.displayIdentifier(fromStoredEmail: email)
-            }
-
-            if let providerEmail = user.providerData.compactMap(\.email).first {
-                return Self.displayIdentifier(fromStoredEmail: providerEmail)
-            }
-
-            return user.phoneNumber
-        }
-
-        return localSessionLabel
-    }
-
-    var connectedProviderLabels: [String] {
-        guard let user else {
-            return backend == .local ? ["Local"] : []
-        }
-
-        let providerIDs = Set(user.providerData.map(\.providerID))
-        var labels: [String] = []
-        if providerIDs.contains("google.com") {
-            labels.append("Google")
-        }
-        if providerIDs.contains("apple.com") {
-            labels.append("Apple")
-        }
-        if providerIDs.contains("password") {
-            labels.append("Legacy email")
-        }
-
-        return labels.isEmpty ? ["Firebase"] : labels
-    }
-
-    var isGoogleLinked: Bool {
-        user?.providerData.contains { $0.providerID == "google.com" } == true
-    }
-
-    var isAppleLinked: Bool {
-        user?.providerData.contains { $0.providerID == "apple.com" } == true
-    }
-
-    var isAppleSignInAvailable: Bool {
-        isFirebaseConfigured && Self.hasAppleSignInEntitlement()
-    }
-
-    var isUsingAuthEmulator: Bool {
-        FirebaseBootstrap.isUsingAuthEmulator
-    }
-
-    var backendDescription: String {
-        switch backend {
-        case .firebase:
-            return "Firebase account"
-        case .local:
-            return "Stored only on this device"
-        }
-    }
-
-    func startLocalSession(label: String = "Local session") {
-        backend = .local
-        isAuthenticated = true
-        user = nil
-        authError = nil
-        localSessionLabel = label
-        pendingFederatedLink = nil
-        pendingFederatedCredential = nil
-        APIClient.shared.setToken(nil)
-    }
-
-    func signOut() {
-        guard isFirebaseConfigured else {
-            backend = .local
-            isAuthenticated = false
-            user = nil
-            localSessionLabel = nil
-            authError = nil
-            pendingFederatedLink = nil
-            pendingFederatedCredential = nil
-            APIClient.shared.setToken(nil)
-            return
-        }
-
-        backend = .firebase
-        try? Auth.auth().signOut()
-        isAuthenticated = false
-        user = nil
-        localSessionLabel = nil
-        authError = nil
-        pendingFederatedLink = nil
-        pendingFederatedCredential = nil
-        APIClient.shared.setToken(nil)
-    }
-
-    func deleteAccount() async {
-        guard isFirebaseConfigured, let currentUser = Auth.auth().currentUser else {
-            authError = "No Firebase account is available to delete."
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            if isAppleLinked {
-                let appleCredential = try await makeAppleCredential()
-                _ = try await currentUser.reauthenticate(with: appleCredential.firebaseCredential)
-                guard let authorizationCode = appleCredential.authorizationCode else {
-                    throw AppleAuthorizationError.missingAuthorizationCode
-                }
-                try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
-            } else if isGoogleLinked {
-                _ = try await currentUser.reauthenticate(
-                    with: Self.makeGoogleProvider(),
-                    uiDelegate: nil
-                )
-            }
-
-            try await APIClient.shared.deleteMyAccount()
-            await Self.deleteLocalAccountData()
-            try? Auth.auth().signOut()
-            backend = .firebase
-            isAuthenticated = false
-            user = nil
-            localSessionLabel = nil
-            pendingFederatedLink = nil
-            pendingFederatedCredential = nil
-            APIClient.shared.setToken(nil)
-        } catch {
-            authError = "Account deletion failed. \(Self.userFacingMessage(for: error))"
-        }
-    }
-
-    func signInWithGoogle() async {
-        guard isFirebaseConfigured else {
-            authError = "Google sign-in is only available when Firebase is configured for this build."
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            backend = .firebase
-            print("[Plainstride][Auth] Starting Google sign-in flow.")
-            let provider = Self.makeGoogleProvider()
-            let result = try await Auth.auth().signIn(with: provider, uiDelegate: nil)
-            let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
-            print("[Plainstride][Auth] Google sign-in completed for user: \(result.user.uid)")
-            await completeSignIn(with: resolvedResult)
-        } catch {
-            print("[Plainstride][Auth] Google sign-in failed: \(error.localizedDescription)")
-            if !storePendingFederatedLink(from: error) {
-                resetFirebaseSessionPreservingPendingLinkIfNeeded()
-                authError = Self.userFacingMessage(for: error)
-            }
+    func signInWithApple() async {
+        await performAuthentication {
+            let credential = try await self.makeAppleCredential()
+            let session = try await APIClient.shared.createAppleSession(credential.sessionRequest)
+            try await SessionCoordinator.shared.replace(session)
+            self.apply(session)
         }
     }
 
     #if DEBUG
     func signIn(as persona: TestPersona) async {
-        guard isFirebaseConfigured, isUsingAuthEmulator else {
-            authError = "Test personas require the Firebase Auth Emulator launch argument."
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            backend = .firebase
-            let password = "plainstride-test-persona"
-            let result: AuthDataResult
-            do {
-                result = try await Auth.auth().signIn(withEmail: persona.email, password: password)
-            } catch let error as NSError where
-                error.code == AuthErrorCode.userNotFound.rawValue
-                    || error.code == AuthErrorCode.invalidCredential.rawValue
-            {
-                result = try await Auth.auth().createUser(withEmail: persona.email, password: password)
-            }
-            prepareLocalState(for: persona, firebaseUID: result.user.uid)
-            await completeSignIn(with: result)
-        } catch {
-            authError = "Test persona sign-in failed. \(Self.userFacingMessage(for: error))"
-        }
-    }
-
-    private func prepareLocalState(for persona: TestPersona, firebaseUID: String) {
-        let defaults = UserDefaults.standard
-        let completedKey = "new_user_onboarding_completed_v2.\(firebaseUID)"
-        let profileKey = "new_user_onboarding_profile_v2.\(firebaseUID)"
-        switch persona {
-        case .newRunner:
-            defaults.removeObject(forKey: completedKey)
-            defaults.removeObject(forKey: profileKey)
-        case .activeRunner, .socialRunner:
-            defaults.set(true, forKey: completedKey)
+        guard isUsingDebugPersonas else { authError = String(localized: "Debug personas are unavailable in this build."); return }
+        await performAuthentication {
+            let session = try await APIClient.shared.createDebugPersonaSession(.init(persona: persona.apiValue, deviceLabel: UIDevice.current.name))
+            try await SessionCoordinator.shared.replace(session); self.apply(session)
         }
     }
     #endif
 
-    func signInWithApple() async {
-        guard isFirebaseConfigured else {
-            authError = "Apple sign-in is only available when Firebase is configured for this build."
-            return
+    func signOut() {
+        Task {
+            let session = await SessionCoordinator.shared.storedSession()
+            try? await APIClient.shared.logout(refreshToken: session?.refreshToken)
+            await SessionCoordinator.shared.clear()
         }
+        clearPresentation()
+    }
 
-        guard Self.hasAppleSignInEntitlement() else {
-            authError = "Apple sign-in needs a provisioning profile with the Sign in with Apple capability."
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            backend = .firebase
-            print("[Plainstride][Auth] Starting Apple sign-in flow.")
-            let credential = try await makeAppleCredential()
-            let result = try await Auth.auth().signIn(with: credential.firebaseCredential)
-            let resolvedResult = try await linkPendingFederatedCredentialIfNeeded(after: result)
-            print("[Plainstride][Auth] Apple sign-in completed for user: \(result.user.uid)")
-            await completeSignIn(with: resolvedResult, appleMetadata: credential)
-        } catch {
-            print("[Plainstride][Auth] Apple sign-in failed: \(error.localizedDescription)")
-            if !storePendingFederatedLink(from: error) {
-                resetFirebaseSessionPreservingPendingLinkIfNeeded()
-                authError = Self.userFacingMessage(for: error)
-            }
+    func deleteAccount() async {
+        await performAuthentication {
+            let credential = try await self.makeAppleCredential()
+            try await APIClient.shared.deleteMyAccount(.init(identityToken: credential.identityToken, authorizationCode: credential.authorizationCode, rawNonce: credential.rawNonce))
+            await SessionCoordinator.shared.clear()
+            try? await ActivityPersistence.shared.deleteAll()
+            for key in UserDefaults.standard.dictionaryRepresentation().keys { UserDefaults.standard.removeObject(forKey: key) }
+            self.clearPresentation()
         }
     }
 
-    func connectGoogleAccount() async {
-        guard isFirebaseConfigured else {
-            authError = "Google sign-in is only available when Firebase is configured for this build."
-            return
-        }
+    func handleOpenURL(_ url: URL) -> Bool { false }
 
-        guard let currentUser = Auth.auth().currentUser else {
-            authError = "Sign in before connecting Google."
-            return
-        }
-
-        guard !isGoogleLinked else {
-            authError = nil
-            user = currentUser
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            let result = try await currentUser.link(with: Self.makeGoogleProvider(), uiDelegate: nil)
-            print("[Plainstride][Auth] Google linked for user: \(result.user.uid)")
-            await completeSignIn(with: result, forcingTokenRefresh: true)
-        } catch {
-            print("[Plainstride][Auth] Google link failed: \(error.localizedDescription)")
-            authError = Self.userFacingMessage(for: error)
-        }
+    private func performAuthentication(_ operation: () async throws -> Void) async {
+        isBusy = true; authError = nil; defer { isBusy = false }
+        do { try await operation() }
+        catch let error as ASAuthorizationError where error.code == .canceled { }
+        catch { authError = error.localizedDescription }
     }
-
-    func connectAppleAccount() async {
-        guard isFirebaseConfigured else {
-            authError = "Apple sign-in is only available when Firebase is configured for this build."
-            return
-        }
-
-        guard Self.hasAppleSignInEntitlement() else {
-            authError = "Apple sign-in needs a provisioning profile with the Sign in with Apple capability."
-            return
-        }
-
-        guard let currentUser = Auth.auth().currentUser else {
-            authError = "Sign in before connecting Apple."
-            return
-        }
-
-        guard !isAppleLinked else {
-            authError = nil
-            user = currentUser
-            return
-        }
-
-        do {
-            isBusy = true
-            authError = nil
-            defer { isBusy = false }
-
-            let credential = try await makeAppleCredential()
-            let result = try await currentUser.link(with: credential.firebaseCredential)
-            print("[Plainstride][Auth] Apple linked for user: \(result.user.uid)")
-            await completeSignIn(with: result, appleMetadata: credential)
-        } catch {
-            print("[Plainstride][Auth] Apple link failed: \(error.localizedDescription)")
-            authError = Self.userFacingMessage(for: error)
-        }
+    private func apply(_ session: AuthSession) { user = session.user; Self.cachedUserID = session.user.id; isAuthenticated = true; localSessionLabel = nil }
+    private func clearPresentation() { user = nil; Self.cachedUserID = nil; isAuthenticated = false; localSessionLabel = nil }
+    private func makeAppleCredential() async throws -> AppleCredentialResult {
+        let coordinator = AppleAuthorizationCoordinator(); appleCoordinator = coordinator
+        defer { appleCoordinator = nil }; return try await coordinator.credential()
     }
-
-    func handleOpenURL(_ url: URL) -> Bool {
-        guard isFirebaseConfigured else { return false }
-        let handled = Auth.auth().canHandle(url)
-        print("[Plainstride][Auth] handleOpenURL handled=\(handled) url=\(url.absoluteString)")
-        return handled
-    }
-
-    private static func makeGoogleProvider() -> OAuthProvider {
-        let provider = OAuthProvider.provider(providerID: .google)
-        provider.scopes = ["email", "profile"]
-        provider.customParameters = ["prompt": "select_account"]
-        return provider
-    }
-
     private static func hasAppleSignInEntitlement() -> Bool {
         #if APPLE_SIGN_IN_ENABLED
-            return true
+        true
         #else
-            return false
+        false
         #endif
-    }
-
-    private func makeAppleCredential() async throws -> AppleCredentialResult {
-        let coordinator = AppleAuthorizationCoordinator()
-        appleAuthorizationCoordinator = coordinator
-        defer { appleAuthorizationCoordinator = nil }
-        return try await coordinator.credential()
-    }
-
-    private static func deleteLocalAccountData() async {
-        try? await ActivityPersistence.shared.deleteAll()
-        let defaults = UserDefaults.standard
-        for key in defaults.dictionaryRepresentation().keys {
-            defaults.removeObject(forKey: key)
-        }
-    }
-
-    private func completeSignIn(
-        with result: AuthDataResult,
-        forcingTokenRefresh: Bool = false,
-        appleMetadata: AppleCredentialResult? = nil
-    ) async {
-        if let appleMetadata {
-            await applyAppleProfileIfNeeded(user: result.user, metadata: appleMetadata)
-        }
-        user = result.user
-        isAuthenticated = true
-        localSessionLabel = nil
-        pendingFederatedLink = nil
-        pendingFederatedCredential = nil
-        let token = try? await result.user.getIDToken(
-            forcingRefresh: forcingTokenRefresh || appleMetadata != nil
-        )
-        APIClient.shared.setToken(token)
-        if let displayName = appleMetadata?.displayName {
-            await bootstrapBackendProfileIfNeeded(displayName: displayName)
-        }
-    }
-
-    private func applyAppleProfileIfNeeded(
-        user: FirebaseAuth.User,
-        metadata: AppleCredentialResult
-    ) async {
-        guard user.displayName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false,
-              let displayName = metadata.displayName else {
-            return
-        }
-
-        let request = user.createProfileChangeRequest()
-        request.displayName = displayName
-        do {
-            try await request.commitChanges()
-            try? await user.reload()
-        } catch {
-            print("[Plainstride][Auth] Could not apply Apple profile: \(error.localizedDescription)")
-        }
-    }
-
-    private func bootstrapBackendProfileIfNeeded(displayName: String) async {
-        do {
-            let profile = try await APIClient.shared.fetchMyProfile()
-            let existingName = profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard existingName.isEmpty || existingName.caseInsensitiveCompare("Runner") == .orderedSame else {
-                return
-            }
-            _ = try await APIClient.shared.updateMyProfile(
-                AppUserProfileUpdateDTO(
-                    displayName: displayName,
-                    bio: profile.bio,
-                    contactEmail: profile.contactEmail,
-                    contactPhone: profile.contactPhone
-                )
-            )
-        } catch {
-            print("[Plainstride][Auth] Could not bootstrap backend profile: \(error.localizedDescription)")
-        }
-    }
-
-    private func resetFirebaseSessionPreservingPendingLinkIfNeeded() {
-        guard pendingFederatedLink != nil, Auth.auth().currentUser != nil else {
-            return
-        }
-
-        let link = pendingFederatedLink
-        let credential = pendingFederatedCredential
-        try? Auth.auth().signOut()
-        user = nil
-        isAuthenticated = false
-        localSessionLabel = nil
-        APIClient.shared.setToken(nil)
-        pendingFederatedLink = link
-        pendingFederatedCredential = credential
-    }
-
-    private func linkPendingFederatedCredentialIfNeeded(after result: AuthDataResult) async throws -> AuthDataResult {
-        guard let pendingFederatedLink, let pendingFederatedCredential else {
-            return result
-        }
-
-        let signedInEmails = Self.normalizedEmails(for: result.user)
-        guard signedInEmails.contains(Self.normalizedEmail(pendingFederatedLink.email)) else {
-            throw AuthInputError.pendingLinkEmailMismatch(pendingFederatedLink.email)
-        }
-
-        if result.user.providerData.contains(where: { $0.providerID == pendingFederatedCredential.provider }) {
-            self.pendingFederatedLink = nil
-            self.pendingFederatedCredential = nil
-            return result
-        }
-
-        do {
-            let linkedResult = try await result.user.link(with: pendingFederatedCredential)
-            _ = try? await linkedResult.user.getIDToken(forcingRefresh: true)
-            self.pendingFederatedLink = nil
-            self.pendingFederatedCredential = nil
-            return linkedResult
-        } catch {
-            if Self.authErrorCode(for: error) == .providerAlreadyLinked {
-                self.pendingFederatedLink = nil
-                self.pendingFederatedCredential = nil
-                return result
-            }
-
-            throw error
-        }
-    }
-
-    @discardableResult
-    private func storePendingFederatedLink(from error: Error) -> Bool {
-        guard
-            Self.authErrorCode(for: error) == .accountExistsWithDifferentCredential,
-            let nsError = error as NSError?,
-            let credential = nsError.userInfo[AuthErrorUserInfoUpdatedCredentialKey] as? AuthCredential,
-            let email = nsError.userInfo[AuthErrorUserInfoEmailKey] as? String
-        else {
-            return false
-        }
-
-        pendingFederatedCredential = credential
-        let providerName = Self.providerName(for: credential.provider)
-        pendingFederatedLink = PendingFederatedLink(email: email, providerName: providerName)
-        self.authError = "\(providerName) matches an existing Plainstride account for \(email). Continue with the existing provider once to connect both sign-in methods."
-        return true
-    }
-
-    private static func normalizedEmail(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
-    private static func normalizedEmails(for user: FirebaseAuth.User) -> Set<String> {
-        var emails = Set<String>()
-        if let email = user.email {
-            emails.insert(normalizedEmail(email))
-        }
-        for profile in user.providerData {
-            if let email = profile.email {
-                emails.insert(normalizedEmail(email))
-            }
-        }
-        return emails
-    }
-
-    private static func providerName(for providerID: String) -> String {
-        switch providerID {
-        case "google.com":
-            return "Google"
-        case "apple.com":
-            return "Apple"
-        case "password":
-            return "Email"
-        default:
-            return "That provider"
-        }
-    }
-
-    private static func displayIdentifier(fromStoredEmail email: String) -> String {
-        let prefix = "phone."
-        let suffix = "@users.outbound.local"
-
-        guard email.hasPrefix(prefix), email.hasSuffix(suffix) else {
-            return email
-        }
-
-        let start = email.index(email.startIndex, offsetBy: prefix.count)
-        let end = email.index(email.endIndex, offsetBy: -suffix.count)
-        let digits = String(email[start..<end])
-        return digits.isEmpty ? email : digits
-    }
-
-    private static func userFacingMessage(for error: Error) -> String {
-        if let inputError = error as? AuthInputError {
-            return inputError.localizedDescription
-        }
-
-        if let appleError = error as? AppleAuthorizationError {
-            return appleError.localizedDescription
-        }
-
-        if let authorizationError = error as? ASAuthorizationError,
-           authorizationError.code == .canceled {
-            return "Apple sign-in was canceled."
-        }
-
-        if let authError = error as NSError?, authError.domain == AuthErrorDomain {
-            switch AuthErrorCode(rawValue: authError.code) {
-            case .invalidEmail:
-                return "Enter a valid email address."
-            case .wrongPassword, .invalidCredential:
-                return "That sign-in could not be verified."
-            case .userNotFound:
-                return "No account matches that sign-in method."
-            case .emailAlreadyInUse:
-                return "An account with that email already exists."
-            case .networkError:
-                return "Network error. Check your connection and try again."
-            case .webContextCancelled:
-                return "Sign-in was canceled."
-            case .webNetworkRequestFailed:
-                return "Sign-in could not reach the network. Check your connection and try again."
-            case .webInternalError, .webSignInUserInteractionFailure:
-                return "Sign-in could not be completed. Try again in a moment."
-            case .accountExistsWithDifferentCredential:
-                return "An account already exists for that email with a different sign-in method."
-            case .providerAlreadyLinked:
-                return "That sign-in method is already connected to this account."
-            case .credentialAlreadyInUse:
-                return "That sign-in method is already connected to another Plainstride account."
-            default:
-                break
-            }
-        }
-
-        return error.localizedDescription
-    }
-
-    private static func authErrorCode(for error: Error) -> AuthErrorCode? {
-        guard let authError = error as NSError?, authError.domain == AuthErrorDomain else {
-            return nil
-        }
-
-        return AuthErrorCode(rawValue: authError.code)
-    }
-}
-
-private enum AuthInputError: LocalizedError {
-    case pendingLinkEmailMismatch(String)
-
-    var errorDescription: String? {
-        switch self {
-        case let .pendingLinkEmailMismatch(email):
-            return "Sign in with the account already connected to \(email) to finish linking this provider."
-        }
     }
 }
 
 private enum AppleAuthorizationError: LocalizedError {
-    case missingIdentityToken
-    case invalidIdentityToken
-    case missingNonce
-    case missingAuthorizationCode
-    case randomNonceGenerationFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .missingIdentityToken:
-            return "Apple did not return an identity token."
-        case .invalidIdentityToken:
-            return "Apple returned an identity token Plainstride could not read."
-        case .missingNonce:
-            return "Apple sign-in could not verify the request."
-        case .missingAuthorizationCode:
-            return "Apple did not return the authorization needed to disconnect the account."
-        case .randomNonceGenerationFailed:
-            return "Apple sign-in could not create a secure request."
-        }
-    }
+    case missingIdentityToken, invalidIdentityToken, missingNonce, missingAuthorizationCode, randomNonceGenerationFailed
+    var errorDescription: String? { String(localized: "Apple sign-in could not be completed. Please try again.") }
 }
 
 private struct AppleCredentialResult {
-    let firebaseCredential: AuthCredential
-    let authorizationCode: String?
-    let email: String?
-    let givenName: String?
-    let familyName: String?
-
-    var displayName: String? {
-        let components = [givenName, familyName]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        return components.isEmpty ? nil : components.joined(separator: " ")
-    }
+    let identityToken: String; let authorizationCode: String; let rawNonce: String
+    let givenName: String?; let familyName: String?
+    var sessionRequest: AppleSessionRequest { .init(identityToken: identityToken, authorizationCode: authorizationCode, rawNonce: rawNonce,
+        givenName: givenName, familyName: familyName, deviceLabel: UIDevice.current.name) }
 }
 
 private final class AppleAuthorizationCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    private var continuation: CheckedContinuation<AppleCredentialResult, Error>?
-    private var currentNonce: String?
-
-    func credential() async throws -> AppleCredentialResult {
-        try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-
-            do {
-                let nonce = try Self.randomNonceString()
-                currentNonce = nonce
-
-                let request = ASAuthorizationAppleIDProvider().createRequest()
-                request.requestedScopes = [.fullName, .email]
-                request.nonce = Self.sha256(nonce)
-
-                let controller = ASAuthorizationController(authorizationRequests: [request])
-                controller.delegate = self
-                controller.presentationContextProvider = self
-                controller.performRequests()
-            } catch {
-                self.continuation = nil
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
+    private var continuation: CheckedContinuation<AppleCredentialResult, Error>?; private var nonce: String?
+    func credential() async throws -> AppleCredentialResult { try await withCheckedThrowingContinuation { continuation in
+        self.continuation = continuation
+        do { let nonce = try Self.randomNonce(); self.nonce = nonce; let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]; request.nonce = Self.sha256(nonce)
+            let controller = ASAuthorizationController(authorizationRequests: [request]); controller.delegate = self
+            controller.presentationContextProvider = self; controller.performRequests()
+        } catch { resume(error) }
+    }}
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first { $0.isKeyWindow } ?? ASPresentationAnchor()
     }
-
-    func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-            resume(throwing: AppleAuthorizationError.missingIdentityToken)
-            return
-        }
-
-        guard let nonce = currentNonce else {
-            resume(throwing: AppleAuthorizationError.missingNonce)
-            return
-        }
-
-        guard let identityToken = appleIDCredential.identityToken else {
-            resume(throwing: AppleAuthorizationError.missingIdentityToken)
-            return
-        }
-
-        guard let idTokenString = String(data: identityToken, encoding: .utf8) else {
-            resume(throwing: AppleAuthorizationError.invalidIdentityToken)
-            return
-        }
-
-        let credential = OAuthProvider.appleCredential(
-            withIDToken: idTokenString,
-            rawNonce: nonce,
-            fullName: appleIDCredential.fullName
-        )
-        let authorizationCode = appleIDCredential.authorizationCode
-            .flatMap { String(data: $0, encoding: .utf8) }
-        resume(returning: AppleCredentialResult(
-            firebaseCredential: credential,
-            authorizationCode: authorizationCode,
-            email: appleIDCredential.email,
-            givenName: appleIDCredential.fullName?.givenName,
-            familyName: appleIDCredential.fullName?.familyName
-        ))
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let value = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let nonce, let tokenData = value.identityToken, let token = String(data: tokenData, encoding: .utf8),
+              let codeData = value.authorizationCode, let code = String(data: codeData, encoding: .utf8) else { resume(AppleAuthorizationError.invalidIdentityToken); return }
+        continuation?.resume(returning: .init(identityToken: token, authorizationCode: code, rawNonce: nonce,
+            givenName: value.fullName?.givenName, familyName: value.fullName?.familyName)); continuation = nil; self.nonce = nil
     }
-
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        resume(throwing: error)
-    }
-
-    private func resume(returning credential: AppleCredentialResult) {
-        continuation?.resume(returning: credential)
-        continuation = nil
-        currentNonce = nil
-    }
-
-    private func resume(throwing error: Error) {
-        continuation?.resume(throwing: error)
-        continuation = nil
-        currentNonce = nil
-    }
-
-    private static func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashedData = SHA256.hash(data: inputData)
-        return hashedData.map { String(format: "%02x", $0) }.joined()
-    }
-
-    private static func randomNonceString(length: Int = 32) throws -> String {
-        precondition(length > 0)
-        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        var result = ""
-        var remainingLength = length
-
-        while remainingLength > 0 {
-            var randoms = [UInt8](repeating: 0, count: 16)
-            let status = SecRandomCopyBytes(kSecRandomDefault, randoms.count, &randoms)
-            guard status == errSecSuccess else {
-                throw AppleAuthorizationError.randomNonceGenerationFailed
-            }
-
-            randoms.forEach { random in
-                guard remainingLength > 0, random < UInt8(charset.count) else { return }
-                result.append(charset[Int(random)])
-                remainingLength -= 1
-            }
-        }
-
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) { resume(error) }
+    private func resume(_ error: Error) { continuation?.resume(throwing: error); continuation = nil; nonce = nil }
+    private static func sha256(_ value: String) -> String { SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined() }
+    private static func randomNonce(length: Int = 32) throws -> String {
+        let chars = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._"); var result = ""
+        while result.count < length { var byte: UInt8 = 0; guard SecRandomCopyBytes(kSecRandomDefault, 1, &byte) == errSecSuccess else { throw AppleAuthorizationError.randomNonceGenerationFailed }; if byte < chars.count { result.append(chars[Int(byte)]) } }
         return result
     }
 }

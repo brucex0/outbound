@@ -69,7 +69,9 @@ Primary flow:
 | Activity start screen polish implementation steps | `docs/superpowers/plans/2026-05-30-start-activity-polish.md` | Scoped plan for the selected start activity polish pass in `RecordView` |
 | Live guide announcement cadence and moment direction | `docs/superpowers/specs/2026-05-30-guide-moment-director-design.md` | Lightweight design for making spoken live guide nudges feel high-presence without repetitive stat recaps |
 | Guide moment director implementation steps | `docs/superpowers/plans/2026-05-30-guide-moment-director.md` | Scoped plan for the in-place `VirtualGuide` moment-direction pass |
-| Firebase Auth, Google project setup, Firebase plist, REST inspection | `docs/firebase.md` | Project IDs, app IDs, callback scheme, auth/provider notes, REST pattern |
+| Remaining Firebase services and legacy-auth migration | `docs/firebase.md` | Analytics, Messaging, storage, plist, legacy bearer toggle, debug personas |
+| First-party Apple authentication and sessions | `docs/superpowers/specs/2026-08-20-first-party-auth-sessions-design.md` | Approved identity, token, refresh, migration, and iOS security contract |
+| First-party auth implementation steps | `docs/superpowers/plans/2026-08-20-first-party-auth-sessions.md` | Backend, iOS, tooling, documentation, and verification tasks |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
 | TestFlight, App Store archive, metadata, privacy, submission | `docs/app-store-release.md` | Release build checklist, App Store Connect inputs, privacy review, and owner decisions |
 | TestFlight 1.0 submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, test instructions, review notes, privacy draft, and upload checklist |
