@@ -26,6 +26,24 @@ struct CommunityRouteLibraryView: View {
                     Button { importsFile = true } label: { Label("Import GPX or GeoJSON", systemImage: "square.and.arrow.down") }
                 }
             }
+            if !store.imported.isEmpty {
+                Section("Imported routes") {
+                    ForEach(store.imported) { route in
+                        NavigationLink {
+                            PreparedRoutePreview(route: route)
+                        } label: {
+                            ImportedRouteRow(route: route)
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                store.deleteImported(route)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
             Section(mode == .mine ? String(localized: "Saved and published") : String(localized: "Community routes")) {
                 if store.isLoading && routes.isEmpty { ProgressView().frame(maxWidth: .infinity) }
                 else if routes.isEmpty { ContentUnavailableView(mode == .mine ? "No saved routes" : "No routes found", systemImage: "map", description: Text(mode == .mine ? "Publish a route from one of your activities or save a community route." : "Try another search or import a route to follow.")) }
@@ -40,11 +58,30 @@ struct CommunityRouteLibraryView: View {
         .fileImporter(isPresented: $importsFile, allowedContentTypes: [.xml, .json, .data]) { result in
             do {
                 let url = try result.get(); guard url.startAccessingSecurityScopedResource() else { throw RouteImportError.invalid }; defer { url.stopAccessingSecurityScopedResource() }
-                importedRoute = try RouteFileImporter.parse(data: Data(contentsOf: url), filename: url.lastPathComponent)
+                let route = try RouteFileImporter.parse(data: Data(contentsOf: url), filename: url.lastPathComponent)
+                store.saveImported(route)
+                importedRoute = route
             } catch { store.errorMessage = error.localizedDescription }
         }
         .navigationDestination(item: $importedRoute) { route in PreparedRoutePreview(route: route) }
         .overlay(alignment: .top) { if let message = store.errorMessage { RouteToast(message: message).onTapGesture { store.errorMessage = nil } } }
+    }
+}
+
+private struct ImportedRouteRow: View {
+    let route: PreparedRoute
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "square.and.arrow.down")
+                .foregroundStyle(.orange)
+                .frame(width: 34, height: 34)
+                .background(.orange.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(route.name).font(.headline)
+                Text("Private on this device").font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -98,6 +135,7 @@ private struct PreparedRoutePreview: View {
             RoutePreviewMap(points: route.points).clipShape(RoundedRectangle(cornerRadius: 18))
             VStack(spacing: 5) { Text(route.name).font(.title2.bold()); Text("Imported routes stay private on this device until you complete and save your own activity.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center) }
             Button { store.launch(route) } label: { Label("Use for Activity", systemImage: "figure.run").frame(maxWidth: .infinity, minHeight: 48) }.buttonStyle(.borderedProminent).tint(.orange)
+            Button(role: .destructive) { store.deleteImported(route) } label: { Label("Delete Imported Route", systemImage: "trash") }.buttonStyle(.bordered).frame(maxWidth: .infinity)
         }.padding().navigationTitle("Import Route").navigationBarTitleDisplayMode(.inline)
     }
 }

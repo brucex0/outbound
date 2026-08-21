@@ -18,13 +18,13 @@ struct RouteCoordinate: Codable, Hashable {
     }
 }
 
-struct PreparedRoute: Identifiable, Hashable {
+struct PreparedRoute: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let points: [RouteCoordinate]
     let source: Source
 
-    enum Source: Hashable { case community, imported }
+    enum Source: String, Codable, Hashable { case community, imported }
 }
 
 struct CommunityRoute: Codable, Identifiable, Hashable {
@@ -74,11 +74,29 @@ struct RouteBookmarkResponse: Decodable { let ok: Bool; let bookmarked: Bool }
 
 @MainActor
 final class CommunityRouteStore: ObservableObject {
+    @Published private(set) var imported: [PreparedRoute] = []
     @Published private(set) var discovered: [CommunityRoute] = []
     @Published private(set) var mine: [CommunityRoute] = []
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
     @Published private(set) var pendingLaunch: PreparedRoute?
+
+    private let importedRoutesURL: URL
+
+    init(fileManager: FileManager = .default) {
+        let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        let directory = applicationSupport.appendingPathComponent("Plainstride", isDirectory: true)
+        importedRoutesURL = directory.appendingPathComponent("imported-routes.json")
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            if fileManager.fileExists(atPath: importedRoutesURL.path) {
+                imported = try JSONDecoder().decode([PreparedRoute].self, from: Data(contentsOf: importedRoutesURL))
+            }
+        } catch {
+            errorMessage = String(localized: "Imported routes could not be loaded.")
+        }
+    }
 
     func refreshDiscovery(query: String = "") async {
         isLoading = true
@@ -155,8 +173,28 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
+    func saveImported(_ route: PreparedRoute) {
+        imported.removeAll { $0.id == route.id }
+        imported.insert(route, at: 0)
+        persistImportedRoutes()
+    }
+
+    func deleteImported(_ route: PreparedRoute) {
+        imported.removeAll { $0.id == route.id }
+        persistImportedRoutes()
+    }
+
     func launch(_ route: PreparedRoute) { pendingLaunch = route }
     func consumeLaunch() { pendingLaunch = nil }
+
+    private func persistImportedRoutes() {
+        do {
+            let data = try JSONEncoder().encode(imported)
+            try data.write(to: importedRoutesURL, options: .atomic)
+        } catch {
+            errorMessage = String(localized: "Imported routes could not be saved.")
+        }
+    }
 }
 
 enum RouteImportError: LocalizedError {

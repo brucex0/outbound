@@ -9,7 +9,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 - `Save Route` appears only on the signed-in runner's own saved activity. A runner cannot republish somebody else's activity as their route.
 - Saving a community route creates an independent canonical route. Deleting the source activity does not silently delete the published route.
 - Saving another runner's route creates a bookmark; it does not copy geometry or transfer ownership.
-- GPX and GeoJSON import creates a prepared route for planning and recording. Imported geometry cannot be published directly. After the runner records and saves their own activity, that activity becomes eligible for `Save Route`.
+- GPX and GeoJSON import creates a prepared route for planning and recording. Imported routes persist on the device, appear above server-backed routes in the route library, and remain available until the runner explicitly deletes them. Imported geometry cannot be published directly. After the runner records and saves their own activity, that activity becomes eligible for `Save Route`.
 
 ## Discovery UX
 
@@ -25,7 +25,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 - A route is an ordered list of valid longitude/latitude pairs with optional altitude.
 - Activity timestamps, pauses, photos, and other private activity metadata never enter the community-route response.
 - The server owns public route geometry, summary metrics, ownership, lifecycle, visibility, and aggregate popularity.
-- Local iOS state is a cache plus prepared-import state, not the source of truth for published routes.
+- Local iOS state is a cache plus durable device-local imported-route state, not the source of truth for published routes.
 - GPX and GeoJSON are generated or parsed at the boundary; verbose export text is not the canonical stored form.
 
 ## Privacy And Safety
