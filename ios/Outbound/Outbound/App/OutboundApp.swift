@@ -1613,18 +1613,6 @@ final class AssistantStore: ObservableObject {
             prompt: "I’m new here. What should I try first in Plainstride?"
         ),
         AssistantSuggestion(
-            id: "navigate-where-to-go",
-            capability: .navigate,
-            title: "Where do I go?",
-            prompt: {
-#if OUTBOUND_ENABLE_SOCIAL
-                "Where do I go for activities, companion settings, and social?"
-#else
-                "Where do I go for activities, companion settings, and activity history?"
-#endif
-            }()
-        ),
-        AssistantSuggestion(
             id: "support-setup",
             capability: .support,
             title: "Help me set up",
