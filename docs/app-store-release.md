@@ -57,6 +57,13 @@ ASC_ISSUER_ID=00000000-0000-0000-0000-000000000000 \
 
 When these values are omitted, the helper falls back to the Apple Account saved in Xcode. API-key values are passed directly to `xcodebuild`; they are not copied into the repository or archive.
 
+Bruce's development Mac has a least-privilege `Developer` key at
+`~/Library/Application Support/Plainstride/AppStoreConnect/AuthKey_8F64X54A9C.p8`.
+The helper detects it automatically, so normal unattended uploads require no
+environment variables. The private key stays outside the repository with
+owner-only permissions. Explicit `ASC_KEY_PATH`, `ASC_KEY_ID`, and
+`ASC_ISSUER_ID` values override this local default.
+
 Preview the next build number without changing files:
 
 ```sh

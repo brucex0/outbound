@@ -87,9 +87,18 @@ for tool in git ruby xcodebuild plutil; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool not found: $tool"
 done
 
-asc_key_path="${ASC_KEY_PATH:-}"
-asc_key_id="${ASC_KEY_ID:-}"
-asc_issuer_id="${ASC_ISSUER_ID:-}"
+default_asc_key_path="${HOME}/Library/Application Support/Plainstride/AppStoreConnect/AuthKey_8F64X54A9C.p8"
+default_asc_key_id="8F64X54A9C"
+default_asc_issuer_id="fe8791ac-9cbb-424a-8491-233753db92a7"
+if [[ -f "$default_asc_key_path" ]]; then
+  asc_key_path="${ASC_KEY_PATH:-$default_asc_key_path}"
+  asc_key_id="${ASC_KEY_ID:-$default_asc_key_id}"
+  asc_issuer_id="${ASC_ISSUER_ID:-$default_asc_issuer_id}"
+else
+  asc_key_path="${ASC_KEY_PATH:-}"
+  asc_key_id="${ASC_KEY_ID:-}"
+  asc_issuer_id="${ASC_ISSUER_ID:-}"
+fi
 authentication_args=()
 use_asc_api_key=false
 
