@@ -51,7 +51,6 @@ struct RecordView: View {
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("dismissed_apple_voice_download_tip_v1") private var dismissedAppleVoiceDownloadTip = false
-    @AppStorage("dismissed_shoe_setup_coachmark_v1") private var dismissedShoeSetupCoachmark = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -80,6 +79,8 @@ struct RecordView: View {
     @State private var isSessionOptionsExpanded = false
     @State private var setupSheet: ActivitySetupSheet?
     @State private var isAddShoePresented = false
+    @State private var showsTrustedContacts = false
+    @State private var showsStandaloneWorkouts = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
     @State private var showsVoiceDownloadHelp = false
@@ -301,6 +302,17 @@ struct RecordView: View {
             AddShoeView()
                 .environmentObject(gearStore)
                 .environmentObject(measurementPreferences)
+        }
+        .sheet(isPresented: $showsTrustedContacts) {
+            NavigationStack { SafetyContactsSettingsView() }
+                .environmentObject(safetyContactStore)
+        }
+        .sheet(isPresented: $showsStandaloneWorkouts) {
+            StandaloneWorkoutPickerView { workout in
+                plannedIntent = workout.intent
+                selectedGoalMode = SessionGoalMode(goal: workout.intent.activityGoal)
+                showsStandaloneWorkouts = false
+            }
         }
         .sheet(isPresented: $showsVoiceDownloadHelp) {
             AppleVoiceDownloadHelpView()
@@ -776,54 +788,43 @@ struct RecordView: View {
     }
 
     private var launchControls: some View {
-        HStack(alignment: .bottom, spacing: 30) {
-            VStack(spacing: 5) {
-                Button {
-                    track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                    isPreActivityCameraPresented = true
-                } label: {
-                    Image(systemName: preActivityPhoto == nil ? "camera.fill" : "checkmark.circle.fill")
-                        .font(.title3.weight(.bold))
-                        .frame(width: 52, height: 52)
-                        .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
-                        .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
-                .accessibilityValue(photoAccessibilityValue)
-                Text(String(localized: "record.photo.control", defaultValue: "Photo"))
-                    .font(.caption.weight(.semibold))
+        HStack(spacing: 20) {
+            Button {
+                track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
+                isPreActivityCameraPresented = true
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.title3.weight(.bold))
+                    .frame(width: 64, height: 64)
+                    .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
+                    .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
+                    .shadow(color: Color.black.opacity(0.12), radius: 9, y: 4)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+            .accessibilityValue(photoAccessibilityValue)
 
-            VStack(spacing: 5) {
-                Button(action: startRecording) {
-                    Group {
-                        if isStartingActivity {
-                            ProgressView().tint(.white)
-                        } else {
-                            Image(systemName: "play.fill")
-                                .font(.title.weight(.black))
-                                .offset(x: 2)
-                        }
+            Button(action: startRecording) {
+                Group {
+                    if isStartingActivity {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "play.fill")
+                            .font(.title2.weight(.black))
+                            .offset(x: 2)
                     }
-                    .frame(width: 76, height: 76)
-                    .foregroundStyle(.white)
-                    .background(Color.orange, in: Circle())
-                    .shadow(color: Color.orange.opacity(0.28), radius: 10, y: 5)
                 }
-                .buttonStyle(.plain)
-                .disabled(isStartingActivity)
-                .accessibilityLabel(isStartingActivity ? String(localized: "record.start.preparing", defaultValue: "Preparing activity") : (plannedIntent ?? .freestyleRun).startLabel)
-                .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
-                Text(isStartingActivity ? String(localized: "record.start.preparing_short", defaultValue: "Preparing…") : (plannedIntent ?? .freestyleRun).startLabel)
-                    .font(.subheadline.weight(.bold))
-                    .lineLimit(1)
+                .frame(width: 64, height: 64)
+                .foregroundStyle(.white)
+                .background(Color.orange, in: Circle())
+                .shadow(color: Color.orange.opacity(0.28), radius: 10, y: 5)
             }
+            .buttonStyle(.plain)
+            .disabled(isStartingActivity)
+            .accessibilityLabel(isStartingActivity ? String(localized: "record.start.preparing", defaultValue: "Preparing activity") : (plannedIntent ?? .freestyleRun).startLabel)
+            .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
-        .background(.ultraThinMaterial)
+        .padding(.bottom, 12)
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -869,8 +870,7 @@ struct RecordView: View {
     }
 
     private func compactSetupActions(for intent: SessionIntent) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
                 compactSetupButton(
                     title: String(localized: "record.setup.music", defaultValue: "Music"),
                     value: musicSetupValue,
@@ -899,7 +899,13 @@ struct RecordView: View {
                     systemImage: "location.fill",
                     isConfigured: liveShareStore.isArmedForNextActivity,
                     accessibilityValue: liveTrackValue
-                ) { setupSheet = .liveTrack }
+                ) {
+                    if safetyContactStore.defaultContact == nil {
+                        showsTrustedContacts = true
+                    } else {
+                        setupSheet = .liveTrack
+                    }
+                }
 
                 shoeSetupControl
 
@@ -910,9 +916,8 @@ struct RecordView: View {
                     isConfigured: false,
                     accessibilityValue: moreSetupValue
                 ) { setupSheet = .more }
-            }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
     }
 
@@ -925,25 +930,17 @@ struct RecordView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 5) {
-                    Image(systemName: systemImage)
-                    Text(title)
-                        .lineLimit(1)
-                    if isConfigured {
-                        Image(systemName: "checkmark.circle.fill")
-                            .accessibilityHidden(true)
-                    }
-                }
-                .font(.caption.weight(.bold))
+            VStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.headline)
                 Text(value)
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
             .foregroundStyle(isConfigured ? Color.white : Color.primary)
-            .padding(.horizontal, 12)
-            .frame(width: 112, height: 62, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .frame(height: 62)
             .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -953,77 +950,46 @@ struct RecordView: View {
 
     @ViewBuilder
     private var shoeSetupControl: some View {
-        VStack(spacing: 7) {
-            if gearStore.activeShoes.isEmpty {
-                compactSetupButton(
-                    title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
-                    value: String(localized: "record.shoes.add", defaultValue: "Add shoes"),
-                    systemImage: "shoeprints.fill",
-                    isConfigured: false,
-                    accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
-                ) { isAddShoePresented = true }
-            } else {
-                Menu {
-                    ForEach(gearStore.activeShoes) { shoe in
-                        Button {
-                            selectedSessionShoeID = shoe.id
-                            track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
-                        } label: {
-                            if selectedSessionShoe?.id == shoe.id {
-                                Label(shoe.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(shoe.displayName)
-                            }
-                        }
-                    }
-                } label: {
-                    compactSetupControlLabel(
-                        title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
-                        value: selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"),
-                        systemImage: "shoeprints.fill",
-                        isConfigured: selectedSessionShoe != nil
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
-            }
-
-            if gearStore.activeShoes.isEmpty, !dismissedShoeSetupCoachmark {
-                VStack(alignment: .trailing, spacing: 4) {
+        if gearStore.activeShoes.isEmpty {
+            compactSetupButton(
+                title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
+                value: String(localized: "record.shoes.add", defaultValue: "Add shoes"),
+                systemImage: "shoeprints.fill",
+                isConfigured: false,
+                accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
+            ) { isAddShoePresented = true }
+        } else {
+            Menu {
+                ForEach(gearStore.activeShoes) { shoe in
                     Button {
-                        dismissedShoeSetupCoachmark = true
+                        selectedSessionShoeID = shoe.id
+                        track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.bold))
-                            .frame(width: 44, height: 44)
+                        Text(shoe.displayName)
                     }
-                    .accessibilityLabel(String(localized: "record.shoes.coachmark.dismiss", defaultValue: "Dismiss shoe suggestion"))
-                    Text(String(localized: "record.shoes.coachmark", defaultValue: "Add your shoes to track mileage and know when they may need replacing."))
-                        .font(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(10)
-                .frame(width: 210, alignment: .leading)
-                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .accessibilityElement(children: .contain)
+            } label: {
+                compactSetupControlLabel(
+                    value: selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"),
+                    systemImage: "shoeprints.fill",
+                    isConfigured: selectedSessionShoe != nil
+                )
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
+            .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
         }
     }
 
-    private func compactSetupControlLabel(title: String, value: String, systemImage: String, isConfigured: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
-                Image(systemName: systemImage)
-                Text(title).lineLimit(1)
-                if isConfigured { Image(systemName: "checkmark.circle.fill") }
-            }
-            .font(.caption.weight(.bold))
+    private func compactSetupControlLabel(value: String, systemImage: String, isConfigured: Bool) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.headline)
             Text(value).font(.caption2.weight(.semibold)).lineLimit(1)
         }
         .foregroundStyle(isConfigured ? Color.white : Color.primary)
-        .padding(.horizontal, 12)
-        .frame(width: 112, height: 62, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .frame(height: 62)
         .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -1112,8 +1078,12 @@ struct RecordView: View {
                     setupChoiceRow(title: String(localized: "record.live_track.share_default", defaultValue: "Share with default trusted contact"), detail: defaultContact.name, systemImage: "person.crop.circle.badge.checkmark", isSelected: liveShareStore.isArmedForNextActivity)
                 }
             } else {
-                Label(String(localized: "record.live_track.no_contacts", defaultValue: "No trusted contacts configured"), systemImage: "person.crop.circle.badge.exclamationmark")
-                    .foregroundStyle(.secondary)
+                Button {
+                    setupSheet = nil
+                    showsTrustedContacts = true
+                } label: {
+                    Label(String(localized: "record.live_track.add_contact", defaultValue: "Add a trusted contact"), systemImage: "person.crop.circle.badge.plus")
+                }
             }
             if safetyContactStore.enabledContacts.count > 1 {
                 Section(String(localized: "record.live_track.choose_another", defaultValue: "Choose another contact")) {
@@ -1648,11 +1618,7 @@ struct RecordView: View {
                         selectedSessionShoeID = shoe.id
                         track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                     } label: {
-                        if selectedSessionShoe?.id == shoe.id {
-                            Label(shoe.displayName, systemImage: "checkmark")
-                        } else {
-                            Text(shoe.displayName)
-                        }
+                        Text(shoe.displayName)
                     }
                 }
             } label: {
@@ -1741,6 +1707,13 @@ struct RecordView: View {
                     }
                     goalPresetButton(title: "Custom", isSelected: isCustomTimeSelected) { presentCustomGoal(.time) }
                 }
+            }
+
+            Button {
+                showsStandaloneWorkouts = true
+            } label: {
+                Label(String(localized: "record.goal.workout", defaultValue: "Choose a workout"), systemImage: "list.bullet.clipboard")
+                    .font(.subheadline.weight(.semibold))
             }
         }
         .padding(18)
