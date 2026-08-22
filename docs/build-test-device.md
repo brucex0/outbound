@@ -175,6 +175,17 @@ Build, install, and launch:
 ./scripts/build-install-bruce-main.sh --launch
 ```
 
+To send events from the launched app to Firebase Analytics DebugView with minimal delay:
+
+```sh
+./scripts/build-install-bruce-main.sh --launch --analytics-debug
+```
+
+Add `--simulator` to use a simulator. `--analytics-debug` requires `--launch` and passes
+Firebase's `-FIRDebugEnabled` app argument. Debug mode persists for that development device
+until the app is launched once with `-FIRDebugDisabled`, including from an Xcode scheme.
+Use Firebase Console → Analytics → DebugView to inspect the events and their parameters.
+
 To launch on `Bruce main` with the Debug test-persona picker connected to the local API's first-party session endpoint:
 
 ```sh

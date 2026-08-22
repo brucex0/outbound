@@ -22,6 +22,7 @@ build_only=false
 launch_after_install=false
 enable_social=false
 enable_test_personas=false
+enable_analytics_debug=false
 target_simulator=false
 local_development_host="${OUTBOUND_LOCAL_HOST:-}"
 
@@ -44,7 +45,7 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--simulator] [--build-only] [--launch] [--with-test-personas] [--with-social|--without-social]
+Usage: $0 [--simulator] [--build-only] [--launch] [--analytics-debug] [--with-test-personas] [--with-social|--without-social]
 
 Build and install Outbound on Bruce main or an iOS Simulator.
 
@@ -52,6 +53,8 @@ Options:
   --simulator       Target an iOS Simulator instead of Bruce main.
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
+  --analytics-debug Enable Firebase Analytics DebugView for the launched app.
+                    Requires --launch.
   --with-test-personas
                     Route a launched Debug app to the local API and enable its
                     first-party persona picker. Requires --launch.
@@ -248,6 +251,9 @@ while [[ $# -gt 0 ]]; do
     --with-test-personas)
       enable_test_personas=true
       ;;
+    --analytics-debug)
+      enable_analytics_debug=true
+      ;;
     --with-social)
       enable_social=true
       ;;
@@ -269,6 +275,11 @@ done
 
 if [[ "$enable_test_personas" == true && "$launch_after_install" != true ]]; then
   echo "--with-test-personas requires --launch." >&2
+  exit 2
+fi
+
+if [[ "$enable_analytics_debug" == true && "$launch_after_install" != true ]]; then
+  echo "--analytics-debug requires --launch." >&2
   exit 2
 fi
 
@@ -319,6 +330,9 @@ fi
 if [[ "$enable_test_personas" == true ]]; then
   log "Test personas: first-party debug sessions enabled"
   log "Local API: http://${local_development_host}:3000/v1"
+fi
+if [[ "$enable_analytics_debug" == true ]]; then
+  log "Analytics: Firebase DebugView enabled"
 fi
 if [[ "$build_only" == true ]]; then
   log "Mode: build only"
@@ -408,29 +422,33 @@ fi
 
 if [[ "$launch_after_install" == true ]]; then
   log "Launching Outbound on ${target_description}..."
+  app_launch_args=()
+  if [[ "$enable_analytics_debug" == true ]]; then
+    app_launch_args+=(-FIRDebugEnabled)
+  fi
+  if [[ "$enable_test_personas" == true ]]; then
+    app_launch_args+=(
+      -OutboundEnableDebugPersonas
+      -OutboundLocalAPIHost "$local_development_host"
+      -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
+    )
+  fi
+
   if [[ "$target_simulator" == true ]]; then
     launch_args=(xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID")
-    if [[ "$enable_test_personas" == true ]]; then
-      launch_args+=(
-        -OutboundEnableDebugPersonas
-        -OutboundLocalAPIHost "$local_development_host"
-        -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
-      )
-    fi
+    launch_args+=("${app_launch_args[@]}")
   else
     launch_args=(
       xcrun devicectl device process launch
       --device "$CORE_DEVICE_ID"
     )
-    if [[ "$enable_test_personas" == true ]]; then
+    if [[ ${#app_launch_args[@]} -gt 0 ]]; then
       launch_args+=(
         --terminate-existing
         "$BUNDLE_ID"
         --
-        -OutboundEnableDebugPersonas
-        -OutboundLocalAPIHost "$local_development_host"
-        -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
       )
+      launch_args+=("${app_launch_args[@]}")
     else
       launch_args+=("$BUNDLE_ID")
     fi
