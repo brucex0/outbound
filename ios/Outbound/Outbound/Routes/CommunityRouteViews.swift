@@ -82,7 +82,14 @@ struct CommunityRouteLibraryView: View {
         }
         .searchable(text: $query, prompt: "Route or location")
         .onSubmit(of: .search) { Task { await store.search(query) } }
-        .task { if mode == .mine { await store.refreshMine() } else { await store.refreshDiscovery() } }
+        .task {
+            if mode == .mine {
+                await store.refreshMine()
+            } else {
+                if onSelect != nil { locator.requestLocation() }
+                await store.refreshDiscovery()
+            }
+        }
         .onChange(of: locator.location) { _, location in guard let location else { return }; Task { await store.refreshNearby(location: location) } }
         .fileImporter(isPresented: $importsFile, allowedContentTypes: [.xml, .json, .data]) { result in
             do {

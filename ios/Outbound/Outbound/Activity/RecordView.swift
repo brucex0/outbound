@@ -9,8 +9,6 @@ enum SessionPage: String {
 
 private enum ActivitySetupSheet: String, Identifiable {
     case music
-    case route
-    case liveTrack
     case more
 
     var id: String { rawValue }
@@ -18,8 +16,6 @@ private enum ActivitySetupSheet: String, Identifiable {
     var title: String {
         switch self {
         case .music: String(localized: "record.setup.music", defaultValue: "Music")
-        case .route: String(localized: "record.setup.route", defaultValue: "Route")
-        case .liveTrack: String(localized: "record.setup.live_track", defaultValue: "Live Track")
         case .more: String(localized: "record.setup.more", defaultValue: "More")
         }
     }
@@ -738,10 +734,14 @@ struct RecordView: View {
                     confirmationView(for: plannedIntent ?? .freestyleRun)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 116)
+                .padding(.bottom, 190)
             }
 
-            launchControls
+            VStack(spacing: 10) {
+                compactSetupActions
+                launchControls
+            }
+            .padding(.horizontal, 20)
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
@@ -865,11 +865,10 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
 
-            compactSetupActions(for: intent)
         }
     }
 
-    private func compactSetupActions(for intent: SessionIntent) -> some View {
+    private var compactSetupActions: some View {
         HStack(alignment: .top, spacing: 8) {
                 compactSetupButton(
                     title: String(localized: "record.setup.music", defaultValue: "Music"),
@@ -890,7 +889,8 @@ struct RecordView: View {
                     accessibilityValue: selectedRouteName
                 ) {
                     trackFeatureExposure("routes")
-                    setupSheet = .route
+                    showsRouteLibrary = true
+                    track(.init(.routeLibraryOpened))
                 }
 
                 compactSetupButton(
@@ -903,7 +903,7 @@ struct RecordView: View {
                     if safetyContactStore.defaultContact == nil {
                         showsTrustedContacts = true
                     } else {
-                        setupSheet = .liveTrack
+                        liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
                     }
                 }
 
@@ -1000,10 +1000,6 @@ struct RecordView: View {
                 switch sheet {
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
-                case .route:
-                    routeSetupSheet
-                case .liveTrack:
-                    liveTrackSetupSheet
                 case .more:
                     moreSetupSheet
                 }
@@ -1048,57 +1044,6 @@ struct RecordView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!musicStore.isPrimaryActionEnabled)
-            }
-        }
-    }
-
-    private var routeSetupSheet: some View {
-        List {
-            if selectedRouteIsConfigured {
-                setupChoiceRow(title: selectedRouteName, detail: String(localized: "record.route.selected", defaultValue: "Selected route"), systemImage: "map.fill", isSelected: true)
-                Button(String(localized: "record.route.clear", defaultValue: "Clear route"), role: .destructive) { applyRoute(nil) }
-            }
-            Button {
-                setupSheet = nil
-                showsRouteLibrary = true
-                track(.init(.routeLibraryOpened))
-            } label: {
-                Label(String(localized: "record.route.choose", defaultValue: "Choose a route"), systemImage: "map")
-            }
-        }
-    }
-
-    private var liveTrackSetupSheet: some View {
-        List {
-            if let defaultContact = safetyContactStore.defaultContact {
-                Button {
-                    safetyContactStore.setDefault(defaultContact)
-                    liveShareStore.armForNextActivity(true)
-                } label: {
-                    setupChoiceRow(title: String(localized: "record.live_track.share_default", defaultValue: "Share with default trusted contact"), detail: defaultContact.name, systemImage: "person.crop.circle.badge.checkmark", isSelected: liveShareStore.isArmedForNextActivity)
-                }
-            } else {
-                Button {
-                    setupSheet = nil
-                    showsTrustedContacts = true
-                } label: {
-                    Label(String(localized: "record.live_track.add_contact", defaultValue: "Add a trusted contact"), systemImage: "person.crop.circle.badge.plus")
-                }
-            }
-            if safetyContactStore.enabledContacts.count > 1 {
-                Section(String(localized: "record.live_track.choose_another", defaultValue: "Choose another contact")) {
-                    ForEach(safetyContactStore.enabledContacts) { contact in
-                        Button {
-                            safetyContactStore.setDefault(contact)
-                            liveShareStore.armForNextActivity(true)
-                        } label: {
-                            setupChoiceRow(title: contact.name, detail: contact.displayAddress, systemImage: "person.circle", isSelected: liveShareStore.isArmedForNextActivity && safetyContactStore.defaultContact?.id == contact.id)
-                        }
-                    }
-                }
-            }
-            Button(role: .destructive) { liveShareStore.armForNextActivity(false) } label: {
-                Label(String(localized: "record.live_track.turn_off", defaultValue: "Turn off Live Track"), systemImage: "location.slash")
             }
         }
     }
