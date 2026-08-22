@@ -1134,7 +1134,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-flow .of-learned { display:grid; gap:8px; margin:13px 0; }
 #outbound-flow .of-learned div { display:grid; grid-template-columns:24px 1fr auto; gap:8px; padding:9px 0; border-bottom:1px solid light-dark(#e0e5e1,#354139); }
 #outbound-flow .of-learned div:last-child { border-bottom:0; }
-#outbound-flow .of-start-tools { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:14px 0 18px; }
+#outbound-flow .of-start-tools { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:14px 0 18px; }
 #outbound-flow .of-tool-button { min-width:0; min-height:72px; border:1px solid light-dark(#d6ddd7,#3a463f); background:light-dark(#fff,#1b241f); color:inherit; border-radius:16px; padding:9px 5px 8px; display:grid; place-items:center; align-content:center; gap:3px; cursor:pointer; }
 #outbound-flow .of-tool-button svg { width:20px; height:20px; }
 #outbound-flow .of-tool-button strong { font-size:.72rem; font-weight:500; color:light-dark(#657168,#abb6ae); white-space:nowrap; }
@@ -1148,7 +1148,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-flow .of-launch-secondary svg { width:21px; height:21px; }
 #outbound-flow .of-start-round { width:76px; height:76px; border:0; color:#fff; background:light-dark(#e46f49,#e98260); box-shadow:0 9px 22px light-dark(rgba(190,78,42,.25),rgba(0,0,0,.3)); }
 #outbound-flow .of-start-round svg { width:30px; height:30px; fill:currentColor; }
-#outbound-flow .of-launch-labels { display:grid; grid-template-columns:48px 76px 48px; justify-content:center; gap:21px; text-align:center; margin-bottom:4px; }
+#outbound-flow .of-launch-labels { display:grid; grid-template-columns:48px 76px; justify-content:center; gap:21px; text-align:center; margin-bottom:4px; }
 #outbound-flow .of-launch-labels span { font-size:.7rem; color:light-dark(#657168,#abb6ae); }
 #outbound-flow .of-launch-labels strong { font-size:.76rem; font-weight:500; color:light-dark(#38463c,#d8e2da); }
 #outbound-flow .of-sheet-scrim { display:none; position:absolute; inset:0; z-index:8; background:rgba(6,13,8,.34); align-items:flex-end; }
@@ -1219,14 +1219,14 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;of-start-tools&quot; aria-label=&quot;Run setup&quot;&gt;
           &lt;button class=&quot;of-tool-button is-selected&quot; data-sheet=&quot;music&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Music, Morning Miles selected&quot;&gt;&lt;i data-lucide=&quot;music-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Music ✓&lt;/strong&gt;&lt;small data-tool-value&gt;Morning Miles&lt;/small&gt;&lt;/button&gt;
           &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;route&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Choose a route&quot;&gt;&lt;i data-lucide=&quot;map&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Route&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
-          &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;options&quot; aria-haspopup=&quot;dialog&quot;&gt;&lt;i data-lucide=&quot;sliders-horizontal&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Options&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
+          &lt;button class=&quot;of-tool-button is-selected&quot; data-sheet=&quot;liveTrack&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Live Track, Xia selected&quot;&gt;&lt;i data-lucide=&quot;radio-tower&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Live ✓&lt;/strong&gt;&lt;small data-tool-value&gt;Xia&lt;/small&gt;&lt;/button&gt;
+          &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;more&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;More run options&quot;&gt;&lt;i data-lucide=&quot;ellipsis&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;More&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
         &lt;/div&gt;
         &lt;div class=&quot;of-launch-row&quot;&gt;
           &lt;button class=&quot;of-launch-secondary&quot; data-go=&quot;moment&quot; aria-label=&quot;Add a photo before the run&quot;&gt;&lt;i data-lucide=&quot;camera&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
           &lt;button class=&quot;of-start-round&quot; data-go=&quot;live&quot; aria-label=&quot;Start now&quot;&gt;&lt;i data-lucide=&quot;play&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
-          &lt;button class=&quot;of-launch-secondary&quot; data-go=&quot;together&quot; aria-label=&quot;Create or join a group run&quot;&gt;&lt;i data-lucide=&quot;users-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
         &lt;/div&gt;
-        &lt;div class=&quot;of-launch-labels&quot; aria-hidden=&quot;true&quot;&gt;&lt;span&gt;Photo&lt;/span&gt;&lt;strong&gt;Start now&lt;/strong&gt;&lt;span&gt;Group&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;of-launch-labels&quot; aria-hidden=&quot;true&quot;&gt;&lt;span&gt;Photo&lt;/span&gt;&lt;strong&gt;Start now&lt;/strong&gt;&lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;of-page&quot; data-page=&quot;live&quot;&gt;
@@ -1350,7 +1350,8 @@ html&gt;body{padding:0}&lt;/style&gt;
   const sheetContent = {
     music: { title: &#x27;Music&#x27;, actions: [[&#x27;Morning Miles&#x27;, &#x27;Now playing&#x27;, &#x27;Morning Miles&#x27;], [&#x27;Choose playlist&#x27;, &#x27;Apple Music or Spotify&#x27;, &#x27;New playlist&#x27;], [&#x27;Run without music&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
     route: { title: &#x27;Choose a route&#x27;, actions: [[&#x27;Recommended loop&#x27;, &#x27;5.2 km · low traffic&#x27;, &#x27;5.2 km Loop&#x27;], [&#x27;Saved routes&#x27;, &#x27;4 routes&#x27;, &#x27;Saved route&#x27;], [&#x27;Run without a route&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
-    options: { title: &#x27;Run options&#x27;, actions: [[&#x27;Audio guide&#x27;, &#x27;On&#x27;, null], [&#x27;Live tracking&#x27;, &#x27;Off&#x27;, null], [&#x27;Countdown&#x27;, &#x27;3 seconds&#x27;, null]] }
+    liveTrack: { title: &#x27;Live Track&#x27;, controlLabel: &#x27;Live&#x27;, actions: [[&#x27;Share with Xia&#x27;, &#x27;Default trusted contact&#x27;, &#x27;Xia&#x27;], [&#x27;Choose another contact&#x27;, &#x27;&#x27;, &#x27;Contact&#x27;], [&#x27;Turn off Live Track&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
+    more: { title: &#x27;More run options&#x27;, actions: [[&#x27;Create or join a group run&#x27;, &#x27;Run together&#x27;, null], [&#x27;Environment&#x27;, &#x27;Outdoor&#x27;, null], [&#x27;Shoes&#x27;, &#x27;Nike Pegasus 41&#x27;, null]] }
   };
   const closeSheet = () =&gt; sheetScrim.classList.remove(&#x27;is-open&#x27;);
   root.querySelectorAll(&#x27;[data-sheet]&#x27;).forEach((button) =&gt; button.addEventListener(&#x27;click&#x27;, () =&gt; {
@@ -1359,10 +1360,16 @@ html&gt;body{padding:0}&lt;/style&gt;
     sheetActions.innerHTML = content.actions.map(([label, detail], index) =&gt; `&lt;button class=&quot;of-sheet-action&quot; data-sheet-choice=&quot;${index}&quot;&gt;&lt;span&gt;${label}&lt;/span&gt;&lt;small&gt;${detail} ${detail ? &#x27;›&#x27; : &#x27;&#x27;}&lt;/small&gt;&lt;/button&gt;`).join(&#x27;&#x27;);
     sheetActions.querySelectorAll(&#x27;[data-sheet-choice]&#x27;).forEach((choice) =&gt; choice.addEventListener(&#x27;click&#x27;, () =&gt; {
       const value = content.actions[Number(choice.dataset.sheetChoice)][2];
+      if (button.dataset.sheet === &#x27;more&#x27; &amp;&amp; Number(choice.dataset.sheetChoice) === 0) {
+        closeSheet();
+        show(&#x27;together&#x27;);
+        return;
+      }
       if (value !== null) {
         const valueLabel = button.querySelector(&#x27;[data-tool-value]&#x27;);
         button.classList.toggle(&#x27;is-selected&#x27;, Boolean(value));
-        button.querySelector(&#x27;strong&#x27;).textContent = `${content.title === &#x27;Choose a route&#x27; ? &#x27;Route&#x27; : content.title}${value ? &#x27; ✓&#x27; : &#x27;&#x27;}`;
+        const controlLabel = content.controlLabel || (content.title === &#x27;Choose a route&#x27; ? &#x27;Route&#x27; : content.title);
+        button.querySelector(&#x27;strong&#x27;).textContent = `${controlLabel}${value ? &#x27; ✓&#x27; : &#x27;&#x27;}`;
         valueLabel.textContent = value;
         button.setAttribute(&#x27;aria-label&#x27;, value ? `${content.title}, ${value} selected` : content.title);
       }
