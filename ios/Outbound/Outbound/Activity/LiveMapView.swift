@@ -226,11 +226,11 @@ struct LiveMapView: View {
     }
 
     private var selectedRouteHaloStyle: StrokeStyle {
-        StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round, dash: [1, 5])
+        StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [1, 3])
     }
 
     private var selectedRouteStyle: StrokeStyle {
-        StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [1, 5])
+        StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [1, 3])
     }
 
     private var guideMessage: String? {
