@@ -6,6 +6,24 @@ enum SessionPage: String {
     case map
 }
 
+private enum ActivitySetupSheet: String, Identifiable {
+    case music
+    case route
+    case liveTrack
+    case more
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .music: String(localized: "record.setup.music", defaultValue: "Music")
+        case .route: String(localized: "record.setup.route", defaultValue: "Route")
+        case .liveTrack: String(localized: "record.setup.live_track", defaultValue: "Live Track")
+        case .more: String(localized: "record.setup.more", defaultValue: "More")
+        }
+    }
+}
+
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,6 +49,7 @@ struct RecordView: View {
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("dismissed_apple_voice_download_tip_v1") private var dismissedAppleVoiceDownloadTip = false
+    @AppStorage("dismissed_shoe_setup_coachmark_v1") private var dismissedShoeSetupCoachmark = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -57,11 +76,14 @@ struct RecordView: View {
     @State private var isGroupParticipantsExpanded = false
     @State private var isMusicSetupExpanded = false
     @State private var isSessionOptionsExpanded = false
+    @State private var setupSheet: ActivitySetupSheet?
     @State private var isAddShoePresented = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
     @State private var showsVoiceDownloadHelp = false
     @State private var showsRouteLibrary = false
+    @State private var setupToastMessage: String?
+    @State private var setupToastTask: Task<Void, Never>?
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -242,6 +264,11 @@ struct RecordView: View {
                 }
             }
         }
+        .sheet(item: $setupSheet) { sheet in
+            setupSheetView(sheet)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $isAssistantPresented) {
             AssistantView(
                 screenName: showCamera ? "Live Recording" : "Record Setup",
@@ -273,6 +300,26 @@ struct RecordView: View {
                     replacePreActivityPhoto(with: image)
                     selectedPreActivityPhotoItem = nil
                 }
+            }
+        }
+        .onChange(of: liveShareStore.lastErrorMessage) { _, message in
+            showSetupToast(message)
+        }
+        .onChange(of: liveGroupStore.lastErrorMessage) { _, message in
+            showSetupToast(message)
+        }
+        .overlay(alignment: .top) {
+            if let setupToastMessage {
+                Text(setupToastMessage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(radius: 8, y: 3)
+                    .padding(.top, 62)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityAddTraits(.isStaticText)
             }
         }
         .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
@@ -629,7 +676,7 @@ struct RecordView: View {
                 .padding(.bottom, 116)
             }
 
-            pinnedStartButton
+            launchControls
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
@@ -674,24 +721,54 @@ struct RecordView: View {
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
-    private var pinnedStartButton: some View {
-        Button(action: startRecording) {
-            Label(
-                isStartingActivity ? "Preparing..." : (plannedIntent ?? .freestyleRun).startLabel,
-                systemImage: "record.circle.fill"
-            )
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Capsule().fill(.orange))
-            .foregroundStyle(.white)
+    private var launchControls: some View {
+        HStack(alignment: .bottom, spacing: 30) {
+            VStack(spacing: 5) {
+                Button {
+                    isPreActivityCameraPresented = true
+                } label: {
+                    Image(systemName: preActivityPhoto == nil ? "camera.fill" : "checkmark.circle.fill")
+                        .font(.title3.weight(.bold))
+                        .frame(width: 52, height: 52)
+                        .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
+                        .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+                .accessibilityValue(photoAccessibilityValue)
+                Text(String(localized: "record.photo.control", defaultValue: "Photo"))
+                    .font(.caption.weight(.semibold))
+            }
+
+            VStack(spacing: 5) {
+                Button(action: startRecording) {
+                    Group {
+                        if isStartingActivity {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "play.fill")
+                                .font(.title.weight(.black))
+                                .offset(x: 2)
+                        }
+                    }
+                    .frame(width: 76, height: 76)
+                    .foregroundStyle(.white)
+                    .background(Color.orange, in: Circle())
+                    .shadow(color: Color.orange.opacity(0.28), radius: 10, y: 5)
+                }
+                .buttonStyle(.plain)
+                .disabled(isStartingActivity)
+                .accessibilityLabel(isStartingActivity ? String(localized: "record.start.preparing", defaultValue: "Preparing activity") : (plannedIntent ?? .freestyleRun).startLabel)
+                .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
+                Text(isStartingActivity ? String(localized: "record.start.preparing_short", defaultValue: "Preparing…") : (plannedIntent ?? .freestyleRun).startLabel)
+                    .font(.subheadline.weight(.bold))
+                    .lineLimit(1)
+            }
         }
-        .disabled(isStartingActivity)
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
         .background(.ultraThinMaterial)
-        .accessibilityHint("Starts the prepared activity")
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -718,8 +795,6 @@ struct RecordView: View {
             .background(Color.orange.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
-            preActivityPhotoCard
-
             VStack(spacing: 14) {
                 if intent.workoutSteps.isEmpty {
                     sessionGoalCard(for: intent)
@@ -734,20 +809,314 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
 
-            musicSetupCard
+            compactSetupActions(for: intent)
+        }
+    }
+
+    private func compactSetupActions(for intent: SessionIntent) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 10) {
+                compactSetupButton(
+                    title: String(localized: "record.setup.music", defaultValue: "Music"),
+                    value: musicSetupValue,
+                    systemImage: "music.note.list",
+                    isConfigured: musicIsConfigured,
+                    accessibilityValue: musicSetupValue
+                ) { setupSheet = .music }
+
+                compactSetupButton(
+                    title: String(localized: "record.setup.route", defaultValue: "Route"),
+                    value: selectedRouteName,
+                    systemImage: "map.fill",
+                    isConfigured: selectedRouteIsConfigured,
+                    accessibilityValue: selectedRouteName
+                ) { setupSheet = .route }
+
+                compactSetupButton(
+                    title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
+                    value: liveTrackValue,
+                    systemImage: "location.fill",
+                    isConfigured: liveShareStore.isArmedForNextActivity,
+                    accessibilityValue: liveTrackValue
+                ) { setupSheet = .liveTrack }
+
+                shoeSetupControl
+
+                compactSetupButton(
+                    title: String(localized: "record.setup.more", defaultValue: "More"),
+                    value: moreSetupValue,
+                    systemImage: "ellipsis",
+                    isConfigured: false,
+                    accessibilityValue: moreSetupValue
+                ) { setupSheet = .more }
+            }
+            .padding(.vertical, 4)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func compactSetupButton(
+        title: String,
+        value: String,
+        systemImage: String,
+        isConfigured: Bool,
+        accessibilityValue: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 5) {
+                    Image(systemName: systemImage)
+                    Text(title)
+                        .lineLimit(1)
+                    if isConfigured {
+                        Image(systemName: "checkmark.circle.fill")
+                            .accessibilityHidden(true)
+                    }
+                }
+                .font(.caption.weight(.bold))
+                Text(value)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .foregroundStyle(isConfigured ? Color.white : Color.primary)
+            .padding(.horizontal, 12)
+            .frame(width: 112, height: 62, alignment: .leading)
+            .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    @ViewBuilder
+    private var shoeSetupControl: some View {
+        VStack(spacing: 7) {
+            if gearStore.activeShoes.isEmpty {
+                compactSetupButton(
+                    title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
+                    value: String(localized: "record.shoes.add", defaultValue: "Add shoes"),
+                    systemImage: "shoeprints.fill",
+                    isConfigured: false,
+                    accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
+                ) { isAddShoePresented = true }
+            } else {
+                Menu {
+                    ForEach(gearStore.activeShoes) { shoe in
+                        Button {
+                            selectedSessionShoeID = shoe.id
+                        } label: {
+                            if selectedSessionShoe?.id == shoe.id {
+                                Label(shoe.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(shoe.displayName)
+                            }
+                        }
+                    }
+                } label: {
+                    compactSetupControlLabel(
+                        title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
+                        value: selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"),
+                        systemImage: "shoeprints.fill",
+                        isConfigured: selectedSessionShoe != nil
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
+                .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
+            }
+
+            if gearStore.activeShoes.isEmpty, !dismissedShoeSetupCoachmark {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Button {
+                        dismissedShoeSetupCoachmark = true
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.bold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(String(localized: "record.shoes.coachmark.dismiss", defaultValue: "Dismiss shoe suggestion"))
+                    Text(String(localized: "record.shoes.coachmark", defaultValue: "Add your shoes to track mileage and know when they may need replacing."))
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .frame(width: 210, alignment: .leading)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .accessibilityElement(children: .contain)
+            }
+        }
+    }
+
+    private func compactSetupControlLabel(title: String, value: String, systemImage: String, isConfigured: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: systemImage)
+                Text(title).lineLimit(1)
+                if isConfigured { Image(systemName: "checkmark.circle.fill") }
+            }
+            .font(.caption.weight(.bold))
+            Text(value).font(.caption2.weight(.semibold)).lineLimit(1)
+        }
+        .foregroundStyle(isConfigured ? Color.white : Color.primary)
+        .padding(.horizontal, 12)
+        .frame(width: 112, height: 62, alignment: .leading)
+        .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func setupSheetView(_ sheet: ActivitySetupSheet) -> some View {
+        NavigationStack {
+            Group {
+                switch sheet {
+                case .music:
+                    ScrollView { musicSetupChoices.padding() }
+                case .route:
+                    routeSetupSheet
+                case .liveTrack:
+                    liveTrackSetupSheet
+                case .more:
+                    moreSetupSheet
+                }
+            }
+            .navigationTitle(sheet.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "common.done", defaultValue: "Done")) { setupSheet = nil }
+                }
+            }
+        }
+    }
+
+    private var musicSetupChoices: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if musicStore.hasDeveloperTokenError {
+                Label(String(localized: "session.music.unavailable", defaultValue: "Music unavailable"), systemImage: "music.note.slash")
+                    .foregroundStyle(.secondary)
+            } else if let lastErrorMessage = musicStore.lastErrorMessage {
+                Text(lastErrorMessage).font(.caption).foregroundStyle(.orange)
+            }
+            if let troubleshootingLine = musicStore.troubleshootingLine {
+                Text(troubleshootingLine).font(.caption).foregroundStyle(.secondary)
+            }
+            if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
+                ForEach(musicStore.quickPicks) { quickPick in
+                    Button { musicStore.selectQuickPick(quickPick) } label: {
+                        setupChoiceRow(title: quickPick.title, detail: quickPick.subtitle, systemImage: quickPick.symbolName, isSelected: musicStore.selectedQuickPickID == quickPick.id)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Button { Task { await musicStore.performPrimaryAction() } } label: {
+                    setupChoiceRow(title: musicStore.primaryActionTitle, detail: musicStore.musicSummaryLine, systemImage: "music.note.list", isSelected: musicIsConfigured)
+                }
+                .buttonStyle(.plain)
+                .disabled(!musicStore.isPrimaryActionEnabled)
+            }
+        }
+    }
+
+    private var routeSetupSheet: some View {
+        List {
+            if selectedRouteIsConfigured {
+                setupChoiceRow(title: selectedRouteName, detail: String(localized: "record.route.selected", defaultValue: "Selected route"), systemImage: "map.fill", isSelected: true)
+                Button(String(localized: "record.route.clear", defaultValue: "Clear route"), role: .destructive) { applyRoute(nil) }
+            }
             Button {
+                setupSheet = nil
                 showsRouteLibrary = true
             } label: {
-                HStack {
-                    Label(intent.preparedRoute?.name ?? String(localized: "Choose a route"), systemImage: "map")
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-                }
-                .padding(16)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: startSetupCardCornerRadius))
+                Label(String(localized: "record.route.choose", defaultValue: "Choose a route"), systemImage: "map")
             }
-            .buttonStyle(.plain)
-            sessionOptionsCard
+        }
+    }
+
+    private var liveTrackSetupSheet: some View {
+        List {
+            if let defaultContact = safetyContactStore.defaultContact {
+                Button {
+                    safetyContactStore.setDefault(defaultContact)
+                    liveShareStore.armForNextActivity(true)
+                } label: {
+                    setupChoiceRow(title: String(localized: "record.live_track.share_default", defaultValue: "Share with default trusted contact"), detail: defaultContact.name, systemImage: "person.crop.circle.badge.checkmark", isSelected: liveShareStore.isArmedForNextActivity)
+                }
+            } else {
+                Label(String(localized: "record.live_track.no_contacts", defaultValue: "No trusted contacts configured"), systemImage: "person.crop.circle.badge.exclamationmark")
+                    .foregroundStyle(.secondary)
+            }
+            if safetyContactStore.enabledContacts.count > 1 {
+                Section(String(localized: "record.live_track.choose_another", defaultValue: "Choose another contact")) {
+                    ForEach(safetyContactStore.enabledContacts) { contact in
+                        Button {
+                            safetyContactStore.setDefault(contact)
+                            liveShareStore.armForNextActivity(true)
+                        } label: {
+                            setupChoiceRow(title: contact.name, detail: contact.displayAddress, systemImage: "person.circle", isSelected: liveShareStore.isArmedForNextActivity && safetyContactStore.defaultContact?.id == contact.id)
+                        }
+                    }
+                }
+            }
+            Button(role: .destructive) { liveShareStore.armForNextActivity(false) } label: {
+                Label(String(localized: "record.live_track.turn_off", defaultValue: "Turn off Live Track"), systemImage: "location.slash")
+            }
+        }
+    }
+
+    private var moreSetupSheet: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 12) { liveGroupSetup }
+                    .padding(.vertical, 6)
+            }
+            Section(String(localized: "record.environment.title", defaultValue: "Environment")) {
+                Button { isIndoorSession = false } label: {
+                    setupChoiceRow(title: String(localized: "record.environment.outdoor", defaultValue: "Outdoor"), detail: "", systemImage: "sun.max.fill", isSelected: !isIndoorSession)
+                }
+                Button { isIndoorSession = true } label: {
+                    setupChoiceRow(title: String(localized: "record.environment.indoor", defaultValue: "Indoor"), detail: "", systemImage: "figure.run.treadmill", isSelected: isIndoorSession)
+                }
+            }
+        }
+    }
+
+    private func setupChoiceRow(title: String, detail: String, systemImage: String, isSelected: Bool) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage).foregroundStyle(.orange).frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).foregroundStyle(.primary)
+                if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary) }
+            }
+            Spacer()
+            if isSelected { Image(systemName: "checkmark.circle.fill").foregroundStyle(.orange) }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    private var musicSetupValue: String {
+        if musicStore.playback.isPlaying { return musicStore.playback.title }
+        return musicStore.selectedQuickPick?.title ?? String(localized: "common.off", defaultValue: "Off")
+    }
+    private var musicIsConfigured: Bool { musicStore.selectedQuickPick != nil || musicStore.playback.isPlaying }
+    private var selectedRouteName: String { plannedIntent?.preparedRoute?.name ?? plannedIntent?.routeName ?? String(localized: "record.route.none", defaultValue: "Not selected") }
+    private var selectedRouteIsConfigured: Bool { plannedIntent?.preparedRoute != nil || plannedIntent?.routeName != nil }
+    private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (safetyContactStore.defaultContact?.name ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
+    private var moreSetupValue: String {
+        let environment = isIndoorSession ? String(localized: "record.environment.indoor", defaultValue: "Indoor") : String(localized: "record.environment.outdoor", defaultValue: "Outdoor")
+        return liveGroupStore.isSharing ? "\(liveGroupStore.displayTitle) · \(environment)" : environment
+    }
+    private var photoAccessibilityValue: String { preActivityPhoto == nil ? String(localized: "record.photo.not_added", defaultValue: "No photo added") : String(localized: "record.photo.added", defaultValue: "Photo added") }
+
+    private func showSetupToast(_ message: String?) {
+        guard let message, !message.isEmpty else { return }
+        setupToastTask?.cancel()
+        withAnimation { setupToastMessage = message }
+        setupToastTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation { setupToastMessage = nil } }
         }
     }
 
