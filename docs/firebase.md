@@ -8,6 +8,8 @@ The iOS app does not use Firebase Authentication. Sign in with Apple is performe
 
 Firebase remains in the iOS app for Analytics and Messaging. The backend may use Firebase Admin for push delivery, Firebase-backed media storage, and temporary verification of legacy beta Firebase ID tokens.
 
+Product event taxonomy, privacy boundaries, provider evaluation, and the provider-neutral switching strategy live in `docs/product-analytics.md`. Keep this document focused on Firebase configuration rather than duplicating that policy.
+
 ## Legacy Token Migration
 
 Set `AUTH_ACCEPT_LEGACY_FIREBASE=true` on the backend only while existing beta identities must remain usable. Plainstride access tokens are always attempted first. Legacy tokens resolve through `AuthIdentity(provider: "firebase", providerSubject: uid)` and produce the same provider-neutral request context.
