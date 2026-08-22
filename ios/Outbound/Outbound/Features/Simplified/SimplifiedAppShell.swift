@@ -198,6 +198,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsUpcomingWorkout = false
     @State private var showsPlanDetails = false
     @State private var showsPlanPicker = false
+    @State private var showsStandaloneWorkouts = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
 
@@ -232,6 +233,8 @@ private struct SimplifiedTodayView: View {
 
                     if activitySessionState != .idle {
                         inProgressActivityCard
+                    } else {
+                        standaloneWorkoutsButton
                     }
 
                     NavigationLink {
@@ -379,6 +382,13 @@ private struct SimplifiedTodayView: View {
                 )
             }
         }
+        .sheet(isPresented: $showsStandaloneWorkouts) {
+            StandaloneWorkoutPickerView { workout in
+                showsStandaloneWorkouts = false
+                onStartRun(workout.intent)
+            }
+            .presentationDetents([.medium, .large])
+        }
         .sheet(item: $selectedPlanRecommendation) { recommendation in
             NavigationStack {
                 TrainingPlanRecommendationDetailView(
@@ -473,6 +483,18 @@ private struct SimplifiedTodayView: View {
             .foregroundStyle(theme.accentColor)
             .padding(.vertical, 6)
         }
+    }
+
+    private var standaloneWorkoutsButton: some View {
+        Button {
+            showsStandaloneWorkouts = true
+        } label: {
+            Label("Browse workouts", systemImage: "figure.run.circle")
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: 48)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityHint("Choose a guided workout without starting a training plan")
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
