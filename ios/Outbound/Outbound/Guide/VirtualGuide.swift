@@ -186,6 +186,17 @@ final class VirtualGuide: NSObject, ObservableObject {
         )
     }
 
+    func announceRouteGuidance(_ message: String) {
+        guard isActive, !message.isEmpty else { return }
+        lastNudge = message
+        if speak(message, urgency: .caution, role: .caution) {
+            recentSpokenMessages.append(message)
+            if recentSpokenMessages.count > maxRecentSpokenMessages {
+                recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func shouldAnalyze(_ snapshot: ActiveSessionSnapshot) -> Bool {
