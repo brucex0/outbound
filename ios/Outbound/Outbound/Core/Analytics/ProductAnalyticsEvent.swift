@@ -38,6 +38,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case shoeSelected = "shoe_selected"
     case photoCaptureAttempted = "photo_capture_attempted"
     case photoCaptured = "photo_captured"
+    case photoPreviewed = "photo_previewed"
     case photoRemoved = "photo_removed"
     case groupRunCreateAttempted = "group_run_create_attempted"
     case groupRunCreated = "group_run_created"
@@ -65,6 +66,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case routeSelected = "route_selected"
     case shoeSelected = "shoe_selected"
     case preRunPhotoAdded = "pre_run_photo_added"
+    case locationAttached = "location_attached"
     case groupRunEnabled = "group_run_enabled"
     case liveShareEnabled = "live_share_enabled"
     case indoor
@@ -122,7 +124,8 @@ enum ProductAnalyticsSchema {
         .routeSelected: [.sourceType, .distanceBucket],
         .shoeSelected: [.selectionType],
         .photoCaptureAttempted: [.sourceType],
-        .photoCaptured: [.sourceType],
+        .photoCaptured: [.sourceType, .locationAttached],
+        .photoPreviewed: [.sourceType],
         .photoRemoved: [.sourceType],
         .groupRunCreateAttempted: [],
         .groupRunCreated: [.participantCountBucket],

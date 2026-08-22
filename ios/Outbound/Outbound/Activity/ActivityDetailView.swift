@@ -200,6 +200,9 @@ struct ActivityDetailView: View {
                 selectedPhotoPage = max(0, count - 1)
             }
         }
+        .onAppear {
+            selectFirstLocatedPhotoIfNeeded()
+        }
     }
 
     private func backgroundMedia(bottomInset: CGFloat) -> some View {
@@ -489,6 +492,14 @@ struct ActivityDetailView: View {
         currentActivity.photos.indices.contains(selectedPhotoPage)
             ? currentActivity.photos[selectedPhotoPage].id
             : nil
+    }
+
+    private func selectFirstLocatedPhotoIfNeeded() {
+        guard currentActivity.photos.indices.contains(selectedPhotoPage),
+              currentActivity.photos[selectedPhotoPage].coordinate == nil,
+              let locatedIndex = currentActivity.photos.firstIndex(where: { $0.coordinate != nil })
+        else { return }
+        selectedPhotoPage = locatedIndex
     }
 
     private var lightboxIsPresented: Binding<Bool> {
