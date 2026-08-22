@@ -9,9 +9,9 @@ final class MusicStore: ObservableObject {
     @Published private(set) var snapshot: MusicConnectionSnapshot
     @Published private(set) var quickPicks: [MusicQuickPick] = []
     @Published private(set) var playback: MusicPlaybackSnapshot
-    @Published private(set) var searchResults: [MusicSearchResult] = []
+    @Published private(set) var searchResultsByCategory: [MusicSearchCategory: [MusicSearchResult]] = [:]
     @Published private(set) var selectedCustomItems: [MusicSearchResult] = []
-    @Published private(set) var isSearching = false
+    @Published private(set) var searchingCategories: Set<MusicSearchCategory> = []
     @Published var repeatsQueue = true
     @Published var shufflesQueue = false
     @Published var selectedQuickPickID: String?
@@ -56,6 +56,16 @@ final class MusicStore: ObservableObject {
 
     var selectedQuickPick: MusicQuickPick? {
         quickPicks.first(where: { $0.id == selectedQuickPickID })
+    }
+
+    var isSearching: Bool { !searchingCategories.isEmpty }
+
+    func searchResults(for category: MusicSearchCategory) -> [MusicSearchResult] {
+        searchResultsByCategory[category] ?? []
+    }
+
+    func isSearching(_ category: MusicSearchCategory) -> Bool {
+        searchingCategories.contains(category)
     }
 
     var hasDeveloperTokenError: Bool {
@@ -184,16 +194,22 @@ final class MusicStore: ObservableObject {
 
     func searchCatalog(_ term: String, category: MusicSearchCategory) async {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { searchResults = []; return }
-        isSearching = true
-        searchResults = []
-        defer { isSearching = false }
+        guard !trimmed.isEmpty else { searchResultsByCategory[category] = []; return }
+        searchingCategories.insert(category)
+        defer { searchingCategories.remove(category) }
         do {
-            searchResults = try await service.search(term: trimmed, category: category)
+            searchResultsByCategory[category] = try await service.search(term: trimmed, category: category)
         } catch {
             lastErrorMessage = error.localizedDescription
-            searchResults = []
+            searchResultsByCategory[category] = []
         }
+    }
+
+    func preloadCatalog(_ term: String) async {
+        async let songs: Void = searchCatalog(term, category: .songs)
+        async let albums: Void = searchCatalog(term, category: .albums)
+        async let playlists: Void = searchCatalog(term, category: .playlists)
+        _ = await (songs, albums, playlists)
     }
 
     func toggleCustomSelection(_ item: MusicSearchResult) {

@@ -1096,7 +1096,12 @@ struct RecordView: View {
                     Text(String(localized: "record.music.playlists", defaultValue: "Playlists")).tag(MusicSearchCategory.playlists)
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: musicSearchCategory) { _, _ in searchMusic() }
+                .onChange(of: musicSearchCategory) { _, category in
+                    guard musicStore.searchResults(for: category).isEmpty,
+                          !musicStore.isSearching(category)
+                    else { return }
+                    searchMusic()
+                }
                 HStack {
                     TextField(String(localized: "record.music.search", defaultValue: "Search Apple Music"), text: $musicSearchText)
                         .textFieldStyle(.roundedBorder)
@@ -1109,7 +1114,7 @@ struct RecordView: View {
                     .disabled(musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || musicStore.isSearching)
                     .accessibilityLabel(String(localized: "record.music.search.action", defaultValue: "Search music"))
                 }
-                ForEach(musicStore.searchResults) { item in
+                ForEach(musicStore.searchResults(for: musicSearchCategory)) { item in
                     Button { musicStore.toggleCustomSelection(item) } label: {
                         setupChoiceRow(
                             title: item.title,
@@ -1213,7 +1218,7 @@ struct RecordView: View {
                 musicSearchText = String(localized: "record.music.search.default", defaultValue: "upbeat workout")
             }
         }
-        searchMusic()
+        Task { await musicStore.preloadCatalog(musicSearchText) }
     }
 
     private func applyWorkoutMusicSuggestion() {
