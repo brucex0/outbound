@@ -316,6 +316,9 @@ Contents:
 - quick picks list
 - continue-current option
 - small "change" action that opens a focused selector sheet
+- workout-aware suggested mix based on the session title, detail, and sport
+- focused catalog search across songs, albums, and playlists
+- multi-select for songs plus repeat-all and shuffle controls
 
 ### Live Recorder HUD
 

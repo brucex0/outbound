@@ -9,6 +9,11 @@ final class MusicStore: ObservableObject {
     @Published private(set) var snapshot: MusicConnectionSnapshot
     @Published private(set) var quickPicks: [MusicQuickPick] = []
     @Published private(set) var playback: MusicPlaybackSnapshot
+    @Published private(set) var searchResults: [MusicSearchResult] = []
+    @Published private(set) var selectedCustomItems: [MusicSearchResult] = []
+    @Published private(set) var isSearching = false
+    @Published var repeatsQueue = true
+    @Published var shufflesQueue = false
     @Published var selectedQuickPickID: String?
     @Published private(set) var isRefreshing = false
     @Published private(set) var isLoadingQuickPicks = false
@@ -20,6 +25,7 @@ final class MusicStore: ObservableObject {
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
     private var pendingWorkoutPlayback = false
     private var startedPlaybackForWorkout = false
+    private var didChooseMusicForCurrentSetup = false
 
     init(
         service: (any MusicService)? = nil,
@@ -154,19 +160,72 @@ final class MusicStore: ObservableObject {
     func selectQuickPick(_ quickPick: MusicQuickPick) {
         Self.logger.info("Selected music quick pick. quickPickID=\(quickPick.id, privacy: .public)")
         selectedQuickPickID = quickPick.id
+        selectedCustomItems = []
+        didChooseMusicForCurrentSetup = true
         persistSelectedQuickPick()
     }
 
+    func applyWorkoutSuggestion(title: String, detail: String, sport: SportType) {
+        guard !didChooseMusicForCurrentSetup, !quickPicks.isEmpty else { return }
+        let text = "\(title) \(detail)".lowercased()
+        let preferredID: String
+        if text.contains("easy") || text.contains("recovery") || text.contains("walk") {
+            preferredID = "outbound-recovery"
+        } else if text.contains("tempo") || text.contains("threshold") || text.contains("interval") || text.contains("speed") {
+            preferredID = "outbound-electronic"
+        } else {
+            preferredID = sport == .bike ? "outbound-electronic" : "outbound-upbeat"
+        }
+        if let suggestion = quickPicks.first(where: { $0.id == preferredID }) {
+            selectedQuickPickID = suggestion.id
+            persistSelectedQuickPick()
+        }
+    }
+
+    func searchCatalog(_ term: String, category: MusicSearchCategory) async {
+        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { searchResults = []; return }
+        isSearching = true
+        defer { isSearching = false }
+        do {
+            searchResults = try await service.search(term: trimmed, category: category)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            searchResults = []
+        }
+    }
+
+    func toggleCustomSelection(_ item: MusicSearchResult) {
+        if item.category != .songs {
+            selectedCustomItems = selectedCustomItems == [item] ? [] : [item]
+        } else if let index = selectedCustomItems.firstIndex(of: item) {
+            selectedCustomItems.remove(at: index)
+        } else {
+            if selectedCustomItems.first?.category != .songs { selectedCustomItems = [] }
+            selectedCustomItems.append(item)
+        }
+        if !selectedCustomItems.isEmpty {
+            selectedQuickPickID = nil
+            didChooseMusicForCurrentSetup = true
+            persistSelectedQuickPick()
+        }
+    }
+
     func beginWorkoutPlaybackIfNeeded() async {
-        guard isConnected, let selectedQuickPick else { return }
-        Self.logger.info("Begin workout playback. quickPickID=\(selectedQuickPick.id, privacy: .public)")
+        guard isConnected else { return }
+        guard selectedQuickPick != nil || !selectedCustomItems.isEmpty else { return }
         pendingWorkoutPlayback = true
         isStartingPlayback = true
         defer { isStartingPlayback = false }
         lastErrorMessage = nil
 
         do {
-            playback = try await service.play(quickPick: selectedQuickPick)
+            if selectedCustomItems.isEmpty, let selectedQuickPick {
+                Self.logger.info("Begin workout playback. quickPickID=\(selectedQuickPick.id, privacy: .public)")
+                playback = try await service.play(quickPick: selectedQuickPick)
+            } else {
+                playback = try await service.play(selection: selectedCustomItems, repeatAll: repeatsQueue, shuffle: shufflesQueue)
+            }
             pendingWorkoutPlayback = !playback.hasActiveQueue
             startedPlaybackForWorkout = playback.hasActiveQueue
         } catch {
@@ -315,6 +374,20 @@ struct MusicQuickPick: Identifiable, Equatable, Hashable {
     let query: String?
 }
 
+enum MusicSearchCategory: String, CaseIterable, Identifiable {
+    case songs
+    case albums
+    case playlists
+    var id: String { rawValue }
+}
+
+struct MusicSearchResult: Identifiable, Equatable, Hashable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let category: MusicSearchCategory
+}
+
 @MainActor
 protocol MusicService: AnyObject {
     var currentSnapshot: MusicConnectionSnapshot { get }
@@ -323,7 +396,9 @@ protocol MusicService: AnyObject {
     func refreshSnapshot() async -> MusicConnectionSnapshot
     func connect() async throws -> MusicConnectionSnapshot
     func loadQuickPicks() async throws -> [MusicQuickPick]
+    func search(term: String, category: MusicSearchCategory) async throws -> [MusicSearchResult]
     func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot
+    func play(selection: [MusicSearchResult], repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot
     func pause() async -> MusicPlaybackSnapshot
     func stop() async -> MusicPlaybackSnapshot
     func resume() async throws -> MusicPlaybackSnapshot

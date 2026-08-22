@@ -69,6 +69,17 @@ final class MockMusicService: MusicService {
         return picks
     }
 
+    func search(term: String, category: MusicSearchCategory) async throws -> [MusicSearchResult] {
+        (1...5).map {
+            MusicSearchResult(
+                id: "mock-\(category.rawValue)-\($0)",
+                title: "\(term) \($0)",
+                subtitle: category == .songs ? "Mock artist" : "Mock Apple Music",
+                category: category
+            )
+        }
+    }
+
     func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot {
         if quickPick.kind == .continueCurrent, currentQuickPick == nil {
             currentQuickPick = quickPickFixtures.first
@@ -76,6 +87,22 @@ final class MockMusicService: MusicService {
             currentQuickPick = quickPick
             currentIndex = 0
         }
+        isPlaying = true
+        return playback()
+    }
+
+    func play(selection: [MusicSearchResult], repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot {
+        guard let first = selection.first else { return playback() }
+        currentQuickPick = MusicQuickPick(
+            id: first.id,
+            title: selection.count > 1 ? "\(selection.count) songs" : first.title,
+            subtitle: first.subtitle,
+            symbolName: "music.note.list",
+            kind: .searchSongs,
+            query: nil
+        )
+        _ = repeatAll
+        _ = shuffle
         isPlaying = true
         return playback()
     }

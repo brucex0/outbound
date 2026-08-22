@@ -8,6 +8,7 @@ final class AppleMusicService: MusicService {
 
     private let player = ApplicationMusicPlayer.shared
     private var currentQuickPick: MusicQuickPick?
+    private var currentSelection: [MusicSearchResult] = []
     private var queuedSongs: MusicItemCollection<Song>?
 
     var currentSnapshot: MusicConnectionSnapshot {
@@ -41,7 +42,7 @@ final class AppleMusicService: MusicService {
 
     func loadQuickPicks() async throws -> [MusicQuickPick] {
         var picks: [MusicQuickPick] = []
-        if queuedSongs != nil || currentQuickPick != nil {
+        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             picks.append(
                 MusicQuickPick(
                     id: "continue-current",
@@ -84,6 +85,26 @@ final class AppleMusicService: MusicService {
         return picks
     }
 
+    func search(term: String, category: MusicSearchCategory) async throws -> [MusicSearchResult] {
+        let types: [any MusicCatalogSearchable.Type]
+        switch category {
+        case .songs: types = [Song.self]
+        case .albums: types = [Album.self]
+        case .playlists: types = [Playlist.self]
+        }
+        var request = MusicCatalogSearchRequest(term: term, types: types)
+        request.limit = 20
+        let response = try await request.response()
+        switch category {
+        case .songs:
+            return response.songs.map { .init(id: $0.id.rawValue, title: $0.title, subtitle: $0.artistName, category: .songs) }
+        case .albums:
+            return response.albums.map { .init(id: $0.id.rawValue, title: $0.title, subtitle: $0.artistName, category: .albums) }
+        case .playlists:
+            return response.playlists.map { .init(id: $0.id.rawValue, title: $0.name, subtitle: $0.curatorName ?? "Apple Music", category: .playlists) }
+        }
+    }
+
     func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot {
         Self.logger.info(
             "Attempt Apple Music playback. quickPickID=\(quickPick.id, privacy: .public) kind=\(quickPick.kind.rawValue, privacy: .public)"
@@ -111,6 +132,7 @@ final class AppleMusicService: MusicService {
             )
             queuedSongs = songs
             currentQuickPick = quickPick
+            currentSelection = []
             player.queue = ApplicationMusicPlayer.Queue(for: songs)
             player.state.repeatMode = .all
             try await player.prepareToPlay()
@@ -120,6 +142,39 @@ final class AppleMusicService: MusicService {
             )
         }
 
+        return playbackSnapshot()
+    }
+
+    func play(selection: [MusicSearchResult], repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot {
+        guard let category = selection.first?.category, selection.allSatisfy({ $0.category == category }) else {
+            throw NSError(domain: "OutboundMusic", code: 4, userInfo: [NSLocalizedDescriptionKey: "Choose songs together, or choose one album or playlist."])
+        }
+        let ids = selection.map { MusicItemID($0.id) }
+        switch category {
+        case .songs:
+            let response = try await MusicCatalogResourceRequest<Song>(matching: \.id, memberOf: ids).response()
+            guard !response.items.isEmpty else { throw emptySelectionError() }
+            queuedSongs = response.items
+            player.queue = ApplicationMusicPlayer.Queue(for: response.items)
+        case .albums:
+            guard let id = ids.first else { throw emptySelectionError() }
+            let response = try await MusicCatalogResourceRequest<Album>(matching: \.id, equalTo: id).response()
+            guard let album = response.items.first else { throw emptySelectionError() }
+            queuedSongs = nil
+            player.queue = ApplicationMusicPlayer.Queue(for: [album])
+        case .playlists:
+            guard let id = ids.first else { throw emptySelectionError() }
+            let response = try await MusicCatalogResourceRequest<Playlist>(matching: \.id, equalTo: id).response()
+            guard let playlist = response.items.first else { throw emptySelectionError() }
+            queuedSongs = nil
+            player.queue = ApplicationMusicPlayer.Queue(for: [playlist])
+        }
+        currentQuickPick = nil
+        currentSelection = selection
+        player.state.repeatMode = repeatAll ? .all : .none
+        player.state.shuffleMode = shuffle ? .songs : .off
+        try await player.prepareToPlay()
+        try await player.play()
         return playbackSnapshot()
     }
 
@@ -158,7 +213,7 @@ final class AppleMusicService: MusicService {
     }
 
     private func resumeIfPossible() async throws {
-        if queuedSongs != nil || currentQuickPick != nil {
+        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             Self.logger.info("Resume existing Apple Music queue.")
             try await player.play()
             return
@@ -206,6 +261,10 @@ final class AppleMusicService: MusicService {
             Self.logger.error("Apple Music search failed. query=\(query, privacy: .public) \(self.describe(error), privacy: .public)")
             throw userFacingError(from: error, fallbackMessage: "Apple Music could not load tracks for this mix.")
         }
+    }
+
+    private func emptySelectionError() -> NSError {
+        NSError(domain: "OutboundMusic", code: 5, userInfo: [NSLocalizedDescriptionKey: "Apple Music could not load that selection."])
     }
 
     private func fetchCanPlayCatalogContent(status: MusicAuthorization.Status) async -> Bool {
@@ -289,6 +348,10 @@ final class AppleMusicService: MusicService {
                 isPlaying: isPlaying,
                 hasActiveQueue: queuedSongs != nil
             )
+        }
+        if let first = currentSelection.first {
+            let title = currentSelection.count > 1 ? "\(currentSelection.count) songs" : first.title
+            return MusicPlaybackSnapshot(title: title, subtitle: first.subtitle, isPlaying: isPlaying, hasActiveQueue: true)
         }
         return .empty
     }

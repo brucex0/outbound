@@ -75,6 +75,8 @@ struct RecordView: View {
     @State private var isMusicSetupExpanded = false
     @State private var isSessionOptionsExpanded = false
     @State private var setupSheet: ActivitySetupSheet?
+    @State private var musicSearchText = ""
+    @State private var musicSearchCategory: MusicSearchCategory = .songs
     @State private var isAddShoePresented = false
     @State private var showsTrustedContacts = false
     @State private var showsStandaloneWorkouts = false
@@ -203,6 +205,7 @@ struct RecordView: View {
         .task {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
+            applyWorkoutMusicSuggestion()
             guide.speechEventHandler = { event in
                 Task { await musicStore.handleGuideSpeechEvent(event) }
             }
@@ -218,6 +221,7 @@ struct RecordView: View {
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
         }
+        .onChange(of: plannedIntent) { _, _ in applyWorkoutMusicSuggestion() }
         .onChange(of: musicStore.snapshot.connectionState) { oldState, newState in
             guard oldState == .connecting, newState != .connecting else { return }
             track(.init(.musicAuthorizationCompleted, properties: [
@@ -1067,6 +1071,8 @@ struct RecordView: View {
                 Text(troubleshootingLine).font(.caption).foregroundStyle(.secondary)
             }
             if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
+                Text(String(localized: "record.music.suggested", defaultValue: "Suggested for this workout"))
+                    .font(.headline)
                 ForEach(musicStore.quickPicks) { quickPick in
                     Button {
                         musicStore.selectQuickPick(quickPick)
@@ -1075,6 +1081,47 @@ struct RecordView: View {
                         setupChoiceRow(title: quickPick.title, detail: quickPick.subtitle, systemImage: quickPick.symbolName, isSelected: musicStore.selectedQuickPickID == quickPick.id)
                     }
                     .buttonStyle(.plain)
+                }
+
+                Divider().padding(.vertical, 4)
+                Text(String(localized: "record.music.choose", defaultValue: "Choose your music"))
+                    .font(.headline)
+                Picker(String(localized: "record.music.category", defaultValue: "Music category"), selection: $musicSearchCategory) {
+                    Text(String(localized: "record.music.songs", defaultValue: "Songs")).tag(MusicSearchCategory.songs)
+                    Text(String(localized: "record.music.albums", defaultValue: "Albums")).tag(MusicSearchCategory.albums)
+                    Text(String(localized: "record.music.playlists", defaultValue: "Playlists")).tag(MusicSearchCategory.playlists)
+                }
+                .pickerStyle(.segmented)
+                HStack {
+                    TextField(String(localized: "record.music.search", defaultValue: "Search Apple Music"), text: $musicSearchText)
+                        .textFieldStyle(.roundedBorder)
+                        .submitLabel(.search)
+                        .onSubmit { searchMusic() }
+                    Button { searchMusic() } label: {
+                        if musicStore.isSearching { ProgressView() } else { Image(systemName: "magnifyingglass") }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || musicStore.isSearching)
+                    .accessibilityLabel(String(localized: "record.music.search.action", defaultValue: "Search music"))
+                }
+                ForEach(musicStore.searchResults) { item in
+                    Button { musicStore.toggleCustomSelection(item) } label: {
+                        setupChoiceRow(
+                            title: item.title,
+                            detail: item.subtitle,
+                            systemImage: musicSearchSymbol(for: item.category),
+                            isSelected: musicStore.selectedCustomItems.contains(item)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !musicStore.selectedCustomItems.isEmpty {
+                    Text(musicSelectionSummary)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                    Toggle(String(localized: "record.music.repeat", defaultValue: "Repeat during workout"), isOn: $musicStore.repeatsQueue)
+                    Toggle(String(localized: "record.music.shuffle", defaultValue: "Shuffle songs"), isOn: $musicStore.shufflesQueue)
+                        .disabled(musicStore.selectedCustomItems.first?.category != .songs)
                 }
             } else {
                 Button {
@@ -1122,9 +1169,37 @@ struct RecordView: View {
 
     private var musicSetupValue: String {
         if musicStore.playback.isPlaying { return musicStore.playback.title }
+        if let first = musicStore.selectedCustomItems.first {
+            return musicStore.selectedCustomItems.count > 1
+                ? String(localized: "record.music.song_count", defaultValue: "\(musicStore.selectedCustomItems.count) songs")
+                : first.title
+        }
         return musicStore.selectedQuickPick?.title ?? String(localized: "common.off", defaultValue: "Off")
     }
-    private var musicIsConfigured: Bool { musicStore.selectedQuickPick != nil || musicStore.playback.isPlaying }
+    private var musicIsConfigured: Bool { musicStore.selectedQuickPick != nil || !musicStore.selectedCustomItems.isEmpty || musicStore.playback.isPlaying }
+
+    private var musicSelectionSummary: String {
+        guard let first = musicStore.selectedCustomItems.first else { return "" }
+        if musicStore.selectedCustomItems.count == 1 { return first.title }
+        return String(localized: "record.music.selected_count", defaultValue: "\(musicStore.selectedCustomItems.count) songs selected")
+    }
+
+    private func musicSearchSymbol(for category: MusicSearchCategory) -> String {
+        switch category {
+        case .songs: "music.note"
+        case .albums: "square.stack"
+        case .playlists: "music.note.list"
+        }
+    }
+
+    private func searchMusic() {
+        Task { await musicStore.searchCatalog(musicSearchText, category: musicSearchCategory) }
+    }
+
+    private func applyWorkoutMusicSuggestion() {
+        let intent = plannedIntent ?? .freestyleRun
+        musicStore.applyWorkoutSuggestion(title: intent.title, detail: intent.detail, sport: intent.sport)
+    }
     private var selectedRouteName: String { plannedIntent?.preparedRoute?.name ?? plannedIntent?.routeName ?? String(localized: "record.route.none", defaultValue: "Not selected") }
     private var selectedRouteIsConfigured: Bool { plannedIntent?.preparedRoute != nil || plannedIntent?.routeName != nil }
     private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (safetyContactStore.defaultContact?.name ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
@@ -1226,7 +1301,7 @@ struct RecordView: View {
     }
 
     private var musicWasConfigured: Bool {
-        musicStore.isConnected && musicStore.selectedQuickPick != nil
+        musicStore.isConnected && (musicStore.selectedQuickPick != nil || !musicStore.selectedCustomItems.isEmpty)
     }
 
     private func analyticsTargetBucket(for goal: ActivityGoal) -> String {
