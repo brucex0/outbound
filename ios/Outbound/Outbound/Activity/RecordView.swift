@@ -222,6 +222,10 @@ struct RecordView: View {
             preferredSessionPageRawValue = newPage.rawValue
         }
         .onChange(of: plannedIntent) { _, _ in applyWorkoutMusicSuggestion() }
+        .onChange(of: setupSheet) { _, sheet in
+            guard sheet == .music else { return }
+            prepareMusicPicker()
+        }
         .onChange(of: musicStore.snapshot.connectionState) { oldState, newState in
             guard oldState == .connecting, newState != .connecting else { return }
             track(.init(.musicAuthorizationCompleted, properties: [
@@ -1092,6 +1096,7 @@ struct RecordView: View {
                     Text(String(localized: "record.music.playlists", defaultValue: "Playlists")).tag(MusicSearchCategory.playlists)
                 }
                 .pickerStyle(.segmented)
+                .onChange(of: musicSearchCategory) { _, _ in searchMusic() }
                 HStack {
                     TextField(String(localized: "record.music.search", defaultValue: "Search Apple Music"), text: $musicSearchText)
                         .textFieldStyle(.roundedBorder)
@@ -1194,6 +1199,21 @@ struct RecordView: View {
 
     private func searchMusic() {
         Task { await musicStore.searchCatalog(musicSearchText, category: musicSearchCategory) }
+    }
+
+    private func prepareMusicPicker() {
+        if musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let intent = plannedIntent ?? .freestyleRun
+            let text = "\(intent.title) \(intent.detail)".lowercased()
+            if text.contains("easy") || text.contains("recovery") || text.contains("walk") {
+                musicSearchText = String(localized: "record.music.search.recovery", defaultValue: "chill recovery workout")
+            } else if text.contains("tempo") || text.contains("threshold") || text.contains("interval") || text.contains("speed") {
+                musicSearchText = String(localized: "record.music.search.speed", defaultValue: "electronic running workout")
+            } else {
+                musicSearchText = String(localized: "record.music.search.default", defaultValue: "upbeat workout")
+            }
+        }
+        searchMusic()
     }
 
     private func applyWorkoutMusicSuggestion() {

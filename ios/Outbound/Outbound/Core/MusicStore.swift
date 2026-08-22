@@ -186,6 +186,7 @@ final class MusicStore: ObservableObject {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { searchResults = []; return }
         isSearching = true
+        searchResults = []
         defer { isSearching = false }
         do {
             searchResults = try await service.search(term: trimmed, category: category)
