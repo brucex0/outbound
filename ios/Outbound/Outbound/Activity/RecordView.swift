@@ -8,6 +8,7 @@ enum SessionPage: String {
 }
 
 private enum ActivitySetupSheet: String, Identifiable {
+    case goal
     case music
     case more
 
@@ -15,6 +16,7 @@ private enum ActivitySetupSheet: String, Identifiable {
 
     var title: String {
         switch self {
+        case .goal: String(localized: "record.goal.edit", defaultValue: "Edit Goal")
         case .music: String(localized: "record.setup.music", defaultValue: "Music")
         case .more: String(localized: "record.setup.more", defaultValue: "More")
         }
@@ -759,7 +761,6 @@ struct RecordView: View {
             }
 
             VStack(spacing: 10) {
-                compactSetupActions
                 launchControls
             }
             .padding(.horizontal, 20)
@@ -810,46 +811,33 @@ struct RecordView: View {
 
     private var launchControls: some View {
         ZStack {
-            HStack {
-                Button {
-                    if preActivityPhoto == nil {
-                        track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                        isPreActivityCameraPresented = true
-                    } else {
-                        track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
-                        isPreActivityPhotoPreviewPresented = true
-                    }
-                } label: {
-                    ZStack(alignment: .bottomTrailing) {
-                        if let photo = preActivityPhoto {
-                            Image(uiImage: photo)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 64, height: 64)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 2))
-
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(.white, .green)
-                                .background(Circle().fill(.white))
-                                .offset(x: 2, y: 2)
-                        } else {
-                            Image(systemName: "camera.fill")
-                                .font(.title3.weight(.bold))
-                                .frame(width: 64, height: 64)
-                                .foregroundStyle(Color.orange)
-                                .background(Color(.secondarySystemBackground), in: Circle())
-                        }
-                    }
-                    .frame(width: 64, height: 64)
-                        .shadow(color: Color.black.opacity(0.12), radius: 9, y: 4)
+            HStack(spacing: 8) {
+                photoLaunchControl
+                launchUtilityButton(
+                    title: String(localized: "record.setup.music", defaultValue: "Music"),
+                    systemImage: "music.note.list",
+                    isConfigured: musicIsConfigured,
+                    accessibilityValue: musicSetupValue
+                ) {
+                    trackFeatureExposure("music")
+                    setupSheet = .music
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
-                .accessibilityValue(photoAccessibilityValue)
 
-                Spacer()
+                Spacer(minLength: 76)
+
+                shoeLaunchControl
+                launchUtilityButton(
+                    title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
+                    systemImage: "location.fill",
+                    isConfigured: liveShareStore.isArmedForNextActivity,
+                    accessibilityValue: liveTrackValue
+                ) {
+                    if safetyContactStore.defaultContact == nil {
+                        showsTrustedContacts = true
+                    } else {
+                        liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                    }
+                }
             }
 
             Button(action: startRecording) {
@@ -874,6 +862,100 @@ struct RecordView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 12)
+    }
+
+    private var photoLaunchControl: some View {
+        Button {
+            if preActivityPhoto == nil {
+                track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
+                isPreActivityCameraPresented = true
+            } else {
+                track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
+                isPreActivityPhotoPreviewPresented = true
+            }
+        } label: {
+            ZStack(alignment: .bottomTrailing) {
+                if let photo = preActivityPhoto {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.orange, lineWidth: 2))
+                    configuredBadge
+                } else {
+                    launchUtilityIcon(systemImage: "camera.fill", isConfigured: false)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+        .accessibilityValue(photoAccessibilityValue)
+    }
+
+    private func launchUtilityButton(
+        title: String,
+        systemImage: String,
+        isConfigured: Bool,
+        accessibilityValue: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack(alignment: .bottomTrailing) {
+                launchUtilityIcon(systemImage: systemImage, isConfigured: isConfigured)
+                if isConfigured { configuredBadge }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private func launchUtilityIcon(systemImage: String, isConfigured: Bool) -> some View {
+        Image(systemName: systemImage)
+            .font(.headline.weight(.bold))
+            .foregroundStyle(isConfigured ? Color.white : Color.orange)
+            .frame(width: 52, height: 52)
+            .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: Circle())
+    }
+
+    private var configuredBadge: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: 8, weight: .black))
+            .foregroundStyle(.white)
+            .frame(width: 17, height: 17)
+            .background(Color.green, in: Circle())
+            .overlay(Circle().stroke(.white, lineWidth: 2))
+    }
+
+    @ViewBuilder
+    private var shoeLaunchControl: some View {
+        if gearStore.activeShoes.isEmpty {
+            launchUtilityButton(
+                title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
+                systemImage: "shoeprints.fill",
+                isConfigured: false,
+                accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
+            ) { isAddShoePresented = true }
+        } else {
+            Menu {
+                ForEach(gearStore.activeShoes) { shoe in
+                    Button {
+                        selectedSessionShoeID = shoe.id
+                        track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
+                    } label: {
+                        Text(shoe.displayName)
+                    }
+                }
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    launchUtilityIcon(systemImage: "shoeprints.fill", isConfigured: selectedSessionShoe != nil)
+                    if selectedSessionShoe != nil { configuredBadge }
+                }
+            }
+            .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
+            .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
+        }
     }
 
     private func confirmationView(for intent: SessionIntent) -> some View {
@@ -907,6 +989,15 @@ struct RecordView: View {
                     plannedWorkoutCard(for: intent)
                 }
 
+                routeSetupCard
+
+                Button {
+                    setupSheet = .more
+                } label: {
+                    Label(String(localized: "record.setup.more_options", defaultValue: "More options"), systemImage: "ellipsis.circle")
+                        .font(.subheadline.weight(.semibold))
+                }
+
                 Button(intent.workoutSteps.isEmpty ? "Change activity" : "Choose a different activity") {
                     onCloseRequest?(false)
                 }
@@ -917,136 +1008,13 @@ struct RecordView: View {
         }
     }
 
-    private var compactSetupActions: some View {
-        HStack(alignment: .top, spacing: 8) {
-                compactSetupButton(
-                    title: String(localized: "record.setup.music", defaultValue: "Music"),
-                    value: musicSetupValue,
-                    systemImage: "music.note.list",
-                    isConfigured: musicIsConfigured,
-                    accessibilityValue: musicSetupValue
-                ) {
-                    trackFeatureExposure("music")
-                    setupSheet = .music
-                }
-
-                compactSetupButton(
-                    title: String(localized: "record.setup.route", defaultValue: "Route"),
-                    value: selectedRouteName,
-                    systemImage: "map.fill",
-                    isConfigured: selectedRouteIsConfigured,
-                    accessibilityValue: selectedRouteName
-                ) {
-                    trackFeatureExposure("routes")
-                    showsRouteLibrary = true
-                    track(.init(.routeLibraryOpened))
-                }
-
-                compactSetupButton(
-                    title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
-                    value: liveTrackValue,
-                    systemImage: "location.fill",
-                    isConfigured: liveShareStore.isArmedForNextActivity,
-                    accessibilityValue: liveTrackValue
-                ) {
-                    if safetyContactStore.defaultContact == nil {
-                        showsTrustedContacts = true
-                    } else {
-                        liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
-                    }
-                }
-
-                shoeSetupControl
-
-                compactSetupButton(
-                    title: String(localized: "record.setup.more", defaultValue: "More"),
-                    value: moreSetupValue,
-                    systemImage: "ellipsis",
-                    isConfigured: false,
-                    accessibilityValue: moreSetupValue
-                ) { setupSheet = .more }
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .contain)
-    }
-
-    private func compactSetupButton(
-        title: String,
-        value: String,
-        systemImage: String,
-        isConfigured: Bool,
-        accessibilityValue: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(.headline)
-                Text(value)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .foregroundStyle(isConfigured ? Color.white : Color.primary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 62)
-            .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityValue(accessibilityValue)
-    }
-
-    @ViewBuilder
-    private var shoeSetupControl: some View {
-        if gearStore.activeShoes.isEmpty {
-            compactSetupButton(
-                title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
-                value: String(localized: "record.shoes.add", defaultValue: "Add shoes"),
-                systemImage: "shoeprints.fill",
-                isConfigured: false,
-                accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
-            ) { isAddShoePresented = true }
-        } else {
-            Menu {
-                ForEach(gearStore.activeShoes) { shoe in
-                    Button {
-                        selectedSessionShoeID = shoe.id
-                        track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
-                    } label: {
-                        Text(shoe.displayName)
-                    }
-                }
-            } label: {
-                compactSetupControlLabel(
-                    value: selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"),
-                    systemImage: "shoeprints.fill",
-                    isConfigured: selectedSessionShoe != nil
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-            .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
-        }
-    }
-
-    private func compactSetupControlLabel(value: String, systemImage: String, isConfigured: Bool) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.headline)
-            Text(value).font(.caption2.weight(.semibold)).lineLimit(1)
-        }
-        .foregroundStyle(isConfigured ? Color.white : Color.primary)
-        .frame(maxWidth: .infinity)
-        .frame(height: 62)
-        .background(isConfigured ? Color.orange : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
     @ViewBuilder
     private func setupSheetView(_ sheet: ActivitySetupSheet) -> some View {
         NavigationStack {
             Group {
                 switch sheet {
+                case .goal:
+                    ScrollView { goalSetupChoices.padding() }
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
                 case .more:
@@ -1252,13 +1220,7 @@ struct RecordView: View {
         let intent = plannedIntent ?? .freestyleRun
         musicStore.applyWorkoutSuggestion(title: intent.title, detail: intent.detail, sport: intent.sport)
     }
-    private var selectedRouteName: String { plannedIntent?.preparedRoute?.name ?? plannedIntent?.routeName ?? String(localized: "record.route.none", defaultValue: "Not selected") }
-    private var selectedRouteIsConfigured: Bool { plannedIntent?.preparedRoute != nil || plannedIntent?.routeName != nil }
     private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (safetyContactStore.defaultContact?.name ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
-    private var moreSetupValue: String {
-        let environment = isIndoorSession ? String(localized: "record.environment.indoor", defaultValue: "Indoor") : String(localized: "record.environment.outdoor", defaultValue: "Outdoor")
-        return liveGroupStore.isSharing ? "\(liveGroupStore.displayTitle) · \(environment)" : environment
-    }
     private var photoAccessibilityValue: String { preActivityPhoto == nil ? String(localized: "record.photo.not_added", defaultValue: "No photo added") : String(localized: "record.photo.added", defaultValue: "Photo added") }
 
     private func track(_ event: ProductAnalyticsEvent) {
@@ -1839,16 +1801,43 @@ struct RecordView: View {
     }
 
     private func sessionGoalCard(for intent: SessionIntent) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Label(String(localized: "record.goal.title", defaultValue: "Goal"), systemImage: "flag")
+        Button {
+            selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
+            track(.init(.goalEditorOpened, properties: [.goalType: .string(analyticsGoalType)]))
+            setupSheet = .goal
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "flag.fill")
                     .font(.headline)
-                Spacer()
+                    .foregroundStyle(.orange)
+                    .frame(width: 28)
+                Text(String(localized: "record.goal.title", defaultValue: "Goal"))
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
                 Text(intent.activityGoal.label(unitSystem: measurementPreferences.unitSystem))
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.tertiary)
             }
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+        .onAppear {
+            selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
+        }
+    }
 
+    private var goalSetupChoices: some View {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 8) {
                 goalModeButton(.freestyle)
                 goalModeButton(.distance)
@@ -1860,40 +1849,134 @@ struct RecordView: View {
                 Text(String(localized: "record.goal.freestyle.detail", defaultValue: "No preset target. Tap Start and move by feel."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                Button {
+                    applyGoalAndDismiss(.freestyle)
+                } label: {
+                    Text(String(localized: "record.goal.use_freestyle", defaultValue: "Use Freestyle"))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
             case .distance:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
                     ForEach(distanceGoalPresets) { preset in
                         goalPresetButton(title: preset.title, isSelected: isSelectedDistancePreset(preset.meters)) {
-                            applyGoal(.distanceMeters(preset.meters))
+                            applyGoalAndDismiss(.distanceMeters(preset.meters))
                         }
                     }
-                    goalPresetButton(title: "Custom", isSelected: isCustomDistanceSelected) { presentCustomGoal(.distance) }
+                    goalPresetButton(title: String(localized: "record.goal.custom", defaultValue: "Custom"), isSelected: isCustomDistanceSelected) {
+                        presentCustomGoalFromSheet(.distance)
+                    }
                 }
             case .time:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
                     ForEach(timeGoalPresets) { preset in
                         goalPresetButton(title: preset.title, isSelected: isSelectedTimePreset(preset.seconds)) {
-                            applyGoal(.timeSeconds(preset.seconds))
+                            applyGoalAndDismiss(.timeSeconds(preset.seconds))
                         }
                     }
-                    goalPresetButton(title: "Custom", isSelected: isCustomTimeSelected) { presentCustomGoal(.time) }
+                    goalPresetButton(title: String(localized: "record.goal.custom", defaultValue: "Custom"), isSelected: isCustomTimeSelected) {
+                        presentCustomGoalFromSheet(.time)
+                    }
                 }
             }
 
+            Divider()
+
             Button {
+                setupSheet = nil
                 showsStandaloneWorkouts = true
             } label: {
                 Label(String(localized: "record.goal.workout", defaultValue: "Choose a workout"), systemImage: "list.bullet.clipboard")
                     .font(.subheadline.weight(.semibold))
             }
         }
-        .padding(18)
+    }
+
+    private var routeSetupCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let route = plannedIntent?.preparedRoute {
+                RoutePreviewMap(points: route.points)
+                    .frame(height: 138)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(route.name)
+                            .font(.headline)
+                            .lineLimit(1)
+                        Text(routeDistanceLabel(route))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Button(String(localized: "common.change", defaultValue: "Change")) { openRouteLibrary() }
+                        .font(.subheadline.weight(.semibold))
+                    Button(role: .destructive) { removeSelectedRoute(route) } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
+                }
+
+                if let advisory = routeGoalAdvisory(route) {
+                    Label(advisory, systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let routeName = plannedIntent?.routeName {
+                HStack(spacing: 12) {
+                    Image(systemName: "map.fill")
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(routeName)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(String(localized: "record.route.preview_unavailable", defaultValue: "Preview unavailable for this route"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Button(String(localized: "common.change", defaultValue: "Change")) { openRouteLibrary() }
+                        .font(.subheadline.weight(.semibold))
+                    Button(role: .destructive) { removeNamedRoute() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
+                }
+            } else {
+                Button(action: openRouteLibrary) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "map.fill")
+                            .font(.headline)
+                            .foregroundStyle(.orange)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: "record.setup.route", defaultValue: "Route"))
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Text(String(localized: "record.route.choose", defaultValue: "Choose a route and preview it here"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
-        .onAppear {
-            selectedGoalMode = SessionGoalMode(goal: intent.activityGoal)
-        }
     }
 
     private func plannedWorkoutCard(for intent: SessionIntent) -> some View {
@@ -1966,9 +2049,6 @@ struct RecordView: View {
     private func goalModeButton(_ mode: SessionGoalMode) -> some View {
         Button {
             selectedGoalMode = mode
-            if mode == .freestyle {
-                applyGoal(.freestyle)
-            }
         } label: {
             Text(mode.title)
                 .font(.caption.weight(.semibold))
@@ -2047,6 +2127,57 @@ struct RecordView: View {
             .goalType: .string(analyticsGoalType),
             .targetBucket: .string(analyticsTargetBucket(for: goal))
         ]))
+    }
+
+    private func applyGoalAndDismiss(_ goal: ActivityGoal) {
+        applyGoal(goal)
+        setupSheet = nil
+    }
+
+    private func presentCustomGoalFromSheet(_ kind: CustomGoalKind) {
+        setupSheet = nil
+        Task { @MainActor in
+            await Task.yield()
+            presentCustomGoal(kind)
+        }
+    }
+
+    private func openRouteLibrary() {
+        trackFeatureExposure("routes")
+        showsRouteLibrary = true
+        track(.init(.routeLibraryOpened))
+    }
+
+    private func removeSelectedRoute(_ route: PreparedRoute) {
+        applyRoute(nil)
+        track(.init(.routeRemoved, properties: [.sourceType: .string(route.source.rawValue)]))
+    }
+
+    private func removeNamedRoute() {
+        applyRoute(nil)
+        track(.init(.routeRemoved, properties: [.sourceType: .string("named")]))
+    }
+
+    private func routeDistanceLabel(_ route: PreparedRoute) -> String {
+        let meters = preparedRouteDistance(route)
+        return measurementPreferences.unitSystem.distanceString(
+            meters: meters,
+            fractionDigits: 1
+        )
+    }
+
+    private func routeGoalAdvisory(_ route: PreparedRoute) -> String? {
+        guard case .distanceMeters(let goalMeters) = currentActivityGoal else { return nil }
+        let routeMeters = preparedRouteDistance(route)
+        guard routeMeters > 0,
+              abs(routeMeters - goalMeters) > max(500, routeMeters * 0.1)
+        else { return nil }
+        return String(
+            format: String(localized: "record.route.goal_difference", defaultValue: "Your %@ goal and %@ route are different. You can keep both."),
+            locale: .autoupdatingCurrent,
+            currentActivityGoal.label(unitSystem: measurementPreferences.unitSystem),
+            routeDistanceLabel(route)
+        )
     }
 
     private func applyRoute(_ route: PreparedRoute?) {

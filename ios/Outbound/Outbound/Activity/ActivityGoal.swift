@@ -149,8 +149,10 @@ extension SessionIntent {
             startLabel: goal.startLabel(for: sport),
             targetDistanceMeters: goal.targetDistanceMeters,
             targetDurationSeconds: goal.targetDurationSeconds,
-            routeName: nil,
-            workoutSteps: []
+            routeName: routeName,
+            preparedRoute: preparedRoute,
+            workoutSteps: workoutSteps,
+            activityEvent: activityEvent
         )
     }
 

@@ -26,6 +26,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySaved = "activity_saved"
     case activityDiscarded = "activity_discarded"
     case goalProgressReached = "goal_progress_reached"
+    case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
@@ -35,6 +36,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case musicOperationFailed = "music_operation_failed"
     case routeLibraryOpened = "route_library_opened"
     case routeSelected = "route_selected"
+    case routeRemoved = "route_removed"
     case shoeSelected = "shoe_selected"
     case photoCaptureAttempted = "photo_capture_attempted"
     case photoCaptured = "photo_captured"
@@ -113,6 +115,7 @@ enum ProductAnalyticsSchema {
         .activitySaved: [.goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .goalProgressReached: [.goalType, .progressPercent],
+        .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
@@ -122,6 +125,7 @@ enum ProductAnalyticsSchema {
         .musicOperationFailed: [.errorCategory],
         .routeLibraryOpened: [],
         .routeSelected: [.sourceType, .distanceBucket],
+        .routeRemoved: [.sourceType],
         .shoeSelected: [.selectionType],
         .photoCaptureAttempted: [.sourceType],
         .photoCaptured: [.sourceType, .locationAttached],
