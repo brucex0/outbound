@@ -2272,11 +2272,11 @@ private enum SessionGoalMode: Equatable {
     var title: String {
         switch self {
         case .freestyle:
-            return "Freestyle"
+            return String(localized: "activity.goal.freestyle", defaultValue: "Freestyle")
         case .distance:
-            return "Distance"
+            return String(localized: "Distance")
         case .time:
-            return "Time"
+            return String(localized: "Time")
         }
     }
 }

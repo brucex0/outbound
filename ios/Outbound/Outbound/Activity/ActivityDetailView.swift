@@ -69,7 +69,7 @@ struct ActivityDetailView: View {
 
     private var activityStats: [DetailActivityStat] {
         [
-            DetailActivityStat(label: "Distance", value: primaryStat),
+            DetailActivityStat(label: String(localized: "Distance"), value: primaryStat),
             DetailActivityStat(
                 label: String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
                 value: currentActivity.avgPace?.paceString(for: unitSystem) ?? "—"

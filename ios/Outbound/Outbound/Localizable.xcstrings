@@ -6,6 +6,11 @@
     },
     "common.none" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Ninguno" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无" } } } },
     "common.off" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Desactivado" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } } } },
+    "library.my_routes" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Mis rutas" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "我的路线" } } } },
+    "library.my_routes.remove" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Quitar de Mis rutas" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从我的路线中移除" } } } },
+    "library.my_routes.save" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar en Mis rutas" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存到我的路线" } } } },
+    "library.routes" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Rutas" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "路线" } } } },
+    "library.workouts" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamientos" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "锻炼" } } } },
     "record.environment.indoor" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Interior" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "室内" } } } },
     "record.environment.outdoor" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Exterior" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "户外" } } } },
     "record.environment.title" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Entorno" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "环境" } } } },
@@ -1472,6 +1477,7 @@
         }
       }
     },
+    "activity.goal.freestyle.detail.short" : { "localizations" : { "es" : { "stringUnit" : { "state" : "translated", "value" : "Carrera · sin objetivo predefinido" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跑步 · 不设预定目标" } } } },
     "activity.goal.start.distance.format" : {
       "localizations" : {
         "en" : {

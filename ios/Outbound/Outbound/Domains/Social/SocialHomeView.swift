@@ -1099,8 +1099,8 @@ private struct SocialNotificationActivityView: View {
                             ZStack(alignment: .bottom) {
                                 SocialRouteMap(route: activity.route)
                                 HStack(spacing: 0) {
-                                    stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                    stat(activity.durationSecs.map(duration) ?? "—", "Time")
+                                    stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
+                                    stat(activity.durationSecs.map(duration) ?? "—", String(localized: "Time"))
                                     stat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
                                 }
                                 .padding(.horizontal, 12)

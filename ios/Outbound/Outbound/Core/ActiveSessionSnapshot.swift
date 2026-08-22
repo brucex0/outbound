@@ -100,10 +100,10 @@ struct SessionIntent: Identifiable, Hashable {
     static let freestyleRun = SessionIntent(
         id: "freestyle-run",
         sport: .run,
-        title: "Freestyle run",
-        detail: "Run • no preset target",
-        guideLine: "No pressure. Just start where you are.",
-        startLabel: "Start now"
+        title: String(localized: "Freestyle run"),
+        detail: String(localized: "activity.goal.freestyle.detail.short", defaultValue: "Run • no preset target"),
+        guideLine: String(localized: "activity.goal.companion.freestyle", defaultValue: "No pressure. Just start where you are."),
+        startLabel: String(localized: "Start now")
     )
 }
 

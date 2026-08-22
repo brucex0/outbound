@@ -243,8 +243,8 @@ private struct ActivityShareCardView: View {
     private var statsStack: some View {
         VStack(alignment: .leading, spacing: 28) {
             HStack(alignment: .top, spacing: 72) {
-                ShareStat(label: "Distance", value: unitSystem.distanceString(meters: activity.distanceM))
-                ShareStat(label: "Time", value: activity.durationSecs.formatted())
+                ShareStat(label: String(localized: "Distance"), value: unitSystem.distanceString(meters: activity.distanceM))
+                ShareStat(label: String(localized: "Time"), value: activity.durationSecs.formatted())
             }
 
             HStack(alignment: .top, spacing: 72) {

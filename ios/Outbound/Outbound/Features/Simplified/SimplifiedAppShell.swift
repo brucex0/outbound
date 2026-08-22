@@ -506,24 +506,24 @@ private struct SimplifiedTodayView: View {
             .accessibilityValue(trainingPlanStore.activePlan?.title ?? String(localized: "No plan selected"))
 
             activityLibraryButton(
-                title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "Workouts"),
+                title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "library.workouts", defaultValue: "Workouts"),
                 systemImage: "figure.run"
             ) {
                 showsStandaloneWorkouts = true
             }
-            .accessibilityLabel("Workouts")
+            .accessibilityLabel(String(localized: "library.workouts", defaultValue: "Workouts"))
             .accessibilityValue(customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "No workout selected"))
 
             NavigationLink {
                 CommunityRouteLibraryView()
             } label: {
                 activityLibraryButtonLabel(
-                    title: selectedRouteName ?? String(localized: "Routes"),
+                    title: selectedRouteName ?? String(localized: "library.routes", defaultValue: "Routes"),
                     systemImage: "map"
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Routes")
+            .accessibilityLabel(String(localized: "library.routes", defaultValue: "Routes"))
             .accessibilityValue(selectedRouteName ?? String(localized: "No route selected"))
         }
     }
@@ -1883,7 +1883,7 @@ private struct SimplifiedMeView: View {
                     } label: {
                         OutboundCard {
                             HStack {
-                                Label("My Routes", systemImage: "map.fill").font(.headline)
+                                Label(String(localized: "library.my_routes", defaultValue: "My Routes"), systemImage: "map.fill").font(.headline)
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
                             }
@@ -1928,8 +1928,8 @@ private struct SimplifiedMeView: View {
                             ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
                                 .tint(OutboundPalette.companion)
                             HStack {
-                                meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), "Distance")
-                                meStat(weekDuration.formatted(), "Time")
+                                meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
+                                meStat(weekDuration.formatted(), String(localized: "Time"))
                             }
                             AIExplanationView(text: weekGuideLine)
                         }

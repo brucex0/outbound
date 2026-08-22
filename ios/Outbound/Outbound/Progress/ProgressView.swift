@@ -120,7 +120,7 @@ struct RunnerProgressView: View {
 
             HStack(spacing: 10) {
                 ProgressMetricTile(
-                    title: "Distance",
+                    title: String(localized: "Distance"),
                     value: measurementPreferences.unitSystem.distanceValueString(
                         meters: snapshot.currentWeek.distanceMeters,
                         fractionDigits: 1
@@ -136,7 +136,7 @@ struct RunnerProgressView: View {
 
             HStack(spacing: 10) {
                 ProgressMetricTile(
-                    title: "Time",
+                    title: String(localized: "Time"),
                     value: snapshot.currentWeek.durationSeconds.formatted(),
                     unit: "moving"
                 )

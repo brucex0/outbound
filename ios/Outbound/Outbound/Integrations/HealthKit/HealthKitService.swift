@@ -205,7 +205,7 @@ struct HealthKitService: HealthKitServing {
 private extension HealthKitService {
     var readDataTypes: [HealthReadableType] {
         var types: [HealthReadableType] = [
-            HealthReadableType(title: "Workouts", objectType: HKObjectType.workoutType()),
+            HealthReadableType(title: String(localized: "library.workouts", defaultValue: "Workouts"), objectType: HKObjectType.workoutType()),
             HealthReadableType(title: "Workout routes", objectType: HKSeriesType.workoutRoute())
         ]
 

@@ -107,7 +107,7 @@ struct StandaloneWorkoutPickerView: View {
                 .padding(.vertical, OutboundSpacing.standard)
             }
             .background(OutboundPalette.background)
-            .navigationTitle("Workouts")
+            .navigationTitle(String(localized: "library.workouts", defaultValue: "Workouts"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

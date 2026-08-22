@@ -65,7 +65,7 @@ struct CommunityRouteLibraryView: View {
                 }
             }
         }
-        .navigationTitle(onSelect == nil ? (mode == .mine ? "My Routes" : "Explore Routes") : "Select Route")
+        .navigationTitle(onSelect == nil ? (mode == .mine ? String(localized: "library.my_routes", defaultValue: "My Routes") : "Explore Routes") : "Select Route")
         .toolbar {
             if onSelect != nil {
                 ToolbarItem(placement: .cancellationAction) {
@@ -181,7 +181,14 @@ struct CommunityRouteDetailView: View {
                     if let description = route.description { Text(description).padding(.top, 4) }
                 }
                 Button { store.launch(route.prepared) } label: { Label("Start Route", systemImage: "figure.run").frame(maxWidth: .infinity, minHeight: 48) }.buttonStyle(.borderedProminent).tint(.orange)
-                Button { Task { await store.toggleBookmark(route) } } label: { Label(route.isBookmarked ? "Remove from My Routes" : "Save to My Routes", systemImage: route.isBookmarked ? "bookmark.slash" : "bookmark") }.buttonStyle(.bordered).frame(maxWidth: .infinity)
+                Button { Task { await store.toggleBookmark(route) } } label: {
+                    Label(
+                        route.isBookmarked
+                            ? String(localized: "library.my_routes.remove", defaultValue: "Remove from My Routes")
+                            : String(localized: "library.my_routes.save", defaultValue: "Save to My Routes"),
+                        systemImage: route.isBookmarked ? "bookmark.slash" : "bookmark"
+                    )
+                }.buttonStyle(.bordered).frame(maxWidth: .infinity)
             }.padding()
         }.navigationBarTitleDisplayMode(.inline)
     }
