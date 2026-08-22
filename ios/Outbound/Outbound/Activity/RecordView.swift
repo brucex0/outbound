@@ -1114,6 +1114,9 @@ struct RecordView: View {
                     .disabled(musicSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || musicStore.isSearching)
                     .accessibilityLabel(String(localized: "record.music.search.action", defaultValue: "Search music"))
                 }
+                if !musicStore.selectedCustomItems.isEmpty {
+                    musicPlaybackOptions
+                }
                 ForEach(musicStore.searchResults(for: musicSearchCategory)) { item in
                     Button { musicStore.toggleCustomSelection(item) } label: {
                         setupChoiceRow(
@@ -1124,14 +1127,6 @@ struct RecordView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                }
-                if !musicStore.selectedCustomItems.isEmpty {
-                    Text(musicSelectionSummary)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
-                    Toggle(String(localized: "record.music.repeat", defaultValue: "Repeat during workout"), isOn: $musicStore.repeatsQueue)
-                    Toggle(String(localized: "record.music.shuffle", defaultValue: "Shuffle songs"), isOn: $musicStore.shufflesQueue)
-                        .disabled(musicStore.selectedCustomItems.first?.category != .songs)
                 }
             } else {
                 Button {
@@ -1192,6 +1187,28 @@ struct RecordView: View {
         guard let first = musicStore.selectedCustomItems.first else { return "" }
         if musicStore.selectedCustomItems.count == 1 { return first.title }
         return String(localized: "record.music.selected_count", defaultValue: "\(musicStore.selectedCustomItems.count) songs selected")
+    }
+
+    private var musicPlaybackOptions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "record.music.playback", defaultValue: "Playback"))
+                        .font(.subheadline.weight(.semibold))
+                    Text(musicSelectionSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "repeat")
+                    .foregroundStyle(.orange)
+            }
+            Toggle(String(localized: "record.music.repeat", defaultValue: "Repeat during workout"), isOn: $musicStore.repeatsQueue)
+            Toggle(String(localized: "record.music.shuffle", defaultValue: "Shuffle songs"), isOn: $musicStore.shufflesQueue)
+                .disabled(musicStore.selectedCustomItems.first?.category != .songs)
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func musicSearchSymbol(for category: MusicSearchCategory) -> String {
