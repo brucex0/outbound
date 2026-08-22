@@ -68,7 +68,7 @@ Nearby search initially uses indexed start coordinates and a bounded latitude/lo
 - `PreparedRoute` represents a selected community route or locally imported GPX/GeoJSON route.
 - `SessionIntent` carries optional prepared route geometry independently from `ActivityRecorder.trackPoints`.
 - `LiveMapView` draws the planned route behind the actual recorded trail. The recorder never treats planned geometry as completed activity data.
-- V1 is visual route following. Turn-by-turn directions and off-route alerts are separate work.
+- Live route guidance frames the selected route during the start countdown, follows the runner once recording begins, and shows plus speaks an off-route warning after a sustained deviation. It announces when the runner rejoins. Turn-by-turn directions remain separate work.
 
 ## Import Validation
 

@@ -552,6 +552,12 @@ struct RecordView: View {
         countdownStep = nil
         countdownTask = nil
         recorder.start()
+        if let route = activeIntent?.preparedRoute {
+            track(.init(.routeNavigationStarted, properties: [
+                .sourceType: .string(route.source.rawValue),
+                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
+            ]))
+        }
         reachedGoalThresholds = []
         activityStartedWithGroupRun = liveGroupStore.isSharing
         track(.init(.activityStarted, properties: activityConfigurationProperties))

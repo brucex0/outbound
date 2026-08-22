@@ -35,6 +35,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case musicOperationFailed = "music_operation_failed"
     case routeLibraryOpened = "route_library_opened"
     case routeSelected = "route_selected"
+    case routeNavigationStarted = "route_navigation_started"
+    case routeDisplayed = "route_displayed"
+    case routeDeviationDetected = "route_deviation_detected"
+    case routeRejoined = "route_rejoined"
     case shoeSelected = "shoe_selected"
     case photoCaptureAttempted = "photo_capture_attempted"
     case photoCaptured = "photo_captured"
@@ -122,6 +126,10 @@ enum ProductAnalyticsSchema {
         .musicOperationFailed: [.errorCategory],
         .routeLibraryOpened: [],
         .routeSelected: [.sourceType, .distanceBucket],
+        .routeNavigationStarted: [.sourceType, .distanceBucket],
+        .routeDisplayed: [.sourceType],
+        .routeDeviationDetected: [.distanceBucket],
+        .routeRejoined: [],
         .shoeSelected: [.selectionType],
         .photoCaptureAttempted: [.sourceType],
         .photoCaptured: [.sourceType, .locationAttached],

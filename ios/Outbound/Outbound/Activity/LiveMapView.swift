@@ -22,6 +22,9 @@ struct LiveMapView: View {
     @State private var statusCardHeight: CGFloat = 132
     @State private var focusedParticipantID: String?
     @State private var isGroupManagementExpanded = false
+    @State private var routeDeviationMonitor = RouteDeviationMonitor()
+    @State private var routeStatusMessage: String?
+    @State private var hasTrackedRouteDisplay = false
 
     var body: some View {
         ZStack {
@@ -162,6 +165,22 @@ struct LiveMapView: View {
                 .padding(.bottom, 18)
             }
 
+
+            if let routeStatusMessage {
+                VStack {
+                    Label(routeStatusMessage, systemImage: routeDeviationMonitor.isOffRoute ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(routeDeviationMonitor.isOffRoute ? Color.red.opacity(0.92) : Color.green.opacity(0.92), in: Capsule())
+                        .shadow(radius: 8, y: 3)
+                        .padding(.top, 68)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             VStack {
                 Spacer()
 
@@ -175,8 +194,25 @@ struct LiveMapView: View {
             }
         }
         .onReceive(locationManager.$location) { loc in
-            guard let loc, isFollowingUser else { return }
-            updateMapCamera(for: loc, animated: true)
+            guard let loc else { return }
+            if recorder.state == .idle, !plannedRouteCoordinates.isEmpty {
+                framePlannedRoute(including: loc.coordinate)
+            } else if isFollowingUser {
+                updateMapCamera(for: loc, animated: true)
+            }
+            evaluateRouteDeviation(at: loc)
+        }
+        .onAppear {
+            guard !plannedRouteCoordinates.isEmpty else { return }
+            framePlannedRoute(including: locationManager.location?.coordinate)
+            trackRouteDisplayIfNeeded()
+        }
+        .onChange(of: recorder.state) { _, state in
+            if state == .idle {
+                routeDeviationMonitor.reset()
+                routeStatusMessage = nil
+                framePlannedRoute(including: locationManager.location?.coordinate)
+            }
         }
         .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
             statusCardHeight = height
@@ -194,6 +230,56 @@ struct LiveMapView: View {
 
     private var plannedRouteCoordinates: [CLLocationCoordinate2D] {
         intent?.preparedRoute?.points.map(\.locationCoordinate) ?? []
+    }
+
+    private func framePlannedRoute(including userCoordinate: CLLocationCoordinate2D?) {
+        guard plannedRouteCoordinates.count > 1 else { return }
+        var rect = plannedRouteCoordinates.reduce(MKMapRect.null) { partial, coordinate in
+            let point = MKMapPoint(coordinate)
+            return partial.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        if let userCoordinate {
+            let point = MKMapPoint(userCoordinate)
+            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        let horizontalPadding = max(rect.width * 0.12, 1_500)
+        let verticalPadding = max(rect.height * 0.12, 1_500)
+        mapPosition = .rect(rect.insetBy(dx: -horizontalPadding, dy: -verticalPadding))
+    }
+
+    private func evaluateRouteDeviation(at location: CLLocation) {
+        guard recorder.state == .active, plannedRouteCoordinates.count > 1 else { return }
+        guard let event = routeDeviationMonitor.ingest(location: location, route: plannedRouteCoordinates) else { return }
+        switch event {
+        case .leftRoute(let distanceMeters):
+            let message = String(localized: "route.guidance.off_route", defaultValue: "You’re off the selected route. Head back toward the highlighted line.")
+            withAnimation { routeStatusMessage = message }
+            guide.announceRouteGuidance(message)
+            track(.init(.routeDeviationDetected, properties: [
+                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: distanceMeters))
+            ]))
+        case .rejoinedRoute:
+            let message = String(localized: "route.guidance.rejoined", defaultValue: "You’re back on the selected route.")
+            withAnimation { routeStatusMessage = message }
+            guide.announceRouteGuidance(message)
+            track(.init(.routeRejoined))
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(6))
+                guard !routeDeviationMonitor.isOffRoute else { return }
+                withAnimation { routeStatusMessage = nil }
+            }
+        }
+    }
+
+    private func trackRouteDisplayIfNeeded() {
+        guard !hasTrackedRouteDisplay, let route = intent?.preparedRoute else { return }
+        hasTrackedRouteDisplay = true
+        track(.init(.routeDisplayed, properties: [.sourceType: .string(route.source.rawValue)]))
+    }
+
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
     }
 
     private var startCoordinate: CLLocationCoordinate2D? {
