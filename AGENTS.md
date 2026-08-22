@@ -19,6 +19,10 @@ Outbound has not shipped publicly yet. Do not spend implementation effort preser
 
 - Show transient API results, such as save success or failure, with temporary toast-style feedback instead of inserting status text into the page layout. Use inline status only when the result must remain visible or requires an action from the user.
 
+## Analytics Instrumentation
+
+- For every new feature or behavior change, add or update the appropriate analytics instrumentation in the same change. Verify that event names, properties, and privacy handling remain consistent with the product analytics contract.
+
 ## iOS Localization
 
 - Whenever adding or changing iOS user-facing strings, make them localizable. Do not introduce hard-coded display text that bypasses the app's localization system.
