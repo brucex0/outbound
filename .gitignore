@@ -11,6 +11,7 @@ backend/.env.local
 # Local credentials
 config/google-oauth-web-client.json
 config/google-oauth-web-client.local.json
+backend/config/dev-auth-*.pem
 
 # Agent metadata
 .claude/
