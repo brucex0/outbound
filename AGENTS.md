@@ -26,6 +26,7 @@ Outbound has not shipped publicly yet. Do not spend implementation effort preser
 ## iOS Localization
 
 - Whenever adding or changing iOS user-facing strings, make them localizable. Do not introduce hard-coded display text that bypasses the app's localization system.
+- Translate localized strings yourself; do not use word-for-word output from Google Translate or similar machine-translation tools. Translations must reflect the product context and be culturally appropriate, natural, and faithful to the intended meaning.
 
 ## Documentation Discipline
 
