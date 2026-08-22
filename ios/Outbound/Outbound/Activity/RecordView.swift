@@ -788,21 +788,25 @@ struct RecordView: View {
     }
 
     private var launchControls: some View {
-        HStack(spacing: 20) {
-            Button {
-                track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                isPreActivityCameraPresented = true
-            } label: {
-                Image(systemName: "camera.fill")
-                    .font(.title3.weight(.bold))
-                    .frame(width: 64, height: 64)
-                    .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
-                    .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
-                    .shadow(color: Color.black.opacity(0.12), radius: 9, y: 4)
+        ZStack {
+            HStack {
+                Button {
+                    track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
+                    isPreActivityCameraPresented = true
+                } label: {
+                    Image(systemName: "camera.fill")
+                        .font(.title3.weight(.bold))
+                        .frame(width: 64, height: 64)
+                        .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
+                        .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
+                        .shadow(color: Color.black.opacity(0.12), radius: 9, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+                .accessibilityValue(photoAccessibilityValue)
+
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
-            .accessibilityValue(photoAccessibilityValue)
 
             Button(action: startRecording) {
                 Group {
@@ -814,7 +818,7 @@ struct RecordView: View {
                             .offset(x: 2)
                     }
                 }
-                .frame(width: 64, height: 64)
+                .frame(width: 69, height: 69)
                 .foregroundStyle(.white)
                 .background(Color.orange, in: Circle())
                 .shadow(color: Color.orange.opacity(0.28), radius: 10, y: 5)
@@ -824,6 +828,7 @@ struct RecordView: View {
             .accessibilityLabel(isStartingActivity ? String(localized: "record.start.preparing", defaultValue: "Preparing activity") : (plannedIntent ?? .freestyleRun).startLabel)
             .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
         }
+        .frame(maxWidth: .infinity)
         .padding(.bottom, 12)
     }
 
