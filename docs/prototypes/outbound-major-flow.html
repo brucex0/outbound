@@ -1134,7 +1134,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-flow .of-learned { display:grid; gap:8px; margin:13px 0; }
 #outbound-flow .of-learned div { display:grid; grid-template-columns:24px 1fr auto; gap:8px; padding:9px 0; border-bottom:1px solid light-dark(#e0e5e1,#354139); }
 #outbound-flow .of-learned div:last-child { border-bottom:0; }
-#outbound-flow .of-start-tools { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:14px 0 18px; }
+#outbound-flow .of-start-tools { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin:14px 0 8px; }
 #outbound-flow .of-tool-button { min-width:0; min-height:72px; border:1px solid light-dark(#d6ddd7,#3a463f); background:light-dark(#fff,#1b241f); color:inherit; border-radius:16px; padding:9px 5px 8px; display:grid; place-items:center; align-content:center; gap:3px; cursor:pointer; }
 #outbound-flow .of-tool-button svg { width:20px; height:20px; }
 #outbound-flow .of-tool-button strong { font-size:.72rem; font-weight:500; color:light-dark(#657168,#abb6ae); white-space:nowrap; }
@@ -1142,6 +1142,9 @@ html&gt;body{padding:0}&lt;/style&gt;
 #outbound-flow .of-tool-button.is-selected { border-color:light-dark(#789b80,#73927a); background:light-dark(#e5efe6,#2b3a30); color:light-dark(#315f3f,#add0b6); }
 #outbound-flow .of-tool-button.is-selected strong { color:inherit; }
 #outbound-flow .of-tool-button.is-selected small { display:block; }
+#outbound-flow .of-shoe-tip { position:relative; margin:0 0 17px; padding:10px 36px 10px 12px; border-radius:13px; background:light-dark(#e5efe6,#2b3a30); color:light-dark(#315f3f,#add0b6); font-size:.73rem; line-height:1.3; }
+#outbound-flow .of-shoe-tip::before { content:&quot;&quot;; position:absolute; top:-6px; right:100px; width:12px; height:12px; transform:rotate(45deg); background:inherit; }
+#outbound-flow .of-shoe-tip button { position:absolute; right:7px; top:50%; transform:translateY(-50%); width:28px; height:28px; border:0; border-radius:50%; color:inherit; background:transparent; cursor:pointer; }
 #outbound-flow .of-launch-row { display:flex; align-items:center; justify-content:center; gap:21px; margin:3px 0 4px; }
 #outbound-flow .of-launch-secondary, #outbound-flow .of-start-round { border-radius:50%; display:grid; place-items:center; cursor:pointer; }
 #outbound-flow .of-launch-secondary { width:48px; height:48px; border:1px solid light-dark(#d2dad4,#3e4a42); color:light-dark(#315f3f,#a3c7ad); background:light-dark(#fff,#1b241f); }
@@ -1220,8 +1223,10 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;button class=&quot;of-tool-button is-selected&quot; data-sheet=&quot;music&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Music, Morning Miles selected&quot;&gt;&lt;i data-lucide=&quot;music-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Music ✓&lt;/strong&gt;&lt;small data-tool-value&gt;Morning Miles&lt;/small&gt;&lt;/button&gt;
           &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;route&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Choose a route&quot;&gt;&lt;i data-lucide=&quot;map&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Route&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
           &lt;button class=&quot;of-tool-button is-selected&quot; data-sheet=&quot;liveTrack&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Live Track, Xia selected&quot;&gt;&lt;i data-lucide=&quot;radio-tower&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Live ✓&lt;/strong&gt;&lt;small data-tool-value&gt;Xia&lt;/small&gt;&lt;/button&gt;
+          &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;shoes&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;Add running shoes&quot;&gt;&lt;i data-lucide=&quot;footprints&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;Shoes&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
           &lt;button class=&quot;of-tool-button&quot; data-sheet=&quot;more&quot; aria-haspopup=&quot;dialog&quot; aria-label=&quot;More run options&quot;&gt;&lt;i data-lucide=&quot;ellipsis&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;strong&gt;More&lt;/strong&gt;&lt;small data-tool-value&gt;&lt;/small&gt;&lt;/button&gt;
         &lt;/div&gt;
+        &lt;div class=&quot;of-shoe-tip&quot; data-shoe-tip role=&quot;status&quot;&gt;Add your shoes to track mileage and know when they may need replacing.&lt;button data-shoe-tip-close aria-label=&quot;Dismiss shoe setup tip&quot;&gt;×&lt;/button&gt;&lt;/div&gt;
         &lt;div class=&quot;of-launch-row&quot;&gt;
           &lt;button class=&quot;of-launch-secondary&quot; data-go=&quot;moment&quot; aria-label=&quot;Add a photo before the run&quot;&gt;&lt;i data-lucide=&quot;camera&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
           &lt;button class=&quot;of-start-round&quot; data-go=&quot;live&quot; aria-label=&quot;Start now&quot;&gt;&lt;i data-lucide=&quot;play&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
@@ -1351,7 +1356,8 @@ html&gt;body{padding:0}&lt;/style&gt;
     music: { title: &#x27;Music&#x27;, actions: [[&#x27;Morning Miles&#x27;, &#x27;Now playing&#x27;, &#x27;Morning Miles&#x27;], [&#x27;Choose playlist&#x27;, &#x27;Apple Music or Spotify&#x27;, &#x27;New playlist&#x27;], [&#x27;Run without music&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
     route: { title: &#x27;Choose a route&#x27;, actions: [[&#x27;Recommended loop&#x27;, &#x27;5.2 km · low traffic&#x27;, &#x27;5.2 km Loop&#x27;], [&#x27;Saved routes&#x27;, &#x27;4 routes&#x27;, &#x27;Saved route&#x27;], [&#x27;Run without a route&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
     liveTrack: { title: &#x27;Live Track&#x27;, controlLabel: &#x27;Live&#x27;, actions: [[&#x27;Share with Xia&#x27;, &#x27;Default trusted contact&#x27;, &#x27;Xia&#x27;], [&#x27;Choose another contact&#x27;, &#x27;&#x27;, &#x27;Contact&#x27;], [&#x27;Turn off Live Track&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
-    more: { title: &#x27;More run options&#x27;, actions: [[&#x27;Create or join a group run&#x27;, &#x27;Run together&#x27;, null], [&#x27;Environment&#x27;, &#x27;Outdoor&#x27;, null], [&#x27;Shoes&#x27;, &#x27;Nike Pegasus 41&#x27;, null]] }
+    shoes: { title: &#x27;Shoes&#x27;, actions: [[&#x27;Add running shoes&#x27;, &#x27;Track mileage by pair&#x27;, &#x27;Nike Pegasus 41&#x27;], [&#x27;Run without shoes selected&#x27;, &#x27;&#x27;, &#x27;&#x27;]] },
+    more: { title: &#x27;More run options&#x27;, actions: [[&#x27;Create or join a group run&#x27;, &#x27;Run together&#x27;, null], [&#x27;Environment&#x27;, &#x27;Outdoor&#x27;, null]] }
   };
   const closeSheet = () =&gt; sheetScrim.classList.remove(&#x27;is-open&#x27;);
   root.querySelectorAll(&#x27;[data-sheet]&#x27;).forEach((button) =&gt; button.addEventListener(&#x27;click&#x27;, () =&gt; {
@@ -1372,6 +1378,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         button.querySelector(&#x27;strong&#x27;).textContent = `${controlLabel}${value ? &#x27; ✓&#x27; : &#x27;&#x27;}`;
         valueLabel.textContent = value;
         button.setAttribute(&#x27;aria-label&#x27;, value ? `${content.title}, ${value} selected` : content.title);
+        if (button.dataset.sheet === &#x27;shoes&#x27; &amp;&amp; value) root.querySelector(&#x27;[data-shoe-tip]&#x27;)?.remove();
       }
       closeSheet();
     }));
@@ -1379,6 +1386,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   }));
   root.querySelector(&#x27;[data-sheet-close]&#x27;).addEventListener(&#x27;click&#x27;, closeSheet);
   sheetScrim.addEventListener(&#x27;click&#x27;, (event) =&gt; { if (event.target === sheetScrim) closeSheet(); });
+  root.querySelector(&#x27;[data-shoe-tip-close]&#x27;)?.addEventListener(&#x27;click&#x27;, () =&gt; root.querySelector(&#x27;[data-shoe-tip]&#x27;)?.remove());
   root.querySelector(&#x27;[data-capture]&#x27;).addEventListener(&#x27;click&#x27;, () =&gt; {
     root.querySelector(&#x27;[data-page=&quot;moment&quot;] .of-note&#x27;).textContent = &#x27;Moment saved privately ✓&#x27;;
   });
