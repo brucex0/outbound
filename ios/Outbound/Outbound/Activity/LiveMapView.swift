@@ -31,7 +31,9 @@ struct LiveMapView: View {
             Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
                 if plannedRouteCoordinates.count > 1 {
                     MapPolyline(coordinates: plannedRouteCoordinates)
-                        .stroke(.blue.opacity(0.35), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round, dash: [10, 7]))
+                        .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
+                    MapPolyline(coordinates: plannedRouteCoordinates)
+                        .stroke(selectedRouteColor, style: selectedRouteStyle)
                 }
                 if let startCoordinate {
                     Annotation("Trail Start", coordinate: startCoordinate) {
@@ -217,6 +219,18 @@ struct LiveMapView: View {
         .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
             statusCardHeight = height
         }
+    }
+
+    private var selectedRouteColor: Color {
+        Color(red: 1, green: 0.32, blue: 0)
+    }
+
+    private var selectedRouteHaloStyle: StrokeStyle {
+        StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round, dash: [1, 9])
+    }
+
+    private var selectedRouteStyle: StrokeStyle {
+        StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round, dash: [1, 9])
     }
 
     private var guideMessage: String? {
