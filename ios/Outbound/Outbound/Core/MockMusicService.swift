@@ -80,13 +80,15 @@ final class MockMusicService: MusicService {
         }
     }
 
-    func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot {
+    func play(quickPick: MusicQuickPick, repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot {
         if quickPick.kind == .continueCurrent, currentQuickPick == nil {
             currentQuickPick = quickPickFixtures.first
         } else if quickPick.kind != .continueCurrent {
             currentQuickPick = quickPick
             currentIndex = 0
         }
+        _ = repeatAll
+        _ = shuffle
         isPlaying = true
         return playback()
     }

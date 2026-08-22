@@ -321,7 +321,7 @@ Contents:
 - multi-select for songs plus repeat-all and shuffle controls
 - opening the picker seeds a workout-relevant query, and switching category tabs immediately refreshes results for that category
 - cache and preload category results so switching Songs, Albums, and Playlists does not collapse or flicker the picker
-- keep playback options directly below search in a stable panel, above variable-length result lists
+- keep playback options always visible directly below search in a compact, stable panel with side-by-side Repeat and Shuffle buttons; apply them to suggested and custom selections
 
 ### Live Recorder HUD
 

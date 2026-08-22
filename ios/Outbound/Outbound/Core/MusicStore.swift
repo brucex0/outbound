@@ -239,7 +239,11 @@ final class MusicStore: ObservableObject {
         do {
             if selectedCustomItems.isEmpty, let selectedQuickPick {
                 Self.logger.info("Begin workout playback. quickPickID=\(selectedQuickPick.id, privacy: .public)")
-                playback = try await service.play(quickPick: selectedQuickPick)
+                playback = try await service.play(
+                    quickPick: selectedQuickPick,
+                    repeatAll: repeatsQueue,
+                    shuffle: shufflesQueue
+                )
             } else {
                 playback = try await service.play(selection: selectedCustomItems, repeatAll: repeatsQueue, shuffle: shufflesQueue)
             }
@@ -414,7 +418,7 @@ protocol MusicService: AnyObject {
     func connect() async throws -> MusicConnectionSnapshot
     func loadQuickPicks() async throws -> [MusicQuickPick]
     func search(term: String, category: MusicSearchCategory) async throws -> [MusicSearchResult]
-    func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot
+    func play(quickPick: MusicQuickPick, repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot
     func play(selection: [MusicSearchResult], repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot
     func pause() async -> MusicPlaybackSnapshot
     func stop() async -> MusicPlaybackSnapshot

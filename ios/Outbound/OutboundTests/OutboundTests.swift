@@ -101,8 +101,11 @@ private final class StubMusicService: MusicService {
     func refreshSnapshot() async -> MusicConnectionSnapshot { currentSnapshot }
     func connect() async throws -> MusicConnectionSnapshot { currentSnapshot }
     func loadQuickPicks() async throws -> [MusicQuickPick] { [] }
-    func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot { currentPlayback }
+    func search(term: String, category: MusicSearchCategory) async throws -> [MusicSearchResult] { [] }
+    func play(quickPick: MusicQuickPick, repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot { currentPlayback }
+    func play(selection: [MusicSearchResult], repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot { currentPlayback }
     func pause() async -> MusicPlaybackSnapshot { currentPlayback }
+    func stop() async -> MusicPlaybackSnapshot { currentPlayback }
     func resume() async throws -> MusicPlaybackSnapshot { currentPlayback }
     func skipToNext() async throws -> MusicPlaybackSnapshot { currentPlayback }
     func refreshPlayback() async -> MusicPlaybackSnapshot { currentPlayback }

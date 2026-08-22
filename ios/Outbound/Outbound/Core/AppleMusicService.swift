@@ -105,7 +105,7 @@ final class AppleMusicService: MusicService {
         }
     }
 
-    func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot {
+    func play(quickPick: MusicQuickPick, repeatAll: Bool, shuffle: Bool) async throws -> MusicPlaybackSnapshot {
         Self.logger.info(
             "Attempt Apple Music playback. quickPickID=\(quickPick.id, privacy: .public) kind=\(quickPick.kind.rawValue, privacy: .public)"
         )
@@ -134,7 +134,8 @@ final class AppleMusicService: MusicService {
             currentQuickPick = quickPick
             currentSelection = []
             player.queue = ApplicationMusicPlayer.Queue(for: songs)
-            player.state.repeatMode = .all
+            player.state.repeatMode = repeatAll ? .all : .none
+            player.state.shuffleMode = shuffle ? .songs : .off
             try await player.prepareToPlay()
             try await player.play()
             Self.logger.info(
