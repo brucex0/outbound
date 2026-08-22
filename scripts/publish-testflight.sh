@@ -91,6 +91,7 @@ asc_key_path="${ASC_KEY_PATH:-}"
 asc_key_id="${ASC_KEY_ID:-}"
 asc_issuer_id="${ASC_ISSUER_ID:-}"
 authentication_args=()
+use_asc_api_key=false
 
 if [[ -n "$asc_key_path" || -n "$asc_key_id" || -n "$asc_issuer_id" ]]; then
   [[ -n "$asc_key_path" && -n "$asc_key_id" && -n "$asc_issuer_id" ]] || \
@@ -102,6 +103,7 @@ if [[ -n "$asc_key_path" || -n "$asc_key_id" || -n "$asc_issuer_id" ]]; then
     -authenticationKeyID "$asc_key_id"
     -authenticationKeyIssuerID "$asc_issuer_id"
   )
+  use_asc_api_key=true
 fi
 
 [[ -f "$PROJECT_FILE" ]] || fail "Xcode project file not found: $PROJECT_FILE"
@@ -247,7 +249,7 @@ mkdir -p "$(dirname "$archive_path")"
 
 log "Creating signed App Store archive..."
 log "Archive: $archive_path"
-if (( ${#authentication_args[@]} > 0 )); then
+if [[ "$use_asc_api_key" == true ]]; then
   log "Using App Store Connect API key ${asc_key_id}"
 else
   log "Using the Apple Account saved in Xcode"
@@ -259,7 +261,7 @@ xcodebuild -quiet \
   -destination 'generic/platform=iOS' \
   -archivePath "$archive_path" \
   -allowProvisioningUpdates \
-  "${authentication_args[@]}" \
+  ${authentication_args[@]+"${authentication_args[@]}"} \
   archive
 
 archived_version="$(plutil -extract ApplicationProperties.CFBundleShortVersionString raw -o - "$archive_path/Info.plist")"
@@ -304,10 +306,10 @@ if ! xcodebuild \
   -exportPath "$export_path" \
   -exportOptionsPlist "$export_options" \
   -allowProvisioningUpdates \
-  "${authentication_args[@]}"; then
+  ${authentication_args[@]+"${authentication_args[@]}"}; then
   printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
   printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
-  if (( ${#authentication_args[@]} == 0 )); then
+  if [[ "$use_asc_api_key" == false ]]; then
     printf 'For reliable command-line uploads, set ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID to an App Store Connect API key.\n' >&2
   fi
   exit 1
