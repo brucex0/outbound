@@ -51,7 +51,6 @@ struct RecordView: View {
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
     @State private var isPreActivityCameraPresented = false
-    @State private var isPreActivityPhotoPreviewPresented = false
     @State private var selectedPreActivityPhotoItem: PhotosPickerItem?
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var plannedIntent: SessionIntent?
@@ -130,10 +129,7 @@ struct RecordView: View {
                             onFinish: finishRecording
                         ) { image, meta in
                             capturedPhotos.append((image, meta))
-                            track(.init(.photoCaptured, properties: [
-                                .sourceType: .string("in_activity"),
-                                .locationAttached: .boolean(meta.coordinate != nil)
-                            ]))
+                            track(.init(.photoCaptured, properties: [.sourceType: .string("in_activity")]))
                         }
                         .tag(SessionPage.camera)
                         .ignoresSafeArea()
@@ -196,9 +192,6 @@ struct RecordView: View {
         }
         .onAppear {
             restoreInterruptedSessionIfNeeded()
-            if recorder.state == .idle {
-                recorder.locationManager.requestCurrentLocation()
-            }
         }
         .task {
             await musicStore.refresh()
@@ -324,11 +317,6 @@ struct RecordView: View {
             PostRunCameraView { image in
                 replacePreActivityPhoto(with: image)
             }
-        }
-        .sheet(isPresented: $isPreActivityPhotoPreviewPresented) {
-            preActivityPhotoPreview
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
         .onChange(of: selectedPreActivityPhotoItem) { _, item in
             guard let item else { return }
@@ -804,37 +792,14 @@ struct RecordView: View {
         ZStack {
             HStack {
                 Button {
-                    if preActivityPhoto == nil {
-                        track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                        isPreActivityCameraPresented = true
-                    } else {
-                        track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
-                        isPreActivityPhotoPreviewPresented = true
-                    }
+                    track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
+                    isPreActivityCameraPresented = true
                 } label: {
-                    ZStack(alignment: .bottomTrailing) {
-                        if let photo = preActivityPhoto {
-                            Image(uiImage: photo)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 64, height: 64)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 2))
-
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(.white, .green)
-                                .background(Circle().fill(.white))
-                                .offset(x: 2, y: 2)
-                        } else {
-                            Image(systemName: "camera.fill")
-                                .font(.title3.weight(.bold))
-                                .frame(width: 64, height: 64)
-                                .foregroundStyle(Color.orange)
-                                .background(Color(.secondarySystemBackground), in: Circle())
-                        }
-                    }
-                    .frame(width: 64, height: 64)
+                    Image(systemName: "camera.fill")
+                        .font(.title3.weight(.bold))
+                        .frame(width: 64, height: 64)
+                        .foregroundStyle(preActivityPhoto == nil ? Color.orange : Color.white)
+                        .background(preActivityPhoto == nil ? Color(.secondarySystemBackground) : Color.orange, in: Circle())
                         .shadow(color: Color.black.opacity(0.12), radius: 9, y: 4)
                 }
                 .buttonStyle(.plain)
@@ -1329,60 +1294,6 @@ struct RecordView: View {
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
-    private var preActivityPhotoPreview: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                if let photo = preActivityPhoto {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 360)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                    Label(
-                        String(localized: "record.photo.added", defaultValue: "Photo added"),
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .font(.headline)
-                    .foregroundStyle(.green)
-
-                    HStack(spacing: 12) {
-                        Button {
-                            isPreActivityPhotoPreviewPresented = false
-                            track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                            DispatchQueue.main.async { isPreActivityCameraPresented = true }
-                        } label: {
-                            Label(String(localized: "record.photo.retake", defaultValue: "Retake"), systemImage: "camera.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
-
-                        Button(role: .destructive) {
-                            track(.init(.photoRemoved, properties: [.sourceType: .string("pre_activity")]))
-                            removePreActivityPhoto()
-                            isPreActivityPhotoPreviewPresented = false
-                        } label: {
-                            Label(String(localized: "record.photo.remove", defaultValue: "Remove"), systemImage: "trash")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
-            }
-            .padding(20)
-            .navigationTitle(String(localized: "record.photo.preview", defaultValue: "Activity photo"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "common.done", defaultValue: "Done")) {
-                        isPreActivityPhotoPreviewPresented = false
-                    }
-                }
-            }
-        }
-    }
-
     private var preActivityPhotoActionTitle: String {
         if liveGroupStore.isSharing {
             return String(localized: "record.photo.take_group", defaultValue: "Take group photo")
@@ -1396,7 +1307,6 @@ struct RecordView: View {
 
     private func replacePreActivityPhoto(with image: UIImage) {
         removePreActivityPhoto()
-        let coordinate = recorder.locationManager.location?.coordinate
         capturedPhotos.append((
             image,
             PhotoMetadata(
@@ -1404,14 +1314,11 @@ struct RecordView: View {
                 paceAtShot: nil,
                 hrAtShot: nil,
                 distAtShot: 0,
-                coordinate: coordinate,
+                coordinate: nil,
                 captureContext: .preActivity
             )
         ))
-        track(.init(.photoCaptured, properties: [
-            .sourceType: .string("pre_activity"),
-            .locationAttached: .boolean(coordinate != nil)
-        ]))
+        track(.init(.photoCaptured, properties: [.sourceType: .string("pre_activity")]))
     }
 
     private func removePreActivityPhoto() {
