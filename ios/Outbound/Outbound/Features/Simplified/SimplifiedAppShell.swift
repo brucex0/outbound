@@ -35,6 +35,7 @@ struct SimplifiedAppShell: View {
     @State private var selection: SimplifiedAppTab = .today
     @State private var showsAssistant = false
     @State private var customizedTodayIntent: SessionIntent?
+    @State private var selectedRouteName: String?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -48,6 +49,7 @@ struct SimplifiedAppShell: View {
                 activityElapsedSeconds: activityElapsedSeconds,
                 activeSport: activeSport,
                 customizedRunIntent: $customizedTodayIntent,
+                selectedRouteName: $selectedRouteName,
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
@@ -136,6 +138,7 @@ struct SimplifiedAppShell: View {
         }
         .onChange(of: communityRouteStore.pendingLaunch) { _, route in
             guard let route else { return }
+            selectedRouteName = route.name
             onStartRun(SessionIntent(
                 id: "route-\(route.id)", sport: .run, title: route.name,
                 detail: String(localized: "Follow a selected route"),
@@ -184,6 +187,7 @@ private struct SimplifiedTodayView: View {
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var customizedRunIntent: SessionIntent?
+    @Binding var selectedRouteName: String?
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
@@ -222,7 +226,6 @@ private struct SimplifiedTodayView: View {
                         }
 
                         upcomingWorkoutButton
-                        trainingPlanMenu
                     } else if let activityEventToday {
                         activityEventCard(activityEventToday)
                         quickRunButton
@@ -231,21 +234,11 @@ private struct SimplifiedTodayView: View {
                         quickRunButton
                     }
 
-                    if activitySessionState != .idle {
-                        inProgressActivityCard
+                    if activitySessionState == .idle {
+                        activityLibraryButtons
                     } else {
-                        standaloneWorkoutsButton
+                        inProgressActivityCard
                     }
-
-                    NavigationLink {
-                        CommunityRouteLibraryView()
-                    } label: {
-                        Label("Explore routes", systemImage: "map.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                    }
-                    .buttonStyle(.bordered)
-
                 }
                 .padding(.horizontal, OutboundSpacing.screen)
                 .padding(.vertical, OutboundSpacing.standard)
@@ -358,7 +351,18 @@ private struct SimplifiedTodayView: View {
                             activePlan: activePlan,
                             week: week,
                             todaySuggestion: trainingPlanStore.todaySuggestion,
-                            accentColor: theme.accentColor
+                            accentColor: theme.accentColor,
+                            onChangePlan: {
+                                showsPlanDetails = false
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    presentPlanPicker()
+                                }
+                            },
+                            onEndPlan: {
+                                trainingPlanStore.clearActivePlan()
+                                showsPlanDetails = false
+                            }
                         )
                     } else {
                         ActiveTrainingPlanPendingDetailView(activePlan: activePlan, accentColor: theme.accentColor)
@@ -385,6 +389,7 @@ private struct SimplifiedTodayView: View {
         .sheet(isPresented: $showsStandaloneWorkouts) {
             StandaloneWorkoutPickerView { workout in
                 showsStandaloneWorkouts = false
+                customizedRunIntent = workout.intent
                 onStartRun(workout.intent)
             }
             .presentationDetents([.medium, .large])
@@ -485,16 +490,73 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var standaloneWorkoutsButton: some View {
-        Button {
-            showsStandaloneWorkouts = true
-        } label: {
-            Label("Browse workouts", systemImage: "figure.run.circle")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 48)
+    private var activityLibraryButtons: some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            activityLibraryButton(
+                title: trainingPlanStore.activePlan?.title ?? String(localized: "Plans"),
+                systemImage: "calendar"
+            ) {
+                if trainingPlanStore.activePlan == nil {
+                    presentPlanPicker()
+                } else {
+                    showsPlanDetails = true
+                }
+            }
+            .accessibilityLabel("Plans")
+            .accessibilityValue(trainingPlanStore.activePlan?.title ?? String(localized: "No plan selected"))
+
+            activityLibraryButton(
+                title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "Workouts"),
+                systemImage: "figure.run"
+            ) {
+                showsStandaloneWorkouts = true
+            }
+            .accessibilityLabel("Workouts")
+            .accessibilityValue(customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "No workout selected"))
+
+            NavigationLink {
+                CommunityRouteLibraryView()
+            } label: {
+                activityLibraryButtonLabel(
+                    title: selectedRouteName ?? String(localized: "Routes"),
+                    systemImage: "map"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Routes")
+            .accessibilityValue(selectedRouteName ?? String(localized: "No route selected"))
         }
-        .buttonStyle(.bordered)
-        .accessibilityHint("Choose a guided workout without starting a training plan")
+    }
+
+    private func activityLibraryButton(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            activityLibraryButtonLabel(title: title, systemImage: systemImage)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func activityLibraryButtonLabel(title: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(theme.accentColor)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, minHeight: 76)
+        .padding(.horizontal, 6)
+        .background(
+            Color.primary.opacity(0.045),
+            in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
@@ -580,51 +642,8 @@ private struct SimplifiedTodayView: View {
                         onStartRun(activeRunIntent)
                     }
                 }
-                trainingPlanMenu
             }
         }
-    }
-
-    private var trainingPlanMenu: some View {
-        Menu {
-            if trainingPlanStore.activePlan != nil {
-                Button("View plan", systemImage: "calendar") { showsPlanDetails = true }
-                Button("Change plan", systemImage: "arrow.triangle.2.circlepath") { presentPlanPicker() }
-                Divider()
-                Button("End plan", systemImage: "calendar.badge.minus", role: .destructive) {
-                    trainingPlanStore.clearActivePlan()
-                }
-            } else {
-                Button("Choose a plan", systemImage: "calendar.badge.plus") { presentPlanPicker() }
-            }
-        } label: {
-            HStack(spacing: OutboundSpacing.compact) {
-                Image(systemName: "calendar")
-                    .foregroundStyle(theme.accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Training plan")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text(trainingPlanStore.activePlan?.title ?? String(localized: "Choose a multi-week plan"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
-        }
-        .accessibilityLabel("Training plan")
-        .accessibilityHint(
-            trainingPlanStore.activePlan == nil
-                ? String(localized: "Choose a multi-week training plan")
-                : String(localized: "View, change, or end the current training plan")
-        )
     }
 
     private var inProgressActivityCard: some View {

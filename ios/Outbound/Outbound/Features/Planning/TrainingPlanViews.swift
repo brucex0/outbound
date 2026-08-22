@@ -273,6 +273,8 @@ struct ActiveTrainingPlanDetailView: View {
     let week: TrainingPlanWeekSnapshot
     let todaySuggestion: TodayTrainingSuggestion?
     let accentColor: Color
+    var onChangePlan: (() -> Void)? = nil
+    var onEndPlan: (() -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -350,7 +352,7 @@ struct ActiveTrainingPlanDetailView: View {
                             .font(.headline)
                         Text("No session scheduled today")
                             .font(.title3.weight(.bold))
-                        Text("Use the week schedule below, or change/end the plan from the Now card menu.")
+                        Text("Use the week schedule below, or change/end the plan from Plan Details options.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -400,6 +402,21 @@ struct ActiveTrainingPlanDetailView: View {
         }
         .navigationTitle("Plan Details")
         .toolbar {
+            if onChangePlan != nil || onEndPlan != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        if let onChangePlan {
+                            Button("Change plan", systemImage: "arrow.triangle.2.circlepath", action: onChangePlan)
+                        }
+                        if let onEndPlan {
+                            Button("End plan", systemImage: "calendar.badge.minus", role: .destructive, action: onEndPlan)
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Plan options")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
                     dismiss()
