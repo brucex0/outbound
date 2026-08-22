@@ -64,7 +64,7 @@ Track:
 | Routes | library exposed -> searched/imported/bookmarked -> route selected -> navigation started -> activity saved with route |
 | Distance/time goals | goal control exposed -> type/preset/custom selected -> activity started -> progress bucket reached -> activity saved |
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
-| Photos | capture entry exposed -> capture attempted/succeeded -> retained or deleted -> activity saved with photo -> explicitly shared |
+| Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
 | Group runs | group control exposed -> create/join attempted -> invitation shared/opened -> joined -> activity started -> activity saved |
 
 Exposure matters: a missing action means something only when the runner actually saw the relevant control. Use explicit exposure events for optional features and compare exposed users with adopters.

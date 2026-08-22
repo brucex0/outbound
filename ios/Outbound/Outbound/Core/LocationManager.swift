@@ -35,6 +35,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     private var wantsTracking = false
+    private var wantsOneShotLocation = false
     private var trackingStartedAt: Date?
 #if DEBUG
     private var testDistanceMeters: Double?
@@ -54,6 +55,20 @@ final class LocationManager: NSObject, ObservableObject {
 
     func requestPermission() {
         manager.requestWhenInUseAuthorization()
+    }
+
+    func requestCurrentLocation() {
+        wantsOneShotLocation = true
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            requestPermission()
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.requestLocation()
+        case .denied, .restricted:
+            wantsOneShotLocation = false
+        @unknown default:
+            wantsOneShotLocation = false
+        }
     }
 
     func startTracking() {
@@ -164,6 +179,7 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         Task { @MainActor in
+            self.wantsOneShotLocation = false
             guard self.shouldAcceptLocationUpdate(loc) else { return }
             self.location = loc
             if self.shouldAppendTrackPoint(loc) {
@@ -208,6 +224,9 @@ extension LocationManager: CLLocationManagerDelegate {
             switch manager.authorizationStatus {
             case .authorizedAlways, .authorizedWhenInUse:
                 self.startTrackingIfPermitted()
+                if self.wantsOneShotLocation && !self.wantsTracking {
+                    manager.requestLocation()
+                }
             case .denied, .restricted:
                 self.wantsTracking = false
             case .notDetermined:
@@ -215,6 +234,12 @@ extension LocationManager: CLLocationManagerDelegate {
             @unknown default:
                 break
             }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.wantsOneShotLocation = false
         }
     }
 }

@@ -142,7 +142,7 @@ The layout uses a persistent full-screen route map with a bottom information she
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
 6. **Content order** — stats, elevation, splits, activity metadata when relevant, guide card
 7. **Media layout** — the route map remains the full-screen background without a floating thumbnail; the sheet owns a horizontal photo strip, the active photo drives the selected map annotation, and a second tap opens the immersive lightbox
-8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity
+8. **Photo editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity. The map initially selects the first GPS-tagged photo so its pin is visible; photos without an available coordinate remain saved but do not produce a misleading pin.
 9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
 10. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
 11. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras
