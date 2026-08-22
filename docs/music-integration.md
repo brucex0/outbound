@@ -221,7 +221,7 @@ V1 behavior should be:
 - user music keeps playing while the app records
 - guide speech ducks music briefly instead of stopping it
 - pausing a run should not automatically stop music
-- finishing a run should not force-stop music unless the user started playback from an Outbound-only quick pick and we later decide that behavior is preferable
+- finishing a run stops music that Outbound started for that workout; playback that was never started by Outbound remains untouched
 
 Implementation guidance:
 
@@ -230,6 +230,8 @@ Implementation guidance:
 - define whether guide voice uses ducking or spoken-audio interruption before writing provider code
 
 For app-owned Apple Music queues, prepare the `ApplicationMusicPlayer` after assigning a new queue and before calling `play()`. Playback failures from activity start should use the shared transient toast so a selected mix never fails silently.
+
+Workout queues repeat all entries so a shorter song set or album can cover a longer activity. A future focused picker should support multi-select songs, albums, and library playlists while persisting only provider item identifiers and display metadata.
 
 Suggested future file:
 

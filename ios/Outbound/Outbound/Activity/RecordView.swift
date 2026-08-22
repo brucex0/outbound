@@ -570,7 +570,7 @@ struct RecordView: View {
         liveShareStore.end()
         liveGroupStore.finishActivity()
         guide.deactivate()
-        musicStore.clearPendingWorkoutPlayback()
+        Task { await musicStore.endWorkoutPlaybackIfNeeded() }
         showCamera = false
         let reflection = DailyMotivationEngine.finishReflection(
             summary: summary,

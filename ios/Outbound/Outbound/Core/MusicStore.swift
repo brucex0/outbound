@@ -19,6 +19,7 @@ final class MusicStore: ObservableObject {
     private let defaults: UserDefaults
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
     private var pendingWorkoutPlayback = false
+    private var startedPlaybackForWorkout = false
 
     init(
         service: (any MusicService)? = nil,
@@ -167,6 +168,7 @@ final class MusicStore: ObservableObject {
         do {
             playback = try await service.play(quickPick: selectedQuickPick)
             pendingWorkoutPlayback = !playback.hasActiveQueue
+            startedPlaybackForWorkout = playback.hasActiveQueue
         } catch {
             Self.logger.error("Begin workout playback failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
@@ -213,8 +215,11 @@ final class MusicStore: ObservableObject {
         await beginWorkoutPlaybackIfNeeded()
     }
 
-    func clearPendingWorkoutPlayback() {
+    func endWorkoutPlaybackIfNeeded() async {
         pendingWorkoutPlayback = false
+        guard startedPlaybackForWorkout else { return }
+        playback = await service.stop()
+        startedPlaybackForWorkout = false
     }
 
     func performPrimaryAction() async {
@@ -320,6 +325,7 @@ protocol MusicService: AnyObject {
     func loadQuickPicks() async throws -> [MusicQuickPick]
     func play(quickPick: MusicQuickPick) async throws -> MusicPlaybackSnapshot
     func pause() async -> MusicPlaybackSnapshot
+    func stop() async -> MusicPlaybackSnapshot
     func resume() async throws -> MusicPlaybackSnapshot
     func skipToNext() async throws -> MusicPlaybackSnapshot
     func refreshPlayback() async -> MusicPlaybackSnapshot

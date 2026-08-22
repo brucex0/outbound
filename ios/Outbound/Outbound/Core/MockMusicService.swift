@@ -85,6 +85,11 @@ final class MockMusicService: MusicService {
         return playback()
     }
 
+    func stop() async -> MusicPlaybackSnapshot {
+        isPlaying = false
+        return playback()
+    }
+
     func resume() async throws -> MusicPlaybackSnapshot {
         if currentQuickPick == nil {
             currentQuickPick = quickPickFixtures.first

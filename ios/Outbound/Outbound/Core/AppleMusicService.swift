@@ -112,6 +112,7 @@ final class AppleMusicService: MusicService {
             queuedSongs = songs
             currentQuickPick = quickPick
             player.queue = ApplicationMusicPlayer.Queue(for: songs)
+            player.state.repeatMode = .all
             try await player.prepareToPlay()
             try await player.play()
             Self.logger.info(
@@ -125,6 +126,12 @@ final class AppleMusicService: MusicService {
     func pause() async -> MusicPlaybackSnapshot {
         Self.logger.info("Pause Apple Music playback.")
         player.pause()
+        return playbackSnapshot()
+    }
+
+    func stop() async -> MusicPlaybackSnapshot {
+        Self.logger.info("Stop Apple Music playback at workout end.")
+        player.stop()
         return playbackSnapshot()
     }
 
@@ -175,6 +182,7 @@ final class AppleMusicService: MusicService {
                 query: "upbeat pop dance workout"
             )
             player.queue = ApplicationMusicPlayer.Queue(for: fallbackSongs)
+            player.state.repeatMode = .all
             try await player.prepareToPlay()
             try await player.play()
             Self.logger.info("Started fallback Apple Music queue.")
