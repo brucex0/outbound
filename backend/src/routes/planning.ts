@@ -17,8 +17,15 @@ import {
   submitReadiness,
 } from "../services/planning/planningService.js";
 import type { AppEnv } from "../types/hono.js";
+import { standaloneWorkoutCatalog } from "../data/standaloneWorkouts.js";
 
 const router = new Hono<AppEnv>();
+
+router.get("/standalone-workouts", async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  return c.json({ version: 1, workouts: standaloneWorkoutCatalog });
+});
 
 const goalSchema = z.object({
   type: z.string().min(1).max(64),

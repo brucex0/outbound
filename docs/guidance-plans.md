@@ -186,6 +186,7 @@ Current iOS/backend MVP note:
 - the backend now applies a curation layer in `backend/src/data/curatedTrainingPlanTemplates.ts` over the raw exported catalog before seeding and fallback; deployed backends load the active catalog from Prisma `TrainingPlanTemplate`, `TrainingPlanWeek`, `TrainingPlanWorkout`, and `TrainingPlanWorkoutStep` tables. A stored workout may omit `guideCue`; catalog reads use its `purpose` as the guide cue in that case so the client contract remains non-null.
 - the backend is now the source of truth for recommendation candidates, active-plan state, current-week progress, and Today adaptation
 - iOS fetches Explore Plans recommendations from `GET /v1/planning/recommendations`, caches the last good server response for immediate/offline display, and keeps `TrainingPlanLibrary.swift` as the final offline fallback and compatibility cache.
+- iOS fetches the plan-independent guided workout catalog from authenticated `GET /v1/planning/standalone-workouts` and caches the last good response for offline use. The server-owned catalog defines workout copy, targets, and timed steps; the app no longer bundles standalone workout definitions.
 - The top guide pick should stay personalized and short, but the More Plans picker should show the broader public plan catalog so users can browse credible presets beyond the current recommendation shortlist.
 
 ## Personalization Parameters

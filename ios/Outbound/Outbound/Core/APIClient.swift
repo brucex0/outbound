@@ -204,6 +204,10 @@ final class APIClient {
         try await get("/planning/recommendations")
     }
 
+    func fetchStandaloneWorkouts() async throws -> StandaloneWorkoutCatalogResponse {
+        try await get("/planning/standalone-workouts")
+    }
+
     func fetchPersonalizationSnapshot() async throws -> PersonalizationSnapshotDTO {
         try await get("/personalization/snapshot")
     }

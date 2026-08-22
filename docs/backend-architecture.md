@@ -202,6 +202,7 @@ Rules:
 
 Current API shape:
 
+- `GET /v1/planning/standalone-workouts`
 - `GET /v1/planning/recommendations`
 - `GET /v1/guide/plans/state`
 - `POST /v1/guide/plans/recommendation`
