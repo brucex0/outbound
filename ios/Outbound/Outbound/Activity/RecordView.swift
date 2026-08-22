@@ -337,10 +337,11 @@ struct RecordView: View {
             showSetupToast(message)
         }
         .onChange(of: musicStore.lastErrorMessage) { _, message in
-            guard message != nil else { return }
+            guard let message else { return }
             track(.init(.musicOperationFailed, properties: [
                 .errorCategory: .string(musicStore.hasDeveloperTokenError ? "configuration" : "provider")
             ]))
+            showSetupToast(message)
         }
         .overlay(alignment: .top) {
             if let setupToastMessage {

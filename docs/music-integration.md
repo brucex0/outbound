@@ -229,6 +229,8 @@ Implementation guidance:
 - test for interruptions, headphones disconnecting, and background/foreground transitions
 - define whether guide voice uses ducking or spoken-audio interruption before writing provider code
 
+For app-owned Apple Music queues, prepare the `ApplicationMusicPlayer` after assigning a new queue and before calling `play()`. Playback failures from activity start should use the shared transient toast so a selected mix never fails silently.
+
 Suggested future file:
 
 - `Core/AudioSessionCoordinator.swift`

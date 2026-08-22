@@ -112,6 +112,7 @@ final class AppleMusicService: MusicService {
             queuedSongs = songs
             currentQuickPick = quickPick
             player.queue = ApplicationMusicPlayer.Queue(for: songs)
+            try await player.prepareToPlay()
             try await player.play()
             Self.logger.info(
                 "Apple Music player started. quickPickID=\(quickPick.id, privacy: .public) playbackStatus=\(String(describing: self.player.state.playbackStatus), privacy: .public)"
@@ -174,6 +175,7 @@ final class AppleMusicService: MusicService {
                 query: "upbeat pop dance workout"
             )
             player.queue = ApplicationMusicPlayer.Queue(for: fallbackSongs)
+            try await player.prepareToPlay()
             try await player.play()
             Self.logger.info("Started fallback Apple Music queue.")
             return
