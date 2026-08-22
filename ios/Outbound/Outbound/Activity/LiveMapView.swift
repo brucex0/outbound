@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct LiveMapView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @ObservedObject var recorder: ActivityRecorder
@@ -137,9 +138,11 @@ struct LiveMapView: View {
                     showsMusicDisabledState: musicStore.hasDeveloperTokenError,
                     musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
                     onTogglePlayback: {
+                        trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
                         Task { await musicStore.togglePlayback() }
                     },
                     onSkipTrack: {
+                        trackMusicControl("skip")
                         Task { await musicStore.skipToNext() }
                     },
                     onStart: onStart,
@@ -257,6 +260,13 @@ struct LiveMapView: View {
 
     private func resumeActivity() {
         recorder.resume()
+    }
+
+    private func trackMusicControl(_ control: String) {
+        guard let analyticsManager else { return }
+        Task {
+            await analyticsManager.track(.init(.musicControlUsed, properties: [.control: .string(control)]))
+        }
     }
 
     private func updateMapCamera(for location: CLLocation, animated: Bool) {

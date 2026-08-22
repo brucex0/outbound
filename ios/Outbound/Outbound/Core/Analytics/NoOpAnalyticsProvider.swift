@@ -8,8 +8,8 @@ actor NoOpAnalyticsProvider: AnalyticsService {
         logger.debug("No-op analytics initialized")
     }
 
-    func trackEvent(eventName: String, parameters: [String: Any]?) async {
-        logger.debug("Event: \(AnalyticsSanitizer.eventName(eventName), privacy: .public), parameters: \(String(describing: parameters), privacy: .private)")
+    func trackEvent(eventName: String, parameters: [String: AnalyticsValue]) async {
+        logger.debug("Event: \(AnalyticsSanitizer.eventName(eventName), privacy: .public), parameterCount: \(parameters.count, privacy: .public)")
     }
 
     func setUserId(userId: String?) async {
@@ -22,5 +22,9 @@ actor NoOpAnalyticsProvider: AnalyticsService {
 
     func setCurrentScreen(screenName: String, screenClass: String?) async {
         logger.debug("Screen: \(AnalyticsSanitizer.screenName(screenName), privacy: .public), class: \(screenClass ?? "unspecified", privacy: .public)")
+    }
+
+    func setCollectionEnabled(_ enabled: Bool) async {
+        logger.debug("Collection enabled: \(enabled, privacy: .public)")
     }
 }

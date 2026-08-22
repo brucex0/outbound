@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import CoreLocation
 
-enum RecordingState {
+enum RecordingState: Equatable {
     case idle, active, paused
 }
 

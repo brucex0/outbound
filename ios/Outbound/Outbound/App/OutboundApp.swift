@@ -55,6 +55,9 @@ struct OutboundApp: App {
                 .environment(\.analyticsManager, analyticsManager)
                 .environmentObject(appearancePreferences)
                 .preferredColorScheme(appearancePreferences.mode.colorScheme)
+                .task(id: authStore.user?.id) {
+                    await analyticsManager.setUserId(userId: authStore.user?.id)
+                }
         }
     }
 

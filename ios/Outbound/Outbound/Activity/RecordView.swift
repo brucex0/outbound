@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import CoreLocation
 
 enum SessionPage: String {
     case camera
@@ -27,6 +28,7 @@ private enum ActivitySetupSheet: String, Identifiable {
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var guideStore: GuideStore
     @EnvironmentObject var guideCatalog: GuideCatalogStore
@@ -84,6 +86,11 @@ struct RecordView: View {
     @State private var showsRouteLibrary = false
     @State private var setupToastMessage: String?
     @State private var setupToastTask: Task<Void, Never>?
+    @State private var didTrackSetupView = false
+    @State private var exposedFeatures: Set<String> = []
+    @State private var reachedGoalThresholds: Set<Int> = []
+    @State private var previousRecorderState: RecordingState = .idle
+    @State private var activityStartedWithGroupRun = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -125,6 +132,7 @@ struct RecordView: View {
                             onFinish: finishRecording
                         ) { image, meta in
                             capturedPhotos.append((image, meta))
+                            track(.init(.photoCaptured, properties: [.sourceType: .string("in_activity")]))
                         }
                         .tag(SessionPage.camera)
                         .ignoresSafeArea()
@@ -173,9 +181,11 @@ struct RecordView: View {
                 intent: activeIntent ?? plannedIntent,
                 unitSystem: measurementPreferences.unitSystem
             )
+            trackGoalProgressIfNeeded(snapshot)
         }
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
+            trackRecordingStateTransition(to: state)
         }
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
@@ -203,6 +213,16 @@ struct RecordView: View {
         .onChange(of: activePage) { _, newPage in
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
+        }
+        .onChange(of: musicStore.snapshot.connectionState) { oldState, newState in
+            guard oldState == .connecting, newState != .connecting else { return }
+            track(.init(.musicAuthorizationCompleted, properties: [
+                .result: .string(newState == .connected ? "granted" : "not_granted")
+            ]))
+        }
+        .onChange(of: musicStore.playback.isPlaying) { wasPlaying, isPlaying in
+            guard !wasPlaying, isPlaying else { return }
+            track(.init(.musicPlaybackStarted, properties: [.result: .string("success")]))
         }
         .onDisappear {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
@@ -308,6 +328,12 @@ struct RecordView: View {
         .onChange(of: liveGroupStore.lastErrorMessage) { _, message in
             showSetupToast(message)
         }
+        .onChange(of: musicStore.lastErrorMessage) { _, message in
+            guard message != nil else { return }
+            track(.init(.musicOperationFailed, properties: [
+                .errorCategory: .string(musicStore.hasDeveloperTokenError ? "configuration" : "provider")
+            ]))
+        }
         .overlay(alignment: .top) {
             if let setupToastMessage {
                 Text(setupToastMessage)
@@ -349,7 +375,15 @@ struct RecordView: View {
             Button(String(localized: "record.group.join.action", defaultValue: "Join")) {
                 let invite = groupInviteText
                 groupInviteText = ""
-                Task { await liveGroupStore.joinGroup(invite: invite) }
+                track(.init(.groupRunJoinAttempted))
+                Task {
+                    await liveGroupStore.joinGroup(invite: invite)
+                    if liveGroupStore.isSharing {
+                        track(.init(.groupRunJoined, properties: [
+                            .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                        ]))
+                    }
+                }
             }
 
             Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {
@@ -489,6 +523,9 @@ struct RecordView: View {
         countdownStep = nil
         countdownTask = nil
         recorder.start()
+        reachedGoalThresholds = []
+        activityStartedWithGroupRun = liveGroupStore.isSharing
+        track(.init(.activityStarted, properties: activityConfigurationProperties))
         liveActivityManager.update(
             snapshot: recorder.liveSnapshot,
             state: recorder.state,
@@ -519,6 +556,7 @@ struct RecordView: View {
     private func finishRecording() {
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
+        track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
         liveGroupStore.finishActivity()
@@ -571,6 +609,15 @@ struct RecordView: View {
         ) else {
             return false
         }
+        var savedProperties = outcomeProperties(for: activity.summary)
+        savedProperties[.goalType] = .string(analyticsGoalType)
+        savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))
+        savedProperties[.musicEnabled] = .boolean(musicWasConfigured)
+        savedProperties[.routeSelected] = .boolean(activeIntent?.preparedRoute != nil)
+        savedProperties[.shoeSelected] = .boolean(selectedSessionShoe != nil)
+        savedProperties[.groupRunEnabled] = .boolean(activityStartedWithGroupRun)
+        savedProperties[.indoor] = .boolean(isIndoorSession)
+        track(.init(.activitySaved, properties: savedProperties))
         _ = socialStore.consumeRecordingActivityEventID()
 
         let estimatedEnergy = estimatedEnergyKilocalories(
@@ -620,6 +667,11 @@ struct RecordView: View {
     }
 
     private func discardPendingActivity() {
+        if let pendingActivity {
+            var properties = outcomeProperties(for: pendingActivity.summary)
+            properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(pendingActivity.photos.count))
+            track(.init(.activityDiscarded, properties: properties))
+        }
         let activityEventID = socialStore.consumeRecordingActivityEventID()
         liveActivityManager.end()
         liveShareStore.end()
@@ -643,6 +695,7 @@ struct RecordView: View {
         selectedSessionShoeID = nil
         didApplyDefaultSessionShoe = false
         isIndoorSession = false
+        activityStartedWithGroupRun = false
     }
 
     private var preferredSessionPage: SessionPage {
@@ -682,6 +735,7 @@ struct RecordView: View {
             guideCatalog.refreshInstalledVoices()
             applySmartGoalDefaultIfNeeded()
             applyDefaultSessionShoeIfNeeded()
+            trackSetupAndFeatureExposureIfNeeded()
         }
     }
 
@@ -725,6 +779,7 @@ struct RecordView: View {
         HStack(alignment: .bottom, spacing: 30) {
             VStack(spacing: 5) {
                 Button {
+                    track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
                     isPreActivityCameraPresented = true
                 } label: {
                     Image(systemName: preActivityPhoto == nil ? "camera.fill" : "checkmark.circle.fill")
@@ -822,7 +877,10 @@ struct RecordView: View {
                     systemImage: "music.note.list",
                     isConfigured: musicIsConfigured,
                     accessibilityValue: musicSetupValue
-                ) { setupSheet = .music }
+                ) {
+                    trackFeatureExposure("music")
+                    setupSheet = .music
+                }
 
                 compactSetupButton(
                     title: String(localized: "record.setup.route", defaultValue: "Route"),
@@ -830,7 +888,10 @@ struct RecordView: View {
                     systemImage: "map.fill",
                     isConfigured: selectedRouteIsConfigured,
                     accessibilityValue: selectedRouteName
-                ) { setupSheet = .route }
+                ) {
+                    trackFeatureExposure("routes")
+                    setupSheet = .route
+                }
 
                 compactSetupButton(
                     title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
@@ -906,6 +967,7 @@ struct RecordView: View {
                     ForEach(gearStore.activeShoes) { shoe in
                         Button {
                             selectedSessionShoeID = shoe.id
+                            track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                         } label: {
                             if selectedSessionShoe?.id == shoe.id {
                                 Label(shoe.displayName, systemImage: "checkmark")
@@ -1003,13 +1065,19 @@ struct RecordView: View {
             }
             if musicStore.canShowQuickPicks, !musicStore.quickPicks.isEmpty {
                 ForEach(musicStore.quickPicks) { quickPick in
-                    Button { musicStore.selectQuickPick(quickPick) } label: {
+                    Button {
+                        musicStore.selectQuickPick(quickPick)
+                        track(.init(.musicQuickPickSelected, properties: [.selectionType: .string("quick_pick")]))
+                    } label: {
                         setupChoiceRow(title: quickPick.title, detail: quickPick.subtitle, systemImage: quickPick.symbolName, isSelected: musicStore.selectedQuickPickID == quickPick.id)
                     }
                     .buttonStyle(.plain)
                 }
             } else {
-                Button { Task { await musicStore.performPrimaryAction() } } label: {
+                Button {
+                    if !musicStore.isConnected { track(.init(.musicAuthorizationRequested)) }
+                    Task { await musicStore.performPrimaryAction() }
+                } label: {
                     setupChoiceRow(title: musicStore.primaryActionTitle, detail: musicStore.musicSummaryLine, systemImage: "music.note.list", isSelected: musicIsConfigured)
                 }
                 .buttonStyle(.plain)
@@ -1027,6 +1095,7 @@ struct RecordView: View {
             Button {
                 setupSheet = nil
                 showsRouteLibrary = true
+                track(.init(.routeLibraryOpened))
             } label: {
                 Label(String(localized: "record.route.choose", defaultValue: "Choose a route"), systemImage: "map")
             }
@@ -1109,6 +1178,127 @@ struct RecordView: View {
     }
     private var photoAccessibilityValue: String { preActivityPhoto == nil ? String(localized: "record.photo.not_added", defaultValue: "No photo added") : String(localized: "record.photo.added", defaultValue: "Photo added") }
 
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
+    }
+
+    private func trackSetupAndFeatureExposureIfNeeded() {
+        guard !didTrackSetupView else { return }
+        didTrackSetupView = true
+        track(.init(.activitySetupViewed, properties: [.entrySource: .string(analyticsEntrySource)]))
+        ["music", "routes", "shoes", "photos", "group_run"].forEach(trackFeatureExposure)
+    }
+
+    private func trackFeatureExposure(_ feature: String) {
+        guard exposedFeatures.insert(feature).inserted else { return }
+        track(.init(.featureExposed, properties: [.feature: .string(feature)]))
+    }
+
+    private func trackRecordingStateTransition(to state: RecordingState) {
+        defer { previousRecorderState = state }
+        guard state != previousRecorderState else { return }
+        switch (previousRecorderState, state) {
+        case (.active, .paused):
+            track(.init(.activityPaused))
+        case (.paused, .active):
+            track(.init(.activityResumed))
+        default:
+            break
+        }
+    }
+
+    private func trackGoalProgressIfNeeded(_ snapshot: ActiveSessionSnapshot) {
+        guard recorder.state != .idle, let ratio = goalCompletionRatio(
+            distanceMeters: snapshot.distanceMeters,
+            durationSeconds: snapshot.elapsedSeconds
+        ) else { return }
+
+        for threshold in [25, 50, 75, 100]
+        where ratio * 100 >= Double(threshold) && reachedGoalThresholds.insert(threshold).inserted {
+            track(.init(.goalProgressReached, properties: [
+                .goalType: .string(analyticsGoalType),
+                .progressPercent: .integer(threshold)
+            ]))
+        }
+    }
+
+    private var activityConfigurationProperties: [ProductPropertyKey: AnalyticsValue] {
+        [
+            .entrySource: .string(analyticsEntrySource),
+            .goalType: .string(analyticsGoalType),
+            .targetBucket: .string(analyticsTargetBucket(for: (activeIntent ?? plannedIntent ?? .freestyleRun).activityGoal)),
+            .musicEnabled: .boolean(musicWasConfigured),
+            .routeSelected: .boolean(activeIntent?.preparedRoute != nil),
+            .shoeSelected: .boolean(selectedSessionShoe != nil),
+            .preRunPhotoAdded: .boolean(preActivityPhoto != nil),
+            .groupRunEnabled: .boolean(liveGroupStore.isSharing),
+            .liveShareEnabled: .boolean(liveShareStore.isArmedForNextActivity),
+            .indoor: .boolean(isIndoorSession),
+            .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+        ]
+    }
+
+    private func outcomeProperties(for summary: ActivitySummary) -> [ProductPropertyKey: AnalyticsValue] {
+        [
+            .durationBucket: .string(ProductAnalyticsBucket.duration(seconds: summary.durationSecs)),
+            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: summary.distanceM)),
+            .goalCompletionBucket: .string(ProductAnalyticsBucket.completion(goalCompletionRatio(
+                distanceMeters: summary.distanceM,
+                durationSeconds: summary.durationSecs
+            )))
+        ]
+    }
+
+    private var analyticsEntrySource: String {
+        let intent = activeIntent ?? plannedIntent ?? .freestyleRun
+        if intent.activityEvent != nil { return "activity_event" }
+        if intent.preparedRoute != nil { return "route" }
+        if !intent.workoutSteps.isEmpty { return "planned_workout" }
+        if intent.id == SessionIntent.freestyleRun.id { return "quick_run" }
+        return "prepared_activity"
+    }
+
+    private var analyticsGoalType: String {
+        let intent = activeIntent ?? plannedIntent ?? .freestyleRun
+        if !intent.workoutSteps.isEmpty { return "workout" }
+        switch intent.activityGoal {
+        case .freestyle: return "freestyle"
+        case .distanceMeters: return "distance"
+        case .timeSeconds: return "time"
+        }
+    }
+
+    private var musicWasConfigured: Bool {
+        musicStore.isConnected && musicStore.selectedQuickPick != nil
+    }
+
+    private func analyticsTargetBucket(for goal: ActivityGoal) -> String {
+        switch goal {
+        case .freestyle:
+            return "none"
+        case .distanceMeters(let meters):
+            return ProductAnalyticsBucket.distance(meters: meters)
+        case .timeSeconds(let seconds):
+            return ProductAnalyticsBucket.duration(seconds: seconds)
+        }
+    }
+
+    private func goalCompletionRatio(distanceMeters: Double, durationSeconds: Int) -> Double? {
+        let goal = (activeIntent ?? plannedIntent ?? .freestyleRun).activityGoal
+        if let target = goal.targetDistanceMeters, target > 0 { return distanceMeters / target }
+        if let target = goal.targetDurationSeconds, target > 0 { return Double(durationSeconds) / Double(target) }
+        return nil
+    }
+
+    private func preparedRouteDistance(_ route: PreparedRoute) -> Double {
+        zip(route.points, route.points.dropFirst()).reduce(0) { total, pair in
+            let start = CLLocation(latitude: pair.0.latitude, longitude: pair.0.longitude)
+            let end = CLLocation(latitude: pair.1.latitude, longitude: pair.1.longitude)
+            return total + start.distance(from: end)
+        }
+    }
+
     private func showSetupToast(_ message: String?) {
         guard let message, !message.isEmpty else { return }
         setupToastTask?.cancel()
@@ -1133,6 +1323,7 @@ struct RecordView: View {
 
                 HStack(spacing: 10) {
                     Button {
+                        track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
                         isPreActivityCameraPresented = true
                     } label: {
                         Label(String(localized: "record.photo.retake", defaultValue: "Retake"), systemImage: "camera.fill")
@@ -1140,6 +1331,7 @@ struct RecordView: View {
                     }
 
                     Button(role: .destructive) {
+                        track(.init(.photoRemoved, properties: [.sourceType: .string("pre_activity")]))
                         removePreActivityPhoto()
                     } label: {
                         Label(String(localized: "record.photo.remove", defaultValue: "Remove"), systemImage: "trash")
@@ -1150,6 +1342,7 @@ struct RecordView: View {
             } else {
                 HStack(spacing: 12) {
                     Button {
+                        track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
                         isPreActivityCameraPresented = true
                     } label: {
                         Label(preActivityPhotoActionTitle, systemImage: "camera.fill")
@@ -1204,6 +1397,7 @@ struct RecordView: View {
                 captureContext: .preActivity
             )
         ))
+        track(.init(.photoCaptured, properties: [.sourceType: .string("pre_activity")]))
     }
 
     private func removePreActivityPhoto() {
@@ -1299,6 +1493,9 @@ struct RecordView: View {
                 HStack(spacing: 10) {
                     Button {
                         Task {
+                            track(.init(.groupRunInviteShared, properties: [
+                                .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                            ]))
                             guard let presentation = liveGroupStore.invitePresentation(intent: plannedIntent) else { return }
                             await SystemSharePresenter.present(activityItems: presentation.activityItems)
                         }
@@ -1326,7 +1523,11 @@ struct RecordView: View {
                 HStack(spacing: 10) {
                     Button {
                         Task {
+                            track(.init(.groupRunCreateAttempted))
                             if let presentation = await liveGroupStore.createGroup(intent: plannedIntent) {
+                                track(.init(.groupRunCreated, properties: [
+                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                                ]))
                                 await SystemSharePresenter.present(activityItems: presentation.activityItems)
                             }
                         }
@@ -1342,6 +1543,7 @@ struct RecordView: View {
 
                     Button {
                         groupInviteText = ""
+                        trackFeatureExposure("group_run")
                         isGroupJoinAlertPresented = true
                     } label: {
                         Label(liveGroupStore.isJoining ? "Joining..." : "Join", systemImage: "link")
@@ -1444,6 +1646,7 @@ struct RecordView: View {
                 ForEach(gearStore.activeShoes) { shoe in
                     Button {
                         selectedSessionShoeID = shoe.id
+                        track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                     } label: {
                         if selectedSessionShoe?.id == shoe.id {
                             Label(shoe.displayName, systemImage: "checkmark")
@@ -1695,6 +1898,11 @@ struct RecordView: View {
         let currentIntent = plannedIntent ?? .freestyleRun
         plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
         selectedGoalMode = SessionGoalMode(goal: goal)
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("goal"),
+            .goalType: .string(analyticsGoalType),
+            .targetBucket: .string(analyticsTargetBucket(for: goal))
+        ]))
     }
 
     private func applyRoute(_ route: PreparedRoute?) {
@@ -1713,6 +1921,11 @@ struct RecordView: View {
             workoutSteps: currentIntent.workoutSteps,
             activityEvent: currentIntent.activityEvent
         )
+        guard let route else { return }
+        track(.init(.routeSelected, properties: [
+            .sourceType: .string(route.source.rawValue),
+            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
+        ]))
     }
 
     private func applySmartGoalDefaultIfNeeded() {
@@ -1795,6 +2008,7 @@ struct RecordView: View {
                     ForEach(musicStore.quickPicks) { quickPick in
                         Button {
                             musicStore.selectQuickPick(quickPick)
+                            track(.init(.musicQuickPickSelected, properties: [.selectionType: .string("quick_pick")]))
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: quickPick.symbolName)
@@ -1822,6 +2036,7 @@ struct RecordView: View {
                 }
                 } else {
                 Button {
+                    if !musicStore.isConnected { track(.init(.musicAuthorizationRequested)) }
                     Task { await musicStore.performPrimaryAction() }
                 } label: {
                     HStack(spacing: 10) {

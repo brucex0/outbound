@@ -22,9 +22,13 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - `AnalyticsManager` fans operations out to one or more providers.
 - `FirebaseAnalyticsProvider` and `NoOpAnalyticsProvider` are the only adapters.
 - Firebase Analytics is linked through Swift Package Manager and is selected when Firebase configuration is available.
-- Product surfaces do not currently emit analytics events, so the provider is initialized without a useful product taxonomy.
+- `ProductAnalyticsEvent.swift` defines the canonical event names, property keys, scalar values, privacy allowlist, and coarse buckets.
+- `AnalyticsManager` validates events, adds shared app/OS/language/authentication context, and fans the same canonical event out to every configured provider.
+- Authentication identity is synchronized at the app root with the opaque Plainstride account ID and cleared when the authenticated user disappears.
+- The activity flow emits setup exposure, configuration, start/pause/resume/finish/save/discard, goal-threshold, music, route-selection, shoe-selection, photo, and group-run events.
+- Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
 
-This is a good migration boundary, but product code should not continue passing arbitrary event-name strings and `[String: Any]` dictionaries directly. Those types allow spelling drift, unsupported values, accidental private data, and vendor-specific fields.
+The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 
 ## Measurement Model
 
@@ -229,4 +233,3 @@ Historical dashboards do not migrate automatically just because the client adapt
 6. Validate Firebase DebugView and initial dashboards with internal activity sessions.
 7. Review data after two to four weeks; delete unused events before expanding.
 8. Re-evaluate PostHog or another provider only against concrete unanswered questions.
-

@@ -10,11 +10,11 @@ actor FirebaseAnalyticsProvider: AnalyticsService {
         isInitialized = true
     }
 
-    func trackEvent(eventName: String, parameters: [String: Any]?) async {
+    func trackEvent(eventName: String, parameters: [String: AnalyticsValue]) async {
         guard isInitialized else { return }
         Analytics.logEvent(
             AnalyticsSanitizer.eventName(eventName),
-            parameters: AnalyticsSanitizer.firebaseParameters(parameters)
+            parameters: AnalyticsSanitizer.firebaseParameters(parameters.mapValues(\.foundationValue))
         )
     }
 
@@ -40,5 +40,10 @@ actor FirebaseAnalyticsProvider: AnalyticsService {
             parameters[AnalyticsParameterScreenClass] = AnalyticsSanitizer.screenName(screenClass)
         }
         Analytics.logEvent(AnalyticsEventScreenView, parameters: parameters)
+    }
+
+    func setCollectionEnabled(_ enabled: Bool) async {
+        guard isInitialized else { return }
+        Analytics.setAnalyticsCollectionEnabled(enabled)
     }
 }

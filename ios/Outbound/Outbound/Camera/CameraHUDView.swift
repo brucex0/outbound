@@ -7,6 +7,7 @@ import UIKit
 // rail, and a bottom session card that carries live workout status plus guide
 // motivation while the session is active.
 struct CameraHUDView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveShareStore: LiveShareStore
     @EnvironmentObject var liveGroupStore: LiveGroupStore
@@ -80,9 +81,11 @@ struct CameraHUDView: View {
                         showsMusicDisabledState: musicStore.hasDeveloperTokenError,
                         musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
                         onTogglePlayback: {
+                            trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
                             Task { await musicStore.togglePlayback() }
                         },
                         onSkipTrack: {
+                            trackMusicControl("skip")
                             Task { await musicStore.skipToNext() }
                         },
                         onStart: onStart,
@@ -287,6 +290,13 @@ struct CameraHUDView: View {
 
     private func resumeActivity() {
         recorder.resume()
+    }
+
+    private func trackMusicControl(_ control: String) {
+        guard let analyticsManager else { return }
+        Task {
+            await analyticsManager.track(.init(.musicControlUsed, properties: [.control: .string(control)]))
+        }
     }
 
     private func startCaptureFlight(with image: UIImage) {
