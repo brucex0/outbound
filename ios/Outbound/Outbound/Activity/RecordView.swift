@@ -93,6 +93,8 @@ struct RecordView: View {
     @State private var reachedGoalThresholds: Set<Int> = []
     @State private var previousRecorderState: RecordingState = .idle
     @State private var activityStartedWithGroupRun = false
+    @State private var intentBeforeSelectedRoute: SessionIntent?
+    @State private var selectedRouteDistanceMeters: Double?
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -108,6 +110,10 @@ struct RecordView: View {
         onElapsedTimeChange: ((Int) -> Void)? = nil
     ) {
         _plannedIntent = State(initialValue: initialIntent ?? .freestyleRun)
+        _intentBeforeSelectedRoute = State(initialValue: nil)
+        _selectedRouteDistanceMeters = State(
+            initialValue: initialIntent?.preparedRoute.map(Self.calculatePreparedRouteDistance)
+        )
         self.shouldApplySmartGoalDefault = initialIntent == nil
         self.isVisible = isVisible
         self.onCloseRequest = onCloseRequest
@@ -187,6 +193,9 @@ struct RecordView: View {
                 unitSystem: measurementPreferences.unitSystem
             )
             trackGoalProgressIfNeeded(snapshot)
+        }
+        .onReceive(recorder.routeGuidanceEvents) { event in
+            handleRouteGuidanceEvent(event)
         }
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
@@ -323,6 +332,8 @@ struct RecordView: View {
         .sheet(isPresented: $showsStandaloneWorkouts) {
             StandaloneWorkoutPickerView { workout in
                 plannedIntent = workout.intent
+                intentBeforeSelectedRoute = nil
+                selectedRouteDistanceMeters = nil
                 selectedGoalMode = SessionGoalMode(goal: workout.intent.activityGoal)
                 showsStandaloneWorkouts = false
             }
@@ -457,6 +468,35 @@ struct RecordView: View {
     private func restoreInterruptedSessionIfNeeded() {
         guard recorder.recoveredSession, !didRestoreSession else { return }
         didRestoreSession = true
+        if let recovered = recorder.recoveredRouteGuidance {
+            let route = recovered.route
+            let recoveredActivityType = route.activityType ?? recorder.recoveredActivityType
+            let sport = SportType(activityType: recoveredActivityType)
+            plannedIntent = SessionIntent(
+                id: "route-\(route.id)",
+                sport: sport,
+                title: route.name,
+                detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
+                guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
+                startLabel: String(localized: "route.guidance.resume", defaultValue: "Resume Route Guidance"),
+                routeName: route.name,
+                preparedRoute: route,
+                activityTypeOverride: recoveredActivityType
+            )
+            selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
+        } else if let recoveredActivityType = recorder.recoveredActivityType,
+                  recoveredActivityType != .running {
+            let sport = SportType(activityType: recoveredActivityType)
+            plannedIntent = SessionIntent(
+                id: "recovered-\(sport.rawValue)",
+                sport: sport,
+                title: String(format: String(localized: "activity.recovered.title.format", defaultValue: "Recovered %@"), locale: .autoupdatingCurrent, sport.displayName.lowercased()),
+                detail: String(localized: "activity.recovered.detail", defaultValue: "Paused activity recovered on this device"),
+                guideLine: String(localized: "activity.recovered.companion", defaultValue: "Resume when you are ready."),
+                startLabel: String(localized: "common.resume", defaultValue: "Resume"),
+                activityTypeOverride: recoveredActivityType
+            )
+        }
         activeIntent = plannedIntent
         activePage = preferredSessionPage
         showCamera = true
@@ -465,6 +505,14 @@ struct RecordView: View {
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent
         )
+        if let route = activeIntent?.preparedRoute,
+           let snapshot = recorder.routeGuidanceSnapshot {
+            track(.init(.routeGuidanceRecovered, properties: [
+                .sourceType: .string(route.source.rawValue),
+                .direction: .string(route.direction.rawValue),
+                .progressPercent: .integer(coarseRouteProgressPercent(snapshot.progressFraction))
+            ]))
+        }
     }
 
     private func seedLiveRunForUITestIfRequested() {
@@ -486,6 +534,7 @@ struct RecordView: View {
         )
         plannedIntent = intent
         activeIntent = intent
+        selectedRouteDistanceMeters = nil
         activePage = .map
         capturedPhotos = []
         pendingActivity = nil
@@ -553,11 +602,18 @@ struct RecordView: View {
 
         countdownStep = nil
         countdownTask = nil
-        recorder.start()
+        let routeGuidance = activeIntent?.preparedRoute.map {
+            ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
+        }
+        recorder.start(
+            activityType: activeIntent?.resolvedActivityType ?? .running,
+            routeGuidance: routeGuidance
+        )
         if let route = activeIntent?.preparedRoute {
             track(.init(.routeNavigationStarted, properties: [
                 .sourceType: .string(route.source.rawValue),
-                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
+                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route))),
+                .direction: .string(route.direction.rawValue)
             ]))
         }
         reachedGoalThresholds = []
@@ -630,19 +686,33 @@ struct RecordView: View {
     ) async -> Bool {
         let priorActivities = activityStore.activities
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
-        let savedSport = activeIntent?.sport ?? .run
+        let savedActivityType = activeIntent?.resolvedActivityType ?? .running
+        let savedSport = SportType(activityType: savedActivityType)
+        let followedRoute = activeIntent?.preparedRoute.map { route in
+            FollowedRouteMetadata(
+                route: route,
+                finalProgress: activity.summary.routeGuidance?.progressFraction ?? 0,
+                arrived: activity.summary.routeGuidance?.hasArrived ?? false
+            )
+        }
 
         guard let savedActivity = try? await activityStore.save(
             summary: activity.summary,
             photos: photos,
-            activityType: savedSport.activityType,
+            activityType: savedActivityType,
             reflection: reflection,
             goal: activeIntent?.activityGoal,
+            title: activeIntent?.preparedRoute == nil && savedActivityType == .running
+                ? nil
+                : activeIntent?.title,
             source: .outboundRecorded,
-            gear: gearStore.attachment(for: selectedSessionShoe),
+            gear: savedActivityType == .running ? gearStore.attachment(for: selectedSessionShoe) : nil,
             indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
             heartRateZones: heartRateZones(from: activity.summary),
-            activityEventID: socialStore.recordingActivityEventID
+            activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
+                ? socialStore.recordingActivityEventID
+                : nil,
+            followedRoute: followedRoute
         ) else {
             return false
         }
@@ -655,6 +725,14 @@ struct RecordView: View {
         savedProperties[.groupRunEnabled] = .boolean(activityStartedWithGroupRun)
         savedProperties[.indoor] = .boolean(isIndoorSession)
         track(.init(.activitySaved, properties: savedProperties))
+        if let followedRoute {
+            track(.init(.routeGuidanceCompleted, properties: [
+                .sourceType: .string(followedRoute.source.rawValue),
+                .direction: .string(followedRoute.direction.rawValue),
+                .progressPercent: .integer(coarseRouteProgressPercent(followedRoute.finalProgress)),
+                .result: .string(followedRoute.arrived ? "arrived" : "partial")
+            ]))
+        }
         _ = socialStore.consumeRecordingActivityEventID()
 
         let estimatedEnergy = estimatedEnergyKilocalories(
@@ -700,6 +778,12 @@ struct RecordView: View {
         case .bike:
             let moderateCyclingMET = 8.0
             return moderateCyclingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
+        case .walk, .hike:
+            let walkingMET = sport == .hike ? 6.0 : 3.5
+            return walkingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
+        case .swim:
+            let moderateSwimmingMET = 6.0
+            return moderateSwimmingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
         }
     }
 
@@ -709,7 +793,9 @@ struct RecordView: View {
             properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(pendingActivity.photos.count))
             track(.init(.activityDiscarded, properties: properties))
         }
-        let activityEventID = socialStore.consumeRecordingActivityEventID()
+        let resolvesRecordingEvent = activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
+        let consumedActivityEventID = socialStore.consumeRecordingActivityEventID()
+        let activityEventID = resolvesRecordingEvent ? consumedActivityEventID : nil
         liveActivityManager.end()
         liveShareStore.end()
         liveGroupStore.finishActivity()
@@ -733,6 +819,8 @@ struct RecordView: View {
         didApplyDefaultSessionShoe = false
         isIndoorSession = false
         activityStartedWithGroupRun = false
+        intentBeforeSelectedRoute = nil
+        selectedRouteDistanceMeters = nil
     }
 
     private var preferredSessionPage: SessionPage {
@@ -1274,6 +1362,47 @@ struct RecordView: View {
         }
     }
 
+    private func handleRouteGuidanceEvent(_ event: RouteGuidanceEvent) {
+        guard let route = (activeIntent ?? plannedIntent)?.preparedRoute else { return }
+        switch event {
+        case .progressReached(let percent):
+            track(.init(.routeGuidanceProgressReached, properties: [
+                .sourceType: .string(route.source.rawValue),
+                .direction: .string(route.direction.rawValue),
+                .progressPercent: .integer(percent)
+            ]))
+        case .deviated(let distanceMeters):
+            let message = String(localized: "route.guidance.off_route", defaultValue: "You’re off the selected route. Head back toward the highlighted line.")
+            guide.announceRouteGuidance(message, priority: .caution)
+            track(.init(.routeDeviationDetected, properties: [
+                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: distanceMeters))
+            ]))
+        case .rejoined:
+            let message = String(localized: "route.guidance.rejoined", defaultValue: "You’re back on the selected route.")
+            guide.announceRouteGuidance(message, priority: .advisory)
+            track(.init(.routeRejoined))
+        case .wrongWay:
+            let message = String(localized: "route.guidance.wrong_way", defaultValue: "You may be going the wrong way. Turn back toward the highlighted route.")
+            guide.announceRouteGuidance(message, priority: .caution)
+            track(.init(.routeWrongWayDetected, properties: [
+                .sourceType: .string(route.source.rawValue),
+                .direction: .string(route.direction.rawValue)
+            ]))
+        case .arrival:
+            let message = String(localized: "route.guidance.arrival", defaultValue: "Route complete. Nice work.")
+            guide.announceRouteGuidance(message, priority: .arrival)
+            track(.init(.routeGuidanceArrived, properties: [
+                .sourceType: .string(route.source.rawValue),
+                .direction: .string(route.direction.rawValue)
+            ]))
+        }
+    }
+
+    private func coarseRouteProgressPercent(_ fraction: Double) -> Int {
+        let percent = max(0, min(100, fraction.isFinite ? fraction * 100 : 0))
+        return [0, 25, 50, 75, 100].last(where: { Double($0) <= percent }) ?? 0
+    }
+
     private var activityConfigurationProperties: [ProductPropertyKey: AnalyticsValue] {
         [
             .entrySource: .string(analyticsEntrySource),
@@ -1343,6 +1472,16 @@ struct RecordView: View {
     }
 
     private func preparedRouteDistance(_ route: PreparedRoute) -> Double {
+        if let selectedRoute = plannedIntent?.preparedRoute,
+           selectedRoute.id == route.id,
+           selectedRoute.source == route.source,
+           let selectedRouteDistanceMeters {
+            return selectedRouteDistanceMeters
+        }
+        return Self.calculatePreparedRouteDistance(route)
+    }
+
+    nonisolated private static func calculatePreparedRouteDistance(_ route: PreparedRoute) -> Double {
         zip(route.points, route.points.dropFirst()).reduce(0) { total, pair in
             let start = CLLocation(latitude: pair.0.latitude, longitude: pair.0.longitude)
             let end = CLLocation(latitude: pair.1.latitude, longitude: pair.1.longitude)
@@ -1902,7 +2041,8 @@ struct RecordView: View {
     private var routeSetupCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let route = plannedIntent?.preparedRoute {
-                RoutePreviewMap(points: route.points)
+                RoutePreviewMap(points: route.directedPoints, showsEndpoints: true)
+                    .id("\(route.source.rawValue)-\(route.id)-\(route.direction.rawValue)")
                     .frame(height: 138)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .allowsHitTesting(false)
@@ -1931,6 +2071,21 @@ struct RecordView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Picker(
+                    String(localized: "record.route.direction", defaultValue: "Direction"),
+                    selection: Binding(
+                        get: { route.direction },
+                        set: { updateRouteDirection($0, for: route) }
+                    )
+                ) {
+                    Text(String(localized: "record.route.direction.saved", defaultValue: "As saved"))
+                        .tag(RouteDirection.forward)
+                    Text(String(localized: "record.route.direction.reverse", defaultValue: "Reverse"))
+                        .tag(RouteDirection.reverse)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityHint(String(localized: "record.route.direction.hint", defaultValue: "Choose which endpoint you intend to start from."))
             } else if let routeName = plannedIntent?.routeName {
                 HStack(spacing: 12) {
                     Image(systemName: "map.fill")
@@ -2188,6 +2343,93 @@ struct RecordView: View {
 
     private func applyRoute(_ route: PreparedRoute?) {
         let currentIntent = plannedIntent ?? .freestyleRun
+        if let route {
+            if currentIntent.preparedRoute == nil {
+                intentBeforeSelectedRoute = currentIntent
+            }
+            let baseIntent = intentBeforeSelectedRoute ?? currentIntent
+            let resolvedSport = route.activityType.map { SportType(activityType: $0) }
+                ?? baseIntent.sport
+            let preservesBaseStructure = route.activityType == nil
+                || route.activityType == baseIntent.resolvedActivityType
+            plannedIntent = SessionIntent(
+                id: currentIntent.id,
+                sport: resolvedSport,
+                title: route.name,
+                detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
+                guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
+                startLabel: String(localized: "route.guidance.start", defaultValue: "Start Route Guidance"),
+                targetDistanceMeters: currentIntent.targetDistanceMeters,
+                targetDurationSeconds: currentIntent.targetDurationSeconds,
+                routeName: route.name,
+                preparedRoute: route,
+                activityTypeOverride: route.activityType,
+                workoutSteps: preservesBaseStructure ? baseIntent.workoutSteps : [],
+                activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
+            )
+            selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
+        } else {
+            let baseIntent = intentBeforeSelectedRoute ?? freestyleFallback(for: currentIntent.sport)
+            let restoredBase = currentIntent.activityGoal == baseIntent.activityGoal
+                ? baseIntent
+                : baseIntent.replacingGoal(
+                    currentIntent.activityGoal,
+                    unitSystem: measurementPreferences.unitSystem
+                )
+            plannedIntent = SessionIntent(
+                id: restoredBase.id,
+                sport: restoredBase.sport,
+                title: restoredBase.title,
+                detail: restoredBase.detail,
+                guideLine: restoredBase.guideLine,
+                startLabel: restoredBase.startLabel,
+                targetDistanceMeters: restoredBase.targetDistanceMeters,
+                targetDurationSeconds: restoredBase.targetDurationSeconds,
+                routeName: restoredBase.routeName,
+                preparedRoute: restoredBase.preparedRoute,
+                activityTypeOverride: restoredBase.activityTypeOverride,
+                workoutSteps: restoredBase.workoutSteps,
+                activityEvent: restoredBase.activityEvent
+            )
+            intentBeforeSelectedRoute = nil
+            selectedRouteDistanceMeters = nil
+            return
+        }
+        guard let route else { return }
+        track(.init(.routeSelected, properties: [
+            .sourceType: .string(route.source.rawValue),
+            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
+        ]))
+    }
+
+    private func freestyleFallback(for sport: SportType) -> SessionIntent {
+        guard sport != .run else { return .freestyleRun }
+        return SessionIntent(
+            id: "freestyle-\(sport.rawValue)",
+            sport: sport,
+            title: String(
+                format: String(localized: "activity.freestyle.title.format", defaultValue: "Freestyle %@"),
+                locale: .autoupdatingCurrent,
+                sport.displayName.lowercased()
+            ),
+            detail: String(
+                format: String(localized: "activity.freestyle.detail.format", defaultValue: "%@ • no preset target"),
+                locale: .autoupdatingCurrent,
+                sport.displayName
+            ),
+            guideLine: String(localized: "activity.freestyle.companion", defaultValue: "Start easy and settle into a comfortable rhythm."),
+            startLabel: String(
+                format: String(localized: "activity.goal.start.freestyle.format", defaultValue: "Start %@"),
+                locale: .autoupdatingCurrent,
+                sport.displayName
+            )
+        )
+    }
+
+    private func updateRouteDirection(_ direction: RouteDirection, for route: PreparedRoute) {
+        guard direction != route.direction else { return }
+        let directedRoute = route.withDirection(direction)
+        let currentIntent = plannedIntent ?? .freestyleRun
         plannedIntent = SessionIntent(
             id: currentIntent.id,
             sport: currentIntent.sport,
@@ -2197,15 +2439,15 @@ struct RecordView: View {
             startLabel: currentIntent.startLabel,
             targetDistanceMeters: currentIntent.targetDistanceMeters,
             targetDurationSeconds: currentIntent.targetDurationSeconds,
-            routeName: route?.name,
-            preparedRoute: route,
+            routeName: directedRoute.name,
+            preparedRoute: directedRoute,
+            activityTypeOverride: directedRoute.activityType ?? currentIntent.activityTypeOverride,
             workoutSteps: currentIntent.workoutSteps,
             activityEvent: currentIntent.activityEvent
         )
-        guard let route else { return }
-        track(.init(.routeSelected, properties: [
-            .sourceType: .string(route.source.rawValue),
-            .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("route_direction"),
+            .selectionType: .string(direction.rawValue)
         ]))
     }
 

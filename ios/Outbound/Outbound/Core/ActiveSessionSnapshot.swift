@@ -47,6 +47,7 @@ struct SessionIntent: Identifiable, Hashable {
     let targetDurationSeconds: Int?
     let routeName: String?
     let preparedRoute: PreparedRoute?
+    let activityTypeOverride: ActivityType?
     let workoutSteps: [SessionIntentStep]
     let activityEvent: ActivityEventLaunchContext?
 
@@ -61,6 +62,7 @@ struct SessionIntent: Identifiable, Hashable {
         targetDurationSeconds: Int? = nil,
         routeName: String? = nil,
         preparedRoute: PreparedRoute? = nil,
+        activityTypeOverride: ActivityType? = nil,
         workoutSteps: [SessionIntentStep] = [],
         activityEvent: ActivityEventLaunchContext? = nil
     ) {
@@ -74,20 +76,28 @@ struct SessionIntent: Identifiable, Hashable {
         self.targetDurationSeconds = targetDurationSeconds
         self.routeName = routeName
         self.preparedRoute = preparedRoute
+        self.activityTypeOverride = activityTypeOverride
         self.workoutSteps = workoutSteps
         self.activityEvent = activityEvent
     }
 
     var systemImage: String { sport.systemImage }
 
+    var resolvedActivityType: ActivityType {
+        activityTypeOverride ?? sport.activityType
+    }
+
     var resolvedTargetDistanceMeters: Double? {
-        targetDistanceMeters
-            ?? SessionIntentGoalParser.distanceMeters(from: title)
+        if let targetDistanceMeters { return targetDistanceMeters }
+        guard preparedRoute == nil else { return nil }
+        return SessionIntentGoalParser.distanceMeters(from: title)
             ?? SessionIntentGoalParser.distanceMeters(from: detail)
     }
 
     var resolvedTargetDurationSeconds: Int? {
-        targetDurationSeconds ?? SessionIntentGoalParser.durationSeconds(from: detail)
+        if let targetDurationSeconds { return targetDurationSeconds }
+        guard preparedRoute == nil else { return nil }
+        return SessionIntentGoalParser.durationSeconds(from: detail)
     }
 
     var hasPlannedStructure: Bool {

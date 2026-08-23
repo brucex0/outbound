@@ -8,6 +8,43 @@ enum ElevationGainCalculator {
     private static let maximumGrade = 0.50
     private static let medianWindowSize = 5
 
+    struct StreamingRangeAccumulator {
+        private var previousAcceptedLocation: CLLocation?
+        private var altitudeWindow: [Double] = []
+        private var minimumFilteredAltitude: Double?
+        private var maximumFilteredAltitude: Double?
+
+        private(set) var rangeMeters: Double = 0
+
+        mutating func reset() {
+            self = StreamingRangeAccumulator()
+        }
+
+        mutating func ingest(_ location: CLLocation) {
+            guard ElevationGainCalculator.isValidAltitude(location.altitude),
+                  ElevationGainCalculator.isValidVerticalAccuracy(location.verticalAccuracy)
+            else { return }
+            if let previousAcceptedLocation,
+               !ElevationGainCalculator.isPlausibleTransition(
+                    from: previousAcceptedLocation,
+                    to: location
+               ) {
+                return
+            }
+
+            previousAcceptedLocation = location
+            altitudeWindow.append(location.altitude)
+            if altitudeWindow.count > ElevationGainCalculator.medianWindowSize {
+                altitudeWindow.removeFirst()
+            }
+            let sorted = altitudeWindow.sorted()
+            let filteredAltitude = sorted[sorted.count / 2]
+            minimumFilteredAltitude = min(minimumFilteredAltitude ?? filteredAltitude, filteredAltitude)
+            maximumFilteredAltitude = max(maximumFilteredAltitude ?? filteredAltitude, filteredAltitude)
+            rangeMeters = max(0, (maximumFilteredAltitude ?? 0) - (minimumFilteredAltitude ?? 0))
+        }
+    }
+
     static func sanitizedElevationRangeMeters(from locations: [CLLocation]) -> Double {
         let altitudes = sanitizedAltitudes(from: locations)
         guard let minimum = altitudes.min(),

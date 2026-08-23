@@ -22,9 +22,8 @@ struct LiveMapView: View {
     @State private var statusCardHeight: CGFloat = 132
     @State private var focusedParticipantID: String?
     @State private var isGroupManagementExpanded = false
-    @State private var routeDeviationMonitor = RouteDeviationMonitor()
-    @State private var routeStatusMessage: String?
     @State private var hasTrackedRouteDisplay = false
+    @State private var cachedPlannedRouteCoordinates: [CLLocationCoordinate2D] = []
 
     var body: some View {
         ZStack {
@@ -35,7 +34,28 @@ struct LiveMapView: View {
                     MapPolyline(coordinates: plannedRouteCoordinates)
                         .stroke(selectedRouteColor, style: selectedRouteStyle)
                 }
-                if let startCoordinate {
+                if let routeStartCoordinate {
+                    Annotation(
+                        routeEndpointsOverlap
+                            ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
+                            : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
+                        coordinate: routeStartCoordinate
+                    ) {
+                        RouteEndpointPin(
+                            systemImage: routeEndpointsOverlap ? "flag.checkered" : "flag.fill",
+                            color: routeEndpointsOverlap ? .orange : .green
+                        )
+                    }
+                }
+                if !routeEndpointsOverlap, let routeFinishCoordinate {
+                    Annotation(
+                        String(localized: "route.guidance.map.finish", defaultValue: "Route finish"),
+                        coordinate: routeFinishCoordinate
+                    ) {
+                        RouteEndpointPin(systemImage: "flag.checkered", color: .orange)
+                    }
+                }
+                if plannedRouteCoordinates.isEmpty, let startCoordinate {
                     Annotation("Trail Start", coordinate: startCoordinate) {
                         Circle()
                             .fill(.green)
@@ -124,6 +144,14 @@ struct LiveMapView: View {
                     .padding(.horizontal, 16)
                 }
 
+                if let routeGuidance = recorder.routeGuidanceSnapshot {
+                    RouteGuidanceStatusView(
+                        snapshot: routeGuidance,
+                        unitSystem: measurementPreferences.unitSystem
+                    )
+                    .padding(.horizontal, 16)
+                }
+
                 SessionStatusCard(
                     state: recorder.state,
                     isCompact: false,
@@ -168,21 +196,6 @@ struct LiveMapView: View {
             }
 
 
-            if let routeStatusMessage {
-                VStack {
-                    Label(routeStatusMessage, systemImage: routeDeviationMonitor.isOffRoute ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(routeDeviationMonitor.isOffRoute ? Color.red.opacity(0.92) : Color.green.opacity(0.92), in: Capsule())
-                        .shadow(radius: 8, y: 3)
-                        .padding(.top, 68)
-                    Spacer()
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
             VStack {
                 Spacer()
 
@@ -202,19 +215,18 @@ struct LiveMapView: View {
             } else if isFollowingUser {
                 updateMapCamera(for: loc, animated: true)
             }
-            evaluateRouteDeviation(at: loc)
         }
         .onAppear {
+            cachePlannedRouteCoordinates()
             guard !plannedRouteCoordinates.isEmpty else { return }
             framePlannedRoute(including: locationManager.location?.coordinate)
             trackRouteDisplayIfNeeded()
         }
+        .onChange(of: plannedRouteCacheKey) { _, _ in
+            cachePlannedRouteCoordinates()
+        }
         .onChange(of: recorder.state) { _, state in
-            if state == .idle {
-                routeDeviationMonitor.reset()
-                routeStatusMessage = nil
-                framePlannedRoute(including: locationManager.location?.coordinate)
-            }
+            if state == .idle { framePlannedRoute(including: locationManager.location?.coordinate) }
         }
         .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
             statusCardHeight = height
@@ -226,11 +238,11 @@ struct LiveMapView: View {
     }
 
     private var selectedRouteHaloStyle: StrokeStyle {
-        StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [1, 3])
+        StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round)
     }
 
     private var selectedRouteStyle: StrokeStyle {
-        StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [1, 3])
+        StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
     }
 
     private var guideMessage: String? {
@@ -239,11 +251,28 @@ struct LiveMapView: View {
     }
 
     private var trailCoordinates: [CLLocationCoordinate2D] {
-        locationManager.trackPoints.map(\.coordinate)
+        locationManager.trackCoordinates
     }
 
     private var plannedRouteCoordinates: [CLLocationCoordinate2D] {
-        intent?.preparedRoute?.points.map(\.locationCoordinate) ?? []
+        if !recorder.routeGuidanceCoordinates.isEmpty {
+            return recorder.routeGuidanceCoordinates
+        }
+        return cachedPlannedRouteCoordinates
+    }
+
+    private var plannedRouteCacheKey: String? {
+        guard let route = intent?.preparedRoute else { return nil }
+        return "\(route.id):\(route.direction.rawValue):\(route.points.count)"
+    }
+
+    private func cachePlannedRouteCoordinates() {
+        guard let route = intent?.preparedRoute else {
+            cachedPlannedRouteCoordinates = []
+            return
+        }
+        cachedPlannedRouteCoordinates = RouteWorkingGeometry.displayPoints(route.directedPoints)
+            .map(\.locationCoordinate)
     }
 
     private func framePlannedRoute(including userCoordinate: CLLocationCoordinate2D?) {
@@ -261,30 +290,6 @@ struct LiveMapView: View {
         mapPosition = .rect(rect.insetBy(dx: -horizontalPadding, dy: -verticalPadding))
     }
 
-    private func evaluateRouteDeviation(at location: CLLocation) {
-        guard recorder.state == .active, plannedRouteCoordinates.count > 1 else { return }
-        guard let event = routeDeviationMonitor.ingest(location: location, route: plannedRouteCoordinates) else { return }
-        switch event {
-        case .leftRoute(let distanceMeters):
-            let message = String(localized: "route.guidance.off_route", defaultValue: "You’re off the selected route. Head back toward the highlighted line.")
-            withAnimation { routeStatusMessage = message }
-            guide.announceRouteGuidance(message)
-            track(.init(.routeDeviationDetected, properties: [
-                .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: distanceMeters))
-            ]))
-        case .rejoinedRoute:
-            let message = String(localized: "route.guidance.rejoined", defaultValue: "You’re back on the selected route.")
-            withAnimation { routeStatusMessage = message }
-            guide.announceRouteGuidance(message)
-            track(.init(.routeRejoined))
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(6))
-                guard !routeDeviationMonitor.isOffRoute else { return }
-                withAnimation { routeStatusMessage = nil }
-            }
-        }
-    }
-
     private func trackRouteDisplayIfNeeded() {
         guard !hasTrackedRouteDisplay, let route = intent?.preparedRoute else { return }
         hasTrackedRouteDisplay = true
@@ -298,6 +303,25 @@ struct LiveMapView: View {
 
     private var startCoordinate: CLLocationCoordinate2D? {
         trailCoordinates.first
+    }
+
+    private var routeStartCoordinate: CLLocationCoordinate2D? {
+        plannedRouteCoordinates.first
+    }
+
+    private var routeFinishCoordinate: CLLocationCoordinate2D? {
+        plannedRouteCoordinates.last
+    }
+
+    private var routeEndpointsOverlap: Bool {
+        guard let routeStartCoordinate, let routeFinishCoordinate else { return false }
+        return CLLocation(
+            latitude: routeStartCoordinate.latitude,
+            longitude: routeStartCoordinate.longitude
+        ).distance(from: CLLocation(
+            latitude: routeFinishCoordinate.latitude,
+            longitude: routeFinishCoordinate.longitude
+        )) <= 20
     }
 
     private var currentCoordinate: CLLocationCoordinate2D? {
@@ -391,6 +415,113 @@ struct LiveMapView: View {
     private func updateMapCamera(for coordinate: CLLocationCoordinate2D, animated: Bool) {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         updateMapCamera(for: location, animated: animated)
+    }
+}
+
+private struct RouteEndpointPin: View {
+    let systemImage: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(width: 30, height: 30)
+            .background(color, in: Circle())
+            .overlay(Circle().stroke(.white, lineWidth: 2))
+            .shadow(radius: 3)
+    }
+}
+
+private struct RouteGuidanceStatusView: View {
+    let snapshot: RouteGuidanceSnapshot
+    let unitSystem: MeasurementUnitSystem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: statusIcon)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 30, height: 30)
+                    .background(statusColor.opacity(0.14), in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "route.guidance.title", defaultValue: "Route Guidance"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(statusText)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(progressText)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+
+            ProgressView(value: snapshot.progressFraction)
+                .tint(statusColor)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .background(Color(.systemBackground).opacity(0.94), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statusText: String {
+        switch snapshot.state {
+        case .acquiring:
+            String(localized: "route.guidance.status.acquiring", defaultValue: "Go to the route start to begin")
+        case .onRoute:
+            String(localized: "route.guidance.status.on_route", defaultValue: "On route")
+        case .offRoute:
+            String(localized: "route.guidance.status.off_route", defaultValue: "Off route")
+        case .wrongWay:
+            String(localized: "route.guidance.status.wrong_way", defaultValue: "Wrong way")
+        case .arrived:
+            String(localized: "route.guidance.status.arrived", defaultValue: "Route complete")
+        }
+    }
+
+    private var statusIcon: String {
+        switch snapshot.state {
+        case .acquiring: "location.magnifyingglass"
+        case .onRoute: "location.fill"
+        case .offRoute: "exclamationmark.triangle.fill"
+        case .wrongWay: "arrow.uturn.backward.circle.fill"
+        case .arrived: "checkmark.circle.fill"
+        }
+    }
+
+    private var statusColor: Color {
+        switch snapshot.state {
+        case .acquiring: .secondary
+        case .onRoute: .blue
+        case .offRoute, .wrongWay: .orange
+        case .arrived: .green
+        }
+    }
+
+    private var progressText: String {
+        String(
+            format: String(
+                localized: "route.guidance.status.progress_format",
+                defaultValue: "%1$@ remaining · %2$d%% complete"
+            ),
+            locale: .autoupdatingCurrent,
+            unitSystem.distanceString(meters: snapshot.remainingDistanceMeters, fractionDigits: 1),
+            Int((snapshot.progressFraction * 100).rounded())
+        )
     }
 }
 

@@ -139,11 +139,15 @@ struct SimplifiedAppShell: View {
         .onChange(of: communityRouteStore.pendingLaunch) { _, route in
             guard let route else { return }
             selectedRouteName = route.name
+            let sport = SportType(activityType: route.activityType)
             onStartRun(SessionIntent(
-                id: "route-\(route.id)", sport: .run, title: route.name,
-                detail: String(localized: "Follow a selected route"),
-                guideLine: String(localized: "Keep the route visible and run it your way."),
-                startLabel: String(localized: "Start route"), routeName: route.name, preparedRoute: route
+                id: "route-\(route.id)", sport: sport, title: route.name,
+                detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
+                guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
+                startLabel: String(localized: "route.guidance.start", defaultValue: "Start Route Guidance"),
+                routeName: route.name,
+                preparedRoute: route,
+                activityTypeOverride: route.activityType
             ))
             communityRouteStore.consumeLaunch()
         }

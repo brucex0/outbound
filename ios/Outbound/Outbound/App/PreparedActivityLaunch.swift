@@ -21,6 +21,15 @@ struct PreparedActivityLaunch: Codable, Equatable {
                 guideLine: "Keep it easy at the start, then build into the ride.",
                 startLabel: "Start Bike"
             )
+        case .walk, .hike, .swim:
+            return SessionIntent(
+                id: "freestyle-\(sport.rawValue)",
+                sport: sport,
+                title: String(format: String(localized: "activity.freestyle.title.format", defaultValue: "Freestyle %@"), locale: .autoupdatingCurrent, sport.displayName.lowercased()),
+                detail: String(format: String(localized: "activity.freestyle.detail.format", defaultValue: "%@ • no preset target"), locale: .autoupdatingCurrent, sport.displayName),
+                guideLine: String(localized: "activity.freestyle.companion", defaultValue: "Start easy and settle into a comfortable rhythm."),
+                startLabel: String(format: String(localized: "activity.goal.start.freestyle.format", defaultValue: "Start %@"), locale: .autoupdatingCurrent, sport.displayName)
+            )
         }
     }
 }

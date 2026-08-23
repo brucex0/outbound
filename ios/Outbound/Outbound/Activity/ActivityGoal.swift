@@ -140,7 +140,24 @@ extension SessionIntent {
     }
 
     func replacingGoal(_ goal: ActivityGoal, unitSystem: MeasurementUnitSystem) -> SessionIntent {
-        SessionIntent(
+        if preparedRoute != nil {
+            return SessionIntent(
+                id: id,
+                sport: sport,
+                title: title,
+                detail: detail,
+                guideLine: guideLine,
+                startLabel: startLabel,
+                targetDistanceMeters: goal.targetDistanceMeters,
+                targetDurationSeconds: goal.targetDurationSeconds,
+                routeName: routeName,
+                preparedRoute: preparedRoute,
+                activityTypeOverride: activityTypeOverride,
+                workoutSteps: workoutSteps,
+                activityEvent: activityEvent
+            )
+        }
+        return SessionIntent(
             id: "\(sport.rawValue)-\(goalID(for: goal))",
             sport: sport,
             title: goal.title(for: sport),
@@ -151,6 +168,7 @@ extension SessionIntent {
             targetDurationSeconds: goal.targetDurationSeconds,
             routeName: routeName,
             preparedRoute: preparedRoute,
+            activityTypeOverride: activityTypeOverride,
             workoutSteps: workoutSteps,
             activityEvent: activityEvent
         )

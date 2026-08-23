@@ -188,6 +188,9 @@ model Activity {
   moments                    Moment[]
   activityEventParticipation ActivityEventParticipant?
   publishedRoute             Route?
+  followedRouteId            String?
+  followedRoute              Route?                   @relation("FollowedRouteActivities", fields: [followedRouteId], references: [id], onDelete: SetNull)
+  routeCompletion            RouteCompletion?
 
   // AI guide analysis generated after activity
   guideAnalysis Json?
@@ -196,6 +199,7 @@ model Activity {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@unique([userId, clientActivityId])
+  @@index([followedRouteId])
 }
 
 model Route {
@@ -224,11 +228,24 @@ model Route {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  bookmarks RouteBookmark[]
+  bookmarks          RouteBookmark[]
+  followedActivities Activity[]        @relation("FollowedRouteActivities")
+  completions        RouteCompletion[]
 
   @@index([visibility, status, startLatitude, startLongitude])
   @@index([ownerId, updatedAt])
   @@index([activityType, visibility, status])
+}
+
+model RouteCompletion {
+  id         String   @id @default(cuid())
+  routeId    String
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  activityId String   @unique
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([routeId, createdAt])
 }
 
 model RouteBookmark {

@@ -4,13 +4,19 @@ import Foundation
 enum SportType: String, Codable, CaseIterable, Identifiable {
     case run
     case bike
+    case walk
+    case hike
+    case swim
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .run: "Run"
-        case .bike: "Bike"
+        case .run: String(localized: "activity.type.run", defaultValue: "Run")
+        case .bike: String(localized: "activity.type.bike", defaultValue: "Bike")
+        case .walk: String(localized: "activity.type.walk", defaultValue: "Walk")
+        case .hike: String(localized: "activity.type.hike", defaultValue: "Hike")
+        case .swim: String(localized: "activity.type.swim", defaultValue: "Swim")
         }
     }
 
@@ -18,6 +24,9 @@ enum SportType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .run: "figure.run"
         case .bike: "bicycle"
+        case .walk: "figure.walk"
+        case .hike: "figure.hiking"
+        case .swim: "figure.pool.swim"
         }
     }
 }
@@ -27,6 +36,19 @@ extension SportType {
         switch self {
         case .run: .running
         case .bike: .cycling
+        case .walk: .walking
+        case .hike: .hiking
+        case .swim: .swimming
+        }
+    }
+
+    init(activityType: ActivityType?) {
+        switch activityType {
+        case .cycling: self = .bike
+        case .walking: self = .walk
+        case .hiking: self = .hike
+        case .swimming: self = .swim
+        case .running, .none: self = .run
         }
     }
 }

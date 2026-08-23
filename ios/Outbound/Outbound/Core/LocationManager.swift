@@ -6,8 +6,9 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var location: CLLocation?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var trackPoints: [CLLocation] = []
+    @Published private(set) var trackCoordinates: [CLLocationCoordinate2D] = []
 
-    private let maximumValidRunningSpeedMetersPerSecond: Double = 10
+    private var maximumValidSpeedMetersPerSecond: Double = 10
     private let maximumValidLocationAccuracyMeters: Double = 40
     private let minimumValidPaceDistanceMeters: Double = 20
     private let minimumValidPaceDurationSeconds: TimeInterval = 5
@@ -18,7 +19,7 @@ final class LocationManager: NSObject, ObservableObject {
     var currentSpeedMetersPerSecond: Double? {
         guard let location = location else { return nil }
         if location.speed >= 0 {
-            return location.speed <= maximumValidRunningSpeedMetersPerSecond ? location.speed : nil
+            return location.speed <= maximumValidSpeedMetersPerSecond ? location.speed : nil
         }
 
         guard let previous = trackPoints.last else { return nil }
@@ -30,13 +31,15 @@ final class LocationManager: NSObject, ObservableObject {
 
         let distance = previous.distance(from: location)
         let impliedSpeed = distance / duration
-        return impliedSpeed <= maximumValidRunningSpeedMetersPerSecond ? impliedSpeed : nil
+        return impliedSpeed <= maximumValidSpeedMetersPerSecond ? impliedSpeed : nil
     }
 
     private let manager = CLLocationManager()
     private var wantsTracking = false
     private var wantsOneShotLocation = false
     private var trackingStartedAt: Date?
+    private var accumulatedDistanceMeters: Double = 0
+    private var elevationAccumulator = ElevationGainCalculator.StreamingRangeAccumulator()
 #if DEBUG
     private var testDistanceMeters: Double?
     private var testElevationGainMeters: Double?
@@ -71,14 +74,18 @@ final class LocationManager: NSObject, ObservableObject {
         }
     }
 
-    func startTracking() {
+    func startTracking(activityType: ActivityType = .running) {
 #if DEBUG
         clearTestOverrides()
 #endif
         trackPoints = []
+        trackCoordinates = []
+        accumulatedDistanceMeters = 0
+        elevationAccumulator.reset()
         location = nil
         trackingStartedAt = Date()
         wantsTracking = true
+        configureValidation(for: activityType)
 
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -113,8 +120,14 @@ final class LocationManager: NSObject, ObservableObject {
         return trackPoints
     }
 
-    func restoreTracking(from points: [CLLocation]) {
+    func restoreTracking(from points: [CLLocation], activityType: ActivityType = .running) {
+        configureValidation(for: activityType)
         trackPoints = points
+        trackCoordinates = points.map(\.coordinate)
+        accumulatedDistanceMeters = zip(points, points.dropFirst())
+            .reduce(0) { $0 + $1.0.distance(from: $1.1) }
+        elevationAccumulator.reset()
+        for point in points { elevationAccumulator.ingest(point) }
         location = points.last
         trackingStartedAt = Date()
         wantsTracking = true
@@ -125,16 +138,14 @@ final class LocationManager: NSObject, ObservableObject {
 #if DEBUG
         if let testDistanceMeters { return testDistanceMeters }
 #endif
-        guard trackPoints.count > 1 else { return 0 }
-        return zip(trackPoints, trackPoints.dropFirst())
-            .reduce(0) { $0 + $1.0.distance(from: $1.1) }
+        return accumulatedDistanceMeters
     }
 
     var elevationGainMeters: Double {
 #if DEBUG
         if let testElevationGainMeters { return testElevationGainMeters }
 #endif
-        return ElevationGainCalculator.sanitizedElevationRangeMeters(from: trackPoints)
+        return elevationAccumulator.rangeMeters
     }
 
     var currentPaceSecsPerKm: Double? {
@@ -149,8 +160,19 @@ final class LocationManager: NSObject, ObservableObject {
         guard time >= minimumValidPaceDurationSeconds else { return nil }
 
         let pace = (time / dist) * 1000
-        guard pace >= minimumValidPaceSecsPerKm, pace <= maximumValidPaceSecsPerKm else { return nil }
+        let minimumPace = maximumValidSpeedMetersPerSecond > 10 ? 35 : minimumValidPaceSecsPerKm
+        let maximumPace = maximumValidSpeedMetersPerSecond < 10 ? 3_600 : maximumValidPaceSecsPerKm
+        guard pace >= minimumPace, pace <= maximumPace else { return nil }
         return pace
+    }
+
+    private func configureValidation(for activityType: ActivityType) {
+        maximumValidSpeedMetersPerSecond = switch activityType {
+        case .cycling: 25
+        case .walking, .hiking: 7
+        case .running: 10
+        case .swimming: 5
+        }
     }
 
 #if DEBUG
@@ -164,6 +186,7 @@ final class LocationManager: NSObject, ObservableObject {
         testElevationGainMeters = elevationGainMeters
         testCurrentPaceSecsPerKm = currentPaceSecsPerKm
         self.trackPoints = trackPoints
+        trackCoordinates = trackPoints.map(\.coordinate)
         location = trackPoints.last
     }
 
@@ -181,10 +204,16 @@ extension LocationManager: CLLocationManagerDelegate {
         Task { @MainActor in
             self.wantsOneShotLocation = false
             guard self.shouldAcceptLocationUpdate(loc) else { return }
-            self.location = loc
-            if self.shouldAppendTrackPoint(loc) {
+            if self.wantsTracking {
+                guard self.shouldAppendTrackPoint(loc) else { return }
+                if let previous = self.trackPoints.last {
+                    self.accumulatedDistanceMeters += previous.distance(from: loc)
+                }
                 self.trackPoints.append(loc)
+                self.trackCoordinates.append(loc.coordinate)
+                self.elevationAccumulator.ingest(loc)
             }
+            self.location = loc
         }
     }
 
@@ -203,7 +232,7 @@ extension LocationManager: CLLocationManagerDelegate {
 
     private func shouldAppendTrackPoint(_ location: CLLocation) -> Bool {
         if location.speed >= 0,
-           location.speed > maximumValidRunningSpeedMetersPerSecond {
+           location.speed > maximumValidSpeedMetersPerSecond {
             return false
         }
 
@@ -212,7 +241,7 @@ extension LocationManager: CLLocationManagerDelegate {
             guard interval > 0 else { return false }
             let distance = previous.distance(from: location)
             let impliedSpeed = distance / interval
-            return impliedSpeed <= maximumValidRunningSpeedMetersPerSecond
+            return impliedSpeed <= maximumValidSpeedMetersPerSecond
         }
 
         return true

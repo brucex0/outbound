@@ -39,7 +39,8 @@ final class ActivityStore: ObservableObject {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
-        activityEventID: String? = nil
+        activityEventID: String? = nil,
+        followedRoute: FollowedRouteMetadata? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         let activity = try await persistence.save(
@@ -56,7 +57,8 @@ final class ActivityStore: ObservableObject {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
-            activityEventID: activityEventID
+            activityEventID: activityEventID,
+            followedRoute: followedRoute
         )
         activityRevision += 1
         activities.insert(activity, at: 0)
@@ -143,6 +145,7 @@ final class ActivityStore: ObservableObject {
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
             activityEventID: activity.activityEventID,
+            followedRoute: activity.followedRoute,
             route: activity.route,
             photos: activity.photos,
             sync: SavedActivitySyncState(
@@ -252,6 +255,8 @@ final class ActivityStore: ObservableObject {
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
                     activityEventId: activity.activityEventID,
+                    followedRouteId: activity.followedRoute?.source == .community ? activity.followedRoute?.routeID : nil,
+                    followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
                     route: activity.route,
                     reflection: activity.reflection,
                     clientData: syncSnapshot(for: activity),
@@ -307,6 +312,7 @@ final class ActivityStore: ObservableObject {
             cadence: current.cadence,
             heartRateZones: current.heartRateZones,
             activityEventID: current.activityEventID,
+            followedRoute: current.followedRoute,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -370,7 +376,8 @@ final class ActivityStore: ObservableObject {
                 let restored = copy(
                     snapshot,
                     photos: local?.photos ?? [],
-                    sync: synced
+                    sync: synced,
+                    preservedFollowedRoute: local?.followedRoute
                 )
                 try await persistence.replaceOrInsert(restored)
                 if let index = activities.firstIndex(where: { $0.id == activityID }) {
@@ -474,15 +481,18 @@ final class ActivityStore: ObservableObject {
     }
 
     private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
-        copy(activity, photos: [], sync: nil)
+        copy(activity, photos: [], sync: nil, stripImportedFollowedRoute: true)
     }
 
     private func copy(
         _ activity: SavedActivity,
         photos: [SavedPhoto],
-        sync: SavedActivitySyncState?
+        sync: SavedActivitySyncState?,
+        stripImportedFollowedRoute: Bool = false,
+        preservedFollowedRoute: FollowedRouteMetadata? = nil
     ) -> SavedActivity {
-        SavedActivity(
+        let followedRoute = activity.followedRoute ?? preservedFollowedRoute
+        return SavedActivity(
             id: activity.id,
             activityType: activity.activityType,
             title: activity.title,
@@ -504,6 +514,9 @@ final class ActivityStore: ObservableObject {
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
             activityEventID: activity.activityEventID,
+            followedRoute: stripImportedFollowedRoute && followedRoute?.source == .imported
+                ? nil
+                : followedRoute,
             route: activity.route,
             photos: photos,
             sync: sync

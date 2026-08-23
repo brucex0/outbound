@@ -61,7 +61,7 @@ Track:
 | Feature | Recommended sequence |
 | --- | --- |
 | Music | setup exposed -> authorization requested/result -> quick pick selected -> playback started -> control used or playback failed -> activity saved with music |
-| Routes | library exposed -> searched/imported/bookmarked -> route selected -> route displayed -> navigation started -> deviation detected/rejoined when applicable -> activity saved with route |
+| Routes | library exposed -> searched/imported/bookmarked -> route selected -> route displayed -> Route Guidance started -> 25/50/75/100% progress -> wrong-way or deviation/rejoin when applicable -> arrival/recovery when applicable -> activity saved with route outcome |
 | Distance/time goals | goal control exposed -> type/preset/custom selected -> activity started -> progress bucket reached -> activity saved |
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
@@ -70,6 +70,8 @@ Track:
 Exposure matters: a missing action means something only when the runner actually saw the relevant control. Use explicit exposure events for optional features and compare exposed users with adopters.
 
 Avoid continuous progress telemetry. Emit at most one event for each meaningful activity goal threshold, such as 25, 50, 75, and 100 percent.
+
+Route Guidance follows the same bounded rule. Its events may contain source (`community` or `imported`), intended direction, coarse progress percent, coarse distance bucket, and a semantic outcome. They must never contain raw route ID, route name, geometry, coordinates, or exact remaining distance. Recovery suppresses already-fired progress, deviation, wrong-way, and arrival events.
 
 ### Questions And Dashboards
 

@@ -23,7 +23,8 @@ actor ActivityPersistence {
         indoor: ActivityIndoorMetadata?,
         cadence: ActivityCadenceSummary?,
         heartRateZones: ActivityHeartRateZoneSummary?,
-        activityEventID: String?
+        activityEventID: String?,
+        followedRoute: FollowedRouteMetadata?
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
@@ -39,7 +40,8 @@ actor ActivityPersistence {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
-            activityEventID: activityEventID
+            activityEventID: activityEventID,
+            followedRoute: followedRoute
         )
     }
 
@@ -102,7 +104,8 @@ private nonisolated enum LocalActivityStore {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
-        activityEventID: String? = nil
+        activityEventID: String? = nil,
+        followedRoute: FollowedRouteMetadata? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -139,6 +142,7 @@ private nonisolated enum LocalActivityStore {
             cadence: cadence,
             heartRateZones: heartRateZones,
             activityEventID: activityEventID,
+            followedRoute: followedRoute,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -234,6 +238,7 @@ private nonisolated enum LocalActivityStore {
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
             activityEventID: activity.activityEventID,
+            followedRoute: activity.followedRoute,
             route: activity.route,
             photos: photos + addedPhotos,
             sync: SavedActivitySyncState(
@@ -349,6 +354,22 @@ private nonisolated enum LocalActivityStore {
     }()
 }
 
+nonisolated struct FollowedRouteMetadata: Codable, Hashable {
+    let source: PreparedRoute.Source
+    let routeID: String
+    let direction: RouteDirection
+    let finalProgress: Double
+    let arrived: Bool
+
+    init(route: PreparedRoute, finalProgress: Double, arrived: Bool) {
+        source = route.source
+        routeID = route.id
+        direction = route.direction
+        self.finalProgress = min(1, max(0, finalProgress.isFinite ? finalProgress : 0))
+        self.arrived = arrived
+    }
+}
+
 nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -373,6 +394,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let cadence: ActivityCadenceSummary?
     let heartRateZones: ActivityHeartRateZoneSummary?
     let activityEventID: String?
+    let followedRoute: FollowedRouteMetadata?
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -413,6 +435,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         cadence = try c.decodeIfPresent(ActivityCadenceSummary.self, forKey: .cadence)
         heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
         activityEventID = try c.decodeIfPresent(String.self, forKey: .activityEventID)
+        followedRoute = try c.decodeIfPresent(FollowedRouteMetadata.self, forKey: .followedRoute)
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -438,6 +461,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          cadence: ActivityCadenceSummary? = nil,
          heartRateZones: ActivityHeartRateZoneSummary? = nil,
          activityEventID: String? = nil,
+         followedRoute: FollowedRouteMetadata? = nil,
          route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.activityType = activityType; self.title = title; self.guideNudge = guideNudge
@@ -453,6 +477,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.cadence = cadence
         self.heartRateZones = heartRateZones
         self.activityEventID = activityEventID
+        self.followedRoute = followedRoute
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -480,6 +505,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case cadence
         case heartRateZones
         case activityEventID
+        case followedRoute
         case route
         case trackPoints
         case photos
@@ -508,6 +534,8 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(indoor, forKey: .indoor)
         try c.encodeIfPresent(cadence, forKey: .cadence)
         try c.encodeIfPresent(heartRateZones, forKey: .heartRateZones)
+        try c.encodeIfPresent(activityEventID, forKey: .activityEventID)
+        try c.encodeIfPresent(followedRoute, forKey: .followedRoute)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)

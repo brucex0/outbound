@@ -41,6 +41,11 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case routeDisplayed = "route_displayed"
     case routeDeviationDetected = "route_deviation_detected"
     case routeRejoined = "route_rejoined"
+    case routeWrongWayDetected = "route_wrong_way_detected"
+    case routeGuidanceProgressReached = "route_guidance_progress_reached"
+    case routeGuidanceArrived = "route_guidance_arrived"
+    case routeGuidanceRecovered = "route_guidance_recovered"
+    case routeGuidanceCompleted = "route_guidance_completed"
     case shoeSelected = "shoe_selected"
     case photoCaptureAttempted = "photo_capture_attempted"
     case photoCaptured = "photo_captured"
@@ -65,6 +70,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
+    case direction
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
     case progressPercent = "progress_percent"
@@ -130,10 +136,15 @@ enum ProductAnalyticsSchema {
         .routeLibraryOpened: [],
         .routeSelected: [.sourceType, .distanceBucket],
         .routeRemoved: [.sourceType],
-        .routeNavigationStarted: [.sourceType, .distanceBucket],
+        .routeNavigationStarted: [.sourceType, .distanceBucket, .direction],
         .routeDisplayed: [.sourceType],
         .routeDeviationDetected: [.distanceBucket],
         .routeRejoined: [],
+        .routeWrongWayDetected: [.sourceType, .direction],
+        .routeGuidanceProgressReached: [.sourceType, .direction, .progressPercent],
+        .routeGuidanceArrived: [.sourceType, .direction],
+        .routeGuidanceRecovered: [.sourceType, .direction, .progressPercent],
+        .routeGuidanceCompleted: [.sourceType, .direction, .progressPercent, .result],
         .shoeSelected: [.selectionType],
         .photoCaptureAttempted: [.sourceType],
         .photoCaptured: [.sourceType, .locationAttached],

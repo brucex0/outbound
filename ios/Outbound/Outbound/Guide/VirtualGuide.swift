@@ -7,6 +7,12 @@ enum GuideSpeechEvent {
     case didFinish
 }
 
+enum RouteGuidanceSpeechPriority: Equatable {
+    case advisory
+    case caution
+    case arrival
+}
+
 private enum GuidanceMomentRole {
     case progress
     case form
@@ -87,6 +93,9 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var recentSpokenRoles: [GuidanceMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
     private var spokenTimedBoundaryCues: Set<String> = []
+    private var lastRouteGuidanceFingerprint: String?
+    private var lastRouteGuidanceSpokenAt: Date?
+    private var routeSpeechQuietUntil: Date?
 
     private let firstAnalysisAfterSeconds = 75
     private let maxSnapshotHistory = 20
@@ -135,6 +144,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         recentSpokenRoles = []
         spokenGoalMilestones = []
         spokenTimedBoundaryCues = []
+        lastRouteGuidanceFingerprint = nil
+        lastRouteGuidanceSpokenAt = nil
+        routeSpeechQuietUntil = nil
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
@@ -186,10 +198,26 @@ final class VirtualGuide: NSObject, ObservableObject {
         )
     }
 
-    func announceRouteGuidance(_ message: String) {
+    func announceRouteGuidance(
+        _ message: String,
+        priority: RouteGuidanceSpeechPriority = .caution
+    ) {
         guard isActive, !message.isEmpty else { return }
         lastNudge = message
-        if speak(message, urgency: .caution, role: .caution) {
+        let fingerprint = normalizedFingerprint(for: message)
+        if lastRouteGuidanceFingerprint == fingerprint,
+           let lastRouteGuidanceSpokenAt,
+           Date().timeIntervalSince(lastRouteGuidanceSpokenAt) < 90 {
+            return
+        }
+        if priority == .advisory, speechEnabled, synthesizer.isSpeaking {
+            return
+        }
+        let urgency: SessionAnalysisUrgency = priority == .advisory ? .steady : .caution
+        if speak(message, urgency: urgency, role: priority == .advisory ? nil : .caution) {
+            lastRouteGuidanceFingerprint = fingerprint
+            lastRouteGuidanceSpokenAt = Date()
+            routeSpeechQuietUntil = Date().addingTimeInterval(TimeInterval(minimumGuideSpeechGapSeconds))
             recentSpokenMessages.append(message)
             if recentSpokenMessages.count > maxRecentSpokenMessages {
                 recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
@@ -201,6 +229,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func shouldAnalyze(_ snapshot: ActiveSessionSnapshot) -> Bool {
         guard snapshot.elapsedSeconds >= firstAnalysisAfterSeconds else { return false }
+        guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { return false }
         guard !isAnalyzing else { return false }
 
         guard let lastAnalyzedElapsedSeconds else {
@@ -279,6 +308,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
+        guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { return }
         if announceTimedBoundaryIfNeeded(for: snapshot) {
             return
         }
@@ -514,7 +544,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private var maximumReliableProgressAverageSpeedMetersPerSecond: Double {
         switch persona?.template.sport ?? sessionIntent?.sport ?? .run {
-        case .run:
+        case .run, .walk, .hike, .swim:
             return maximumRunningProgressAverageSpeedMetersPerSecond
         case .bike:
             return maximumCyclingProgressAverageSpeedMetersPerSecond
@@ -682,7 +712,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private var currentProgressDistanceIntervalMeters: Double {
         switch persona?.template.sport ?? .run {
-        case .run:
+        case .run, .walk, .hike, .swim:
             1_000
         case .bike:
             5_000

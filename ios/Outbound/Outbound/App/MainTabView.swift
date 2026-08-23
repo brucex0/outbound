@@ -88,6 +88,7 @@ struct MainTabView: View {
             .environmentObject(guideCatalog)
         }
         .onAppear {
+            restoreInterruptedActivityIfNeeded()
             prepareOnboarding()
             consumeStoredPreparedActivityIfNeeded()
         }
@@ -182,8 +183,50 @@ struct MainTabView: View {
     }
 
     private func consumeStoredPreparedActivityIfNeeded() {
-        guard activitySessionState == .idle else { return }
+        guard activeLaunch == nil, activitySessionState == .idle else { return }
         appNavigationStore.consumeStoredPreparedActivity(unitSystem: measurementPreferences.unitSystem)
+    }
+
+    private func restoreInterruptedActivityIfNeeded() {
+        guard activeLaunch == nil, let journal = ActiveSessionJournal.load() else { return }
+        activeLaunch = RecordLaunch(intent: recoveredIntent(from: journal))
+        isActivityVisible = false
+    }
+
+    private func recoveredIntent(from journal: ActiveSessionJournal) -> SessionIntent? {
+        if let recoveredRoute = ActiveRouteGuidanceJournal.load(
+            recoverySeed: journal.routeGuidanceRecoverySeed
+        )?.route {
+            let activityType = recoveredRoute.activityType ?? journal.activityType
+            let sport = SportType(activityType: activityType)
+            return SessionIntent(
+                id: "route-\(recoveredRoute.id)",
+                sport: sport,
+                title: recoveredRoute.name,
+                detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
+                guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
+                startLabel: String(localized: "route.guidance.resume", defaultValue: "Resume Route Guidance"),
+                routeName: recoveredRoute.name,
+                preparedRoute: recoveredRoute,
+                activityTypeOverride: activityType
+            )
+        }
+
+        guard let activityType = journal.activityType, activityType != .running else { return nil }
+        let sport = SportType(activityType: activityType)
+        return SessionIntent(
+            id: "recovered-\(sport.rawValue)",
+            sport: sport,
+            title: String(
+                format: String(localized: "activity.recovered.title.format", defaultValue: "Recovered %@"),
+                locale: .autoupdatingCurrent,
+                sport.displayName.lowercased()
+            ),
+            detail: String(localized: "activity.recovered.detail", defaultValue: "Paused activity recovered on this device"),
+            guideLine: String(localized: "activity.recovered.companion", defaultValue: "Resume when you are ready."),
+            startLabel: String(localized: "common.resume", defaultValue: "Resume"),
+            activityTypeOverride: activityType
+        )
     }
 }
 

@@ -80,6 +80,10 @@ final class APIClient {
         ])
     }
 
+    func fetchCommunityRoute(id: String) async throws -> CommunityRoute {
+        try await get("/routes/\(id)")
+    }
+
     func publishRoute(activityID: String, name: String) async throws -> CommunityRoute {
         try await post("/routes/from-activity/\(activityID)", body: PublishCommunityRouteRequest(name: name))
     }
@@ -1470,6 +1474,8 @@ struct ActivityUploadRequest: Encodable {
     let avgPace: Double?
     let avgHeartRate: Int?
     let activityEventId: String?
+    let followedRouteId: String?
+    let followedRouteCompleted: Bool?
     let route: SavedRoute?
     let reflection: FinishReflection?
     let clientData: SavedActivity

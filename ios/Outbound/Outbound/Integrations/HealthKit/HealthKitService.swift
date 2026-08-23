@@ -231,8 +231,15 @@ private extension HealthKitService {
             HKSeriesType.workoutRoute()
         ]
 
-        if let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
-            types.insert(distanceType)
+        let distanceIdentifiers: [HKQuantityTypeIdentifier] = [
+            .distanceWalkingRunning,
+            .distanceCycling,
+            .distanceSwimming,
+        ]
+        for identifier in distanceIdentifiers {
+            if let distanceType = HKQuantityType.quantityType(forIdentifier: identifier) {
+                types.insert(distanceType)
+            }
         }
         if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
             types.insert(energyType)
@@ -306,7 +313,7 @@ private extension HealthKitService {
 
     func saveWorkoutInternal(
         _ activity: SavedActivity,
-        sport: SportType,
+        sport _: SportType,
         energyKilocalories: Double?
     ) async throws {
         let metadata: [String: Any] = [
@@ -316,7 +323,13 @@ private extension HealthKitService {
             "com.plainstride.outbound.source": activity.source.displayName
         ]
         let configuration = HKWorkoutConfiguration()
-        configuration.activityType = sport == .bike ? .cycling : .running
+        configuration.activityType = switch activity.activityType {
+        case .running: .running
+        case .cycling: .cycling
+        case .walking: .walking
+        case .hiking: .hiking
+        case .swimming: .swimming
+        }
         configuration.locationType = activity.indoor?.isIndoor == true ? .indoor : .outdoor
         let workoutBuilder = HKWorkoutBuilder(
             healthStore: healthStore,
@@ -328,8 +341,13 @@ private extension HealthKitService {
         try await add(metadata, to: workoutBuilder)
 
         var samples: [HKSample] = []
+        let distanceIdentifier: HKQuantityTypeIdentifier = switch activity.activityType {
+        case .cycling: .distanceCycling
+        case .swimming: .distanceSwimming
+        case .running, .walking, .hiking: .distanceWalkingRunning
+        }
         if activity.distanceM > 0,
-           let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+           let distanceType = HKQuantityType.quantityType(forIdentifier: distanceIdentifier) {
             samples.append(HKQuantitySample(
                 type: distanceType,
                 quantity: HKQuantity(unit: .meter(), doubleValue: activity.distanceM),

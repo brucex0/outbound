@@ -13,6 +13,7 @@ import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming"] as const;
+const MAX_ACTIVITY_ROUTE_POINTS = 100_000;
 
 router.get("/", async (c) => {
   const unavailable = requireDatabase(c);
@@ -144,6 +145,8 @@ const createSchema = z.object({
   avgPace: z.number().optional(),
   avgHeartRate: z.number().optional(),
   activityEventId: z.string().min(1).optional(),
+  followedRouteId: z.string().min(1).max(128).optional(),
+  followedRouteCompleted: z.boolean().optional(),
   calories: z.number().optional(),
   route: z
     .object({
@@ -151,13 +154,14 @@ const createSchema = z.object({
         .array(
           z.object({
             timestamp: z.string(),
-            latitude: z.number().finite(),
-            longitude: z.number().finite(),
+            latitude: z.number().finite().min(-90).max(90),
+            longitude: z.number().finite().min(-180).max(180),
             altitude: z.number().finite().optional().nullable(),
             verticalAccuracy: z.number().finite().optional().nullable(),
           })
         )
-        .min(2),
+        .min(2)
+        .max(MAX_ACTIVITY_ROUTE_POINTS),
       visibility: z.string().optional().nullable(),
     })
     .optional()
@@ -174,6 +178,21 @@ const createSchema = z.object({
     .nullable(),
   clientData: z.record(z.unknown()).optional(),
   clientUpdatedAt: z.string().datetime().optional(),
+}).superRefine((body, context) => {
+  if (body.followedRouteCompleted && !body.followedRouteId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["followedRouteId"],
+      message: "A followed route ID is required to record route completion.",
+    });
+  }
+  if (body.followedRouteCompleted && !body.clientActivityId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["clientActivityId"],
+      message: "A client activity ID is required to record route completion idempotently.",
+    });
+  }
 });
 
 type ActivityRoutePayload = NonNullable<z.infer<typeof createSchema>["route"]>;
@@ -213,6 +232,18 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     return c.json({ error: "Authentication or legacy userId is required." }, 401);
   }
 
+  let resolvedFollowedRouteId: string | undefined;
+  if (body.followedRouteId) {
+    const followedRoute = await prisma.route.findFirst({
+      where: {
+        id: body.followedRouteId,
+        OR: [{ visibility: "public" }, { ownerId: resolvedUserId }],
+      },
+      select: { id: true },
+    });
+    resolvedFollowedRouteId = followedRoute?.id;
+  }
+
   const activityData = {
     clientActivityId: body.clientActivityId,
     syncSource: body.syncSource,
@@ -226,6 +257,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     avgPace: body.avgPace,
     avgHeartRate: body.avgHeartRate,
     calories: body.calories,
+    followedRouteId: resolvedFollowedRouteId,
     route: normalizeRoute(body.route),
     splits: body.splits,
     reflection: body.reflection ?? undefined,
@@ -237,6 +269,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
 
   let activity;
   let wasCreated = false;
+  let routeCompletionRecorded = false;
   const createActivityWithSocialPost = () =>
     prisma.$transaction(async (transaction) => {
       const createdActivity = await transaction.activity.create({
@@ -249,36 +282,117 @@ router.post("/", zValidator("json", createSchema), async (c) => {
           visibility: "connections",
         },
       });
-      return createdActivity;
+      if (body.followedRouteCompleted && resolvedFollowedRouteId) {
+        await recordRouteCompletion(transaction, createdActivity.id, resolvedFollowedRouteId);
+      }
+      return {
+        activity: createdActivity,
+        routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
+      };
     });
 
-  if (body.clientActivityId) {
-    const existing = await prisma.activity.findUnique({
-      where: {
+  const updateExistingActivity = (existingActivityId: string) =>
+    prisma.$transaction(async (transaction) => {
+      const existing = await transaction.activity.findUniqueOrThrow({
+        where: { id: existingActivityId },
+      });
+      if (
+        existing.followedRouteId
+        && resolvedFollowedRouteId
+        && existing.followedRouteId !== resolvedFollowedRouteId
+      ) {
+        throw new RouteAssociationConflictError("A saved activity cannot be reassigned to a different followed route.");
+      }
+
+      const incomingUpdatedAt = body.clientUpdatedAt ? new Date(body.clientUpdatedAt) : null;
+      const isIncomingOlder = existing.clientUpdatedAt
+        && incomingUpdatedAt
+        && existing.clientUpdatedAt > incomingUpdatedAt;
+      let updatedActivity = existing;
+      if (isIncomingOlder) {
+        if (resolvedFollowedRouteId && !existing.followedRouteId) {
+          const associated = await transaction.activity.updateMany({
+            where: {
+              id: existing.id,
+              followedRouteId: null,
+            },
+            data: { followedRouteId: resolvedFollowedRouteId },
+          });
+          if (associated.count === 0) {
+            throw new RouteAssociationConflictError("A saved activity cannot be reassigned to a different followed route.");
+          }
+          updatedActivity = await transaction.activity.findUniqueOrThrow({ where: { id: existing.id } });
+        }
+      } else if (!resolvedFollowedRouteId) {
+        updatedActivity = await transaction.activity.update({
+          where: { id: existing.id },
+          data: activityData,
+        });
+      } else {
+        const updated = await transaction.activity.updateMany({
+          where: {
+            id: existing.id,
+            OR: [{ followedRouteId: null }, { followedRouteId: resolvedFollowedRouteId }],
+          },
+          data: activityData,
+        });
+        if (updated.count === 0) {
+          throw new RouteAssociationConflictError("A saved activity cannot be reassigned to a different followed route.");
+        }
+        updatedActivity = await transaction.activity.findUniqueOrThrow({ where: { id: existing.id } });
+      }
+
+      if (body.followedRouteCompleted && resolvedFollowedRouteId) {
+        await recordRouteCompletion(transaction, updatedActivity.id, resolvedFollowedRouteId);
+      }
+      return {
+        activity: updatedActivity,
+        routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
+      };
+    });
+
+  try {
+    if (body.clientActivityId) {
+      const uniqueActivity = {
         userId_clientActivityId: {
           userId: resolvedUserId,
           clientActivityId: body.clientActivityId,
         },
-      },
-    });
+      } as const;
+      const existing = await prisma.activity.findUnique({ where: uniqueActivity });
 
-    if (existing) {
-      const incomingUpdatedAt = body.clientUpdatedAt ? new Date(body.clientUpdatedAt) : null;
-      if (existing.clientUpdatedAt && incomingUpdatedAt && existing.clientUpdatedAt > incomingUpdatedAt) {
-        activity = existing;
+      if (existing) {
+        const result = await updateExistingActivity(existing.id);
+        activity = result.activity;
+        routeCompletionRecorded = result.routeCompletionRecorded;
       } else {
-        activity = await prisma.activity.update({
-          where: { id: existing.id },
-          data: activityData,
-        });
+        try {
+          const result = await createActivityWithSocialPost();
+          activity = result.activity;
+          routeCompletionRecorded = result.routeCompletionRecorded;
+          wasCreated = true;
+        } catch (error) {
+          if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+            throw error;
+          }
+          const racedActivity = await prisma.activity.findUnique({ where: uniqueActivity });
+          if (!racedActivity) throw error;
+          const result = await updateExistingActivity(racedActivity.id);
+          activity = result.activity;
+          routeCompletionRecorded = result.routeCompletionRecorded;
+        }
       }
     } else {
+      const result = await createActivityWithSocialPost();
+      activity = result.activity;
+      routeCompletionRecorded = result.routeCompletionRecorded;
       wasCreated = true;
-      activity = await createActivityWithSocialPost();
     }
-  } else {
-    wasCreated = true;
-    activity = await createActivityWithSocialPost();
+  } catch (error) {
+    if (error instanceof RouteAssociationConflictError || error instanceof RouteCompletionConflictError) {
+      return c.json({ error: error.message }, 409);
+    }
+    throw error;
   }
 
   // Fire-and-forget: analyze activity + rebuild guide profile
@@ -330,10 +444,48 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       status: wasCreated ? "created" : "updated",
       uploadedAt: activity.updatedAt,
       serverUpdatedAt: activity.updatedAt,
+      followedRouteId: activity.followedRouteId,
+      routeCompletionRecorded,
+      followedRouteUnavailable: body.followedRouteId != null && resolvedFollowedRouteId == null,
     },
     wasCreated ? 201 : 200
   );
 });
+
+class RouteAssociationConflictError extends Error {}
+class RouteCompletionConflictError extends Error {}
+
+async function recordRouteCompletion(
+  transaction: Prisma.TransactionClient,
+  activityId: string,
+  routeId: string
+) {
+  const activity = await transaction.activity.findUnique({
+    where: { id: activityId },
+    select: { followedRouteId: true },
+  });
+  if (activity?.followedRouteId !== routeId) {
+    throw new RouteCompletionConflictError("The activity is not associated with this followed route.");
+  }
+  const inserted = await transaction.routeCompletion.createMany({
+    data: [{ activityId, routeId }],
+    skipDuplicates: true,
+  });
+  if (inserted.count === 0) {
+    const existing = await transaction.routeCompletion.findUnique({
+      where: { activityId },
+      select: { routeId: true },
+    });
+    if (existing?.routeId !== routeId) {
+      throw new RouteCompletionConflictError("This activity already completed a different route.");
+    }
+    return;
+  }
+  await transaction.route.update({
+    where: { id: routeId },
+    data: { completionCount: { increment: 1 } },
+  });
+}
 
 router.delete("/:id", async (c) => {
   const unavailable = requireDatabase(c);

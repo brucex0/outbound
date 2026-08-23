@@ -36,14 +36,16 @@ final class ActivityRecorder: ObservableObject {
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
     @Published private(set) var recoveredSession = false
+    @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
+    @Published private(set) var recoveredActivityType: ActivityType?
+    @Published private(set) var routeGuidanceSnapshot: RouteGuidanceSnapshot?
+    let routeGuidanceEvents = PassthroughSubject<RouteGuidanceEvent, Never>()
 
     let locationManager: LocationManager
     private var timer: AnyCancellable?
     private var locationCancellable: AnyCancellable?
     private var autoPauseCandidateStart: Date?
     private var autoResumeCandidateStart: Date?
-    private let autoPauseSpeedThresholdMetersPerSecond: Double = 1.0
-    private let autoResumeSpeedThresholdMetersPerSecond: Double = 1.5
     private let autoPauseWarmupSeconds: TimeInterval = 10
     private let autoPauseDurationSeconds: TimeInterval = 12
     private let autoResumeDurationSeconds: TimeInterval = 6
@@ -52,18 +54,44 @@ final class ActivityRecorder: ObservableObject {
     private var accumulatedActiveDuration: TimeInterval = 0
     private var heartRateSamples: [HeartRateSample] = []
     private var lastJournalSaveAt: Date?
+    private var lastJournaledTrackPointCount = 0
+    private var activityType: ActivityType = .running
+    private var routeGuidance: ActiveRouteGuidanceJournal?
+    private var routeGuidanceEngine: RouteGuidanceEngine?
+
+    private var autoPauseSpeedThresholdMetersPerSecond: Double {
+        switch activityType {
+        case .cycling: 1.5
+        case .walking, .hiking: 0.35
+        case .swimming: 0.2
+        case .running: 1.0
+        }
+    }
+
+    private var autoResumeSpeedThresholdMetersPerSecond: Double {
+        switch activityType {
+        case .cycling: 2.5
+        case .walking, .hiking: 0.75
+        case .swimming: 0.5
+        case .running: 1.5
+        }
+    }
 
     init(locationManager: LocationManager) {
         self.locationManager = locationManager
-        locationCancellable = locationManager.$location.sink { [weak self] _ in
-            self?.handleLocationUpdate()
+        locationCancellable = locationManager.$location.sink { [weak self] location in
+            self?.handleLocationUpdate(location)
         }
         restoreJournalIfPresent()
     }
 
-    func start() {
+    func start(
+        activityType: ActivityType = .running,
+        routeGuidance: ActiveRouteGuidanceJournal? = nil
+    ) {
         timer?.cancel()
         ActiveSessionJournal.clear()
+        lastJournaledTrackPointCount = 0
         let now = Date()
         state = .active
         autoPaused = false
@@ -71,13 +99,22 @@ final class ActivityRecorder: ObservableObject {
         startDate = now
         currentSegmentStartDate = now
         accumulatedActiveDuration = 0
+        self.activityType = activityType
+        self.routeGuidance = routeGuidance
+        routeGuidance?.saveRouteSnapshot()
+        routeGuidanceEngine = routeGuidance.flatMap {
+            RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
+        }
+        routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
+        recoveredRouteGuidance = nil
+        recoveredActivityType = nil
         elapsedSeconds = 0
         distanceMeters = 0
         elevationGainMeters = 0
         currentPace = nil
         heartRate = nil
         heartRateSamples.removeAll()
-        locationManager.startTracking()
+        locationManager.startTracking(activityType: activityType)
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
         timer = Timer.publish(every: 1, on: .main, in: .common)
@@ -124,6 +161,7 @@ final class ActivityRecorder: ObservableObject {
         autoPauseCandidateStart = nil
         timer?.cancel()
         let track = locationManager.stopTracking()
+        let finishedRouteGuidance = routeGuidanceSnapshot
         let summary = ActivitySummary(
             startedAt: startDate ?? Date(),
             endedAt: Date(),
@@ -132,6 +170,7 @@ final class ActivityRecorder: ObservableObject {
             avgPace: distanceMeters > 0 ? Double(elapsedSeconds) / (distanceMeters / 1000) : nil,
             elevationGainM: elevationGainMeters,
             healthMetrics: healthMetricsSummary(),
+            routeGuidance: finishedRouteGuidance,
             trackPoints: track
         )
         liveSnapshot = makeSnapshot(isActive: false)
@@ -140,6 +179,11 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = 0
         heartRateSamples.removeAll()
         recoveredSession = false
+        recoveredRouteGuidance = nil
+        recoveredActivityType = nil
+        routeGuidance = nil
+        routeGuidanceEngine = nil
+        routeGuidanceSnapshot = nil
         ActiveSessionJournal.clear()
         return summary
     }
@@ -245,7 +289,10 @@ final class ActivityRecorder: ObservableObject {
         updateSessionMetrics(now: Date())
     }
 
-    private func handleLocationUpdate() {
+    private func handleLocationUpdate(_ location: CLLocation?) {
+        if state == .active, let location {
+            updateRouteGuidance(with: location)
+        }
         switch state {
         case .active:
             evaluateAutoPauseCandidate(now: Date())
@@ -316,17 +363,46 @@ final class ActivityRecorder: ObservableObject {
     private func restoreJournalIfPresent() {
         guard let journal = ActiveSessionJournal.load() else { return }
         let points = journal.trackPoints.map(\.location)
+        lastJournaledTrackPointCount = journal.trackPoints.count
         startDate = journal.startedAt
         accumulatedActiveDuration = TimeInterval(journal.elapsedSeconds)
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
-        locationManager.restoreTracking(from: points)
+        activityType = journal.activityType ?? .running
+        locationManager.restoreTracking(from: points, activityType: activityType)
         distanceMeters = locationManager.totalDistanceMeters
         elevationGainMeters = locationManager.elevationGainMeters
         currentPace = locationManager.currentPaceSecsPerKm
         state = .paused
         recoveredSession = true
+        recoveredActivityType = activityType
+        routeGuidance = ActiveRouteGuidanceJournal.load(recoverySeed: journal.routeGuidanceRecoverySeed)
+        recoveredRouteGuidance = routeGuidance
+        routeGuidanceEngine = routeGuidance.flatMap {
+            RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
+        }
+        routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
         liveSnapshot = makeSnapshot()
+    }
+
+    private func updateRouteGuidance(with location: CLLocation) {
+        guard var engine = routeGuidanceEngine,
+              let snapshot = engine.ingest(location)
+        else { return }
+        routeGuidanceEngine = engine
+        routeGuidanceSnapshot = snapshot.withoutEvents
+        if let route = routeGuidance?.route {
+            routeGuidance = ActiveRouteGuidanceJournal(
+                route: route,
+                recoverySeed: engine.makeRecoverySeed()
+            )
+        }
+        if !snapshot.events.isEmpty {
+            persistJournal(force: true)
+        }
+        for event in snapshot.events {
+            routeGuidanceEvents.send(event)
+        }
     }
 
     private func persistJournal(force: Bool = false) {
@@ -334,11 +410,21 @@ final class ActivityRecorder: ObservableObject {
         let now = Date()
         if !force, let lastJournalSaveAt, now.timeIntervalSince(lastJournalSaveAt) < 10 { return }
         lastJournalSaveAt = now
+        let trackPoints = locationManager.trackPoints
+        if trackPoints.count < lastJournaledTrackPointCount {
+            lastJournaledTrackPointCount = 0
+        }
+        let newTrackPoints = trackPoints.dropFirst(lastJournaledTrackPointCount)
+            .map(JournalTrackPoint.init)
+        if ActiveSessionTrackJournal.append(newTrackPoints) {
+            lastJournaledTrackPointCount = trackPoints.count
+        }
         ActiveSessionJournal(
             startedAt: startDate,
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
-            trackPoints: locationManager.trackPoints.map(JournalTrackPoint.init)
+            activityType: activityType,
+            routeGuidanceRecoverySeed: routeGuidance?.recoverySeed
         ).save()
     }
 
@@ -402,6 +488,25 @@ final class ActivityRecorder: ObservableObject {
             return .paused
         }
     }
+
+    var routeGuidanceCoordinates: [CLLocationCoordinate2D] {
+        routeGuidanceEngine?.displayCoordinates ?? []
+    }
+}
+
+private extension RouteGuidanceSnapshot {
+    var withoutEvents: RouteGuidanceSnapshot {
+        RouteGuidanceSnapshot(
+            state: state,
+            progressMeters: progressMeters,
+            totalDistanceMeters: totalDistanceMeters,
+            remainingDistanceMeters: remainingDistanceMeters,
+            distanceFromRouteMeters: distanceFromRouteMeters,
+            progressFraction: progressFraction,
+            nearestSegmentIndex: nearestSegmentIndex,
+            events: []
+        )
+    }
 }
 
 struct ActivitySummary {
@@ -412,6 +517,7 @@ struct ActivitySummary {
     let avgPace: Double?
     let elevationGainM: Double
     let healthMetrics: ActivityHealthMetrics?
+    let routeGuidance: RouteGuidanceSnapshot?
     let trackPoints: [CLLocation]
 
     init(
@@ -422,6 +528,7 @@ struct ActivitySummary {
         avgPace: Double?,
         elevationGainM: Double = 0,
         healthMetrics: ActivityHealthMetrics? = nil,
+        routeGuidance: RouteGuidanceSnapshot? = nil,
         trackPoints: [CLLocation]
     ) {
         self.startedAt = startedAt
@@ -431,6 +538,7 @@ struct ActivitySummary {
         self.avgPace = avgPace
         self.elevationGainM = elevationGainM
         self.healthMetrics = healthMetrics
+        self.routeGuidance = routeGuidance
         self.trackPoints = trackPoints
     }
 }

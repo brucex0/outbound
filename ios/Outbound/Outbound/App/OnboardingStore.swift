@@ -242,6 +242,12 @@ struct OnboardingProfile: Codable, Equatable {
             return "\(intakeSummary.firstSessionLength.rawValue) min gentle ride"
         case (_, .bike):
             return "\(intakeSummary.firstSessionLength.rawValue) min easy ride"
+        case (_, .walk):
+            return String(format: String(localized: "onboarding.first_session.walk.format", defaultValue: "%d min easy walk"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
+        case (_, .hike):
+            return String(format: String(localized: "onboarding.first_session.hike.format", defaultValue: "%d min easy hike"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
+        case (_, .swim):
+            return String(format: String(localized: "onboarding.first_session.swim.format", defaultValue: "%d min easy swim"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
         }
     }
 
@@ -251,6 +257,12 @@ struct OnboardingProfile: Codable, Equatable {
             return (intakeSummary.focus == .first5K || intakeSummary.focus == .comeback) ? "Walk-run" : "Run"
         case .bike:
             return "Ride"
+        case .walk:
+            return String(localized: "activity.type.walk", defaultValue: "Walk")
+        case .hike:
+            return String(localized: "activity.type.hike", defaultValue: "Hike")
+        case .swim:
+            return String(localized: "activity.type.swim", defaultValue: "Swim")
         }
     }
 
