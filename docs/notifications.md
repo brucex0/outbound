@@ -47,6 +47,29 @@ Firebase Admin sends visible notification content plus these string data fields:
 
 Creating the inbox record succeeds independently of push. Delivery errors are logged, while invalid tokens are deleted automatically.
 
+### Inspect production delivery failures
+
+Push failures are written to the Cloud Run logs with the prefix `[push]`. In Google Cloud Console, open **Logging > Logs Explorer**, select the `outbound-api` Cloud Run service, and filter for:
+
+```text
+resource.type="cloud_run_revision"
+resource.labels.service_name="outbound-api"
+textPayload:"[push]"
+```
+
+Or use:
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="outbound-api" AND textPayload:"[push]"' \
+  --project=outbound-494602 \
+  --freshness=24h \
+  --limit=100 \
+  --format=json
+```
+
+Each failed Firebase response includes its error code and message, device index, and whether the token was classified as stale. Registration tokens are intentionally omitted from logs.
+
 ## iOS Contract
 
 - `PushNotificationCoordinator` owns authorization, APNs/FCM registration, backend synchronization, and pending tap state.

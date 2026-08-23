@@ -39,10 +39,24 @@ export async function deliverPushNotification(notification: PushNotificationPayl
       ? [devices[index]!.token]
       : [];
   });
+  const failures = result.responses.flatMap((response, index) => {
+    if (response.success) return [];
+    return [{
+      deviceIndex: index,
+      code: response.error?.code ?? "unknown",
+      message: response.error?.message ?? "Firebase did not provide an error message.",
+      staleToken: staleTokens.includes(devices[index]!.token),
+    }];
+  });
   if (staleTokens.length > 0) {
     await prisma.pushDevice.deleteMany({ where: { token: { in: staleTokens } } });
   }
-  if (result.failureCount > staleTokens.length) {
-    console.error("[push] delivery failures", { notificationId: notification.id, failures: result.failureCount });
+  if (failures.length > 0) {
+    console.error("[push] delivery failures", {
+      notificationId: notification.id,
+      recipientId: notification.recipientId,
+      failureCount: failures.length,
+      failures,
+    });
   }
 }
