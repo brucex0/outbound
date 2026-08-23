@@ -56,6 +56,11 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupRunJoinAttempted = "group_run_join_attempted"
     case groupRunJoined = "group_run_joined"
     case groupRunInviteShared = "group_run_invite_shared"
+    case liveGuidanceMomentDetected = "live_guidance_moment_detected"
+    case liveGuidanceCueSpoken = "live_guidance_cue_spoken"
+    case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
+    case liveGuidanceChallengeSelected = "live_guidance_challenge_selected"
+    case liveGuidanceFeedbackSubmitted = "live_guidance_feedback_submitted"
 }
 
 enum ProductPropertyKey: String, Sendable, CaseIterable {
@@ -90,6 +95,9 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case control
     case result
     case errorCategory = "error_category"
+    case momentType = "moment_type"
+    case coachingContract = "coaching_contract"
+    case cueCountBucket = "cue_count_bucket"
 }
 
 struct ProductAnalyticsEvent: Sendable, Equatable {
@@ -154,7 +162,12 @@ enum ProductAnalyticsSchema {
         .groupRunCreated: [.participantCountBucket],
         .groupRunJoinAttempted: [],
         .groupRunJoined: [.participantCountBucket],
-        .groupRunInviteShared: [.participantCountBucket]
+        .groupRunInviteShared: [.participantCountBucket],
+        .liveGuidanceMomentDetected: [.momentType, .coachingContract],
+        .liveGuidanceCueSpoken: [.momentType, .coachingContract],
+        .liveGuidanceCueEvaluated: [.momentType, .result],
+        .liveGuidanceChallengeSelected: [.selectionType],
+        .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket]
     ]
 
     nonisolated static func validatedProperties(for event: ProductAnalyticsEvent) -> [ProductPropertyKey: AnalyticsValue]? {

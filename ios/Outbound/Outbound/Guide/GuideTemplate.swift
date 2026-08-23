@@ -76,9 +76,9 @@ enum GuidanceIntensity: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .calm: "Calm"
-        case .balanced: "Balanced"
-        case .driven: "Driven"
+        case .calm: String(localized: "guide.tone.calm", defaultValue: "Calm")
+        case .balanced: String(localized: "guide.tone.balanced", defaultValue: "Balanced")
+        case .driven: String(localized: "guide.tone.driven", defaultValue: "Driven")
         }
     }
 }
@@ -92,17 +92,9 @@ enum NudgeFrequency: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .low: "Less"
-        case .normal: "Standard"
-        case .high: "More"
-        }
-    }
-
-    var analysisIntervalSeconds: Int {
-        switch self {
-        case .low: 120
-        case .normal: 75
-        case .high: 45
+        case .low: String(localized: "guide.updates.less", defaultValue: "Less")
+        case .normal: String(localized: "guide.updates.standard", defaultValue: "Standard")
+        case .high: String(localized: "guide.updates.more", defaultValue: "More")
         }
     }
 
@@ -331,13 +323,15 @@ struct GuidePersona: Codable, Hashable, Identifiable {
     let voice: GuideVoice
     let intensity: GuidanceIntensity
     let nudgeFrequency: NudgeFrequency
+    let coachingContract: CoachingContract
 
     var id: String {
         [
             template.id,
             voice.id,
             intensity.rawValue,
-            nudgeFrequency.rawValue
+            nudgeFrequency.rawValue,
+            coachingContract.rawValue
         ].joined(separator: ":")
     }
 }

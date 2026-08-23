@@ -75,6 +75,22 @@ struct GuideSelectionView: View {
                 }
             }
 
+            Section(String(localized: "guide.contract.section.title", defaultValue: "Coaching level")) {
+                Picker(
+                    String(localized: "guide.contract.picker.title", defaultValue: "Coaching level"),
+                    selection: coachingContractBinding
+                ) {
+                    ForEach(CoachingContract.allCases) { contract in
+                        Text(contract.displayName).tag(contract)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(guideCatalog.selection.coachingContract.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(String(localized: "guide.tone.section.title", defaultValue: "Coaching tone")) {
                 Picker(String(localized: "guide.tone.picker.title", defaultValue: "Coaching tone"), selection: intensityBinding) {
                     ForEach(GuidanceIntensity.allCases) { intensity in
@@ -83,16 +99,17 @@ struct GuideSelectionView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Picker(String(localized: "guide.tone.spoken_updates", defaultValue: "Spoken Updates"), selection: nudgeFrequencyBinding) {
+            }
+
+            Section(String(localized: "guide.updates.section.title", defaultValue: "Stat updates")) {
+                Picker(String(localized: "guide.updates.picker.title", defaultValue: "Stat updates"), selection: nudgeFrequencyBinding) {
                     ForEach(NudgeFrequency.allCases) { frequency in
                         Text(frequency.displayName).tag(frequency)
                     }
                 }
                 .pickerStyle(.segmented)
-            }
 
-            Section {
-                Text(String(localized: "guide.tone.frequency.help", defaultValue: "Update frequency controls how often your companion offers spoken nudges and live pace, time, and distance recaps during an activity."))
+                Text(String(localized: "guide.updates.help", defaultValue: "Controls regular time, distance, split pace, and average-pace announcements independently from coaching."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -289,6 +306,13 @@ struct GuideSelectionView: View {
         Binding(
             get: { guideCatalog.selection.nudgeFrequency },
             set: { guideCatalog.setNudgeFrequency($0) }
+        )
+    }
+
+    private var coachingContractBinding: Binding<CoachingContract> {
+        Binding(
+            get: { guideCatalog.selection.coachingContract },
+            set: { guideCatalog.setCoachingContract($0) }
         )
     }
 }

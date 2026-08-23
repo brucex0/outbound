@@ -14,6 +14,7 @@ struct SessionAnalysisRequest {
     let sessionIntent: SessionIntent?
     let recentNudges: [String]
     let companionBrief: CompanionSessionBriefDTO?
+    let momentType: LiveGuidanceMomentType?
 
     init(
         profile: GuideProfile?,
@@ -22,7 +23,8 @@ struct SessionAnalysisRequest {
         recentSnapshots: [ActiveSessionSnapshot],
         sessionIntent: SessionIntent? = nil,
         recentNudges: [String] = [],
-        companionBrief: CompanionSessionBriefDTO? = nil
+        companionBrief: CompanionSessionBriefDTO? = nil,
+        momentType: LiveGuidanceMomentType? = nil
     ) {
         self.profile = profile
         self.persona = persona
@@ -31,6 +33,7 @@ struct SessionAnalysisRequest {
         self.sessionIntent = sessionIntent
         self.recentNudges = recentNudges
         self.companionBrief = companionBrief
+        self.momentType = momentType
     }
 }
 
@@ -146,7 +149,7 @@ extension SessionAnalysisRequest {
                 maxWords: 18
             ),
             decision: .init(
-                shouldNudge: true,
+                shouldNudge: momentType != nil,
                 reason: reason,
                 intent: intent,
                 urgency: derivedUrgency.rawValue
@@ -175,6 +178,7 @@ extension SessionAnalysisRequest {
     }
 
     private var nudgeReason: String {
+        if let momentType { return momentType.rawValue }
         if let heartRate = snapshot.heartRate, heartRate > 185 {
             return "heart_rate_high"
         }
@@ -204,6 +208,16 @@ extension SessionAnalysisRequest {
 
     private var nudgeIntent: String {
         switch nudgeReason {
+        case LiveGuidanceMomentType.fastStart.rawValue:
+            return "settle_early_effort"
+        case LiveGuidanceMomentType.paceDrift.rawValue:
+            return "restore_rhythm"
+        case LiveGuidanceMomentType.rhythmRecovery.rawValue:
+            return "recognize_recovery"
+        case LiveGuidanceMomentType.segmentTransition.rawValue:
+            return "enter_next_segment"
+        case LiveGuidanceMomentType.finishOpportunity.rawValue:
+            return "finish_composed"
         case "heart_rate_high":
             return "settle_breathing"
         case "startup_settling":
@@ -224,6 +238,9 @@ extension SessionAnalysisRequest {
     }
 
     private var derivedUrgency: SessionAnalysisUrgency {
+        if momentType == .fastStart || momentType == .paceDrift || momentType == .finishOpportunity {
+            return .opportunity
+        }
         if let heartRate = snapshot.heartRate, heartRate > 185 {
             return .caution
         }
@@ -381,13 +398,73 @@ final class RuleBasedSessionAnalysisProvider: SessionAnalysisProvider {
 
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult {
         messageCounter += 1
+        guard let momentType = request.momentType else {
+            return SessionAnalysisResult(
+                message: "",
+                urgency: .steady,
+                shouldSpeak: false,
+                generatedAt: Date(),
+                providerID: identifier
+            )
+        }
         return SessionAnalysisResult(
-            message: buildMessage(for: request),
+            message: momentMessage(for: momentType, request: request),
             urgency: urgency(for: request),
             shouldSpeak: true,
             generatedAt: Date(),
             providerID: identifier
         )
+    }
+
+    private func momentMessage(
+        for momentType: LiveGuidanceMomentType,
+        request: SessionAnalysisRequest
+    ) -> String {
+        switch request.spokenLanguage {
+        case .english:
+            switch momentType {
+            case .fastStart:
+                return request.persona?.intensity == .driven
+                    ? "Strong start. Control it now so you still own the finish."
+                    : "The start is a little quick. Ease back and make the effort sustainable."
+            case .paceDrift:
+                return request.persona?.intensity == .calm
+                    ? "The pace is drifting. Relax the shoulders and gently find your earlier rhythm."
+                    : "Pace is drifting. Reset your form and bring the rhythm back under you."
+            case .rhythmRecovery:
+                return "That adjustment worked. You found the rhythm again."
+            case .segmentTransition:
+                return "New segment. Settle into its target before you press."
+            case .finishOpportunity:
+                return request.persona?.intensity == .driven
+                    ? "You have enough left. Build the finish with control."
+                    : "The finish is close. Stay composed and let the effort rise gradually."
+            case .challengeStart:
+                return "Challenge starts now. Build the pace smoothly."
+            case .challengeComplete:
+                return "Challenge complete. Settle back into your run."
+            }
+        case .spanish:
+            switch momentType {
+            case .fastStart: return "Has empezado un poco rápido. Baja el ritmo y haz que el esfuerzo sea sostenible."
+            case .paceDrift: return "El ritmo está bajando. Relaja los hombros y recupera tu paso anterior."
+            case .rhythmRecovery: return "Ese ajuste funcionó. Recuperaste el ritmo."
+            case .segmentTransition: return "Nuevo segmento. Encuentra primero el objetivo y luego aprieta."
+            case .finishOpportunity: return "El final está cerca. Mantén el control y aumenta el esfuerzo poco a poco."
+            case .challengeStart: return "El reto empieza ahora. Aumenta el ritmo con control."
+            case .challengeComplete: return "Reto completado. Vuelve a tu ritmo normal."
+            }
+        case .simplifiedChinese:
+            switch momentType {
+            case .fastStart: return "开局有点快。稍微放松，让体力能够持续到最后。"
+            case .paceDrift: return "配速开始下降。放松肩膀，重新找回之前的节奏。"
+            case .rhythmRecovery: return "刚才的调整有效。你重新找回节奏了。"
+            case .segmentTransition: return "进入新阶段。先稳住目标，再逐渐发力。"
+            case .finishOpportunity: return "终点快到了。保持稳定，再逐步加强。"
+            case .challengeStart: return "挑战现在开始。平稳提高配速。"
+            case .challengeComplete: return "挑战完成。回到正常跑步节奏。"
+            }
+        }
     }
 
     private func buildMessage(for request: SessionAnalysisRequest) -> String {

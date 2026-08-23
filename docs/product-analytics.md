@@ -26,6 +26,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - `AnalyticsManager` validates events, adds shared app/OS/language/authentication context, and fans the same canonical event out to every configured provider.
 - Authentication identity is synchronized at the app root with the opaque Plainstride account ID and cleared when the authenticated user disappears.
 - The activity flow emits setup exposure, configuration, start/pause/resume/finish/save/discard, goal-threshold, music, route-selection, shoe-selection, photo, and group-run events.
+- Live Guidance emits bounded semantic moment, spoken-cue, evaluated-outcome, challenge-selection, and post-run-feedback events. It never sends generated coaching text or exact pace, distance, or time values.
 - Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
@@ -66,12 +67,15 @@ Track:
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
 | Group runs | group control exposed -> create/join attempted -> invitation shared/opened -> joined -> activity started -> activity saved |
+| Live Guidance | coaching level selected -> semantic moment detected -> cue spoken -> cue outcome evaluated -> optional challenge completed -> post-run feedback submitted |
 
 Exposure matters: a missing action means something only when the runner actually saw the relevant control. Use explicit exposure events for optional features and compare exposed users with adopters.
 
 Avoid continuous progress telemetry. Emit at most one event for each meaningful activity goal threshold, such as 25, 50, 75, and 100 percent.
 
 Route Guidance follows the same bounded rule. Its events may contain source (`community` or `imported`), intended direction, coarse progress percent, coarse distance bucket, and a semantic outcome. They must never contain raw route ID, route name, geometry, coordinates, or exact remaining distance. Recovery suppresses already-fired progress, deviation, wrong-way, and arrival events.
+
+Live Guidance uses semantic values such as moment type, coaching contract, outcome, and a coarse cue-count bucket. Generated speech, prompts, snapshot history, exact pace, exact distance, and exact elapsed time stay on device. Evaluated cue outcomes update local aggregate evidence used to reduce repeatedly unhelpful Responsive cues; post-run feedback is stored only as aggregate preference evidence.
 
 ### Questions And Dashboards
 

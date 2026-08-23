@@ -23,19 +23,6 @@ private enum GuidanceMomentRole {
     case caution
 }
 
-private struct GuidanceMoment {
-    let role: GuidanceMomentRole
-
-    var includesProgressContext: Bool {
-        switch role {
-        case .progress, .segment, .finish:
-            return true
-        case .form, .hype, .paceAdjustment, .caution:
-            return false
-        }
-    }
-}
-
 private enum GoalMilestone: Hashable {
     case distanceOneThird
     case distanceHalfway
@@ -71,10 +58,12 @@ final class VirtualGuide: NSObject, ObservableObject {
     @Published var latestAnalysis: SessionAnalysisResult?
     @Published var isAnalyzing = false
     @Published var providerName: String
+    @Published private(set) var sessionReport: LiveGuidanceSessionReport = .empty
 
     private let provider: any SessionAnalysisProvider
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = GuideSpeechSynthesizer()
+    private let momentDirector = LiveGuidanceDirector()
     private let speechEnabled: Bool
     private var profile: GuideProfile?
     private var persona: GuidePersona?
@@ -82,7 +71,6 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var companionBrief: CompanionSessionBriefDTO?
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
-    private var lastAnalyzedElapsedSeconds: Int?
     private var lastProgressAnnouncementElapsedSeconds: Int?
     private var lastProgressTimeMilestone = 0
     private var lastProgressDistanceMilestone = 0
@@ -99,9 +87,10 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var lastRouteGuidanceFingerprint: String?
     private var lastRouteGuidanceSpokenAt: Date?
     private var routeSpeechQuietUntil: Date?
+    private var pendingMoment: DetectedLiveGuidanceMoment?
+    private var queuedMoments: [DetectedLiveGuidanceMoment] = []
 
-    private let firstAnalysisAfterSeconds = 75
-    private let maxSnapshotHistory = 20
+    private let maxSnapshotHistory = 240
     private let maxRecentSpokenFingerprints = 4
     private let maxRecentSpokenMessages = 4
     private let maxRecentSpokenRoles = 4
@@ -110,9 +99,11 @@ final class VirtualGuide: NSObject, ObservableObject {
     private let minimumProgressAnnouncementElapsedSeconds = 300
     private let minimumProgressAnnouncementDistanceMeters: Double = 400
     private let minimumGuideSpeechGapSeconds = 75
+    private let minimumStatSpeechGapSeconds = 20
     private let maximumRunningProgressAverageSpeedMetersPerSecond: Double = 10
     private let maximumCyclingProgressAverageSpeedMetersPerSecond: Double = 25
     var speechEventHandler: ((GuideSpeechEvent) -> Void)?
+    var guidanceEventHandler: ((LiveGuidanceTelemetryEvent) -> Void)?
 
     init(provider: (any SessionAnalysisProvider)? = nil, speechEnabled: Bool = true) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
@@ -129,7 +120,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         with profile: GuideProfile?,
         persona: GuidePersona? = nil,
         sessionIntent: SessionIntent? = nil,
-        companionBrief: CompanionSessionBriefDTO? = nil
+        companionBrief: CompanionSessionBriefDTO? = nil,
+        challenge: LiveGuidanceChallenge = .off,
+        suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
         self.profile = profile
         self.persona = persona
@@ -137,7 +130,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.companionBrief = companionBrief
         isActive = true
         snapshotHistory = []
-        lastAnalyzedElapsedSeconds = nil
         lastProgressAnnouncementElapsedSeconds = nil
         lastProgressTimeMilestone = 0
         lastProgressDistanceMilestone = 0
@@ -153,9 +145,21 @@ final class VirtualGuide: NSObject, ObservableObject {
         lastRouteGuidanceFingerprint = nil
         lastRouteGuidanceSpokenAt = nil
         routeSpeechQuietUntil = nil
+        pendingMoment = nil
+        queuedMoments = []
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
+        sessionReport = LiveGuidanceSessionReport(
+            coachingContract: persona?.coachingContract ?? .responsive,
+            challenge: challenge,
+            cues: []
+        )
+        momentDirector.reset(
+            contract: persona?.coachingContract ?? .responsive,
+            challenge: challenge,
+            suppressedMomentTypes: suppressedMomentTypes
+        )
         provider.beginSession(profile: profile, persona: persona)
         fallbackProvider.beginSession(profile: profile, persona: persona)
     }
@@ -173,6 +177,12 @@ final class VirtualGuide: NSObject, ObservableObject {
         synthesizer.stopSpeaking(at: .immediate)
     }
 
+    func finalizedSessionReport() -> LiveGuidanceSessionReport {
+        let report = momentDirector.report(finalizing: true)
+        sessionReport = report
+        return report
+    }
+
     func updateCompanionBrief(_ brief: CompanionSessionBriefDTO) {
         companionBrief = brief
     }
@@ -186,10 +196,25 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
 
         announceProgressIfNeeded(for: snapshot)
+        let update = momentDirector.ingest(snapshot, profile: profile, intent: sessionIntent)
+        update.evaluatedCues.forEach { record in
+            guidanceEventHandler?(.cueEvaluated(type: record.momentType, outcome: record.outcome))
+        }
+        sessionReport = momentDirector.report(finalizing: false)
 
-        guard shouldAnalyze(snapshot) else { return }
-        lastAnalyzedElapsedSeconds = snapshot.elapsedSeconds
-        runAnalysis(for: snapshot)
+        if let moment = update.nextMoment {
+            guidanceEventHandler?(.momentDetected(
+                type: moment.type,
+                contract: persona?.coachingContract ?? .responsive
+            ))
+            if pendingMoment == nil {
+                pendingMoment = moment
+            } else if pendingMoment?.type != moment.type,
+                      !queuedMoments.contains(where: { $0.type == moment.type }) {
+                queuedMoments.append(moment)
+            }
+        }
+        processPendingMoment(using: snapshot)
     }
 
     func announceStartCountdown(_ texts: [String]) {
@@ -233,19 +258,30 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     // MARK: - Private
 
-    private func shouldAnalyze(_ snapshot: ActiveSessionSnapshot) -> Bool {
-        guard snapshot.elapsedSeconds >= firstAnalysisAfterSeconds else { return false }
-        guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { return false }
-        guard !isAnalyzing else { return false }
+    private func processPendingMoment(using snapshot: ActiveSessionSnapshot) {
+        guard let moment = pendingMoment,
+              !isAnalyzing,
+              routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true,
+              canSpeakPendingMoment(moment, at: snapshot.elapsedSeconds)
+        else { return }
 
-        guard let lastAnalyzedElapsedSeconds else {
-            return true
+        if let message = moment.preferredMessage {
+            guard speak(message, urgency: .opportunity, role: role(for: moment.type)) else { return }
+            pendingMoment = nil
+            rememberGuideSpeech(at: snapshot.elapsedSeconds)
+            recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
+            advancePendingMoment()
+            return
         }
 
-        return snapshot.elapsedSeconds - lastAnalyzedElapsedSeconds >= currentAnalysisIntervalSeconds
+        pendingMoment = nil
+        runAnalysis(for: snapshot, moment: moment)
     }
 
-    private func runAnalysis(for snapshot: ActiveSessionSnapshot) {
+    private func runAnalysis(
+        for snapshot: ActiveSessionSnapshot,
+        moment: DetectedLiveGuidanceMoment
+    ) {
         let request = SessionAnalysisRequest(
             profile: profile,
             persona: persona,
@@ -253,7 +289,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             recentSnapshots: snapshotHistory,
             sessionIntent: sessionIntent,
             recentNudges: recentSpokenMessages,
-            companionBrief: companionBrief
+            companionBrief: companionBrief,
+            momentType: moment.type
         )
         isAnalyzing = true
 
@@ -267,7 +304,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             do {
                 let analysis = try await self.provider.analyze(request)
                 guard !Task.isCancelled else { return }
-                self.apply(analysis, for: snapshot)
+                self.apply(analysis, for: snapshot, moment: moment)
             } catch {
                 guard self.provider.identifier != self.fallbackProvider.identifier,
                       let fallback = try? await self.fallbackProvider.analyze(request),
@@ -275,24 +312,40 @@ final class VirtualGuide: NSObject, ObservableObject {
                 else {
                     return
                 }
-                self.apply(fallback, for: snapshot)
+                self.apply(fallback, for: snapshot, moment: moment)
             }
         }
     }
 
-    private func apply(_ analysis: SessionAnalysisResult, for snapshot: ActiveSessionSnapshot) {
+    private func apply(
+        _ analysis: SessionAnalysisResult,
+        for snapshot: ActiveSessionSnapshot,
+        moment: DetectedLiveGuidanceMoment
+    ) {
         latestAnalysis = analysis
         let message = analysis.message.correctingPrematureCurrentDistanceClaims(
             currentDistanceMeters: snapshot.distanceMeters
         )
-        guard !message.isEmpty else { return }
+        guard !message.isEmpty, analysis.shouldSpeak else {
+            if pendingMoment == nil { advancePendingMoment() }
+            return
+        }
 
         lastNudge = message
-        guard analysis.shouldSpeak else { return }
 
         let fingerprint = normalizedFingerprint(for: message)
         guard !recentSpokenFingerprints.contains(fingerprint) else { return }
-        guard canSpeakGuideMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else { return }
+        guard canSpeakGuideMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else {
+            pendingMoment = DetectedLiveGuidanceMoment(
+                type: moment.type,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
+                targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
+                evaluationDelaySeconds: moment.evaluationDelaySeconds,
+                preferredMessage: message
+            )
+            return
+        }
 
         recentSpokenFingerprints.append(fingerprint)
         if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
@@ -303,13 +356,66 @@ final class VirtualGuide: NSObject, ObservableObject {
             recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
         }
 
-        let moment = guidanceMoment(for: snapshot, analysis: analysis)
         if speak(
-            guidanceAnnouncement(for: snapshot, message: message, moment: moment),
+            message,
             urgency: analysis.urgency,
-            role: moment.role
+            role: role(for: moment.type)
         ) {
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
+            recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
+            if pendingMoment == nil { advancePendingMoment() }
+        } else {
+            pendingMoment = DetectedLiveGuidanceMoment(
+                type: moment.type,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
+                targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
+                evaluationDelaySeconds: moment.evaluationDelaySeconds,
+                preferredMessage: message
+            )
+        }
+    }
+
+    private func recordSpokenMoment(
+        _ moment: DetectedLiveGuidanceMoment,
+        spokenAtElapsedSeconds: Int
+    ) {
+        let spokenMoment = DetectedLiveGuidanceMoment(
+            type: moment.type,
+            detectedAtElapsedSeconds: spokenAtElapsedSeconds,
+            baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
+            targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
+            evaluationDelaySeconds: moment.evaluationDelaySeconds,
+            preferredMessage: moment.preferredMessage
+        )
+        _ = momentDirector.recordSpoken(spokenMoment)
+        sessionReport = momentDirector.report(finalizing: false)
+        guidanceEventHandler?(.cueSpoken(
+            type: moment.type,
+            contract: persona?.coachingContract ?? .responsive
+        ))
+    }
+
+    private func canSpeakPendingMoment(
+        _ moment: DetectedLiveGuidanceMoment,
+        at elapsedSeconds: Int
+    ) -> Bool {
+        if moment.type == .challengeComplete || moment.type == .segmentTransition {
+            return canSpeakProgressUpdate(at: elapsedSeconds)
+        }
+        return canSpeakGuideMoment(at: elapsedSeconds, urgency: .opportunity)
+    }
+
+    private func advancePendingMoment() {
+        pendingMoment = queuedMoments.isEmpty ? nil : queuedMoments.removeFirst()
+    }
+
+    private func role(for type: LiveGuidanceMomentType) -> GuidanceMomentRole {
+        switch type {
+        case .fastStart, .paceDrift: .paceAdjustment
+        case .rhythmRecovery, .challengeStart, .challengeComplete: .hype
+        case .segmentTransition: .segment
+        case .finishOpportunity: .finish
         }
     }
 
@@ -323,7 +429,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         if let goalMilestone = nextGoalMilestone(for: snapshot) {
             let isFinishCue = goalMilestone.isFinishCue
             guard isFinishCue || canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
-            guard isFinishCue || canSpeakGuideMoment(at: snapshot.elapsedSeconds) else { return }
+            guard isFinishCue || canSpeakProgressUpdate(at: snapshot.elapsedSeconds) else { return }
 
             if speakPriorityIfNeeded(
                 goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot),
@@ -389,12 +495,12 @@ final class VirtualGuide: NSObject, ObservableObject {
         reachedDistanceMilestone: Bool
     ) -> Bool {
         if reachedDistanceMilestone {
-            return canSpeakGuideMoment(at: snapshot.elapsedSeconds)
+            return canSpeakProgressUpdate(at: snapshot.elapsedSeconds)
         }
 
         guard snapshot.elapsedSeconds >= minimumProgressAnnouncementElapsedSeconds else { return false }
         guard snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters else { return false }
-        return canSpeakGuideMoment(at: snapshot.elapsedSeconds)
+        return canSpeakProgressUpdate(at: snapshot.elapsedSeconds)
     }
 
     private func rememberProgressMilestones(for snapshot: ActiveSessionSnapshot) {
@@ -521,10 +627,22 @@ final class VirtualGuide: NSObject, ObservableObject {
         if cue.isCompletion {
             spokenGoalMilestones.insert(.durationComplete)
         }
+        if cue.isSegmentTransition {
+            let contract = persona?.coachingContract ?? .responsive
+            guidanceEventHandler?(.momentDetected(type: .segmentTransition, contract: contract))
+            _ = momentDirector.recordSystemCue(
+                type: .segmentTransition,
+                elapsedSeconds: snapshot.elapsedSeconds
+            )
+            sessionReport = momentDirector.report(finalizing: false)
+            guidanceEventHandler?(.cueSpoken(type: .segmentTransition, contract: contract))
+        }
         return true
     }
 
-    private func nextTimedBoundaryCue(at elapsedSeconds: Int) -> (id: String, text: String, isCompletion: Bool)? {
+    private func nextTimedBoundaryCue(
+        at elapsedSeconds: Int
+    ) -> (id: String, text: String, isCompletion: Bool, isSegmentTransition: Bool)? {
         guard let sessionIntent else { return nil }
         let steps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
         let boundaries: [(seconds: Int, nextLabel: String?)]
@@ -544,15 +662,15 @@ final class VirtualGuide: NSObject, ObservableObject {
             if (1...5).contains(remaining) {
                 let id = "boundary-\(index)-count-\(remaining)"
                 if !spokenTimedBoundaryCues.contains(id) {
-                    return (id, "\(remaining)", false)
+                    return (id, "\(remaining)", false, false)
                 }
             } else if remaining <= 0 {
                 let id = "boundary-\(index)-complete"
                 guard !spokenTimedBoundaryCues.contains(id) else { continue }
                 if let nextLabel = boundary.nextLabel {
-                    return (id, "Go. \(nextLabel).", false)
+                    return (id, "Go. \(nextLabel).", false, true)
                 }
-                return (id, "Workout complete.", true)
+                return (id, "Workout complete.", true, false)
             }
         }
         return nil
@@ -698,15 +816,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
-    private func guidanceAnnouncement(
-        for snapshot: ActiveSessionSnapshot,
-        message: String,
-        moment: GuidanceMoment
-    ) -> String {
-        guard moment.includesProgressContext else { return message }
-        return "\(progressAnnouncement(for: snapshot, pace: snapshot.currentPaceSecsPerKm)) \(message)"
-    }
-
     @discardableResult
     private func speak(
         _ text: String,
@@ -744,82 +853,13 @@ final class VirtualGuide: NSObject, ObservableObject {
         return elapsedSeconds - lastGuideSpeechElapsedSeconds >= minimumGuideSpeechGapSeconds
     }
 
+    private func canSpeakProgressUpdate(at elapsedSeconds: Int) -> Bool {
+        guard let lastGuideSpeechElapsedSeconds else { return true }
+        return elapsedSeconds - lastGuideSpeechElapsedSeconds >= minimumStatSpeechGapSeconds
+    }
+
     private func rememberGuideSpeech(at elapsedSeconds: Int) {
         lastGuideSpeechElapsedSeconds = elapsedSeconds
-    }
-
-    private func guidanceMoment(
-        for snapshot: ActiveSessionSnapshot,
-        analysis: SessionAnalysisResult
-    ) -> GuidanceMoment {
-        let role = preferredGuidanceMomentRole(for: snapshot, analysis: analysis)
-        return GuidanceMoment(role: role)
-    }
-
-    private func preferredGuidanceMomentRole(
-        for snapshot: ActiveSessionSnapshot,
-        analysis: SessionAnalysisResult
-    ) -> GuidanceMomentRole {
-        if analysis.urgency == .caution || (snapshot.heartRate ?? 0) > 185 {
-            return .caution
-        }
-
-        if isNearFinish(snapshot) {
-            return .finish
-        }
-
-        if isSegmentCheckIn(snapshot) {
-            return .segment
-        }
-
-        if analysis.urgency == .opportunity {
-            return .paceAdjustment
-        }
-
-        if shouldUseProgressRole(for: snapshot) {
-            return .progress
-        }
-
-        let naturalRole: GuidanceMomentRole = recentSpokenRoles.last == .hype ? .form : .hype
-        if roleWouldRepeatTooMuch(naturalRole) {
-            return naturalRole == .hype ? .form : .hype
-        }
-        return naturalRole
-    }
-
-    private func shouldUseProgressRole(for snapshot: ActiveSessionSnapshot) -> Bool {
-        guard snapshot.elapsedSeconds >= currentProgressIntervalSeconds else { return false }
-        guard !roleWouldRepeatTooMuch(.progress) else { return false }
-
-        let nearTimeMilestone = snapshot.elapsedSeconds % currentProgressIntervalSeconds <= 8
-        let completedDistanceMilestone = Int(snapshot.distanceMeters / currentProgressDistanceIntervalMeters)
-        let distanceRemainder = snapshot.distanceMeters.truncatingRemainder(dividingBy: currentProgressDistanceIntervalMeters)
-        let nearDistanceMilestone = completedDistanceMilestone > 0 && distanceRemainder <= 80
-        return nearTimeMilestone || nearDistanceMilestone
-    }
-
-    private func isNearFinish(_ snapshot: ActiveSessionSnapshot) -> Bool {
-        if let targetDistance = sessionIntent?.resolvedTargetDistanceMeters, targetDistance > 0 {
-            return targetDistance - snapshot.distanceMeters <= 400
-        }
-        if let targetDuration = sessionIntent?.resolvedTargetDurationSeconds, targetDuration > 0 {
-            return targetDuration - snapshot.elapsedSeconds <= 120
-        }
-        return false
-    }
-
-    private func isSegmentCheckIn(_ snapshot: ActiveSessionSnapshot) -> Bool {
-        guard let sessionIntent else { return false }
-        let timedSteps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
-        guard timedSteps.count > 1 else { return false }
-        let elapsedInWorkout = timedSteps.reduce(snapshot.elapsedSeconds) { remaining, step in
-            remaining >= step.durationSeconds ? remaining - step.durationSeconds : remaining
-        }
-        return elapsedInWorkout <= 12
-    }
-
-    private func roleWouldRepeatTooMuch(_ role: GuidanceMomentRole) -> Bool {
-        recentSpokenRoles.suffix(2).allSatisfy { $0 == role } && recentSpokenRoles.count >= 2
     }
 
     private func rememberSpokenRole(_ role: GuidanceMomentRole) {
@@ -827,10 +867,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         if recentSpokenRoles.count > maxRecentSpokenRoles {
             recentSpokenRoles.removeFirst(recentSpokenRoles.count - maxRecentSpokenRoles)
         }
-    }
-
-    private var currentAnalysisIntervalSeconds: Int {
-        persona?.nudgeFrequency.analysisIntervalSeconds ?? 75
     }
 
     private var currentProgressIntervalSeconds: Int {

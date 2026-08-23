@@ -9,13 +9,16 @@ struct PostRunSummaryView: View {
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
+    let guidanceReport: LiveGuidanceSessionReport
     let workoutID: String
+    let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
     @State private var isPhotoManagerPresented = false
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
+    @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
     @State private var isSubmitting = false
 
     init(
@@ -23,7 +26,9 @@ struct PostRunSummaryView: View {
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
+        guidanceReport: LiveGuidanceSessionReport = .empty,
         workoutID: String = "freestyle-run",
+        onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
@@ -31,7 +36,9 @@ struct PostRunSummaryView: View {
         self.photos = photos
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
+        self.guidanceReport = guidanceReport
         self.workoutID = workoutID
+        self.onGuidanceFeedback = onGuidanceFeedback
         self.onSave = onSave
         self.onDiscard = onDiscard
         _draftPhotos = State(initialValue: photos.map(PostRunPhoto.init))
@@ -44,6 +51,9 @@ struct PostRunSummaryView: View {
                     mediaPager
                     reflectionSection
                     feedbackSection
+                    if guidanceReport.spokenCueCount > 0 {
+                        guidanceFeedbackSection
+                    }
                     photoReviewSection
                     if let primaryRecognition = recognitionPreviews.first {
                         recognitionSection(primaryRecognition)
@@ -223,6 +233,49 @@ struct PostRunSummaryView: View {
         .padding(.vertical, 8)
     }
 
+    private var guidanceFeedbackSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(localized: "guide.feedback.section.title", defaultValue: "How was live guidance?"))
+                .font(.headline)
+
+            Text(guidanceSummary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(LiveGuidanceFeedback.allCases) { feedback in
+                    Button(feedback.displayName) {
+                        selectedGuidanceFeedback = feedback
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(selectedGuidanceFeedback == feedback ? .orange : .secondary)
+                }
+            }
+
+            Text(String(localized: "guide.feedback.privacy", defaultValue: "Feedback improves cue timing and frequency. Coaching text is not included in analytics."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private var guidanceSummary: String {
+        let format = String(
+            localized: "guide.feedback.summary.format",
+            defaultValue: "%1$d cues · %2$d helped"
+        )
+        return String(
+            format: format,
+            locale: .autoupdatingCurrent,
+            guidanceReport.spokenCueCount,
+            guidanceReport.helpfulCueCount
+        )
+    }
+
     private func effortButton(_ effort: RunEffort, title: String) -> some View {
         Button(title) {
             selectedEffort = effort
@@ -342,6 +395,9 @@ struct PostRunSummaryView: View {
                             activityID: nil
                         )
                     }
+                }
+                if let selectedGuidanceFeedback {
+                    onGuidanceFeedback(selectedGuidanceFeedback)
                 }
                 Task {
                     let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection)

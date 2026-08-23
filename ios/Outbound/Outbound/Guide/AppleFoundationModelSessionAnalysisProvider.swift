@@ -61,7 +61,7 @@ final class AppleFoundationModelSessionAnalysisProvider: SessionAnalysisProvider
         let message = Self.clean(output.message)
 
         return SessionAnalysisResult(
-            message: message.isEmpty ? "Keep this effort smooth and controlled." : message,
+            message: message,
             urgency: SessionAnalysisUrgency(rawValue: output.urgency.lowercased()) ?? .steady,
             shouldSpeak: output.shouldSpeak,
             generatedAt: Date(),

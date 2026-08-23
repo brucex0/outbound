@@ -95,6 +95,7 @@ struct RecordView: View {
     @State private var activityStartedWithGroupRun = false
     @State private var intentBeforeSelectedRoute: SessionIntent?
     @State private var selectedRouteDistanceMeters: Double?
+    @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -220,6 +221,9 @@ struct RecordView: View {
             guide.speechEventHandler = { event in
                 Task { await musicStore.handleGuideSpeechEvent(event) }
             }
+            guide.guidanceEventHandler = { event in
+                trackGuidanceEvent(event)
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -292,7 +296,9 @@ struct RecordView: View {
                 photos: activity.photos,
                 reflection: activity.reflection,
                 recognitionPreviews: activity.recognitionPreviews,
+                guidanceReport: activity.guidanceReport,
                 workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
+                onGuidanceFeedback: handleGuidanceFeedback,
                 onSave: { selectedPhotos, reflection in
                     await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
                 },
@@ -503,7 +509,11 @@ struct RecordView: View {
         guide.activate(
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
-            sessionIntent: activeIntent
+            sessionIntent: activeIntent,
+            challenge: .off,
+            suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
+                for: guideCatalog.selection.coachingContract
+            )
         )
         trackFeatureExposure("live_guidance")
         if let route = activeIntent?.preparedRoute,
@@ -553,7 +563,11 @@ struct RecordView: View {
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
-            companionBrief: companionBrief
+            companionBrief: companionBrief,
+            challenge: selectedGuidanceChallenge,
+            suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
+                for: guideCatalog.selection.coachingContract
+            )
         )
         trackFeatureExposure("live_guidance")
         showCamera = true
@@ -651,6 +665,8 @@ struct RecordView: View {
     private func finishRecording() {
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
+        let guidanceReport = guide.finalizedSessionReport()
+        guideCatalog.recordGuidanceReport(guidanceReport)
         track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
@@ -677,7 +693,8 @@ struct RecordView: View {
             summary: summary,
             photos: capturedPhotos,
             reflection: reflection,
-            recognitionPreviews: recognitionPreviews
+            recognitionPreviews: recognitionPreviews,
+            guidanceReport: guidanceReport
         )
     }
 
@@ -823,6 +840,7 @@ struct RecordView: View {
         activityStartedWithGroupRun = false
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
+        selectedGuidanceChallenge = .off
     }
 
     private var preferredSessionPage: SessionPage {
@@ -1205,6 +1223,24 @@ struct RecordView: View {
 
     private var moreSetupSheet: some View {
         List {
+            Section(String(localized: "guide.challenge.section.title", defaultValue: "Optional live challenge")) {
+                ForEach(LiveGuidanceChallenge.allCases) { challenge in
+                    Button {
+                        selectedGuidanceChallenge = challenge
+                        track(.init(.liveGuidanceChallengeSelected, properties: [
+                            .selectionType: .string(challenge.rawValue)
+                        ]))
+                    } label: {
+                        setupChoiceRow(
+                            title: challenge.displayName,
+                            detail: challenge.detail,
+                            systemImage: challenge == .off ? "minus.circle" : "bolt.fill",
+                            isSelected: selectedGuidanceChallenge == challenge
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             Section {
                 VStack(alignment: .leading, spacing: 12) { liveGroupSetup }
                     .padding(.vertical, 6)
@@ -1322,6 +1358,34 @@ struct RecordView: View {
     private func track(_ event: ProductAnalyticsEvent) {
         guard let analyticsManager else { return }
         Task { await analyticsManager.track(event) }
+    }
+
+    private func trackGuidanceEvent(_ event: LiveGuidanceTelemetryEvent) {
+        switch event {
+        case .momentDetected(let type, let contract):
+            track(.init(.liveGuidanceMomentDetected, properties: [
+                .momentType: .string(type.rawValue),
+                .coachingContract: .string(contract.rawValue)
+            ]))
+        case .cueSpoken(let type, let contract):
+            track(.init(.liveGuidanceCueSpoken, properties: [
+                .momentType: .string(type.rawValue),
+                .coachingContract: .string(contract.rawValue)
+            ]))
+        case .cueEvaluated(let type, let outcome):
+            track(.init(.liveGuidanceCueEvaluated, properties: [
+                .momentType: .string(type.rawValue),
+                .result: .string(outcome.rawValue)
+            ]))
+        }
+    }
+
+    private func handleGuidanceFeedback(_ feedback: LiveGuidanceFeedback) {
+        guideCatalog.recordGuidanceFeedback(feedback)
+        track(.init(.liveGuidanceFeedbackSubmitted, properties: [
+            .selectionType: .string(feedback.rawValue),
+            .cueCountBucket: .string(ProductAnalyticsBucket.count(pendingActivity?.guidanceReport.spokenCueCount ?? 0))
+        ]))
     }
 
     private func trackSetupAndFeatureExposureIfNeeded() {
@@ -2597,6 +2661,7 @@ struct RecordView: View {
             isIndoorSession ? "Treadmill" : nil,
             liveShareStore.isArmedForNextActivity ? "Live sharing" : nil,
             liveGroupStore.isSharing ? "Group run" : nil,
+            selectedGuidanceChallenge == .off ? nil : selectedGuidanceChallenge.displayName,
         ].compactMap { $0 }.joined(separator: " · ")
         return values.isEmpty ? "Outdoor · No extras" : values
     }
@@ -2620,6 +2685,7 @@ private struct PendingFinishedActivity: Identifiable {
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
+    let guidanceReport: LiveGuidanceSessionReport
 }
 
 struct StatBlock: View {

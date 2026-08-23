@@ -19,6 +19,8 @@ final class GuideCatalogStore: ObservableObject {
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
     private let voiceLanguageKey = "guide_catalog_voice_language_v1"
+    private let learningKey = "live_guidance_learning_v1"
+    private var learningState: LiveGuidanceLearningState
 
     var selectedTemplate: GuideTemplate {
         templates.first { $0.id == selection.templateId } ?? templates[0]
@@ -33,7 +35,8 @@ final class GuideCatalogStore: ObservableObject {
             template: selectedTemplate,
             voice: selectedVoice,
             intensity: selection.intensity,
-            nudgeFrequency: selection.nudgeFrequency
+            nudgeFrequency: selection.nudgeFrequency,
+            coachingContract: selection.coachingContract
         )
     }
 
@@ -49,6 +52,9 @@ final class GuideCatalogStore: ObservableObject {
     ) {
         self.templates = templates
         self.defaults = defaults
+        learningState = defaults.data(forKey: learningKey)
+            .flatMap { try? JSONDecoder().decode(LiveGuidanceLearningState.self, from: $0) }
+            ?? LiveGuidanceLearningState()
 
         let fallbackTemplate = templates[0]
         let fallbackSelection = GuideSelection(
@@ -56,7 +62,8 @@ final class GuideCatalogStore: ObservableObject {
             voiceId: fallbackTemplate.defaultVoice.id,
             theme: .victoryGold,
             intensity: .balanced,
-            nudgeFrequency: .normal
+            nudgeFrequency: .normal,
+            coachingContract: .responsive
         )
 
         let hasSavedSelection: Bool
@@ -134,6 +141,38 @@ final class GuideCatalogStore: ObservableObject {
         saveSelection()
     }
 
+    func setCoachingContract(_ contract: CoachingContract) {
+        selection.coachingContract = contract
+        saveSelection()
+    }
+
+    func suppressedMomentTypes(for contract: CoachingContract) -> Set<LiveGuidanceMomentType> {
+        guard contract == .responsive else { return [] }
+        return Set(learningState.moments.compactMap { rawType, evidence in
+            guard evidence.evaluatedCount >= 3,
+                  Double(evidence.helpfulCount) / Double(evidence.evaluatedCount) < 0.34
+            else { return nil }
+            return LiveGuidanceMomentType(rawValue: rawType)
+        })
+    }
+
+    func recordGuidanceReport(_ report: LiveGuidanceSessionReport) {
+        for cue in report.cues where cue.outcome != .pending && cue.outcome != .notMeasured {
+            var evidence = learningState.moments[cue.momentType.rawValue] ?? LiveGuidanceMomentEvidence()
+            evidence.evaluatedCount += 1
+            if cue.outcome.isHelpfulResult {
+                evidence.helpfulCount += 1
+            }
+            learningState.moments[cue.momentType.rawValue] = evidence
+        }
+        saveLearningState()
+    }
+
+    func recordGuidanceFeedback(_ feedback: LiveGuidanceFeedback) {
+        learningState.feedbackCounts[feedback.rawValue, default: 0] += 1
+        saveLearningState()
+    }
+
     func refreshInstalledVoices() {
         if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
             requiresVoiceSelection = true
@@ -179,7 +218,8 @@ final class GuideCatalogStore: ObservableObject {
                 voiceId: templates[0].defaultVoice.id,
                 theme: .victoryGold,
                 intensity: .balanced,
-                nudgeFrequency: .normal
+                nudgeFrequency: .normal,
+                coachingContract: .responsive
             )
             saveSelection()
             return
@@ -202,6 +242,11 @@ final class GuideCatalogStore: ObservableObject {
         defaults.set(data, forKey: selectionKey)
     }
 
+    private func saveLearningState() {
+        guard let data = try? JSONEncoder().encode(learningState) else { return }
+        defaults.set(data, forKey: learningKey)
+    }
+
 }
 
 struct GuideSelection: Codable, Equatable {
@@ -210,9 +255,10 @@ struct GuideSelection: Codable, Equatable {
     var theme: OutboundTheme
     var intensity: GuidanceIntensity
     var nudgeFrequency: NudgeFrequency
+    var coachingContract: CoachingContract
 
     private enum CodingKeys: String, CodingKey {
-        case templateId, voiceId, theme, intensity, nudgeFrequency
+        case templateId, voiceId, theme, intensity, nudgeFrequency, coachingContract
     }
 
     init(
@@ -220,13 +266,15 @@ struct GuideSelection: Codable, Equatable {
         voiceId: String,
         theme: OutboundTheme,
         intensity: GuidanceIntensity,
-        nudgeFrequency: NudgeFrequency
+        nudgeFrequency: NudgeFrequency,
+        coachingContract: CoachingContract
     ) {
         self.templateId = templateId
         self.voiceId = voiceId
         self.theme = theme
         self.intensity = intensity
         self.nudgeFrequency = nudgeFrequency
+        self.coachingContract = coachingContract
     }
 
     init(from decoder: Decoder) throws {
@@ -236,5 +284,16 @@ struct GuideSelection: Codable, Equatable {
         theme = try values.decodeIfPresent(OutboundTheme.self, forKey: .theme) ?? .victoryGold
         intensity = try values.decode(GuidanceIntensity.self, forKey: .intensity)
         nudgeFrequency = try values.decode(NudgeFrequency.self, forKey: .nudgeFrequency)
+        coachingContract = try values.decodeIfPresent(CoachingContract.self, forKey: .coachingContract) ?? .responsive
     }
+}
+
+private struct LiveGuidanceLearningState: Codable {
+    var moments: [String: LiveGuidanceMomentEvidence] = [:]
+    var feedbackCounts: [String: Int] = [:]
+}
+
+private struct LiveGuidanceMomentEvidence: Codable {
+    var evaluatedCount = 0
+    var helpfulCount = 0
 }
