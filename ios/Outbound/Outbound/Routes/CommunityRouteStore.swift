@@ -310,9 +310,9 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
-    func publish(activity: SavedActivity, name: String) async -> CommunityRoute? {
+    func publish(activityID: String, name: String) async -> CommunityRoute? {
         do {
-            let route = try await APIClient.shared.publishRoute(activityID: activity.id.uuidString, name: name)
+            let route = try await APIClient.shared.publishRoute(activityID: activityID, name: name)
             if let prepared = route.prepared { cacheCommunityRoute(prepared) }
             mine.removeAll { $0.id == route.id }
             mine.insert(route, at: 0)

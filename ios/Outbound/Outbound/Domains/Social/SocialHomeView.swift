@@ -1611,6 +1611,7 @@ private struct SocialActivityDetailView: View {
                 showsShareControl: true,
                 showsEditControl: false,
                 showsPrivateDetails: false,
+                routePublicationActivityID: currentPost.isCurrentUser ? activity.id : nil,
                 supplementalContent: AnyView(socialCard),
                 bottomContent: AnyView(socialCompanionCard)
             )

@@ -11,8 +11,10 @@ struct ActivityDetailView: View {
     private let showsShareControl: Bool
     private let showsEditControl: Bool
     private let showsPrivateDetails: Bool
+    private let explicitRoutePublicationActivityID: String?
     private let supplementalContent: AnyView?
     private let bottomContent: AnyView?
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
@@ -31,6 +33,7 @@ struct ActivityDetailView: View {
     @State private var lightboxPhotoIndex: Int?
     @State private var isPublishRoutePresented = false
     @State private var publishedRouteMessage: String?
+    @State private var hasTrackedSaveRouteExposure = false
 
     init(
         activity: SavedActivity,
@@ -38,6 +41,7 @@ struct ActivityDetailView: View {
         showsShareControl: Bool = true,
         showsEditControl: Bool = true,
         showsPrivateDetails: Bool = true,
+        routePublicationActivityID: String? = nil,
         supplementalContent: AnyView? = nil,
         bottomContent: AnyView? = nil
     ) {
@@ -46,6 +50,7 @@ struct ActivityDetailView: View {
         self.showsShareControl = showsShareControl
         self.showsEditControl = showsEditControl
         self.showsPrivateDetails = showsPrivateDetails
+        explicitRoutePublicationActivityID = routePublicationActivityID
         self.supplementalContent = supplementalContent
         self.bottomContent = bottomContent
     }
@@ -59,6 +64,22 @@ struct ActivityDetailView: View {
 
     private var routeCoordinates: [CLLocationCoordinate2D] {
         currentActivity.routeCoordinates
+    }
+
+    private var routePublicationActivityID: String? {
+        if let explicitRoutePublicationActivityID { return explicitRoutePublicationActivityID }
+        guard usesStoredActivity else { return nil }
+        return currentActivity.sync?.serverActivityId
+            ?? currentActivity.sync?.clientActivityId
+            ?? currentActivity.id.uuidString
+    }
+
+    private var canPublishRoute: Bool {
+        currentActivity.hasRoute && routePublicationActivityID != nil
+    }
+
+    private var routePublicationEntrySource: String {
+        usesStoredActivity ? "me_activity_detail" : "social_activity_detail"
     }
 
     // MARK: Computed values
@@ -129,13 +150,24 @@ struct ActivityDetailView: View {
                                         : String(localized: "activity.share", defaultValue: "Share activity"))
                 }
 
-                if showsEditControl && currentActivity.routePoints.count > 1 {
+                if canPublishRoute {
                     Button {
                         isPublishRoutePresented = true
                     } label: {
-                        Image(systemName: "map.badge.plus")
+                        ZStack(alignment: .bottomTrailing) {
+                            Image(systemName: "map")
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 8, weight: .bold))
+                                .offset(x: 3, y: 3)
+                        }
+                        .frame(width: 24, height: 24)
                     }
-                    .accessibilityLabel(String(localized: "Save route to the community"))
+                    .accessibilityLabel(
+                        String(
+                            localized: "activity.route.publish.accessibility_label",
+                            defaultValue: "Save route to the community"
+                        )
+                    )
                 }
 
                 if showsEditControl {
@@ -150,8 +182,32 @@ struct ActivityDetailView: View {
         }
         .sheet(isPresented: $isPublishRoutePresented) {
             PublishRouteSheet(activity: currentActivity) { name in
-                guard let route = await communityRouteStore.publish(activity: currentActivity, name: name) else { return false }
-                publishedRouteMessage = String(localized: "\(route.name) is now available to the community.")
+                guard let routePublicationActivityID else { return false }
+                track(.init(.routePublishStarted, properties: [
+                    .entrySource: .string(routePublicationEntrySource),
+                ]))
+                guard let route = await communityRouteStore.publish(
+                    activityID: routePublicationActivityID,
+                    name: name
+                ) else {
+                    track(.init(.routePublishFailed, properties: [
+                        .entrySource: .string(routePublicationEntrySource),
+                        .errorCategory: .string("request_failed"),
+                    ]))
+                    return false
+                }
+                track(.init(.routePublishCompleted, properties: [
+                    .entrySource: .string(routePublicationEntrySource),
+                ]))
+                let successFormat = String(
+                    localized: "activity.route.publish.success_format",
+                    defaultValue: "%@ is now available to the community."
+                )
+                publishedRouteMessage = String(
+                    format: successFormat,
+                    locale: .autoupdatingCurrent,
+                    route.name
+                )
                 return true
             }
         }
@@ -202,6 +258,11 @@ struct ActivityDetailView: View {
         }
         .onAppear {
             selectFirstLocatedPhotoIfNeeded()
+            guard canPublishRoute, !hasTrackedSaveRouteExposure else { return }
+            hasTrackedSaveRouteExposure = true
+            track(.init(.featureExposed, properties: [
+                .feature: .string("save_route"),
+            ]))
         }
     }
 
@@ -789,6 +850,11 @@ struct ActivityDetailView: View {
         }
     }
 
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
+    }
+
     private func shareRoute(_ format: RouteExportFormat) {
         Task {
             do {
@@ -806,6 +872,7 @@ private struct PublishRouteSheet: View {
     let onPublish: (String) async -> Bool
     @State private var name: String
     @State private var isPublishing = false
+    @State private var errorMessage: String?
 
     init(activity: SavedActivity, onPublish: @escaping (String) async -> Bool) {
         self.activity = activity
@@ -816,25 +883,102 @@ private struct PublishRouteSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Route name") { TextField("Route name", text: $name) }
+                Section(
+                    String(
+                        localized: "activity.route.publish.name_label",
+                        defaultValue: "Route name"
+                    )
+                ) {
+                    TextField(
+                        String(
+                            localized: "activity.route.publish.name_prompt",
+                            defaultValue: "Route name"
+                        ),
+                        text: $name
+                    )
+                }
                 Section {
-                    Label("Everyone can discover and save this route.", systemImage: "globe.americas.fill")
-                    Text("Plainstride removes activity times and trims the beginning and end of longer routes before publishing.")
+                    Label(
+                        String(
+                            localized: "activity.route.publish.discoverability",
+                            defaultValue: "Everyone can discover and save this route."
+                        ),
+                        systemImage: "globe.americas.fill"
+                    )
+                    Text(
+                        String(
+                            localized: "activity.route.publish.privacy",
+                            defaultValue: "Plainstride removes activity times and trims the beginning and end of longer routes before publishing."
+                        )
+                    )
                         .font(.footnote).foregroundStyle(.secondary)
-                } header: { Text("Public route") }
+                } header: {
+                    Text(
+                        String(
+                            localized: "activity.route.publish.public_label",
+                            defaultValue: "Public route"
+                        )
+                    )
+                }
             }
-            .navigationTitle("Save Route")
+            .navigationTitle(
+                String(
+                    localized: "activity.route.publish.title",
+                    defaultValue: "Save Route"
+                )
+            )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isPublishing ? "Publishing…" : "Publish") {
+                    Button(
+                        isPublishing
+                            ? String(
+                                localized: "activity.route.publish.in_progress",
+                                defaultValue: "Publishing…"
+                            )
+                            : String(
+                                localized: "activity.route.publish.confirm",
+                                defaultValue: "Publish"
+                            )
+                    ) {
                         isPublishing = true
-                        Task { if await onPublish(name.trimmingCharacters(in: .whitespacesAndNewlines)) { dismiss() } else { isPublishing = false } }
+                        Task {
+                            if await onPublish(name.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                                dismiss()
+                            } else {
+                                isPublishing = false
+                                withAnimation {
+                                    errorMessage = String(
+                                        localized: "activity.route.publish.error",
+                                        defaultValue: "Route could not be published. Try again."
+                                    )
+                                }
+                            }
+                        }
                     }
                     .disabled(isPublishing || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+        }
+        .overlay(alignment: .top) {
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(radius: 8)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .task(id: errorMessage) {
+            guard errorMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation { errorMessage = nil }
         }
         .presentationDetents([.medium])
     }

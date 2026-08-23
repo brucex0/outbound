@@ -13,11 +13,11 @@ The current view is a Strava-style layered detail page:
 3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
 4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
-6. **Route actions** — persistent navigation-bar Share action; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
+6. **Route actions** — persistent navigation-bar Share action; visible owner-only `Save Route` top-bar action for activities with usable track geometry; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
 
-Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing, while unavailable private source/gear metadata and route privacy are omitted.
+Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing and route publication: `Save Route` remains available on the current runner's own Social posts but is omitted from another runner's activity. Unavailable private source/gear metadata and route privacy are omitted.
 
 Connection photos are delivered in the visible social-post payload as ordered metadata plus 15-minute signed read URLs. Storage keys never cross the social response boundary. The iOS adapter maps those records into the shared photo-strip model, and the shared image view supports both local file URLs and signed HTTPS media.
 

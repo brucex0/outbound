@@ -62,7 +62,7 @@ Track:
 | Feature | Recommended sequence |
 | --- | --- |
 | Music | setup exposed -> authorization requested/result -> quick pick selected -> playback started -> control used or playback failed -> activity saved with music |
-| Routes | library exposed -> searched/imported/bookmarked -> route selected -> route displayed -> Route Guidance started -> 25/50/75/100% progress -> wrong-way or deviation/rejoin when applicable -> arrival/recovery when applicable -> activity saved with route outcome |
+| Routes | owner Save Route exposed -> publish started -> publish completed/failed; library exposed -> searched/imported/bookmarked -> route selected -> route displayed -> Route Guidance started -> 25/50/75/100% progress -> wrong-way or deviation/rejoin when applicable -> arrival/recovery when applicable -> activity saved with route outcome |
 | Distance/time goals | goal control exposed -> type/preset/custom selected -> activity started -> progress bucket reached -> activity saved |
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
