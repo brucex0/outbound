@@ -505,6 +505,7 @@ struct RecordView: View {
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent
         )
+        trackFeatureExposure("live_guidance")
         if let route = activeIntent?.preparedRoute,
            let snapshot = recorder.routeGuidanceSnapshot {
             track(.init(.routeGuidanceRecovered, properties: [
@@ -554,6 +555,7 @@ struct RecordView: View {
             sessionIntent: activeIntent,
             companionBrief: companionBrief
         )
+        trackFeatureExposure("live_guidance")
         showCamera = true
         beginStartCountdown()
     }

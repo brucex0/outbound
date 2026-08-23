@@ -93,6 +93,9 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var recentSpokenRoles: [GuidanceMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
     private var spokenTimedBoundaryCues: Set<String> = []
+    private var lastObservedDistanceMilestone = 0
+    private var lastObservedDistanceCheckpoint: (distanceMeters: Double, elapsedSeconds: Int)?
+    private var latestDistanceCheckpointPace: Double?
     private var lastRouteGuidanceFingerprint: String?
     private var lastRouteGuidanceSpokenAt: Date?
     private var routeSpeechQuietUntil: Date?
@@ -144,6 +147,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         recentSpokenRoles = []
         spokenGoalMilestones = []
         spokenTimedBoundaryCues = []
+        lastObservedDistanceMilestone = 0
+        lastObservedDistanceCheckpoint = nil
+        latestDistanceCheckpointPace = nil
         lastRouteGuidanceFingerprint = nil
         lastRouteGuidanceSpokenAt = nil
         routeSpeechQuietUntil = nil
@@ -308,6 +314,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     }
 
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
+        observeDistanceCheckpoint(for: snapshot)
         guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { return }
         if announceTimedBoundaryIfNeeded(for: snapshot) {
             return
@@ -318,7 +325,10 @@ final class VirtualGuide: NSObject, ObservableObject {
             guard isFinishCue || canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
             guard isFinishCue || canSpeakGuideMoment(at: snapshot.elapsedSeconds) else { return }
 
-            if speakPriorityIfNeeded(goalProgressAnnouncement(for: goalMilestone), isPriority: isFinishCue) {
+            if speakPriorityIfNeeded(
+                goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot),
+                isPriority: isFinishCue
+            ) {
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
                 lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
@@ -348,7 +358,22 @@ final class VirtualGuide: NSObject, ObservableObject {
 
         lastProgressTimeMilestone = nextTimeMilestone
         lastProgressDistanceMilestone = nextDistanceMilestone
-        if speak(progressAnnouncement(for: snapshot), role: .progress) {
+        let checkpointPace = progressPace(
+            for: snapshot,
+            reachedDistanceMilestone: reachedDistanceMilestone
+        )
+        let includesAveragePace = reachedDistanceMilestone
+            && nextDistanceMilestone > 0
+            && Int((Double(nextDistanceMilestone) * distanceIntervalMeters).rounded()) % 5_000 == 0
+
+        if speak(
+            progressAnnouncement(
+                for: snapshot,
+                pace: checkpointPace,
+                includesAveragePace: includesAveragePace
+            ),
+            role: .progress
+        ) {
             lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
         }
@@ -432,40 +457,60 @@ final class VirtualGuide: NSObject, ObservableObject {
         }?.0
     }
 
-    private func goalProgressAnnouncement(for milestone: GoalMilestone) -> String {
-        switch milestone {
+    private func goalProgressAnnouncement(
+        for milestone: GoalMilestone,
+        snapshot: ActiveSessionSnapshot
+    ) -> String {
+        let lastUnitName = isMileBasedDistanceGoal(sessionIntent?.resolvedTargetDistanceMeters ?? 0)
+            ? "mile"
+            : "kilometer"
+        let message = switch milestone {
         case .distanceOneThird:
-            return "One third of your distance goal done. Keep it smooth."
+            "One third of your distance goal done. Keep it smooth."
         case .distanceHalfway:
-            return "Halfway through your distance goal. Stay patient."
+            "Halfway through your distance goal. Stay patient."
         case .distanceTwoThirds:
-            return "Two thirds of the distance goal done. Keep stacking it."
+            "Two thirds of the distance goal done. Keep stacking it."
         case .distanceLastUnit:
-            let unitName = isMileBasedDistanceGoal(sessionIntent?.resolvedTargetDistanceMeters ?? 0) ? "mile" : "kilometer"
-            return "Last \(unitName) of the distance goal. Stay tall."
+            "Last \(lastUnitName) of the distance goal. Stay tall."
         case .distance300MetersRemaining:
-            return "300 meters to go."
+            "300 meters to go."
         case .distance100MetersRemaining:
-            return "100 meters to go."
+            "100 meters to go."
         case .distanceComplete:
-            return "Distance goal covered. Ease through the finish."
+            "Distance goal covered. Ease through the finish."
         case .durationOneThird:
-            return "One third of your time goal done. Settle into the rhythm."
+            "One third of your time goal done. Settle into the rhythm."
         case .durationHalfway:
-            return "Halfway through your time goal. Keep the effort even."
+            "Halfway through your time goal. Keep the effort even."
         case .durationTwoThirds:
-            return "Two thirds of the time goal done. Stay composed."
+            "Two thirds of the time goal done. Stay composed."
         case .durationLastFiveMinutes:
-            return "Last 5 minutes of the time goal. Keep the rhythm calm."
+            "Last 5 minutes of the time goal. Keep the rhythm calm."
         case .durationLastMinute:
-            return "Last minute of the time goal. Finish steady."
+            "Last minute of the time goal. Finish steady."
         case .durationComplete:
-            return "Time goal covered. Bring it down smoothly."
+            "Time goal covered. Bring it down smoothly."
+        }
+
+        switch milestone {
+        case .distanceHalfway, .distanceTwoThirds, .distanceComplete,
+             .durationHalfway, .durationTwoThirds, .durationComplete:
+            let summary = keyProgressSummary(for: snapshot)
+            return summary.isEmpty ? message : "\(message) \(summary)"
+        default:
+            return message
         }
     }
 
     private func announceTimedBoundaryIfNeeded(for snapshot: ActiveSessionSnapshot) -> Bool {
-        guard let cue = nextTimedBoundaryCue(at: snapshot.elapsedSeconds) else { return false }
+        guard var cue = nextTimedBoundaryCue(at: snapshot.elapsedSeconds) else { return false }
+        if cue.isCompletion {
+            let summary = keyProgressSummary(for: snapshot)
+            if !summary.isEmpty {
+                cue.text += " \(summary)"
+            }
+        }
         synthesizer.stopSpeaking(at: .immediate)
         guard speak(cue.text, urgency: .opportunity, role: cue.isCompletion ? .finish : .segment) else {
             return false
@@ -551,24 +596,106 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
-    private func progressAnnouncement(for snapshot: ActiveSessionSnapshot) -> String {
+    private func progressAnnouncement(
+        for snapshot: ActiveSessionSnapshot,
+        pace: Double?,
+        includesAveragePace: Bool = false
+    ) -> String {
         var parts: [String] = []
-
-        if snapshot.elapsedSeconds >= 60 {
-            parts.append("\(snapshot.elapsedSeconds.conversationalDurationString).")
-        }
 
         if snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters {
             parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
         }
 
-        if let pace = snapshot.currentPaceSecsPerKm {
-            parts.append("Pace \(pace.spokenPaceString).")
+        if snapshot.elapsedSeconds >= 60 {
+            parts.append("\(snapshot.elapsedSeconds.conversationalDurationString).")
+        }
+
+        if let pace {
+            parts.append("\(paceLabel) \(pace.spokenPaceString).")
         } else {
-            parts.append("Pace still settling.")
+            parts.append(paceSettlingAnnouncement)
+        }
+
+        if includesAveragePace, let averagePace = averagePace(for: snapshot) {
+            parts.append(averagePaceAnnouncement(averagePace))
         }
 
         return parts.isEmpty ? "Settle in and keep it easy." : parts.joined(separator: " ")
+    }
+
+    private func progressPace(
+        for snapshot: ActiveSessionSnapshot,
+        reachedDistanceMilestone: Bool
+    ) -> Double? {
+        reachedDistanceMilestone
+            ? latestDistanceCheckpointPace ?? snapshot.currentPaceSecsPerKm
+            : snapshot.currentPaceSecsPerKm
+    }
+
+    private func observeDistanceCheckpoint(for snapshot: ActiveSessionSnapshot) {
+        let milestone = Int(snapshot.distanceMeters / currentProgressDistanceIntervalMeters)
+        guard milestone > lastObservedDistanceMilestone else { return }
+
+        let previous = lastObservedDistanceCheckpoint ?? (distanceMeters: 0, elapsedSeconds: 0)
+        let distanceDelta = snapshot.distanceMeters - previous.distanceMeters
+        let elapsedDelta = snapshot.elapsedSeconds - previous.elapsedSeconds
+        if distanceDelta >= currentProgressDistanceIntervalMeters * 0.75,
+           elapsedDelta > 0 {
+            latestDistanceCheckpointPace = Double(elapsedDelta) / (distanceDelta / 1_000)
+        } else {
+            latestDistanceCheckpointPace = snapshot.currentPaceSecsPerKm
+        }
+
+        lastObservedDistanceMilestone = milestone
+        lastObservedDistanceCheckpoint = (snapshot.distanceMeters, snapshot.elapsedSeconds)
+    }
+
+    private func averagePace(for snapshot: ActiveSessionSnapshot) -> Double? {
+        guard hasReliableDistanceProgress(snapshot),
+              snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters
+        else {
+            return nil
+        }
+        return Double(snapshot.elapsedSeconds) / (snapshot.distanceMeters / 1_000)
+    }
+
+    private func keyProgressSummary(for snapshot: ActiveSessionSnapshot) -> String {
+        var parts: [String] = []
+        if snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters {
+            parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
+        }
+        if snapshot.elapsedSeconds >= 60 {
+            parts.append("\(snapshot.elapsedSeconds.conversationalDurationString).")
+        }
+        if let averagePace = averagePace(for: snapshot) {
+            parts.append(averagePaceAnnouncement(averagePace))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    private var paceLabel: String {
+        switch AppLanguage.current {
+        case .english: "Pace"
+        case .spanish: "Ritmo"
+        case .simplifiedChinese: "配速"
+        }
+    }
+
+    private var paceSettlingAnnouncement: String {
+        switch AppLanguage.current {
+        case .english: "Pace still settling."
+        case .spanish: "El ritmo todavía se está estabilizando."
+        case .simplifiedChinese: "配速仍在稳定中。"
+        }
+    }
+
+    private func averagePaceAnnouncement(_ pace: Double) -> String {
+        switch AppLanguage.current {
+        case .english: "Average pace \(pace.spokenPaceString)."
+        case .spanish: "Ritmo medio \(pace.spokenPaceString)."
+        case .simplifiedChinese: "平均配速 \(pace.spokenPaceString)。"
+        }
     }
 
     private func guidanceAnnouncement(
@@ -577,7 +704,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         moment: GuidanceMoment
     ) -> String {
         guard moment.includesProgressContext else { return message }
-        return "\(progressAnnouncement(for: snapshot)) \(message)"
+        return "\(progressAnnouncement(for: snapshot, pace: snapshot.currentPaceSecsPerKm)) \(message)"
     }
 
     @discardableResult
