@@ -10,7 +10,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 - Saving a community route creates an independent canonical route. Deleting the source activity does not silently delete the published route.
 - Owned routes use a confirmed `Remove Published Route` action that removes the public route from the community and My Routes without deleting the source activity. `Remove from My Routes` is reserved for bookmarks of another runner's route.
 - Saving another runner's route creates a bookmark; it does not copy geometry or transfer ownership.
-- GPX and GeoJSON import creates a prepared route for planning and recording. Imported routes persist on the device, appear above server-backed routes in the route library, and remain available until the runner explicitly deletes them. Imported geometry cannot be published directly. After the runner records and saves their own activity, that activity becomes eligible for `Save Route`.
+- GPX and GeoJSON import creates a prepared route for planning and recording. Imported routes persist on the device, appear above server-backed routes in the route library, and remain available until the runner explicitly deletes them. Deletion from the preview requires confirmation, shows progress, and returns to the updated library after the device-local write succeeds. Imported geometry cannot be published directly. After the runner records and saves their own activity, that activity becomes eligible for `Save Route`.
 - `Route Guidance` is deterministic, on-device progress guidance along the exact selected polyline. It is not guaranteed turn-by-turn navigation: it does not name roads or trails, infer left/right maneuvers, reroute, or call a paid routing provider.
 
 ## Discovery UX

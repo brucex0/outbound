@@ -42,6 +42,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case routePublishFailed = "route_publish_failed"
     case routeBookmarkChanged = "route_bookmark_changed"
     case routePublicationRemoved = "route_publication_removed"
+    case routeImportDeleted = "route_import_deleted"
     case routeNavigationStarted = "route_navigation_started"
     case routeDisplayed = "route_displayed"
     case routeDeviationDetected = "route_deviation_detected"
@@ -154,6 +155,7 @@ enum ProductAnalyticsSchema {
         .routePublishFailed: [.entrySource, .errorCategory],
         .routeBookmarkChanged: [.result],
         .routePublicationRemoved: [.result],
+        .routeImportDeleted: [.result],
         .routeNavigationStarted: [.sourceType, .distanceBucket, .direction],
         .routeDisplayed: [.sourceType],
         .routeDeviationDetected: [.distanceBucket],

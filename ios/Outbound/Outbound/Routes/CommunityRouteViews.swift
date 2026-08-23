@@ -522,9 +522,15 @@ struct CommunityRouteDetailView: View {
 }
 
 private struct PreparedRoutePreview: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
     let route: PreparedRoute
     let onUse: (() -> Void)?
+    @State private var showsDeleteConfirmation = false
+    @State private var isDeleting = false
+    @State private var feedbackMessage: String?
+
     var body: some View {
         VStack(spacing: 20) {
             RoutePreviewMap(points: route.points).clipShape(RoundedRectangle(cornerRadius: 18))
@@ -551,18 +557,79 @@ private struct PreparedRoutePreview: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.orange)
-            Button(role: .destructive) { store.deleteImported(route) } label: {
-                Label(
-                    String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
-                    systemImage: "trash"
-                )
+            Button(role: .destructive) { showsDeleteConfirmation = true } label: {
+                if isDeleting {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel(
+                            String(localized: "route.import.delete.in_progress", defaultValue: "Deleting imported route")
+                        )
+                } else {
+                    Label(
+                        String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
+                        systemImage: "trash"
+                    )
+                }
             }
             .buttonStyle(.bordered)
             .frame(maxWidth: .infinity)
+            .disabled(isDeleting)
         }
         .padding()
         .navigationTitle(String(localized: "route.import.preview.title", defaultValue: "Preview Route"))
         .navigationBarTitleDisplayMode(.inline)
+        .interactiveDismissDisabled(isDeleting)
+        .confirmationDialog(
+            String(localized: "route.import.delete.confirmation_title", defaultValue: "Delete imported route?"),
+            isPresented: $showsDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(
+                String(localized: "route.import.action.delete", defaultValue: "Delete Imported Route"),
+                role: .destructive
+            ) {
+                Task { await deleteRoute() }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(
+                String(
+                    localized: "route.import.delete.confirmation_message",
+                    defaultValue: "This route will be permanently removed from this device."
+                )
+            )
+        }
+        .overlay(alignment: .top) {
+            if let feedbackMessage {
+                RouteToast(message: feedbackMessage)
+                    .onTapGesture { self.feedbackMessage = nil }
+            }
+        }
+    }
+
+    @MainActor
+    private func deleteRoute() async {
+        isDeleting = true
+        await Task.yield()
+        guard store.deleteImported(route) else {
+            isDeleting = false
+            feedbackMessage = store.errorMessage
+                ?? String(localized: "route.import.delete.error", defaultValue: "Imported route could not be deleted. Try again.")
+            store.errorMessage = nil
+            trackDeletion(result: "failed")
+            return
+        }
+        trackDeletion(result: "deleted")
+        dismiss()
+    }
+
+    private func trackDeletion(result: String) {
+        guard let analyticsManager else { return }
+        Task {
+            await analyticsManager.track(
+                .init(.routeImportDeleted, properties: [.result: .string(result)])
+            )
+        }
     }
 }
 

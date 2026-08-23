@@ -392,10 +392,12 @@ final class CommunityRouteStore: ObservableObject {
         return true
     }
 
-    func deleteImported(_ route: PreparedRoute) {
+    @discardableResult
+    func deleteImported(_ route: PreparedRoute) -> Bool {
         let updated = imported.filter { $0.id != route.id }
-        guard persistImportedRoutes(updated) else { return }
+        guard persistImportedRoutes(updated) else { return false }
         imported = updated
+        return true
     }
 
     func prepare(_ route: CommunityRoute) async -> PreparedRoute? {
