@@ -278,7 +278,7 @@ private struct CommunityRouteRow: View {
                 .foregroundStyle(.secondary)
             }
             Spacer()
-            if route.isBookmarked {
+            if route.isBookmarked && !route.isOwnedByCurrentUser {
                 Image(systemName: "bookmark.fill")
                     .foregroundStyle(.orange)
                     .accessibilityLabel(String(localized: "route.library.accessibility.saved", defaultValue: "Saved to My Routes"))
@@ -288,11 +288,23 @@ private struct CommunityRouteRow: View {
 }
 
 struct CommunityRouteDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let route: CommunityRoute
     @State private var preparedRoute: PreparedRoute?
     @State private var isPreparingRoute = true
+    @State private var isBookmarked: Bool
+    @State private var isMutatingMembership = false
+    @State private var showsRemovePublishedConfirmation = false
+    @State private var feedbackMessage: String?
+
+    init(route: CommunityRoute) {
+        self.route = route
+        _isBookmarked = State(initialValue: route.isBookmarked)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -373,18 +385,93 @@ struct CommunityRouteDetailView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .disabled(preparedRoute == nil)
-                Button { Task { await store.toggleBookmark(route) } } label: {
-                    Label(
-                        route.isBookmarked
-                            ? String(localized: "library.my_routes.remove", defaultValue: "Remove from My Routes")
-                            : String(localized: "library.my_routes.save", defaultValue: "Save to My Routes"),
-                        systemImage: route.isBookmarked ? "bookmark.slash" : "bookmark"
-                    )
-                }.buttonStyle(.bordered).frame(maxWidth: .infinity)
+                routeMembershipButton
             }.padding()
         }
         .navigationBarTitleDisplayMode(.inline)
         .task { await prepareRoute() }
+        .confirmationDialog(
+            String(
+                localized: "route.library.remove_published.confirmation_title",
+                defaultValue: "Remove published route?"
+            ),
+            isPresented: $showsRemovePublishedConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(
+                String(
+                    localized: "route.library.remove_published.confirm",
+                    defaultValue: "Remove Published Route"
+                ),
+                role: .destructive
+            ) {
+                Task { await removePublishedRoute() }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(
+                String(
+                    localized: "route.library.remove_published.confirmation_message",
+                    defaultValue: "This route will disappear from My Routes and the community. Your original activity will not be deleted."
+                )
+            )
+        }
+        .overlay(alignment: .top) {
+            if let feedbackMessage {
+                RouteToast(message: feedbackMessage)
+                    .onTapGesture { self.feedbackMessage = nil }
+            }
+        }
+        .task(id: feedbackMessage) {
+            guard feedbackMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(2.5))
+            feedbackMessage = nil
+        }
+    }
+
+    @ViewBuilder
+    private var routeMembershipButton: some View {
+        if route.isOwnedByCurrentUser {
+            Button(role: .destructive) {
+                showsRemovePublishedConfirmation = true
+            } label: {
+                Label(
+                    String(
+                        localized: "route.library.remove_published.action",
+                        defaultValue: "Remove Published Route"
+                    ),
+                    systemImage: "trash"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isMutatingMembership)
+        } else {
+            Button {
+                Task { await updateBookmark() }
+            } label: {
+                if isMutatingMembership {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel(
+                            String(
+                                localized: "route.library.bookmark.updating",
+                                defaultValue: "Updating saved route"
+                            )
+                        )
+                } else {
+                    Label(
+                        isBookmarked
+                            ? String(localized: "library.my_routes.remove", defaultValue: "Remove from My Routes")
+                            : String(localized: "library.my_routes.save", defaultValue: "Save to My Routes"),
+                        systemImage: isBookmarked ? "bookmark.slash" : "bookmark"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isMutatingMembership)
+        }
     }
 
     private func prepareRoute() async {
@@ -392,6 +479,45 @@ struct CommunityRouteDetailView: View {
         store.errorMessage = nil
         preparedRoute = await store.prepare(route)
         isPreparingRoute = false
+    }
+
+    private func updateBookmark() async {
+        isMutatingMembership = true
+        defer { isMutatingMembership = false }
+        let requestedState = !isBookmarked
+        guard let updatedState = await store.setBookmarked(route, bookmarked: requestedState) else {
+            feedbackMessage = store.errorMessage
+                ?? String(localized: "Route could not be saved. Try again.")
+            store.errorMessage = nil
+            track(.init(.routeBookmarkChanged, properties: [.result: .string("failed")]))
+            return
+        }
+        isBookmarked = updatedState
+        track(.init(.routeBookmarkChanged, properties: [
+            .result: .string(updatedState ? "saved" : "removed"),
+        ]))
+    }
+
+    private func removePublishedRoute() async {
+        isMutatingMembership = true
+        defer { isMutatingMembership = false }
+        guard await store.removePublishedRoute(route) else {
+            feedbackMessage = store.errorMessage
+                ?? String(
+                    localized: "route.library.remove_published.error",
+                    defaultValue: "Published route could not be removed. Try again."
+                )
+            store.errorMessage = nil
+            track(.init(.routePublicationRemoved, properties: [.result: .string("failed")]))
+            return
+        }
+        track(.init(.routePublicationRemoved, properties: [.result: .string("removed")]))
+        dismiss()
+    }
+
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
     }
 }
 

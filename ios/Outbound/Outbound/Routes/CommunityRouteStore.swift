@@ -167,6 +167,7 @@ struct CommunityRoute: Codable, Identifiable, Hashable {
 struct CommunityRouteListResponse: Decodable { let routes: [CommunityRoute] }
 struct PublishCommunityRouteRequest: Encodable { let name: String }
 struct RouteBookmarkResponse: Decodable { let ok: Bool; let bookmarked: Bool }
+struct CommunityRouteMutationResponse: Decodable { let ok: Bool }
 
 @MainActor
 final class CommunityRouteStore: ObservableObject {
@@ -323,16 +324,52 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
-    func toggleBookmark(_ route: CommunityRoute) async {
+    func setBookmarked(_ route: CommunityRoute, bookmarked: Bool) async -> Bool? {
         do {
-            _ = try await APIClient.shared.setRouteBookmark(id: route.id, bookmarked: !route.isBookmarked)
+            let response = try await APIClient.shared.setRouteBookmark(id: route.id, bookmarked: bookmarked)
             discovered = discovered.map { item in
                 guard item.id == route.id else { return item }
-                var updated = item; updated.isBookmarked.toggle(); return updated
+                var updated = item
+                updated.isBookmarked = response.bookmarked
+                return updated
             }
-            await refreshMine()
+            if response.bookmarked {
+                var updated = route
+                updated.isBookmarked = true
+                mine.removeAll { $0.id == route.id }
+                mine.insert(updated, at: 0)
+                await refreshMine()
+            } else {
+                mine = mine.compactMap { item in
+                    guard item.id == route.id else { return item }
+                    guard item.isOwnedByCurrentUser else { return nil }
+                    var updated = item
+                    updated.isBookmarked = false
+                    return updated
+                }
+            }
+            return response.bookmarked
         } catch {
             errorMessage = String(localized: "Route could not be saved. Try again.")
+            return nil
+        }
+    }
+
+    func removePublishedRoute(_ route: CommunityRoute) async -> Bool {
+        guard route.isOwnedByCurrentUser else { return false }
+        do {
+            let response = try await APIClient.shared.removePublishedRoute(id: route.id)
+            guard response.ok else { return false }
+            mine.removeAll { $0.id == route.id }
+            discovered.removeAll { $0.id == route.id }
+            removeCachedCommunityRoute(id: route.id)
+            return true
+        } catch {
+            errorMessage = String(
+                localized: "route.library.remove_published.error",
+                defaultValue: "Published route could not be removed. Try again."
+            )
+            return false
         }
     }
 
@@ -450,6 +487,19 @@ final class CommunityRouteStore: ObservableObject {
 
     private func persistCommunityRouteCacheOrder() {
         do {
+            try JSONEncoder().encode(cachedCommunityRouteOrder)
+                .write(to: communityRouteCacheOrderURL, options: .atomic)
+        } catch {
+            errorMessage = String(localized: "Route details could not be saved for offline use.")
+        }
+    }
+
+    private func removeCachedCommunityRoute(id: String) {
+        cachedCommunityRoutes.removeValue(forKey: id)
+        cachedCommunityRouteOrder.removeAll { $0 == id }
+        let retained = cachedCommunityRouteOrder.compactMap { cachedCommunityRoutes[$0] }
+        do {
+            try JSONEncoder().encode(retained).write(to: communityRouteCacheURL, options: .atomic)
             try JSONEncoder().encode(cachedCommunityRouteOrder)
                 .write(to: communityRouteCacheOrderURL, options: .atomic)
         } catch {

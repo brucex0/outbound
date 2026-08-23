@@ -95,6 +95,10 @@ final class APIClient {
         return try await delete("/routes/\(id)/bookmark")
     }
 
+    func removePublishedRoute(id: String) async throws -> CommunityRouteMutationResponse {
+        try await delete("/routes/\(id)")
+    }
+
     func uploadActivityPhoto(_ request: ActivityPhotoUploadRequest) async throws -> RemoteActivityPhoto {
         try await post("/media/activity-photos", body: request)
     }
