@@ -48,7 +48,6 @@ struct RecordView: View {
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
-    @AppStorage("dismissed_apple_voice_download_tip_v1") private var dismissedAppleVoiceDownloadTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -96,6 +95,7 @@ struct RecordView: View {
     @State private var intentBeforeSelectedRoute: SessionIntent?
     @State private var selectedRouteDistanceMeters: Double?
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
+    @State private var isVoiceGuideEnabled = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -446,10 +446,11 @@ struct RecordView: View {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
         guideCatalog.refreshInstalledVoices()
-        guard !guideCatalog.requiresVoiceSelection else {
+        guard !isVoiceGuideEnabled || !guideCatalog.requiresVoiceSelection else {
             guideCatalog.requestVoiceSelection()
             return
         }
+        guide.setSpeechEnabled(isVoiceGuideEnabled)
         isStartingActivity = true
         let intent = plannedIntent
         beginRecordingAfterLiveShareSetup()
@@ -506,6 +507,7 @@ struct RecordView: View {
         activeIntent = plannedIntent
         activePage = preferredSessionPage
         showCamera = true
+        guide.setSpeechEnabled(isVoiceGuideEnabled)
         guide.activate(
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
@@ -559,6 +561,7 @@ struct RecordView: View {
         activePage = preferredSessionPage
         activeIntent = plannedIntent
         recorder.locationManager.requestPermission()
+        guide.setSpeechEnabled(isVoiceGuideEnabled)
         guide.activate(
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
@@ -841,6 +844,7 @@ struct RecordView: View {
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
         selectedGuidanceChallenge = .off
+        isVoiceGuideEnabled = false
     }
 
     private var preferredSessionPage: SessionPage {
@@ -865,9 +869,6 @@ struct RecordView: View {
                     if connectivityStore.isOffline {
                         OfflineStatusBanner()
                     }
-                    if !guideCatalog.hasDownloadedAppleVoices, !dismissedAppleVoiceDownloadTip {
-                        appleVoiceDownloadTip
-                    }
                     confirmationView(for: plannedIntent ?? .freestyleRun)
                 }
                 .padding(.horizontal, 20)
@@ -885,42 +886,6 @@ struct RecordView: View {
             applyDefaultSessionShoeIfNeeded()
             trackSetupAndFeatureExposureIfNeeded()
         }
-    }
-
-    private var appleVoiceDownloadTip: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "waveform.circle")
-                .font(.title3)
-                .foregroundStyle(.orange)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(String(localized: "record.voice_tip.title", defaultValue: "Make spoken coaching sound even better"))
-                    .font(.subheadline.weight(.semibold))
-                Text(String(localized: "record.voice_tip.detail", defaultValue: "Add a free Apple Enhanced or Premium voice. Your current voice works in the meantime."))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Button(String(localized: "record.voice_tip.action", defaultValue: "See how")) {
-                    showsVoiceDownloadHelp = true
-                }
-                .font(.footnote.weight(.semibold))
-            }
-
-            Spacer(minLength: 0)
-
-            Button {
-                dismissedAppleVoiceDownloadTip = true
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-            }
-            .accessibilityLabel(String(localized: "record.voice_tip.dismiss", defaultValue: "Dismiss voice download suggestion"))
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
     private var launchControls: some View {
@@ -1097,6 +1062,8 @@ struct RecordView: View {
             .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
 
             VStack(spacing: 14) {
+                voiceGuideCard
+
                 if intent.workoutSteps.isEmpty {
                     sessionGoalCard(for: intent)
                 } else {
@@ -1119,6 +1086,34 @@ struct RecordView: View {
                 .foregroundStyle(.secondary)
             }
 
+        }
+    }
+
+    private var voiceGuideCard: some View {
+        Toggle(isOn: $isVoiceGuideEnabled) {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"), systemImage: "waveform.circle")
+                    .font(.subheadline.weight(.semibold))
+                Text(String(localized: "record.voice_guide.detail", defaultValue: "Hear countdowns, progress updates, and live coaching."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .tint(.orange)
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
+        .onChange(of: isVoiceGuideEnabled) { _, isEnabled in
+            guide.setSpeechEnabled(isEnabled)
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("voice_guide"),
+                .result: .string(isEnabled ? "enabled" : "disabled")
+            ]))
+            guard isEnabled else { return }
+            guideCatalog.refreshInstalledVoices()
+            if !guideCatalog.hasDownloadedAppleVoices {
+                showsVoiceDownloadHelp = true
+            }
         }
     }
 

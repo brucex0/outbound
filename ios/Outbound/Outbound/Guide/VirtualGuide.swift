@@ -64,7 +64,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private let fallbackProvider = RuleBasedSessionAnalysisProvider()
     private let synthesizer = GuideSpeechSynthesizer()
     private let momentDirector = LiveGuidanceDirector()
-    private let speechEnabled: Bool
+    private var speechEnabled: Bool
     private var profile: GuideProfile?
     private var persona: GuidePersona?
     private var sessionIntent: SessionIntent?
@@ -113,6 +113,13 @@ final class VirtualGuide: NSObject, ObservableObject {
         super.init()
         synthesizer.eventHandler = { [weak self] event in
             self?.speechEventHandler?(event)
+        }
+    }
+
+    func setSpeechEnabled(_ isEnabled: Bool) {
+        speechEnabled = isEnabled
+        if !isEnabled {
+            synthesizer.stopSpeaking(at: .immediate)
         }
     }
 

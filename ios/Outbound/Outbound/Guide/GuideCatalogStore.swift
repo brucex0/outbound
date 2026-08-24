@@ -43,7 +43,7 @@ final class GuideCatalogStore: ObservableObject {
     var selectedTheme: OutboundTheme { selection.theme }
 
     var hasDownloadedAppleVoices: Bool {
-        selectedTemplate.voiceOptions.contains { $0.appleVoiceIdentifier != nil && !$0.isStandardQuality }
+        selectedTemplate.voiceOptions.contains(where: \.isPremiumOrEnhancedQuality)
     }
 
     init(

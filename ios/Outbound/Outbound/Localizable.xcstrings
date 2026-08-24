@@ -17862,6 +17862,86 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看、更换或结束当前训练计划" } }
       }
     },
+    "record.voice_guide.detail" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Hear countdowns, progress updates, and live coaching." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escucha la cuenta atrás, actualizaciones de progreso e indicaciones en directo." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收听倒计时、进度播报和实时指导。" } }
+      }
+    },
+    "record.voice_guide.title" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Voice Guide" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guía por voz" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音指导" } }
+      }
+    },
+    "voice_download.footer" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Apple manages these voice downloads. Plainstride will find the new voice when you return to the app." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Apple gestiona estas descargas. Plainstride detectará la nueva voz cuando vuelvas a la app." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音由 Apple 负责下载。返回 Plainstride 后，App 会自动识别新语音。" } }
+      }
+    },
+    "voice_download.open_settings" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Go to Settings" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ir a Ajustes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "前往“设置”" } }
+      }
+    },
+    "voice_download.section.iphone" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "On your iPhone" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "En tu iPhone" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 iPhone 上" } }
+      }
+    },
+    "voice_download.step.accessibility" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Choose Accessibility" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige Accesibilidad" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择“辅助功能”" } }
+      }
+    },
+    "voice_download.step.download" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Pick your language and download an Enhanced or Premium voice" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige tu idioma y descarga una voz Mejorada o Premium" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择语言并下载“增强”或“高级”语音" } }
+      }
+    },
+    "voice_download.step.open_settings" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Open the Settings app" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre la app Ajustes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开“设置”App" } }
+      }
+    },
+    "voice_download.step.voices" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Open Read & Speak (or Spoken Content), then Voices" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre Leer y hablar (o Contenido leído) y, después, Voces" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开“朗读与语音”（或“朗读内容”），然后选择“声音”" } }
+      }
+    },
+    "voice_download.title" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Download a Better Voice" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Descarga una voz mejor" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载更自然的语音" } }
+      }
+    },
     "Your rhythm is working." : {
       "localizations" : {
         "es" : {
