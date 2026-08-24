@@ -644,7 +644,7 @@ struct MotivationDashboardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Now")
                         .font(.headline)
-                    planTitleButton(activePlan.title)
+                    planTitleButton(activePlan.localizedTitle)
                     Text(todaySuggestion.title)
                         .font(.title3.weight(.bold))
                 }
@@ -703,7 +703,7 @@ struct MotivationDashboardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Now")
                         .font(.headline)
-                    planTitleButton(activePlan.title)
+                    planTitleButton(activePlan.localizedTitle)
                     Text(week == nil ? "Syncing today's session" : "No session scheduled today")
                         .font(.title3.weight(.bold))
                 }
@@ -853,7 +853,7 @@ struct MotivationDashboardView: View {
                     Label("Companion pick", systemImage: "calendar.badge.plus")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(guideCatalog.selectedTheme.accentColor)
-                    Text(recommendation.template.title)
+                    Text(recommendation.template.localizedTitle)
                         .font(.title3.weight(.bold))
                 }
 
@@ -973,7 +973,7 @@ struct MotivationDashboardView: View {
 
     private func planTitle(for response: ActivitySuggestionResponse) -> String? {
         if let activePlan = trainingPlanStore.activePlan {
-            return activePlan.title
+            return activePlan.localizedTitle
         }
         return isPlanLinked(response) ? (response.planContext?.title ?? "Training plan") : nil
     }
@@ -1716,7 +1716,7 @@ struct TrainingPlanCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Active plan")
                         .font(.headline)
-                    Text(activePlan.title)
+                    Text(activePlan.localizedTitle)
                         .font(.title3.weight(.bold))
                     Text("Week \(week.currentWeekIndex) of \(week.totalWeeks)")
                         .font(.subheadline.weight(.semibold))
@@ -1812,7 +1812,7 @@ struct TrainingPlanCard: View {
 
             if let lead = trainingPlanStore.recommendations.first {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(lead.template.title)
+                    Text(lead.template.localizedTitle)
                         .font(.title3.weight(.bold))
                     Text(lead.template.subtitle)
                         .font(.subheadline)

@@ -108,7 +108,7 @@ function marathonTemplate(): RawTemplate {
     id: "run-marathon-v1",
     focus: "marathon",
     sport: "run",
-    title: "Marathon plan",
+    titleKey: "training_plan.title.marathon",
     subtitle: "A 16-week marathon build with patient mileage, cutback weeks, race-specific endurance, and a real taper.",
     defaultWeeks: 16,
     minSessionsPerWeek: 4,

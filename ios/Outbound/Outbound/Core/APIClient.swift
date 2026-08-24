@@ -732,7 +732,7 @@ private extension PlanningAPIStateResponse {
             templateID: fallbackRecommendation?.template.id ?? "adaptive-\(goal.id)",
             focus: focus,
             sport: sport,
-            title: fallbackRecommendation?.template.title ?? focus.adaptiveTitle,
+            titleKey: fallbackRecommendation?.template.titleKey ?? focus.adaptiveTitleKey,
             subtitle: currentVersion?.summary ?? "Adaptive plan generated from your recent training.",
             durationWeeks: durationWeeks,
             sessionsPerWeek: sessionsPerWeek,
@@ -976,15 +976,15 @@ private extension TrainingPlanFocus {
         }
     }
 
-    var adaptiveTitle: String {
+    var adaptiveTitleKey: String {
         switch self {
-        case .consistency: return "Adaptive consistency builder"
-        case .comeback: return "Adaptive comeback plan"
-        case .fiveK: return "Adaptive 5K plan"
-        case .tenK: return "Adaptive 10K plan"
-        case .tenMile: return "Adaptive 10 mile plan"
-        case .halfMarathon: return "Adaptive half marathon plan"
-        case .marathon: return "Adaptive marathon plan"
+        case .consistency: return "training_plan.title.adaptive_consistency"
+        case .comeback: return "training_plan.title.adaptive_comeback"
+        case .fiveK: return "training_plan.title.adaptive_5k"
+        case .tenK: return "training_plan.title.adaptive_10k"
+        case .tenMile: return "training_plan.title.adaptive_10mile"
+        case .halfMarathon: return "training_plan.title.adaptive_half"
+        case .marathon: return "training_plan.title.adaptive_marathon"
         }
     }
 }

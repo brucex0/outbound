@@ -36,7 +36,7 @@ struct TrainingPlanPickerView: View {
 
                 ForEach(recommendations) { recommendation in
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(recommendation.template.title)
+                        Text(recommendation.template.localizedTitle)
                             .font(.headline)
 
                         Text(recommendation.template.subtitle)
@@ -163,7 +163,7 @@ struct TrainingPlanRecommendationDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(recommendation.template.title)
+            Text(recommendation.template.localizedTitle)
                 .font(.system(.title2, design: .rounded).weight(.bold))
             Text(recommendation.template.subtitle)
                 .font(.subheadline)
@@ -280,7 +280,7 @@ struct ActiveTrainingPlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(activePlan.title)
+                    Text(activePlan.localizedTitle)
                         .font(.system(.title2, design: .rounded).weight(.bold))
                     Text(activePlan.subtitle)
                         .font(.subheadline)
@@ -450,7 +450,7 @@ struct ActiveTrainingPlanPendingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(activePlan.title)
+                    Text(activePlan.localizedTitle)
                         .font(.system(.title2, design: .rounded).weight(.bold))
                     Text(activePlan.subtitle)
                         .font(.subheadline)

@@ -497,7 +497,7 @@ private struct SimplifiedTodayView: View {
     private var activityLibraryButtons: some View {
         HStack(spacing: OutboundSpacing.compact) {
             activityLibraryButton(
-                title: trainingPlanStore.activePlan.map { localizedAppCopy($0.title) } ?? String(localized: "Plans"),
+                title: trainingPlanStore.activePlan?.localizedTitle ?? String(localized: "Plans"),
                 systemImage: "calendar"
             ) {
                 if trainingPlanStore.activePlan == nil {
@@ -507,7 +507,7 @@ private struct SimplifiedTodayView: View {
                 }
             }
             .accessibilityLabel("Plans")
-            .accessibilityValue(trainingPlanStore.activePlan.map { localizedAppCopy($0.title) } ?? String(localized: "No plan selected"))
+            .accessibilityValue(trainingPlanStore.activePlan?.localizedTitle ?? String(localized: "No plan selected"))
 
             activityLibraryButton(
                 title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "library.workouts", defaultValue: "Workouts"),
@@ -2139,7 +2139,7 @@ private struct SimplifiedMeView: View {
     private var planTitle: String {
         guard let plan = trainingPlanStore.activePlan else { return String(localized: "Building your running rhythm") }
         let week = trainingPlanStore.currentWeek?.currentWeekIndex ?? 1
-        return String(localized: "\(plan.title) · Week \(week) of \(plan.durationWeeks)")
+        return String(localized: "\(plan.localizedTitle) · Week \(week) of \(plan.durationWeeks)")
     }
 
     private var planDetail: String { String(localized: "\(weekTarget) runs per week") }

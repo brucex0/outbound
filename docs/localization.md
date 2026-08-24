@@ -25,6 +25,7 @@ Localization covers every user-facing surface, including accessibility, system p
 - Every API request sends `Accept-Language` and `X-Plainstride-Locale`. Backend middleware normalizes unsupported or regional variants to one supported locale.
 - Assistant and companion AI prompts require the requested language. Their responses identify the locale used, and deterministic companion and cycle-aware fallbacks are available in all three languages.
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
+- Built-in training-plan templates persist semantic `training_plan.title.*` keys. The iOS client resolves those keys through `Localizable.xcstrings`; plan analytics and selection continue to use the stable template ID, never a localized title.
 - Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
 - Speech recognition, speech-analysis assets, spoken guidance voices, command hints, and deterministic activity parsing support English, Spanish, and Mandarin, including localized duration and distance units.
 
@@ -57,6 +58,8 @@ Persist stable semantic values, never localized presentation:
 - Do not translate user-entered activity titles, profile fields, messages, contact names, or imported provider content.
 - Record the locale of cached generated prose. Refresh or regenerate that prose when the active language changes rather than presenting stale English inside a localized screen.
 - Existing persisted English display strings may be reset, reseeded, or migrated to semantic identifiers because the product is pre-public release.
+
+The training-plan template schema uses `titleKey`, not an English `title`. After pulling a schema change that affects these keys, rebuild the pre-release backend database with `cd backend && npm run db:rebuild`; this resets and reseeds the built-in catalog with the current semantic identifiers.
 
 ## Interpolation And Plurals
 

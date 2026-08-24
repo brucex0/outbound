@@ -16,7 +16,7 @@ export async function seedTrainingPlanTemplates(client: PrismaClient = prisma) {
             id: template.id,
             focus: template.focus,
             sport: template.sport,
-            title: template.title,
+            titleKey: template.titleKey,
             subtitle: template.subtitle,
             defaultWeeks: template.defaultWeeks,
             minSessionsPerWeek: template.minSessionsPerWeek,

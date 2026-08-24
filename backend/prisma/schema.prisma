@@ -350,7 +350,7 @@ model TrainingPlanTemplate {
   id                     String   @id
   focus                  String
   sport                  String
-  title                  String
+  titleKey               String
   subtitle               String
   defaultWeeks           Int
   minSessionsPerWeek     Int

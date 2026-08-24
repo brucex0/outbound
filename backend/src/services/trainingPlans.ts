@@ -83,7 +83,7 @@ export interface TrainingPlanTemplate {
   id: string;
   focus: TrainingPlanFocus;
   sport: TrainingPlanSport;
-  title: string;
+  titleKey: string;
   subtitle: string;
   defaultWeeks: number;
   minSessionsPerWeek: number;
@@ -112,7 +112,7 @@ export interface ActiveTrainingPlan {
   templateID: string;
   focus: TrainingPlanFocus;
   sport: TrainingPlanSport;
-  title: string;
+  titleKey: string;
   subtitle: string;
   durationWeeks: number;
   sessionsPerWeek: number;
@@ -178,7 +178,7 @@ export interface ActiveTrainingPlanData {
   templateId: string;
   focus: TrainingPlanFocus;
   sport: TrainingPlanSport;
-  title: string;
+  titleKey: string;
   subtitle: string;
   durationWeeks: number;
   sessionsPerWeek: number;
@@ -192,7 +192,7 @@ interface StoredActiveTrainingPlan {
   templateId: string;
   focus: string;
   sport: string;
-  title: string;
+  titleKey: string;
   subtitle: string;
   durationWeeks: number;
   sessionsPerWeek: number;
@@ -318,7 +318,7 @@ export function makeActivePlanData(params: {
     templateId: template.id,
     focus: template.focus,
     sport: template.sport,
-    title: template.title,
+    titleKey: template.titleKey,
     subtitle: template.subtitle,
     durationWeeks,
     sessionsPerWeek,
@@ -352,7 +352,7 @@ function activePlanFromRecord(
     templateID: record.templateId,
     focus: (template?.focus ?? record.focus) as TrainingPlanFocus,
     sport: (template?.sport ?? record.sport) as TrainingPlanSport,
-    title: template?.title ?? record.title,
+    titleKey: template?.titleKey ?? record.titleKey,
     subtitle: template?.subtitle ?? record.subtitle,
     durationWeeks: record.durationWeeks,
     sessionsPerWeek: record.sessionsPerWeek,

@@ -9,7 +9,7 @@ import { getPrismaClient } from "./prisma.js";
 
 export async function loadTrainingPlanCatalog(): Promise<TrainingPlanCatalog> {
   const records = await getPrismaClient().trainingPlanTemplate.findMany({
-    orderBy: [{ focus: "asc" }, { title: "asc" }],
+    orderBy: [{ focus: "asc" }, { titleKey: "asc" }],
     include: {
       weeks: {
         orderBy: { weekIndex: "asc" },
@@ -36,7 +36,7 @@ export async function loadTrainingPlanCatalog(): Promise<TrainingPlanCatalog> {
       id: record.id,
       focus: record.focus as TrainingPlanTemplate["focus"],
       sport: record.sport as TrainingPlanTemplate["sport"],
-      title: record.title,
+      titleKey: record.titleKey,
       subtitle: record.subtitle,
       defaultWeeks: record.defaultWeeks,
       minSessionsPerWeek: record.minSessionsPerWeek,

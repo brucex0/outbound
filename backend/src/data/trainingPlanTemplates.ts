@@ -23,7 +23,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A 10-week imported base phase built around general aerobic work, strides, threshold touches, and endurance long runs.",
     "summary" : "A realistic base cycle for runners who want durable weekly rhythm before chasing a sharper race block.",
-    "title" : "Base building 30 mpw",
+    "titleKey" : "training_plan.title.base_30",
     "weeks" : [
       {
         "focus" : "Build aerobic durability",
@@ -2230,7 +2230,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A realistic rhythm for showing up without race pressure.",
     "summary" : "Three manageable sessions each week with one optional extra so consistency can survive normal life.",
-    "title" : "Consistency builder",
+    "titleKey" : "training_plan.title.consistency",
     "weeks" : [
       {
         "focus" : "Find a repeatable rhythm",
@@ -3050,7 +3050,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A soft return to structure after a gap or rough patch.",
     "summary" : "Walk-run sessions progress gently, with enough recovery built in that restarting feels doable instead of scary.",
-    "title" : "Comeback runway",
+    "titleKey" : "training_plan.title.comeback",
     "weeks" : [
       {
         "focus" : "Reconnect with the routine",
@@ -4017,7 +4017,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A full nine-week run/walk progression imported from open-source plan data.",
     "summary" : "Three sessions each week move from short run-walk intervals to a continuous 30-minute run.",
-    "title" : "Couch to 5K",
+    "titleKey" : "training_plan.title.5k",
     "weeks" : [
       {
         "focus" : "Build continuous running",
@@ -5991,7 +5991,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A balanced 10K block with aerobic support, controlled quality, and progression you can actually recover from.",
     "summary" : "Four-week structure repeated with progressive long runs, one quality session, and one optional cross-training day.",
-    "title" : "10K builder",
+    "titleKey" : "training_plan.title.10k",
     "weeks" : [
       {
         "focus" : "Set the aerobic floor",
@@ -7506,7 +7506,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "An endurance-focused block for runners ready for longer weekends without turning every weekday into a grind.",
     "summary" : "Steady midweek work plus gradually longer weekend runs build enough range for a confident 10-mile day.",
-    "title" : "10 mile plan",
+    "titleKey" : "training_plan.title.10mile",
     "weeks" : [
       {
         "focus" : "Build steady range",
@@ -8937,7 +8937,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A practical half build with one real long run, one purposeful quality day, and enough recovery to stay honest.",
     "summary" : "A ten-week half block that progresses long runs steadily while using tempo, intervals, and race-prep sessions sparingly.",
-    "title" : "Half marathon plan",
+    "titleKey" : "training_plan.title.half",
     "weeks" : [
       {
         "focus" : "Settle into half structure",
@@ -10740,7 +10740,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "An imported week-by-week half plan with easy mileage, HMP sessions, interval workouts, and progressive long runs.",
     "summary" : "A larger-volume imported half block for runners who want a complete calendar with explicit workouts nearly every day.",
-    "title" : "Half marathon beginner import",
+    "titleKey" : "training_plan.title.half_hansons_beginner",
     "weeks" : [
       {
         "focus" : "Progress into structured half-marathon work",
@@ -15035,7 +15035,7 @@ export const trainingPlanTemplates = [
     "sport" : "run",
     "subtitle" : "A higher-volume imported half plan with frequent easy mileage, race-pace work, interval sessions, and longer long runs.",
     "summary" : "An advanced imported option for runners who already tolerate consistent weekly mileage and want a denser plan.",
-    "title" : "Half marathon advanced import",
+    "titleKey" : "training_plan.title.half_hansons_advanced",
     "weeks" : [
       {
         "focus" : "Carry higher half-marathon volume",

@@ -489,7 +489,7 @@ struct TrainingPlanTemplate: Identifiable, Codable, Hashable {
     let id: String
     let focus: TrainingPlanFocus
     let sport: TrainingPlanSport
-    let title: String
+    let titleKey: String
     let subtitle: String
     let defaultWeeks: Int
     let minSessionsPerWeek: Int
@@ -500,6 +500,10 @@ struct TrainingPlanTemplate: Identifiable, Codable, Hashable {
     let highlights: [String]
     let source: TrainingPlanSource?
     let weeks: [TrainingPlanWeek]
+
+    var localizedTitle: String {
+        String(localized: String.LocalizationValue(titleKey))
+    }
 }
 
 struct TrainingPlanRecommendation: Identifiable, Codable, Hashable {
@@ -518,13 +522,17 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     let templateID: String
     let focus: TrainingPlanFocus
     let sport: TrainingPlanSport
-    let title: String
+    let titleKey: String
     let subtitle: String
     let durationWeeks: Int
     let sessionsPerWeek: Int
     let targetWeeklyMinutes: Int
     let longSessionMinutes: Int
     let createdAt: Date
+
+    var localizedTitle: String {
+        String(localized: String.LocalizationValue(titleKey))
+    }
 }
 
 struct TrainingPlanWeekSnapshot: Codable, Equatable {
@@ -566,9 +574,9 @@ final class TrainingPlanStore: ObservableObject {
     private let defaults: UserDefaults
     private let calendar: Calendar
     private let api: APIClient
-    private let activePlanKey = "training_plan_store_active_plan_v1"
-    private let stateCacheKey = "training_plan_store_state_v2"
-    private let recommendationCacheKey = "training_plan_store_recommendations_cache_v1"
+    private let activePlanKey = "training_plan_store_active_plan_v2"
+    private let stateCacheKey = "training_plan_store_state_v3"
+    private let recommendationCacheKey = "training_plan_store_recommendations_cache_v2"
     private let cacheLocaleKey = "training_plan_store_cache_locale_v1"
     private let dismissedWeekKey = "training_plan_store_dismissed_week_v1"
     private let readinessSyncKey = "training_plan_store_readiness_sync_v1"
@@ -701,7 +709,7 @@ final class TrainingPlanStore: ObservableObject {
             templateID: recommendation.template.id,
             focus: recommendation.template.focus,
             sport: recommendation.template.sport,
-            title: recommendation.template.title,
+            titleKey: recommendation.template.titleKey,
             subtitle: recommendation.template.subtitle,
             durationWeeks: recommendation.durationWeeks,
             sessionsPerWeek: recommendation.sessionsPerWeek,
