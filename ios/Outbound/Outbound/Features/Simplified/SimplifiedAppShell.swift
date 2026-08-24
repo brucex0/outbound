@@ -2712,7 +2712,7 @@ private struct SimplifiedProfileEditorView: View {
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
             if let avatarUrl = profile.avatarUrl, let uploadedImage = UIImage(data: jpegData) {
-                UserAvatarImageLoader.store(uploadedImage, for: avatarUrl)
+                AvatarImageCache.shared.store(uploadedImage, for: avatarUrl)
             }
             onProfileUpdated?(profile)
             showToast(String(localized: "Profile photo updated"), style: .success)
@@ -2774,14 +2774,14 @@ private struct UserAvatarView: View {
     let name: String
     let size: CGFloat
     let isProfileLoading: Bool
-    @StateObject private var loader: UserAvatarImageLoader
+    @StateObject private var loader: AvatarImageLoader
 
     init(url: String?, name: String, size: CGFloat, isProfileLoading: Bool = false) {
         self.url = url
         self.name = name
         self.size = size
         self.isProfileLoading = isProfileLoading
-        _loader = StateObject(wrappedValue: UserAvatarImageLoader(url: url))
+        _loader = StateObject(wrappedValue: AvatarImageLoader(url: url))
     }
 
     var body: some View {
@@ -2805,52 +2805,11 @@ private struct UserAvatarView: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel("\(name) profile photo")
-        .task(id: url) { loader.load(url: url) }
+        .task(id: url) { await loader.load(url: url) }
     }
 
     private var initials: String {
         name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-    }
-}
-
-@MainActor
-private final class UserAvatarImageLoader: ObservableObject {
-    @Published private(set) var image: UIImage?
-    private var currentURL: String?
-    private static let cache = NSCache<NSString, UIImage>()
-
-    init(url: String?) {
-        currentURL = url
-        image = url.flatMap { Self.cache.object(forKey: $0 as NSString) }
-    }
-
-    static func store(_ image: UIImage, for url: String) {
-        cache.setObject(image, forKey: url as NSString)
-    }
-
-    func load(url: String?) {
-        guard currentURL != url || image == nil else { return }
-        currentURL = url
-        guard let url, let remoteURL = URL(string: url) else {
-            image = nil
-            return
-        }
-        if let cached = Self.cache.object(forKey: url as NSString) {
-            image = cached
-            return
-        }
-
-        Task {
-            var request = URLRequest(url: remoteURL)
-            request.cachePolicy = .returnCacheDataElseLoad
-            guard let (data, response) = try? await URLSession.shared.data(for: request),
-                  let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode),
-                  let downloadedImage = UIImage(data: data),
-                  currentURL == url else { return }
-            Self.store(downloadedImage, for: url)
-            image = downloadedImage
-        }
     }
 }
 

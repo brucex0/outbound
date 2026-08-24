@@ -1823,19 +1823,29 @@ private extension SocialPersonDTO {
 struct SocialAvatar: View {
     let name: String
     let avatarURL: String?
+    @StateObject private var loader: AvatarImageLoader
+
+    init(name: String, avatarURL: String?) {
+        self.name = name
+        self.avatarURL = avatarURL
+        _loader = StateObject(wrappedValue: AvatarImageLoader(url: avatarURL))
+    }
 
     var body: some View {
-        AsyncImage(url: avatarURL.flatMap(URL.init(string:))) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            ZStack {
-                Circle().fill(OutboundPalette.companion.opacity(0.15))
-                Text(initials).font(.caption.weight(.semibold))
+        Group {
+            if let image = loader.image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                ZStack {
+                    Circle().fill(OutboundPalette.companion.opacity(0.15))
+                    Text(initials).font(.caption.weight(.semibold))
+                }
             }
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
         .accessibilityLabel(name)
+        .task(id: avatarURL) { await loader.load(url: avatarURL) }
     }
 
     private var initials: String {

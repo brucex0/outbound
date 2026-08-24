@@ -70,12 +70,7 @@ enum ActivityShareCardRenderer {
               let avatarURLString = profile.avatarUrl,
               let avatarURL = URL(string: avatarURLString) else { return nil }
 
-        var request = URLRequest(url: avatarURL)
-        request.cachePolicy = .returnCacheDataElseLoad
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode) else { return nil }
-        return UIImage(data: data)
+        return await AvatarImageCache.shared.image(for: avatarURL.absoluteString)
     }
 
     private static func loadAppIcon() -> UIImage? {
