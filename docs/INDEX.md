@@ -10,7 +10,7 @@ Primary flow:
 
 1. App launches into the production `Social · Today · Me` shell, centered on Today.
 2. New authenticated accounts see the simplified runner intake, editable understanding, calibration, and first-plan onboarding; completed accounts skip it.
-3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Run, and a Together invitation.
+3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Start, and a Together invitation.
 4. Me includes a local-first Progress entry with Strava-style weekly totals, four-week trends, PR history, race predictions, shoe mileage, recent activity stat highlights, and one lightweight momentum note derived from saved activities.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is created for the default trusted contact, server SMS/push delivery is stubbed, the system Share Sheet opens with the link, and updates stream from live location snapshots.

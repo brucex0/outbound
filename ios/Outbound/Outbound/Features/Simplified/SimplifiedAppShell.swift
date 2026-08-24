@@ -485,7 +485,7 @@ private struct SimplifiedTodayView: View {
             Button {
                 onStartRun(.freestyleRun)
             } label: {
-                Label("Quick run", systemImage: "bolt.fill")
+                Label("Quick start", systemImage: "bolt.fill")
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.plain)
@@ -497,7 +497,7 @@ private struct SimplifiedTodayView: View {
     private var activityLibraryButtons: some View {
         HStack(spacing: OutboundSpacing.compact) {
             activityLibraryButton(
-                title: trainingPlanStore.activePlan?.title ?? String(localized: "Plans"),
+                title: trainingPlanStore.activePlan.map { localizedAppCopy($0.title) } ?? String(localized: "Plans"),
                 systemImage: "calendar"
             ) {
                 if trainingPlanStore.activePlan == nil {
@@ -507,7 +507,7 @@ private struct SimplifiedTodayView: View {
                 }
             }
             .accessibilityLabel("Plans")
-            .accessibilityValue(trainingPlanStore.activePlan?.title ?? String(localized: "No plan selected"))
+            .accessibilityValue(trainingPlanStore.activePlan.map { localizedAppCopy($0.title) } ?? String(localized: "No plan selected"))
 
             activityLibraryButton(
                 title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "library.workouts", defaultValue: "Workouts"),
@@ -1252,8 +1252,8 @@ private struct TodayActivityCompanionSheet: View {
                 .frame(width: 34, height: 34)
                 .background(OutboundPalette.companion.gradient, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                Text(currentActivity.title).font(.headline)
-                Text(currentActivity.detail).font(.caption).foregroundStyle(.secondary)
+                Text(localizedAppCopy(currentActivity.title)).font(.headline)
+                Text(localizedAppCopy(currentActivity.detail)).font(.caption).foregroundStyle(.secondary)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: currentActivity.id)
@@ -1341,7 +1341,7 @@ private struct TodayActivityCompanionSheet: View {
             durationSeconds = currentActivity.targetDurationSeconds
                 ?? (currentActivity.targetDistanceMeters == nil ? currentMinutes * 60 : nil)
         }
-        let title = effort?.title ?? currentActivity.title
+        let title = localizedAppCopy(effort?.title ?? currentActivity.title)
         let goalDetail: String
         if let distanceMeters {
             goalDetail = distanceLabel(distanceMeters)
@@ -1352,9 +1352,9 @@ private struct TodayActivityCompanionSheet: View {
             id: "companion-\(UUID().uuidString)",
             sport: currentActivity.sport,
             title: title,
-            detail: "\(currentActivity.sport.displayName) · \(goalDetail) · \(effort?.detail ?? "customized")",
-            guideLine: effort?.guide ?? currentActivity.guideLine,
-            startLabel: "Start activity",
+            detail: "\(currentActivity.sport.displayName) · \(goalDetail) · \(localizedAppCopy(effort?.detail ?? "customized"))",
+            guideLine: localizedAppCopy(effort?.guide ?? currentActivity.guideLine),
+            startLabel: String(localized: "Start activity"),
             targetDistanceMeters: distanceMeters,
             targetDurationSeconds: durationSeconds,
             routeName: currentActivity.routeName,
@@ -1366,6 +1366,10 @@ private struct TodayActivityCompanionSheet: View {
         let seconds = currentActivity.targetDurationSeconds
             ?? currentActivity.workoutSteps.reduce(0) { $0 + $1.durationSeconds }
         return max(5, seconds / 60)
+    }
+
+    private func localizedAppCopy(_ value: String) -> String {
+        String(localized: String.LocalizationValue(value))
     }
 
     private enum RequestedGoal {

@@ -35,7 +35,7 @@ Do not use a separate Progress tab. Show immediate progress context on Today and
 
 Keep the inspirational quote as the emotional opening. Pair it with a factual, personalized line that proves Outbound understands the runner.
 
-### Planned workout and quick run
+### Planned workout and quick start
 
 Keep two clear paths:
 

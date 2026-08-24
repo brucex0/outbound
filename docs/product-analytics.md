@@ -46,7 +46,7 @@ Track:
 
 `activity_started` should carry bounded configuration rather than separate events for every selected setup control:
 
-- `entry_source`: quick run, Today workout, Me suggestion, route, group invitation;
+- `entry_source`: quick start, Today workout, Me suggestion, route, group invitation;
 - `goal_type`: freestyle, distance, time, workout;
 - `music_enabled`;
 - `route_selected`;
