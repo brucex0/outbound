@@ -39,6 +39,8 @@ The flow should avoid feature tours, early permission prompts, mandatory essays,
    - Offer optional free text for a different goal.
    - Ask race distance and date only when race training is selected.
 
+Before goal intake, show a short identity step only when Apple did not provide a usable display name or verified email. It collects a display name and unique username, plus a contact email only when the provider email is unavailable. Accounts with both a real display name and valid provider email skip this step.
+
 3. Starting point
    - Choose recent running frequency.
    - Choose a comfortable run duration.
@@ -90,7 +92,7 @@ Age, height, weight, body profile, guide face, guide voice, and detailed prefere
 
 ## Current Implementation
 
-The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, editable understanding, and calibration. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
+The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, editable understanding, and calibration, preceded by the conditional identity step described above. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
 
 Settings includes a DEBUG-only replay action that restarts the simplified onboarding flow without signing out.
 

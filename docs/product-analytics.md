@@ -168,6 +168,8 @@ Do not enable session replay, autocaptured UI text, or automatic interaction tra
 
 Evaluated against official vendor documentation on 2026-08-21. Pricing and plan limits change frequently and must be rechecked before procurement.
 
+Identity completion during onboarding emits `onboarding_identity_prompt_viewed` and `onboarding_identity_completed`. Both include only boolean `missing_display_name` and `missing_email` properties; names, usernames, and email addresses are never included.
+
 | Provider | Strengths for Plainstride | Tradeoffs | Fit now |
 | --- | --- | --- | --- |
 | Firebase Analytics | Already linked; minimal implementation work; familiar iOS SDK; automatic baseline events; custom events; direct BigQuery export for SQL and long-term ownership | Console analysis is less product-focused than dedicated tools; custom parameters need console registration for standard reports; GA naming and reporting constraints can leak into a poorly designed taxonomy | Best initial provider |

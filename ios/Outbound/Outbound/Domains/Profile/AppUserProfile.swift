@@ -11,6 +11,7 @@ struct AppUserProfileDTO: Codable, Sendable {
 }
 
 struct AppUserProfileUpdateDTO: Codable, Sendable {
+    var username: String? = nil
     let displayName: String
     let bio: String?
     let contactEmail: String?

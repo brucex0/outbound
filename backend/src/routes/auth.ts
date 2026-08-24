@@ -129,6 +129,7 @@ router.patch(
   zValidator(
     "json",
     z.object({
+      username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_-]+$/).optional(),
       displayName: z.string().trim().min(1).max(50),
       bio: z.string().trim().max(160).nullish(),
       contactEmail: z.string().trim().email().max(254).nullish().or(z.literal("")),
@@ -144,6 +145,7 @@ router.patch(
     return c.json(await getPrismaClient().user.update({
       where: { id: user.id },
       data: {
+        ...(body.username ? { username: body.username.toLowerCase() } : {}),
         displayName: body.displayName,
         bio: body.bio || null,
         contactEmail: body.contactEmail || null,

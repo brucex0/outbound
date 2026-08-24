@@ -36,7 +36,7 @@ export async function resolveAuthenticatedAppUser(auth: AuthContext, profile: Re
       }
       return existing.user;
     }
-    const username = await uniqueUsername(tx, profile.username ?? auth.name ?? auth.email?.split("@")[0] ?? "runner");
+    const username = await uniqueUsername(tx, usernameCandidates(profile.username, auth.name, auth.email));
     return tx.user.create({ data: {
       firebaseUid: auth.provider === "firebase" ? auth.providerSubject : null,
       normalizedEmail, username,
@@ -48,8 +48,15 @@ export async function resolveAuthenticatedAppUser(auth: AuthContext, profile: Re
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-async function uniqueUsername(tx: Prisma.TransactionClient, proposed: string) {
-  const base = proposed.toLowerCase().replace(/[^a-z0-9_]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "runner";
+function usernameCandidates(explicit: string | undefined, name: string | null, email: string | null) {
+  for (const value of [explicit, name, email?.split("@")[0]]) {
+    const sanitized = value?.toLowerCase().replace(/[^a-z0-9_]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
+    if (sanitized) return sanitized;
+  }
+  return "runner";
+}
+
+async function uniqueUsername(tx: Prisma.TransactionClient, base: string) {
   if (!(await tx.user.findUnique({ where: { username: base } }))) return base;
   for (let suffix = 2; suffix < 10_000; suffix += 1) {
     const candidate = `${base.slice(0, 30 - String(suffix).length - 1)}-${suffix}`;

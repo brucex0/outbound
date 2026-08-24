@@ -84,6 +84,17 @@ final class AuthStore: ObservableObject {
 
     func handleOpenURL(_ url: URL) -> Bool { false }
 
+    func applyProfileIdentity(username: String, displayName: String) {
+        guard let user else { return }
+        self.user = AuthenticatedUser(
+            id: user.id,
+            username: username,
+            displayName: displayName,
+            avatarUrl: user.avatarUrl,
+            email: user.email
+        )
+    }
+
     private func performAuthentication(_ operation: () async throws -> Void) async {
         isBusy = true; authError = nil; defer { isBusy = false }
         do { try await operation() }

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SimplifiedOnboardingFlow: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
@@ -12,11 +14,20 @@ struct SimplifiedOnboardingFlow: View {
     @State private var comfortableMinutes = 30
     @State private var runsPerWeek = 3
     @State private var availableMinutes = 30
+    @State private var isSavingIdentity = false
+    @State private var identityError: String?
+    @State private var identityPromptTracked = false
+    @State private var identityCompleted = false
+    @State private var promptedForMissingDisplayName = false
+    @State private var promptedForMissingEmail = false
+    @State private var displayName = ""
+    @State private var username = ""
+    @State private var email = ""
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ProgressView(value: Double(step.rawValue + 1), total: Double(Step.allCases.count))
+                ProgressView(value: Double(progressIndex), total: Double(progressCount))
                     .tint(OutboundPalette.companion)
                     .padding(.horizontal, OutboundSpacing.screen)
                 ScrollView {
@@ -40,10 +51,21 @@ struct SimplifiedOnboardingFlow: View {
             }
         }
         .interactiveDismissDisabled()
+        .onAppear {
+            promptedForMissingDisplayName = !validDisplayName
+            promptedForMissingEmail = !validEmail
+            displayName = validDisplayName ? (authStore.user?.displayName ?? "") : ""
+            username = authStore.user?.username == "runner" ? "" : (authStore.user?.username ?? "")
+            email = validEmail ? (authStore.user?.email ?? "") : ""
+            trackIdentityPromptIfNeeded()
+        }
     }
 
     @ViewBuilder
     private var content: some View {
+        if shouldShowIdentityPrompt {
+            identityContent
+        } else {
         switch step {
         case .goal:
             heading("What are you working toward?", "Your companion will turn this into a realistic first week.")
@@ -73,15 +95,107 @@ struct SimplifiedOnboardingFlow: View {
             calibrationRow(3, "Longer relaxed run", "Learn endurance and recovery")
             AIExplanationView(text: String(localized: "After each run, one optional tap tells Plainstride what the numbers alone cannot."))
         }
+        }
     }
 
     private var footer: some View {
         OutboundPrimaryButton(
-            title: step == .calibration ? String(localized: "Build my first week") : String(localized: "Continue"),
+            title: shouldShowIdentityPrompt
+                ? (isSavingIdentity ? String(localized: "onboarding.identity.saving", defaultValue: "Saving…") : String(localized: "onboarding.identity.continue", defaultValue: "Continue"))
+                : (step == .calibration ? String(localized: "Build my first week") : String(localized: "Continue")),
             systemImage: step == .calibration ? "sparkles" : "arrow.right"
         ) {
-            if step == .calibration { complete() } else { step = step.next }
+            if shouldShowIdentityPrompt {
+                Task { await saveIdentity() }
+            } else if step == .calibration { complete() } else { step = step.next }
         }
+        .disabled(shouldShowIdentityPrompt && (!identityFormIsValid || isSavingIdentity))
+    }
+
+    private var identityContent: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+            heading(
+                "onboarding.identity.heading",
+                "onboarding.identity.subtitle"
+            )
+            TextField(String(localized: "onboarding.identity.display_name", defaultValue: "Display name"), text: $displayName)
+                .textContentType(.name)
+                .textFieldStyle(.roundedBorder)
+            TextField(String(localized: "onboarding.identity.username", defaultValue: "Username"), text: $username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textFieldStyle(.roundedBorder)
+            if !validEmail {
+                TextField(String(localized: "onboarding.identity.email", defaultValue: "Email"), text: $email)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+            }
+            Text(String(localized: "onboarding.identity.username_help", defaultValue: "Use 3–30 letters, numbers, underscores, or hyphens."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let identityError {
+                Text(identityError).font(.footnote).foregroundStyle(.red)
+            }
+        }
+    }
+
+    private var validDisplayName: Bool {
+        guard let value = authStore.user?.displayName.trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
+        return !value.isEmpty && value.caseInsensitiveCompare("Runner") != .orderedSame
+    }
+
+    private var validEmail: Bool { Self.isValidEmail(authStore.user?.email ?? "") }
+    private var shouldShowIdentityPrompt: Bool { !identityCompleted && (!validDisplayName || !validEmail) }
+    private var progressCount: Int { Step.allCases.count + (shouldShowIdentityPrompt ? 1 : 0) }
+    private var progressIndex: Int { shouldShowIdentityPrompt ? 1 : step.rawValue + 1 + ((!validDisplayName || !validEmail) ? 1 : 0) }
+    private var cleanedUsername: String { username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+    private var identityFormIsValid: Bool {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
+        let nameIsValid = !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let usernameIsValid = (3...30).contains(cleanedUsername.count) && cleanedUsername.unicodeScalars.allSatisfy(allowed.contains)
+        return nameIsValid && usernameIsValid && (validEmail || Self.isValidEmail(email))
+    }
+
+    private func saveIdentity() async {
+        guard identityFormIsValid else { return }
+        isSavingIdentity = true
+        identityError = nil
+        defer { isSavingIdentity = false }
+        do {
+            let profile = try await APIClient.shared.updateMyProfile(.init(
+                username: cleanedUsername,
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                bio: nil,
+                contactEmail: validEmail ? nil : email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                contactPhone: nil
+            ))
+            authStore.applyProfileIdentity(username: profile.username, displayName: profile.displayName)
+            identityCompleted = true
+            if let analyticsManager {
+                await analyticsManager.track(.init(.onboardingIdentityCompleted, properties: identityAnalyticsProperties))
+            }
+        } catch {
+            identityError = String(localized: "onboarding.identity.error", defaultValue: "That username may already be taken. Try another one.")
+        }
+    }
+
+    private func trackIdentityPromptIfNeeded() {
+        guard shouldShowIdentityPrompt, !identityPromptTracked else { return }
+        identityPromptTracked = true
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(.init(.onboardingIdentityPromptViewed, properties: identityAnalyticsProperties)) }
+    }
+
+    private var identityAnalyticsProperties: [ProductPropertyKey: AnalyticsValue] {
+        [.missingDisplayName: .boolean(promptedForMissingDisplayName), .missingEmail: .boolean(promptedForMissingEmail)]
+    }
+
+    private static func isValidEmail(_ value: String) -> Bool {
+        let parts = value.split(separator: "@", omittingEmptySubsequences: false)
+        return parts.count == 2 && !parts[0].isEmpty && parts[1].contains(".") && !parts[1].hasPrefix(".") && !parts[1].hasSuffix(".")
     }
 
     private func complete() {
