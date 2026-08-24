@@ -16,11 +16,11 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
     static let shared = PushNotificationCoordinator()
 
     @Published private(set) var pendingNotificationID: String?
+    @Published private(set) var pendingNotificationType: String?
     private var latestToken: String?
 
     func activate() async {
         let center = UNUserNotificationCenter.current()
-        await clearAppIconBadge(using: center)
         let settings = await center.notificationSettings()
         if settings.authorizationStatus == .notDetermined {
             _ = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
@@ -37,11 +37,13 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
     }
 
     func receivedNotification(userInfo: [AnyHashable: Any]) {
+        pendingNotificationType = userInfo["type"] as? String
         pendingNotificationID = userInfo["notificationId"] as? String
     }
 
     func consumePendingNotification() {
         pendingNotificationID = nil
+        pendingNotificationType = nil
     }
 
     func clearAppIconBadge() async {

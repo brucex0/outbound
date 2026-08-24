@@ -24,7 +24,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        await MainActor.run { PushNotificationCoordinator.shared.receivedNotification(userInfo: notification.request.content.userInfo) }
         return [.banner, .sound, .badge]
     }
 

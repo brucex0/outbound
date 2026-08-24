@@ -2,6 +2,7 @@ import MapKit
 import SwiftUI
 
 struct SocialHomeView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var recognitionStore: RecognitionStore
@@ -11,6 +12,7 @@ struct SocialHomeView: View {
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var isCreateActivityEventPresented = false
     @State private var showsNotifications = false
+    @State private var showsConnections = false
     @State private var toastMessage: String?
 
     private var shouldShowConnectionPrompt: Bool {
@@ -121,9 +123,19 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $showsNotifications) {
                 SocialNotificationsView()
             }
-            .onChange(of: pushNotifications.pendingNotificationID) { _, notificationID in
+            .navigationDestination(isPresented: $showsConnections) {
+                SocialConnectionsView()
+            }
+            .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
                 guard notificationID != nil else { return }
-                showsNotifications = true
+                if pushNotifications.pendingNotificationType == "connectionRequest" {
+                    showsConnections = true
+                    trackPushOpen(type: "connection_request", destination: "connections")
+                    pushNotifications.consumePendingNotification()
+                } else {
+                    showsNotifications = true
+                    trackPushOpen(type: pushNotifications.pendingNotificationType ?? "unknown", destination: "notifications")
+                }
             }
             .overlay(alignment: .top) {
                 if let toastMessage {
@@ -154,6 +166,15 @@ struct SocialHomeView: View {
                 CreateActivityEventView()
                     .environmentObject(socialStore)
             }
+        }
+    }
+
+    private func trackPushOpen(type: String, destination: String) {
+        Task {
+            await analyticsManager?.track(.init(.pushNotificationOpened, properties: [
+                .sourceType: .string(type),
+                .selectionType: .string(destination),
+            ]))
         }
     }
 

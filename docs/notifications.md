@@ -7,7 +7,7 @@ Open this when changing notification creation, delivery, device registration, fo
 - The backend notification record is the source of truth. Push is a best-effort delivery channel, not a second inbox.
 - V1 sends push for existing Social notification types: `connectionRequest`, `connectionAccepted`, `cheer`, `comment`, `runInvitation`, `invitationAccepted`, and `activityEventJoined`.
 - The iOS Social notification inbox remains available when push permission is denied or delivery fails.
-- Foreground notifications use the system banner, sound, and badge. Tapping a push selects Social and opens the notification inbox.
+- Foreground notifications use the system banner, sound, and badge. Tapping a connection request selects Social and opens Connections; other pushes open the notification inbox.
 - Push text contains the same share-safe message as the inbox. Do not put private plan, health, readiness, location, or cycle data in a push payload.
 - Device tokens are user-scoped, may move between accounts, and are removed when Firebase reports them invalid or unregistered.
 
@@ -75,8 +75,9 @@ Each failed Firebase response includes its error code and message, device index,
 - `PushNotificationCoordinator` owns authorization, APNs/FCM registration, backend synchronization, and pending tap state.
 - `AppDelegate` bridges APNs and Firebase Messaging callbacks and presents system banners in the foreground.
 - Registration occurs after authentication and retries on foreground activation.
-- The app icon badge is cleared whenever the authenticated app becomes active and after the Social notification inbox is marked read.
-- A notification tap sets `pendingNotificationID`; the app selects Social, opens Notifications, refreshes the inbox, and routes to the matching notification detail when present.
+- The app icon badge is preserved when the app becomes active and is cleared after the Social notification inbox is marked read.
+- A notification tap records its durable ID and type. The app selects Social and routes connection requests directly to Connections; other types open Notifications, refresh the inbox, and route to the matching notification detail when present.
+- `push_notification_opened` records the share-safe notification type and selected destination (`connections` or `notifications`).
 - User-facing permission text is provided by the system. Any future custom permission primer must use localized strings.
 
 ## Configuration and Rollout

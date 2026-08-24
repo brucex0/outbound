@@ -67,6 +67,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
     case liveGuidanceChallengeSelected = "live_guidance_challenge_selected"
     case liveGuidanceFeedbackSubmitted = "live_guidance_feedback_submitted"
+    case pushNotificationOpened = "push_notification_opened"
 }
 
 enum ProductPropertyKey: String, Sendable, CaseIterable {
@@ -179,7 +180,8 @@ enum ProductAnalyticsSchema {
         .liveGuidanceCueSpoken: [.momentType, .coachingContract],
         .liveGuidanceCueEvaluated: [.momentType, .result],
         .liveGuidanceChallengeSelected: [.selectionType],
-        .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket]
+        .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket],
+        .pushNotificationOpened: [.sourceType, .selectionType]
     ]
 
     nonisolated static func validatedProperties(for event: ProductAnalyticsEvent) -> [ProductPropertyKey: AnalyticsValue]? {
