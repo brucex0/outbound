@@ -96,6 +96,8 @@ struct RecordView: View {
     @State private var selectedRouteDistanceMeters: Double?
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
     @State private var isVoiceGuideEnabled = false
+    @State private var showsMusicDiscoveryTip = false
+    @State private var didPresentMusicDiscoveryTip = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -218,6 +220,7 @@ struct RecordView: View {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
             applyWorkoutMusicSuggestion()
+            presentMusicDiscoveryTipIfNeeded()
             guide.speechEventHandler = { event in
                 Task { await musicStore.handleGuideSpeechEvent(event) }
             }
@@ -899,7 +902,24 @@ struct RecordView: View {
                     accessibilityValue: musicSetupValue
                 ) {
                     trackFeatureExposure("music")
+                    dismissMusicDiscoveryTip(result: "opened")
                     setupSheet = .music
+                }
+                .popover(isPresented: $showsMusicDiscoveryTip, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(String(localized: "record.music.discovery.title", defaultValue: "Bring music on your activity"))
+                            .font(.headline)
+                        Text(String(localized: "record.music.discovery.detail", defaultValue: "Tap the Music button to connect Apple Music or choose what to play."))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Button(String(localized: "record.music.discovery.dismiss", defaultValue: "Not now")) {
+                            dismissMusicDiscoveryTip(result: "dismissed")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                    }
+                    .padding()
+                    .frame(idealWidth: 280, alignment: .leading)
+                    .presentationCompactAdaptation(.popover)
                 }
 
                 Spacer(minLength: 76)
@@ -1341,6 +1361,27 @@ struct RecordView: View {
             }
         }
         Task { await musicStore.preloadCatalog(musicSearchText) }
+    }
+
+    private func presentMusicDiscoveryTipIfNeeded() {
+        guard !didPresentMusicDiscoveryTip,
+              !showCamera,
+              musicStore.snapshot.connectionState == .notConnected
+                || musicStore.snapshot.connectionState == .denied
+                || musicStore.needsPlaybackSetup
+        else { return }
+        didPresentMusicDiscoveryTip = true
+        showsMusicDiscoveryTip = true
+        trackFeatureExposure("music_discovery_tip")
+    }
+
+    private func dismissMusicDiscoveryTip(result: String) {
+        guard showsMusicDiscoveryTip else { return }
+        showsMusicDiscoveryTip = false
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("music_discovery_tip"),
+            .selectionType: .string(result)
+        ]))
     }
 
     private func applyWorkoutMusicSuggestion() {
