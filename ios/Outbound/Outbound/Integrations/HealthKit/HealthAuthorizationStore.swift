@@ -10,6 +10,7 @@ struct ImportedWorkout: Identifiable, Equatable {
     let durationSeconds: Int
     let distanceMeters: Double?
     let energyBurnedKilocalories: Double?
+    let isRunning: Bool
 
     var summaryLine: String {
         summaryLine(unitSystem: .metric)
@@ -117,5 +118,10 @@ final class HealthImportStore: ObservableObject {
                 lastErrorMessage = "Recent Apple Health workouts could not be loaded."
             }
         }
+    }
+
+
+    func personalizationData(since: Date) async throws -> HealthPersonalizationData {
+        try await service.fetchPersonalizationData(since: since)
     }
 }

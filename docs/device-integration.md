@@ -143,6 +143,8 @@ Ship:
 
 Current implementation:
 
+- first-time onboarding offers Apple Health after the runner intake and calibration explanation, before the initial plan is created
+- when connected, the app reads up to eight weeks of non-Plainstride workouts plus available birthday, biological sex, height, and weight; running history refines the onboarding baseline and profile details are saved to the private training profile
 - saving an Outbound-recorded activity also creates a running or cycling workout in Apple Health when write access is authorized
 - the workout includes start/end time, duration, distance, estimated active energy when onboarding weight is available, Outbound metadata, and the recorded route when at least two points exist
 - local activity persistence completes first; HealthKit failure does not discard the Outbound activity

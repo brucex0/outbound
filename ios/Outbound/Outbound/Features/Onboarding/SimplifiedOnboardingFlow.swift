@@ -6,6 +6,8 @@ struct SimplifiedOnboardingFlow: View {
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     let onComplete: (OnboardingProfile) -> Void
 
     @State private var step: Step = .goal
@@ -23,6 +25,10 @@ struct SimplifiedOnboardingFlow: View {
     @State private var displayName = ""
     @State private var username = ""
     @State private var email = ""
+    @State private var isImportingHealth = false
+    @State private var healthImportSummary: String?
+    @State private var healthImportError: String?
+    @State private var isCompleting = false
 
     var body: some View {
         NavigationStack {
@@ -94,6 +100,8 @@ struct SimplifiedOnboardingFlow: View {
             calibrationRow(2, "Easy + pickups", "Observe controlled faster running")
             calibrationRow(3, "Longer relaxed run", "Learn endurance and recovery")
             AIExplanationView(text: String(localized: "After each run, one optional tap tells Plainstride what the numbers alone cannot."))
+        case .health:
+            healthContent
         }
         }
     }
@@ -102,14 +110,49 @@ struct SimplifiedOnboardingFlow: View {
         OutboundPrimaryButton(
             title: shouldShowIdentityPrompt
                 ? (isSavingIdentity ? String(localized: "onboarding.identity.saving", defaultValue: "Saving…") : String(localized: "onboarding.identity.continue", defaultValue: "Continue"))
-                : (step == .calibration ? String(localized: "Build my first week") : String(localized: "Continue")),
-            systemImage: step == .calibration ? "sparkles" : "arrow.right"
+                : footerTitle,
+            systemImage: step == .health ? "heart.fill" : "arrow.right"
         ) {
             if shouldShowIdentityPrompt {
                 Task { await saveIdentity() }
-            } else if step == .calibration { complete() } else { step = step.next }
+            } else if step == .health {
+                Task { await connectHealth() }
+            } else { step = step.next }
         }
-        .disabled(shouldShowIdentityPrompt && (!identityFormIsValid || isSavingIdentity))
+        .disabled((shouldShowIdentityPrompt && (!identityFormIsValid || isSavingIdentity)) || isImportingHealth || isCompleting)
+    }
+
+    private var footerTitle: String {
+        if step == .health {
+            if isImportingHealth { return String(localized: "onboarding.health.connecting", defaultValue: "Connecting…") }
+            if healthImportSummary != nil { return String(localized: "onboarding.health.finish", defaultValue: "Build my first week") }
+            return String(localized: "onboarding.health.connect", defaultValue: "Connect Apple Health")
+        }
+        return String(localized: "onboarding.action.continue", defaultValue: "Continue")
+    }
+
+    private var healthContent: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+            heading(
+                "onboarding.health.title",
+                "onboarding.health.subtitle"
+            )
+            Label(String(localized: "onboarding.health.workouts", defaultValue: "Recent workouts help set a realistic starting load."), systemImage: "figure.run")
+            Label(String(localized: "onboarding.health.body", defaultValue: "Height, weight, birthday, and biological sex improve private training estimates."), systemImage: "person.text.rectangle")
+            Label(String(localized: "onboarding.health.private", defaultValue: "Your health details stay private and are never shared in Together."), systemImage: "lock.shield")
+
+            if let healthImportSummary {
+                AIExplanationView(text: healthImportSummary)
+            }
+            if let healthImportError {
+                Text(healthImportError).font(.footnote).foregroundStyle(.red)
+            }
+            if healthImportSummary == nil {
+                Button(String(localized: "onboarding.health.not_now", defaultValue: "Not now")) { complete() }
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.bordered)
+            }
+        }
     }
 
     private var identityContent: some View {
@@ -199,14 +242,13 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func complete() {
+        guard !isCompleting else { return }
+        isCompleting = true
         onboardingStore.updateGoalText(goal.intakeText)
         onboardingStore.updateBaselineText(localizedBaselineText)
         onboardingStore.updateScheduleText(localizedScheduleText)
         onboardingStore.selectEffortPreference(.balanced)
         let profile = onboardingStore.complete()
-        if let recommendation = trainingPlanStore.planOptions.first {
-            trainingPlanStore.acceptRecommendation(recommendation)
-        }
         Task {
             await personalizationStore.completeProfile(
                 RunnerProfileRequestDTO(
@@ -221,9 +263,88 @@ struct SimplifiedOnboardingFlow: View {
                     complete: true
                 )
             )
+            if let recommendation = trainingPlanStore.planOptions.first {
+                trainingPlanStore.acceptRecommendation(recommendation)
+            }
+            onComplete(profile)
         }
-        onComplete(profile)
     }
+
+    private func connectHealth() async {
+        if healthImportSummary != nil {
+            complete()
+            return
+        }
+        isImportingHealth = true
+        healthImportError = nil
+        await trackHealth(.healthConnectionRequested)
+        await healthAuthorizationStore.requestAuthorization()
+
+        guard healthAuthorizationStore.lastErrorMessage == nil else {
+            healthImportError = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.")
+            isImportingHealth = false
+            await trackHealth(.healthConnectionCompleted, result: "failed")
+            return
+        }
+
+        do {
+            let since = Calendar.current.date(byAdding: .weekOfYear, value: -8, to: Date()) ?? .distantPast
+            let data = try await healthImportStore.personalizationData(since: since)
+            applyHealthData(data)
+            healthImportSummary = String(
+                format: String(localized: "onboarding.health.imported.format", defaultValue: "Connected. Plainstride found %d recent running workouts and will use available profile details."),
+                locale: .autoupdatingCurrent,
+                data.recentWorkouts.filter(\.isRunning).count
+            )
+            await persistTrainingProfile(data)
+            await trackHealth(.healthConnectionCompleted, result: "connected")
+        } catch {
+            healthImportError = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.")
+            await trackHealth(.healthConnectionCompleted, result: "failed")
+        }
+        isImportingHealth = false
+    }
+
+    private func applyHealthData(_ data: HealthPersonalizationData) {
+        onboardingStore.applyHealthProfile(data)
+        let runs = data.recentWorkouts.filter(\.isRunning)
+        guard !runs.isEmpty else { return }
+        let weeklyAverage = Double(runs.count) / 8.0
+        frequency = weeklyAverage >= 2.5 ? .threePlus : weeklyAverage >= 1.5 ? .oneOrTwo : .occasional
+        let sortedDurations = runs.map { $0.durationSeconds / 60 }.sorted()
+        comfortableMinutes = min(90, max(10, sortedDurations[sortedDurations.count / 2] / 5 * 5))
+    }
+
+    private func persistTrainingProfile(_ data: HealthPersonalizationData) async {
+        let sex: TrainingProfileSex? = switch data.biologicalSex {
+        case .female: .female
+        case .male: .male
+        case .notSpecified: nil
+        }
+        let birthDate = data.dateOfBirth.map { Self.birthDateFormatter.string(from: $0) }
+        guard sex != nil || birthDate != nil || data.heightCentimeters != nil || data.weightKilograms != nil else { return }
+        _ = try? await APIClient.shared.updateTrainingProfile(.init(
+            sexAtBirth: sex,
+            birthDate: birthDate,
+            heightCentimeters: data.heightCentimeters,
+            weightKilograms: data.weightKilograms
+        ))
+    }
+
+    private func trackHealth(_ name: ProductEventName, result: String? = nil) async {
+        guard let analyticsManager else { return }
+        let properties: [ProductPropertyKey: AnalyticsValue] = result.map { [.result: .string($0)] } ?? [:]
+        await analyticsManager.track(.init(name, properties: properties))
+    }
+
+    private static let birthDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     private func heading(_ title: LocalizedStringResource, _ subtitle: LocalizedStringResource) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -302,7 +423,7 @@ private protocol Titled { var title: String { get } }
 
 private extension SimplifiedOnboardingFlow {
     enum Step: Int, CaseIterable {
-        case goal, baseline, week, understanding, calibration
+        case goal, baseline, week, understanding, calibration, health
         var title: String { "\(rawValue + 1) of \(Self.allCases.count)" }
         var next: Self { Self(rawValue: rawValue + 1) ?? self }
         var previous: Self { Self(rawValue: rawValue - 1) ?? self }

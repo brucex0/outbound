@@ -11,6 +11,8 @@ struct MainTabView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var connectivityStore: ConnectivityStore
     @State private var activeLaunch: RecordLaunch?
@@ -72,6 +74,8 @@ struct MainTabView: View {
             .environmentObject(onboardingStore)
             .environmentObject(personalizationStore)
             .environmentObject(trainingPlanStore)
+            .environmentObject(healthAuthorizationStore)
+            .environmentObject(healthImportStore)
             .interactiveDismissDisabled()
         }
         .fullScreenCover(isPresented: voiceSelectionPresentation) {

@@ -76,6 +76,14 @@ struct HealthAuthorizationSnapshot: Equatable {
     }
 }
 
+struct HealthPersonalizationData: Equatable {
+    let dateOfBirth: Date?
+    let biologicalSex: OnboardingBodySex
+    let heightCentimeters: Double?
+    let weightKilograms: Double?
+    let recentWorkouts: [ImportedWorkout]
+}
+
 enum HealthAuthorizationRequestState: Equatable {
     case unknown
     case notRequested
@@ -95,6 +103,7 @@ protocol HealthKitServing {
     func refreshAuthorizationSnapshot() async -> HealthAuthorizationSnapshot
     func requestAuthorization() async throws -> HealthAuthorizationSnapshot
     func fetchRecentWorkouts(limit: Int) async throws -> [ImportedWorkout]
+    func fetchPersonalizationData(since: Date) async throws -> HealthPersonalizationData
     func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws
 }
 
@@ -166,6 +175,28 @@ struct HealthKitService: HealthKitServing {
 #endif
     }
 
+    func fetchPersonalizationData(since: Date) async throws -> HealthPersonalizationData {
+#if canImport(HealthKit)
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitServiceError.unavailable
+        }
+
+        async let workouts = fetchRecentWorkoutsInternal(limit: 200, since: since)
+        async let height = mostRecentQuantity(.height, unit: .meterUnit(with: .centi))
+        async let weight = mostRecentQuantity(.bodyMass, unit: .gramUnit(with: .kilo))
+
+        return HealthPersonalizationData(
+            dateOfBirth: try? healthStore.dateOfBirthComponents().date,
+            biologicalSex: biologicalSex(),
+            heightCentimeters: try await height,
+            weightKilograms: try await weight,
+            recentWorkouts: try await workouts
+        )
+#else
+        throw HealthKitServiceError.unavailable
+#endif
+    }
+
     func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {
 #if canImport(HealthKit)
         guard HKHealthStore.isHealthDataAvailable() else {
@@ -210,6 +241,8 @@ private extension HealthKitService {
         ]
 
         let quantityIdentifiers: [(HKQuantityTypeIdentifier, String)] = [
+            (.height, String(localized: "health.data.height", defaultValue: "Height")),
+            (.bodyMass, String(localized: "health.data.weight", defaultValue: "Weight")),
             (.heartRate, "Heart rate"),
             (.activeEnergyBurned, "Active energy"),
             (.distanceWalkingRunning, "Running distance"),
@@ -220,6 +253,13 @@ private extension HealthKitService {
             if let objectType = HKObjectType.quantityType(forIdentifier: identifier) {
                 types.append(HealthReadableType(title: title, objectType: objectType))
             }
+        }
+
+        if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
+            types.append(HealthReadableType(title: String(localized: "health.data.date_of_birth", defaultValue: "Date of birth"), objectType: dateOfBirth))
+        }
+        if let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
+            types.append(HealthReadableType(title: String(localized: "health.data.biological_sex", defaultValue: "Biological sex"), objectType: biologicalSex))
         }
 
         return types
@@ -277,12 +317,15 @@ private extension HealthKitService {
         }
     }
 
-    func fetchRecentWorkoutsInternal(limit: Int) async throws -> [ImportedWorkout] {
+    func fetchRecentWorkoutsInternal(limit: Int, since: Date? = nil) async throws -> [ImportedWorkout] {
         try await withCheckedThrowingContinuation { continuation in
             let sortDescriptors = [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
+            let predicate = since.map {
+                HKQuery.predicateForSamples(withStart: $0, end: nil, options: .strictEndDate)
+            }
             let query = HKSampleQuery(
                 sampleType: HKObjectType.workoutType(),
-                predicate: nil,
+                predicate: predicate,
                 limit: limit,
                 sortDescriptors: sortDescriptors
             ) { _, samples, error in
@@ -291,7 +334,9 @@ private extension HealthKitService {
                     return
                 }
 
-                let workouts = (samples as? [HKWorkout] ?? []).map { workout in
+                let workouts = (samples as? [HKWorkout] ?? [])
+                    .filter { !isOutboundWorkout($0) }
+                    .map { workout in
                     ImportedWorkout(
                         id: workout.uuid.uuidString,
                         activityName: workout.workoutActivityType.displayName,
@@ -300,7 +345,8 @@ private extension HealthKitService {
                         endedAt: workout.endDate,
                         durationSeconds: Int(workout.duration.rounded()),
                         distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
-                        energyBurnedKilocalories: energyBurnedKilocalories(for: workout)
+                        energyBurnedKilocalories: energyBurnedKilocalories(for: workout),
+                        isRunning: workout.workoutActivityType == .running
                     )
                 }
 
@@ -309,6 +355,44 @@ private extension HealthKitService {
 
             healthStore.execute(query)
         }
+    }
+
+
+    func mostRecentQuantity(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit) async throws -> Double? {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return nil }
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: nil,
+                limit: 1,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    let value = (samples?.first as? HKQuantitySample)?.quantity.doubleValue(for: unit)
+                    continuation.resume(returning: value)
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    func biologicalSex() -> OnboardingBodySex {
+        guard let value = try? healthStore.biologicalSex().biologicalSex else { return .notSpecified }
+        switch value {
+        case .female: return .female
+        case .male: return .male
+        default: return .notSpecified
+        }
+    }
+
+    func isOutboundWorkout(_ workout: HKWorkout) -> Bool {
+        if workout.metadata?[HKMetadataKeyExternalUUID] != nil,
+           workout.sourceRevision.source.bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+        return workout.sourceRevision.source.bundleIdentifier == Bundle.main.bundleIdentifier
     }
 
     func saveWorkoutInternal(

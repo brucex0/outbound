@@ -44,7 +44,6 @@ Before goal intake, show a short identity step only when Apple did not provide a
 3. Starting point
    - Choose recent running frequency.
    - Choose a comfortable run duration.
-   - Offer an explained, optional Apple Health import.
 
 4. Realistic week
    - Choose runs per week and typical time available.
@@ -68,7 +67,14 @@ Before goal intake, show a short identity step only when Apple did not provide a
    - Offer invite someone, find a club, or do this later.
    - Explain that health details are not shared.
 
-8. Today
+8. Apple Health personalization
+   - After the intake and calibration explanation, offer an optional Apple Health connection before creating the first plan.
+   - Request access only after the user taps Connect Apple Health.
+   - Use up to eight weeks of running workouts to refine starting frequency and comfortable duration.
+   - Save available birthday, biological sex, height, and weight to the private training profile.
+   - Exclude workouts created by Plainstride and let the user continue without connecting.
+
+9. Today
    - Land on the real Today surface with the quote, first workout, and Start action.
    - Keep the onboarding recommendation visually continuous with the product.
    - Show small `Run 1 of 3` calibration progress without making Today feel like an assessment dashboard.
@@ -77,7 +83,7 @@ The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`.
 
 ## Permission Timing
 
-- Apple Health: optional on the Starting point screen.
+- Apple Health: optional after intake and calibration, immediately before first-plan creation.
 - Location and motion: when the first outdoor run starts.
 - Notifications: after the user accepts the plan.
 - Camera and photos: on first use.
@@ -92,7 +98,7 @@ Age, height, weight, body profile, guide face, guide voice, and detailed prefere
 
 ## Current Implementation
 
-The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, editable understanding, and calibration, preceded by the conditional identity step described above. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
+The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a six-step implementation of goal, baseline, realistic week, editable understanding, calibration, and optional Apple Health personalization, preceded by the conditional identity step described above. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
 
 Settings includes a DEBUG-only replay action that restarts the simplified onboarding flow without signing out.
 

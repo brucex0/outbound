@@ -413,6 +413,19 @@ final class OnboardingStore: ObservableObject {
         draft.unitSystem = unitSystem
     }
 
+    func applyHealthProfile(_ data: HealthPersonalizationData, calendar: Calendar = .current) {
+        selectUnitSystem(.metric)
+        if let dateOfBirth = data.dateOfBirth {
+            let age = calendar.dateComponents([.year], from: dateOfBirth, to: Date()).year
+            draft.ageText = age.map(String.init) ?? ""
+        }
+        draft.heightText = data.heightCentimeters.map { String(format: "%.1f", $0) } ?? draft.heightText
+        draft.weightText = data.weightKilograms.map { String(format: "%.1f", $0) } ?? draft.weightText
+        if data.biologicalSex != .notSpecified {
+            draft.sex = data.biologicalSex
+        }
+    }
+
     func updateBaselineText(_ text: String) {
         draft.baselineText = text
     }
