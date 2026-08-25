@@ -3,7 +3,12 @@ import SwiftUI
 struct ActivityHistoryView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var recognitionStore: RecognitionStore
+    @Environment(\.analyticsManager) private var analyticsManager
     @State private var selectedActivity: SavedActivity?
+    @State private var selectedActivityIDs: Set<UUID> = []
+    @State private var isSelecting = false
+    @State private var confirmsDeletion = false
+    @State private var deletionFailed = false
 
     var body: some View {
         Group {
@@ -18,16 +23,75 @@ struct ActivityHistoryView: View {
             ActivityDetailView(activity: activity)
                 .environmentObject(activityStore)
         }
+        .toolbar {
+            if !activityStore.activities.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isSelecting
+                        ? String(localized: "activity.history.selection.done", defaultValue: "Done")
+                        : String(localized: "activity.history.selection.select", defaultValue: "Select")
+                    ) {
+                        isSelecting.toggle()
+                        if !isSelecting { selectedActivityIDs.removeAll() }
+                    }
+                }
+            }
+            if isSelecting {
+                ToolbarItem(placement: .bottomBar) {
+                    Button(role: .destructive) {
+                        confirmsDeletion = true
+                    } label: {
+                        Label(
+                            String(localized: "activity.history.delete.selected", defaultValue: "Delete Selected"),
+                            systemImage: "trash"
+                        )
+                    }
+                    .disabled(selectedActivityIDs.isEmpty)
+                }
+            }
+        }
+        .confirmationDialog(
+            deletionConfirmationTitle,
+            isPresented: $confirmsDeletion,
+            titleVisibility: .visible
+        ) {
+            Button(deletionButtonTitle, role: .destructive) { deleteSelectedActivities() }
+            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "activity.history.delete.message", defaultValue: "This cannot be undone."))
+        }
+        .alert(
+            String(localized: "activity.history.delete.failed.title", defaultValue: "Unable to Delete Activities"),
+            isPresented: $deletionFailed
+        ) {
+            Button(String(localized: "common.ok", defaultValue: "OK"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "activity.history.delete.failed.message", defaultValue: "Some activities could not be deleted. Please try again."))
+        }
     }
 
     private var list: some View {
         List {
             ForEach(activityStore.activities) { activity in
-                ActivityRowCard(activity: activity, activityStore: activityStore)
-                    .onTapGesture { selectedActivity = activity }
-                    .listRowInsets(.init(top: 6, leading: 16, bottom: 6, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                HStack(spacing: 12) {
+                    if isSelecting {
+                        Image(systemName: selectedActivityIDs.contains(activity.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(selectedActivityIDs.contains(activity.id) ? OutboundPalette.companion : .secondary)
+                            .accessibilityHidden(true)
+                    }
+                    ActivityRowCard(activity: activity, activityStore: activityStore)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isSelecting {
+                        toggleSelection(for: activity.id)
+                    } else {
+                        selectedActivity = activity
+                    }
+                }
+                .accessibilityAddTraits(isSelecting && selectedActivityIDs.contains(activity.id) ? .isSelected : [])
+                .listRowInsets(.init(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
             .onDelete { indexSet in
                 let activitiesToDelete = indexSet.compactMap { index in
@@ -39,8 +103,59 @@ struct ActivityHistoryView: View {
                     }
                 }
             }
+            .deleteDisabled(isSelecting)
         }
         .listStyle(.plain)
+    }
+
+    private var selectedActivities: [SavedActivity] {
+        activityStore.activities.filter { selectedActivityIDs.contains($0.id) }
+    }
+
+    private var deletionConfirmationTitle: String {
+        let count = selectedActivityIDs.count
+        if count == 1 {
+            return String(localized: "activity.history.delete.confirmation.one", defaultValue: "Delete Activity?")
+        }
+        let format = String(localized: "activity.history.delete.confirmation.many", defaultValue: "Delete %lld Activities?")
+        return String.localizedStringWithFormat(format, count)
+    }
+
+    private var deletionButtonTitle: String {
+        let count = selectedActivityIDs.count
+        if count == 1 {
+            return String(localized: "activity.history.delete.action.one", defaultValue: "Delete Activity")
+        }
+        let format = String(localized: "activity.history.delete.action.many", defaultValue: "Delete %lld Activities")
+        return String.localizedStringWithFormat(format, count)
+    }
+
+    private func toggleSelection(for id: UUID) {
+        if selectedActivityIDs.contains(id) {
+            selectedActivityIDs.remove(id)
+        } else {
+            selectedActivityIDs.insert(id)
+        }
+    }
+
+    private func deleteSelectedActivities() {
+        let activitiesToDelete = selectedActivities
+        let count = activitiesToDelete.count
+        guard count > 0 else { return }
+        Task {
+            do {
+                try await activityStore.delete(activitiesToDelete)
+                selectedActivityIDs.removeAll()
+                isSelecting = false
+                await analyticsManager?.track(.init(.activityDeleted, properties: [
+                    .sourceType: .string("activity_history"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(count))
+                ]))
+            } catch {
+                selectedActivityIDs.formIntersection(Set(activityStore.activities.map(\.id)))
+                deletionFailed = true
+            }
+        }
     }
 
     private var emptyState: some View {

@@ -62,7 +62,8 @@ final class ActivityStore: ObservableObject {
             followedRoute: followedRoute
         )
         activityRevision += 1
-        activities.insert(activity, at: 0)
+        activities.append(activity)
+        sortActivitiesByStartTime()
         Task {
             await syncActivityIfPossible(id: activity.id)
         }
@@ -118,6 +119,12 @@ final class ActivityStore: ObservableObject {
         try await persistence.delete(activity)
         activityRevision += 1
         activities.removeAll { $0.id == activity.id }
+    }
+
+    func delete(_ activitiesToDelete: [SavedActivity]) async throws {
+        for activity in activitiesToDelete {
+            try await delete(activity)
+        }
     }
 
     func imageURL(for photo: SavedPhoto) -> URL? {
@@ -204,6 +211,7 @@ final class ActivityStore: ObservableObject {
         activityRevision += 1
         if let index = activities.firstIndex(where: { $0.id == updated.id }) {
             activities[index] = updated
+            sortActivitiesByStartTime()
         }
     }
 
@@ -251,13 +259,13 @@ final class ActivityStore: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
             || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
         {
-            activities = Self.uiTestActivityFixtures
+            activities = Self.uiTestActivityFixtures.sortedByStartTimeDescending()
             return
         }
         let revisionAtStart = activityRevision
         let loadedActivities = (try? await persistence.load()) ?? []
         guard activityRevision == revisionAtStart else { return }
-        activities = loadedActivities
+        activities = loadedActivities.sortedByStartTimeDescending()
     }
 
     private func syncActivityIfPossible(id: UUID) async {
@@ -433,10 +441,14 @@ final class ActivityStore: ObservableObject {
                 offset += response.activities.count
                 hasMore = response.hasMore && !response.activities.isEmpty
             }
-            activities.sort { $0.startedAt > $1.startedAt }
+            sortActivitiesByStartTime()
         } catch {
             print("[ActivityStore] activity restore failed: \(error.localizedDescription)")
         }
+    }
+
+    private func sortActivitiesByStartTime() {
+        activities = activities.sortedByStartTimeDescending()
     }
 
     private func syncPhotosIfPossible(activityID: UUID) async {
@@ -660,6 +672,17 @@ final class ActivityStore: ObservableObject {
                 )
             }
         )
+    }
+}
+
+private extension Array where Element == SavedActivity {
+    func sortedByStartTimeDescending() -> [SavedActivity] {
+        sorted {
+            if $0.startedAt == $1.startedAt {
+                return $0.createdAt > $1.createdAt
+            }
+            return $0.startedAt > $1.startedAt
+        }
     }
 }
 

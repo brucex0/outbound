@@ -6,6 +6,9 @@ Open this when redesigning, polishing, or adding features to the activity detail
 
 File: `ios/Outbound/Outbound/Activity/ActivityDetailView.swift`
 
+My Activities and other local activity consumers receive activities ordered by `startedAt` descending, so the newest activity is always first, including after imports, sync restoration, and date edits.
+The history screen supports swipe-to-delete for one activity and selection mode for deleting multiple activities after a destructive confirmation.
+
 The current view is a Strava-style layered detail page:
 
 1. **Full-screen route map** — backed by `MKMapView`, with pace-colored route segments and photo pins
