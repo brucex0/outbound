@@ -122,6 +122,10 @@ final class APIClient {
         try await post("/assistant/chat", body: request)
     }
 
+    func analyzeLiveCoach(_ request: LiveCoachAnalysisRequest) async throws -> LiveCoachAnalysisResponse {
+        try await post("/live-coach/analyze", body: request)
+    }
+
     func sendCompanionTurn(_ request: CompanionTurnRequestDTO) async throws -> CompanionTurnResponseDTO {
         try await post("/companion/turns", body: request)
     }
@@ -1134,6 +1138,18 @@ struct AssistantChatRequest: Encodable {
     let capability: String
     let context: AssistantChatAPIContext
     let messages: [AssistantChatAPIPriorMessage]
+}
+
+struct LiveCoachAnalysisRequest: Encodable {
+    let model: String
+    let packet: SessionNudgePacket
+}
+
+struct LiveCoachAnalysisResponse: Decodable {
+    let message: String
+    let urgency: String
+    let shouldSpeak: Bool
+    let model: String
 }
 
 struct AssistantChatAPIContext: Encodable {

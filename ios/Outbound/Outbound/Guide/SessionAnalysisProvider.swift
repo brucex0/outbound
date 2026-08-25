@@ -372,6 +372,14 @@ extension SessionAnalysisProvider {
 enum SessionAnalysisProviderFactory {
     @MainActor
     static func makePreferredProvider() -> any SessionAnalysisProvider {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-OutboundLiveCoachModel"),
+           arguments.indices.contains(index + 1) {
+            let model = arguments[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !model.isEmpty { return RemoteSessionAnalysisProvider(model: model) }
+        }
+        #endif
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
             return AppleFoundationModelSessionAnalysisProvider()

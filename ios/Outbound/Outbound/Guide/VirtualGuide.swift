@@ -311,8 +311,16 @@ final class VirtualGuide: NSObject, ObservableObject {
             do {
                 let analysis = try await self.provider.analyze(request)
                 guard !Task.isCancelled else { return }
+                self.guidanceEventHandler?(.providerResult(
+                    source: self.provider.identifier.hasPrefix("remote-live-coach-") ? "remote" : "local",
+                    result: "success"
+                ))
                 self.apply(analysis, for: snapshot, moment: moment)
             } catch {
+                self.guidanceEventHandler?(.providerResult(
+                    source: self.provider.identifier.hasPrefix("remote-live-coach-") ? "remote" : "local",
+                    result: "fallback"
+                ))
                 guard self.provider.identifier != self.fallbackProvider.identifier,
                       let fallback = try? await self.fallbackProvider.analyze(request),
                       !Task.isCancelled

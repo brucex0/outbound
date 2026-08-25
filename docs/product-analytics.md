@@ -28,6 +28,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - The activity flow emits setup exposure, configuration, start/pause/resume/finish/save/discard, goal-threshold, music, route-selection, shoe-selection, photo, and group-run events.
 - Confirmed history deletion emits `activity_deleted` with only the history source and a coarse deleted-count bucket; it never includes activity identifiers or details.
 - Live Guidance emits bounded semantic moment, spoken-cue, evaluated-outcome, challenge-selection, and post-run-feedback events. It never sends generated coaching text or exact pace, distance, or time values.
+- Live Guidance model experiments also emit only coarse provider source (`remote` or `local`) and result (`success` or `fallback`); model IDs and prompts are excluded.
 - Push tap routing emits `push_notification_opened` with only the share-safe notification type and coarse destination; it never sends notification, actor, connection, activity, or device identifiers.
 - Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
 

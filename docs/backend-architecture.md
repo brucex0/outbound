@@ -183,6 +183,7 @@ Implemented evolution:
 - Typed candidate generation, policy validation, permission tiers, and the action ledger prevent the model from mutating plans directly.
 - `/v1/assistant/chat` remains a compatibility adapter and delegates to the companion kernel when authenticated database context is available.
 - Memory inspection, correction, forgetting, situational signal intake, action decisions, and compiled session briefs live under `/v1/companion`.
+- `POST /v1/live-coach/analyze` is an authenticated, rate-limited experiment endpoint for short live-session cues. Provider keys stay server-side and selectable model IDs are restricted by the comma-separated `LIVE_COACH_ALLOWED_MODELS` environment variable.
 
 ### Plans
 

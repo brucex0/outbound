@@ -68,6 +68,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
     case liveGuidanceChallengeSelected = "live_guidance_challenge_selected"
     case liveGuidanceFeedbackSubmitted = "live_guidance_feedback_submitted"
+    case liveGuidanceProviderResult = "live_guidance_provider_result"
     case pushNotificationOpened = "push_notification_opened"
     case onboardingIdentityPromptViewed = "onboarding_identity_prompt_viewed"
     case onboardingIdentityCompleted = "onboarding_identity_completed"
@@ -192,6 +193,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceCueEvaluated: [.momentType, .result],
         .liveGuidanceChallengeSelected: [.selectionType],
         .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket],
+        .liveGuidanceProviderResult: [.sourceType, .result],
         .pushNotificationOpened: [.sourceType, .selectionType],
         .onboardingIdentityPromptViewed: [.missingDisplayName, .missingEmail],
         .onboardingIdentityCompleted: [.missingDisplayName, .missingEmail],

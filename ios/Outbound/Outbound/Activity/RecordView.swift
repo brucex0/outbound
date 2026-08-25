@@ -1413,6 +1413,11 @@ struct RecordView: View {
                 .momentType: .string(type.rawValue),
                 .result: .string(outcome.rawValue)
             ]))
+        case .providerResult(let source, let result):
+            track(.init(.liveGuidanceProviderResult, properties: [
+                .sourceType: .string(source),
+                .result: .string(result)
+            ]))
         }
     }
 
