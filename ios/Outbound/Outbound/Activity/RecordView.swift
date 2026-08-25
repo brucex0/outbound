@@ -99,6 +99,7 @@ struct RecordView: View {
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
     @State private var isVoiceSettingsPresented = false
+    @State private var shouldStartAfterVoiceUpgradePrompt = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -267,13 +268,17 @@ struct RecordView: View {
         ) {
             Button(String(localized: "guide.voice.upgrade.update", defaultValue: "Update Voice Settings")) {
                 track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("open_settings")]))
+                shouldStartAfterVoiceUpgradePrompt = false
                 guideCatalog.dismissVoiceUpgradePrompt()
                 isVoiceSettingsPresented = true
             }
             Button(String(localized: "common.not_now", defaultValue: "Not Now"), role: .cancel) {
                 track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("not_now")]))
                 guideCatalog.dismissVoiceUpgradePrompt()
-                beginStartRecording()
+                if shouldStartAfterVoiceUpgradePrompt {
+                    shouldStartAfterVoiceUpgradePrompt = false
+                    beginStartRecording()
+                }
             }
         } message: {
             Text(String(localized: "guide.voice.upgrade.message", defaultValue: "You’re using a Standard voice. An Apple Premium or Enhanced voice is now available for more natural spoken coaching."))
@@ -488,6 +493,7 @@ struct RecordView: View {
             return
         }
         if isVoiceGuideEnabled, guideCatalog.requestVoiceUpgradePromptIfNeeded() {
+            shouldStartAfterVoiceUpgradePrompt = true
             track(.init(.voiceUpgradePromptViewed))
             return
         }
@@ -1175,6 +1181,9 @@ struct RecordView: View {
             guideCatalog.refreshInstalledVoices()
             if !guideCatalog.hasDownloadedAppleVoices {
                 showsVoiceDownloadHelp = true
+            } else if guideCatalog.requestVoiceUpgradePromptIfNeeded() {
+                shouldStartAfterVoiceUpgradePrompt = false
+                track(.init(.voiceUpgradePromptViewed))
             }
         }
     }
