@@ -1976,21 +1976,27 @@ private struct SimplifiedMeView: View {
                             HStack {
                                 Text(String(localized: "me.recent.title", defaultValue: "RECENT")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                                 Spacer()
-                                Button {
-                                    showsManualWorkoutEntry = true
-                                } label: {
-                                    Image(systemName: "plus")
+                                HStack(spacing: 6) {
+                                    Button {
+                                        showsManualWorkoutEntry = true
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .accessibilityLabel(String(localized: "me.recent.add", defaultValue: "Add workout"))
+                                    Button {
+                                        Task { await openHealthImport() }
+                                    } label: {
+                                        Image(systemName: "square.and.arrow.down")
+                                            .frame(width: 44, height: 44)
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .accessibilityLabel(String(localized: "me.recent.import", defaultValue: "Import from Apple Health"))
+                                    NavigationLink(String(localized: "me.recent.all", defaultValue: "All")) { ActivityHistoryView() }
+                                        .font(.subheadline)
+                                        .padding(.horizontal, 8)
                                 }
-                                .font(.subheadline.weight(.semibold))
-                                .accessibilityLabel(String(localized: "me.recent.add", defaultValue: "Add workout"))
-                                Button {
-                                    Task { await openHealthImport() }
-                                } label: {
-                                    Image(systemName: "square.and.arrow.down")
-                                }
-                                .font(.subheadline.weight(.semibold))
-                                .accessibilityLabel(String(localized: "me.recent.import", defaultValue: "Import from Apple Health"))
-                                NavigationLink(String(localized: "me.recent.all", defaultValue: "All")) { ActivityHistoryView() }.font(.subheadline)
                             }
                             if activityStore.activities.isEmpty {
                                 Text("Your completed runs will appear here.").font(.subheadline).foregroundStyle(.secondary)
