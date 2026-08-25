@@ -17992,6 +17992,8 @@
     "health.import.title.hike" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported Hike" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Senderismo importado" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入的徒步" } } } },
     "health.import.title.walk" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported Walk" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Caminata importada" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入的步行" } } } },
     "health.import.title.swim" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Imported Swim" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Natación importada" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入的游泳" } } } },
+    "record.music.none" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No music" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Sin música" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "不播放音乐" } } } },
+    "record.music.none.detail" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Start without a soundtrack" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Empieza sin música" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始时不播放音乐" } } } },
     "Your rhythm is working." : {
       "localizations" : {
         "es" : {

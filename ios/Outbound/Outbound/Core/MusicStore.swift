@@ -11,6 +11,7 @@ final class MusicStore: ObservableObject {
     @Published private(set) var playback: MusicPlaybackSnapshot
     @Published private(set) var searchResultsByCategory: [MusicSearchCategory: [MusicSearchResult]] = [:]
     @Published private(set) var selectedCustomItems: [MusicSearchResult] = []
+    @Published private(set) var isMusicDisabled: Bool
     @Published private(set) var searchingCategories: Set<MusicSearchCategory> = []
     @Published var repeatsQueue = true
     @Published var shufflesQueue = false
@@ -23,6 +24,7 @@ final class MusicStore: ObservableObject {
     private let service: any MusicService
     private let defaults: UserDefaults
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
+    private let musicDisabledKey = "music_disabled_v1"
     private var pendingWorkoutPlayback = false
     private var startedPlaybackForWorkout = false
     private var didChooseMusicForCurrentSetup = false
@@ -35,7 +37,8 @@ final class MusicStore: ObservableObject {
         self.defaults = defaults
         snapshot = self.service.currentSnapshot
         playback = self.service.currentPlayback
-        selectedQuickPickID = defaults.string(forKey: selectedQuickPickKey)
+        isMusicDisabled = defaults.bool(forKey: musicDisabledKey)
+        selectedQuickPickID = isMusicDisabled ? nil : defaults.string(forKey: selectedQuickPickKey)
     }
 
     var isConnected: Bool {
@@ -156,7 +159,7 @@ final class MusicStore: ObservableObject {
 
         do {
             quickPicks = try await service.loadQuickPicks()
-            if selectedQuickPick == nil {
+            if selectedQuickPick == nil, !isMusicDisabled {
                 selectedQuickPickID = quickPicks.first?.id
             }
             persistSelectedQuickPick()
@@ -171,12 +174,25 @@ final class MusicStore: ObservableObject {
         Self.logger.info("Selected music quick pick. quickPickID=\(quickPick.id, privacy: .public)")
         selectedQuickPickID = quickPick.id
         selectedCustomItems = []
+        isMusicDisabled = false
         didChooseMusicForCurrentSetup = true
+        persistMusicDisabled()
+        persistSelectedQuickPick()
+    }
+
+    func disableMusic() {
+        Self.logger.info("Music disabled from workout setup.")
+        selectedQuickPickID = nil
+        selectedCustomItems = []
+        isMusicDisabled = true
+        didChooseMusicForCurrentSetup = true
+        pendingWorkoutPlayback = false
+        persistMusicDisabled()
         persistSelectedQuickPick()
     }
 
     func applyWorkoutSuggestion(title: String, detail: String, sport: SportType) {
-        guard !didChooseMusicForCurrentSetup, !quickPicks.isEmpty else { return }
+        guard !didChooseMusicForCurrentSetup, !isMusicDisabled, !quickPicks.isEmpty else { return }
         let text = "\(title) \(detail)".lowercased()
         let preferredID: String
         if text.contains("easy") || text.contains("recovery") || text.contains("walk") {
@@ -223,13 +239,15 @@ final class MusicStore: ObservableObject {
         }
         if !selectedCustomItems.isEmpty {
             selectedQuickPickID = nil
+            isMusicDisabled = false
             didChooseMusicForCurrentSetup = true
+            persistMusicDisabled()
             persistSelectedQuickPick()
         }
     }
 
     func beginWorkoutPlaybackIfNeeded() async {
-        guard isConnected else { return }
+        guard isConnected, !isMusicDisabled else { return }
         guard selectedQuickPick != nil || !selectedCustomItems.isEmpty else { return }
         pendingWorkoutPlayback = true
         isStartingPlayback = true
@@ -315,6 +333,10 @@ final class MusicStore: ObservableObject {
 
     private func persistSelectedQuickPick() {
         defaults.set(selectedQuickPickID, forKey: selectedQuickPickKey)
+    }
+
+    private func persistMusicDisabled() {
+        defaults.set(isMusicDisabled, forKey: musicDisabledKey)
     }
 
     private func describe(_ error: Error) -> String {

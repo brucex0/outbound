@@ -1213,6 +1213,21 @@ struct RecordView: View {
 
     private var musicSetupChoices: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Button {
+                musicStore.disableMusic()
+                track(.init(.musicQuickPickSelected, properties: [.selectionType: .string("no_music")]))
+            } label: {
+                setupChoiceRow(
+                    title: String(localized: "record.music.none", defaultValue: "No music"),
+                    detail: String(localized: "record.music.none.detail", defaultValue: "Start without a soundtrack"),
+                    systemImage: "music.note.slash",
+                    isSelected: musicStore.isMusicDisabled
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider().padding(.vertical, 4)
+
             if musicStore.hasDeveloperTokenError {
                 Label(String(localized: "session.music.unavailable", defaultValue: "Music unavailable"), systemImage: "music.note.slash")
                     .foregroundStyle(.secondary)
