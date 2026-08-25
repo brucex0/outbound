@@ -7,6 +7,7 @@ import UIKit
 final class ActivityStore: ObservableObject {
     @Published private(set) var activities: [SavedActivity] = []
     @Published private(set) var isSyncing = false
+    @Published private(set) var hasLoadedActivities = false
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
     private var activityRevision = 0
@@ -66,6 +67,47 @@ final class ActivityStore: ObservableObject {
             await syncActivityIfPossible(id: activity.id)
         }
         return activity
+    }
+
+    func importHealthWorkouts(_ workouts: [ImportedWorkout]) async -> Set<String> {
+        var importedIDs: Set<String> = []
+        let existingIDs = Set(activities.compactMap(\.source.externalID))
+        for workout in workouts where !existingIDs.contains(workout.id) {
+            let distance = max(0, workout.distanceMeters ?? 0)
+            let duration = max(1, workout.durationSeconds)
+            let summary = ActivitySummary(
+                startedAt: workout.startedAt,
+                endedAt: workout.endedAt,
+                durationSecs: duration,
+                distanceM: distance,
+                avgPace: distance > 0 ? Double(duration) / (distance / 1_000) : nil,
+                trackPoints: []
+            )
+            do {
+                _ = try await save(
+                    summary: summary,
+                    photos: [],
+                    activityType: workout.activityType,
+                    reflection: nil,
+                    title: workout.activityType.healthImportTitle,
+                    source: ActivitySourceMetadata(
+                        kind: .appleHealth,
+                        displayName: workout.sourceName,
+                        deviceName: nil,
+                        externalID: workout.id,
+                        importedAt: Date()
+                    )
+                )
+                importedIDs.insert(workout.id)
+            } catch {
+                continue
+            }
+        }
+        return importedIDs
+    }
+
+    var importedHealthExternalIDs: Set<String> {
+        Set(activities.compactMap { $0.source.kind == .appleHealth ? $0.source.externalID : nil })
     }
 
     func delete(_ activity: SavedActivity) async throws {
@@ -205,6 +247,7 @@ final class ActivityStore: ObservableObject {
     }
 
     private func loadActivities() async {
+        defer { hasLoadedActivities = true }
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
             || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
         {
@@ -617,5 +660,17 @@ final class ActivityStore: ObservableObject {
                 )
             }
         )
+    }
+}
+
+private extension ActivityType {
+    var healthImportTitle: String {
+        switch self {
+        case .running: String(localized: "health.import.title.run", defaultValue: "Imported Run")
+        case .cycling: String(localized: "health.import.title.ride", defaultValue: "Imported Ride")
+        case .hiking: String(localized: "health.import.title.hike", defaultValue: "Imported Hike")
+        case .walking: String(localized: "health.import.title.walk", defaultValue: "Imported Walk")
+        case .swimming: String(localized: "health.import.title.swim", defaultValue: "Imported Swim")
+        }
     }
 }

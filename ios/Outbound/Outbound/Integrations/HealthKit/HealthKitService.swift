@@ -335,7 +335,7 @@ private extension HealthKitService {
                 }
 
                 let workouts = (samples as? [HKWorkout] ?? [])
-                    .filter { !isOutboundWorkout($0) }
+                    .filter { !isOutboundWorkout($0) && $0.workoutActivityType.isSupportedByOutbound }
                     .map { workout in
                     ImportedWorkout(
                         id: workout.uuid.uuidString,
@@ -346,7 +346,7 @@ private extension HealthKitService {
                         durationSeconds: Int(workout.duration.rounded()),
                         distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
                         energyBurnedKilocalories: energyBurnedKilocalories(for: workout),
-                        isRunning: workout.workoutActivityType == .running
+                        activityType: workout.workoutActivityType.outboundActivityType
                     )
                 }
 
@@ -608,6 +608,25 @@ private extension HealthKitService {
                 .doubleValue(for: .kilocalorie())
         } else {
             return workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+        }
+    }
+}
+
+private extension HKWorkoutActivityType {
+    var isSupportedByOutbound: Bool {
+        switch self {
+        case .running, .cycling, .hiking, .walking, .swimming: true
+        default: false
+        }
+    }
+
+    var outboundActivityType: ActivityType {
+        switch self {
+        case .cycling: .cycling
+        case .hiking: .hiking
+        case .walking: .walking
+        case .swimming: .swimming
+        default: .running
         }
     }
 }

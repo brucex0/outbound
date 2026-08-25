@@ -1835,6 +1835,8 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var gearStore: GearStore
+    @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var profile: AppUserProfileDTO?
     @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
@@ -1972,15 +1974,23 @@ private struct SimplifiedMeView: View {
                     OutboundCard {
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                             HStack {
-                                Text("RECENT RUNS").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                Text(String(localized: "me.recent.title", defaultValue: "RECENT")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                                 Spacer()
                                 Button {
                                     showsManualWorkoutEntry = true
                                 } label: {
-                                    Label("Add Workout", systemImage: "plus")
+                                    Image(systemName: "plus")
                                 }
                                 .font(.subheadline.weight(.semibold))
-                                NavigationLink("See all") { ActivityHistoryView() }.font(.subheadline)
+                                .accessibilityLabel(String(localized: "me.recent.add", defaultValue: "Add workout"))
+                                Button {
+                                    Task { await openHealthImport() }
+                                } label: {
+                                    Image(systemName: "square.and.arrow.down")
+                                }
+                                .font(.subheadline.weight(.semibold))
+                                .accessibilityLabel(String(localized: "me.recent.import", defaultValue: "Import from Apple Health"))
+                                NavigationLink(String(localized: "me.recent.all", defaultValue: "All")) { ActivityHistoryView() }.font(.subheadline)
                             }
                             if activityStore.activities.isEmpty {
                                 Text("Your completed runs will appear here.").font(.subheadline).foregroundStyle(.secondary)
@@ -2072,6 +2082,26 @@ private struct SimplifiedMeView: View {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             withAnimation { manualWorkoutToast = nil }
+        }
+    }
+
+    private func openHealthImport() async {
+        if healthAuthorizationStore.snapshot.requestState == .notRequested {
+            await healthAuthorizationStore.requestAuthorization()
+        }
+        await healthImportStore.checkForNewWorkouts(
+            existingExternalIDs: activityStore.importedHealthExternalIDs,
+            presentWhenFound: true
+        )
+        if healthImportStore.importCandidates.isEmpty {
+            withAnimation {
+                manualWorkoutToast = healthImportStore.lastErrorMessage
+                    ?? String(localized: "health.import.none", defaultValue: "No new Apple Health workouts")
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                withAnimation { manualWorkoutToast = nil }
+            }
         }
     }
 

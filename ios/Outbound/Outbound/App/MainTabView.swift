@@ -91,6 +91,12 @@ struct MainTabView: View {
             }
             .environmentObject(guideCatalog)
         }
+        .sheet(isPresented: $healthImportStore.isReviewPresented) {
+            HealthWorkoutImportView()
+                .environmentObject(activityStore)
+                .environmentObject(healthImportStore)
+                .environmentObject(measurementPreferences)
+        }
         .onAppear {
             restoreInterruptedActivityIfNeeded()
             prepareOnboarding()
@@ -98,6 +104,14 @@ struct MainTabView: View {
         }
         .onChange(of: onboardingIdentity) { _, _ in
             prepareOnboarding()
+        }
+        .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
+            guard wasPresented, !isPresented else { return }
+            checkForHealthWorkouts(presentWhenFound: true)
+        }
+        .onChange(of: activityStore.hasLoadedActivities) { _, hasLoaded in
+            guard hasLoaded, !onboardingStore.isPresented else { return }
+            checkForHealthWorkouts(presentWhenFound: true)
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil else { return }
@@ -113,10 +127,22 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             consumeStoredPreparedActivityIfNeeded()
+            if activityStore.hasLoadedActivities, !onboardingStore.isPresented {
+                checkForHealthWorkouts(presentWhenFound: true)
+            }
         }
         .onChange(of: connectivityStore.isOffline) { wasOffline, isOffline in
             guard wasOffline, !isOffline else { return }
             Task { await activityStore.syncPendingActivitiesIfNeeded() }
+        }
+    }
+
+    private func checkForHealthWorkouts(presentWhenFound: Bool) {
+        Task {
+            await healthImportStore.checkForNewWorkouts(
+                existingExternalIDs: activityStore.importedHealthExternalIDs,
+                presentWhenFound: presentWhenFound
+            )
         }
     }
 

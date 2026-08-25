@@ -57,6 +57,7 @@ Limit custom weights to regular and medium/semibold. Preserve legibility over ex
 
 ### Selection and tap targets
 
+- Prefer an icon-only button when the symbol is conventional and unambiguous in context; always provide a localized accessibility label. Prefer the shortest clear visible label, expanding it only when the shorter wording could be ambiguous.
 - When tapping a list row selects or opens that row, make the whole available row area tappable rather than only its text or icon.
 - Keep embedded controls such as preview, toggle, menu, disclosure, or secondary-action buttons as independent tap targets. The row's primary tap area should fill only the remaining space and must not overlap or intercept those controls.
 - Preserve a minimum `44 pt` target for every independent control and expose each action separately to accessibility.

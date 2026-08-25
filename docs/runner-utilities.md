@@ -237,6 +237,6 @@ Implemented locally:
 
 Still future work:
 
-- real backend/import source sync for Strava, FIT, TCX, Garmin, and Apple Health writes
+- richer route, heart-rate, cadence, and device-detail ingestion for Apple Health imports, plus Strava, FIT, TCX, and Garmin integrations
 - true HR-zone distributions from samples rather than saved summaries/estimates
 - imported cadence ingestion and live cadence sensor support

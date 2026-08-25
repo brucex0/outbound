@@ -10,14 +10,17 @@ struct ImportedWorkout: Identifiable, Equatable {
     let durationSeconds: Int
     let distanceMeters: Double?
     let energyBurnedKilocalories: Double?
-    let isRunning: Bool
+    let activityType: ActivityType
+
+    var isRunning: Bool { activityType == .running }
 
     var summaryLine: String {
         summaryLine(unitSystem: .metric)
     }
 
     func summaryLine(unitSystem: MeasurementUnitSystem) -> String {
-        var parts = [durationSeconds.formatted()]
+        let minutes = max(1, Int((Double(durationSeconds) / 60).rounded()))
+        var parts = [String(format: String(localized: "health.import.minutes.format", defaultValue: "%d min"), locale: .autoupdatingCurrent, minutes)]
 
         if let distanceMeters {
             parts.append(unitSystem.distanceString(meters: distanceMeters))
@@ -93,13 +96,19 @@ final class HealthAuthorizationStore: ObservableObject {
 @MainActor
 final class HealthImportStore: ObservableObject {
     @Published private(set) var recentWorkouts: [ImportedWorkout] = []
+    @Published private(set) var importCandidates: [ImportedWorkout] = []
     @Published private(set) var isLoading = false
     @Published private(set) var lastErrorMessage: String?
+    @Published var isReviewPresented = false
 
     private let service: HealthKitServing
+    private let defaults: UserDefaults
+    private let lastCheckKey = "apple_health_import_last_check_v1"
+    private let dismissedIDsKey = "apple_health_import_dismissed_ids_v1"
 
-    init(service: HealthKitServing? = nil) {
+    init(service: HealthKitServing? = nil, defaults: UserDefaults = .standard) {
         self.service = service ?? HealthKitService()
+        self.defaults = defaults
     }
 
     func refreshRecentWorkouts(limit: Int = 3) async {
@@ -123,5 +132,53 @@ final class HealthImportStore: ObservableObject {
 
     func personalizationData(since: Date) async throws -> HealthPersonalizationData {
         try await service.fetchPersonalizationData(since: since)
+    }
+
+    func checkForNewWorkouts(existingExternalIDs: Set<String>, presentWhenFound: Bool) async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let initialStart = Calendar.current.date(byAdding: .weekOfYear, value: -8, to: Date()) ?? .distantPast
+            let lastCheck = defaults.object(forKey: lastCheckKey) as? Date
+            let overlapStart = lastCheck?.addingTimeInterval(-60 * 60 * 24)
+            let data = try await service.fetchPersonalizationData(since: overlapStart ?? initialStart)
+            let dismissedIDs = Set(defaults.stringArray(forKey: dismissedIDsKey) ?? [])
+            importCandidates = data.recentWorkouts.filter {
+                !existingExternalIDs.contains($0.id) && !dismissedIDs.contains($0.id)
+            }
+            lastErrorMessage = nil
+            if presentWhenFound, !importCandidates.isEmpty {
+                isReviewPresented = true
+            }
+        } catch {
+            lastErrorMessage = Self.message(for: error)
+        }
+    }
+
+    func finishImport(importedIDs: Set<String>) {
+        importCandidates.removeAll { importedIDs.contains($0.id) }
+        if importCandidates.isEmpty {
+            defaults.set(Date(), forKey: lastCheckKey)
+        }
+        isReviewPresented = false
+    }
+
+    func dismissCandidates() {
+        let prior = Set(defaults.stringArray(forKey: dismissedIDsKey) ?? [])
+        defaults.set(Array(prior.union(importCandidates.map(\.id))).sorted(), forKey: dismissedIDsKey)
+        importCandidates = []
+        defaults.set(Date(), forKey: lastCheckKey)
+        isReviewPresented = false
+    }
+
+    func closeReview() {
+        isReviewPresented = false
+    }
+
+    private static func message(for error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription
+            ?? String(localized: "health.import.load_error", defaultValue: "Apple Health workouts could not be loaded.")
     }
 }
