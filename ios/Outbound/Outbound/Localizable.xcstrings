@@ -17908,14 +17908,6 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride 使用 Apple 语音进行语音指导。“增强”或“高级”语音比内置的“标准”语音听起来更自然。" } }
       }
     },
-    "voice_download.open_settings" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "new", "value" : "Go to Settings" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ir a Ajustes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "前往“设置”" } }
-      }
-    },
     "voice_download.section.iphone" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -17943,9 +17935,9 @@
     "voice_download.step.open_settings" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "new", "value" : "Open the Settings app" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre la app Ajustes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开“设置”App" } }
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Leave Plainstride and open the Settings app" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sal de Plainstride y abre la app Ajustes" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "离开 Plainstride 并打开“设置”App" } }
       }
     },
     "voice_download.step.voices" : {
