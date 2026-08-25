@@ -136,6 +136,12 @@ final class GuideCatalogStore: ObservableObject {
         isVoiceUpgradePromptPresented = false
     }
 
+    @discardableResult
+    func requestVoiceUpgradePromptIfNeeded() -> Bool {
+        presentVoiceUpgradePromptIfNeeded()
+        return isVoiceUpgradePromptPresented
+    }
+
     func setTheme(_ theme: OutboundTheme) {
         selection.theme = theme
         defaults.set(theme.rawValue, forKey: Self.themeKey)
@@ -207,7 +213,6 @@ final class GuideCatalogStore: ObservableObject {
             normalizeSelection()
         }
         resolveVoiceSelectionRequirementWithInstalledVoice()
-        presentVoiceUpgradePromptIfNeeded()
     }
 
     private func presentVoiceUpgradePromptIfNeeded() {

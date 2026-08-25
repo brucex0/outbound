@@ -98,6 +98,7 @@ struct RecordView: View {
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
+    @State private var isVoiceSettingsPresented = false
 
     let isVisible: Bool
     private let shouldApplySmartGoalDefault: Bool
@@ -256,6 +257,39 @@ struct RecordView: View {
         }
         .onDisappear {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
+        }
+        .alert(
+            String(localized: "guide.voice.upgrade.title", defaultValue: "A better voice is available"),
+            isPresented: Binding(
+                get: { guideCatalog.isVoiceUpgradePromptPresented },
+                set: { if !$0 { guideCatalog.dismissVoiceUpgradePrompt() } }
+            )
+        ) {
+            Button(String(localized: "guide.voice.upgrade.update", defaultValue: "Update Voice Settings")) {
+                track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("open_settings")]))
+                guideCatalog.dismissVoiceUpgradePrompt()
+                isVoiceSettingsPresented = true
+            }
+            Button(String(localized: "common.not_now", defaultValue: "Not Now"), role: .cancel) {
+                track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("not_now")]))
+                guideCatalog.dismissVoiceUpgradePrompt()
+                beginStartRecording()
+            }
+        } message: {
+            Text(String(localized: "guide.voice.upgrade.message", defaultValue: "You’re using a Standard voice. An Apple Premium or Enhanced voice is now available for more natural spoken coaching."))
+        }
+        .fullScreenCover(isPresented: $isVoiceSettingsPresented) {
+            NavigationStack {
+                GuideSelectionView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(String(localized: "common.close", defaultValue: "Close")) {
+                                isVoiceSettingsPresented = false
+                            }
+                        }
+                    }
+            }
+            .environmentObject(guideCatalog)
         }
         .overlay(alignment: .topLeading) {
             if isVisible, let onCloseRequest {
@@ -453,6 +487,15 @@ struct RecordView: View {
             guideCatalog.requestVoiceSelection()
             return
         }
+        if isVoiceGuideEnabled, guideCatalog.requestVoiceUpgradePromptIfNeeded() {
+            track(.init(.voiceUpgradePromptViewed))
+            return
+        }
+        beginStartRecording()
+    }
+
+    private func beginStartRecording() {
+        guard recorder.state == .idle, !isCountingDown, !isStartingActivity else { return }
         guide.setSpeechEnabled(isVoiceGuideEnabled)
         isStartingActivity = true
         let intent = plannedIntent
