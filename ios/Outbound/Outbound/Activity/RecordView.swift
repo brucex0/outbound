@@ -48,6 +48,7 @@ struct RecordView: View {
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
+    @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -95,7 +96,6 @@ struct RecordView: View {
     @State private var intentBeforeSelectedRoute: SessionIntent?
     @State private var selectedRouteDistanceMeters: Double?
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
-    @State private var isVoiceGuideEnabled = false
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
 
@@ -847,7 +847,6 @@ struct RecordView: View {
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
         selectedGuidanceChallenge = .off
-        isVoiceGuideEnabled = false
     }
 
     private var preferredSessionPage: SessionPage {
