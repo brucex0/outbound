@@ -6941,6 +6941,9 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用标准语音" } }
       }
     },
+    "guide.voice.upgrade.message" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "You’re using a Standard voice. An Apple Premium or Enhanced voice is now available for more natural spoken coaching." } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Estás usando una voz estándar. Ya tienes disponible una voz Apple prémium o mejorada para que las indicaciones suenen más naturales." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你正在使用标准语音。现在已有 Apple 高级版或增强版语音可用，可让语音指导听起来更自然。" } } } },
+    "guide.voice.upgrade.title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "A better voice is available" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Hay una voz mejor disponible" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已有更自然的语音可用" } } } },
+    "guide.voice.upgrade.update" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Update Voice Settings" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Actualizar ajustes de voz" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更新语音设置" } } } },
     "Harder" : {
       "localizations" : {
         "es" : {

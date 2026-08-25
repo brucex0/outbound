@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
@@ -20,6 +21,7 @@ struct MainTabView: View {
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
     @State private var feedbackPage = "Today"
+    @State private var isVoiceSettingsPresented = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -91,6 +93,35 @@ struct MainTabView: View {
             }
             .environmentObject(guideCatalog)
         }
+        .alert(
+            String(localized: "guide.voice.upgrade.title", defaultValue: "A better voice is available"),
+            isPresented: voiceUpgradePresentation
+        ) {
+            Button(String(localized: "guide.voice.upgrade.update", defaultValue: "Update Voice Settings")) {
+                trackVoiceUpgradeAction("open_settings")
+                guideCatalog.dismissVoiceUpgradePrompt()
+                isVoiceSettingsPresented = true
+            }
+            Button(String(localized: "common.not_now", defaultValue: "Not Now"), role: .cancel) {
+                trackVoiceUpgradeAction("not_now")
+                guideCatalog.dismissVoiceUpgradePrompt()
+            }
+        } message: {
+            Text(String(localized: "guide.voice.upgrade.message", defaultValue: "You’re using a Standard voice. An Apple Premium or Enhanced voice is now available for more natural spoken coaching."))
+        }
+        .fullScreenCover(isPresented: $isVoiceSettingsPresented) {
+            NavigationStack {
+                GuideSelectionView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(String(localized: "common.close", defaultValue: "Close")) {
+                                isVoiceSettingsPresented = false
+                            }
+                        }
+                    }
+            }
+            .environmentObject(guideCatalog)
+        }
         .sheet(isPresented: $healthImportStore.isReviewPresented) {
             HealthWorkoutImportView()
                 .environmentObject(activityStore)
@@ -98,6 +129,7 @@ struct MainTabView: View {
                 .environmentObject(measurementPreferences)
         }
         .onAppear {
+            guideCatalog.refreshInstalledVoices()
             restoreInterruptedActivityIfNeeded()
             prepareOnboarding()
             consumeStoredPreparedActivityIfNeeded()
@@ -126,10 +158,15 @@ struct MainTabView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
+            guideCatalog.refreshInstalledVoices()
             consumeStoredPreparedActivityIfNeeded()
             if activityStore.hasLoadedActivities, !onboardingStore.isPresented {
                 checkForHealthWorkouts(presentWhenFound: true)
             }
+        }
+        .onChange(of: guideCatalog.isVoiceUpgradePromptPresented) { _, isPresented in
+            guard isPresented else { return }
+            track(.init(.voiceUpgradePromptViewed))
         }
         .onChange(of: connectivityStore.isOffline) { wasOffline, isOffline in
             guard wasOffline, !isOffline else { return }
@@ -165,6 +202,27 @@ struct MainTabView: View {
             get: { guideCatalog.isVoiceSelectionPromptPresented && !onboardingPresentation.wrappedValue },
             set: { if !$0 { guideCatalog.dismissVoiceSelectionPrompt() } }
         )
+    }
+
+    private var voiceUpgradePresentation: Binding<Bool> {
+        Binding(
+            get: {
+                guideCatalog.isVoiceUpgradePromptPresented
+                    && !onboardingPresentation.wrappedValue
+                    && !guideCatalog.isVoiceSelectionPromptPresented
+                    && !isActivityVisible
+            },
+            set: { if !$0 { guideCatalog.dismissVoiceUpgradePrompt() } }
+        )
+    }
+
+    private func trackVoiceUpgradeAction(_ action: String) {
+        track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string(action)]))
+    }
+
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
     }
 
     @ViewBuilder

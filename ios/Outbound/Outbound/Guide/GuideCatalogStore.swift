@@ -14,13 +14,16 @@ final class GuideCatalogStore: ObservableObject {
     @Published private(set) var selection: GuideSelection
     @Published private(set) var requiresVoiceSelection = false
     @Published private(set) var isVoiceSelectionPromptPresented = false
+    @Published private(set) var isVoiceUpgradePromptPresented = false
     @Published private(set) var voiceSelectionRequirementReason: VoiceSelectionRequirementReason?
 
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v1"
     private let voiceLanguageKey = "guide_catalog_voice_language_v1"
+    private let voiceUpgradePromptKey = "guide_catalog_voice_upgrade_prompt_v1"
     private let learningKey = "live_guidance_learning_v1"
     private var learningState: LiveGuidanceLearningState
+    private var pendingVoiceUpgradeSignature: String?
 
     var selectedTemplate: GuideTemplate {
         templates.first { $0.id == selection.templateId } ?? templates[0]
@@ -125,6 +128,14 @@ final class GuideCatalogStore: ObservableObject {
         saveSelection()
     }
 
+    func dismissVoiceUpgradePrompt() {
+        if let pendingVoiceUpgradeSignature {
+            defaults.set(pendingVoiceUpgradeSignature, forKey: voiceUpgradePromptKey)
+        }
+        pendingVoiceUpgradeSignature = nil
+        isVoiceUpgradePromptPresented = false
+    }
+
     func setTheme(_ theme: OutboundTheme) {
         selection.theme = theme
         defaults.set(theme.rawValue, forKey: Self.themeKey)
@@ -196,6 +207,28 @@ final class GuideCatalogStore: ObservableObject {
             normalizeSelection()
         }
         resolveVoiceSelectionRequirementWithInstalledVoice()
+        presentVoiceUpgradePromptIfNeeded()
+    }
+
+    private func presentVoiceUpgradePromptIfNeeded() {
+        guard selectedVoice.isStandardQuality else {
+            isVoiceUpgradePromptPresented = false
+            return
+        }
+
+        let availableVoiceIDs = selectedTemplate.voiceOptions
+            .filter(\.isPremiumOrEnhancedQuality)
+            .map(\.id)
+            .sorted()
+        guard !availableVoiceIDs.isEmpty else {
+            isVoiceUpgradePromptPresented = false
+            return
+        }
+
+        let availabilitySignature = availableVoiceIDs.joined(separator: "|")
+        guard defaults.string(forKey: voiceUpgradePromptKey) != availabilitySignature else { return }
+        pendingVoiceUpgradeSignature = availabilitySignature
+        isVoiceUpgradePromptPresented = true
     }
 
     private func resolveVoiceSelectionRequirementWithInstalledVoice() {
