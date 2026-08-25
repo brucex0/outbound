@@ -156,7 +156,6 @@ struct GuideSelectionView: View {
                 Image(systemName: previewingVoiceID == voice.id ? "waveform.circle.fill" : "play.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.orange)
-                    .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(

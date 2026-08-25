@@ -8,6 +8,11 @@ struct AppleVoiceDownloadHelpView: View {
         NavigationStack {
             List {
                 Section {
+                    Text(String(localized: "voice_download.explanation", defaultValue: "Plainstride uses Apple voices for spoken coaching. Enhanced or Premium voices sound more natural than the built-in Standard voice."))
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
                     Label(String(localized: "voice_download.step.open_settings", defaultValue: "Open the Settings app"), systemImage: "gear")
                     Label(String(localized: "voice_download.step.accessibility", defaultValue: "Choose Accessibility"), systemImage: "accessibility")
                     Label(String(localized: "voice_download.step.voices", defaultValue: "Open Read & Speak (or Spoken Content), then Voices"), systemImage: "text.bubble")

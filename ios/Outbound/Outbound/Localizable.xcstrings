@@ -17900,6 +17900,14 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音由 Apple 负责下载。返回 Plainstride 后，App 会自动识别新语音。" } }
       }
     },
+    "voice_download.explanation" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Plainstride uses Apple voices for spoken coaching. Enhanced or Premium voices sound more natural than the built-in Standard voice." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride usa voces de Apple para las indicaciones habladas. Las voces Mejoradas o Premium suenan más naturales que la voz Estándar incluida." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride 使用 Apple 语音进行语音指导。“增强”或“高级”语音比内置的“标准”语音听起来更自然。" } }
+      }
+    },
     "voice_download.open_settings" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
