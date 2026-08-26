@@ -42,7 +42,7 @@ struct FeedbackReporterModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background {
-                ShakeDetector(isEnabled: !isShakeDisabled) {
+                ShakeDetector(isEnabled: !isShakeDisabled && presentation == nil) {
                     registerShake()
                 }
                 .frame(width: 0, height: 0)
@@ -472,19 +472,70 @@ private struct ShakeDetector: UIViewControllerRepresentable {
 }
 
 private final class ShakeDetectorViewController: UIViewController {
-    var isEnabled = true
+    var isEnabled = true {
+        didSet {
+            guard isEnabled != oldValue else { return }
+            if isEnabled {
+                claimFirstResponderWhenReady()
+            } else if isFirstResponder {
+                resignFirstResponder()
+            }
+        }
+    }
     var onShake: (() -> Void)?
+    private var observers: [NSObjectProtocol] = []
 
     override var canBecomeFirstResponder: Bool { true }
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        let center = NotificationCenter.default
+        observers = [
+            center.addObserver(
+                forName: UIApplication.didBecomeActiveNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.claimFirstResponderWhenReady()
+            },
+            center.addObserver(
+                forName: UIWindow.didBecomeKeyNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.claimFirstResponderWhenReady()
+            },
+            center.addObserver(
+                forName: UIResponder.keyboardDidHideNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.claimFirstResponderWhenReady()
+            }
+        ]
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        becomeFirstResponder()
+        claimFirstResponderWhenReady()
+    }
+
+    deinit {
+        let center = NotificationCenter.default
+        observers.forEach(center.removeObserver)
     }
 
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         super.motionEnded(motion, with: event)
         guard motion == .motionShake, isEnabled else { return }
         onShake?()
+    }
+
+    private func claimFirstResponderWhenReady() {
+        guard isEnabled else { return }
+        Task { @MainActor [weak self] in
+            guard let self, self.isEnabled, self.viewIfLoaded?.window != nil else { return }
+            self.becomeFirstResponder()
+        }
     }
 }
