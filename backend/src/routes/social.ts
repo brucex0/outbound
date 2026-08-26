@@ -98,7 +98,7 @@ async function socialHome(c: Context<AppEnv>) {
         _count: { select: { comments: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 12,
+      take: 50,
     }),
   ]);
 

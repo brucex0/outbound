@@ -28,6 +28,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityDeleted = "activity_deleted"
     case activitySyncCompleted = "activity_sync_completed"
     case activitySyncFailed = "activity_sync_failed"
+    case activityFeedLoaded = "activity_feed_loaded"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
@@ -158,6 +159,7 @@ enum ProductAnalyticsSchema {
         .activityDeleted: [.sourceType, .countBucket],
         .activitySyncCompleted: [.sourceType, .routeSelected],
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
+        .activityFeedLoaded: [.countBucket, .sourceType],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],

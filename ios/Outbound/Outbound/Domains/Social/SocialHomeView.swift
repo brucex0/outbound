@@ -158,6 +158,7 @@ struct SocialHomeView: View {
             }
             .task(id: socialStore.state.posts.map(\.id)) {
                 reconcileSharedActivityMilestones()
+                trackActivityFeedLoaded()
             }
             .sheet(item: $selectedCommentPost) { post in
                 SocialCommentsView(post: post)
@@ -398,7 +399,7 @@ struct SocialHomeView: View {
                 }
             }
         } else {
-            ForEach(socialStore.state.posts.prefix(5)) { post in
+            ForEach(socialStore.state.posts) { post in
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         HStack {
@@ -497,6 +498,24 @@ struct SocialHomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func trackActivityFeedLoaded() {
+        let posts = socialStore.state.posts
+        let sourceType: String
+        if posts.isEmpty {
+            sourceType = "empty"
+        } else if posts.contains(where: { !$0.isCurrentUser }) {
+            sourceType = "connections"
+        } else {
+            sourceType = "self_only"
+        }
+        Task {
+            await analyticsManager?.track(.init(.activityFeedLoaded, properties: [
+                .countBucket: .string(ProductAnalyticsBucket.count(posts.count)),
+                .sourceType: .string(sourceType),
+            ]))
         }
     }
 
