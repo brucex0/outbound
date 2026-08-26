@@ -31,12 +31,11 @@ private enum FeedbackKind: String, CaseIterable, Identifiable {
 }
 
 struct FeedbackReporterModifier: ViewModifier {
+    @Environment(\.analyticsManager) private var analyticsManager
     let isShakeDisabled: Bool
     let currentPage: String
-    @State private var isPresented = false
-    @State private var screenshot: UIImage?
+    @State private var presentation: FeedbackPresentation?
     @State private var firstShakeAt: Date?
-    @State private var presentedPage = "Unknown"
 
     private let doubleShakeInterval: TimeInterval = 3
 
@@ -57,8 +56,8 @@ struct FeedbackReporterModifier: ViewModifier {
                     firstShakeAt = nil
                 }
             }
-            .sheet(isPresented: $isPresented) {
-                FeedbackForm(screenshot: screenshot, currentPage: presentedPage)
+            .sheet(item: $presentation) { presentation in
+                FeedbackForm(screenshot: presentation.screenshot, currentPage: presentation.page)
             }
     }
 
@@ -74,11 +73,27 @@ struct FeedbackReporterModifier: ViewModifier {
     }
 
     private func presentFeedback(pageOverride: String? = nil) {
-        guard !isPresented else { return }
-        presentedPage = pageOverride ?? currentPage
-        screenshot = FeedbackScreenshot.capture()
-        isPresented = true
+        guard presentation == nil else { return }
+        let screenshot = FeedbackScreenshot.capture()
+        presentation = FeedbackPresentation(page: pageOverride ?? currentPage, screenshot: screenshot)
+        Task {
+            await analyticsManager?.track(
+                .init(
+                    .feedbackReporterOpened,
+                    properties: [
+                        .entrySource: .string(pageOverride == nil ? "shake" : "in_app"),
+                        .result: .string(screenshot == nil ? "capture_failed" : "capture_succeeded")
+                    ]
+                )
+            )
+        }
     }
+}
+
+private struct FeedbackPresentation: Identifiable {
+    let id = UUID()
+    let page: String
+    let screenshot: UIImage?
 }
 
 extension View {
@@ -276,8 +291,14 @@ private enum FeedbackScreenshot {
             .first(where: { $0.activationState == .foregroundActive })?
             .windows.first(where: \.isKeyWindow) else { return nil }
 
-        return UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        guard !window.bounds.isEmpty else { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = window.screen.scale
+        format.opaque = window.isOpaque
+        return UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { context in
+            if !window.drawHierarchy(in: window.bounds, afterScreenUpdates: false) {
+                window.layer.render(in: context.cgContext)
+            }
         }
     }
 }

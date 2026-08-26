@@ -80,6 +80,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case healthImportCompleted = "health_import_completed"
     case voiceUpgradePromptViewed = "voice_upgrade_prompt_viewed"
     case voiceUpgradePromptAction = "voice_upgrade_prompt_action"
+    case feedbackReporterOpened = "feedback_reporter_opened"
 }
 
 enum ProductPropertyKey: String, Sendable, CaseIterable {
@@ -208,7 +209,8 @@ enum ProductAnalyticsSchema {
         .healthImportPromptViewed: [.sourceType],
         .healthImportCompleted: [.result, .sourceType],
         .voiceUpgradePromptViewed: [],
-        .voiceUpgradePromptAction: [.selectionType]
+        .voiceUpgradePromptAction: [.selectionType],
+        .feedbackReporterOpened: [.entrySource, .result]
     ]
 
     nonisolated static func validatedProperties(for event: ProductAnalyticsEvent) -> [ProductPropertyKey: AnalyticsValue]? {
