@@ -160,7 +160,6 @@ const createSchema = z.object({
             verticalAccuracy: z.number().finite().optional().nullable(),
           })
         )
-        .min(2)
         .max(MAX_ACTIVITY_ROUTE_POINTS),
       visibility: z.string().optional().nullable(),
     })
@@ -198,7 +197,10 @@ const createSchema = z.object({
 type ActivityRoutePayload = NonNullable<z.infer<typeof createSchema>["route"]>;
 
 function normalizeRoute(route: ActivityRoutePayload | null | undefined) {
-  if (!route) return undefined;
+  // Older clients persist an empty SavedRoute for activities without usable
+  // GPS (for example Apple Health imports and manual entries). Treat a route
+  // with fewer than two points as absent instead of rejecting the activity.
+  if (!route || route.points.length < 2) return undefined;
 
   return {
     type: "Feature",

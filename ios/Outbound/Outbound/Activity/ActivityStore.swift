@@ -10,6 +10,7 @@ final class ActivityStore: ObservableObject {
     @Published private(set) var hasLoadedActivities = false
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
+    private let analyticsManager: AnalyticsManager?
     private var activityRevision = 0
 
     var pendingActivityCount: Int {
@@ -22,7 +23,8 @@ final class ActivityStore: ObservableObject {
         }.count
     }
 
-    init() {
+    init(analyticsManager: AnalyticsManager? = nil) {
+        self.analyticsManager = analyticsManager
         Task { await loadActivities() }
     }
 
@@ -308,7 +310,7 @@ final class ActivityStore: ObservableObject {
                     activityEventId: activity.activityEventID,
                     followedRouteId: activity.followedRoute?.source == .community ? activity.followedRoute?.routeID : nil,
                     followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
-                    route: activity.route,
+                    route: uploadableRoute(for: activity),
                     reflection: activity.reflection,
                     clientData: syncSnapshot(for: activity),
                     clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt
@@ -324,6 +326,10 @@ final class ActivityStore: ObservableObject {
                 localUpdatedAt: attemptState.localUpdatedAt
             )
             await persistSyncState(syncedState, for: activity.id)
+            await analyticsManager?.track(ProductAnalyticsEvent(
+                .activitySyncCompleted,
+                properties: syncAnalyticsProperties(for: activity)
+            ))
             await syncPhotosIfPossible(activityID: activity.id)
         } catch {
             let failedState = SavedActivitySyncState(
@@ -335,8 +341,34 @@ final class ActivityStore: ObservableObject {
                 localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
             )
             await persistSyncState(failedState, for: activity.id)
+            var properties = syncAnalyticsProperties(for: activity)
+            properties[.errorCategory] = .string(syncErrorCategory(error))
+            await analyticsManager?.track(ProductAnalyticsEvent(.activitySyncFailed, properties: properties))
             print("[ActivityStore] activity sync failed: \(error.localizedDescription)")
         }
+    }
+
+    private func uploadableRoute(for activity: SavedActivity) -> SavedRoute? {
+        guard let route = activity.route, route.points.count >= 2 else { return nil }
+        return route
+    }
+
+    private func syncAnalyticsProperties(for activity: SavedActivity) -> [ProductPropertyKey: AnalyticsValue] {
+        [
+            .sourceType: .string(activity.source.kind.rawValue),
+            .routeSelected: .boolean(uploadableRoute(for: activity) != nil)
+        ]
+    }
+
+    private func syncErrorCategory(_ error: Error) -> String {
+        if case let APIError.http(statusCode, _) = error {
+            return "http_\(statusCode)"
+        }
+        if error is DecodingError { return "decoding" }
+        if let urlError = error as? URLError {
+            return urlError.code == .notConnectedToInternet ? "offline" : "network"
+        }
+        return "unknown"
     }
 
     private func persistSyncState(_ syncState: SavedActivitySyncState, for activityID: UUID) async {

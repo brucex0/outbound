@@ -9,7 +9,7 @@ struct OutboundApp: App {
     @StateObject private var authStore = AuthStore()
     @StateObject private var guideStore = GuideStore()
     @StateObject private var guideCatalogStore = GuideCatalogStore()
-    @StateObject private var activityStore = ActivityStore()
+    @StateObject private var activityStore: ActivityStore
     @StateObject private var goalStore = GoalStore()
     @StateObject private var trainingPlanStore = TrainingPlanStore()
     @StateObject private var assistantStore = AssistantStore()
@@ -44,6 +44,7 @@ struct OutboundApp: App {
             isFirebaseConfigured ? FirebaseAnalyticsProvider() : NoOpAnalyticsProvider()
         ])
         analyticsManager = manager
+        _activityStore = StateObject(wrappedValue: ActivityStore(analyticsManager: manager))
         Task { await manager.initialize() }
     }
 
