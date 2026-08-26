@@ -497,6 +497,18 @@ struct SocialHomeView: View {
                         }
                     }
                 }
+                if post.id == socialStore.state.posts.last?.id,
+                   socialStore.state.nextFeedCursor != nil {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, OutboundSpacing.compact)
+                        .task {
+                            guard await socialStore.loadMorePosts() else {
+                                toastMessage = String(localized: "social.feed.load_more_failed")
+                                return
+                            }
+                        }
+                }
             }
         }
     }

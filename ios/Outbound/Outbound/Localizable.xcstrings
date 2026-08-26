@@ -4,6 +4,7 @@
     "" : {
 
     },
+    "social.feed.load_more_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not load more activities. Try again." } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudieron cargar más actividades. Inténtalo de nuevo." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法加载更多活动，请重试。" } } } },
     "activity.history.delete.action.many" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld Activities" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar %lld actividades" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除 %lld 项活动" } } } },
     "activity.history.delete.action.one" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Activity" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar actividad" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除活动" } } } },
     "activity.history.delete.confirmation.many" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld Activities?" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Eliminar %lld actividades?" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除 %lld 项活动？" } } } },

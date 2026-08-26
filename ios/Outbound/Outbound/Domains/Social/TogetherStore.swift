@@ -5,6 +5,7 @@ import Foundation
 final class TogetherStore: ObservableObject {
     @Published private(set) var state: TogetherResponseDTO
     @Published private(set) var isLoading = false
+    @Published private(set) var isLoadingMorePosts = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var latestInvitationURL: URL?
     @Published private(set) var connections: [SocialConnectionDTO] = []
@@ -54,6 +55,30 @@ final class TogetherStore: ObservableObject {
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
+        }
+    }
+
+    @discardableResult
+    func loadMorePosts() async -> Bool {
+        guard !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return true }
+        isLoadingMorePosts = true
+        defer { isLoadingMorePosts = false }
+        do {
+            let page = try await api.fetchTogether(feedCursor: cursor)
+            let existingIDs = Set(state.posts.map(\.id))
+            let appendedPosts = page.posts.filter { !existingIDs.contains($0.id) }
+            state = TogetherResponseDTO(
+                upcomingRuns: state.upcomingRuns,
+                pastEvents: state.pastEvents,
+                clubs: state.clubs,
+                posts: state.posts + appendedPosts,
+                nextFeedCursor: page.nextFeedCursor
+            )
+            persist()
+            errorMessage = nil
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -465,7 +490,7 @@ final class TogetherStore: ObservableObject {
     func reportPost(_ post: TogetherPostDTO, reason: String) async {
         do {
             _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "post", targetId: post.id, reason: reason, details: nil))
-            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id })
+            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id }, nextFeedCursor: state.nextFeedCursor)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -644,7 +669,7 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
-        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts)
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }
 
     private func replacing(post: TogetherPostDTO, commentCountDelta: Int) -> TogetherResponseDTO {
@@ -663,7 +688,7 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
-        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts)
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }
 
     private func replaceConnection(_ connection: SocialConnectionDTO, status: String, direction: String) {

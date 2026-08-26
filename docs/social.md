@@ -14,7 +14,7 @@ Compact Social rows use circular icon actions with 44-point tap targets for reco
 
 Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary and route fields rather than returning private reflection, guidance, or client snapshot data.
 
-The home activity feed renders the full bounded server response rather than truncating the first few posts on the client. The server returns up to 50 newest visible posts across the runner and accepted connections, which prevents a burst of the runner's own synced activities from hiding connection activity.
+The home activity feed uses a stable opaque cursor ordered by post creation time and ID. It loads 12 newest visible posts across the runner and accepted connections, then automatically appends subsequent pages as the runner reaches the end. Pull-to-refresh resets to the newest page, while the cached accumulated feed remains useful offline.
 
 Opening a feed activity reuses the same layered map-and-sheet detail shell as Me, following Strava's one-detail-screen model. Social keeps the common map, stats, route analysis, and Share action; adds a tappable author profile card and caption in the sheet; pins Cheer and comments at the bottom; and does not expose owner-only editing or unavailable private activity metadata.
 

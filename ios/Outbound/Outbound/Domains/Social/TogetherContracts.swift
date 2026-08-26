@@ -10,6 +10,7 @@ struct TogetherResponseDTO: Codable, Sendable {
     var pastEvents: [ActivityEventDTO] = []
     let clubs: [TogetherClubDTO]
     let posts: [TogetherPostDTO]
+    var nextFeedCursor: String? = nil
 }
 
 struct TogetherPersonDTO: Codable, Identifiable, Sendable {

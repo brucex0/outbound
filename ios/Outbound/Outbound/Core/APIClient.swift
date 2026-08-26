@@ -251,8 +251,10 @@ final class APIClient {
         )
     }
 
-    func fetchTogether() async throws -> TogetherResponseDTO {
-        try await get("/social/home")
+    func fetchTogether(feedCursor: String? = nil) async throws -> TogetherResponseDTO {
+        try await get("/social/home", queryItems: feedCursor.map {
+            [URLQueryItem(name: "feedCursor", value: $0)]
+        } ?? [])
     }
 
     func fetchSocialConnections() async throws -> SocialConnectionsResponseDTO {

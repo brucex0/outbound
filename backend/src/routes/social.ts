@@ -11,6 +11,7 @@ import { signedActivityPhotoURL } from "../services/activityPhotoStorage.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
+const socialFeedPageSize = 12;
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 const reportSchema = z.object({
@@ -60,6 +61,9 @@ async function socialHome(c: Context<AppEnv>) {
     { invitations: { some: { recipientId: user.id, status: "pending" } } },
     { club: { memberships: { some: { userId: user.id } } } },
   ];
+  const feedCursorValue = c.req.query("feedCursor");
+  const feedCursor = feedCursorValue ? decodeFeedCursor(feedCursorValue) : null;
+  if (feedCursorValue && !feedCursor) return c.json({ error: "Invalid activity feed cursor." }, 400);
   const [upcomingRuns, pastEvents, memberships, posts] = await Promise.all([
     prisma.activityEvent.findMany({
       where: {
@@ -85,6 +89,12 @@ async function socialHome(c: Context<AppEnv>) {
         userId: { in: [user.id, ...connections] },
         visibility: { in: ["connections", "public"] },
         deletedAt: null,
+        ...(feedCursor ? {
+          OR: [
+            { createdAt: { lt: feedCursor.createdAt } },
+            { createdAt: feedCursor.createdAt, id: { lt: feedCursor.id } },
+          ],
+        } : {}),
       },
       include: {
         user: { select: socialPersonSelect },
@@ -97,17 +107,42 @@ async function socialHome(c: Context<AppEnv>) {
         },
         _count: { select: { comments: true } },
       },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: socialFeedPageSize + 1,
     }),
   ]);
+
+  const feedPosts = posts.slice(0, socialFeedPageSize);
+  const lastFeedPost = feedPosts.at(-1);
+  const nextFeedCursor = posts.length > socialFeedPageSize && lastFeedPost
+    ? encodeFeedCursor(lastFeedPost.createdAt, lastFeedPost.id)
+    : null;
 
   return c.json({
     upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
-    posts: await Promise.all(posts.map((post) => postPayload(post, user.id))),
+    posts: await Promise.all(feedPosts.map((post) => postPayload(post, user.id))),
+    nextFeedCursor,
   });
+}
+
+function encodeFeedCursor(createdAt: Date, id: string) {
+  return Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id }), "utf8").toString("base64url");
+}
+
+function decodeFeedCursor(value: string): { createdAt: Date; id: string } | null {
+  try {
+    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as {
+      createdAt?: unknown;
+      id?: unknown;
+    };
+    if (typeof decoded.createdAt !== "string" || typeof decoded.id !== "string" || !decoded.id) return null;
+    const createdAt = new Date(decoded.createdAt);
+    return Number.isNaN(createdAt.getTime()) ? null : { createdAt, id: decoded.id };
+  } catch {
+    return null;
+  }
 }
 
 router.get("/connections", async (c) => {
