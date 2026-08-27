@@ -112,6 +112,7 @@ struct RecordView: View {
     private let isEmbeddedInToday: Bool
     private let startRequest: Int
     private let shouldApplySmartGoalDefault: Bool
+    private let onGoalModeChange: ((SessionGoalMode) -> Void)?
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
     private let onElapsedTimeChange: ((Int) -> Void)?
@@ -121,6 +122,7 @@ struct RecordView: View {
         isVisible: Bool = true,
         isEmbeddedInToday: Bool = false,
         startRequest: Int = 0,
+        onGoalModeChange: ((SessionGoalMode) -> Void)? = nil,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
@@ -136,6 +138,7 @@ struct RecordView: View {
         self.isVisible = isVisible
         self.isEmbeddedInToday = isEmbeddedInToday
         self.startRequest = startRequest
+        self.onGoalModeChange = onGoalModeChange
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -146,7 +149,7 @@ struct RecordView: View {
     var body: some View {
         Group {
             if isEmbeddedInToday {
-                readyView
+                embeddedReadyView
                     .opacity(isVisible && !showCamera ? 1 : 0)
                     .allowsHitTesting(isVisible && !showCamera)
                     .fullScreenCover(isPresented: embeddedLivePresentation) {
@@ -187,6 +190,9 @@ struct RecordView: View {
         .onChange(of: startRequest) { _, _ in
             guard isEmbeddedInToday, isVisible, !showCamera else { return }
             startRecording()
+        }
+        .onChange(of: selectedGoalMode, initial: true) { _, mode in
+            onGoalModeChange?(mode)
         }
         .onAppear {
             restoreInterruptedSessionIfNeeded()
@@ -1035,6 +1041,41 @@ struct RecordView: View {
                 contextualStartControl
                     .padding(.bottom, 3)
             }
+        }
+        .onAppear {
+            guideCatalog.refreshInstalledVoices()
+            applySmartGoalDefaultIfNeeded()
+            applyLearnedGoalModeIfNeeded()
+            applyDefaultSessionShoeIfNeeded()
+            trackSetupAndFeatureExposureIfNeeded()
+        }
+    }
+
+    private var embeddedReadyView: some View {
+        VStack(spacing: 0) {
+            ZStack(alignment: .bottom) {
+                Color.clear
+                    .allowsHitTesting(false)
+
+                if !usesEmbeddedPlannedContent {
+                    VStack(spacing: 10) {
+                        if connectivityStore.isOffline {
+                            OfflineStatusBanner(compact: true)
+                                .padding(.horizontal, 16)
+                        }
+
+                        Spacer(minLength: 72)
+
+                        launchGoalCard
+                            .padding(.horizontal, 18)
+                            .padding(.bottom, 12)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+
+            launchDock
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
@@ -3327,7 +3368,7 @@ struct RecordView: View {
     }
 }
 
-private struct ActivityLaunchMap: View {
+struct ActivityLaunchMap: View {
     @Environment(\.outboundTheme) private var theme
     @ObservedObject var locationManager: LocationManager
     let route: PreparedRoute?
@@ -3398,7 +3439,7 @@ struct StatBlock: View {
     }
 }
 
-private enum SessionGoalMode: String, CaseIterable, Equatable {
+enum SessionGoalMode: String, CaseIterable, Equatable {
     case planned
     case freestyle
     case distance
@@ -3458,7 +3499,7 @@ private enum SessionGoalMode: String, CaseIterable, Equatable {
         }
     }
 
-    var customGoalKind: CustomGoalKind? {
+    fileprivate var customGoalKind: CustomGoalKind? {
         switch self {
         case .distance: return .distance
         case .time: return .time

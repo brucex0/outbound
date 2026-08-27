@@ -34,6 +34,7 @@ struct SimplifiedAppShell: View {
     let activeSport: SportType?
     @Binding var feedbackPage: String
     let activityLaunchSurface: AnyView
+    let launchGoalMode: SessionGoalMode
     let onContextualStart: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
@@ -54,17 +55,22 @@ struct SimplifiedAppShell: View {
                 customizedRunIntent: $customizedTodayIntent,
                 selectedRouteName: $selectedRouteName,
                 activityLaunchSurface: activityLaunchSurface,
+                launchGoalMode: launchGoalMode,
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
                 .tabItem {
-                    Label(
-                        selection == .today
-                            ? String(localized: "record.start.short", defaultValue: "Start")
-                            : String(localized: "Today"),
-                        systemImage: selection == .today ? "play.fill" : "sparkles"
-                    )
+                    if selection == .today {
+                        Label(
+                            String(localized: "record.start.short", defaultValue: "Start"),
+                            systemImage: "play.fill"
+                        )
+                        .opacity(0)
+                        .accessibilityHidden(true)
+                    } else {
+                        Label(String(localized: "Today"), systemImage: "sparkles")
+                    }
                 }
 
             SimplifiedMeView()
@@ -238,7 +244,9 @@ private struct SimplifiedTodayView: View {
     @Binding var customizedRunIntent: SessionIntent?
     @Binding var selectedRouteName: String?
     let activityLaunchSurface: AnyView
+    let launchGoalMode: SessionGoalMode
     let onStartRun: (SessionIntent?) -> Void
+    @StateObject private var launchLocationManager = LocationManager()
     @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
     @State private var companionTodayMessage: String?
@@ -259,41 +267,48 @@ private struct SimplifiedTodayView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                ScrollView {
-                    LazyVStack(spacing: OutboundSpacing.standard) {
-                        if let completedActivityToday {
-                            completedTodayCard(completedActivityToday)
-                            if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                                Button {
-                                    onStartRun(.freestyleRun)
-                                } label: {
-                                    Label("Start another activity", systemImage: "plus.circle.fill")
-                                        .font(.headline)
-                                        .frame(maxWidth: .infinity, minHeight: 48)
+                ActivityLaunchMap(
+                    locationManager: launchLocationManager,
+                    route: activeRunIntent.preparedRoute
+                )
+
+                if launchGoalMode == .planned || activitySessionState != .idle {
+                    ScrollView {
+                        LazyVStack(spacing: OutboundSpacing.standard) {
+                            if let completedActivityToday {
+                                completedTodayCard(completedActivityToday)
+                                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
+                                    Button {
+                                        onStartRun(.freestyleRun)
+                                    } label: {
+                                        Label("Start another activity", systemImage: "plus.circle.fill")
+                                            .font(.headline)
+                                            .frame(maxWidth: .infinity, minHeight: 48)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                                    .tint(theme.actionColor)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                                .tint(theme.actionColor)
+
+                                upcomingWorkoutButton
+                            } else if let activityEventToday {
+                                activityEventCard(activityEventToday)
+                                quickRunButton
+                            } else {
+                                plannedWorkoutCard
+                                quickRunButton
                             }
 
-                            upcomingWorkoutButton
-                        } else if let activityEventToday {
-                            activityEventCard(activityEventToday)
-                            quickRunButton
-                        } else {
-                            plannedWorkoutCard
-                            quickRunButton
+                            if activitySessionState == .idle && !showsEmbeddedLaunchDock {
+                                activityLibraryButtons
+                            } else if activitySessionState != .idle {
+                                inProgressActivityCard
+                            }
                         }
-
-                        if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                            activityLibraryButtons
-                        } else if activitySessionState != .idle {
-                            inProgressActivityCard
-                        }
+                        .padding(.horizontal, OutboundSpacing.screen)
+                        .padding(.top, OutboundSpacing.standard)
+                        .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
                     }
-                    .padding(.horizontal, OutboundSpacing.screen)
-                    .padding(.top, OutboundSpacing.standard)
-                    .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
                 }
 
                 activityLaunchSurface
@@ -339,6 +354,9 @@ private struct SimplifiedTodayView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
                 }
+            }
+            .onAppear {
+                launchLocationManager.requestCurrentLocation()
             }
             .task {
                 await loadCompanionTodayMessage()
@@ -2940,6 +2958,7 @@ private extension RunnerConfidence {
         activeSport: nil,
         feedbackPage: .constant("Today"),
         activityLaunchSurface: AnyView(EmptyView()),
+        launchGoalMode: .planned,
         onContextualStart: {},
         onStartRun: { _ in }
     )

@@ -22,6 +22,7 @@ struct MainTabView: View {
     @State private var feedbackPage = "Today"
     @State private var selectedAppTab: SimplifiedAppTab = .today
     @State private var activityStartRequest = 0
+    @State private var launchGoalMode: SessionGoalMode = .planned
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -182,6 +183,7 @@ struct MainTabView: View {
             activeSport: activeLaunch?.intent?.sport,
             feedbackPage: $feedbackPage,
             activityLaunchSurface: activityLaunchSurface,
+            launchGoalMode: launchGoalMode,
             onContextualStart: {
                 activityStartRequest += 1
             }
@@ -197,6 +199,7 @@ struct MainTabView: View {
                 isVisible: isActivityVisible,
                 isEmbeddedInToday: true,
                 startRequest: activityStartRequest,
+                onGoalModeChange: { launchGoalMode = $0 },
                 onCloseRequest: handleActivityClose,
                 onSessionStateChange: { activitySessionState = $0 },
                 onElapsedTimeChange: { activityElapsedSeconds = $0 }

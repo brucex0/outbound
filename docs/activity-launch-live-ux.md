@@ -13,7 +13,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area at the bottom of Today. Planned mode preserves the normal Today header, conditions, workout card, and the rest of the app shell above the dock. Freestyle, Distance, Time, and Calories may replace that content area with the setup map and compact goal card. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
+Use one fixed, flat two-row control area at the bottom of Today. The Today navigation title, conditions pill, app shell, and bounded map background remain permanent. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned uses the existing Today card and Up Next implementation and layout; the other modes use their compact goal information card. The map never becomes the full-screen app surface. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
 
 Goal modes are peers:
 
@@ -57,9 +57,9 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 
 - The two-row launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
 - Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
-- Planned mode never covers the Today header or workout card with the setup map.
-- For non-Planned modes, the setup map fills the complete content area above the dock without clipping or horizontal overflow.
-- The center control clearly reads Start on Today and Today on Social or Me.
+- The map remains the background of the bounded content area for every goal mode without covering the Today title, conditions pill, dock, or tab bar.
+- Planned retains the existing Today card and Up Next implementation as its peer content layer; other modes show their compact goal information layer.
+- The center slot contains exactly one control: Start on Today and Today navigation on Social or Me.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.
