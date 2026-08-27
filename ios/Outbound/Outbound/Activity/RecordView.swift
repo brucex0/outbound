@@ -109,6 +109,7 @@ struct RecordView: View {
     @State private var shouldStartAfterVoiceUpgradePrompt = false
 
     let isVisible: Bool
+    private let isEmbeddedInToday: Bool
     private let shouldApplySmartGoalDefault: Bool
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
@@ -117,6 +118,7 @@ struct RecordView: View {
     init(
         initialIntent: SessionIntent? = nil,
         isVisible: Bool = true,
+        isEmbeddedInToday: Bool = false,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
@@ -130,6 +132,7 @@ struct RecordView: View {
         )
         self.shouldApplySmartGoalDefault = initialIntent == nil
         self.isVisible = isVisible
+        self.isEmbeddedInToday = isEmbeddedInToday
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -306,7 +309,7 @@ struct RecordView: View {
             .environmentObject(guideCatalog)
         }
         .overlay(alignment: .topLeading) {
-            if isVisible, let onCloseRequest {
+            if isVisible, let onCloseRequest, !isEmbeddedInToday || showCamera || isCountingDown || recorder.state != .idle {
                 Button {
                     if isCountingDown {
                         cancelStartCountdown(returnToSetup: true)
@@ -326,7 +329,7 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isVisible {
+            if isVisible, !isEmbeddedInToday || showCamera || recorder.state != .idle {
                 Button {
                     isAssistantPresented = true
                 } label: {
@@ -1069,7 +1072,7 @@ struct RecordView: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 11)
-        .padding(.bottom, 10)
+        .padding(.bottom, 16)
         .background(.ultraThickMaterial)
         .overlay(alignment: .top) { Divider() }
     }
@@ -1093,7 +1096,7 @@ struct RecordView: View {
                 .shadow(color: theme.actionColor.opacity(0.28), radius: 10, y: 5)
 
                 Text(String(localized: "record.start.short", defaultValue: "Start"))
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(theme.actionColor)
                     .textCase(.uppercase)
             }
@@ -1112,11 +1115,11 @@ struct RecordView: View {
                 Image(systemName: mode.systemImage)
                     .font(.caption.weight(.bold))
                 Text(mode.title)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                 Text(mode.compactValue(goal: mode == selectedGoalMode ? currentActivityGoal : nil))
-                    .font(.system(size: 8, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(mode == selectedGoalMode ? Color.white.opacity(0.72) : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -1151,12 +1154,12 @@ struct RecordView: View {
                     .frame(width: 25, height: 25)
                     .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Text(title)
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
                 Text(value)
-                    .font(.system(size: 7, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
@@ -1198,10 +1201,10 @@ struct RecordView: View {
                         .frame(width: 25, height: 25)
                         .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     Text(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.primary)
                     Text(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
-                        .font(.system(size: 7, weight: .medium))
+                        .font(.system(size: 8, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.62)
@@ -1926,6 +1929,7 @@ struct RecordView: View {
         let intent = activeIntent ?? plannedIntent ?? .freestyleRun
         if intent.activityEvent != nil { return "activity_event" }
         if intent.preparedRoute != nil { return "route" }
+        if isEmbeddedInToday { return "today" }
         if !intent.workoutSteps.isEmpty { return "planned_workout" }
         if intent.id == SessionIntent.freestyleRun.id { return "quick_run" }
         return "prepared_activity"

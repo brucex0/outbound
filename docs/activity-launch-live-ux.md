@@ -4,16 +4,16 @@ Open this when changing the Today launch dock, activity goal selection, countdow
 
 ## Navigation Decision
 
-Reuse the center Today position contextually while retaining the production icons, order, labels, and theme tint.
+The launch surface is the Today page itself; there is no separate start-activity setup page. Reuse the center Today position contextually while retaining the production icons, order, labels, and theme tint.
 
 - On Today, the center control becomes an orange play icon with the visible label `Start` and a goal-specific accessibility label.
 - On Social or Me, the same position shows the normal Today icon and label; tapping it returns to Today.
-- Social and Me hide the launch dock. Returning to Today restores the existing activity setup.
+- Social and Me hide the launch dock. Returning to Today restores the same retained activity setup without navigating through another screen.
 - The primary tab bar remains hidden during countdown, live recording, camera capture, and post-run completion.
 
 ## Launch Dock
 
-Use one fixed, flat control area over a full-content map on Today. The map fills every point above the dock and center tab action. The dock has no grabber, expansion state, setup heading, or second setup screen.
+Use one fixed, flat two-row control area over a full-content map on Today. The map fills every point above the dock and center tab action. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
 
 Goal modes are peers:
 
@@ -55,7 +55,8 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 
 ## Acceptance Criteria
 
-- The launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
+- The two-row launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
+- Today opens directly on the retained map and dock; no Quick Start or Start Activity setup route remains.
 - The setup map fills the complete content area above the dock without clipping or horizontal overflow.
 - The center control clearly reads Start on Today and Today on Social or Me.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.

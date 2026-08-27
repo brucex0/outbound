@@ -20,6 +20,7 @@ struct MainTabView: View {
     @State private var activitySessionState: ActivitySessionPortalState = .idle
     @State private var activityElapsedSeconds = 0
     @State private var feedbackPage = "Today"
+    @State private var selectedAppTab: SimplifiedAppTab = .today
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -46,6 +47,7 @@ struct MainTabView: View {
                 RecordView(
                     initialIntent: launch.intent,
                     isVisible: isActivityVisible,
+                    isEmbeddedInToday: true,
                     onCloseRequest: handleActivityClose,
                     onSessionStateChange: { activitySessionState = $0 },
                     onElapsedTimeChange: { activityElapsedSeconds = $0 }
@@ -101,6 +103,16 @@ struct MainTabView: View {
             restoreInterruptedActivityIfNeeded()
             prepareOnboarding()
             consumeStoredPreparedActivityIfNeeded()
+            prepareTodayLaunchIfNeeded()
+        }
+        .onChange(of: selectedAppTab) { _, tab in
+            guard activitySessionState == .idle else { return }
+            if tab == .today {
+                prepareTodayLaunchIfNeeded()
+                isActivityVisible = true
+            } else {
+                isActivityVisible = false
+            }
         }
         .onChange(of: onboardingIdentity) { _, _ in
             prepareOnboarding()
@@ -170,6 +182,7 @@ struct MainTabView: View {
     @ViewBuilder
     private var currentContent: some View {
         SimplifiedAppShell(
+            selection: $selectedAppTab,
             activitySessionState: activitySessionState,
             activityElapsedSeconds: activityElapsedSeconds,
             activeSport: activeLaunch?.intent?.sport,
@@ -186,6 +199,7 @@ struct MainTabView: View {
             return
         }
 
+        selectedAppTab = .today
         activeLaunch = RecordLaunch(intent: intent)
         activitySessionState = .idle
         activityElapsedSeconds = 0
@@ -196,11 +210,26 @@ struct MainTabView: View {
         if shouldKeepAlive {
             isActivityVisible = false
         } else {
-            activeLaunch = nil
             activitySessionState = .idle
             activityElapsedSeconds = 0
-            isActivityVisible = false
+            if selectedAppTab == .today {
+                activeLaunch = RecordLaunch(intent: defaultTodayIntent)
+                isActivityVisible = true
+            } else {
+                activeLaunch = nil
+                isActivityVisible = false
+            }
         }
+    }
+
+    private var defaultTodayIntent: SessionIntent? {
+        trainingPlanStore.todaySuggestion?.suggestedSession.intent
+    }
+
+    private func prepareTodayLaunchIfNeeded() {
+        guard selectedAppTab == .today, activeLaunch == nil else { return }
+        activeLaunch = RecordLaunch(intent: defaultTodayIntent)
+        isActivityVisible = true
     }
 
     private func prepareOnboarding() {

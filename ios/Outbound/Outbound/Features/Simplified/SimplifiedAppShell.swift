@@ -27,12 +27,12 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
+    @Binding var selection: SimplifiedAppTab
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var feedbackPage: String
     let onStartRun: (SessionIntent?) -> Void
-    @State private var selection: SimplifiedAppTab = .today
     @State private var showsAssistant = false
     @State private var customizedTodayIntent: SessionIntent?
     @State private var selectedRouteName: String?
@@ -2879,6 +2879,7 @@ private extension RunnerConfidence {
 
 #Preview {
     SimplifiedAppShell(
+        selection: .constant(.today),
         activitySessionState: .idle,
         activityElapsedSeconds: 0,
         activeSport: nil,
