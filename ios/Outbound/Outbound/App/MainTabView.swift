@@ -45,7 +45,7 @@ struct MainTabView: View {
             }
         }
         .overlay(alignment: .top) {
-            if !isActivityVisible {
+            if selectedAppTab != .today || !isActivityVisible {
                 GlobalConnectivityBanner()
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -92,13 +92,9 @@ struct MainTabView: View {
             prepareTodayLaunchIfNeeded()
         }
         .onChange(of: selectedAppTab) { _, tab in
-            guard activitySessionState == .idle else { return }
-            if tab == .today {
-                prepareTodayLaunchIfNeeded()
-                isActivityVisible = true
-            } else {
-                isActivityVisible = false
-            }
+            guard tab == .today, activitySessionState == .idle else { return }
+            prepareTodayLaunchIfNeeded()
+            isActivityVisible = true
         }
         .onChange(of: trainingPlanStore.todaySuggestion?.suggestedSession.intent.id) { _, _ in
             guard selectedAppTab == .today,
@@ -121,7 +117,7 @@ struct MainTabView: View {
             checkForHealthWorkouts(presentWhenFound: true)
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
-            guard target != nil else { return }
+            guard target != nil, activitySessionState != .idle else { return }
             if isActivityVisible {
                 isActivityVisible = false
             }

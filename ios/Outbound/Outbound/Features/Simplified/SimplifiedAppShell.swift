@@ -225,20 +225,36 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
     }
 
     final class Coordinator {
+        private struct VisualState {
+            let showsStart: Bool
+            let actionColor: UIColor
+
+            func matches(_ other: VisualState) -> Bool {
+                showsStart == other.showsStart && actionColor.isEqual(other.actionColor)
+            }
+        }
+
         private weak var tabBarController: UITabBarController?
+        private weak var appliedItem: UITabBarItem?
         private let delegateProxy = ContextualTabBarDelegateProxy()
         private var showsStart = false
         private var actionColor = UIColor.systemOrange
+        private var appliedVisualState: VisualState?
+        private var isDeferredApplyScheduled = false
 
         init() {
             delegateProxy.shouldHandleStart = { [weak self] in self?.showsStart == true }
         }
 
         func update(showsStart: Bool, actionColor: UIColor, onStart: @escaping () -> Void) {
+            let previousState = VisualState(showsStart: self.showsStart, actionColor: self.actionColor)
+            let nextState = VisualState(showsStart: showsStart, actionColor: actionColor)
             self.showsStart = showsStart
             self.actionColor = actionColor
             delegateProxy.onStart = onStart
-            configureTabBar()
+            if !nextState.matches(previousState) || appliedVisualState == nil {
+                configureTabBar()
+            }
         }
 
         func attach(to controller: UITabBarController?) {
@@ -246,6 +262,8 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             if tabBarController !== controller {
                 detach()
                 tabBarController = controller
+                appliedItem = nil
+                appliedVisualState = nil
             }
             installDelegateProxy(on: controller)
             configureTabBar()
@@ -257,6 +275,9 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
                 tabBarController.delegate = delegateProxy.forwardedDelegate
             }
             tabBarController = nil
+            appliedItem = nil
+            appliedVisualState = nil
+            isDeferredApplyScheduled = false
             delegateProxy.forwardedDelegate = nil
         }
 
@@ -266,40 +287,65 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             controller.delegate = delegateProxy
         }
 
-        private func configureTabBar() {
+        private func configureTabBar(allowsDeferredRetry: Bool = true) {
             guard let tabBarController else { return }
             installDelegateProxy(on: tabBarController)
-            applyCenterItem(to: tabBarController)
-            DispatchQueue.main.async { [weak self, weak tabBarController] in
-                guard let self, let tabBarController else { return }
-                self.installDelegateProxy(on: tabBarController)
-                self.applyCenterItem(to: tabBarController)
+            guard applyCenterItem(to: tabBarController) else {
+                if allowsDeferredRetry {
+                    scheduleDeferredApply(on: tabBarController)
+                }
+                return
             }
         }
 
-        private func applyCenterItem(to controller: UITabBarController) {
-            guard let item = controller.tabBar.items?[safe: 1] else { return }
-            if showsStart {
-                let configuration = UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold)
-                let image = UIImage(systemName: "play.circle.fill", withConfiguration: configuration)?
-                    .withTintColor(actionColor, renderingMode: .alwaysOriginal)
-                item.title = nil
-                item.image = image
-                item.selectedImage = image
-                item.imageInsets = .zero
-                item.accessibilityLabel = String(localized: "record.start.short", defaultValue: "Start")
-                item.accessibilityHint = String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity")
-                item.accessibilityIdentifier = "tab.start"
-            } else {
-                let image = UIImage(systemName: "sparkles")?.withRenderingMode(.alwaysTemplate)
-                item.title = String(localized: "Today")
-                item.image = image
-                item.selectedImage = image
-                item.imageInsets = .zero
-                item.accessibilityLabel = String(localized: "Today")
-                item.accessibilityHint = nil
-                item.accessibilityIdentifier = "tab.today"
+        private func scheduleDeferredApply(on controller: UITabBarController) {
+            guard !isDeferredApplyScheduled else { return }
+            isDeferredApplyScheduled = true
+            DispatchQueue.main.async { [weak self, weak controller] in
+                guard let self else { return }
+                self.isDeferredApplyScheduled = false
+                guard let controller, self.tabBarController === controller else { return }
+                self.configureTabBar(allowsDeferredRetry: false)
             }
+        }
+
+        private func applyCenterItem(to controller: UITabBarController) -> Bool {
+            guard let item = controller.tabBar.items?[safe: 1] else { return false }
+            let visualState = VisualState(showsStart: showsStart, actionColor: actionColor)
+            if appliedItem === item,
+               let appliedVisualState,
+               visualState.matches(appliedVisualState) {
+                return true
+            }
+
+            UIView.performWithoutAnimation {
+                if showsStart {
+                    let configuration = UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold)
+                    let image = UIImage(systemName: "play.circle.fill", withConfiguration: configuration)?
+                        .withTintColor(actionColor, renderingMode: .alwaysOriginal)
+                    item.title = nil
+                    item.image = image
+                    item.selectedImage = image
+                    item.imageInsets = .zero
+                    item.accessibilityLabel = String(localized: "record.start.short", defaultValue: "Start")
+                    item.accessibilityHint = String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity")
+                    item.accessibilityIdentifier = "tab.start"
+                } else {
+                    let image = UIImage(systemName: "sparkles")?.withRenderingMode(.alwaysTemplate)
+                    item.title = String(localized: "Today")
+                    item.image = image
+                    item.selectedImage = image
+                    item.imageInsets = .zero
+                    item.accessibilityLabel = String(localized: "Today")
+                    item.accessibilityHint = nil
+                    item.accessibilityIdentifier = "tab.today"
+                }
+                controller.tabBar.setNeedsLayout()
+                controller.tabBar.layoutIfNeeded()
+            }
+            appliedItem = item
+            appliedVisualState = visualState
+            return true
         }
     }
 }
