@@ -33,12 +33,12 @@ struct SimplifiedAppShell: View {
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var feedbackPage: String
+    @Binding var customizedTodayIntent: SessionIntent?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
     let onContextualStart: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
-    @State private var customizedTodayIntent: SessionIntent?
     @State private var selectedRouteName: String?
 
     var body: some View {
@@ -1207,18 +1207,7 @@ private struct SimplifiedTodayView: View {
 
     private var plannedRunIntent: SessionIntent {
         if let workout = currentCalibrationWorkout {
-            return SessionIntent(
-                id: workout.id,
-                sport: .run,
-                title: workout.title,
-                detail: String(localized: "Run · \(durationLabel(workout.durationSeconds)) · conversational effort"),
-                guideLine: workout.purpose,
-                startLabel: String(localized: "Start workout"),
-                targetDurationSeconds: workout.durationSeconds,
-                workoutSteps: workout.steps.map {
-                    SessionIntentStep(id: $0.id, label: $0.label, durationSeconds: $0.durationSeconds, detail: $0.detail)
-                }
-            )
+            return workout.sessionIntent
         }
         if let suggestion = trainingPlanStore.todaySuggestion {
             return suggestion.suggestedSession.intent
@@ -1325,9 +1314,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var currentCalibrationWorkout: CalibrationWorkoutDTO? {
-        guard personalizationStore.snapshot.calibration.status == .inProgress,
-              let kind = personalizationStore.snapshot.calibration.currentSession else { return nil }
-        return personalizationStore.snapshot.calibrationWorkouts.first { $0.kind == kind }
+        personalizationStore.snapshot.currentCalibrationWorkout
     }
 
     private func durationLabel(_ seconds: Int) -> String {
@@ -3130,6 +3117,7 @@ private extension RunnerConfidence {
         activityElapsedSeconds: 0,
         activeSport: nil,
         feedbackPage: .constant("Today"),
+        customizedTodayIntent: .constant(nil),
         activityLaunchSurface: AnyView(EmptyView()),
         launchGoalMode: .planned,
         onContextualStart: {},

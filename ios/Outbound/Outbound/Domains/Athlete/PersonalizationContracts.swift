@@ -40,6 +40,32 @@ struct CalibrationWorkoutDTO: Codable, Identifiable, Equatable, Sendable {
     let purpose: String
     let durationSeconds: Int
     let steps: [CalibrationWorkoutStepDTO]
+
+    var sessionIntent: SessionIntent {
+        SessionIntent(
+            id: id,
+            sport: .run,
+            title: title,
+            detail: String(localized: "Run · \(durationLabel) · conversational effort"),
+            guideLine: purpose,
+            startLabel: String(localized: "Start workout"),
+            targetDurationSeconds: durationSeconds,
+            workoutSteps: steps.map {
+                SessionIntentStep(
+                    id: $0.id,
+                    label: $0.label,
+                    durationSeconds: $0.durationSeconds,
+                    detail: $0.detail
+                )
+            }
+        )
+    }
+
+    private var durationLabel: String {
+        durationSeconds % 60 == 0
+            ? "\(durationSeconds / 60) min"
+            : "\(durationSeconds / 60)m \(durationSeconds % 60)s"
+    }
 }
 
 enum RunnerInsightKind: String, Codable, Sendable {
@@ -92,6 +118,13 @@ struct PersonalizationSnapshotDTO: Codable, Equatable, Sendable {
     let calibrationWorkouts: [CalibrationWorkoutDTO]
     let insights: [RunnerInsightDTO]
     let pendingAdjustment: AdjustmentProposalDTO?
+
+    var currentCalibrationWorkout: CalibrationWorkoutDTO? {
+        guard calibration.status == .inProgress,
+              let currentSession = calibration.currentSession
+        else { return nil }
+        return calibrationWorkouts.first { $0.kind == currentSession }
+    }
 }
 
 enum ReadinessChoice: String, Codable, CaseIterable, Identifiable, Sendable {

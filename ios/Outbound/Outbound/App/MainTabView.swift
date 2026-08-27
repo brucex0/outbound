@@ -23,6 +23,7 @@ struct MainTabView: View {
     @State private var selectedAppTab: SimplifiedAppTab = .today
     @State private var activityStartRequest = 0
     @State private var launchGoalMode: SessionGoalMode = .planned
+    @State private var customizedTodayIntent: SessionIntent?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -82,11 +83,11 @@ struct MainTabView: View {
             prepareTodayLaunchIfNeeded()
             isActivityVisible = true
         }
-        .onChange(of: trainingPlanStore.todaySuggestion?.suggestedSession.intent.id) { _, _ in
+        .onChange(of: defaultTodayIntent) { previousIntent, intent in
             guard selectedAppTab == .today,
                   activitySessionState == .idle,
-                  activeLaunch?.intent == nil,
-                  let intent = defaultTodayIntent
+                  activeLaunch?.intent == nil || activeLaunch?.intent == previousIntent,
+                  activeLaunch?.intent != intent
             else { return }
             activeLaunch = RecordLaunch(intent: intent)
             isActivityVisible = true
@@ -164,6 +165,7 @@ struct MainTabView: View {
             activityElapsedSeconds: activityElapsedSeconds,
             activeSport: activeLaunch?.intent?.sport,
             feedbackPage: $feedbackPage,
+            customizedTodayIntent: $customizedTodayIntent,
             activityLaunchSurface: activityLaunchSurface,
             launchGoalMode: launchGoalMode,
             onContextualStart: {
@@ -219,7 +221,9 @@ struct MainTabView: View {
     }
 
     private var defaultTodayIntent: SessionIntent? {
-        trainingPlanStore.todaySuggestion?.suggestedSession.intent
+        customizedTodayIntent
+            ?? personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
+            ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
     }
 
     private func prepareTodayLaunchIfNeeded() {
