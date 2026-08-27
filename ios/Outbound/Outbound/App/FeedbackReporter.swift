@@ -121,6 +121,25 @@ private struct FeedbackForm: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let screenshot {
+                    Section("Screenshot") {
+                        Image(uiImage: screenshot)
+                            .resizable()
+                            .scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                        HStack {
+                            Button("Annotate", systemImage: "pencil.tip") {
+                                isAnnotating = true
+                            }
+                            Spacer()
+                            Button("Remove", systemImage: "trash", role: .destructive) {
+                                self.screenshot = nil
+                            }
+                        }
+                    }
+                }
+
                 Section {
                     Picker("Feedback type", selection: $kind) {
                         ForEach(FeedbackKind.allCases) { kind in
@@ -139,25 +158,6 @@ private struct FeedbackForm: View {
                     Toggle("Include app and device details", isOn: $includesDiagnostics)
                 } footer: {
                     Text("This includes the app version, specific device model, and iOS version. Your account ID, email, and current page are attached to every report. Health and location data are never included.")
-                }
-
-                if let screenshot {
-                    Section("Screenshot") {
-                        Image(uiImage: screenshot)
-                            .resizable()
-                            .scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                        HStack {
-                            Button("Annotate", systemImage: "pencil.tip") {
-                                isAnnotating = true
-                            }
-                            Spacer()
-                            Button("Remove", systemImage: "trash", role: .destructive) {
-                                self.screenshot = nil
-                            }
-                        }
-                    }
                 }
 
                 Section {
