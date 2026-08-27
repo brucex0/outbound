@@ -145,15 +145,15 @@ Primary tabs, left to right:
 
 Today is the initial tab after onboarding. Use icons with accessibility labels; the selected tab may reveal its text label. Persist the last selected tab for returning users only after they have completed onboarding.
 
-Keep the primary Today action direct: `Start run` opens run setup without an intermediate detail or readiness screen. Today itself carries the essential workout summary. A single optional `Change` action asks for a short reason such as low energy, soreness, or limited time, then offers one clear alternative; readiness terminology must not appear in the primary UI or gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
+Keep the primary Today action direct through the fixed launch dock in `docs/activity-launch-live-ux.md`; do not add an intermediate setup page. A single optional `Change` action asks for a short reason such as low energy, soreness, or limited time, then offers one clear alternative; readiness terminology must not appear in the primary UI or gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
 
 ## Today Screen Contract
 
 Required order:
 
 1. Compact inspirational quote.
-2. One workout recommendation showing workout name, total duration, small header icons for Change and Why, an equal-weight interval preview, and Start as the only full-width card action.
-3. One `Quick start` button into freestyle setup.
+2. One workout recommendation showing workout name, total duration, small header icons for Change and Why, and an equal-weight interval preview; tapping it edits the Planned selection.
+3. One fixed launch dock with peer modes and a separate Start action.
 4. At most one compact social opportunity.
 
 States:
@@ -165,7 +165,7 @@ States:
 - No active plan: show one reviewed standalone recommendation and a secondary plan setup path.
 - Active live session: replace Start with Return to run.
 
-`Change` stays in a sheet: ask for the constraint, show one recommendation, and either apply it or keep the original. It must never inject a new card into Today. `Quick start` has no mode chooser on Today.
+`Change` stays in a sheet: ask for the constraint, show one recommendation, and either apply it or keep the original. It must never inject a new card into Today. Mode choice stays in the launch dock; do not add a competing Quick Start path.
 
 ## Workout Detail and Live Session
 

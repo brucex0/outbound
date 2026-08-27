@@ -35,14 +35,14 @@ Do not use a separate Progress tab. Show immediate progress context on Today and
 
 Keep the inspirational quote as the emotional opening. Pair it with a factual, personalized line that proves Outbound understands the runner.
 
-### Planned workout and quick start
+### Activity launch
 
-Keep two clear paths:
+Use the fixed, flat Today launch dock defined in `docs/activity-launch-live-ux.md`:
 
-- `Start workout` launches the companion-prescribed session with its existing time, distance, and interval structure.
-- `Quick start` launches freestyle run setup immediately. Open, distance, and time goals remain available on that setup screen rather than competing for space on Today.
-
-Workout type (`easy`, `long`, `tempo`, `intervals`, or `recovery`) and recording goal (`open`, `distance`, or `time`) are separate concepts. The companion recommends the workout type; the runner may choose the recording goal.
+- Planned is preselected and launches the companion-prescribed workout structure.
+- Freestyle, Distance, Time, and Calories are peer alternatives.
+- Start remains a separate, visible action; primary navigation never changes meaning.
+- Goal and setup editing stays on Today through focused overlays or direct toggles, with no second setup page.
 
 ### Personalization loop
 
@@ -57,9 +57,9 @@ Information order:
 
 1. Compact inspirational quote.
 2. One concrete workout recommendation with total duration and a brief equal-weight interval preview.
-3. Direct Start plus small `Change` and `Why?` actions.
-4. One `Quick start` button.
-5. At most one compact social opportunity.
+3. Small `Change` and `Why?` actions.
+4. The fixed activity launch dock.
+5. At most one compact social opportunity above the dock.
 
 The workout must answer:
 
