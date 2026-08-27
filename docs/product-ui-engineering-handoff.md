@@ -57,7 +57,7 @@ Limit custom weights to regular and medium/semibold. Preserve legibility over ex
 
 ### Selection and tap targets
 
-- Prefer an icon-only button when the symbol is conventional and unambiguous in context; always provide a localized accessibility label. Prefer the shortest clear visible label, expanding it only when the shorter wording could be ambiguous.
+- Pair compact action icons with the shortest clear visible label. Use icon-only controls only when the symbol is conventional and unambiguous in context, and always provide a localized accessibility label.
 - When tapping a list row selects or opens that row, make the whole available row area tappable rather than only its text or icon.
 - Keep embedded controls such as preview, toggle, menu, disclosure, or secondary-action buttons as independent tap targets. The row's primary tap area should fill only the remaining space and must not overlap or intercept those controls.
 - Preserve a minimum `44 pt` target for every independent control and expose each action separately to accessibility.
@@ -143,7 +143,7 @@ Primary tabs, left to right:
 2. Today
 3. Me
 
-Today is the initial tab after onboarding. Use icons with accessibility labels; the selected tab may reveal its text label. Persist the last selected tab for returning users only after they have completed onboarding.
+Today is the initial tab after onboarding. On Today, reuse its center position as the labeled Start action; on Social or Me, show the normal Today icon and label. Every state needs a localized accessibility label. Persist the last selected destination for returning users only after they have completed onboarding.
 
 Keep the primary Today action direct through the fixed launch dock in `docs/activity-launch-live-ux.md`; do not add an intermediate setup page. A single optional `Change` action asks for a short reason such as low energy, soreness, or limited time, then offers one clear alternative; readiness terminology must not appear in the primary UI or gate every start. Hide the primary tab bar during live activity, camera capture, and post-run completion. Restore it after saving or discarding.
 
@@ -153,7 +153,7 @@ Required order:
 
 1. Compact inspirational quote.
 2. One workout recommendation showing workout name, total duration, small header icons for Change and Why, and an equal-weight interval preview; tapping it edits the Planned selection.
-3. One fixed launch dock with peer modes and a separate Start action.
+3. One fixed launch dock with peer modes and the contextual center Start action.
 4. At most one compact social opportunity.
 
 States:

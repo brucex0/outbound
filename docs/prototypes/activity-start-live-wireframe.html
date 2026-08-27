@@ -108,7 +108,7 @@
   .phone[data-screen="live"] .status-bar, .phone[data-screen="map"] .status-bar { color: #17211a; }
   .screen { position: absolute; inset: 0; display: none; }
   .screen.active { display: block; }
-  .home-screen { padding: 57px 18px 306px; overflow-y: auto; background: #f7f9f6; }
+  .home-screen { padding: 57px 18px 226px; overflow-y: auto; background: #f7f9f6; }
   .home-head { display: flex; align-items: center; justify-content: space-between; }
   .home-head p { margin: 0 0 3px; color: var(--muted); font-size: 12px; font-weight: 650; }
   .home-head h2 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
@@ -124,23 +124,30 @@
   .selection-map { position: relative; height: 232px; overflow: hidden; border-radius: 25px; background: #e7ece8; box-shadow: 0 16px 30px rgba(32,67,44,.10); }
   .selection-map.hidden, .today-card.hidden, .today-content.hidden, .away-content.hidden, .launch-dock.hidden { display: none; }
   .selection-map svg { width: 100%; height: 100%; }
-  .selection-map-copy { position: absolute; left: 14px; right: 14px; bottom: 14px; min-height: 64px; padding: 10px 13px; border: 0; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.94); box-shadow: 0 5px 16px rgba(26,39,30,.10); cursor: pointer; }
-  .selection-map-copy strong { display: block; font-size: 30px; letter-spacing: -.04em; }
-  .launch-dock { position: absolute; z-index: 15; left: 0; right: 0; bottom: 69px; min-height: 226px; padding: 12px 16px 10px; border-top: 1px solid #e4e9e5; background: white; }
+  .selection-map-copy { position: absolute; left: 14px; right: 14px; bottom: 14px; min-height: 72px; padding: 10px 12px 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 15px; color: var(--ink); background: rgba(255,255,255,.95); box-shadow: 0 5px 16px rgba(26,39,30,.10); text-align: left; cursor: pointer; }
+  .goal-card-copy { min-width: 0; }
+  .goal-card-copy small, .goal-card-copy strong, .goal-card-copy span { display: block; }
+  .goal-card-copy small { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .goal-card-copy strong { margin-top: 2px; font-size: 28px; letter-spacing: -.04em; }
+  .goal-card-copy span { margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 650; }
+  .goal-edit-icon { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: var(--forest); background: var(--green-soft); font-size: 16px; }
+  .launch-dock { position: absolute; z-index: 15; left: 0; right: 0; bottom: 69px; min-height: 146px; padding: 11px 14px 9px; border-top: 1px solid #e4e9e5; background: white; }
   .quick-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
-  .quick-grid button { position: relative; min-width: 0; min-height: 65px; padding: 7px 2px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; cursor: pointer; }
+  .quick-grid button { position: relative; min-width: 0; min-height: 60px; padding: 7px 2px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: white; cursor: pointer; }
   .quick-grid button[aria-pressed="true"] { border-color: var(--forest); color: white; background: var(--forest); box-shadow: 0 7px 16px rgba(49,95,63,.16); }
   .quick-grid button[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 6px; right: 7px; font-size: 9px; font-weight: 900; }
   .quick-grid strong, .quick-grid small { display: block; }
   .quick-grid strong { margin-bottom: 4px; font-size: 10px; }
   .quick-grid small { color: var(--muted); font-size: 9px; }
   .quick-grid button[aria-pressed="true"] small { color: rgba(255,255,255,.70); }
-  .dock-setup-strip { display: grid; grid-template-columns: 1.15fr .85fr .8fr; gap: 6px; margin-top: 9px; }
-  .dock-setup-strip button { min-width: 0; min-height: 44px; padding: 5px 7px; overflow: hidden; border: 0; border-radius: 10px; color: #516057; background: var(--soft); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-size: 9px; font-weight: 800; }
-  .dock-action-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); gap: 8px; margin-top: 9px; align-items: center; }
-  .dock-action-row .utility-button { min-height: 62px; display: grid; grid-template-columns: 32px 1fr; grid-template-rows: 1fr 1fr; align-items: center; column-gap: 7px; padding: 6px 8px; border-radius: 12px; background: var(--soft); text-align: left; }
-  .dock-action-row .utility-button i { grid-row: 1 / 3; width: 32px; height: 32px; margin: 0; }
-  .dock-action-row .utility-button span, .dock-action-row .utility-button small { margin: 0; }
+  .setup-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 7px; }
+  .setup-control { min-width: 0; min-height: 57px; padding: 5px 2px 4px; display: grid; place-items: center; align-content: center; gap: 1px; border: 0; border-radius: 11px; color: #536057; background: var(--soft); cursor: pointer; text-align: center; }
+  .setup-control .setup-icon { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 8px; color: var(--forest); font-size: 15px; font-style: normal; }
+  .setup-control .setup-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .setup-control .setup-label, .setup-control small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .setup-control .setup-label { font-size: 8.5px; font-weight: 850; }
+  .setup-control small { color: var(--muted); font-size: 7.5px; }
+  .setup-control.configured .setup-icon { color: white; background: var(--forest); }
   .tab-bar {
     position: absolute;
     z-index: 20;
@@ -158,7 +165,13 @@
   }
   .tab-bar button { min-height: 48px; padding: 2px 6px 0; border: 0; color: #8a948d; background: transparent; font-size: 10px; cursor: pointer; }
   .tab-bar button svg { display: block; width: 21px; height: 21px; margin: 0 auto 3px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-bar button .start-tab-icon { display: none; }
   .tab-bar .selected { color: var(--forest); font-weight: 800; }
+  .tab-bar .context-start { color: var(--ink); font-weight: 850; }
+  .tab-bar .context-start svg { width: 52px; height: 52px; margin: -23px auto 1px; padding: 10px; border: 5px solid white; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 8px 22px rgba(193,79,44,.28); fill: currentColor; stroke: none; }
+  .tab-bar .context-start .today-tab-icon { display: none; }
+  .tab-bar .context-start .start-tab-icon { display: block; }
+  .tab-bar .context-start span { color: var(--orange); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
   .away-content { padding-top: 8px; }
   .away-content h2 { margin: 0 0 18px; font-size: 29px; letter-spacing: -.04em; }
   .away-placeholder { height: 92px; margin-bottom: 12px; border-radius: 20px; background: #edf1ed; }
@@ -196,17 +209,16 @@
   .context-chip { padding: 8px 10px; border-radius: 10px; color: #48554c; background: var(--soft); font-size: 11px; font-weight: 700; }
   .guide-line { margin: 12px 0 0; padding: 10px 11px; border-radius: 12px; color: var(--forest-dark); background: var(--green-soft); font-size: 12px; line-height: 1.35; }
   .launch-row { margin-top: 14px; display: grid; grid-template-columns: 1fr 82px 1fr; gap: 8px; align-items: center; }
-  .utility-button { border: 0; color: #536057; background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
-  .utility-button i { display: grid; place-items: center; width: 47px; height: 47px; margin: 0 auto 5px; border-radius: 50%; color: var(--forest); background: var(--soft); font-style: normal; font-size: 18px; }
-  .utility-button span, .utility-button small { display: block; }
-  .utility-button small { margin-top: 2px; color: var(--muted); font-size: 9px; }
-  .utility-button.configured i { color: white; background: var(--forest); }
-  .start-button { display: grid; place-items: center; align-content: center; gap: 1px; width: 68px; height: 68px; margin: auto; border: 0; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 10px 24px rgba(193,79,44,.29); cursor: pointer; transform: translateY(-1px); }
-  .start-button i { font-style: normal; font-size: 21px; line-height: 1; transform: translateX(1px); }
-  .start-button span { font-size: 9px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
-  .setup-summary { margin-top: 12px; display: flex; justify-content: center; }
-  .setup-summary button { min-height: 32px; padding: 5px 10px; border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; }
-  .setup-summary b { color: var(--forest); }
+  .goal-chooser { position: absolute; z-index: 34; left: 18px; right: 18px; bottom: 225px; display: none; padding: 13px; border: 1px solid rgba(24,34,27,.10); border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: 0 14px 38px rgba(24,34,27,.18); }
+  .goal-chooser.open { display: block; }
+  .chooser-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .chooser-head h3 { margin: 0; font-size: 15px; }
+  .chooser-head button { width: 32px; height: 32px; border: 0; border-radius: 50%; color: var(--ink); background: var(--soft); cursor: pointer; }
+  .goal-chooser .preset-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .goal-chooser .preset-grid button { min-height: 38px; border-radius: 10px; font-size: 11px; }
+  .goal-chooser .custom-goal { margin-top: 7px; gap: 6px; }
+  .goal-chooser .custom-goal input { height: 40px; border-radius: 10px; font-size: 13px; }
+  .goal-chooser .custom-goal button { min-width: 58px; border-radius: 10px; font-size: 12px; }
   .shade { position: absolute; z-index: 35; inset: 0; display: none; background: rgba(13,20,15,.42); }
   .shade.open { display: block; }
   .option-sheet {
@@ -366,7 +378,10 @@
             <circle class="location-dot" cx="128" cy="108" r="9"/>
             <text class="map-label" x="25" y="136">Cedar Ave</text><text class="map-label" x="205" y="167">Greenway</text>
           </svg>
-          <button class="selection-map-copy" id="goal-detail-button" type="button" data-action="edit-selected-goal"><strong id="map-mode-title">No goal</strong></button>
+          <button class="selection-map-copy" id="goal-detail-button" type="button" data-action="edit-selected-goal">
+            <span class="goal-card-copy"><small id="map-mode-label">Freestyle</small><strong id="map-mode-title">No goal</strong><span id="goal-detail-hint">No target to edit</span></span>
+            <span class="goal-edit-icon" id="goal-edit-icon" aria-hidden="true">›</span>
+          </button>
         </article>
       </div>
       <section class="away-content hidden" id="away-content">
@@ -381,31 +396,23 @@
           <button type="button" data-mode="time" aria-pressed="false"><strong>Time</strong><small data-mode-value>30 min</small></button>
           <button type="button" data-mode="calories" aria-pressed="false"><strong>Calories</strong><small data-mode-value>300 kcal</small></button>
         </div>
-        <div class="dock-setup-strip" aria-label="Run setup">
-          <button type="button" id="shoes-dock-button" data-action="open-shoes">♟ <span id="shoes-value">Pegasus 41</span></button>
-          <button type="button" id="environment-dock-button" data-action="toggle-environment">⌁ Outdoor</button>
-          <button type="button" id="voice-dock-button" data-action="toggle-voice">◖ Voice on</button>
-        </div>
-        <div class="dock-action-row">
-          <button class="utility-button configured" id="music-button" type="button" data-action="open-music"><i>♫</i><span>Music</span><small id="music-value">Easy Miles</small></button>
-          <button class="start-button" id="start-button" type="button" data-action="start" aria-label="Start Easy run, 30 minutes"><i>▶</i><span>Start</span></button>
-          <button class="utility-button configured" id="live-track-button" type="button" data-action="open-live-track"><i>⌖</i><span>Live Track</span><small id="live-track-value">Xia</small></button>
+        <div class="setup-grid" aria-label="Run setup">
+          <button class="setup-control configured" id="music-button" type="button" data-action="open-music"><i class="setup-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></i><span class="setup-label">Music</span><small id="music-value">Easy Miles</small></button>
+          <button class="setup-control configured" id="live-track-button" type="button" data-action="open-live-track"><i class="setup-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="2"/></svg></i><span class="setup-label">Live Track</span><small id="live-track-value">Xia</small></button>
+          <button class="setup-control configured" id="shoes-dock-button" type="button" data-action="open-shoes"><i class="setup-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c3 0 5-1 6-4l2 2c2 2 4 3 7 3 1 0 2 1 2 2s-1 2-3 2H7c-3 0-4-2-3-5Z"/><path d="m10 11 2-3 3 3"/></svg></i><span class="setup-label">Shoes</span><small id="shoes-value">Pegasus 41</small></button>
+          <button class="setup-control configured" id="environment-dock-button" type="button" data-action="toggle-environment"><i class="setup-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></i><span class="setup-label">Environment</span><small id="environment-value">Outdoor</small></button>
+          <button class="setup-control configured" id="voice-dock-button" type="button" data-action="toggle-voice"><i class="setup-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h3l4 4V6L8 10H5Z"/><path d="M16 9c1 .8 1.5 1.8 1.5 3S17 14.2 16 15m2-8c1.8 1.3 2.8 3 2.8 5S19.8 15.7 18 17"/></svg></i><span class="setup-label">Voice Guide</span><small id="voice-value">On</small></button>
         </div>
       </section>
       <nav class="tab-bar" aria-label="Main tabs">
         <button type="button" id="social-tab-button" data-action="switch-tab" data-tab="Social" aria-label="Social"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.4-3 2.4-4.7 5.5-4.7s5.1 1.7 5.5 4.7"/><circle cx="17" cy="9" r="2.4"/><path d="M15.8 14c2.8-.5 4.4.8 4.7 3.3"/></svg><span>Social</span></button>
-        <button type="button" class="selected" id="today-tab-button" data-action="switch-tab" data-tab="Today" aria-label="Today" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.2L17 9l-3.8 1.8L12 15l-1.2-4.2L7 9l3.8-1.8L12 3Z"/><path d="m5 14 .7 2.3L8 17l-2.3.7L5 20l-.7-2.3L2 17l2.3-.7L5 14Zm13-8 .6 1.8 1.9.7-1.9.7L18 11l-.6-1.8-1.9-.7 1.9-.7L18 6Z"/></svg><span>Today</span></button>
+        <button type="button" class="context-start" id="today-tab-button" data-action="context-tab" data-tab="Today" aria-label="Start Easy run, 30 minutes"><svg class="start-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6V6Z"/></svg><svg class="today-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.2 4.2L17 9l-3.8 1.8L12 15l-1.2-4.2L7 9l3.8-1.8L12 3Z"/><path d="m5 14 .7 2.3L8 17l-2.3.7L5 20l-.7-2.3L2 17l2.3-.7L5 14Zm13-8 .6 1.8 1.9.7-1.9.7L18 11l-.6-1.8-1.9-.7 1.9-.7L18 6Z"/></svg><span id="context-tab-label">Start</span></button>
         <button type="button" id="me-tab-button" data-action="switch-tab" data-tab="Me" aria-label="Me"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="9" r="3"/><path d="M6.5 18c.8-2.7 2.6-4.1 5.5-4.1s4.7 1.4 5.5 4.1"/></svg><span>Me</span></button>
       </nav>
-      <div class="shade" id="goal-editor">
-        <section class="option-sheet" role="dialog" aria-modal="true" aria-label="Edit goal">
-          <div class="grabber"></div>
-          <div class="sheet-head"><h3 id="goal-sheet-title">Set distance</h3><button type="button" data-action="close-overlay" aria-label="Close goal editor">×</button></div>
-          <div class="goal-value"><strong id="goal-current-value">5 km</strong><small id="goal-value-caption">Distance goal</small></div>
-          <div class="preset-grid" id="goal-presets"></div>
-          <div class="custom-goal"><input id="custom-goal-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="Custom"><span id="custom-goal-unit">km</span><button type="button" data-action="apply-custom-goal">Apply</button></div>
-          <button class="sheet-done" type="button" data-action="close-overlay">Done</button>
-        </section>
+      <div class="goal-chooser" id="goal-editor" role="dialog" aria-label="Edit goal">
+        <div class="chooser-head"><h3 id="goal-sheet-title">Distance goal</h3><button type="button" data-action="close-overlay" aria-label="Close goal chooser">×</button></div>
+        <div class="preset-grid" id="goal-presets"></div>
+        <div class="custom-goal"><input id="custom-goal-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="Custom"><span id="custom-goal-unit">km</span><button type="button" data-action="apply-custom-goal">Apply</button></div>
       </div>
       <div class="shade" id="plan-editor">
         <section class="option-sheet" role="dialog" aria-modal="true" aria-label="Workout picker">
@@ -513,9 +520,9 @@
   </section>
 
   <aside class="notes" aria-label="Design decisions">
-    <div class="note"><b>Stable navigation</b><p>Social, Today, and Me keep the app’s production icons, labels, order, and meaning on every screen.</p></div>
-    <div class="note"><b>The detail is the editor</b><p>Tap the workout card or current goal value to change it, including a custom number.</p></div>
-    <div class="note"><b>Fixed, flat controls</b><p>The launch dock has no expansion state. Start is a separate, visible action rather than a repurposed tab.</p></div>
+    <div class="note"><b>Contextual center action</b><p>Today becomes a labeled Start action only while Today is visible; elsewhere it returns to Today navigation.</p></div>
+    <div class="note"><b>The detail is the editor</b><p>Choosing a goal never interrupts. Tap the value card for a compact preset and custom-value chooser.</p></div>
+    <div class="note"><b>Icon-led setup</b><p>Every compact setup control pairs its icon with a short label and current value.</p></div>
     <div class="note"><b>Plainstride stays Plainstride</b><p>The interaction changes while the existing theme, cards, and visual language remain intact.</p></div>
   </aside>
 </main>
@@ -524,7 +531,7 @@
   const phone = document.getElementById('activity-prototype');
   const panels = [...phone.querySelectorAll('[data-screen-panel]')];
   const navButtons = [...document.querySelectorAll('.step-nav [data-show]')];
-  const overlays = [...phone.querySelectorAll('.shade')];
+  const overlays = [...phone.querySelectorAll('.shade, .goal-chooser')];
   const goalEditor = document.getElementById('goal-editor');
   const planEditor = document.getElementById('plan-editor');
   const musicEditor = document.getElementById('music-editor');
@@ -540,27 +547,30 @@
   const countdownActivity = document.getElementById('countdown-activity');
   const countdownStatus = document.getElementById('countdown-status');
   const liveStatusCopies = [...phone.querySelectorAll('.live-status-copy')];
-  const startButton = document.getElementById('start-button');
   const socialTabButton = document.getElementById('social-tab-button');
   const todayTabButton = document.getElementById('today-tab-button');
+  const contextTabLabel = document.getElementById('context-tab-label');
   const meTabButton = document.getElementById('me-tab-button');
   const todayContent = document.getElementById('today-content');
   const awayContent = document.getElementById('away-content');
   const awayTitle = document.getElementById('away-title');
   const launchDock = document.querySelector('.launch-dock');
   const goalSheetTitle = document.getElementById('goal-sheet-title');
-  const goalCurrentValue = document.getElementById('goal-current-value');
-  const goalValueCaption = document.getElementById('goal-value-caption');
   const goalPresets = document.getElementById('goal-presets');
   const customGoalInput = document.getElementById('custom-goal-input');
   const customGoalUnit = document.getElementById('custom-goal-unit');
+  const mapModeLabel = document.getElementById('map-mode-label');
+  const goalDetailHint = document.getElementById('goal-detail-hint');
+  const goalEditIcon = document.getElementById('goal-edit-icon');
   const musicValue = document.getElementById('music-value');
   const musicButton = document.getElementById('music-button');
   const liveTrackValue = document.getElementById('live-track-value');
   const liveTrackButton = document.getElementById('live-track-button');
   const shoesValue = document.getElementById('shoes-value');
   const environmentDockButton = document.getElementById('environment-dock-button');
+  const environmentValue = document.getElementById('environment-value');
   const voiceDockButton = document.getElementById('voice-dock-button');
+  const voiceValue = document.getElementById('voice-value');
   const livePrimaryLabel = document.getElementById('live-primary-label');
   const livePrimaryValue = document.getElementById('live-primary-value');
   const livePrimaryUnit = document.getElementById('live-primary-unit');
@@ -577,9 +587,9 @@
   let voiceEnabled = true;
 
   const goalSettings = {
-    distance: { title: 'Set distance', caption: 'Distance goal', unit: 'km', value: '5 km', presets: ['1 km', '3 km', '5 km', '10 km', '21.1 km'] },
-    time: { title: 'Set time', caption: 'Time goal', unit: 'min', value: '30 min', presets: ['15 min', '30 min', '45 min', '60 min', '90 min'] },
-    calories: { title: 'Set calories', caption: 'Estimated calorie goal', unit: 'kcal', value: '300 kcal', presets: ['150 kcal', '250 kcal', '300 kcal', '400 kcal', '500 kcal'] }
+    distance: { title: 'Distance goal', unit: 'km', value: '5 km', presets: ['1 km', '3 km', '5 km', '10 km', '21.1 km'] },
+    time: { title: 'Time goal', unit: 'min', value: '30 min', presets: ['15 min', '30 min', '45 min', '60 min', '90 min'] },
+    calories: { title: 'Calorie goal', unit: 'kcal', value: '300 kcal', presets: ['150 kcal', '250 kcal', '300 kcal', '400 kcal', '500 kcal'] }
   };
 
   function modeTitle(mode) {
@@ -636,8 +646,6 @@
   function renderGoalEditor(mode) {
     const setting = goalSettings[mode];
     goalSheetTitle.textContent = setting.title;
-    goalCurrentValue.textContent = setting.value;
-    goalValueCaption.textContent = setting.caption;
     customGoalInput.value = '';
     customGoalUnit.textContent = setting.unit;
     goalPresets.replaceChildren(...setting.presets.map(value => {
@@ -656,9 +664,14 @@
     const showsPlan = mode === 'planned';
     plannedContent.classList.toggle('hidden', !showsPlan);
     mapContent.classList.toggle('hidden', showsPlan);
-    startButton.setAttribute('aria-label', `Start ${modeTitle(mode)}`);
+    if (activeAppTab === 'Today') todayTabButton.setAttribute('aria-label', `Start ${modeTitle(mode)}`);
     if (!showsPlan) {
+      const isEditable = Boolean(goalSettings[mode]);
+      mapModeLabel.textContent = modeLabel(mode);
       mapModeTitle.textContent = modeDetail(mode);
+      goalDetailHint.textContent = isEditable ? 'Tap to change' : 'No target to edit';
+      goalEditIcon.textContent = isEditable ? '›' : '—';
+      document.getElementById('goal-detail-button').setAttribute('aria-label', isEditable ? `${modeLabel(mode)} ${modeDetail(mode)}, tap to change` : 'Freestyle, no goal');
     }
   }
 
@@ -669,23 +682,23 @@
     launchDock.classList.toggle('hidden', !isToday);
     awayContent.classList.toggle('hidden', isToday);
     socialTabButton.classList.toggle('selected', tab === 'Social');
-    todayTabButton.classList.toggle('selected', tab === 'Today');
     meTabButton.classList.toggle('selected', tab === 'Me');
-    [socialTabButton, todayTabButton, meTabButton].forEach(button => {
+    todayTabButton.className = isToday ? 'context-start' : '';
+    contextTabLabel.textContent = isToday ? 'Start' : 'Today';
+    todayTabButton.setAttribute('aria-label', isToday ? `Start ${modeTitle(selectedMode)}` : 'Today');
+    [socialTabButton, meTabButton].forEach(button => {
       if (button.dataset.tab === tab) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
+    todayTabButton.removeAttribute('aria-current');
     if (!isToday) awayTitle.textContent = tab;
   }
 
-  function selectMode(mode, opensEditor = true) {
+  function selectMode(mode) {
     selectedMode = mode;
+    closeOverlays();
     modeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === mode)));
     updateModePresentation(mode);
-    if (opensEditor && goalSettings[mode]) {
-      renderGoalEditor(mode);
-      openOverlay(goalEditor);
-    }
   }
 
   function setScreen(name) {
@@ -770,14 +783,16 @@
 
   function handleAction(action, element) {
     if (['home', 'live', 'map'].includes(action)) setScreen(action);
-    else if (action === 'start') beginCountdown();
     else if (action === 'close-overlay') closeOverlays();
+    else if (action === 'context-tab') activeAppTab === 'Today' ? beginCountdown() : setAppTab('Today');
     else if (action === 'switch-tab') setAppTab(element.dataset.tab);
     else if (action === 'open-plan') openOverlay(planEditor);
     else if (action === 'edit-selected-goal') {
       if (goalSettings[selectedMode]) {
         renderGoalEditor(selectedMode);
         openOverlay(goalEditor);
+      } else {
+        showToast('Freestyle has no target');
       }
     }
     else if (action === 'apply-custom-goal') {
@@ -786,6 +801,8 @@
         goalSettings[selectedMode].value = `${customGoalInput.value} ${goalSettings[selectedMode].unit}`;
         renderGoalEditor(selectedMode);
         updateModePresentation(selectedMode);
+        closeOverlays();
+        showToast(`${modeLabel(selectedMode)}: ${goalSettings[selectedMode].value}`);
       }
     }
     else if (action === 'open-music') openOverlay(musicEditor);
@@ -793,12 +810,13 @@
     else if (action === 'open-shoes') openOverlay(shoesEditor);
     else if (action === 'toggle-environment') {
       environment = environment === 'Outdoor' ? 'Indoor' : 'Outdoor';
-      environmentDockButton.textContent = `⌁ ${environment}`;
+      environmentValue.textContent = environment;
       showToast(`Environment: ${environment}`);
     }
     else if (action === 'toggle-voice') {
       voiceEnabled = !voiceEnabled;
-      voiceDockButton.textContent = `◖ Voice ${voiceEnabled ? 'on' : 'off'}`;
+      voiceValue.textContent = voiceEnabled ? 'On' : 'Off';
+      voiceDockButton.classList.toggle('configured', voiceEnabled);
       showToast(`Voice guide: ${voiceEnabled ? 'on' : 'off'}`);
     }
     else if (action === 'pause') metricPanel.classList.add('paused');
@@ -818,6 +836,8 @@
       goalSettings[selectedMode].value = goalPreset.dataset.goalPreset;
       renderGoalEditor(selectedMode);
       updateModePresentation(selectedMode);
+      closeOverlays();
+      showToast(`${modeLabel(selectedMode)}: ${goalSettings[selectedMode].value}`);
       return;
     }
     const musicChoice = event.target.closest('[data-select-music]');
@@ -880,11 +900,17 @@
     handleAction(actionElement.dataset.action, actionElement);
   });
 
-  overlays.forEach(overlay => overlay.addEventListener('click', event => {
+  phone.querySelectorAll('.shade').forEach(overlay => overlay.addEventListener('click', event => {
     if (event.target === overlay) closeOverlays();
   }));
 
-  selectMode(selectedMode, false);
+  document.addEventListener('pointerdown', event => {
+    if (!goalEditor.classList.contains('open')) return;
+    if (event.target.closest('#goal-editor') || event.target.closest('#goal-detail-button')) return;
+    closeOverlays();
+  });
+
+  selectMode(selectedMode);
   setAppTab('Today');
 })();
 </script>

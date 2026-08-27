@@ -4,12 +4,12 @@ Open this when changing the Today launch dock, activity goal selection, countdow
 
 ## Navigation Decision
 
-Keep `Social · Today · Me` as stable navigation with the production icons, order, labels, and theme tint.
+Reuse the center Today position contextually while retaining the production icons, order, labels, and theme tint.
 
-- Today remains a destination everywhere; it never becomes Start.
-- Start is a separate orange action in the launch dock.
-- Social and Me hide the launch dock. Today restores it without changing the selected activity setup.
-- Do not ship the contextual Today/Start tab experiment. Repurposing a navigation item as an unlabeled action weakens predictability and conflicts with the app's labeled-tab accessibility contract.
+- On Today, the center control becomes an orange play icon with the visible label `Start` and a goal-specific accessibility label.
+- On Social or Me, the same position shows the normal Today icon and label; tapping it returns to Today.
+- Social and Me hide the launch dock. Returning to Today restores the existing activity setup.
+- The primary tab bar remains hidden during countdown, live recording, camera capture, and post-run completion.
 
 ## Launch Dock
 
@@ -21,20 +21,20 @@ Goal modes are peers:
 - `Freestyle`: record without a target.
 - `Distance`, `Time`, and `Calories`: record toward one explicit target.
 
-Selecting Planned opens the workout picker. Selecting Distance, Time, or Calories opens a focused editor with presets and custom input. The detail card then shows only the current value and reopens the same editor when tapped.
+Selecting a mode only updates the information card; it never opens another control. The Planned card opens the workout picker when tapped. The Distance, Time, or Calories card opens a small anchored chooser with one row of presets and a custom input. Do not use a dimmed full-height sheet for goal values. Freestyle has no target editor.
 
 Learn a different default only after the same mode reaches live recording for three consecutive activities. Exploratory taps and canceled countdowns do not count. Store this preference locally and keep every mode available; selecting a mode never starts the activity.
 
 Configure launch options from the dock:
 
-- Shoes, Music, and Live Track open focused overlays and return the chosen value to the dock.
-- Indoor/Outdoor and Voice Guide toggle directly.
+- Music, Live Track, and Shoes use compact icon-plus-label controls that open focused overlays and return the chosen value to the dock.
+- Environment and Voice Guide use the same icon-plus-label treatment and toggle directly.
 - Off states must stop using the configured treatment.
 - Every independent control keeps a minimum 44-point target and a visible or accessible label.
 
 ## Start and Live Recording
 
-Start immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
+The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
 Primary live metrics follow the selected mode:
 
@@ -55,8 +55,10 @@ Production analytics should reuse the typed activity funnel in `docs/product-ana
 
 ## Acceptance Criteria
 
-- The launch dock fits at 360-point width without hiding Start or the tab bar.
-- Tabs retain one meaning on Today, Social, and Me.
+- The launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
+- The center control clearly reads Start on Today and Today on Social or Me.
+- Choosing Distance, Time, or Calories updates the card without opening the chooser.
+- The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.
 - Setup choices carry into countdown and live status.
 - Countdown cancel preserves setup; only entry into live recording advances default learning.

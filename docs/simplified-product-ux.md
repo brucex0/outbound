@@ -41,8 +41,8 @@ Use the fixed, flat Today launch dock defined in `docs/activity-launch-live-ux.m
 
 - Planned is preselected and launches the companion-prescribed workout structure.
 - Freestyle, Distance, Time, and Calories are peer alternatives.
-- Start remains a separate, visible action; primary navigation never changes meaning.
-- Goal and setup editing stays on Today through focused overlays or direct toggles, with no second setup page.
+- The center Today control becomes a visibly labeled Start action only on Today; on Social or Me it remains Today navigation.
+- Choosing a goal only updates its information card. Goal values are edited from that card with a compact chooser, while setup uses focused overlays or direct toggles.
 
 ### Personalization loop
 
