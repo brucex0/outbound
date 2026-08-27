@@ -21,6 +21,7 @@ struct MainTabView: View {
     @State private var activityElapsedSeconds = 0
     @State private var feedbackPage = "Today"
     @State private var selectedAppTab: SimplifiedAppTab = .today
+    @State private var activityStartRequest = 0
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -40,22 +41,6 @@ struct MainTabView: View {
                 .padding(.trailing, 18)
                 .padding(.bottom, 72)
                 .zIndex(2)
-            }
-        }
-        .overlay {
-            if let launch = activeLaunch {
-                RecordView(
-                    initialIntent: launch.intent,
-                    isVisible: isActivityVisible,
-                    isEmbeddedInToday: true,
-                    onCloseRequest: handleActivityClose,
-                    onSessionStateChange: { activitySessionState = $0 },
-                    onElapsedTimeChange: { activityElapsedSeconds = $0 }
-                )
-                .offset(y: isActivityVisible ? 0 : 1200)
-                .allowsHitTesting(isActivityVisible)
-                .animation(.spring(response: 0.34, dampingFraction: 0.92), value: isActivityVisible)
-                .zIndex(1)
             }
         }
         .overlay(alignment: .top) {
@@ -113,6 +98,15 @@ struct MainTabView: View {
             } else {
                 isActivityVisible = false
             }
+        }
+        .onChange(of: trainingPlanStore.todaySuggestion?.suggestedSession.intent.id) { _, _ in
+            guard selectedAppTab == .today,
+                  activitySessionState == .idle,
+                  activeLaunch?.intent == nil,
+                  let intent = defaultTodayIntent
+            else { return }
+            activeLaunch = RecordLaunch(intent: intent)
+            isActivityVisible = true
         }
         .onChange(of: onboardingIdentity) { _, _ in
             prepareOnboarding()
@@ -186,10 +180,30 @@ struct MainTabView: View {
             activitySessionState: activitySessionState,
             activityElapsedSeconds: activityElapsedSeconds,
             activeSport: activeLaunch?.intent?.sport,
-            feedbackPage: $feedbackPage
+            feedbackPage: $feedbackPage,
+            activityLaunchSurface: activityLaunchSurface,
+            onContextualStart: {
+                activityStartRequest += 1
+            }
         ) { intent in
             presentActivity(intent: intent)
         }
+    }
+
+    private var activityLaunchSurface: AnyView {
+        if let launch = activeLaunch {
+            return AnyView(RecordView(
+                initialIntent: launch.intent,
+                isVisible: isActivityVisible,
+                isEmbeddedInToday: true,
+                startRequest: activityStartRequest,
+                onCloseRequest: handleActivityClose,
+                onSessionStateChange: { activitySessionState = $0 },
+                onElapsedTimeChange: { activityElapsedSeconds = $0 }
+            )
+            .id(launch.id))
+        }
+        return AnyView(EmptyView())
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {

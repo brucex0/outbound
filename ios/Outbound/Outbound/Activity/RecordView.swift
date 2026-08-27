@@ -110,6 +110,7 @@ struct RecordView: View {
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
+    private let startRequest: Int
     private let shouldApplySmartGoalDefault: Bool
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
@@ -119,6 +120,7 @@ struct RecordView: View {
         initialIntent: SessionIntent? = nil,
         isVisible: Bool = true,
         isEmbeddedInToday: Bool = false,
+        startRequest: Int = 0,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
@@ -133,6 +135,7 @@ struct RecordView: View {
         self.shouldApplySmartGoalDefault = initialIntent == nil
         self.isVisible = isVisible
         self.isEmbeddedInToday = isEmbeddedInToday
+        self.startRequest = startRequest
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -141,64 +144,21 @@ struct RecordView: View {
     }
 
     var body: some View {
-        ZStack {
-            if showCamera {
-                if isVisible {
-                    TabView(selection: $activePage) {
-                        CameraHUDView(
-                            recorder: recorder,
-                            guide: guide,
-                            musicStore: musicStore,
-                            intent: activeIntent ?? plannedIntent,
-                            capturedPhotoCount: capturedPhotos.count,
-                            lastCapturedPhoto: capturedPhotos.last?.0,
-                            activePage: $activePage,
-                            onStart: startRecording,
-                            onFinish: finishRecording
-                        ) { image, meta in
-                            capturedPhotos.append((image, meta))
-                            track(.init(.photoCaptured, properties: [
-                                .sourceType: .string("in_activity"),
-                                .locationAttached: .boolean(meta.coordinate != nil)
-                            ]))
-                        }
-                        .tag(SessionPage.camera)
-                        .ignoresSafeArea()
-
-                        LiveMapView(
-                            recorder: recorder,
-                            locationManager: recorder.locationManager,
-                            guide: guide,
-                            musicStore: musicStore,
-                            intent: activeIntent ?? plannedIntent,
-                            capturedPhotoCount: capturedPhotos.count,
-                            lastCapturedPhoto: capturedPhotos.last?.0,
-                            activePage: $activePage,
-                            onStart: startRecording,
-                            onFinish: finishRecording
-                        )
-                        .tag(SessionPage.map)
-                        .ignoresSafeArea()
+        Group {
+            if isEmbeddedInToday {
+                readyView
+                    .opacity(isVisible && !showCamera ? 1 : 0)
+                    .allowsHitTesting(isVisible && !showCamera)
+                    .fullScreenCover(isPresented: embeddedLivePresentation) {
+                        liveRecordingSurface
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .ignoresSafeArea()
-                } else {
-                    Color.clear
-                        .ignoresSafeArea()
-                }
+            } else if showCamera {
+                liveRecordingSurface
             } else {
                 readyView
             }
         }
-        .background(Color(.systemBackground))
-        .ignoresSafeArea()
-        .toolbar(showCamera && isVisible ? .hidden : .visible, for: .tabBar)
-        .overlay {
-            if let countdownStep {
-                ActivityStartCountdownOverlay(step: countdownStep, reduceMotion: reduceMotion)
-                    .transition(.opacity)
-            }
-        }
+        .background { recordBackground }
         .onReceive(recorder.$liveSnapshot) { snapshot in
             guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
@@ -223,6 +183,10 @@ struct RecordView: View {
         }
         .onChange(of: isVisible, initial: true) { _, _ in
             seedLiveRunForUITestIfRequested()
+        }
+        .onChange(of: startRequest) { _, _ in
+            guard isEmbeddedInToday, isVisible, !showCamera else { return }
+            startRecording()
         }
         .onAppear {
             restoreInterruptedSessionIfNeeded()
@@ -498,6 +462,121 @@ struct RecordView: View {
         } message: {
             Text(String(localized: "record.group.join.help", defaultValue: "Paste the Plainstride group run invite from another runner."))
         }
+    }
+
+    private var embeddedLivePresentation: Binding<Bool> {
+        Binding(
+            get: { showCamera && isVisible },
+            set: { isPresented in
+                guard !isPresented, showCamera else { return }
+                onCloseRequest?(recorder.state != .idle || pendingActivity != nil)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var recordBackground: some View {
+        if isEmbeddedInToday {
+            Color.clear
+        } else {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+        }
+    }
+
+    private var liveRecordingSurface: some View {
+        ZStack {
+            TabView(selection: $activePage) {
+                CameraHUDView(
+                    recorder: recorder,
+                    guide: guide,
+                    musicStore: musicStore,
+                    intent: activeIntent ?? plannedIntent,
+                    capturedPhotoCount: capturedPhotos.count,
+                    lastCapturedPhoto: capturedPhotos.last?.0,
+                    activePage: $activePage,
+                    onStart: startRecording,
+                    onFinish: finishRecording
+                ) { image, meta in
+                    capturedPhotos.append((image, meta))
+                    track(.init(.photoCaptured, properties: [
+                        .sourceType: .string("in_activity"),
+                        .locationAttached: .boolean(meta.coordinate != nil)
+                    ]))
+                }
+                .tag(SessionPage.camera)
+                .ignoresSafeArea()
+
+                LiveMapView(
+                    recorder: recorder,
+                    locationManager: recorder.locationManager,
+                    guide: guide,
+                    musicStore: musicStore,
+                    intent: activeIntent ?? plannedIntent,
+                    capturedPhotoCount: capturedPhotos.count,
+                    lastCapturedPhoto: capturedPhotos.last?.0,
+                    activePage: $activePage,
+                    onStart: startRecording,
+                    onFinish: finishRecording
+                )
+                .tag(SessionPage.map)
+                .ignoresSafeArea()
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
+
+            if let countdownStep {
+                ActivityStartCountdownOverlay(step: countdownStep, reduceMotion: reduceMotion)
+                    .transition(.opacity)
+            }
+        }
+        .background(Color(.systemBackground))
+        .ignoresSafeArea()
+        .toolbar(.hidden, for: .tabBar)
+        .overlay(alignment: .topLeading) {
+            if isEmbeddedInToday {
+                embeddedActivityCloseButton
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if isEmbeddedInToday {
+                embeddedActivityAssistantButton
+            }
+        }
+    }
+
+    private var embeddedActivityCloseButton: some View {
+        Button {
+            if isCountingDown {
+                cancelStartCountdown(returnToSetup: true)
+            } else {
+                onCloseRequest?(recorder.state != .idle || pendingActivity != nil)
+            }
+        } label: {
+            Image(systemName: activityCloseSystemImage)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .padding(.top, 18)
+        .padding(.leading, 16)
+        .accessibilityLabel(activityCloseAccessibilityLabel)
+    }
+
+    private var embeddedActivityAssistantButton: some View {
+        Button {
+            isAssistantPresented = true
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .padding(.top, 18)
+        .padding(.trailing, 16)
+        .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
     }
 
     private func startRecording() {
@@ -931,11 +1010,9 @@ struct RecordView: View {
 
     private var readyView: some View {
         ZStack(alignment: .bottom) {
-            ActivityLaunchMap(
-                locationManager: recorder.locationManager,
-                route: plannedIntent?.preparedRoute
-            )
-            .ignoresSafeArea()
+            if !usesEmbeddedPlannedContent {
+                launchMap
+            }
 
             VStack(spacing: 10) {
                 if connectivityStore.isOffline {
@@ -945,15 +1022,19 @@ struct RecordView: View {
 
                 Spacer(minLength: 96)
 
-                launchGoalCard
-                    .padding(.horizontal, 18)
+                if !usesEmbeddedPlannedContent {
+                    launchGoalCard
+                        .padding(.horizontal, 18)
+                }
 
                 launchDock
             }
-            .padding(.bottom, 70)
+            .padding(.bottom, isEmbeddedInToday ? 8 : 70)
 
-            contextualStartControl
-                .padding(.bottom, 3)
+            if !isEmbeddedInToday {
+                contextualStartControl
+                    .padding(.bottom, 3)
+            }
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
@@ -961,6 +1042,23 @@ struct RecordView: View {
             applyLearnedGoalModeIfNeeded()
             applyDefaultSessionShoeIfNeeded()
             trackSetupAndFeatureExposureIfNeeded()
+        }
+    }
+
+    private var usesEmbeddedPlannedContent: Bool {
+        isEmbeddedInToday && selectedGoalMode == .planned
+    }
+
+    @ViewBuilder
+    private var launchMap: some View {
+        let map = ActivityLaunchMap(
+            locationManager: recorder.locationManager,
+            route: plannedIntent?.preparedRoute
+        )
+        if isEmbeddedInToday {
+            map
+        } else {
+            map.ignoresSafeArea()
         }
     }
 
@@ -1115,11 +1213,11 @@ struct RecordView: View {
                 Image(systemName: mode.systemImage)
                     .font(.caption.weight(.bold))
                 Text(mode.title)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                 Text(mode.compactValue(goal: mode == selectedGoalMode ? currentActivityGoal : nil))
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 9.5, weight: .medium))
                     .foregroundStyle(mode == selectedGoalMode ? Color.white.opacity(0.72) : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -1154,12 +1252,12 @@ struct RecordView: View {
                     .frame(width: 25, height: 25)
                     .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Text(title)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
                 Text(value)
-                    .font(.system(size: 8, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
@@ -1201,10 +1299,10 @@ struct RecordView: View {
                         .frame(width: 25, height: 25)
                         .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     Text(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.primary)
                     Text(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
-                        .font(.system(size: 8, weight: .medium))
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.62)

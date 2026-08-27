@@ -19,6 +19,7 @@ enum SimplifiedAppTab: Hashable {
 
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.outboundTheme) private var theme
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
@@ -32,6 +33,8 @@ struct SimplifiedAppShell: View {
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var feedbackPage: String
+    let activityLaunchSurface: AnyView
+    let onContextualStart: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
     @State private var customizedTodayIntent: SessionIntent?
@@ -50,39 +53,55 @@ struct SimplifiedAppShell: View {
                 activeSport: activeSport,
                 customizedRunIntent: $customizedTodayIntent,
                 selectedRouteName: $selectedRouteName,
+                activityLaunchSurface: activityLaunchSurface,
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
-                .tabItem { Label("Today", systemImage: "sparkles") }
+                .tabItem {
+                    Label(
+                        selection == .today
+                            ? String(localized: "record.start.short", defaultValue: "Start")
+                            : String(localized: "Today"),
+                        systemImage: selection == .today ? "play.fill" : "sparkles"
+                    )
+                }
 
             SimplifiedMeView()
                 .tag(SimplifiedAppTab.me)
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
+        .overlay(alignment: .bottom) {
+            if selection == .today && activitySessionState == .idle {
+                contextualStartControl
+                    .padding(.bottom, 3)
+            }
+        }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
         }
         .overlay(alignment: .bottomLeading) {
-            Button {
-                showsAssistant = true
-            } label: {
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-                    .overlay {
-                        Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                    }
-                    .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+            if selection != .today || activitySessionState != .idle {
+                Button {
+                    showsAssistant = true
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+                        .overlay {
+                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                        }
+                        .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Open assistant"))
+                .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+                .padding(.leading, 18)
+                .padding(.bottom, 58)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "Open assistant"))
-            .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-            .padding(.leading, 18)
-            .padding(.bottom, 58)
         }
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
@@ -171,6 +190,32 @@ struct SimplifiedAppShell: View {
             return String(localized: "Me")
         }
     }
+
+    private var contextualStartControl: some View {
+        Button(action: onContextualStart) {
+            VStack(spacing: 2) {
+                Image(systemName: "play.fill")
+                    .font(.title3.weight(.black))
+                    .foregroundStyle(.white)
+                    .offset(x: 1)
+                    .frame(width: 54, height: 54)
+                    .background(theme.actionColor, in: Circle())
+                    .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 5))
+                    .shadow(color: theme.actionColor.opacity(0.28), radius: 10, y: 5)
+
+                Text(String(localized: "record.start.short", defaultValue: "Start"))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(theme.actionColor)
+                    .textCase(.uppercase)
+            }
+            .frame(width: 110)
+            .frame(minHeight: 70)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "record.start.short", defaultValue: "Start"))
+        .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
+    }
 }
 
 private struct SimplifiedTodayView: View {
@@ -192,6 +237,7 @@ private struct SimplifiedTodayView: View {
     let activeSport: SportType?
     @Binding var customizedRunIntent: SessionIntent?
     @Binding var selectedRouteName: String?
+    let activityLaunchSurface: AnyView
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
@@ -212,40 +258,45 @@ private struct SimplifiedTodayView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: OutboundSpacing.standard) {
-                    if let completedActivityToday {
-                        completedTodayCard(completedActivityToday)
-                        if activitySessionState == .idle {
-                            Button {
-                                onStartRun(.freestyleRun)
-                            } label: {
-                                Label("Start another activity", systemImage: "plus.circle.fill")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity, minHeight: 48)
+            ZStack {
+                ScrollView {
+                    LazyVStack(spacing: OutboundSpacing.standard) {
+                        if let completedActivityToday {
+                            completedTodayCard(completedActivityToday)
+                            if activitySessionState == .idle && !showsEmbeddedLaunchDock {
+                                Button {
+                                    onStartRun(.freestyleRun)
+                                } label: {
+                                    Label("Start another activity", systemImage: "plus.circle.fill")
+                                        .font(.headline)
+                                        .frame(maxWidth: .infinity, minHeight: 48)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
+                                .tint(theme.actionColor)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                            .tint(theme.actionColor)
+
+                            upcomingWorkoutButton
+                        } else if let activityEventToday {
+                            activityEventCard(activityEventToday)
+                            quickRunButton
+                        } else {
+                            plannedWorkoutCard
+                            quickRunButton
                         }
 
-                        upcomingWorkoutButton
-                    } else if let activityEventToday {
-                        activityEventCard(activityEventToday)
-                        quickRunButton
-                    } else {
-                        plannedWorkoutCard
-                        quickRunButton
+                        if activitySessionState == .idle && !showsEmbeddedLaunchDock {
+                            activityLibraryButtons
+                        } else if activitySessionState != .idle {
+                            inProgressActivityCard
+                        }
                     }
-
-                    if activitySessionState == .idle {
-                        activityLibraryButtons
-                    } else {
-                        inProgressActivityCard
-                    }
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.top, OutboundSpacing.standard)
+                    .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
                 }
-                .padding(.horizontal, OutboundSpacing.screen)
-                .padding(.vertical, OutboundSpacing.standard)
+
+                activityLaunchSurface
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
@@ -479,9 +530,13 @@ private struct SimplifiedTodayView: View {
         }
     }
 
+    private var showsEmbeddedLaunchDock: Bool {
+        isSelected && activitySessionState == .idle
+    }
+
     @ViewBuilder
     private var quickRunButton: some View {
-        if activitySessionState == .idle {
+        if activitySessionState == .idle && !showsEmbeddedLaunchDock {
             Button {
                 onStartRun(.freestyleRun)
             } label: {
@@ -578,7 +633,7 @@ private struct SimplifiedTodayView: View {
                      : String(localized: "You’re participating · Meet up or join from anywhere"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if activitySessionState == .idle {
+                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
                     OutboundPrimaryButton(title: String(localized: "Start activity event"), systemImage: "person.2.fill") {
                         socialStore.prepareToRecord(activityEventID: event.id)
                         onStartRun(activityEventIntent(event))
@@ -641,7 +696,7 @@ private struct SimplifiedTodayView: View {
                     .foregroundStyle(.secondary)
                 WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
                 CompactIntervalPreview(phases: todayPhases)
-                if activitySessionState == .idle {
+                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
                     OutboundPrimaryButton(title: String(localized: "Start run"), systemImage: "figure.run") {
                         onStartRun(activeRunIntent)
                     }
@@ -2884,6 +2939,8 @@ private extension RunnerConfidence {
         activityElapsedSeconds: 0,
         activeSport: nil,
         feedbackPage: .constant("Today"),
+        activityLaunchSurface: AnyView(EmptyView()),
+        onContextualStart: {},
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())

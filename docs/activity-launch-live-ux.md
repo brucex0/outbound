@@ -13,7 +13,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area over a full-content map on Today. The map fills every point above the dock and center tab action. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
+Use one fixed, flat two-row control area at the bottom of Today. Planned mode preserves the normal Today header, conditions, workout card, and the rest of the app shell above the dock. Freestyle, Distance, Time, and Calories may replace that content area with the setup map and compact goal card. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
 
 Goal modes are peers:
 
@@ -56,8 +56,9 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 ## Acceptance Criteria
 
 - The two-row launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
-- Today opens directly on the retained map and dock; no Quick Start or Start Activity setup route remains.
-- The setup map fills the complete content area above the dock without clipping or horizontal overflow.
+- Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
+- Planned mode never covers the Today header or workout card with the setup map.
+- For non-Planned modes, the setup map fills the complete content area above the dock without clipping or horizontal overflow.
 - The center control clearly reads Start on Today and Today on Social or Me.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.
