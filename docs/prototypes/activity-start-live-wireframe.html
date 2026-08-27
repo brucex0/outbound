@@ -305,10 +305,10 @@
   <section class="intro">
     <p class="eyebrow">Activity flow wireframe</p>
     <h1>Ready to run,<br>not configure.</h1>
-    <p>A direct center action, remembered defaults, and one continuous surface from launch to live tracking.</p>
+    <p>One-tap GO with remembered defaults, optional setup, and one continuous surface into live tracking.</p>
     <nav class="step-nav" aria-label="Prototype screens">
-      <button type="button" data-show="home" aria-current="step"><span>1</span>Today + center Run action</button>
-      <button type="button" data-show="ready"><span>2</span>Ready state</button>
+      <button type="button" data-show="home" aria-current="step"><span>1</span>Today + one-tap GO</button>
+      <button type="button" data-show="ready"><span>2</span>Optional run setup</button>
       <button type="button" data-show="live"><span>3</span>Live metrics</button>
       <button type="button" data-show="map"><span>4</span>Expanded map</button>
     </nav>
@@ -328,7 +328,7 @@
         <h3>Easy run · 30 min</h3>
         <p>Conversational effort. Keep this one comfortable.</p>
         <div class="phases" aria-label="Warm up, easy running, cool down"><i></i><i></i><i></i></div>
-        <button class="card-start" type="button" data-action="ready">Start planned run</button>
+        <button class="card-start" type="button" data-action="start">Start planned run</button>
       </article>
       <div class="quick-row"><h3>Run your way</h3><span>No setup required</span></div>
       <div class="quick-grid">
@@ -339,7 +339,7 @@
       <nav class="tab-bar" aria-label="Main tabs">
         <button type="button"><i>♧</i>Social</button>
         <button type="button" class="selected"><i>✦</i>Today</button>
-        <button type="button" class="run-tab" data-action="ready"><i>▶</i>Run</button>
+        <button type="button" class="run-tab" data-action="start" aria-label="GO — start freestyle run"><i>GO</i>Run</button>
         <button type="button"><i>○</i>Me</button>
       </nav>
     </section>
@@ -357,7 +357,7 @@
           <text class="map-label" x="31" y="290">Cedar Ave</text><text class="map-label" x="210" y="360">Greenway</text>
         </svg>
       </div>
-      <div class="top-actions"><button class="round-action" type="button" data-action="home" aria-label="Close">×</button><span class="top-title">Ready to run</span><button class="round-action" type="button" data-action="options" aria-label="Open setup">•••</button></div>
+      <div class="top-actions"><button class="round-action" type="button" data-action="home" aria-label="Close">×</button><span class="top-title">Optional setup</span><button class="round-action" type="button" data-action="options" aria-label="Open setup">•••</button></div>
       <section class="ready-sheet">
         <div class="grabber"></div>
         <button class="activity-summary" type="button" data-action="goal">
@@ -454,10 +454,10 @@
   </section>
 
   <aside class="notes" aria-label="Design decisions">
-    <div class="note"><b>One obvious launch action</b><p>The global Run control opens a prepared state from any primary tab.</p></div>
+    <div class="note"><b>GO means go</b><p>The global GO control immediately starts with saved defaults—no confirmation screen.</p></div>
     <div class="note"><b>Defaults replace controls</b><p>Shoes, environment, and voice are summarized—not presented as equal CTAs.</p></div>
     <div class="note"><b>One continuous live surface</b><p>The same map remains behind the countdown, metrics sheet, and expanded route view.</p></div>
-    <div class="note"><b>Controls follow frequency</b><p>Music and Live Track stay near Start; everything else moves into setup.</p></div>
+    <div class="note"><b>Setup is optional</b><p>Goal tiles open configuration; planned Start and center GO skip it completely.</p></div>
   </aside>
 </main>
 <script>

@@ -50,7 +50,7 @@ Primary flow:
 | Product behavior, feature adoption, event taxonomy, analytics privacy, and provider selection | `docs/product-analytics.md` | Core and feature funnels, framework evaluation, provider-neutral event contract, migration strategy, and rollout sequence |
 | Client/backend replacement strategy and vertical migration sequence | `docs/simplified-product-refactor-plan.md` | Keep/replace/delete decisions, target modules and APIs, database reset, effort, risks, and cutover plan |
 | Simplified product flow prototype | `docs/prototypes/outbound-major-flow.html` | Clickable wireframe for Today, quick-run goals, readiness, workout detail, live run, feedback, learned insights, Together, club runs, and Me |
-| Activity start and live-run prototype | `docs/prototypes/activity-start-live-wireframe.html` | Clickable ready-to-run direction with a center Run action, progressive setup, countdown, live metrics, and expandable map |
+| Activity start and live-run prototype | `docs/prototypes/activity-start-live-wireframe.html` | Clickable one-tap GO direction with optional progressive setup, countdown, live metrics, and expandable map |
 | Social MVP wireframe | `docs/prototypes/social-mvp-wireframe.html` | Focused Social tab, connections entry, groups, notifications, and feed wireframe captured before implementation |
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
