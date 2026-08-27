@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Plainstride Activity Start + Live Run</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --ink: #18221b;
+    --muted: #6f7c73;
+    --line: #dfe6df;
+    --canvas: #edf1ed;
+    --surface: #ffffff;
+    --soft: #f4f7f3;
+    --forest: #315f3f;
+    --forest-dark: #20432c;
+    --orange: #e46f49;
+    --orange-soft: #fff0e9;
+    --green-soft: #e8f3eb;
+    --live-panel: #19221c;
+  }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 10%, rgba(228,111,73,.10), transparent 28%),
+      radial-gradient(circle at 86% 78%, rgba(49,95,63,.12), transparent 31%),
+      var(--canvas);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  }
+  button { font: inherit; }
+  button:focus-visible { outline: 3px solid rgba(228,111,73,.34); outline-offset: 3px; }
+  .prototype {
+    width: min(1120px, 100%);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 28px 24px 40px;
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 420px minmax(260px, 1fr);
+    gap: 36px;
+    align-items: center;
+  }
+  .intro, .notes { align-self: center; }
+  .eyebrow {
+    margin: 0 0 9px;
+    color: var(--orange);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.02; letter-spacing: -.045em; }
+  .intro > p:last-of-type { max-width: 430px; margin: 16px 0 0; color: #59655d; font-size: 16px; line-height: 1.55; }
+  .step-nav { display: grid; gap: 8px; margin-top: 24px; }
+  .step-nav button {
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    color: #566159;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+  .step-nav button span { display: inline-grid; place-items: center; width: 25px; height: 25px; margin-right: 8px; border-radius: 50%; background: rgba(24,34,27,.08); font-size: 12px; font-weight: 800; }
+  .step-nav button[aria-current="step"] { border-color: rgba(228,111,73,.24); color: var(--ink); background: rgba(255,255,255,.72); font-weight: 750; }
+  .step-nav button[aria-current="step"] span { color: white; background: var(--orange); }
+  .notes { display: grid; gap: 12px; }
+  .note {
+    padding: 16px;
+    border: 1px solid rgba(24,34,27,.08);
+    border-radius: 18px;
+    background: rgba(255,255,255,.70);
+    box-shadow: 0 12px 30px rgba(30,48,36,.06);
+  }
+  .note b { display: block; margin-bottom: 5px; font-size: 14px; }
+  .note p { margin: 0; color: #667168; font-size: 13px; line-height: 1.45; }
+  .phone {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    overflow: hidden;
+    border: 8px solid #121512;
+    border-radius: 52px;
+    background: var(--soft);
+    box-shadow: 0 35px 90px rgba(25,40,30,.24), 0 0 0 1px rgba(255,255,255,.75);
+  }
+  .status-bar {
+    position: absolute;
+    z-index: 50;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 45px;
+    padding: 12px 22px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 800;
+    pointer-events: none;
+  }
+  .island { position: absolute; top: 10px; left: 50%; width: 108px; height: 29px; transform: translateX(-50%); border-radius: 18px; background: #050605; }
+  .phone[data-screen="live"], .phone[data-screen="map"] { background: #dae2dc; }
+  .phone[data-screen="live"] .status-bar, .phone[data-screen="map"] .status-bar { color: #17211a; }
+  .screen { position: absolute; inset: 0; display: none; }
+  .screen.active { display: block; }
+  .home-screen { padding: 57px 18px 88px; overflow-y: auto; background: #f7f9f6; }
+  .home-head { display: flex; align-items: center; justify-content: space-between; }
+  .home-head p { margin: 0 0 3px; color: var(--muted); font-size: 12px; font-weight: 650; }
+  .home-head h2 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
+  .avatar { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; color: white; background: var(--forest); font-size: 13px; font-weight: 800; }
+  .weather { margin: 22px 0 10px; color: var(--forest); font-size: 13px; font-weight: 750; }
+  .today-card { padding: 20px; border-radius: 25px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.17); }
+  .today-card .label { color: #d7eadc; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+  .today-card h3 { margin: 8px 0 4px; font-size: 28px; letter-spacing: -.035em; }
+  .today-card p { margin: 0; color: #deebe1; font-size: 14px; }
+  .phases { display: grid; grid-template-columns: 1fr 3fr 1fr; gap: 4px; height: 6px; margin: 18px 0; }
+  .phases i { display: block; border-radius: 99px; background: rgba(255,255,255,.42); }
+  .phases i:nth-child(2) { background: #ff9b78; }
+  .card-start { width: 100%; min-height: 48px; border: 0; border-radius: 15px; color: var(--forest-dark); background: white; font-weight: 800; cursor: pointer; }
+  .quick-row { display: flex; justify-content: space-between; align-items: end; margin: 24px 2px 10px; }
+  .quick-row h3 { margin: 0; font-size: 18px; }
+  .quick-row span { color: var(--muted); font-size: 12px; }
+  .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .quick-grid button { min-height: 78px; border: 1px solid var(--line); border-radius: 18px; color: var(--ink); background: white; cursor: pointer; }
+  .quick-grid strong, .quick-grid small { display: block; }
+  .quick-grid strong { margin-bottom: 5px; font-size: 14px; }
+  .quick-grid small { color: var(--muted); font-size: 11px; }
+  .tab-bar {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 78px;
+    padding: 7px 20px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.1fr 1fr;
+    align-items: end;
+    border-top: 1px solid #e8ece8;
+    background: rgba(255,255,255,.96);
+    backdrop-filter: blur(18px);
+  }
+  .tab-bar button { border: 0; color: #8a948d; background: transparent; font-size: 10px; cursor: pointer; }
+  .tab-bar button i { display: block; margin-bottom: 3px; font-style: normal; font-size: 18px; }
+  .tab-bar .selected { color: var(--forest); font-weight: 800; }
+  .tab-bar .run-tab { align-self: center; margin-top: -30px; color: var(--ink); font-weight: 800; }
+  .tab-bar .run-tab i { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 2px; border: 5px solid white; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 8px 22px rgba(193,79,44,.26); font-size: 22px; }
+  .map-canvas { position: absolute; inset: 0; overflow: hidden; background: #e6ebe7; }
+  .map-canvas svg { width: 100%; height: 100%; }
+  .map-road { fill: none; stroke: #fff; stroke-width: 12; stroke-linecap: round; opacity: .9; }
+  .map-road-thin { fill: none; stroke: #cdd6ce; stroke-width: 2; stroke-linecap: round; }
+  .map-route { fill: none; stroke: var(--orange); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+  .map-block { fill: #d6ded7; }
+  .map-park { fill: #d5e6d8; }
+  .map-label { fill: #829086; font-size: 11px; font-family: -apple-system, sans-serif; }
+  .location-dot { fill: var(--forest); stroke: white; stroke-width: 4; }
+  .top-actions { position: absolute; z-index: 8; top: 52px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .round-action { display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%; color: var(--ink); background: rgba(255,255,255,.94); box-shadow: 0 5px 15px rgba(26,39,30,.12); cursor: pointer; font-size: 18px; }
+  .top-title { padding: 9px 13px; border-radius: 99px; background: rgba(255,255,255,.90); box-shadow: 0 5px 14px rgba(26,39,30,.08); font-size: 12px; font-weight: 800; }
+  .ready-sheet {
+    position: absolute;
+    z-index: 9;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 367px;
+    padding: 9px 18px 23px;
+    border-radius: 30px 30px 0 0;
+    background: white;
+    box-shadow: 0 -14px 40px rgba(26,39,30,.14);
+  }
+  .grabber { width: 42px; height: 5px; margin: 0 auto 16px; border-radius: 99px; background: #d8dfda; }
+  .activity-summary { width: 100%; padding: 0 2px 14px; display: flex; justify-content: space-between; align-items: center; border: 0; border-bottom: 1px solid #edf0ed; color: var(--ink); background: transparent; text-align: left; cursor: pointer; }
+  .activity-summary .kicker { display: block; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .activity-summary strong { display: block; margin-top: 4px; font-size: 22px; letter-spacing: -.03em; }
+  .activity-summary small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .summary-edit { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--forest); background: var(--green-soft); font-size: 17px; }
+  .context-row { display: flex; gap: 8px; margin-top: 12px; }
+  .context-chip { padding: 8px 10px; border-radius: 10px; color: #48554c; background: var(--soft); font-size: 11px; font-weight: 700; }
+  .guide-line { margin: 12px 0 0; padding: 10px 11px; border-radius: 12px; color: var(--forest-dark); background: var(--green-soft); font-size: 12px; line-height: 1.35; }
+  .launch-row { margin-top: 14px; display: grid; grid-template-columns: 1fr 82px 1fr; gap: 8px; align-items: center; }
+  .utility-button { border: 0; color: #536057; background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
+  .utility-button i { display: grid; place-items: center; width: 47px; height: 47px; margin: 0 auto 5px; border-radius: 50%; color: var(--forest); background: var(--soft); font-style: normal; font-size: 18px; }
+  .utility-button.configured i { color: white; background: var(--forest); }
+  .start-button { display: grid; place-items: center; width: 76px; height: 76px; margin: auto; border: 0; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 10px 24px rgba(193,79,44,.29); cursor: pointer; font-size: 26px; transform: translateY(-1px); }
+  .start-label { margin-top: 3px; color: var(--ink); text-align: center; font-size: 11px; font-weight: 800; }
+  .setup-summary { margin-top: 12px; display: flex; justify-content: center; }
+  .setup-summary button { min-height: 32px; padding: 5px 10px; border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; }
+  .setup-summary b { color: var(--forest); }
+  .shade { position: absolute; z-index: 35; inset: 0; display: none; background: rgba(13,20,15,.42); }
+  .shade.open { display: block; }
+  .option-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px 18px 28px;
+    border-radius: 30px 30px 0 0;
+    background: white;
+    box-shadow: 0 -18px 45px rgba(0,0,0,.18);
+  }
+  .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .sheet-head h3 { margin: 0; font-size: 20px; }
+  .sheet-head button { width: 34px; height: 34px; border: 0; border-radius: 50%; color: var(--ink); background: var(--soft); cursor: pointer; }
+  .setting-row { width: 100%; min-height: 57px; padding: 9px 3px; display: flex; align-items: center; gap: 12px; border: 0; border-bottom: 1px solid #edf0ed; color: var(--ink); background: white; text-align: left; cursor: pointer; }
+  .setting-row:last-child { border-bottom: 0; }
+  .setting-icon { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; color: var(--forest); background: var(--green-soft); }
+  .setting-copy { flex: 1; }
+  .setting-copy strong, .setting-copy small { display: block; }
+  .setting-copy strong { font-size: 14px; }
+  .setting-copy small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+  .setting-value { color: var(--forest); font-size: 12px; font-weight: 800; }
+  .countdown-screen { color: white; background: rgba(20,31,23,.55); backdrop-filter: blur(5px); }
+  .countdown-center { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 13px; }
+  .countdown-center p { margin: 0; color: rgba(255,255,255,.82); font-size: 14px; font-weight: 700; }
+  #count-number { font-size: 124px; line-height: .9; font-weight: 900; letter-spacing: -.08em; text-shadow: 0 10px 35px rgba(0,0,0,.24); }
+  .count-cancel { position: absolute; z-index: 2; top: 57px; left: 18px; width: 42px; height: 42px; border: 0; border-radius: 50%; color: white; background: rgba(0,0,0,.30); cursor: pointer; font-size: 17px; }
+  .live-map-background { position: absolute; inset: 0; }
+  .live-top { position: absolute; z-index: 8; top: 52px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .live-pill { padding: 9px 12px; border-radius: 99px; color: var(--ink); background: rgba(255,255,255,.92); box-shadow: 0 4px 14px rgba(26,39,30,.09); font-size: 11px; font-weight: 800; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #39a766; box-shadow: 0 0 0 3px rgba(57,167,102,.15); }
+  .metric-panel {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 672px;
+    padding: 9px 20px 20px;
+    border-radius: 30px 30px 0 0;
+    color: white;
+    background: var(--live-panel);
+    box-shadow: 0 -12px 36px rgba(17,27,20,.18);
+  }
+  .metric-panel .grabber { background: rgba(255,255,255,.24); cursor: pointer; }
+  .now-playing { margin: 0 0 25px; padding: 12px 13px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; color: white; background: rgba(255,255,255,.07); width: 100%; text-align: left; cursor: pointer; }
+  .album { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; color: #f7b69f; background: rgba(228,111,73,.18); }
+  .now-playing strong, .now-playing small { display: block; }
+  .now-playing strong { font-size: 12px; }
+  .now-playing small { margin-top: 2px; color: rgba(255,255,255,.55); font-size: 10px; }
+  .primary-metric span { display: block; color: rgba(255,255,255,.56); font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+  .primary-metric strong { display: block; margin-top: 3px; font-size: 68px; line-height: .95; font-weight: 850; letter-spacing: -.065em; }
+  .primary-metric em { margin-left: 5px; font-size: 18px; font-style: normal; letter-spacing: 0; }
+  .metrics-grid { margin-top: 27px; display: grid; grid-template-columns: 1fr 1fr; gap: 21px 14px; }
+  .metric small, .metric strong { display: block; }
+  .metric small { color: rgba(255,255,255,.48); font-size: 11px; }
+  .metric strong { margin-top: 4px; font-size: 29px; letter-spacing: -.035em; }
+  .companion-nudge { margin-top: 24px; padding: 12px 13px; border-radius: 14px; color: #f7dfd6; background: rgba(228,111,73,.14); font-size: 12px; line-height: 1.4; }
+  .metric-dots { display: flex; justify-content: center; gap: 6px; margin: 17px 0 13px; }
+  .metric-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.28); cursor: pointer; }
+  .metric-dots button.active { width: 19px; border-radius: 99px; background: white; }
+  .live-controls { display: grid; grid-template-columns: 1fr 82px 1fr; align-items: center; }
+  .live-side { width: 48px; height: 48px; margin: auto; border: 0; border-radius: 50%; color: white; background: rgba(255,255,255,.09); cursor: pointer; font-size: 17px; }
+  .pause { display: grid; place-items: center; width: 76px; height: 76px; margin: auto; border: 0; border-radius: 50%; color: var(--ink); background: white; cursor: pointer; font-size: 24px; font-weight: 850; }
+  .pause.paused { color: white; background: var(--orange); }
+  .paused-actions { display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .metric-panel.paused .paused-actions { display: grid; }
+  .metric-panel.paused .live-controls { display: none; }
+  .paused-actions button { min-height: 54px; border: 0; border-radius: 16px; font-weight: 800; cursor: pointer; }
+  .resume { color: white; background: var(--orange); }
+  .finish { color: white; background: rgba(255,255,255,.12); }
+  .compact-panel {
+    position: absolute;
+    z-index: 10;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 172px;
+    padding: 9px 16px 20px;
+    border-radius: 28px 28px 0 0;
+    color: white;
+    background: var(--live-panel);
+    box-shadow: 0 -12px 35px rgba(17,27,20,.18);
+  }
+  .compact-panel .grabber { margin-bottom: 12px; background: rgba(255,255,255,.25); cursor: pointer; }
+  .compact-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; }
+  .compact-metrics div { text-align: center; }
+  .compact-metrics small, .compact-metrics strong { display: block; }
+  .compact-metrics small { color: rgba(255,255,255,.45); font-size: 10px; }
+  .compact-metrics strong { margin: 3px 0 1px; font-size: 20px; letter-spacing: -.03em; }
+  .compact-control { display: grid; place-items: center; width: 55px; height: 55px; margin: 13px auto 0; border: 0; border-radius: 50%; color: var(--ink); background: white; cursor: pointer; font-size: 19px; }
+  .route-progress { position: absolute; z-index: 8; top: 102px; left: 15px; padding: 10px 12px; border-radius: 14px; color: var(--forest-dark); background: rgba(255,255,255,.93); box-shadow: 0 5px 15px rgba(26,39,30,.09); font-size: 11px; font-weight: 800; }
+  .route-progress span { display: block; margin-top: 3px; color: var(--muted); font-weight: 600; }
+  .toast { position: absolute; z-index: 60; left: 50%; top: 76px; padding: 9px 13px; transform: translateX(-50%) translateY(-15px); border-radius: 99px; color: white; background: rgba(24,34,27,.88); opacity: 0; transition: .2s ease; font-size: 11px; font-weight: 750; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (max-width: 980px) {
+    .prototype { grid-template-columns: 1fr 420px; }
+    .notes { display: none; }
+  }
+  @media (max-width: 720px) {
+    body { background: #101410; }
+    .prototype { display: block; width: 100%; min-height: 100vh; padding: 0; }
+    .intro { display: none; }
+    .phone { width: min(390px, 100vw); height: min(844px, 100vh); margin: 0 auto; border: 0; border-radius: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<main class="prototype">
+  <section class="intro">
+    <p class="eyebrow">Activity flow wireframe</p>
+    <h1>Ready to run,<br>not configure.</h1>
+    <p>A direct center action, remembered defaults, and one continuous surface from launch to live tracking.</p>
+    <nav class="step-nav" aria-label="Prototype screens">
+      <button type="button" data-show="home" aria-current="step"><span>1</span>Today + center Run action</button>
+      <button type="button" data-show="ready"><span>2</span>Ready state</button>
+      <button type="button" data-show="live"><span>3</span>Live metrics</button>
+      <button type="button" data-show="map"><span>4</span>Expanded map</button>
+    </nav>
+  </section>
+
+  <section class="phone" id="activity-prototype" data-screen="home" aria-label="Interactive Plainstride activity wireframe">
+    <div class="status-bar"><span>9:41</span><span class="island"></span><span>●●● 87%</span></div>
+
+    <section class="screen home-screen active" data-screen-panel="home">
+      <div class="home-head">
+        <div><p>Wednesday, August 26</p><h2>Good morning, Bruce</h2></div>
+        <div class="avatar">BX</div>
+      </div>
+      <div class="weather">Perfect outside · 61° · light breeze</div>
+      <article class="today-card">
+        <span class="label">Today’s workout</span>
+        <h3>Easy run · 30 min</h3>
+        <p>Conversational effort. Keep this one comfortable.</p>
+        <div class="phases" aria-label="Warm up, easy running, cool down"><i></i><i></i><i></i></div>
+        <button class="card-start" type="button" data-action="ready">Start planned run</button>
+      </article>
+      <div class="quick-row"><h3>Run your way</h3><span>No setup required</span></div>
+      <div class="quick-grid">
+        <button type="button" data-action="ready"><strong>Freestyle</strong><small>Just run</small></button>
+        <button type="button" data-action="ready"><strong>Distance</strong><small>Set a target</small></button>
+        <button type="button" data-action="ready"><strong>Time</strong><small>Pick minutes</small></button>
+      </div>
+      <nav class="tab-bar" aria-label="Main tabs">
+        <button type="button"><i>♧</i>Social</button>
+        <button type="button" class="selected"><i>✦</i>Today</button>
+        <button type="button" class="run-tab" data-action="ready"><i>▶</i>Run</button>
+        <button type="button"><i>○</i>Me</button>
+      </nav>
+    </section>
+
+    <section class="screen" data-screen-panel="ready">
+      <div class="map-canvas" aria-hidden="true">
+        <svg viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
+          <rect width="390" height="844" fill="#e7ece8"/>
+          <path class="map-park" d="M-25 78h140v170H-25zM265 20h150v190H265zM260 570h165v260H260z"/>
+          <rect class="map-block" x="137" y="74" width="92" height="74" rx="8"/><rect class="map-block" x="128" y="178" width="74" height="55" rx="8"/><rect class="map-block" x="235" y="236" width="92" height="82" rx="8"/>
+          <path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480M315-20c-30 180-43 315-15 520"/>
+          <path class="map-road-thin" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480M315-20c-30 180-43 315-15 520"/>
+          <path class="map-route" d="M110 382c14-70 42-103 78-103 40 0 53 51 95 55"/>
+          <circle class="location-dot" cx="110" cy="382" r="9"/>
+          <text class="map-label" x="31" y="290">Cedar Ave</text><text class="map-label" x="210" y="360">Greenway</text>
+        </svg>
+      </div>
+      <div class="top-actions"><button class="round-action" type="button" data-action="home" aria-label="Close">×</button><span class="top-title">Ready to run</span><button class="round-action" type="button" data-action="options" aria-label="Open setup">•••</button></div>
+      <section class="ready-sheet">
+        <div class="grabber"></div>
+        <button class="activity-summary" type="button" data-action="goal">
+          <span><span class="kicker">Today · AI adjusted</span><strong>Easy run · 30 min</strong><small>Comfortable effort · no route required</small></span>
+          <span class="summary-edit">›</span>
+        </button>
+        <div class="context-row"><span class="context-chip">Runner · Outdoor</span><span class="context-chip">Voice guide on</span></div>
+        <p class="guide-line">✦ Start gently. I’ll stay quiet unless the run needs your attention.</p>
+        <div class="launch-row">
+          <button class="utility-button configured" type="button" data-action="toast" data-message="Music: Easy Miles"><i>♫</i>Music</button>
+          <div><button class="start-button" type="button" data-action="start" aria-label="Start run">▶</button><div class="start-label">Start</div></div>
+          <button class="utility-button configured" type="button" data-action="toast" data-message="Live Track: Xia"><i>⌖</i>Live Track</button>
+        </div>
+        <div class="setup-summary"><button type="button" data-action="options"><b>Pegasus 41</b> · Outdoor · More setup ›</button></div>
+      </section>
+      <div class="shade" id="ready-options">
+        <section class="option-sheet">
+          <div class="grabber"></div>
+          <div class="sheet-head"><h3>Run setup</h3><button type="button" data-action="close-options" aria-label="Close setup">×</button></div>
+          <button class="setting-row" type="button"><span class="setting-icon">♫</span><span class="setting-copy"><strong>Music</strong><small>Apple Music</small></span><span class="setting-value">Easy Miles ›</span></button>
+          <button class="setting-row" type="button"><span class="setting-icon">⌖</span><span class="setting-copy"><strong>Live Track</strong><small>Share only during this run</small></span><span class="setting-value">Xia ›</span></button>
+          <button class="setting-row" type="button"><span class="setting-icon">♟</span><span class="setting-copy"><strong>Shoes</strong><small>Mileage tracked automatically</small></span><span class="setting-value">Pegasus 41 ›</span></button>
+          <button class="setting-row" type="button"><span class="setting-icon">◖</span><span class="setting-copy"><strong>Voice guide</strong><small>Essential cues only</small></span><span class="setting-value">On ›</span></button>
+          <button class="setting-row" type="button"><span class="setting-icon">＋</span><span class="setting-copy"><strong>More</strong><small>Route, group run, indoor</small></span><span class="setting-value">›</span></button>
+        </section>
+      </div>
+      <div class="shade" id="goal-options">
+        <section class="option-sheet">
+          <div class="grabber"></div>
+          <div class="sheet-head"><h3>Choose this run</h3><button type="button" data-action="close-goal" aria-label="Close goal choices">×</button></div>
+          <button class="setting-row" type="button" data-action="close-goal"><span class="setting-icon">✦</span><span class="setting-copy"><strong>Today’s easy run</strong><small>30 min · conversational</small></span><span class="setting-value">Selected</span></button>
+          <button class="setting-row" type="button" data-action="close-goal"><span class="setting-icon">∞</span><span class="setting-copy"><strong>Freestyle</strong><small>No preset target</small></span><span class="setting-value">›</span></button>
+          <button class="setting-row" type="button" data-action="close-goal"><span class="setting-icon">◎</span><span class="setting-copy"><strong>Distance</strong><small>1K, 5K, 10K, or custom</small></span><span class="setting-value">›</span></button>
+          <button class="setting-row" type="button" data-action="close-goal"><span class="setting-icon">◷</span><span class="setting-copy"><strong>Time</strong><small>15, 30, 45, 60 min, or custom</small></span><span class="setting-value">›</span></button>
+        </section>
+      </div>
+    </section>
+
+    <section class="screen countdown-screen" data-screen-panel="countdown">
+      <div class="map-canvas" aria-hidden="true">
+        <svg viewBox="0 0 390 844"><rect width="390" height="844" fill="#829087"/><path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480" opacity=".25"/></svg>
+      </div>
+      <button class="count-cancel" type="button" data-action="ready" aria-label="Cancel countdown">×</button>
+      <div class="countdown-center"><p>Easy run · 30 min</p><strong id="count-number">3</strong><p>GPS ready · Live Track on</p></div>
+    </section>
+
+    <section class="screen" data-screen-panel="live">
+      <div class="live-map-background map-canvas" aria-hidden="true">
+        <svg viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
+          <rect width="390" height="844" fill="#e7ece8"/><path class="map-park" d="M-25 78h140v170H-25zM265 20h150v190H265z"/><path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480"/><path class="map-road-thin" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480"/><path class="map-route" d="M110 382c14-70 42-103 78-103 40 0 53 51 95 55"/><circle class="location-dot" cx="173" cy="280" r="9"/>
+        </svg>
+      </div>
+      <div class="live-top"><button class="round-action" type="button" data-action="toast" data-message="Activity hidden — still recording" aria-label="Hide activity">⌄</button><span class="live-pill"><span class="live-dot"></span>GPS · Live Track</span></div>
+      <section class="metric-panel" id="metric-panel">
+        <div class="grabber" data-action="map" role="button" tabindex="0" aria-label="Expand map"></div>
+        <button class="now-playing" type="button" data-action="toast" data-message="Easy Miles playing"><span class="album">♫</span><span><strong>Easy Miles</strong><small>Apple Music · playing</small></span></button>
+        <div class="primary-metric"><span>Distance</span><strong>0.84<em>km</em></strong></div>
+        <div class="metrics-grid">
+          <div class="metric"><small>Elapsed time</small><strong>05:12</strong></div>
+          <div class="metric"><small>Current pace</small><strong>6:10</strong></div>
+          <div class="metric"><small>Average pace</small><strong>6:12</strong></div>
+          <div class="metric"><small>Heart rate</small><strong>142</strong></div>
+        </div>
+        <div class="companion-nudge">✦ Smooth start. Hold this effort and let the pace settle.</div>
+        <div class="metric-dots"><button type="button" class="active" data-action="toast" data-message="Main metrics"></button><button type="button" data-action="toast" data-message="Effort metrics"></button><button type="button" data-action="toast" data-message="Workout progress"></button></div>
+        <div class="live-controls"><button class="live-side" type="button" data-action="toast" data-message="Screen locked">▣</button><button class="pause" type="button" data-action="pause" aria-label="Pause">Ⅱ</button><button class="live-side" type="button" data-action="toast" data-message="Camera opened">●</button></div>
+        <div class="paused-actions"><button class="resume" type="button" data-action="resume">Resume</button><button class="finish" type="button" data-action="toast" data-message="Finish confirmation">Finish</button></div>
+      </section>
+    </section>
+
+    <section class="screen" data-screen-panel="map">
+      <div class="map-canvas" aria-hidden="true">
+        <svg viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
+          <rect width="390" height="844" fill="#e7ece8"/>
+          <path class="map-park" d="M-25 78h140v170H-25zM265 20h150v190H265zM260 570h165v260H260z"/>
+          <rect class="map-block" x="137" y="74" width="92" height="74" rx="8"/><rect class="map-block" x="128" y="178" width="74" height="55" rx="8"/><rect class="map-block" x="235" y="236" width="92" height="82" rx="8"/><rect class="map-block" x="36" y="450" width="85" height="96" rx="8"/>
+          <path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480M315-20c-30 180-43 315-15 520M-20 590c100-35 210-34 430 35"/>
+          <path class="map-road-thin" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480M315-20c-30 180-43 315-15 520M-20 590c100-35 210-34 430 35"/>
+          <path class="map-route" d="M110 382c14-70 42-103 78-103 40 0 53 51 95 55 50 5 33 80 18 119"/>
+          <circle class="location-dot" cx="188" cy="280" r="9"/>
+          <text class="map-label" x="31" y="290">Cedar Ave</text><text class="map-label" x="210" y="360">Greenway</text><text class="map-label" x="50" y="580">Lake Loop</text>
+        </svg>
+      </div>
+      <div class="live-top"><button class="round-action" type="button" data-action="toast" data-message="Activity hidden — still recording" aria-label="Hide activity">⌄</button><span class="live-pill"><span class="live-dot"></span>GPS · Live Track</span></div>
+      <div class="route-progress">Easy run · 25 min left<span>On route · 0.84 km</span></div>
+      <section class="compact-panel">
+        <div class="grabber" data-action="live" role="button" tabindex="0" aria-label="Expand metrics"></div>
+        <div class="compact-metrics"><div><small>Pace</small><strong>6:10</strong></div><div><small>Time</small><strong>05:12</strong></div><div><small>Distance</small><strong>0.84</strong></div></div>
+        <button class="compact-control" type="button" data-action="live" aria-label="Return to live metrics">Ⅱ</button>
+      </section>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </section>
+
+  <aside class="notes" aria-label="Design decisions">
+    <div class="note"><b>One obvious launch action</b><p>The global Run control opens a prepared state from any primary tab.</p></div>
+    <div class="note"><b>Defaults replace controls</b><p>Shoes, environment, and voice are summarized—not presented as equal CTAs.</p></div>
+    <div class="note"><b>One continuous live surface</b><p>The same map remains behind the countdown, metrics sheet, and expanded route view.</p></div>
+    <div class="note"><b>Controls follow frequency</b><p>Music and Live Track stay near Start; everything else moves into setup.</p></div>
+  </aside>
+</main>
+<script>
+(() => {
+  const phone = document.getElementById('activity-prototype');
+  const panels = [...phone.querySelectorAll('[data-screen-panel]')];
+  const navButtons = [...document.querySelectorAll('.step-nav [data-show]')];
+  const readyOptions = document.getElementById('ready-options');
+  const goalOptions = document.getElementById('goal-options');
+  const countNumber = document.getElementById('count-number');
+  const metricPanel = document.getElementById('metric-panel');
+  const toast = document.getElementById('toast');
+  let countdownTimer = null;
+  let toastTimer = null;
+
+  function setScreen(name) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    panels.forEach(panel => panel.classList.toggle('active', panel.dataset.screenPanel === name));
+    phone.dataset.screen = name;
+    navButtons.forEach(button => {
+      const selected = button.dataset.show === name;
+      if (selected) button.setAttribute('aria-current', 'step');
+      else button.removeAttribute('aria-current');
+    });
+    readyOptions.classList.remove('open');
+    goalOptions.classList.remove('open');
+    metricPanel.classList.remove('paused');
+  }
+
+  function showToast(message) {
+    clearTimeout(toastTimer);
+    toast.textContent = message;
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+  }
+
+  function beginCountdown() {
+    setScreen('countdown');
+    let value = 3;
+    countNumber.textContent = value;
+    countdownTimer = setInterval(() => {
+      value -= 1;
+      if (value > 0) countNumber.textContent = value;
+      else if (value === 0) countNumber.textContent = 'GO';
+      else setScreen('live');
+    }, 650);
+  }
+
+  function handleAction(action, element) {
+    if (['home', 'ready', 'live', 'map'].includes(action)) setScreen(action);
+    else if (action === 'start') beginCountdown();
+    else if (action === 'options') readyOptions.classList.add('open');
+    else if (action === 'close-options') readyOptions.classList.remove('open');
+    else if (action === 'goal') goalOptions.classList.add('open');
+    else if (action === 'close-goal') goalOptions.classList.remove('open');
+    else if (action === 'pause') metricPanel.classList.add('paused');
+    else if (action === 'resume') metricPanel.classList.remove('paused');
+    else if (action === 'toast') showToast(element.dataset.message || 'Updated');
+  }
+
+  document.addEventListener('click', event => {
+    const showButton = event.target.closest('[data-show]');
+    if (showButton) return setScreen(showButton.dataset.show);
+    const actionButton = event.target.closest('[data-action]');
+    if (actionButton) handleAction(actionButton.dataset.action, actionButton);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const actionElement = event.target.closest('[data-action]');
+    if (!actionElement || actionElement.tagName === 'BUTTON') return;
+    event.preventDefault();
+    handleAction(actionElement.dataset.action, actionElement);
+  });
+
+  readyOptions.addEventListener('click', event => { if (event.target === readyOptions) readyOptions.classList.remove('open'); });
+  goalOptions.addEventListener('click', event => { if (event.target === goalOptions) goalOptions.classList.remove('open'); });
+})();
+</script>
+</body>
+</html>
