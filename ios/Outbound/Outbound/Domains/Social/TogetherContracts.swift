@@ -41,6 +41,7 @@ struct SocialConnectionDTO: Codable, Identifiable, Sendable {
 
 struct SocialConnectionsResponseDTO: Codable, Sendable {
     let connections: [SocialConnectionDTO]
+    let nextCursor: String?
 }
 
 struct SocialPersonSearchResultDTO: Codable, Identifiable, Sendable {

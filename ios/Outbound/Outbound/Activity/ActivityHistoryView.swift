@@ -9,6 +9,13 @@ struct ActivityHistoryView: View {
     @State private var isSelecting = false
     @State private var confirmsDeletion = false
     @State private var deletionFailed = false
+    @State private var visibleActivityCount = Self.pageSize
+
+    private static let pageSize = 20
+
+    private var visibleActivities: [SavedActivity] {
+        Array(activityStore.activities.prefix(visibleActivityCount))
+    }
 
     var body: some View {
         Group {
@@ -71,7 +78,7 @@ struct ActivityHistoryView: View {
 
     private var list: some View {
         List {
-            ForEach(activityStore.activities) { activity in
+            ForEach(visibleActivities) { activity in
                 HStack(spacing: 12) {
                     if isSelecting {
                         Image(systemName: selectedActivityIDs.contains(activity.id) ? "checkmark.circle.fill" : "circle")
@@ -95,7 +102,7 @@ struct ActivityHistoryView: View {
             }
             .onDelete { indexSet in
                 let activitiesToDelete = indexSet.compactMap { index in
-                    activityStore.activities.indices.contains(index) ? activityStore.activities[index] : nil
+                    visibleActivities.indices.contains(index) ? visibleActivities[index] : nil
                 }
                 Task {
                     for activity in activitiesToDelete {
@@ -104,8 +111,33 @@ struct ActivityHistoryView: View {
                 }
             }
             .deleteDisabled(isSelecting)
+
+            if visibleActivities.count < activityStore.activities.count {
+                Button {
+                    loadNextPage()
+                } label: {
+                    Text(String(localized: "common.load_more", defaultValue: "Load more"))
+                        .frame(maxWidth: .infinity)
+                }
+                .listRowSeparator(.hidden)
+                .accessibilityHint(String(localized: "activity.history.load_more.hint", defaultValue: "Shows older activities."))
+            }
         }
         .listStyle(.plain)
+    }
+
+    private func loadNextPage() {
+        let priorCount = visibleActivities.count
+        visibleActivityCount = min(activityStore.activities.count, visibleActivityCount + Self.pageSize)
+        let appendedCount = visibleActivities.count - priorCount
+        let page = Int(ceil(Double(visibleActivities.count) / Double(Self.pageSize)))
+        Task {
+            await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+                .sourceType: .string("activity_history"),
+                .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+                .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+            ]))
+        }
     }
 
     private var selectedActivities: [SavedActivity] {

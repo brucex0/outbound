@@ -35,6 +35,7 @@ struct CreateActivityEventView: View {
             if socialStore.connections.isEmpty {
                 await socialStore.refreshConnections()
             }
+            await socialStore.loadRemainingConnections()
         }
     }
 

@@ -938,7 +938,10 @@ private struct ActivityEventDetailView: View {
                         .disabled(isInviting || selectedConnectionIDs.isEmpty)
                     }
                 }
-                .task { await socialStore.refreshConnections() }
+                .task {
+                    await socialStore.refreshConnections()
+                    await socialStore.loadRemainingConnections()
+                }
             }
         }
     }
@@ -1369,8 +1372,12 @@ struct SocialCommentsView: View {
 
 private struct SocialConnectionsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @Environment(\.analyticsManager) private var analyticsManager
     @State private var searchQuery = ""
+    @State private var paginationToast: String?
     @FocusState private var isSearchFocused: Bool
+
+    private static let pageSize = 20
 
     private var incomingRequests: [SocialConnectionDTO] {
         socialStore.connections.filter { $0.status == "pending" && $0.direction == "incoming" }
@@ -1468,6 +1475,26 @@ private struct SocialConnectionsView: View {
                 }
             }
 
+            if socialStore.hasMoreConnections {
+                Section {
+                    Button {
+                        Task { await loadMoreConnections() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if socialStore.isLoadingMoreConnections {
+                                ProgressView()
+                            } else {
+                                Text(String(localized: "common.load_more", defaultValue: "Load more"))
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(socialStore.isLoadingMoreConnections)
+                    .accessibilityHint(String(localized: "social.connections.load_more.hint", defaultValue: "Shows more connections and requests."))
+                }
+            }
+
             if !socialStore.blocks.isEmpty {
                 Section("Blocked") {
                     ForEach(socialStore.blocks) { block in
@@ -1543,6 +1570,42 @@ private struct SocialConnectionsView: View {
                 ProgressView()
             }
         }
+        .overlay(alignment: .top) {
+            if let paginationToast {
+                Label(paginationToast, systemImage: "exclamationmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: paginationToast)
+        .task(id: paginationToast) {
+            guard paginationToast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            paginationToast = nil
+        }
+    }
+
+    private func loadMoreConnections() async {
+        guard let appendedCount = await socialStore.loadMoreConnections() else {
+            paginationToast = String(
+                localized: "social.connections.load_more_failed",
+                defaultValue: "Could not load more connections. Try again."
+            )
+            return
+        }
+        guard appendedCount > 0 else { return }
+        let page = Int(ceil(Double(socialStore.connections.count) / Double(Self.pageSize)))
+        await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+            .sourceType: .string("connections"),
+            .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+            .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+        ]))
     }
 
     private func connectionRow<Actions: View>(

@@ -175,6 +175,8 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `activity_feed_loaded` includes `timestamp_source` (`activity_start`, `post_created_fallback`, `mixed`, or `empty`) so rollout of exact activity-time display can be monitored without sending activity dates or other personal data.
 
+`paginated_list_page_loaded` records successful additional-page loads for `activity_history` and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity facts, connection identities, cursors, and exact totals are excluded.
+
 | Provider | Strengths for Plainstride | Tradeoffs | Fit now |
 | --- | --- | --- | --- |
 | Firebase Analytics | Already linked; minimal implementation work; familiar iOS SDK; automatic baseline events; custom events; direct BigQuery export for SQL and long-term ownership | Console analysis is less product-focused than dedicated tools; custom parameters need console registration for standard reports; GA naming and reporting constraints can leak into a poorly designed taxonomy | Best initial provider |

@@ -29,6 +29,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySyncCompleted = "activity_sync_completed"
     case activitySyncFailed = "activity_sync_failed"
     case activityFeedLoaded = "activity_feed_loaded"
+    case paginatedListPageLoaded = "paginated_list_page_loaded"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
@@ -114,6 +115,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case photoCountBucket = "photo_count_bucket"
     case participantCountBucket = "participant_count_bucket"
     case countBucket = "count_bucket"
+    case pageDepthBucket = "page_depth_bucket"
     case goalCompletionBucket = "goal_completion_bucket"
     case control
     case result
@@ -161,6 +163,7 @@ enum ProductAnalyticsSchema {
         .activitySyncCompleted: [.sourceType, .routeSelected],
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
+        .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],
@@ -276,6 +279,15 @@ enum ProductAnalyticsBucket {
         case ..<0.75: "50_74"
         case ..<1.0: "75_99"
         default: "completed"
+        }
+    }
+
+    static func pageDepth(_ page: Int) -> String {
+        return switch max(1, page) {
+        case 1: "1"
+        case 2: "2"
+        case 3...4: "3_4"
+        default: "5_plus"
         }
     }
 }

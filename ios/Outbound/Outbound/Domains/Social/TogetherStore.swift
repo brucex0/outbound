@@ -11,6 +11,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var connections: [SocialConnectionDTO] = []
     @Published private(set) var peopleResults: [SocialPersonSearchResultDTO] = []
     @Published private(set) var isConnectionsLoading = false
+    @Published private(set) var isLoadingMoreConnections = false
     @Published private(set) var pendingConnectionIDs: Set<String> = []
     @Published private(set) var commentsByPostID: [String: [TogetherCommentDTO]] = [:]
     @Published private(set) var isSocialMutationPending = false
@@ -23,6 +24,11 @@ final class TogetherStore: ObservableObject {
     private let api: APIClient
     private let defaults: UserDefaults
     private let cacheKey = "together_state_v1"
+    private var nextConnectionsCursor: String?
+
+    var hasMoreConnections: Bool {
+        nextConnectionsCursor != nil
+    }
 
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
@@ -305,15 +311,45 @@ final class TogetherStore: ObservableObject {
     func refreshConnections() async {
         if isUITestSeedData {
             connections = connections.isEmpty ? Self.uiTestConnections : connections
+            nextConnectionsCursor = nil
             return
         }
+        guard !isConnectionsLoading, !isLoadingMoreConnections else { return }
         isConnectionsLoading = true
         defer { isConnectionsLoading = false }
         do {
-            connections = try await api.fetchSocialConnections().connections
+            let page = try await api.fetchSocialConnections()
+            connections = page.connections
+            nextConnectionsCursor = page.nextCursor
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    func loadMoreConnections() async -> Int? {
+        guard !isConnectionsLoading, !isLoadingMoreConnections,
+              let cursor = nextConnectionsCursor else { return 0 }
+        isLoadingMoreConnections = true
+        defer { isLoadingMoreConnections = false }
+        do {
+            let page = try await api.fetchSocialConnections(cursor: cursor)
+            let existingIDs = Set(connections.map(\.id))
+            let appended = page.connections.filter { !existingIDs.contains($0.id) }
+            connections.append(contentsOf: appended)
+            nextConnectionsCursor = page.nextCursor
+            errorMessage = nil
+            return appended.count
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func loadRemainingConnections() async {
+        while nextConnectionsCursor != nil {
+            guard await loadMoreConnections() != nil else { return }
         }
     }
 

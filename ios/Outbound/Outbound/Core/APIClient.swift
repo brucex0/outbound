@@ -257,8 +257,10 @@ final class APIClient {
         } ?? [])
     }
 
-    func fetchSocialConnections() async throws -> SocialConnectionsResponseDTO {
-        try await get("/social/connections")
+    func fetchSocialConnections(cursor: String? = nil) async throws -> SocialConnectionsResponseDTO {
+        try await get("/social/connections", queryItems: cursor.map {
+            [URLQueryItem(name: "cursor", value: $0)]
+        } ?? [])
     }
 
     func searchSocialPeople(query: String) async throws -> SocialPeopleSearchResponseDTO {

@@ -12,6 +12,7 @@ import { signedActivityPhotoURL } from "../services/activityPhotoStorage.js";
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
+const socialConnectionsPageSize = 20;
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 const reportSchema = z.object({
@@ -148,16 +149,36 @@ function decodeFeedCursor(value: string): { createdAt: Date; id: string } | null
 router.get("/connections", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
+  const cursorValue = c.req.query("cursor");
+  const cursor = cursorValue ? decodeFeedCursor(cursorValue) : null;
+  if (cursorValue && !cursor) return c.json({ error: "Invalid connections cursor." }, 400);
   const connections = await getPrismaClient().connection.findMany({
-    where: { OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
+    where: {
+      AND: [
+        { OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
+        ...(cursor ? [{
+          OR: [
+            { updatedAt: { lt: cursor.createdAt } },
+            { updatedAt: cursor.createdAt, id: { lt: cursor.id } },
+          ],
+        }] : []),
+      ],
+    },
     include: {
       requester: { select: socialPersonSelect },
       addressee: { select: socialPersonSelect },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: socialConnectionsPageSize + 1,
   });
+  const page = connections.slice(0, socialConnectionsPageSize);
+  const lastConnection = page.at(-1);
+  const nextCursor = connections.length > socialConnectionsPageSize && lastConnection
+    ? encodeFeedCursor(lastConnection.updatedAt, lastConnection.id)
+    : null;
   return c.json({
-    connections: connections.map((connection) => connectionPayload(connection, user.id)),
+    connections: page.map((connection) => connectionPayload(connection, user.id)),
+    nextCursor,
   });
 });
 
