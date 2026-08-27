@@ -214,7 +214,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             actionColor: UIColor(actionColor),
             onStart: onStart
         )
-        context.coordinator.attach(to: uiViewController.tabBarController)
+        uiViewController.resolveTabBarController()
     }
 
     static func dismantleUIViewController(
@@ -324,11 +324,26 @@ private final class TabBarAttachmentViewController: UIViewController {
         resolveTabBarController()
     }
 
-    private func resolveTabBarController() {
+    func resolveTabBarController() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.onResolveTabBarController?(self.tabBarController)
+            let resolvedController = self.tabBarController
+                ?? Self.findTabBarController(in: self.view.window?.rootViewController)
+            self.onResolveTabBarController?(resolvedController)
         }
+    }
+
+    private static func findTabBarController(in controller: UIViewController?) -> UITabBarController? {
+        guard let controller else { return nil }
+        if let tabBarController = controller as? UITabBarController {
+            return tabBarController
+        }
+        for child in controller.children {
+            if let tabBarController = findTabBarController(in: child) {
+                return tabBarController
+            }
+        }
+        return findTabBarController(in: controller.presentedViewController)
     }
 }
 
