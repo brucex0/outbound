@@ -60,29 +60,22 @@ struct SimplifiedAppShell: View {
             )
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
-                .tabItem {
-                    if selection == .today {
-                        Label(
-                            String(localized: "record.start.short", defaultValue: "Start"),
-                            systemImage: "play.fill"
-                        )
-                        .opacity(0)
-                        .accessibilityHidden(true)
-                    } else {
-                        Label(String(localized: "Today"), systemImage: "sparkles")
-                    }
-                }
+                .tabItem { Label(String(localized: "Today"), systemImage: "sparkles") }
 
             SimplifiedMeView()
                 .tag(SimplifiedAppTab.me)
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
-        .overlay(alignment: .bottom) {
-            if selection == .today && activitySessionState == .idle {
-                contextualStartControl
-                    .padding(.bottom, 3)
-            }
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            SimplifiedAppBottomBar(
+                selection: $selection,
+                showsStart: selection == .today && activitySessionState == .idle,
+                accentColor: guideCatalog.selectedTheme.accentColor,
+                actionColor: theme.actionColor,
+                onStart: onContextualStart
+            )
         }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
@@ -106,7 +99,7 @@ struct SimplifiedAppShell: View {
                 .accessibilityLabel(String(localized: "Open assistant"))
                 .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
                 .padding(.leading, 18)
-                .padding(.bottom, 58)
+                .padding(.bottom, 82)
             }
         }
         .sheet(isPresented: $showsAssistant) {
@@ -197,28 +190,88 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private var contextualStartControl: some View {
-        Button(action: onContextualStart) {
+}
+
+private struct SimplifiedAppBottomBar: View {
+    @Binding var selection: SimplifiedAppTab
+    let showsStart: Bool
+    let accentColor: Color
+    let actionColor: Color
+    let onStart: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            navigationButton(
+                tab: .social,
+                title: String(localized: "Social"),
+                systemImage: "person.2"
+            )
+
+            if showsStart {
+                startButton
+            } else {
+                navigationButton(
+                    tab: .today,
+                    title: String(localized: "Today"),
+                    systemImage: "sparkles"
+                )
+            }
+
+            navigationButton(
+                tab: .me,
+                title: String(localized: "Me"),
+                systemImage: "person.crop.circle"
+            )
+        }
+        .frame(height: 70)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    private func navigationButton(
+        tab: SimplifiedAppTab,
+        title: String,
+        systemImage: String
+    ) -> some View {
+        Button {
+            selection = tab
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 19, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(selection == tab ? accentColor : Color.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selection == tab ? .isSelected : [])
+    }
+
+    private var startButton: some View {
+        Button(action: onStart) {
             VStack(spacing: 2) {
                 Image(systemName: "play.fill")
                     .font(.title3.weight(.black))
                     .foregroundStyle(.white)
                     .offset(x: 1)
                     .frame(width: 54, height: 54)
-                    .background(theme.actionColor, in: Circle())
+                    .background(actionColor, in: Circle())
                     .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 5))
-                    .shadow(color: theme.actionColor.opacity(0.28), radius: 10, y: 5)
+                    .shadow(color: actionColor.opacity(0.28), radius: 10, y: 5)
 
                 Text(String(localized: "record.start.short", defaultValue: "Start"))
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(theme.actionColor)
+                    .foregroundStyle(actionColor)
                     .textCase(.uppercase)
             }
-            .frame(width: 110)
-            .frame(minHeight: 70)
+            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .offset(y: -13)
         .accessibilityLabel(String(localized: "record.start.short", defaultValue: "Start"))
         .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
     }
