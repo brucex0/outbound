@@ -147,7 +147,7 @@ Current implementation:
 - when connected, the app reads up to eight weeks of non-Plainstride workouts plus available birthday, biological sex, height, and weight; running history refines the onboarding baseline and profile details are saved to the private training profile
 - after connection, app launch and foreground checks look for new supported workouts with a one-day cursor overlap; imported HealthKit UUIDs in activity source metadata prevent duplicates
 - running, walking, cycling, hiking, and swimming workouts are supported
-- new candidates open a selection-and-confirmation sheet, which is also available from the import icon in Me -> Recent; every candidate is selected by default, users can uncheck individual workouts, and a brief warning notes that walking workouts may crowd activity history
+- new candidates open a selection-and-confirmation sheet, which is also available from the import icon in Me -> Recent; all five activity-type checkboxes and every candidate are selected by default, users can exclude a whole type or individual workouts, and a brief warning notes that walking workouts may crowd activity history
 - saving an Outbound-recorded activity also creates a running or cycling workout in Apple Health when write access is authorized
 - the workout includes start/end time, duration, distance, estimated active energy when onboarding weight is available, Outbound metadata, and the recorded route when at least two points exist
 - local activity persistence completes first; HealthKit failure does not discard the Outbound activity
