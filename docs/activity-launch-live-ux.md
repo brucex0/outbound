@@ -1,6 +1,6 @@
 # Activity Launch and Live Run UX
 
-Open this when changing the Today launch dock, activity goal selection, countdown, or live-run controls. The clickable reference is `docs/prototypes/activity-start-live-wireframe.html`. Production Swift implementation is still pending.
+Open this when changing the Today launch dock, activity goal selection, countdown, or live-run controls. The clickable reference is `docs/prototypes/activity-start-live-wireframe.html`; the production flow is implemented in `RecordView.swift`, `ActivityGoal.swift`, `LiveMapView.swift`, and `CameraHUDView.swift`.
 
 ## Navigation Decision
 
@@ -13,7 +13,7 @@ Reuse the center Today position contextually while retaining the production icon
 
 ## Launch Dock
 
-Use one fixed, flat control area on Today. It has no grabber, expansion state, setup heading, or second setup screen.
+Use one fixed, flat control area over a full-content map on Today. The map fills every point above the dock and center tab action. The dock has no grabber, expansion state, setup heading, or second setup screen.
 
 Goal modes are peers:
 
@@ -51,11 +51,12 @@ Keep map, current guidance, Pause, and Finish primary. Pause reveals separate Re
 
 Use temporary toasts for setup changes and learned-default confirmation. Overlays dismiss with their close action, outside tap, or Escape in the web reference. Selection uses text/checkmarks or state labels in addition to color.
 
-Production analytics should reuse the typed activity funnel in `docs/product-analytics.md`: setup exposure/configuration, `activity_started`, pause/resume/finish, and save/discard. Add `calories` to the bounded `goal_type` contract when implementing this flow. Do not emit an event for every mode tap or include exact targets, contact names, playlist names, or shoe names.
+Production analytics reuse the typed activity funnel in `docs/product-analytics.md`: setup exposure/configuration, `activity_started`, pause/resume/finish, and save/discard. `calories` is a bounded `goal_type`; calorie targets use coarse target buckets. Do not emit an event for every mode tap or include exact targets, contact names, playlist names, or shoe names.
 
 ## Acceptance Criteria
 
 - The launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
+- The setup map fills the complete content area above the dock without clipping or horizontal overflow.
 - The center control clearly reads Start on Today and Today on Social or Me.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.

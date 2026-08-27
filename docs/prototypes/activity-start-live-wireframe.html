@@ -108,23 +108,24 @@
   .phone[data-screen="live"] .status-bar, .phone[data-screen="map"] .status-bar { color: #17211a; }
   .screen { position: absolute; inset: 0; display: none; }
   .screen.active { display: block; }
-  .home-screen { padding: 57px 18px 226px; overflow-y: auto; background: #f7f9f6; }
-  .home-head { display: flex; align-items: center; justify-content: space-between; }
+  .home-screen { padding: 0 0 216px; overflow: hidden; background: #f7f9f6; }
+  .today-content { position: absolute; inset: 0 0 216px; }
+  .home-head { position: absolute; z-index: 3; top: 53px; left: 18px; right: 18px; display: flex; align-items: center; justify-content: space-between; }
   .home-head p { margin: 0 0 3px; color: var(--muted); font-size: 12px; font-weight: 650; }
   .home-head h2 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
   .avatar { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; color: white; background: var(--forest); font-size: 13px; font-weight: 800; }
-  .weather { margin: 22px 0 10px; color: var(--forest); font-size: 13px; font-weight: 750; }
-  .today-card { width: 100%; padding: 20px; border: 0; border-radius: 25px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.17); text-align: left; cursor: pointer; }
+  .weather { position: absolute; z-index: 3; top: 116px; left: 18px; margin: 0; padding: 7px 10px; border-radius: 99px; color: var(--forest); background: rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(26,39,30,.08); font-size: 12px; font-weight: 750; }
+  .today-card { position: absolute; z-index: 4; left: 18px; right: 18px; bottom: 16px; width: auto; padding: 17px 18px; border: 0; border-radius: 20px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.22); text-align: left; cursor: pointer; }
   .today-card .label { color: #d7eadc; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
   .today-card h3 { margin: 8px 0 4px; font-size: 28px; letter-spacing: -.035em; }
   .today-card p { margin: 0; color: #deebe1; font-size: 14px; }
   .phases { display: grid; grid-template-columns: 1fr 3fr 1fr; gap: 4px; height: 6px; margin: 18px 0; }
   .phases i { display: block; border-radius: 99px; background: rgba(255,255,255,.42); }
   .phases i:nth-child(2) { background: #ff9b78; }
-  .selection-map { position: relative; height: 232px; overflow: hidden; border-radius: 25px; background: #e7ece8; box-shadow: 0 16px 30px rgba(32,67,44,.10); }
-  .selection-map.hidden, .today-card.hidden, .today-content.hidden, .away-content.hidden, .launch-dock.hidden { display: none; }
+  .selection-map { position: absolute; inset: 0; overflow: hidden; background: #e7ece8; }
+  .selection-map.hidden, .selection-map-copy.hidden, .today-card.hidden, .today-content.hidden, .away-content.hidden, .launch-dock.hidden { display: none; }
   .selection-map svg { width: 100%; height: 100%; }
-  .selection-map-copy { position: absolute; left: 14px; right: 14px; bottom: 14px; min-height: 72px; padding: 10px 12px 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 15px; color: var(--ink); background: rgba(255,255,255,.95); box-shadow: 0 5px 16px rgba(26,39,30,.10); text-align: left; cursor: pointer; }
+  .selection-map-copy { position: absolute; left: 18px; right: 18px; bottom: 16px; min-height: 72px; padding: 10px 12px 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 15px; color: var(--ink); background: rgba(255,255,255,.95); box-shadow: 0 5px 16px rgba(26,39,30,.10); text-align: left; cursor: pointer; }
   .goal-card-copy { min-width: 0; }
   .goal-card-copy small, .goal-card-copy strong, .goal-card-copy span { display: block; }
   .goal-card-copy small { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
@@ -172,7 +173,7 @@
   .tab-bar .context-start .today-tab-icon { display: none; }
   .tab-bar .context-start .start-tab-icon { display: block; }
   .tab-bar .context-start span { color: var(--orange); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
-  .away-content { padding-top: 8px; }
+  .away-content { padding: 57px 18px 0; }
   .away-content h2 { margin: 0 0 18px; font-size: 29px; letter-spacing: -.04em; }
   .away-placeholder { height: 92px; margin-bottom: 12px; border-radius: 20px; background: #edf1ed; }
   .map-canvas { position: absolute; inset: 0; overflow: hidden; background: #e6ebe7; }
@@ -368,15 +369,15 @@
           <p>Conversational effort</p>
           <div class="phases" aria-label="Warm up, easy running, cool down"><i></i><i></i><i></i></div>
         </button>
-        <article class="selection-map hidden" id="map-content" data-mode-content="map">
-          <svg viewBox="0 0 354 232" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <rect width="354" height="232" fill="#e7ece8"/>
-            <path class="map-park" d="M-20 10h120v100H-20zM260-10h120v118H260z"/>
-            <rect class="map-block" x="125" y="25" width="82" height="53" rx="8"/><rect class="map-block" x="226" y="116" width="76" height="58" rx="8"/>
-            <path class="map-road" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
-            <path class="map-road-thin" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
-            <circle class="location-dot" cx="128" cy="108" r="9"/>
-            <text class="map-label" x="25" y="136">Cedar Ave</text><text class="map-label" x="205" y="167">Greenway</text>
+        <article class="selection-map" id="map-content" data-mode-content="map">
+          <svg viewBox="0 0 390 628" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect width="390" height="628" fill="#e7ece8"/>
+            <path class="map-park" d="M-25 42h140v170H-25zM265 0h150v190H265zM260 430h165v220H260z"/>
+            <rect class="map-block" x="137" y="74" width="92" height="74" rx="8"/><rect class="map-block" x="128" y="208" width="74" height="55" rx="8"/><rect class="map-block" x="235" y="286" width="92" height="82" rx="8"/><rect class="map-block" x="36" y="420" width="85" height="96" rx="8"/>
+            <path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 300M315-20c-30 180-43 315-15 520M-20 560c100-35 210-34 430 35"/>
+            <path class="map-road-thin" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 300M315-20c-30 180-43 315-15 520M-20 560c100-35 210-34 430 35"/>
+            <circle class="location-dot" cx="188" cy="280" r="9"/>
+            <text class="map-label" x="31" y="290">Cedar Ave</text><text class="map-label" x="210" y="360">Greenway</text><text class="map-label" x="50" y="550">Lake Loop</text>
           </svg>
           <button class="selection-map-copy" id="goal-detail-button" type="button" data-action="edit-selected-goal">
             <span class="goal-card-copy"><small id="map-mode-label">Freestyle</small><strong id="map-mode-title">No goal</strong><span id="goal-detail-hint">No target to edit</span></span>
@@ -663,7 +664,8 @@
     if (goalSettings[mode]) modeButton.querySelector('[data-mode-value]').textContent = goalSettings[mode].value;
     const showsPlan = mode === 'planned';
     plannedContent.classList.toggle('hidden', !showsPlan);
-    mapContent.classList.toggle('hidden', showsPlan);
+    mapContent.classList.remove('hidden');
+    document.getElementById('goal-detail-button').classList.toggle('hidden', showsPlan);
     if (activeAppTab === 'Today') todayTabButton.setAttribute('aria-label', `Start ${modeTitle(mode)}`);
     if (!showsPlan) {
       const isEditable = Boolean(goalSettings[mode]);

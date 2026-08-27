@@ -43,6 +43,18 @@ Please focus on:
 
 Please report crashes, permission loops, missing activity data, inaccurate state after relaunch, confusing guidance, or any screen that blocks completion.
 
+For this build, pay extra attention to the redesigned activity launch flow:
+
+- Confirm the map fills the setup area and the two compact control rows remain readable on a smaller iPhone.
+- Switch among Planned, Freestyle, Distance, Time, and Calories; choosing a mode should not open an editor.
+- Tap the goal value card to use presets or a custom target, then verify Start immediately enters countdown and live recording.
+- Configure Music, Live Track, Shoes, Indoor/Outdoor, and Voice Guide directly from the dock.
+- Verify the center Today position becomes Start during setup, and that calorie goals show estimated live progress.
+
+### Beta Release Notes
+
+Activity start is now faster and easier to scan. The setup map fills the screen, goal choices and run options live in one compact dock, and the center Today position becomes the Start action while preparing an activity. Distance, time, and calorie goals use lightweight preset/custom pickers, with goal-aware live progress after countdown. This build also improves smaller-screen spacing, accessibility labels, localization, and activity-launch analytics.
+
 ### How to Report Feedback
 
 When no activity is recording, shake your iPhone twice within three seconds to open **Send feedback**. Choose **Bug** or **Suggestion**, describe what happened, and optionally include app/device details. Plainstride automatically captures the screen you were viewing; you can annotate it with the red marker, undo marks, or remove the screenshot. Tap **Submit report** to send it directly to the Plainstride team.

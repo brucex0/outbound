@@ -6,6 +6,7 @@ struct LiveMapView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveGroupStore: LiveGroupStore
+    @EnvironmentObject var onboardingStore: OnboardingStore
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var guide: VirtualGuide
@@ -162,6 +163,7 @@ struct LiveMapView: View {
                     paceText: sessionPaceText,
                     distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
                     distanceMeters: recorder.distanceMeters,
+                    energyKilocalories: estimatedEnergyKilocalories,
                     distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                     elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                     elevationLabel: measurementPreferences.unitSystem.elevationLabel,
@@ -248,6 +250,24 @@ struct LiveMapView: View {
     private var guideMessage: String? {
         guard recorder.state != .idle, !guide.lastNudge.isEmpty else { return nil }
         return guide.lastNudge
+    }
+
+    private var estimatedEnergyKilocalories: Double? {
+        guard let weight = onboardingStore.bodyProfile.weightKilograms,
+              weight > 0,
+              recorder.elapsedSeconds > 0
+        else { return nil }
+        switch intent?.sport ?? .run {
+        case .run:
+            guard recorder.distanceMeters > 0 else { return nil }
+            return weight * (recorder.distanceMeters / 1_000)
+        case .bike:
+            return 8 * weight * (Double(recorder.elapsedSeconds) / 3_600)
+        case .walk:
+            return 3.5 * weight * (Double(recorder.elapsedSeconds) / 3_600)
+        case .hike, .swim:
+            return 6 * weight * (Double(recorder.elapsedSeconds) / 3_600)
+        }
     }
 
     private var trailCoordinates: [CLLocationCoordinate2D] {

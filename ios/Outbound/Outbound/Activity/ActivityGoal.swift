@@ -4,11 +4,13 @@ enum ActivityGoal: Codable, Hashable {
     case freestyle
     case distanceMeters(Double)
     case timeSeconds(Int)
+    case calories(Int)
 
     private enum Kind: String, Codable {
         case freestyle
         case distance
         case time
+        case calories
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -26,6 +28,8 @@ enum ActivityGoal: Codable, Hashable {
             self = .distanceMeters(try container.decode(Double.self, forKey: .value))
         case .time:
             self = .timeSeconds(try container.decode(Int.self, forKey: .value))
+        case .calories:
+            self = .calories(try container.decode(Int.self, forKey: .value))
         }
     }
 
@@ -40,6 +44,9 @@ enum ActivityGoal: Codable, Hashable {
         case .timeSeconds(let seconds):
             try container.encode(Kind.time, forKey: .kind)
             try container.encode(seconds, forKey: .value)
+        case .calories(let calories):
+            try container.encode(Kind.calories, forKey: .kind)
+            try container.encode(calories, forKey: .value)
         }
     }
 
@@ -58,6 +65,11 @@ enum ActivityGoal: Codable, Hashable {
         return nil
     }
 
+    var targetCalories: Int? {
+        if case .calories(let calories) = self { return calories }
+        return nil
+    }
+
     func label(unitSystem: MeasurementUnitSystem) -> String {
         switch self {
         case .freestyle:
@@ -70,6 +82,12 @@ enum ActivityGoal: Codable, Hashable {
             )
         case .timeSeconds(let seconds):
             return Self.durationLabel(seconds: seconds)
+        case .calories(let calories):
+            return String(
+                format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
+                locale: .autoupdatingCurrent,
+                calories
+            )
         }
     }
 
@@ -84,6 +102,9 @@ enum ActivityGoal: Codable, Hashable {
         case .timeSeconds(let seconds):
             let duration = Self.durationLabel(seconds: seconds)
             return String(format: String(localized: "activity.goal.start.duration.format", defaultValue: "Start %@ %@"), locale: .autoupdatingCurrent, duration, sportName)
+        case .calories:
+            let energy = label(unitSystem: .metric)
+            return String(format: String(localized: "activity.goal.start.calories.format", defaultValue: "Start %@ %@"), locale: .autoupdatingCurrent, energy, sportName)
         }
     }
 
@@ -95,6 +116,8 @@ enum ActivityGoal: Codable, Hashable {
             return "\(Self.metricDistanceLabel(meters: meters)) \(sport.displayName.lowercased())"
         case .timeSeconds(let seconds):
             return "\(Self.durationLabel(seconds: seconds)) \(sport.displayName.lowercased())"
+        case .calories(let calories):
+            return "\(calories) kcal \(sport.displayName.lowercased())"
         }
     }
 
@@ -104,7 +127,7 @@ enum ActivityGoal: Codable, Hashable {
             return "\(sport.displayName) • no preset target"
         case .distanceMeters:
             return "\(sport.displayName) • \(label(unitSystem: unitSystem)) goal"
-        case .timeSeconds:
+        case .timeSeconds, .calories:
             return "\(sport.displayName) • \(label(unitSystem: unitSystem)) goal"
         }
     }
@@ -136,6 +159,9 @@ extension SessionIntent {
         if let duration = resolvedTargetDurationSeconds {
             return .timeSeconds(duration)
         }
+        if let calories = resolvedTargetCalories {
+            return .calories(calories)
+        }
         return .freestyle
     }
 
@@ -150,6 +176,7 @@ extension SessionIntent {
                 startLabel: startLabel,
                 targetDistanceMeters: goal.targetDistanceMeters,
                 targetDurationSeconds: goal.targetDurationSeconds,
+                targetCalories: goal.targetCalories,
                 routeName: routeName,
                 preparedRoute: preparedRoute,
                 activityTypeOverride: activityTypeOverride,
@@ -166,6 +193,7 @@ extension SessionIntent {
             startLabel: goal.startLabel(for: sport),
             targetDistanceMeters: goal.targetDistanceMeters,
             targetDurationSeconds: goal.targetDurationSeconds,
+            targetCalories: goal.targetCalories,
             routeName: routeName,
             preparedRoute: preparedRoute,
             activityTypeOverride: activityTypeOverride,
@@ -182,6 +210,8 @@ extension SessionIntent {
             return "distance-\(Int(meters.rounded()))"
         case .timeSeconds(let seconds):
             return "time-\(seconds)"
+        case .calories(let calories):
+            return "calories-\(calories)"
         }
     }
 
@@ -193,6 +223,8 @@ extension SessionIntent {
             return String(localized: "activity.goal.companion.distance", defaultValue: "You picked the distance. Settle in, then let the rhythm do its work.")
         case .timeSeconds:
             return String(localized: "activity.goal.companion.duration", defaultValue: "You picked the window. Keep it simple and stay present.")
+        case .calories:
+            return String(localized: "activity.goal.companion.calories", defaultValue: "Keep the effort steady and let the energy add up naturally.")
         }
     }
 }

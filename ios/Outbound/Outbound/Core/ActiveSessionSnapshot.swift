@@ -45,6 +45,7 @@ struct SessionIntent: Identifiable, Hashable {
     let startLabel: String
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
+    let targetCalories: Int?
     let routeName: String?
     let preparedRoute: PreparedRoute?
     let activityTypeOverride: ActivityType?
@@ -60,6 +61,7 @@ struct SessionIntent: Identifiable, Hashable {
         startLabel: String,
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
+        targetCalories: Int? = nil,
         routeName: String? = nil,
         preparedRoute: PreparedRoute? = nil,
         activityTypeOverride: ActivityType? = nil,
@@ -74,6 +76,7 @@ struct SessionIntent: Identifiable, Hashable {
         self.startLabel = startLabel
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
+        self.targetCalories = targetCalories
         self.routeName = routeName
         self.preparedRoute = preparedRoute
         self.activityTypeOverride = activityTypeOverride
@@ -100,9 +103,14 @@ struct SessionIntent: Identifiable, Hashable {
         return SessionIntentGoalParser.durationSeconds(from: detail)
     }
 
+    var resolvedTargetCalories: Int? {
+        targetCalories
+    }
+
     var hasPlannedStructure: Bool {
         resolvedTargetDistanceMeters != nil
             || resolvedTargetDurationSeconds != nil
+            || resolvedTargetCalories != nil
             || routeName != nil
             || !workoutSteps.isEmpty
     }
