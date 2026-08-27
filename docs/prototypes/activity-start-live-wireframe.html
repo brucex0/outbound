@@ -115,6 +115,7 @@
   .home-head h2 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
   .avatar { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; color: white; background: var(--forest); font-size: 13px; font-weight: 800; }
   .weather { position: absolute; z-index: 3; top: 116px; left: 18px; margin: 0; padding: 7px 10px; border-radius: 99px; color: var(--forest); background: rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(26,39,30,.08); font-size: 12px; font-weight: 750; }
+  .assistant-fab { position: absolute; z-index: 12; top: 154px; left: 18px; display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 50%; color: white; background: var(--forest); box-shadow: 0 8px 20px rgba(31,66,43,.22); cursor: pointer; font-size: 19px; }
   .today-card { position: absolute; z-index: 4; left: 18px; right: 18px; bottom: 16px; width: auto; padding: 17px 18px; border: 0; border-radius: 20px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.22); text-align: left; cursor: pointer; }
   .today-card .label { color: #d7eadc; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
   .today-card h3 { margin: 8px 0 4px; font-size: 28px; letter-spacing: -.035em; }
@@ -138,16 +139,16 @@
   .quick-grid button[aria-pressed="true"] { border-color: var(--forest); color: white; background: var(--forest); box-shadow: 0 7px 16px rgba(49,95,63,.16); }
   .quick-grid button[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 6px; right: 7px; font-size: 9px; font-weight: 900; }
   .quick-grid strong, .quick-grid small { display: block; }
-  .quick-grid strong { margin-bottom: 4px; font-size: 11px; }
-  .quick-grid small { color: var(--muted); font-size: 10px; }
+  .quick-grid strong { margin-bottom: 0; font-size: 12px; }
+  .quick-grid small { display: none; }
   .quick-grid button[aria-pressed="true"] small { color: rgba(255,255,255,.70); }
   .setup-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 7px; }
   .setup-control { min-width: 0; min-height: 57px; padding: 5px 2px 4px; display: grid; place-items: center; align-content: center; gap: 1px; border: 0; border-radius: 11px; color: #536057; background: var(--soft); cursor: pointer; text-align: center; }
   .setup-control .setup-icon { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 8px; color: var(--forest); font-size: 15px; font-style: normal; }
   .setup-control .setup-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .setup-control .setup-label, .setup-control small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .setup-control .setup-label { font-size: 9.5px; font-weight: 850; }
-  .setup-control small { color: var(--muted); font-size: 8.5px; }
+  .setup-control .setup-label { font-size: 11px; font-weight: 850; }
+  .setup-control small { display: none; }
   .setup-control.configured .setup-icon { color: white; background: var(--forest); }
   .tab-bar {
     position: absolute;
@@ -169,10 +170,10 @@
   .tab-bar button .start-tab-icon { display: none; }
   .tab-bar .selected { color: var(--forest); font-weight: 800; }
   .tab-bar .context-start { color: var(--ink); font-weight: 850; }
-  .tab-bar .context-start svg { width: 52px; height: 52px; margin: -23px auto 1px; padding: 10px; border: 5px solid white; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 8px 22px rgba(193,79,44,.28); fill: currentColor; stroke: none; }
+  .tab-bar .context-start svg { width: 30px; height: 30px; margin: 0 auto 6px; padding: 7px; border: 0; border-radius: 50%; color: white; background: var(--orange); box-shadow: none; fill: currentColor; stroke: none; }
   .tab-bar .context-start .today-tab-icon { display: none; }
   .tab-bar .context-start .start-tab-icon { display: block; }
-  .tab-bar .context-start span { color: var(--orange); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+  .tab-bar .context-start span { display: none; }
   .away-content { padding: 57px 18px 0; }
   .away-content h2 { margin: 0 0 18px; font-size: 29px; letter-spacing: -.04em; }
   .away-placeholder { height: 92px; margin-bottom: 12px; border-radius: 20px; background: #edf1ed; }
@@ -363,6 +364,7 @@
           <div class="avatar">BX</div>
         </div>
         <div class="weather">Perfect outside · 61° · light breeze</div>
+        <button class="assistant-fab" type="button" data-action="open-assistant" aria-label="Open assistant">✦</button>
         <button class="today-card" id="planned-content" type="button" data-action="open-plan" data-mode-content="planned">
           <span class="label">Today</span>
           <h3>Easy run · 30 min</h3>
@@ -521,9 +523,9 @@
   </section>
 
   <aside class="notes" aria-label="Design decisions">
-    <div class="note"><b>Contextual center action</b><p>Today becomes a labeled Start action only while Today is visible; elsewhere it returns to Today navigation.</p></div>
+    <div class="note"><b>Contextual center action</b><p>The native center tab becomes an icon-only Start action while Today is visible; elsewhere it returns to labeled Today navigation.</p></div>
     <div class="note"><b>The detail is the editor</b><p>Choosing a goal never interrupts. Tap the value card for a compact preset and custom-value chooser.</p></div>
-    <div class="note"><b>Icon-led setup</b><p>Every compact setup control pairs its icon with a short label and current value.</p></div>
+    <div class="note"><b>Icon-led setup</b><p>Every compact setup control uses only an icon and larger short label; current values remain in the editor and accessibility value.</p></div>
     <div class="note"><b>Plainstride stays Plainstride</b><p>The interaction changes while the existing theme, cards, and visual language remain intact.</p></div>
   </aside>
 </main>
@@ -788,6 +790,7 @@
     else if (action === 'close-overlay') closeOverlays();
     else if (action === 'context-tab') activeAppTab === 'Today' ? beginCountdown() : setAppTab('Today');
     else if (action === 'switch-tab') setAppTab(element.dataset.tab);
+    else if (action === 'open-assistant') showToast('Assistant opened');
     else if (action === 'open-plan') openOverlay(planEditor);
     else if (action === 'edit-selected-goal') {
       if (goalSettings[selectedMode]) {

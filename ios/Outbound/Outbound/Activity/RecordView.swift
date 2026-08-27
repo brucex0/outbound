@@ -24,6 +24,11 @@ private enum ActivitySetupSheet: String, Identifiable {
     }
 }
 
+enum ActivityLaunchLayout {
+    static let dockHeight: CGFloat = 146
+    static let peerCardGap: CGFloat = 12
+}
+
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1212,6 +1217,7 @@ struct RecordView: View {
         .padding(.horizontal, 12)
         .padding(.top, 11)
         .padding(.bottom, 16)
+        .frame(height: ActivityLaunchLayout.dockHeight)
         .background(.ultraThickMaterial)
         .overlay(alignment: .top) { Divider() }
     }
@@ -1254,14 +1260,9 @@ struct RecordView: View {
                 Image(systemName: mode.systemImage)
                     .font(.caption.weight(.bold))
                 Text(mode.title)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                Text(mode.compactValue(goal: mode == selectedGoalMode ? currentActivityGoal : nil))
-                    .font(.system(size: 9.5, weight: .medium))
-                    .foregroundStyle(mode == selectedGoalMode ? Color.white.opacity(0.72) : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.78)
             }
             .foregroundStyle(mode == selectedGoalMode ? Color.white : Color.primary)
             .frame(maxWidth: .infinity, minHeight: 58)
@@ -1275,6 +1276,8 @@ struct RecordView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(mode.title)
+        .accessibilityValue(mode.compactValue(goal: mode == selectedGoalMode ? currentActivityGoal : nil))
         .accessibilityAddTraits(mode == selectedGoalMode ? .isSelected : [])
     }
 
@@ -1293,15 +1296,10 @@ struct RecordView: View {
                     .frame(width: 25, height: 25)
                     .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Text(title)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
-                Text(value)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                    .minimumScaleFactor(0.72)
             }
             .frame(maxWidth: .infinity, minHeight: 53)
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -1340,13 +1338,8 @@ struct RecordView: View {
                         .frame(width: 25, height: 25)
                         .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     Text(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.primary)
-                    Text(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.62)
                 }
                 .frame(maxWidth: .infinity, minHeight: 53)
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 11, style: .continuous))

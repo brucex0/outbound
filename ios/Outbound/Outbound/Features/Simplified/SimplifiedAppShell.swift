@@ -56,6 +56,7 @@ struct SimplifiedAppShell: View {
                 selectedRouteName: $selectedRouteName,
                 activityLaunchSurface: activityLaunchSurface,
                 launchGoalMode: launchGoalMode,
+                onOpenAssistant: { showsAssistant = true },
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
@@ -67,21 +68,19 @@ struct SimplifiedAppShell: View {
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            SimplifiedAppBottomBar(
-                selection: $selection,
+        .background {
+            NativeContextualTabBarBridge(
                 showsStart: selection == .today && activitySessionState == .idle,
-                accentColor: guideCatalog.selectedTheme.accentColor,
                 actionColor: theme.actionColor,
                 onStart: onContextualStart
             )
+            .frame(width: 0, height: 0)
         }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
         }
         .overlay(alignment: .bottomLeading) {
-            if selection != .today || activitySessionState != .idle {
+            if selection != .today {
                 Button {
                     showsAssistant = true
                 } label: {
@@ -99,7 +98,7 @@ struct SimplifiedAppShell: View {
                 .accessibilityLabel(String(localized: "Open assistant"))
                 .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
                 .padding(.leading, 18)
-                .padding(.bottom, 82)
+                .padding(.bottom, 58)
             }
         }
         .sheet(isPresented: $showsAssistant) {
@@ -192,88 +191,183 @@ struct SimplifiedAppShell: View {
 
 }
 
-private struct SimplifiedAppBottomBar: View {
-    @Binding var selection: SimplifiedAppTab
+private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
     let showsStart: Bool
-    let accentColor: Color
     let actionColor: Color
     let onStart: () -> Void
 
-    var body: some View {
-        HStack(spacing: 0) {
-            navigationButton(
-                tab: .social,
-                title: String(localized: "Social"),
-                systemImage: "person.2"
-            )
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
+    func makeUIViewController(context: Context) -> TabBarAttachmentViewController {
+        let controller = TabBarAttachmentViewController()
+        controller.onResolveTabBarController = { tabBarController in
+            context.coordinator.attach(to: tabBarController)
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: TabBarAttachmentViewController, context: Context) {
+        context.coordinator.update(
+            showsStart: showsStart,
+            actionColor: UIColor(actionColor),
+            onStart: onStart
+        )
+        context.coordinator.attach(to: uiViewController.tabBarController)
+    }
+
+    static func dismantleUIViewController(
+        _ uiViewController: TabBarAttachmentViewController,
+        coordinator: Coordinator
+    ) {
+        coordinator.detach()
+    }
+
+    final class Coordinator {
+        private weak var tabBarController: UITabBarController?
+        private let delegateProxy = ContextualTabBarDelegateProxy()
+        private var showsStart = false
+        private var actionColor = UIColor.systemOrange
+
+        init() {
+            delegateProxy.shouldHandleStart = { [weak self] in self?.showsStart == true }
+        }
+
+        func update(showsStart: Bool, actionColor: UIColor, onStart: @escaping () -> Void) {
+            self.showsStart = showsStart
+            self.actionColor = actionColor
+            delegateProxy.onStart = onStart
+            configureTabBar()
+        }
+
+        func attach(to controller: UITabBarController?) {
+            guard let controller else { return }
+            if tabBarController !== controller {
+                detach()
+                tabBarController = controller
+            }
+            installDelegateProxy(on: controller)
+            configureTabBar()
+        }
+
+        func detach() {
+            if let tabBarController,
+               tabBarController.delegate === delegateProxy {
+                tabBarController.delegate = delegateProxy.forwardedDelegate
+            }
+            tabBarController = nil
+            delegateProxy.forwardedDelegate = nil
+        }
+
+        private func installDelegateProxy(on controller: UITabBarController) {
+            guard controller.delegate !== delegateProxy else { return }
+            delegateProxy.forwardedDelegate = controller.delegate
+            controller.delegate = delegateProxy
+        }
+
+        private func configureTabBar() {
+            guard let tabBarController else { return }
+            installDelegateProxy(on: tabBarController)
+            applyCenterItem(to: tabBarController)
+            DispatchQueue.main.async { [weak self, weak tabBarController] in
+                guard let self, let tabBarController else { return }
+                self.installDelegateProxy(on: tabBarController)
+                self.applyCenterItem(to: tabBarController)
+            }
+        }
+
+        private func applyCenterItem(to controller: UITabBarController) {
+            guard let item = controller.tabBar.items?[safe: 1] else { return }
             if showsStart {
-                startButton
+                let configuration = UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold)
+                let image = UIImage(systemName: "play.circle.fill", withConfiguration: configuration)?
+                    .withTintColor(actionColor, renderingMode: .alwaysOriginal)
+                item.title = nil
+                item.image = image
+                item.selectedImage = image
+                item.imageInsets = .zero
+                item.accessibilityLabel = String(localized: "record.start.short", defaultValue: "Start")
+                item.accessibilityHint = String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity")
+                item.accessibilityIdentifier = "tab.start"
             } else {
-                navigationButton(
-                    tab: .today,
-                    title: String(localized: "Today"),
-                    systemImage: "sparkles"
-                )
+                let image = UIImage(systemName: "sparkles")?.withRenderingMode(.alwaysTemplate)
+                item.title = String(localized: "Today")
+                item.image = image
+                item.selectedImage = image
+                item.imageInsets = .zero
+                item.accessibilityLabel = String(localized: "Today")
+                item.accessibilityHint = nil
+                item.accessibilityIdentifier = "tab.today"
             }
-
-            navigationButton(
-                tab: .me,
-                title: String(localized: "Me"),
-                systemImage: "person.crop.circle"
-            )
         }
-        .frame(height: 70)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+    }
+}
+
+private final class TabBarAttachmentViewController: UIViewController {
+    var onResolveTabBarController: ((UITabBarController?) -> Void)?
+
+    override func loadView() {
+        let view = UIView(frame: .zero)
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        self.view = view
     }
 
-    private func navigationButton(
-        tab: SimplifiedAppTab,
-        title: String,
-        systemImage: String
-    ) -> some View {
-        Button {
-            selection = tab
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 10, weight: .semibold))
-            }
-            .foregroundStyle(selection == tab ? accentColor : Color.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selection == tab ? .isSelected : [])
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        resolveTabBarController()
     }
 
-    private var startButton: some View {
-        Button(action: onStart) {
-            VStack(spacing: 2) {
-                Image(systemName: "play.fill")
-                    .font(.title3.weight(.black))
-                    .foregroundStyle(.white)
-                    .offset(x: 1)
-                    .frame(width: 54, height: 54)
-                    .background(actionColor, in: Circle())
-                    .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 5))
-                    .shadow(color: actionColor.opacity(0.28), radius: 10, y: 5)
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        resolveTabBarController()
+    }
 
-                Text(String(localized: "record.start.short", defaultValue: "Start"))
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(actionColor)
-                    .textCase(.uppercase)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+    private func resolveTabBarController() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.onResolveTabBarController?(self.tabBarController)
         }
-        .buttonStyle(.plain)
-        .offset(y: -13)
-        .accessibilityLabel(String(localized: "record.start.short", defaultValue: "Start"))
-        .accessibilityHint(String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity"))
+    }
+}
+
+private final class ContextualTabBarDelegateProxy: NSObject, UITabBarControllerDelegate {
+    weak var forwardedDelegate: UITabBarControllerDelegate?
+    var shouldHandleStart: (() -> Bool)?
+    var onStart: (() -> Void)?
+
+    func tabBarController(
+        _ tabBarController: UITabBarController,
+        shouldSelect viewController: UIViewController
+    ) -> Bool {
+        let selectedIndex = tabBarController.selectedIndex
+        let targetIndex = tabBarController.viewControllers?.firstIndex { $0 === viewController }
+        if selectedIndex == 1, targetIndex == 1, shouldHandleStart?() == true {
+            onStart?()
+            return false
+        }
+        return forwardedDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        if aSelector == #selector(UITabBarControllerDelegate.tabBarController(_:shouldSelect:)) {
+            return true
+        }
+        return super.responds(to: aSelector) || forwardedDelegate?.responds(to: aSelector) == true
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if forwardedDelegate?.responds(to: aSelector) == true {
+            return forwardedDelegate
+        }
+        return super.forwardingTarget(for: aSelector)
+    }
+}
+
+private extension Collection {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 
@@ -298,6 +392,7 @@ private struct SimplifiedTodayView: View {
     @Binding var selectedRouteName: String?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
+    let onOpenAssistant: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @StateObject private var launchLocationManager = LocationManager()
     @State private var showsCompanionExplanation = false
@@ -320,19 +415,45 @@ private struct SimplifiedTodayView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                ActivityLaunchMap(
-                    locationManager: launchLocationManager,
-                    route: activeRunIntent.preparedRoute
-                )
-                .overlay(alignment: .bottom) {
-                    if launchGoalMode == .planned || activitySessionState != .idle {
-                        todayPeerCards
-                            .padding(.horizontal, OutboundSpacing.screen)
-                            .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
+                VStack(spacing: 0) {
+                    ZStack(alignment: .bottom) {
+                        OutboundPalette.background
+                        ActivityLaunchMap(
+                            locationManager: launchLocationManager,
+                            route: activeRunIntent.preparedRoute
+                        )
+                        .clipped()
+
+                        if launchGoalMode == .planned || activitySessionState != .idle {
+                            todayPeerCards
+                                .padding(.horizontal, OutboundSpacing.screen)
+                                .padding(.bottom, ActivityLaunchLayout.peerCardGap)
+                        }
                     }
+
+                    Color.clear
+                        .frame(height: ActivityLaunchLayout.dockHeight)
+                        .allowsHitTesting(false)
                 }
 
                 activityLaunchSurface
+            }
+            .overlay(alignment: .topLeading) {
+                Button(action: onOpenAssistant) {
+                    Image(systemName: "sparkles")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+                        .overlay {
+                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                        }
+                        .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Open assistant"))
+                .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+                .padding(16)
             }
             .background(OutboundPalette.background)
             .navigationTitle("Today")
