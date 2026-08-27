@@ -168,5 +168,5 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
 - Archive `1.0 (28)`, validate, and upload from Xcode Organizer.
-- After processing, answer export compliance and add the build to an internal group.
-- For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review.
+- After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
+- For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.

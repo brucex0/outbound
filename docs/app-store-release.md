@@ -44,7 +44,7 @@ Run the repository helper from a clean tracked worktree:
 ./scripts/publish-testflight.sh
 ```
 
-The helper increments the app and Live Activity extension build number, updates `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
+The helper increments the app and Live Activity extension build number, updates `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the `Beta Release Notes` section from `docs/testflight-1.0.md` into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
 
 For reliable command-line authentication, create an App Store Connect API key with the access needed to upload builds, keep its `.p8` file outside the repository, and provide all three values:
 
@@ -62,7 +62,21 @@ Bruce's development Mac has a least-privilege `Developer` key at
 The helper detects it automatically, so normal unattended uploads require no
 environment variables. The private key stays outside the repository with
 owner-only permissions. Explicit `ASC_KEY_PATH`, `ASC_KEY_ID`, and
-`ASC_ISSUER_ID` values override this local default.
+`ASC_ISSUER_ID` values override this local default. The API key is required for
+automatic release-note and beta-group setup; pass `--skip-beta-setup` only when
+an upload intentionally needs to stop before those steps.
+
+To send a build to a specific group, including an external beta group, use its
+exact App Store Connect name:
+
+```sh
+./scripts/publish-testflight.sh --beta-group "External Beta"
+```
+
+The same value can be supplied as `BETA_GROUP`. `BETA_LOCALE` overrides the
+release-note locale, and `ASC_PROCESSING_TIMEOUT` / `ASC_POLL_INTERVAL` tune the
+default one-hour processing wait and 30-second polling interval. Assigning an
+external group does not bypass Apple's Beta App Review.
 
 Preview the next build number without changing files:
 
@@ -77,7 +91,14 @@ current number explicitly:
 ./scripts/publish-testflight.sh --build-number 10
 ```
 
-If command-line upload cannot authenticate, the script preserves the verified archive and prints the exact Organizer fallback. A `Failed to Use Accounts` error means the saved-account fallback could not find App Store Connect access for the configured team; use the API-key environment variables above for future unattended uploads. After Apple processes the upload, add test notes and assign the build to the intended external TestFlight group in App Store Connect.
+If command-line upload cannot authenticate, the script preserves the verified archive and prints the exact Organizer fallback. A `Failed to Use Accounts` error means the saved-account fallback could not find App Store Connect access for the configured team; use the API-key environment variables above for future unattended uploads. When beta setup is enabled, a processing timeout or metadata error leaves the successfully uploaded build in App Store Connect and returns a nonzero exit so the remaining step can be completed manually or retried with `--beta-setup-only`.
+
+Retry only the App Store Connect setup for an uploaded build without compiling,
+archiving, or uploading it again:
+
+```sh
+./scripts/publish-testflight.sh --beta-setup-only --build-number 29
+```
 
 ## App Store Connect Checklist
 
