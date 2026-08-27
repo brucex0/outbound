@@ -4,6 +4,8 @@
     "" : {
 
     },
+    "Cancel activity start" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel activity start" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar el inicio de la actividad" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消开始活动" } } } },
+    "Close activity setup" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Close activity setup" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Cerrar la configuración de la actividad" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭活动设置" } } } },
     "social.feed.load_more_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not load more activities. Try again." } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudieron cargar más actividades. Inténtalo de nuevo." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法加载更多活动，请重试。" } } } },
     "activity.history.delete.action.many" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete %lld Activities" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar %lld actividades" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除 %lld 项活动" } } } },
     "activity.history.delete.action.one" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Activity" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar actividad" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除活动" } } } },

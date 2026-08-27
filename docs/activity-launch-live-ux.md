@@ -36,6 +36,8 @@ Configure launch options from the dock:
 
 The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
+The top-left cancel action exists only during the countdown. Once recording begins, the live camera/map surface is non-dismissible and remains full-screen until Finish hands off to post-run Save or Discard. An interrupted session restores paused directly into that live surface rather than behind Today.
+
 Primary live metrics follow the selected mode:
 
 | Mode | Primary metric |
@@ -67,4 +69,6 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Goal and utility dock buttons display no secondary value line.
 - Setup choices carry into countdown and live status.
 - Countdown cancel preserves setup; only entry into live recording advances default learning.
+- Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
+- Interrupted-session recovery opens the paused live surface directly.
 - Goal-specific live metrics, pause/resume, finish confirmation, and expanded-map return all work without console warnings or errors.

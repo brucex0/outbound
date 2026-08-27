@@ -159,6 +159,7 @@ struct RecordView: View {
                     .allowsHitTesting(isVisible && !showCamera)
                     .fullScreenCover(isPresented: embeddedLivePresentation) {
                         liveRecordingSurface
+                            .interactiveDismissDisabled()
                     }
             } else if showCamera {
                 liveRecordingSurface
@@ -284,12 +285,15 @@ struct RecordView: View {
             .environmentObject(guideCatalog)
         }
         .overlay(alignment: .topLeading) {
-            if isVisible, let onCloseRequest, !isEmbeddedInToday || showCamera || isCountingDown || recorder.state != .idle {
+            if isVisible,
+               let onCloseRequest,
+               recorder.state == .idle,
+               !isEmbeddedInToday || isCountingDown {
                 Button {
                     if isCountingDown {
                         cancelStartCountdown(returnToSetup: true)
                     } else {
-                        onCloseRequest(recorder.state != .idle || pendingActivity != nil)
+                        onCloseRequest(false)
                     }
                 } label: {
                     Image(systemName: activityCloseSystemImage)
@@ -478,10 +482,7 @@ struct RecordView: View {
     private var embeddedLivePresentation: Binding<Bool> {
         Binding(
             get: { showCamera && isVisible },
-            set: { isPresented in
-                guard !isPresented, showCamera else { return }
-                onCloseRequest?(recorder.state != .idle || pendingActivity != nil)
-            }
+            set: { _ in }
         )
     }
 
@@ -545,8 +546,8 @@ struct RecordView: View {
         .ignoresSafeArea()
         .toolbar(.hidden, for: .tabBar)
         .overlay(alignment: .topLeading) {
-            if isEmbeddedInToday {
-                embeddedActivityCloseButton
+            if isEmbeddedInToday, isCountingDown {
+                embeddedCountdownCancelButton
             }
         }
         .overlay(alignment: .topTrailing) {
@@ -556,15 +557,11 @@ struct RecordView: View {
         }
     }
 
-    private var embeddedActivityCloseButton: some View {
+    private var embeddedCountdownCancelButton: some View {
         Button {
-            if isCountingDown {
-                cancelStartCountdown(returnToSetup: true)
-            } else {
-                onCloseRequest?(recorder.state != .idle || pendingActivity != nil)
-            }
+            cancelStartCountdown(returnToSetup: true)
         } label: {
-            Image(systemName: activityCloseSystemImage)
+            Image(systemName: "xmark")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
@@ -572,7 +569,7 @@ struct RecordView: View {
         }
         .padding(.top, 18)
         .padding(.leading, 16)
-        .accessibilityLabel(activityCloseAccessibilityLabel)
+        .accessibilityLabel(String(localized: "Cancel activity start"))
     }
 
     private var embeddedActivityAssistantButton: some View {
@@ -1010,13 +1007,13 @@ struct RecordView: View {
     }
 
     private var activityCloseSystemImage: String {
-        recorder.state == .idle && pendingActivity == nil ? "xmark" : "chevron.down"
+        "xmark"
     }
 
     private var activityCloseAccessibilityLabel: String {
-        if isCountingDown { return "Cancel activity start" }
-        if recorder.state == .idle && pendingActivity == nil { return "Close activity setup" }
-        return "Hide activity"
+        isCountingDown
+            ? String(localized: "Cancel activity start")
+            : String(localized: "Close activity setup")
     }
 
     private var readyView: some View {

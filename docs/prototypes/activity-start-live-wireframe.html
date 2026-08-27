@@ -262,7 +262,7 @@
   #count-number { font-size: 124px; line-height: .9; font-weight: 900; letter-spacing: -.08em; text-shadow: 0 10px 35px rgba(0,0,0,.24); }
   .count-cancel { position: absolute; z-index: 2; top: 57px; left: 18px; width: 42px; height: 42px; border: 0; border-radius: 50%; color: white; background: rgba(0,0,0,.30); cursor: pointer; font-size: 17px; }
   .live-map-background { position: absolute; inset: 0; }
-  .live-top { position: absolute; z-index: 8; top: 52px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .live-top { position: absolute; z-index: 8; top: 52px; left: 15px; right: 15px; display: flex; justify-content: flex-end; align-items: center; }
   .live-pill { padding: 9px 12px; border-radius: 99px; color: var(--ink); background: rgba(255,255,255,.92); box-shadow: 0 4px 14px rgba(26,39,30,.09); font-size: 11px; font-weight: 800; }
   .live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: #39a766; box-shadow: 0 0 0 3px rgba(57,167,102,.15); }
   .metric-panel {
@@ -469,7 +469,7 @@
           <rect width="390" height="844" fill="#e7ece8"/><path class="map-park" d="M-25 78h140v170H-25zM265 20h150v190H265z"/><path class="map-road" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480"/><path class="map-road-thin" d="M-20 310C75 294 110 252 175 275s94 96 235 72M83-20c22 155 20 285 80 410s58 225 45 480"/><path class="map-route" d="M110 382c14-70 42-103 78-103 40 0 53 51 95 55"/><circle class="location-dot" cx="173" cy="280" r="9"/>
         </svg>
       </div>
-      <div class="live-top"><button class="round-action" type="button" data-action="toast" data-message="Activity hidden — still recording" aria-label="Hide activity">⌄</button><span class="live-pill"><span class="live-dot"></span><span class="live-status-copy">GPS · Live Track</span></span></div>
+      <div class="live-top"><span class="live-pill"><span class="live-dot"></span><span class="live-status-copy">GPS · Live Track</span></span></div>
       <section class="metric-panel" id="metric-panel">
         <div class="grabber" data-action="map" role="button" tabindex="0" aria-label="Expand map"></div>
         <button class="now-playing" type="button" data-action="toast" data-message="Easy Miles playing"><span class="album">♫</span><span><strong>Easy Miles</strong><small>Apple Music · playing</small></span></button>
@@ -500,7 +500,7 @@
           <text class="map-label" x="31" y="290">Cedar Ave</text><text class="map-label" x="210" y="360">Greenway</text><text class="map-label" x="50" y="580">Lake Loop</text>
         </svg>
       </div>
-      <div class="live-top"><button class="round-action" type="button" data-action="toast" data-message="Activity hidden — still recording" aria-label="Hide activity">⌄</button><span class="live-pill"><span class="live-dot"></span><span class="live-status-copy">GPS · Live Track</span></span></div>
+      <div class="live-top"><span class="live-pill"><span class="live-dot"></span><span class="live-status-copy">GPS · Live Track</span></span></div>
       <div class="route-progress">Easy run · 25 min left<span>On route · 0.84 km</span></div>
       <section class="compact-panel">
         <div class="grabber" data-action="live" role="button" tabindex="0" aria-label="Expand metrics"></div>

@@ -30,20 +30,6 @@ struct MainTabView: View {
         }
         .background(Color(.systemGroupedBackground))
         .feedbackReporter(isShakeDisabled: activitySessionState != .idle, currentPage: feedbackPage)
-        .overlay(alignment: .bottomTrailing) {
-            if !isActivityVisible && activitySessionState != .idle {
-                ActivityPortalButton(
-                    state: activitySessionState,
-                    elapsedSeconds: activityElapsedSeconds,
-                    sport: activeLaunch?.intent?.sport
-                ) {
-                    presentActivity()
-                }
-                .padding(.trailing, 18)
-                .padding(.bottom, 72)
-                .zIndex(2)
-            }
-        }
         .overlay(alignment: .top) {
             if selectedAppTab != .today || !isActivityVisible {
                 GlobalConnectivityBanner()
@@ -117,7 +103,7 @@ struct MainTabView: View {
             checkForHealthWorkouts(presentWhenFound: true)
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
-            guard target != nil, activitySessionState != .idle else { return }
+            guard target != nil, activitySessionState == .idle else { return }
             if isActivityVisible {
                 isActivityVisible = false
             }
@@ -220,18 +206,15 @@ struct MainTabView: View {
     }
 
     private func handleActivityClose(shouldKeepAlive: Bool) {
-        if shouldKeepAlive {
-            isActivityVisible = false
+        guard !shouldKeepAlive else { return }
+        activitySessionState = .idle
+        activityElapsedSeconds = 0
+        if selectedAppTab == .today {
+            activeLaunch = RecordLaunch(intent: defaultTodayIntent)
+            isActivityVisible = true
         } else {
-            activitySessionState = .idle
-            activityElapsedSeconds = 0
-            if selectedAppTab == .today {
-                activeLaunch = RecordLaunch(intent: defaultTodayIntent)
-                isActivityVisible = true
-            } else {
-                activeLaunch = nil
-                isActivityVisible = false
-            }
+            activeLaunch = nil
+            isActivityVisible = false
         }
     }
 
@@ -262,7 +245,7 @@ struct MainTabView: View {
     private func restoreInterruptedActivityIfNeeded() {
         guard activeLaunch == nil, let journal = ActiveSessionJournal.load() else { return }
         activeLaunch = RecordLaunch(intent: recoveredIntent(from: journal))
-        isActivityVisible = false
+        isActivityVisible = true
     }
 
     private func recoveredIntent(from journal: ActiveSessionJournal) -> SessionIntent? {
@@ -1227,77 +1210,6 @@ struct MotivationDashboardView: View {
         }
     }
 
-}
-
-private struct ActivityPortalButton: View {
-    let state: ActivitySessionPortalState
-    let elapsedSeconds: Int
-    let sport: SportType?
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: iconName)
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-
-                if state != .idle {
-                    Circle()
-                        .fill(state == .paused ? Color.yellow : Color.red)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 1.5))
-                        .offset(x: 3, y: -3)
-                }
-            }
-            .frame(width: 48, height: 48)
-            .background(backgroundStyle, in: Circle())
-            .overlay {
-                Circle()
-                    .strokeBorder(statusStrokeStyle, lineWidth: state == .idle ? 0.8 : 2.2)
-            }
-        }
-        .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var iconName: String {
-        sport?.systemImage ?? "figure.run"
-    }
-
-    private var backgroundStyle: LinearGradient {
-        switch state {
-        case .idle:
-            return LinearGradient(colors: [Color.orange, Color(red: 0.93, green: 0.43, blue: 0.12)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .active:
-            return LinearGradient(colors: [Color(red: 1.0, green: 0.39, blue: 0.26), Color(red: 0.89, green: 0.18, blue: 0.23)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .paused:
-            return LinearGradient(colors: [Color(red: 0.98, green: 0.74, blue: 0.20), Color(red: 0.88, green: 0.57, blue: 0.14)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
-
-    private var statusStrokeStyle: Color {
-        switch state {
-        case .idle:
-            return Color.white.opacity(0.24)
-        case .active:
-            return Color.red.opacity(0.7)
-        case .paused:
-            return Color.yellow.opacity(0.8)
-        }
-    }
-
-    private var accessibilityLabel: String {
-        switch state {
-        case .idle:
-            return "Start freestyle"
-        case .active:
-            return "Return to live \(sport?.displayName.lowercased() ?? "activity"), \(elapsedSeconds.formatted()) elapsed"
-        case .paused:
-            return "Return to paused \(sport?.displayName.lowercased() ?? "activity"), \(elapsedSeconds.formatted()) elapsed"
-        }
-    }
 }
 
 private struct SuggestedActionCard: View {
