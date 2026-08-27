@@ -751,10 +751,6 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var showsEmbeddedLaunchDock: Bool {
-        isSelected && activitySessionState == .idle
-    }
-
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.standard) {
@@ -770,21 +766,6 @@ private struct SimplifiedTodayView: View {
             if activitySessionState != .idle {
                 inProgressActivityCard
             }
-        }
-    }
-
-    @ViewBuilder
-    private var quickRunButton: some View {
-        if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-            Button {
-                onStartRun(.freestyleRun)
-            } label: {
-                Label("Quick start", systemImage: "bolt.fill")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(theme.accentColor)
-            .padding(.vertical, 6)
         }
     }
 
@@ -872,32 +853,8 @@ private struct SimplifiedTodayView: View {
                      : String(localized: "You’re participating · Meet up or join from anywhere"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                    OutboundPrimaryButton(title: String(localized: "Start activity event"), systemImage: "person.2.fill") {
-                        socialStore.prepareToRecord(activityEventID: event.id)
-                        onStartRun(activityEventIntent(event))
-                    }
-                }
             }
         }
-    }
-
-    private func activityEventIntent(_ event: ActivityEventDTO) -> SessionIntent {
-        SessionIntent(
-            id: "activity-event:\(event.id)",
-            sport: .run,
-            title: event.title,
-            detail: String(localized: "Shared activity · Meet up or join from anywhere"),
-            guideLine: String(localized: "Your activity will be saved to your history and included in the shared results."),
-            startLabel: String(localized: "Start activity event"),
-            activityEvent: ActivityEventLaunchContext(
-                id: event.id,
-                title: event.title,
-                role: event.currentUserRole ?? "participant",
-                attendanceMode: nil,
-                organizerName: event.creator.displayName
-            )
-        )
     }
 
     private var plannedWorkoutCard: some View {
@@ -935,11 +892,6 @@ private struct SimplifiedTodayView: View {
                     .foregroundStyle(.secondary)
                 WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
                 CompactIntervalPreview(phases: todayPhases)
-                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                    OutboundPrimaryButton(title: String(localized: "Start run"), systemImage: "figure.run") {
-                        onStartRun(activeRunIntent)
-                    }
-                }
             }
         }
     }

@@ -13622,22 +13622,6 @@
         }
       }
     },
-    "Shared activity · Meet up or join from anywhere" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actividad compartida · Queda con el grupo o participa desde donde estés"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "共同活动 · 线下碰面或随地参与"
-          }
-        }
-      }
-    },
     "Shoe mileage" : {
       "localizations" : {
         "es" : {
@@ -14502,22 +14486,6 @@
         }
       }
     },
-    "Start activity event" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Iniciar actividad compartida"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "开始共同活动"
-          }
-        }
-      }
-    },
     "Start alternate: %@" : {
       "localizations" : {
         "es" : {
@@ -14628,22 +14596,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "现在开始"
-          }
-        }
-      }
-    },
-    "Start run" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Iniciar carrera"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "开始训练"
           }
         }
       }
@@ -17565,22 +17517,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你已参加 · 线下碰面或随地参与"
-          }
-        }
-      }
-    },
-    "Your activity will be saved to your history and included in the shared results." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La actividad se guardará en tu historial y se sumará a los resultados del grupo."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这次活动会保存到你的记录中，并计入大家的汇总结果。"
           }
         }
       }
