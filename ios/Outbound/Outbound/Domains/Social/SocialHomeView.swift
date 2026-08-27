@@ -55,7 +55,7 @@ struct SocialHomeView: View {
                 .padding(OutboundSpacing.screen)
             }
             .background(OutboundPalette.background)
-            .navigationTitle("Social")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     GlobalConditionsButton()

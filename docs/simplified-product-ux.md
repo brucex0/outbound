@@ -29,6 +29,8 @@ Use three primary destinations in this order:
 
 Use icon-forward tabs with accessible labels. The selected tab may show its text label; never rely on an unlabeled icon for meaning.
 
+Keep root screens titleless so their content starts as high as the retained top-bar actions allow. Social and Me may use a compact action bar, while Today should not reserve header space when it has no top-bar action to show. Destination screens still use normal navigation titles.
+
 Do not use a separate Progress tab. Show immediate progress context on Today and post-run, with detailed progress under Me.
 
 ## Today

@@ -517,7 +517,7 @@ private struct SimplifiedTodayView: View {
                 .padding(16)
             }
             .background(OutboundPalette.background)
-            .navigationTitle("Today")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .toolbar {
                 if canPresentThemeTip || showsThemeTip {
@@ -2266,7 +2266,7 @@ private struct SimplifiedMeView: View {
                 .padding(OutboundSpacing.screen)
             }
             .background(OutboundPalette.background)
-            .navigationTitle("Me")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
