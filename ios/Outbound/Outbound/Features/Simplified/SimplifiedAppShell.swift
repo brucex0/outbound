@@ -324,43 +324,11 @@ private struct SimplifiedTodayView: View {
                     locationManager: launchLocationManager,
                     route: activeRunIntent.preparedRoute
                 )
-
-                if launchGoalMode == .planned || activitySessionState != .idle {
-                    ScrollView {
-                        LazyVStack(spacing: OutboundSpacing.standard) {
-                            if let completedActivityToday {
-                                completedTodayCard(completedActivityToday)
-                                if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                                    Button {
-                                        onStartRun(.freestyleRun)
-                                    } label: {
-                                        Label("Start another activity", systemImage: "plus.circle.fill")
-                                            .font(.headline)
-                                            .frame(maxWidth: .infinity, minHeight: 48)
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                    .buttonBorderShape(.roundedRectangle(radius: OutboundRadius.control))
-                                    .tint(theme.actionColor)
-                                }
-
-                                upcomingWorkoutButton
-                            } else if let activityEventToday {
-                                activityEventCard(activityEventToday)
-                                quickRunButton
-                            } else {
-                                plannedWorkoutCard
-                                quickRunButton
-                            }
-
-                            if activitySessionState == .idle && !showsEmbeddedLaunchDock {
-                                activityLibraryButtons
-                            } else if activitySessionState != .idle {
-                                inProgressActivityCard
-                            }
-                        }
-                        .padding(.horizontal, OutboundSpacing.screen)
-                        .padding(.top, OutboundSpacing.standard)
-                        .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
+                .overlay(alignment: .bottom) {
+                    if launchGoalMode == .planned || activitySessionState != .idle {
+                        todayPeerCards
+                            .padding(.horizontal, OutboundSpacing.screen)
+                            .padding(.bottom, showsEmbeddedLaunchDock ? 178 : OutboundSpacing.standard)
                     }
                 }
 
@@ -603,6 +571,24 @@ private struct SimplifiedTodayView: View {
 
     private var showsEmbeddedLaunchDock: Bool {
         isSelected && activitySessionState == .idle
+    }
+
+    @ViewBuilder
+    private var todayPeerCards: some View {
+        VStack(spacing: OutboundSpacing.standard) {
+            if let completedActivityToday {
+                completedTodayCard(completedActivityToday)
+                upcomingWorkoutButton
+            } else if let activityEventToday {
+                activityEventCard(activityEventToday)
+            } else {
+                plannedWorkoutCard
+            }
+
+            if activitySessionState != .idle {
+                inProgressActivityCard
+            }
+        }
     }
 
     @ViewBuilder

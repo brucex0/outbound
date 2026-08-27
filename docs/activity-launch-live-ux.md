@@ -13,7 +13,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area at the bottom of Today. The Today navigation title, conditions pill, app shell, and bounded map background remain permanent. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned uses the existing Today card and Up Next implementation and layout; the other modes use their compact goal information card. The map never becomes the full-screen app surface. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
+Use one fixed, flat two-row control area at the bottom of Today. The Today navigation title, conditions pill, app shell, and bounded map background remain permanent. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned renders the existing Today card and Up Next implementation as a standalone peer-card stack above the dock; it must not use a page-sized scroll container that intercepts touches outside the cards. The other modes use their compact goal information card in the same region. The map never becomes the full-screen app surface. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. Keep a small clear gap between the dock content and the raised Start control, and keep compact labels legible at the minimum supported width.
 
 Goal modes are peers:
 
