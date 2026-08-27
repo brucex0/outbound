@@ -209,6 +209,8 @@ struct LinkActivityEventRequestDTO: Codable, Sendable { let activityId: String }
 struct TogetherActivityDTO: Codable, Sendable {
     let id: String
     let title: String?
+    let startedAt: Date?
+    let endedAt: Date?
     let durationSecs: Int?
     let distanceM: Double?
     let avgPace: Double?
@@ -218,6 +220,8 @@ struct TogetherActivityDTO: Codable, Sendable {
     init(
         id: String,
         title: String?,
+        startedAt: Date? = nil,
+        endedAt: Date? = nil,
         durationSecs: Int?,
         distanceM: Double?,
         avgPace: Double?,
@@ -226,6 +230,8 @@ struct TogetherActivityDTO: Codable, Sendable {
     ) {
         self.id = id
         self.title = title
+        self.startedAt = startedAt
+        self.endedAt = endedAt
         self.durationSecs = durationSecs
         self.distanceM = distanceM
         self.avgPace = avgPace
@@ -266,6 +272,10 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let currentUserCheered: Bool
     let commentCount: Int
     let comments: [TogetherCommentDTO]
+
+    var activityTimestamp: Date {
+        activity?.startedAt ?? createdAt
+    }
 }
 
 struct SocialReportRequestDTO: Codable, Sendable {

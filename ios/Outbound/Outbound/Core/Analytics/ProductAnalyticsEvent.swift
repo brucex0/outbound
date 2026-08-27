@@ -96,6 +96,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
+    case timestampSource = "timestamp_source"
     case direction
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
@@ -159,7 +160,7 @@ enum ProductAnalyticsSchema {
         .activityDeleted: [.sourceType, .countBucket],
         .activitySyncCompleted: [.sourceType, .routeSelected],
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
-        .activityFeedLoaded: [.countBucket, .sourceType],
+        .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],

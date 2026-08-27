@@ -783,6 +783,8 @@ const socialPersonSelect = {
 const socialActivitySelect = {
   id: true,
   title: true,
+  startedAt: true,
+  endedAt: true,
   durationSecs: true,
   distanceM: true,
   avgPace: true,

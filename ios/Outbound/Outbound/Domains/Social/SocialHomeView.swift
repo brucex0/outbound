@@ -410,7 +410,7 @@ struct SocialHomeView: View {
                                     SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
                                     VStack(alignment: .leading) {
                                         Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
-                                        Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                        Text(post.activityTimestamp.formatted(.relative(presentation: .named)))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -516,17 +516,26 @@ struct SocialHomeView: View {
     private func trackActivityFeedLoaded() {
         let posts = socialStore.state.posts
         let sourceType: String
+        let timestampSource: String
         if posts.isEmpty {
             sourceType = "empty"
-        } else if posts.contains(where: { !$0.isCurrentUser }) {
-            sourceType = "connections"
+            timestampSource = "empty"
         } else {
-            sourceType = "self_only"
+            sourceType = posts.contains(where: { !$0.isCurrentUser }) ? "connections" : "self_only"
+            let exactTimestampCount = posts.filter { $0.activity?.startedAt != nil }.count
+            if exactTimestampCount == posts.count {
+                timestampSource = "activity_start"
+            } else if exactTimestampCount == 0 {
+                timestampSource = "post_created_fallback"
+            } else {
+                timestampSource = "mixed"
+            }
         }
         Task {
             await analyticsManager?.track(.init(.activityFeedLoaded, properties: [
                 .countBucket: .string(ProductAnalyticsBucket.count(posts.count)),
                 .sourceType: .string(sourceType),
+                .timestampSource: .string(timestampSource),
             ]))
         }
     }
@@ -1140,7 +1149,7 @@ private struct SocialNotificationActivityView: View {
                             SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(post.user.displayName).font(.headline)
-                                Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                Text(post.activityTimestamp.formatted(.relative(presentation: .named)))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -1623,7 +1632,7 @@ private struct SocialPersonProfileView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
-                                        Text(post.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                        Text(post.activityTimestamp.formatted(date: .abbreviated, time: .shortened))
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
@@ -1658,7 +1667,7 @@ private struct SocialActivityDetailView: View {
     var body: some View {
         if let activity = currentPost.activity {
             ActivityDetailView(
-                activity: activity.savedActivity(createdAt: currentPost.createdAt),
+                activity: activity.savedActivity(postCreatedAt: currentPost.createdAt),
                 usesStoredActivity: false,
                 showsShareControl: true,
                 showsEditControl: false,
@@ -1702,7 +1711,7 @@ private struct SocialActivityDetailView: View {
                     SocialAvatar(name: currentPost.user.displayName, avatarURL: currentPost.user.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(currentPost.user.displayName).font(.headline).foregroundStyle(.primary)
-                        Text(currentPost.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        Text(currentPost.activityTimestamp.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -1791,15 +1800,16 @@ private struct SocialActivityDetailView: View {
 }
 
 private extension TogetherActivityDTO {
-    func savedActivity(createdAt: Date) -> SavedActivity {
+    func savedActivity(postCreatedAt: Date) -> SavedActivity {
         let duration = max(0, durationSecs ?? 0)
-        let startedAt = createdAt.addingTimeInterval(TimeInterval(-duration))
+        let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
+        let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
         let coordinates = route?.geometry.coordinates ?? []
         let routePoints = coordinates.enumerated().compactMap { index, coordinate -> SavedRoutePoint? in
             guard coordinate.count >= 2 else { return nil }
             let progress = coordinates.count > 1 ? Double(index) / Double(coordinates.count - 1) : 0
             return SavedRoutePoint(
-                timestamp: startedAt.addingTimeInterval(TimeInterval(duration) * progress),
+                timestamp: resolvedStartedAt.addingTimeInterval(TimeInterval(duration) * progress),
                 latitude: coordinate[1],
                 longitude: coordinate[0],
                 altitude: nil,
@@ -1832,9 +1842,9 @@ private extension TogetherActivityDTO {
             title: title ?? String(localized: "Activity"),
             guideNudge: "",
             reflection: nil,
-            createdAt: createdAt,
-            startedAt: startedAt,
-            endedAt: createdAt,
+            createdAt: postCreatedAt,
+            startedAt: resolvedStartedAt,
+            endedAt: resolvedEndedAt,
             durationSecs: duration,
             distanceM: max(0, distanceM ?? 0),
             avgPace: avgPace,
