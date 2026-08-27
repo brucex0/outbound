@@ -108,33 +108,25 @@
   .phone[data-screen="live"] .status-bar, .phone[data-screen="map"] .status-bar { color: #17211a; }
   .screen { position: absolute; inset: 0; display: none; }
   .screen.active { display: block; }
-  .home-screen { padding: 57px 18px 365px; overflow-y: auto; background: #f7f9f6; }
+  .home-screen { padding: 57px 18px 300px; overflow-y: auto; background: #f7f9f6; }
   .home-head { display: flex; align-items: center; justify-content: space-between; }
   .home-head p { margin: 0 0 3px; color: var(--muted); font-size: 12px; font-weight: 650; }
   .home-head h2 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
   .avatar { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; color: white; background: var(--forest); font-size: 13px; font-weight: 800; }
   .weather { margin: 22px 0 10px; color: var(--forest); font-size: 13px; font-weight: 750; }
-  .today-card { padding: 20px; border-radius: 25px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.17); }
+  .today-card { width: 100%; padding: 20px; border: 0; border-radius: 25px; color: white; background: linear-gradient(145deg, #315f3f, #1f422b); box-shadow: 0 16px 30px rgba(32,67,44,.17); text-align: left; cursor: pointer; }
   .today-card .label { color: #d7eadc; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
   .today-card h3 { margin: 8px 0 4px; font-size: 28px; letter-spacing: -.035em; }
   .today-card p { margin: 0; color: #deebe1; font-size: 14px; }
   .phases { display: grid; grid-template-columns: 1fr 3fr 1fr; gap: 4px; height: 6px; margin: 18px 0; }
   .phases i { display: block; border-radius: 99px; background: rgba(255,255,255,.42); }
   .phases i:nth-child(2) { background: #ff9b78; }
-  .workout-structure { display: grid; grid-template-columns: 1fr 3fr 1fr; gap: 6px; margin-top: 10px; color: #d7eadc; font-size: 10px; text-align: center; }
-  .workout-cue { margin-top: 17px; padding: 11px 12px; border-radius: 13px; color: #f9dfd6; background: rgba(228,111,73,.16); font-size: 12px; line-height: 1.4; }
   .selection-map { position: relative; height: 232px; overflow: hidden; border-radius: 25px; background: #e7ece8; box-shadow: 0 16px 30px rgba(32,67,44,.10); }
-  .selection-map.hidden, .today-card.hidden { display: none; }
+  .selection-map.hidden, .today-card.hidden, .today-content.hidden, .away-content.hidden, .launch-dock.hidden { display: none; }
   .selection-map svg { width: 100%; height: 100%; }
-  .selection-map-copy { position: absolute; left: 14px; right: 14px; bottom: 14px; padding: 12px 13px; border-radius: 14px; background: rgba(255,255,255,.94); box-shadow: 0 5px 16px rgba(26,39,30,.10); }
-  .selection-map-copy strong, .selection-map-copy small { display: block; }
-  .selection-map-copy strong { font-size: 15px; }
-  .selection-map-copy small { margin-top: 3px; color: var(--muted); font-size: 11px; }
-  .launch-dock { position: absolute; z-index: 15; left: 0; right: 0; bottom: 69px; min-height: 292px; padding: 9px 16px 12px; border-radius: 28px 28px 0 0; background: white; box-shadow: 0 -14px 38px rgba(26,39,30,.13); }
-  .launch-dock .grabber { margin-bottom: 10px; }
-  .quick-row { display: flex; justify-content: space-between; align-items: end; margin: 0 2px 8px; }
-  .quick-row h3 { margin: 0; font-size: 17px; }
-  .quick-row span { color: var(--muted); font-size: 10px; }
+  .selection-map-copy { position: absolute; left: 14px; right: 14px; bottom: 14px; min-height: 64px; padding: 10px 13px; border: 0; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.94); box-shadow: 0 5px 16px rgba(26,39,30,.10); cursor: pointer; }
+  .selection-map-copy strong { display: block; font-size: 30px; letter-spacing: -.04em; }
+  .launch-dock { position: absolute; z-index: 15; left: 0; right: 0; bottom: 69px; min-height: 220px; padding: 13px 16px 10px; border-top: 1px solid #e4e9e5; background: white; }
   .quick-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
   .quick-grid button { position: relative; min-width: 0; min-height: 65px; padding: 7px 2px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; cursor: pointer; }
   .quick-grid button[aria-pressed="true"] { border-color: var(--forest); color: white; background: var(--forest); box-shadow: 0 7px 16px rgba(49,95,63,.16); }
@@ -145,9 +137,10 @@
   .quick-grid button[aria-pressed="true"] small { color: rgba(255,255,255,.70); }
   .dock-setup-strip { display: grid; grid-template-columns: 1.15fr .85fr .8fr; gap: 6px; margin-top: 9px; }
   .dock-setup-strip button { min-width: 0; min-height: 34px; padding: 5px 7px; overflow: hidden; border: 0; border-radius: 10px; color: #516057; background: var(--soft); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-size: 9px; font-weight: 800; }
-  .launch-dock .launch-row { margin-top: 8px; }
-  .launch-dock .utility-button i { width: 43px; height: 43px; }
-  .launch-dock .start-button { width: 66px; height: 66px; }
+  .dock-utilities { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+  .dock-utilities .utility-button { min-height: 53px; display: grid; grid-template-columns: 36px 1fr; grid-template-rows: 1fr 1fr; align-items: center; column-gap: 8px; padding: 6px 9px; border-radius: 12px; background: var(--soft); text-align: left; }
+  .dock-utilities .utility-button i { grid-row: 1 / 3; width: 36px; height: 36px; margin: 0; }
+  .dock-utilities .utility-button span, .dock-utilities .utility-button small { margin: 0; }
   .tab-bar {
     position: absolute;
     z-index: 20;
@@ -157,7 +150,7 @@
     height: 70px;
     padding: 7px 20px 12px;
     display: grid;
-    grid-template-columns: 1fr 1fr 1.1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     align-items: end;
     border-top: 1px solid #e8ece8;
     background: rgba(255,255,255,.96);
@@ -166,7 +159,14 @@
   .tab-bar button { border: 0; color: #8a948d; background: transparent; font-size: 10px; cursor: pointer; }
   .tab-bar button i { display: block; margin-bottom: 3px; font-style: normal; font-size: 18px; }
   .tab-bar .selected { color: var(--forest); font-weight: 800; }
-  .tab-bar .run-tab { color: var(--forest); font-weight: 800; }
+  .tab-bar .context-start { color: var(--ink); font-weight: 800; }
+  .tab-bar .context-start i { display: grid; place-items: center; width: 54px; height: 54px; margin: -24px auto 0; border: 5px solid white; border-radius: 50%; color: white; background: var(--orange); box-shadow: 0 8px 22px rgba(193,79,44,.26); font-size: 21px; }
+  .tab-bar .context-start span { display: none; }
+  .tab-bar .context-today { color: var(--forest); font-weight: 800; }
+  .tab-bar .context-today span { display: block; margin-top: 3px; }
+  .away-content { padding-top: 8px; }
+  .away-content h2 { margin: 0 0 18px; font-size: 29px; letter-spacing: -.04em; }
+  .away-placeholder { height: 92px; margin-bottom: 12px; border-radius: 20px; background: #edf1ed; }
   .map-canvas { position: absolute; inset: 0; overflow: hidden; background: #e6ebe7; }
   .map-canvas svg { width: 100%; height: 100%; }
   .map-road { fill: none; stroke: #fff; stroke-width: 12; stroke-linecap: round; opacity: .9; }
@@ -240,6 +240,10 @@
   .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .preset-grid button { min-height: 48px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: var(--soft); cursor: pointer; font-size: 12px; font-weight: 800; }
   .preset-grid button[aria-pressed="true"] { border-color: var(--forest); color: white; background: var(--forest); }
+  .custom-goal { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px; }
+  .custom-goal input { min-width: 0; height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: white; font: inherit; }
+  .custom-goal span { display: grid; place-items: center; min-width: 42px; color: var(--muted); font-size: 12px; font-weight: 800; }
+  .custom-goal button { min-width: 62px; border: 0; border-radius: 12px; color: white; background: var(--forest); cursor: pointer; font-weight: 800; }
   .sheet-done { width: 100%; min-height: 48px; margin-top: 14px; border: 0; border-radius: 14px; color: white; background: var(--orange); cursor: pointer; font-weight: 800; }
   .countdown-screen { color: white; background: rgba(20,31,23,.55); backdrop-filter: blur(5px); }
   .countdown-center { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 13px; }
@@ -343,34 +347,36 @@
     <div class="status-bar"><span>9:41</span><span class="island"></span><span>●●● 87%</span></div>
 
     <section class="screen home-screen active" data-screen-panel="home">
-      <div class="home-head">
-        <div><p>Wednesday, August 26</p><h2>Good morning, Bruce</h2></div>
-        <div class="avatar">BX</div>
+      <div class="today-content" id="today-content">
+        <div class="home-head">
+          <div><p>Wednesday, August 26</p><h2>Good morning, Bruce</h2></div>
+          <div class="avatar">BX</div>
+        </div>
+        <div class="weather">Perfect outside · 61° · light breeze</div>
+        <button class="today-card" id="planned-content" type="button" data-action="open-plan" data-mode-content="planned">
+          <span class="label">Today</span>
+          <h3>Easy run · 30 min</h3>
+          <p>Conversational effort</p>
+          <div class="phases" aria-label="Warm up, easy running, cool down"><i></i><i></i><i></i></div>
+        </button>
+        <article class="selection-map hidden" id="map-content" data-mode-content="map">
+          <svg viewBox="0 0 354 232" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect width="354" height="232" fill="#e7ece8"/>
+            <path class="map-park" d="M-20 10h120v100H-20zM260-10h120v118H260z"/>
+            <rect class="map-block" x="125" y="25" width="82" height="53" rx="8"/><rect class="map-block" x="226" y="116" width="76" height="58" rx="8"/>
+            <path class="map-road" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
+            <path class="map-road-thin" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
+            <circle class="location-dot" cx="128" cy="108" r="9"/>
+            <text class="map-label" x="25" y="136">Cedar Ave</text><text class="map-label" x="205" y="167">Greenway</text>
+          </svg>
+          <button class="selection-map-copy" id="goal-detail-button" type="button" data-action="edit-selected-goal"><strong id="map-mode-title">No goal</strong></button>
+        </article>
       </div>
-      <div class="weather">Perfect outside · 61° · light breeze</div>
-      <article class="today-card" id="planned-content" data-mode-content="planned">
-        <span class="label">Today’s workout</span>
-        <h3>Easy run · 30 min</h3>
-        <p>Conversational effort. Keep this one comfortable.</p>
-        <div class="phases" aria-label="Warm up, easy running, cool down"><i></i><i></i><i></i></div>
-        <div class="workout-structure"><span>5 min warm up</span><span>20 min easy</span><span>5 min cool down</span></div>
-        <div class="workout-cue">✦ This lighter run balances Tuesday’s harder effort.</div>
-      </article>
-      <article class="selection-map hidden" id="map-content" data-mode-content="map">
-        <svg viewBox="0 0 354 232" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <rect width="354" height="232" fill="#e7ece8"/>
-          <path class="map-park" d="M-20 10h120v100H-20zM260-10h120v118H260z"/>
-          <rect class="map-block" x="125" y="25" width="82" height="53" rx="8"/><rect class="map-block" x="226" y="116" width="76" height="58" rx="8"/>
-          <path class="map-road" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
-          <path class="map-road-thin" d="M-15 148C65 130 98 90 158 112s95 72 220 42M70-20c20 95 25 180 67 275"/>
-          <circle class="location-dot" cx="128" cy="108" r="9"/>
-          <text class="map-label" x="25" y="136">Cedar Ave</text><text class="map-label" x="205" y="167">Greenway</text>
-        </svg>
-        <div class="selection-map-copy"><strong id="map-mode-title">Freestyle run</strong><small id="map-mode-detail">No target. GO whenever you’re ready.</small></div>
-      </article>
+      <section class="away-content hidden" id="away-content">
+        <h2 id="away-title">Social</h2>
+        <div class="away-placeholder"></div><div class="away-placeholder"></div><div class="away-placeholder"></div>
+      </section>
       <section class="launch-dock" aria-label="Activity launch dock">
-        <div class="grabber"></div>
-        <div class="quick-row"><h3>Choose this run</h3><span>Tap a goal to edit</span></div>
         <div class="quick-grid" aria-label="Run goal">
           <button type="button" data-mode="planned" aria-pressed="true"><strong>Planned</strong><small data-mode-value>30 min</small></button>
           <button type="button" data-mode="freestyle" aria-pressed="false"><strong>Freestyle</strong><small data-mode-value>Just run</small></button>
@@ -383,17 +389,15 @@
           <button type="button" id="environment-dock-button" data-action="open-setup" data-setup="environment">⌁ Outdoor</button>
           <button type="button" id="voice-dock-button" data-action="open-setup" data-setup="voice">◖ Voice on</button>
         </div>
-        <div class="launch-row">
+        <div class="dock-utilities">
           <button class="utility-button configured" id="music-button" type="button" data-action="open-music"><i>♫</i><span>Music</span><small id="music-value">Easy Miles</small></button>
-          <div><button class="start-button" id="start-button" type="button" data-action="start" aria-label="Start Easy run, 30 minutes">▶</button><div class="start-label">Start</div></div>
           <button class="utility-button configured" id="live-track-button" type="button" data-action="open-live-track"><i>⌖</i><span>Live Track</span><small id="live-track-value">Xia</small></button>
         </div>
       </section>
       <nav class="tab-bar" aria-label="Main tabs">
-        <button type="button"><i>♧</i>Social</button>
-        <button type="button"><i>✦</i>Today</button>
-        <button type="button" class="run-tab selected"><i>◇</i>Run</button>
-        <button type="button"><i>○</i>Me</button>
+        <button type="button" id="social-tab-button" data-action="switch-tab" data-tab="Social"><i>♧</i><span>Social</span></button>
+        <button type="button" class="context-start" id="context-tab-button" data-action="context-tab" aria-label="Start Easy run, 30 minutes"><i id="context-tab-icon">▶</i><span id="context-tab-label"></span></button>
+        <button type="button" id="me-tab-button" data-action="switch-tab" data-tab="Me"><i>○</i><span>Me</span></button>
       </nav>
       <div class="shade" id="goal-editor">
         <section class="option-sheet" aria-label="Edit goal">
@@ -401,7 +405,17 @@
           <div class="sheet-head"><h3 id="goal-sheet-title">Set distance</h3><button type="button" data-action="close-overlay" aria-label="Close goal editor">×</button></div>
           <div class="goal-value"><strong id="goal-current-value">5 km</strong><small id="goal-value-caption">Distance goal</small></div>
           <div class="preset-grid" id="goal-presets"></div>
+          <div class="custom-goal"><input id="custom-goal-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="Custom"><span id="custom-goal-unit">km</span><button type="button" data-action="apply-custom-goal">Apply</button></div>
           <button class="sheet-done" type="button" data-action="close-overlay">Done</button>
+        </section>
+      </div>
+      <div class="shade" id="plan-editor">
+        <section class="option-sheet" aria-label="Workout picker">
+          <div class="grabber"></div>
+          <div class="sheet-head"><h3>Choose workout</h3><button type="button" data-action="close-overlay" aria-label="Close workout picker">×</button></div>
+          <button class="setting-row" type="button" data-select-plan="Easy run · 30 min"><span class="setting-icon">✦</span><span class="setting-copy"><strong>Easy run · 30 min</strong><small>Conversational effort</small></span><span class="setting-value">Selected</span></button>
+          <button class="setting-row" type="button" data-select-plan="Tempo run · 35 min"><span class="setting-icon">↗</span><span class="setting-copy"><strong>Tempo run · 35 min</strong><small>Comfortably hard intervals</small></span><span class="setting-value">›</span></button>
+          <button class="setting-row" type="button" data-select-plan="Long run · 60 min"><span class="setting-icon">∞</span><span class="setting-copy"><strong>Long run · 60 min</strong><small>Easy endurance</small></span><span class="setting-value">›</span></button>
         </section>
       </div>
       <div class="shade" id="music-editor">
@@ -492,10 +506,10 @@
   </section>
 
   <aside class="notes" aria-label="Design decisions">
-    <div class="note"><b>Five goal modes</b><p>Planned is preselected beside Freestyle, Distance, Time, and Calories.</p></div>
-    <div class="note"><b>Focused value overlays</b><p>Distance, time, and calorie targets change without leaving the launch surface.</p></div>
-    <div class="note"><b>One continuous live surface</b><p>The same map remains behind the countdown, metrics sheet, and expanded route view.</p></div>
-    <div class="note"><b>No setup page</b><p>Music, Live Track, shoes, environment, and voice all live in the launch dock.</p></div>
+    <div class="note"><b>Contextual center action</b><p>Today becomes Start only while Today is visible; elsewhere it remains Today navigation.</p></div>
+    <div class="note"><b>The detail is the editor</b><p>Tap the workout card or current goal value to change it, including a custom number.</p></div>
+    <div class="note"><b>Fixed, flat controls</b><p>The launch dock has no sheet affordance, expansion state, or instructional heading.</p></div>
+    <div class="note"><b>Plainstride stays Plainstride</b><p>The interaction changes while the existing theme, cards, and visual language remain intact.</p></div>
   </aside>
 </main>
 <script>
@@ -505,6 +519,7 @@
   const navButtons = [...document.querySelectorAll('.step-nav [data-show]')];
   const overlays = [...phone.querySelectorAll('.shade')];
   const goalEditor = document.getElementById('goal-editor');
+  const planEditor = document.getElementById('plan-editor');
   const musicEditor = document.getElementById('music-editor');
   const liveTrackEditor = document.getElementById('live-track-editor');
   const setupEditor = document.getElementById('setup-editor');
@@ -515,13 +530,22 @@
   const plannedContent = document.getElementById('planned-content');
   const mapContent = document.getElementById('map-content');
   const mapModeTitle = document.getElementById('map-mode-title');
-  const mapModeDetail = document.getElementById('map-mode-detail');
   const countdownActivity = document.getElementById('countdown-activity');
-  const startButton = document.getElementById('start-button');
+  const contextTabButton = document.getElementById('context-tab-button');
+  const contextTabIcon = document.getElementById('context-tab-icon');
+  const contextTabLabel = document.getElementById('context-tab-label');
+  const socialTabButton = document.getElementById('social-tab-button');
+  const meTabButton = document.getElementById('me-tab-button');
+  const todayContent = document.getElementById('today-content');
+  const awayContent = document.getElementById('away-content');
+  const awayTitle = document.getElementById('away-title');
+  const launchDock = document.querySelector('.launch-dock');
   const goalSheetTitle = document.getElementById('goal-sheet-title');
   const goalCurrentValue = document.getElementById('goal-current-value');
   const goalValueCaption = document.getElementById('goal-value-caption');
   const goalPresets = document.getElementById('goal-presets');
+  const customGoalInput = document.getElementById('custom-goal-input');
+  const customGoalUnit = document.getElementById('custom-goal-unit');
   const musicValue = document.getElementById('music-value');
   const liveTrackValue = document.getElementById('live-track-value');
   const environmentDockButton = document.getElementById('environment-dock-button');
@@ -534,28 +558,28 @@
   let countdownTimer = null;
   let toastTimer = null;
   let selectedMode = 'planned';
+  let plannedTitle = 'Easy run · 30 min';
+  let activeAppTab = 'Today';
   let environment = 'Outdoor';
   let voiceEnabled = true;
 
   const goalSettings = {
-    distance: { title: 'Set distance', caption: 'Distance goal', value: '5 km', presets: ['1 km', '3 km', '5 km', '10 km', 'Half marathon'] },
-    time: { title: 'Set time', caption: 'Time goal', value: '30 min', presets: ['15 min', '30 min', '45 min', '60 min', '90 min'] },
-    calories: { title: 'Set calories', caption: 'Estimated calorie goal', value: '300 kcal', presets: ['150 kcal', '250 kcal', '300 kcal', '400 kcal', '500 kcal'] }
+    distance: { title: 'Set distance', caption: 'Distance goal', unit: 'km', value: '5 km', presets: ['1 km', '3 km', '5 km', '10 km', '21.1 km'] },
+    time: { title: 'Set time', caption: 'Time goal', unit: 'min', value: '30 min', presets: ['15 min', '30 min', '45 min', '60 min', '90 min'] },
+    calories: { title: 'Set calories', caption: 'Estimated calorie goal', unit: 'kcal', value: '300 kcal', presets: ['150 kcal', '250 kcal', '300 kcal', '400 kcal', '500 kcal'] }
   };
 
   function modeTitle(mode) {
-    if (mode === 'planned') return 'Easy run · 30 min';
+    if (mode === 'planned') return plannedTitle;
     if (mode === 'freestyle') return 'Freestyle run';
     if (mode === 'distance') return `Distance run · ${goalSettings.distance.value}`;
     if (mode === 'time') return `Timed run · ${goalSettings.time.value}`;
     return `Calorie goal · ${goalSettings.calories.value}`;
   }
 
-  function modeMapCopy(mode) {
-    if (mode === 'freestyle') return ['Freestyle run', 'No target. Start whenever you’re ready.'];
-    if (mode === 'distance') return [`Distance goal · ${goalSettings.distance.value}`, 'Tap Distance again to change the target.'];
-    if (mode === 'time') return [`Time goal · ${goalSettings.time.value}`, 'Tap Time again to change the duration.'];
-    return [`Calorie goal · ${goalSettings.calories.value}`, 'Estimated burn based on your profile and activity.'];
+  function modeDetail(mode) {
+    if (mode === 'freestyle') return 'No goal';
+    return goalSettings[mode].value;
   }
 
   function closeOverlays() {
@@ -572,6 +596,8 @@
     goalSheetTitle.textContent = setting.title;
     goalCurrentValue.textContent = setting.value;
     goalValueCaption.textContent = setting.caption;
+    customGoalInput.value = '';
+    customGoalUnit.textContent = setting.unit;
     goalPresets.replaceChildren(...setting.presets.map(value => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -588,12 +614,25 @@
     const showsPlan = mode === 'planned';
     plannedContent.classList.toggle('hidden', !showsPlan);
     mapContent.classList.toggle('hidden', showsPlan);
-    startButton.setAttribute('aria-label', `Start ${modeTitle(mode)}`);
+    if (activeAppTab === 'Today') contextTabButton.setAttribute('aria-label', `Start ${modeTitle(mode)}`);
     if (!showsPlan) {
-      const [title, detail] = modeMapCopy(mode);
-      mapModeTitle.textContent = title;
-      mapModeDetail.textContent = detail;
+      mapModeTitle.textContent = modeDetail(mode);
     }
+  }
+
+  function setAppTab(tab) {
+    activeAppTab = tab;
+    const isToday = tab === 'Today';
+    todayContent.classList.toggle('hidden', !isToday);
+    launchDock.classList.toggle('hidden', !isToday);
+    awayContent.classList.toggle('hidden', isToday);
+    socialTabButton.classList.toggle('selected', tab === 'Social');
+    meTabButton.classList.toggle('selected', tab === 'Me');
+    contextTabButton.className = isToday ? 'context-start' : 'context-today';
+    contextTabIcon.textContent = isToday ? '▶' : '✦';
+    contextTabLabel.textContent = isToday ? '' : 'Today';
+    contextTabButton.setAttribute('aria-label', isToday ? `Start ${modeTitle(selectedMode)}` : 'Go to Today');
+    if (!isToday) awayTitle.textContent = tab;
   }
 
   function selectMode(mode, opensEditor = true) {
@@ -661,6 +700,23 @@
     if (['home', 'live', 'map'].includes(action)) setScreen(action);
     else if (action === 'start') beginCountdown();
     else if (action === 'close-overlay') closeOverlays();
+    else if (action === 'context-tab') activeAppTab === 'Today' ? beginCountdown() : setAppTab('Today');
+    else if (action === 'switch-tab') setAppTab(element.dataset.tab);
+    else if (action === 'open-plan') openOverlay(planEditor);
+    else if (action === 'edit-selected-goal') {
+      if (goalSettings[selectedMode]) {
+        renderGoalEditor(selectedMode);
+        openOverlay(goalEditor);
+      }
+    }
+    else if (action === 'apply-custom-goal') {
+      const customValue = Number(customGoalInput.value);
+      if (customValue > 0 && goalSettings[selectedMode]) {
+        goalSettings[selectedMode].value = `${customGoalInput.value} ${goalSettings[selectedMode].unit}`;
+        renderGoalEditor(selectedMode);
+        updateModePresentation(selectedMode);
+      }
+    }
     else if (action === 'open-music') openOverlay(musicEditor);
     else if (action === 'open-live-track') openOverlay(liveTrackEditor);
     else if (action === 'open-setup') openOverlay(setupEditor);
@@ -699,6 +755,15 @@
       liveTrackValue.textContent = liveChoice.dataset.selectLive;
       closeOverlays();
       showToast(`Live Track: ${liveChoice.dataset.selectLive}`);
+      return;
+    }
+    const planChoice = event.target.closest('[data-select-plan]');
+    if (planChoice) {
+      plannedTitle = planChoice.dataset.selectPlan;
+      plannedContent.querySelector('h3').textContent = plannedTitle;
+      modeButtons.find(button => button.dataset.mode === 'planned').querySelector('[data-mode-value]').textContent = plannedTitle.match(/\d+ min/)?.[0] || 'Planned';
+      updateModePresentation('planned');
+      closeOverlays();
       return;
     }
     const modeButton = event.target.closest('[data-mode]');
