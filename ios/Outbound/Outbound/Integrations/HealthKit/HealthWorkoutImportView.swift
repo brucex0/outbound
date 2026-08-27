@@ -39,7 +39,19 @@ struct HealthWorkoutImportView: View {
                 } header: {
                     Text(String(localized: "health.import.section", defaultValue: "NEW IN APPLE HEALTH"))
                 } footer: {
-                    Text(String(localized: "health.import.footer", defaultValue: "Only selected workouts are added. Plainstride workouts and activities already imported are excluded."))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(String(localized: "health.import.footer", defaultValue: "Only selected workouts are added. Plainstride workouts and activities already imported are excluded."))
+                        if hasWalkingCandidates {
+                            Label {
+                                Text(String(
+                                    localized: "health.import.walking_warning",
+                                    defaultValue: "Walking workouts can make your activity history feel crowded. Uncheck any you don't want to import."
+                                ))
+                            } icon: {
+                                Image(systemName: "exclamationmark.triangle")
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle(String(localized: "health.import.title", defaultValue: "Import Workouts"))
@@ -72,14 +84,21 @@ struct HealthWorkoutImportView: View {
         )
     }
 
+    private var hasWalkingCandidates: Bool {
+        healthImportStore.importCandidates.contains { $0.activityType == .walking }
+    }
+
     private func importSelected() async {
         isImporting = true
+        let candidateCount = healthImportStore.importCandidates.count
         let selected = healthImportStore.importCandidates.filter { selectedIDs.contains($0.id) }
         let importedIDs = await activityStore.importHealthWorkouts(selected)
         healthImportStore.finishImport(importedIDs: importedIDs)
         track(.healthImportCompleted, properties: [
             .sourceType: .string("apple_health"),
-            .result: .string(importedIDs.count == selected.count ? "completed" : "partial")
+            .result: .string(importedIDs.count == selected.count ? "completed" : "partial"),
+            .selectionType: .string(selected.count == candidateCount ? "all" : "subset"),
+            .countBucket: .string(ProductAnalyticsBucket.count(selected.count))
         ])
         isImporting = false
         dismiss()

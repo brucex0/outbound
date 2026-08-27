@@ -210,7 +210,7 @@ enum ProductAnalyticsSchema {
         .healthConnectionRequested: [],
         .healthConnectionCompleted: [.result],
         .healthImportPromptViewed: [.sourceType],
-        .healthImportCompleted: [.result, .sourceType],
+        .healthImportCompleted: [.result, .sourceType, .selectionType, .countBucket],
         .voiceUpgradePromptViewed: [],
         .voiceUpgradePromptAction: [.selectionType],
         .feedbackReporterOpened: [.entrySource, .result]
