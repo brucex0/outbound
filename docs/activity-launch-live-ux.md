@@ -49,6 +49,8 @@ Primary live metrics follow the selected mode:
 
 Keep map, current guidance, Pause, and Finish primary. Pause reveals separate Resume and Finish actions. Finish requires confirmation before handing off to post-run review. Expanding the map preserves compact time, pace, and distance plus an obvious return to full metrics.
 
+The confirmed Finish handoff stays inside the existing full-screen activity surface. Live content fades and scales down slightly while post-run review fades and scales in over a stable background; it must not dismiss the live surface and present a second sliding cover. Reduce Motion uses an opacity-only handoff, and successful completion emits success haptic feedback.
+
 ## Feedback and Measurement
 
 Use temporary toasts for setup changes and learned-default confirmation. Overlays dismiss with their close action, outside tap, or Escape in the web reference. Selection uses text/checkmarks or state labels in addition to color.

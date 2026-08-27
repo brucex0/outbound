@@ -158,11 +158,11 @@ struct RecordView: View {
                     .opacity(isVisible && !showCamera ? 1 : 0)
                     .allowsHitTesting(isVisible && !showCamera)
                     .fullScreenCover(isPresented: embeddedLivePresentation) {
-                        liveRecordingSurface
+                        activityFullscreenSurface
                             .interactiveDismissDisabled()
                     }
-            } else if showCamera {
-                liveRecordingSurface
+            } else if showCamera || pendingActivity != nil {
+                activityFullscreenSurface
             } else {
                 readyView
             }
@@ -286,6 +286,7 @@ struct RecordView: View {
         }
         .overlay(alignment: .topLeading) {
             if isVisible,
+               pendingActivity == nil,
                let onCloseRequest,
                recorder.state == .idle,
                !isEmbeddedInToday || isCountingDown {
@@ -308,7 +309,9 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isVisible, !isEmbeddedInToday || showCamera || recorder.state != .idle {
+            if isVisible,
+               pendingActivity == nil,
+               !isEmbeddedInToday || showCamera || recorder.state != .idle {
                 Button {
                     isAssistantPresented = true
                 } label: {
@@ -322,21 +325,6 @@ struct RecordView: View {
                 .padding(.trailing, 16)
                 .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
             }
-        }
-        .fullScreenCover(item: $pendingActivity) { activity in
-            PostRunSummaryView(
-                summary: activity.summary,
-                photos: activity.photos,
-                reflection: activity.reflection,
-                recognitionPreviews: activity.recognitionPreviews,
-                guidanceReport: activity.guidanceReport,
-                workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
-                onGuidanceFeedback: handleGuidanceFeedback,
-                onSave: { selectedPhotos, reflection in
-                    await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
-                },
-                onDiscard: discardPendingActivity
-            )
         }
         .sheet(isPresented: $showsRouteLibrary) {
             NavigationStack {
@@ -481,9 +469,59 @@ struct RecordView: View {
 
     private var embeddedLivePresentation: Binding<Bool> {
         Binding(
-            get: { showCamera && isVisible },
+            get: { (showCamera || pendingActivity != nil) && isVisible },
             set: { _ in }
         )
+    }
+
+    private var activityFullscreenSurface: some View {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+
+            if let pendingActivity {
+                postRunSummarySurface(pendingActivity)
+                    .transition(postRunSummaryTransition)
+                    .zIndex(1)
+            } else {
+                liveRecordingSurface
+                    .transition(liveRunCompletionTransition)
+                    .zIndex(0)
+            }
+        }
+        .animation(activityCompletionAnimation, value: pendingActivity?.id)
+    }
+
+    private func postRunSummarySurface(_ activity: PendingFinishedActivity) -> some View {
+        PostRunSummaryView(
+            summary: activity.summary,
+            photos: activity.photos,
+            reflection: activity.reflection,
+            recognitionPreviews: activity.recognitionPreviews,
+            guidanceReport: activity.guidanceReport,
+            workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
+            onGuidanceFeedback: handleGuidanceFeedback,
+            onSave: { selectedPhotos, reflection in
+                await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
+            },
+            onDiscard: discardPendingActivity
+        )
+    }
+
+    private var activityCompletionAnimation: Animation {
+        .easeOut(duration: reduceMotion ? 0.16 : 0.3)
+    }
+
+    private var liveRunCompletionTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .scale(scale: 0.98).combined(with: .opacity)
+    }
+
+    private var postRunSummaryTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .scale(scale: 1.02).combined(with: .opacity)
     }
 
     @ViewBuilder
@@ -832,7 +870,6 @@ struct RecordView: View {
         liveGroupStore.finishActivity()
         guide.deactivate()
         Task { await musicStore.endWorkoutPlaybackIfNeeded() }
-        showCamera = false
         let reflection = DailyMotivationEngine.finishReflection(
             summary: summary,
             priorActivities: activityStore.activities,
@@ -848,13 +885,18 @@ struct RecordView: View {
             goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities),
             photoCount: capturedPhotos.count
         )
-        pendingActivity = PendingFinishedActivity(
+        let finishedActivity = PendingFinishedActivity(
             summary: summary,
             photos: capturedPhotos,
             reflection: reflection,
             recognitionPreviews: recognitionPreviews,
             guidanceReport: guidanceReport
         )
+        withAnimation(activityCompletionAnimation) {
+            pendingActivity = finishedActivity
+            showCamera = false
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func savePendingActivity(
