@@ -88,12 +88,13 @@ async function socialHome(c: Context<AppEnv>) {
     prisma.post.findMany({
       where: {
         userId: { in: [user.id, ...connections] },
+        activityId: { not: null },
         visibility: { in: ["connections", "public"] },
         deletedAt: null,
         ...(feedCursor ? {
           OR: [
-            { createdAt: { lt: feedCursor.createdAt } },
-            { createdAt: feedCursor.createdAt, id: { lt: feedCursor.id } },
+            { activity: { startedAt: { lt: feedCursor.createdAt } } },
+            { activity: { startedAt: feedCursor.createdAt }, id: { lt: feedCursor.id } },
           ],
         } : {}),
       },
@@ -108,15 +109,17 @@ async function socialHome(c: Context<AppEnv>) {
         },
         _count: { select: { comments: true } },
       },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ activity: { startedAt: "desc" } }, { id: "desc" }],
       take: socialFeedPageSize + 1,
     }),
   ]);
 
   const feedPosts = posts.slice(0, socialFeedPageSize);
   const lastFeedPost = feedPosts.at(-1);
+  const lastFeedTimestamp = lastFeedPost?.activity?.startedAt;
   const nextFeedCursor = posts.length > socialFeedPageSize && lastFeedPost
-    ? encodeFeedCursor(lastFeedPost.createdAt, lastFeedPost.id)
+    && lastFeedTimestamp
+    ? encodeFeedCursor(lastFeedTimestamp, lastFeedPost.id)
     : null;
 
   return c.json({

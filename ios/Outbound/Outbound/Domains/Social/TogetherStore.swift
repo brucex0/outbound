@@ -66,9 +66,8 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    @discardableResult
-    func loadMorePosts() async -> Bool {
-        guard !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return true }
+    func loadMorePosts() async -> Int? {
+        guard !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return 0 }
         isLoadingMorePosts = true
         defer { isLoadingMorePosts = false }
         do {
@@ -84,9 +83,9 @@ final class TogetherStore: ObservableObject {
             )
             persist()
             errorMessage = nil
-            return true
+            return appendedPosts.count
         } catch {
-            return false
+            return nil
         }
     }
 

@@ -2,6 +2,8 @@ import MapKit
 import SwiftUI
 
 struct SocialHomeView: View {
+    private static let feedPageSize = 12
+
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -512,10 +514,19 @@ struct SocialHomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, OutboundSpacing.compact)
                         .task {
-                            guard await socialStore.loadMorePosts() else {
+                            guard let appendedCount = await socialStore.loadMorePosts() else {
                                 toastMessage = String(localized: "social.feed.load_more_failed")
                                 return
                             }
+                            guard appendedCount > 0 else { return }
+                            let page = Int(ceil(
+                                Double(socialStore.state.posts.count) / Double(Self.feedPageSize)
+                            ))
+                            await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+                                .sourceType: .string("activity_feed"),
+                                .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+                                .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+                            ]))
                         }
                 }
             }
