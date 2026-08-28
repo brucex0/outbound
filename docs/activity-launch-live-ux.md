@@ -13,7 +13,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area at the bottom of Today. The Today navigation title, conditions pill, app shell, and bounded map background remain permanent. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned renders the existing Today card and Up Next implementation as a standalone peer-card stack above the dock; it must not use a page-sized scroll container that intercepts touches outside the cards. The other modes use their compact goal information card in the same region. The map ends at the dock boundary and never becomes the full-screen app surface. Each dock control renders only its icon and localized title; current values remain available through configuration state, the goal card/editor, and accessibility. The dock has no third row, grabber, expansion state, setup heading, or second setup screen.
+Use one fixed, flat two-row control area at the bottom of Today. The goal modes and launch options each occupy their own independently horizontal-scrollable row, with roomy fixed-width controls so compact phones do not compress labels or tap targets. The Today navigation title, conditions pill, app shell, and bounded map background remain permanent. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned renders the existing Today card and Up Next implementation as a standalone peer-card stack above the dock; it must not use a page-sized scroll container that intercepts touches outside the cards. The other modes use their compact goal information card in the same region. The map ends at the dock boundary and never becomes the full-screen app surface. Each dock control renders only its icon and localized title; current values remain available through configuration state, the goal card/editor, and accessibility. The dock has no third row, grabber, expansion state, setup heading, or second setup screen.
 
 Goal modes are peers:
 
@@ -59,7 +59,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 
 ## Acceptance Criteria
 
-- The two-row launch dock fits at 360-point width without hiding the contextual Start control or tab bar.
+- The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; each row scrolls independently to expose every action.
 - Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
 - The map remains the background of the bounded content area for every goal mode without covering the Today title, conditions pill, dock, or tab bar.
 - Planned retains the existing Today card and Up Next implementation as its peer content layer; other modes show their compact goal information layer.

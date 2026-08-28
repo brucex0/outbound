@@ -25,8 +25,10 @@ private enum ActivitySetupSheet: String, Identifiable {
 }
 
 enum ActivityLaunchLayout {
-    static let dockHeight: CGFloat = 146
+    static let dockHeight: CGFloat = 168
     static let peerCardGap: CGFloat = 12
+    static let controlWidth: CGFloat = 112
+    static let controlHeight: CGFloat = 64
 }
 
 struct RecordView: View {
@@ -1192,69 +1194,74 @@ struct RecordView: View {
     }
 
     private var launchDock: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 5) {
-                ForEach(SessionGoalMode.allCases, id: \.self) { mode in
-                    launchModeButton(mode)
-                }
-            }
-
-            HStack(spacing: 5) {
-                setupUtilityButton(
-                    title: String(localized: "record.setup.music", defaultValue: "Music"),
-                    value: musicSetupValue,
-                    systemImage: "music.note.list",
-                    isConfigured: musicIsConfigured
-                ) {
-                    trackFeatureExposure("music")
-                    dismissMusicDiscoveryTip(result: "opened")
-                    setupSheet = .music
-                }
-
-                setupUtilityButton(
-                    title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
-                    value: liveTrackValue,
-                    systemImage: "location.fill",
-                    isConfigured: liveShareStore.isArmedForNextActivity
-                ) {
-                    if safetyContactStore.defaultContact == nil {
-                        showsTrustedContacts = true
-                    } else {
-                        liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+        VStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 10) {
+                    ForEach(SessionGoalMode.allCases, id: \.self) { mode in
+                        launchModeButton(mode)
                     }
                 }
+                .padding(.horizontal, 16)
+            }
 
-                launchShoeControl
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 10) {
+                    setupUtilityButton(
+                        title: String(localized: "record.setup.music", defaultValue: "Music"),
+                        value: musicSetupValue,
+                        systemImage: "music.note.list",
+                        isConfigured: musicIsConfigured
+                    ) {
+                        trackFeatureExposure("music")
+                        dismissMusicDiscoveryTip(result: "opened")
+                        setupSheet = .music
+                    }
 
-                setupUtilityButton(
-                    title: String(localized: "record.setup.environment", defaultValue: "Environment"),
-                    value: isIndoorSession
-                        ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
-                        : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
-                    systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
-                    isConfigured: true
-                ) {
-                    isIndoorSession.toggle()
-                    track(.init(.activityConfigurationChanged, properties: [
-                        .changeType: .string("environment"),
-                        .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
-                    ]))
+                    setupUtilityButton(
+                        title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
+                        value: liveTrackValue,
+                        systemImage: "location.fill",
+                        isConfigured: liveShareStore.isArmedForNextActivity
+                    ) {
+                        if safetyContactStore.defaultContact == nil {
+                            showsTrustedContacts = true
+                        } else {
+                            liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                        }
+                    }
+
+                    launchShoeControl
+
+                    setupUtilityButton(
+                        title: String(localized: "record.setup.environment", defaultValue: "Environment"),
+                        value: isIndoorSession
+                            ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
+                            : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
+                        systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
+                        isConfigured: true
+                    ) {
+                        isIndoorSession.toggle()
+                        track(.init(.activityConfigurationChanged, properties: [
+                            .changeType: .string("environment"),
+                            .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
+                        ]))
+                    }
+
+                    setupUtilityButton(
+                        title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
+                        value: isVoiceGuideEnabled
+                            ? String(localized: "common.on", defaultValue: "On")
+                            : String(localized: "common.off", defaultValue: "Off"),
+                        systemImage: isVoiceGuideEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                        isConfigured: isVoiceGuideEnabled
+                    ) {
+                        setVoiceGuideEnabled(!isVoiceGuideEnabled)
+                    }
                 }
-
-                setupUtilityButton(
-                    title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
-                    value: isVoiceGuideEnabled
-                        ? String(localized: "common.on", defaultValue: "On")
-                        : String(localized: "common.off", defaultValue: "Off"),
-                    systemImage: isVoiceGuideEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
-                    isConfigured: isVoiceGuideEnabled
-                ) {
-                    setVoiceGuideEnabled(!isVoiceGuideEnabled)
-                }
+                .padding(.horizontal, 16)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 11)
+        .padding(.top, 12)
         .padding(.bottom, 16)
         .frame(height: ActivityLaunchLayout.dockHeight)
         .background(.ultraThickMaterial)
@@ -1295,22 +1302,22 @@ struct RecordView: View {
         Button {
             selectLaunchMode(mode)
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 5) {
                 Image(systemName: mode.systemImage)
-                    .font(.caption.weight(.bold))
+                    .font(.body.weight(.semibold))
                 Text(mode.title)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    .minimumScaleFactor(0.82)
             }
             .foregroundStyle(mode == selectedGoalMode ? Color.white : Color.primary)
-            .frame(maxWidth: .infinity, minHeight: 58)
+            .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
             .background(
                 mode == selectedGoalMode ? theme.accentColor : Color(.secondarySystemBackground),
-                in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .stroke(mode == selectedGoalMode ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
             }
         }
@@ -1328,20 +1335,20 @@ struct RecordView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
+            VStack(spacing: 4) {
                 Image(systemName: systemImage)
-                    .font(.caption.weight(.bold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isConfigured ? Color.white : theme.accentColor)
-                    .frame(width: 25, height: 25)
-                    .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: 30, height: 30)
+                    .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                 Text(title)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.82)
             }
-            .frame(maxWidth: .infinity, minHeight: 53)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -1370,18 +1377,18 @@ struct RecordView: View {
                     track(.init(.shoeSelected, properties: [.selectionType: .string("none")]))
                 }
             } label: {
-                VStack(spacing: 2) {
+                VStack(spacing: 4) {
                     Image(systemName: "shoeprints.fill")
-                        .font(.caption.weight(.bold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(selectedSessionShoe == nil ? theme.accentColor : Color.white)
-                        .frame(width: 25, height: 25)
-                        .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .frame(width: 30, height: 30)
+                        .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     Text(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
                 }
-                .frame(maxWidth: .infinity, minHeight: 53)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
             .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
