@@ -56,7 +56,6 @@ struct SimplifiedAppShell: View {
                 selectedRouteName: $selectedRouteName,
                 activityLaunchSurface: activityLaunchSurface,
                 launchGoalMode: launchGoalMode,
-                onOpenAssistant: { showsAssistant = true },
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
@@ -82,26 +81,24 @@ struct SimplifiedAppShell: View {
             feedbackPage = tab.feedbackPageName
         }
         .overlay(alignment: .bottomLeading) {
-            if selection != .today {
-                Button {
-                    showsAssistant = true
-                } label: {
-                    Image(systemName: "sparkles")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-                        .overlay {
-                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                        }
-                        .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "Open assistant"))
-                .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-                .padding(.leading, 18)
-                .padding(.bottom, 58)
+            Button {
+                showsAssistant = true
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                    }
+                    .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Open assistant"))
+            .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+            .padding(.leading, 18)
+            .padding(.bottom, 58)
         }
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
@@ -483,7 +480,6 @@ private struct SimplifiedTodayView: View {
     @Binding var selectedRouteName: String?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
-    let onOpenAssistant: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @StateObject private var launchLocationManager = LocationManager()
     @State private var showsCompanionExplanation = false
@@ -528,24 +524,6 @@ private struct SimplifiedTodayView: View {
                 }
 
                 activityLaunchSurface
-            }
-            .overlay(alignment: .bottomLeading) {
-                Button(action: onOpenAssistant) {
-                    Image(systemName: "sparkles")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-                        .overlay {
-                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                        }
-                        .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "Open assistant"))
-                .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-                .padding(.leading, 16)
-                .padding(.bottom, ActivityLaunchLayout.dockHeight + ActivityLaunchLayout.peerCardGap)
             }
             .background(OutboundPalette.background)
             .ignoresSafeArea(edges: .top)
