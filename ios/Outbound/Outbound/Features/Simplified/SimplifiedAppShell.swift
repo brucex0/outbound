@@ -2446,10 +2446,15 @@ private struct SimplifiedMeView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(connectionPreview) { connection in
-                            SocialAvatar(
-                                name: connection.person.displayName,
-                                avatarURL: connection.person.avatarUrl
-                            )
+                            SocialProfileLink(
+                                person: connection.person,
+                                entrySource: "me_connections_preview"
+                            ) {
+                                SocialAvatar(
+                                    name: connection.person.displayName,
+                                    avatarURL: connection.person.avatarUrl
+                                )
+                            }
                         }
                     }
 

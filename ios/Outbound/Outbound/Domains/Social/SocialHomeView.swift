@@ -193,9 +193,7 @@ struct SocialHomeView: View {
     private func incomingRequestCard(_ connection: SocialConnectionDTO) -> some View {
         OutboundCard(style: .companion) {
             HStack(spacing: OutboundSpacing.compact) {
-                NavigationLink {
-                    SocialPersonProfileView(person: connection.person.asTogetherPerson, username: connection.person.username)
-                } label: {
+                SocialProfileLink(person: connection.person, entrySource: "social_connection_request") {
                     HStack(spacing: OutboundSpacing.compact) {
                         SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
                         VStack(alignment: .leading, spacing: 3) {
@@ -206,7 +204,6 @@ struct SocialHomeView: View {
                     .foregroundStyle(.primary)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
                 Spacer()
                 NavigationLink("Review") {
                     SocialConnectionsView()
@@ -414,9 +411,7 @@ struct SocialHomeView: View {
                 OutboundCard {
                     VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         HStack {
-                            NavigationLink {
-                                SocialPersonProfileView(person: post.user)
-                            } label: {
+                            SocialProfileLink(person: post.user, entrySource: "activity_feed") {
                                 HStack {
                                     SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
                                     VStack(alignment: .leading) {
@@ -428,7 +423,6 @@ struct SocialHomeView: View {
                                 }
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
                             Spacer()
                             Menu {
                                 if post.isCurrentUser {
@@ -1633,9 +1627,7 @@ struct SocialConnectionsView: View {
         @ViewBuilder actions: () -> Actions
     ) -> some View {
         HStack(spacing: OutboundSpacing.compact) {
-            NavigationLink {
-                SocialPersonProfileView(person: connection.person.asTogetherPerson, username: connection.person.username)
-            } label: {
+            SocialProfileLink(person: connection.person, entrySource: "connections") {
                 HStack(spacing: OutboundSpacing.compact) {
                     SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
@@ -1645,7 +1637,6 @@ struct SocialConnectionsView: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
             Spacer()
             actions()
         }
@@ -1679,7 +1670,7 @@ struct SocialConnectionsView: View {
     }
 }
 
-private struct SocialPersonProfileView: View {
+struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     let person: TogetherPersonDTO
     var username: String? = nil
@@ -1787,9 +1778,7 @@ private struct SocialActivityDetailView: View {
 
     private var socialCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            NavigationLink {
-                SocialPersonProfileView(person: currentPost.user)
-            } label: {
+            SocialProfileLink(person: currentPost.user, entrySource: "social_activity_detail") {
                 HStack(spacing: 12) {
                     SocialAvatar(name: currentPost.user.displayName, avatarURL: currentPost.user.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
@@ -1805,7 +1794,6 @@ private struct SocialActivityDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
 
             if let caption = currentPost.caption, !caption.isEmpty {
                 Text(caption).font(.body)
@@ -1935,12 +1923,6 @@ private extension TogetherActivityDTO {
             photos: savedPhotos,
             sync: nil
         )
-    }
-}
-
-private extension SocialPersonDTO {
-    var asTogetherPerson: TogetherPersonDTO {
-        TogetherPersonDTO(id: id, displayName: displayName, avatarUrl: avatarUrl)
     }
 }
 

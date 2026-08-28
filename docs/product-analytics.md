@@ -178,6 +178,8 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `paginated_list_page_loaded` records successful additional-page loads for `activity_history`, `activity_feed`, and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity facts, connection identities, cursors, and exact totals are excluded.
 
+`social_profile_opened` records only the source surface for profile navigation through the shared social-profile link. It excludes the runner's name, username, profile ID, and connection ID.
+
 | Provider | Strengths for Plainstride | Tradeoffs | Fit now |
 | --- | --- | --- | --- |
 | Firebase Analytics | Already linked; minimal implementation work; familiar iOS SDK; automatic baseline events; custom events; direct BigQuery export for SQL and long-term ownership | Console analysis is less product-focused than dedicated tools; custom parameters need console registration for standard reports; GA naming and reporting constraints can leak into a poorly designed taxonomy | Best initial provider |
