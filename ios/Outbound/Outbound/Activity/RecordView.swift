@@ -31,6 +31,27 @@ enum ActivityLaunchLayout {
     static let controlHeight: CGFloat = 64
 }
 
+struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+extension View {
+    func reportsMapAttributionOcclusionHeight() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: MapAttributionOcclusionHeightPreferenceKey.self,
+                    value: proxy.size.height
+                )
+            }
+        }
+    }
+}
+
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1127,6 +1148,7 @@ struct RecordView: View {
                         launchGoalCard
                             .padding(.horizontal, 18)
                             .padding(.bottom, 12)
+                            .reportsMapAttributionOcclusionHeight()
                     }
                 }
             }
@@ -3506,6 +3528,7 @@ struct ActivityLaunchMap: View {
     @Environment(\.outboundTheme) private var theme
     @ObservedObject var locationManager: LocationManager
     let route: PreparedRoute?
+    var attributionBottomInset: CGFloat = 0
 
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
 
@@ -3535,6 +3558,7 @@ struct ActivityLaunchMap: View {
 
             UserAnnotation()
         }
+        .safeAreaPadding(.bottom, max(attributionBottomInset, 0))
         .onAppear { frameRouteIfNeeded() }
         .onChange(of: route?.id) { _, _ in frameRouteIfNeeded() }
     }

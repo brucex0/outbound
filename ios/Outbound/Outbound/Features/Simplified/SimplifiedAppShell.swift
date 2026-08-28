@@ -498,6 +498,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsStandaloneWorkouts = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
+    @State private var mapAttributionBottomInset: CGFloat = 0
 
     var body: some View {
         NavigationStack {
@@ -507,7 +508,8 @@ private struct SimplifiedTodayView: View {
                         OutboundPalette.background
                         ActivityLaunchMap(
                             locationManager: launchLocationManager,
-                            route: activeRunIntent.preparedRoute
+                            route: activeRunIntent.preparedRoute,
+                            attributionBottomInset: mapAttributionBottomInset
                         )
                         .clipped()
 
@@ -515,6 +517,7 @@ private struct SimplifiedTodayView: View {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, ActivityLaunchLayout.peerCardGap)
+                                .reportsMapAttributionOcclusionHeight()
                         }
                     }
 
@@ -524,6 +527,9 @@ private struct SimplifiedTodayView: View {
                 }
 
                 activityLaunchSurface
+            }
+            .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
+                mapAttributionBottomInset = height
             }
             .background(OutboundPalette.background)
             .ignoresSafeArea(edges: .top)

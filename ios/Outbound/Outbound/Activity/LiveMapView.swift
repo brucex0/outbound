@@ -21,6 +21,7 @@ struct LiveMapView: View {
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
     @State private var statusCardHeight: CGFloat = 132
+    @State private var bottomOverlayHeight: CGFloat = 168
     @State private var focusedParticipantID: String?
     @State private var isGroupManagementExpanded = false
     @State private var hasTrackedRouteDisplay = false
@@ -99,6 +100,7 @@ struct LiveMapView: View {
                     }
                 }
             }
+            .safeAreaPadding(.bottom, bottomOverlayHeight + 8)
             .onMapCameraChange(frequency: .onEnd) { _ in
                 if mapPosition.positionedByUser {
                     isFollowingUser = false
@@ -106,95 +108,98 @@ struct LiveMapView: View {
             }
             .ignoresSafeArea()
 
-            VStack(spacing: 12) {
+            VStack {
                 Spacer()
 
-                if liveGroupStore.isSharing {
-                    LiveGroupManagementPanel(
-                        title: liveGroupStore.displayTitle,
-                        statusSummary: liveGroupStore.statusSummary,
-                        participants: liveGroupStore.participants,
-                        isExpanded: $isGroupManagementExpanded,
-                        isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
-                        onInvite: {
-                            Task {
-                                guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
-                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                VStack(spacing: 12) {
+                    if liveGroupStore.isSharing {
+                        LiveGroupManagementPanel(
+                            title: liveGroupStore.displayTitle,
+                            statusSummary: liveGroupStore.statusSummary,
+                            participants: liveGroupStore.participants,
+                            isExpanded: $isGroupManagementExpanded,
+                            isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
+                            onInvite: {
+                                Task {
+                                    guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
+                                    await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                                }
+                            },
+                            onStop: {
+                                liveGroupStore.stopFromManagementControl()
                             }
-                        },
-                        onStop: {
-                            liveGroupStore.stopFromManagementControl()
-                        }
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                if !liveGroupStore.visibleParticipants.isEmpty {
-                    LiveGroupRunnerStrip(
-                        participants: liveGroupStore.visibleParticipants,
-                        currentCoordinate: currentCoordinate,
-                        unitSystem: measurementPreferences.unitSystem,
-                        focusedParticipantID: focusedParticipantID,
-                        onSelect: { participant in
-                            guard let coordinate = participant.coordinate else { return }
-                            focusedParticipantID = participant.id
-                            isFollowingUser = false
-                            updateMapCamera(for: coordinate, animated: true)
-                        }
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                if let routeGuidance = recorder.routeGuidanceSnapshot {
-                    RouteGuidanceStatusView(
-                        snapshot: routeGuidance,
-                        unitSystem: measurementPreferences.unitSystem
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                SessionStatusCard(
-                    state: recorder.state,
-                    isCompact: false,
-                    intent: intent,
-                    elapsedText: recorder.elapsedSeconds.formatted(),
-                    elapsedSeconds: recorder.elapsedSeconds,
-                    paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
-                    paceText: sessionPaceText,
-                    distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
-                    distanceMeters: recorder.distanceMeters,
-                    energyKilocalories: estimatedEnergyKilocalories,
-                    distanceLabel: measurementPreferences.unitSystem.distanceLabel,
-                    elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
-                    elevationLabel: measurementPreferences.unitSystem.elevationLabel,
-                    heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
-                    guideMessage: guideMessage,
-                    musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
-                    showsMusicDisabledState: musicStore.hasDeveloperTokenError,
-                    musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
-                    onTogglePlayback: {
-                        trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
-                        Task { await musicStore.togglePlayback() }
-                    },
-                    onSkipTrack: {
-                        trackMusicControl("skip")
-                        Task { await musicStore.skipToNext() }
-                    },
-                    onStart: onStart,
-                    onPause: pauseActivity,
-                    onResume: resumeActivity,
-                    onFinish: onFinish
-                )
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: SessionStatusCardHeightPreferenceKey.self,
-                            value: proxy.size.height
                         )
+                        .padding(.horizontal, 16)
                     }
+
+                    if !liveGroupStore.visibleParticipants.isEmpty {
+                        LiveGroupRunnerStrip(
+                            participants: liveGroupStore.visibleParticipants,
+                            currentCoordinate: currentCoordinate,
+                            unitSystem: measurementPreferences.unitSystem,
+                            focusedParticipantID: focusedParticipantID,
+                            onSelect: { participant in
+                                guard let coordinate = participant.coordinate else { return }
+                                focusedParticipantID = participant.id
+                                isFollowingUser = false
+                                updateMapCamera(for: coordinate, animated: true)
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                    }
+
+                    if let routeGuidance = recorder.routeGuidanceSnapshot {
+                        RouteGuidanceStatusView(
+                            snapshot: routeGuidance,
+                            unitSystem: measurementPreferences.unitSystem
+                        )
+                        .padding(.horizontal, 16)
+                    }
+
+                    SessionStatusCard(
+                        state: recorder.state,
+                        isCompact: false,
+                        intent: intent,
+                        elapsedText: recorder.elapsedSeconds.formatted(),
+                        elapsedSeconds: recorder.elapsedSeconds,
+                        paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
+                        paceText: sessionPaceText,
+                        distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+                        distanceMeters: recorder.distanceMeters,
+                        energyKilocalories: estimatedEnergyKilocalories,
+                        distanceLabel: measurementPreferences.unitSystem.distanceLabel,
+                        elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
+                        elevationLabel: measurementPreferences.unitSystem.elevationLabel,
+                        heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
+                        guideMessage: guideMessage,
+                        musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+                        showsMusicDisabledState: musicStore.hasDeveloperTokenError,
+                        musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
+                        onTogglePlayback: {
+                            trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
+                            Task { await musicStore.togglePlayback() }
+                        },
+                        onSkipTrack: {
+                            trackMusicControl("skip")
+                            Task { await musicStore.skipToNext() }
+                        },
+                        onStart: onStart,
+                        onPause: pauseActivity,
+                        onResume: resumeActivity,
+                        onFinish: onFinish
+                    )
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: SessionStatusCardHeightPreferenceKey.self,
+                                value: proxy.size.height
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 18)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 18)
+                .reportsMapAttributionOcclusionHeight()
             }
 
 
@@ -232,6 +237,9 @@ struct LiveMapView: View {
         }
         .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
             statusCardHeight = height
+        }
+        .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
+            bottomOverlayHeight = max(height, statusCardHeight + 18)
         }
     }
 

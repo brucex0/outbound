@@ -47,6 +47,8 @@ Primary live metrics follow the selected mode:
 
 Keep map, current guidance, Pause, and Finish primary. Pause reveals separate Resume and Finish actions. Finish requires confirmation before handing off to post-run review. Expanding the map preserves compact time, pace, and distance plus an obvious return to full metrics.
 
+Keep the Apple Maps logo and Legal attribution fully visible on both Today and the live map. Each map uses the measured height of its bottom cards and controls as safe-area padding, so attribution moves above every app-owned overlay while map imagery continues beneath the UI.
+
 The confirmed Finish handoff stays inside the existing full-screen activity surface. Live content fades and scales down slightly while post-run review fades and scales in over a stable background; it must not dismiss the live surface and present a second sliding cover. Reduce Motion uses an opacity-only handoff, and successful completion emits success haptic feedback.
 
 ## Feedback and Measurement
@@ -60,6 +62,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; each dock row scrolls independently to expose every action.
 - Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
 - The map remains the background of the bounded content area for every goal mode, extends behind the navigation controls, and stops before the dock and tab bar.
+- The Apple Maps logo and Legal attribution remain unobstructed above Today cards and every live-run bottom overlay, including expanded route-guidance and group-run panels.
 - The workout row contains Planned, Run, Walk, Hike, and Bike, with supported manual sports defined in one extensible collection.
 - Planned retains the recommendation's assigned sport and the existing Today card and Up Next implementation as its peer content layer.
 - The text-only Free, Distance, Time, and Calories pills float above the dock for manual sports and remain hidden for Planned.
