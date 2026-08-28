@@ -13,17 +13,15 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area at the bottom of Today. The goal modes and launch options each occupy their own independently horizontal-scrollable row, with roomy fixed-width controls so compact phones do not compress labels or tap targets. The Today navigation controls, app shell, and bounded map background remain permanent. The map extends behind the transparent navigation bar to the screen top, then ends at the dock boundary; it never becomes the full-screen app surface. Planned, Freestyle, Distance, Time, and Calories are peer modes layered over that same map. Planned renders the existing Today card and Up Next implementation as a standalone peer-card stack above the dock; it must not use a page-sized scroll container that intercepts touches outside the cards. Distance, Time, and Calories use their compact goal information card in the same region. Freestyle has no information card because it has no target. Each dock control renders only its icon and localized title; current values remain available through configuration state, the goal card/editor, and accessibility. The dock has no third row, grabber, expansion state, setup heading, or second setup screen. The assistant uses the same shell-owned bottom-leading screen position as on Social and Me.
+Use one fixed, flat two-row control area at the bottom of Today. Workout choices and launch options each occupy their own independently horizontal-scrollable row, with roomy fixed-width controls so compact phones do not compress labels or tap targets. The Today navigation controls, app shell, and bounded map background remain permanent. The map extends behind the transparent navigation bar to the screen top, then ends at the dock boundary; it never becomes the full-screen app surface.
 
-Goal modes are peers:
+The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Selecting a manual sport builds the corresponding activity intent and preserves the user's manual goal when switching between sports.
 
-- `Planned`: the prescribed workout structure; initial default.
-- `Freestyle`: record without a target.
-- `Distance`, `Time`, and `Calories`: record toward one explicit target.
+For a manual sport, a separate horizontal row of compact text-only pills floats immediately above the dock: `Free`, `Distance`, `Time`, and `Calories`. This row is hidden for `Planned`; planned workouts already define their own structure and target. `Free` records without a target, while Distance, Time, and Calories record toward one explicit target. The target modes use their compact information card in the map region, and Free has no information card.
 
-Selecting a mode only updates the information card; it never opens another control. The Planned card opens the workout picker when tapped. The Distance, Time, or Calories card opens a small anchored chooser with one row of presets and a custom input. Do not use a dimmed full-height sheet for goal values. Freestyle has no target editor.
+Planned renders the existing Today card and Up Next implementation as a standalone peer-card stack above the dock; it must not use a page-sized scroll container that intercepts touches outside the cards. The Planned card opens the workout picker when tapped. The Distance, Time, or Calories card opens a small anchored chooser with one row of presets and a custom input. Do not use a dimmed full-height sheet for goal values. Each dock control renders only its icon and localized title; the floating goal controls are text only. Current values remain available through configuration state, the goal card/editor, and accessibility. The dock has no grabber, expansion state, setup heading, or second setup screen. The assistant uses the same shell-owned bottom-leading screen position as on Social and Me.
 
-Learn a different default only after the same mode reaches live recording for three consecutive activities. Exploratory taps and canceled countdowns do not count. Store this preference locally and keep every mode available; selecting a mode never starts the activity.
+Learn a different manual goal default only after the same mode reaches live recording for three consecutive activities. Exploratory taps and canceled countdowns do not count. Store this preference locally and keep every mode available; selecting a workout or goal never starts the activity.
 
 Configure launch options from the dock:
 
@@ -59,12 +57,16 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 
 ## Acceptance Criteria
 
-- The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; each row scrolls independently to expose every action.
+- The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; each dock row scrolls independently to expose every action.
 - Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
 - The map remains the background of the bounded content area for every goal mode, extends behind the navigation controls, and stops before the dock and tab bar.
-- Planned retains the existing Today card and Up Next implementation as its peer content layer; target-based modes show their compact goal information layer, while Freestyle shows no target card.
+- The workout row contains Planned, Run, Walk, Hike, and Bike, with supported manual sports defined in one extensible collection.
+- Planned retains the recommendation's assigned sport and the existing Today card and Up Next implementation as its peer content layer.
+- The text-only Free, Distance, Time, and Calories pills float above the dock for manual sports and remain hidden for Planned.
+- Target-based manual modes show their compact goal information layer, while Free shows no target card.
 - The native center tab contains exactly one control: an icon-only Start on idle Today and labeled Today navigation on Social or Me.
 - The floating assistant remains available in the same bottom-leading screen position on Today, Social, and Me.
+- Choosing Run, Walk, Hike, or Bike updates the prepared activity without losing the selected manual goal.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.
