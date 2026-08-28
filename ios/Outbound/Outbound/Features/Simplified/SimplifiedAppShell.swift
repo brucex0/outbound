@@ -98,7 +98,7 @@ struct SimplifiedAppShell: View {
             .accessibilityLabel(String(localized: "Open assistant"))
             .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
             .padding(.leading, 18)
-            .padding(.bottom, 50)
+            .padding(.bottom, 40)
         }
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
