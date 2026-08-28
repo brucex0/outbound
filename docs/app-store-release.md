@@ -44,7 +44,15 @@ Run the repository helper from a clean tracked worktree:
 ./scripts/publish-testflight.sh
 ```
 
-The helper increments the app and Live Activity extension build number, updates `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the `Beta Release Notes` section from `docs/testflight-1.0.md` into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
+The helper increments the app and Live Activity extension build number, generates brief release notes from product commits after the latest `Bump TestFlight build` commit, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
+
+Release notes use the newest five commit subjects that touch `ios/Outbound`,
+`backend`, or `Package.swift`. When more changes exist, the final bullet reports
+the remaining count. Documentation and release-tooling-only commits are omitted,
+and publishing stops when no product commits exist since the last release. Use
+`--dry-run` to preview the exact generated notes. Upload retries that specify the
+current prepared build number, and `--beta-setup-only` retries, reuse the notes
+already saved for that build.
 
 For reliable command-line authentication, create an App Store Connect API key with the access needed to upload builds, keep its `.p8` file outside the repository, and provide all three values:
 

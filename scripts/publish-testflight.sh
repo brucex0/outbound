@@ -10,6 +10,7 @@ EXTENSION_BUNDLE_ID="${APP_BUNDLE_ID}.liveactivity"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
 RELEASE_DOC="docs/testflight-1.0.md"
 ASC_API_BASE_URL="https://api.appstoreconnect.apple.com"
+MAX_RELEASE_NOTE_ITEMS=5
 
 dry_run=false
 commit_changes=true
@@ -161,7 +162,7 @@ fi
 [[ -f "$PROJECT_FILE" ]] || fail "Xcode project file not found: $PROJECT_FILE"
 [[ -f "$RELEASE_DOC" ]] || fail "release document not found: $RELEASE_DOC"
 
-release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
+documented_release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
 text = File.read(path)
 match = text.match(/^### Beta Release Notes\s*$\n(.*?)(?=^###?\s|\z)/m)
@@ -171,7 +172,7 @@ abort "Beta Release Notes must not be empty" if notes.empty?
 abort "Beta Release Notes exceed App Store Connect's 4,000-character limit" if notes.length > 4_000
 puts notes
 RUBY
-  } 2>&1)" || fail "$release_notes"
+  } 2>&1)" || fail "$documented_release_notes"
 
 if [[ "$dry_run" == false && "$beta_setup_only" == false && -n "$(git status --porcelain --untracked-files=no)" ]]; then
   fail "tracked files are already modified; commit or stash them before publishing"
@@ -224,6 +225,43 @@ else
   (( next_build > current_build )) || fail "new build number must be greater than $current_build"
 fi
 
+release_notes_generated=false
+if [[ "$beta_setup_only" == true ]] || (( next_build == current_build )); then
+  release_notes="$documented_release_notes"
+else
+  last_release_commit="$(git log \
+    --extended-regexp \
+    --grep='^Bump TestFlight build to [0-9]+$' \
+    --format='%H' \
+    -1)"
+  [[ -n "$last_release_commit" ]] || fail "could not find the previous TestFlight release commit"
+
+  release_subjects="$(git log \
+    --format='%s' \
+    "${last_release_commit}..HEAD" \
+    -- ios/Outbound backend Package.swift)"
+  [[ -n "$release_subjects" ]] || \
+    fail "no product commits found since the previous TestFlight release"
+
+  release_notes="$({ RELEASE_SUBJECTS="$release_subjects" MAX_ITEMS="$MAX_RELEASE_NOTE_ITEMS" ruby <<'RUBY'
+subjects = ENV.fetch("RELEASE_SUBJECTS").lines.map(&:strip).reject(&:empty?)
+max_items = Integer(ENV.fetch("MAX_ITEMS"), 10)
+abort "MAX_RELEASE_NOTE_ITEMS must be positive" unless max_items.positive?
+
+visible = subjects.first(max_items).map do |subject|
+  shortened = subject.length > 120 ? "#{subject[0, 117]}..." : subject
+  "- #{shortened}"
+end
+remaining = subjects.length - visible.length
+visible << "- Plus #{remaining} more fixes and improvements" if remaining.positive?
+notes = visible.join("\n")
+abort "generated Beta Release Notes exceed App Store Connect's 4,000-character limit" if notes.length > 4_000
+puts notes
+RUBY
+    } 2>&1)" || fail "$release_notes"
+  release_notes_generated=true
+fi
+
 if [[ "$beta_setup_only" == true ]]; then
   log "Plainstride ${marketing_version}: configuring existing build ${next_build}"
 elif (( next_build == current_build )); then
@@ -240,6 +278,14 @@ if [[ "$configure_beta" == true ]]; then
   fi
 else
   log "Beta setup: skipped"
+fi
+if [[ "$release_notes_generated" == true ]]; then
+  log "Release notes from commits after $(git rev-parse --short "$last_release_commit"):"
+  while IFS= read -r release_note_line; do
+    log "  ${release_note_line}"
+  done <<<"$release_notes"
+else
+  log "Release notes: using the saved notes for build ${next_build}"
 fi
 
 if [[ "$dry_run" == true ]]; then
@@ -275,11 +321,12 @@ File.write(temporary_path, lines.join)
 File.rename(temporary_path, path)
 RUBY
 
-OLD_BUILD="$current_build" NEW_BUILD="$next_build" MARKETING_VERSION="$marketing_version" RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
+OLD_BUILD="$current_build" NEW_BUILD="$next_build" MARKETING_VERSION="$marketing_version" RELEASE_DOC="$RELEASE_DOC" RELEASE_NOTES="$release_notes" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
 old_build = ENV.fetch("OLD_BUILD")
 new_build = ENV.fetch("NEW_BUILD")
 marketing_version = ENV.fetch("MARKETING_VERSION")
+release_notes = ENV.fetch("RELEASE_NOTES")
 text = File.read(path)
 replacements = {
   "- Build: `#{old_build}`" => "- Build: `#{new_build}`",
@@ -289,6 +336,9 @@ replacements.each do |before, after|
   abort "release document is missing: #{before}" unless text.include?(before)
   text = text.sub(before, after)
 end
+notes_pattern = /^### Beta Release Notes\s*$\n.*?(?=^###?\s|\z)/m
+abort "release document is missing the Beta Release Notes section" unless text.match?(notes_pattern)
+text = text.sub(notes_pattern, "### Beta Release Notes\n\n#{release_notes}\n\n")
 temporary_path = "#{path}.publish-tmp"
 File.write(temporary_path, text)
 File.rename(temporary_path, path)

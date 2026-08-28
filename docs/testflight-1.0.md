@@ -53,7 +53,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-Activity start is now faster and easier to scan. The setup map fills the screen, goal choices and run options live in one compact dock, and the center Today position becomes the Start action while preparing an activity. Distance, time, and calorie goals use lightweight preset/custom pickers, with goal-aware live progress after countdown. This build also improves smaller-screen spacing, accessibility labels, localization, and activity-launch analytics.
+- Add activity and connection pagination
+- Add Apple Health activity type filters
+- Clarify Apple Health workout selection
+- Fix imported activity timestamps in social
+- Improve post-run transition
+- Plus 6 more fixes and improvements
 
 ### How to Report Feedback
 
