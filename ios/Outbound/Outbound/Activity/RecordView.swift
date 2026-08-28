@@ -1074,7 +1074,7 @@ struct RecordView: View {
 
                 Spacer(minLength: 96)
 
-                if !usesEmbeddedPlannedContent {
+                if showsLaunchGoalCard {
                     launchGoalCard
                         .padding(.horizontal, 18)
                 }
@@ -1103,7 +1103,7 @@ struct RecordView: View {
                 Color.clear
                     .allowsHitTesting(false)
 
-                if !usesEmbeddedPlannedContent {
+                if showsLaunchGoalCard {
                     VStack(spacing: 10) {
                         if connectivityStore.isOffline {
                             OfflineStatusBanner(compact: true)
@@ -1134,6 +1134,10 @@ struct RecordView: View {
 
     private var usesEmbeddedPlannedContent: Bool {
         isEmbeddedInToday && selectedGoalMode == .planned
+    }
+
+    private var showsLaunchGoalCard: Bool {
+        !usesEmbeddedPlannedContent && selectedGoalMode != .freestyle
     }
 
     @ViewBuilder

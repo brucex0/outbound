@@ -529,7 +529,7 @@ private struct SimplifiedTodayView: View {
 
                 activityLaunchSurface
             }
-            .overlay(alignment: .topLeading) {
+            .overlay(alignment: .bottomLeading) {
                 Button(action: onOpenAssistant) {
                     Image(systemName: "sparkles")
                         .font(.headline.weight(.bold))
@@ -544,11 +544,15 @@ private struct SimplifiedTodayView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(String(localized: "Open assistant"))
                 .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-                .padding(16)
+                .padding(.leading, 16)
+                .padding(.bottom, ActivityLaunchLayout.dockHeight + ActivityLaunchLayout.peerCardGap)
             }
             .background(OutboundPalette.background)
+            .ignoresSafeArea(edges: .top)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar(.visible, for: .navigationBar)
             .toolbar {
                 if canPresentThemeTip || showsThemeTip {
                     ToolbarItem(placement: .topBarTrailing) {
