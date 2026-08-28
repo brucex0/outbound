@@ -83,7 +83,7 @@ The backend has an equivalent mismatch:
 ### Replace
 
 - `MainTabView` with a small three-tab shell and root coordinator;
-- `MotivationDashboardView` with Today;
+- remove `MotivationDashboardView`; Today is owned by the production simplified shell;
 - `ProfileView` with Me plus pushed secondary destinations;
 - current onboarding store and views;
 - `RecordView` and `CameraHUDView` presentation while retaining underlying services;

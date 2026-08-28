@@ -112,7 +112,7 @@ Optional body details live in a separate Me -> Settings -> Training profile edit
 
 - Add typed DTOs for onboarding summary, calibration status, readiness, feedback, runner-model insights, and plan adjustments.
 - Add fixtures for empty, loading, offline, partial-data, and completed-calibration states.
-- Keep the new shell behind `-OutboundSimplifiedShell` until the vertical slice is complete.
+- The simplified shell is now the only production shell. Do not reintroduce `-OutboundSimplifiedShell` or a legacy-shell fallback while extending these states.
 
 ### Slice C2: Intake and editable understanding
 
