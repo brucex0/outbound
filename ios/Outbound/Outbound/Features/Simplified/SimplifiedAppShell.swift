@@ -329,14 +329,14 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             }
 
             guard let targetTab = tab(for: targetIndex), targetTab != selectedTab else { return }
+            // Hide Today-owned overlays before UIKit lays out the incoming tab.
+            onSelect?(targetTab)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             UIView.performWithoutAnimation {
                 tabBarController.selectedIndex = targetIndex
-                tabBarController.tabBar.layoutIfNeeded()
             }
             CATransaction.commit()
-            onSelect?(targetTab)
         }
 
         private func tab(for index: Int) -> SimplifiedAppTab? {
@@ -527,6 +527,8 @@ private struct SimplifiedTodayView: View {
                 }
 
                 activityLaunchSurface
+                    .opacity(isSelected ? 1 : 0)
+                    .allowsHitTesting(isSelected)
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
                 mapAttributionBottomInset = height

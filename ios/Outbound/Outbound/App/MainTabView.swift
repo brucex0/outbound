@@ -180,7 +180,7 @@ struct MainTabView: View {
         if let launch = activeLaunch {
             return AnyView(RecordView(
                 initialIntent: launch.intent,
-                isVisible: isActivityVisible,
+                isVisible: isActivityVisible && selectedAppTab == .today,
                 isEmbeddedInToday: true,
                 startRequest: activityStartRequest,
                 onGoalModeChange: { launchGoalMode = $0 },
