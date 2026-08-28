@@ -46,6 +46,7 @@ struct SimplifiedAppShell: View {
             SocialHomeView()
                 .tag(SimplifiedAppTab.social)
                 .tabItem { Label("Social", systemImage: "person.2") }
+                .toolbar(.hidden, for: .tabBar)
 
             SimplifiedTodayView(
                 isSelected: selection == .today,
@@ -62,13 +63,14 @@ struct SimplifiedAppShell: View {
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label(String(localized: "Today"), systemImage: "sparkles") }
+                .toolbar(.hidden, for: .tabBar)
 
             SimplifiedMeView()
                 .tag(SimplifiedAppTab.me)
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
+                .toolbar(.hidden, for: .tabBar)
         }
         .tint(guideCatalog.selectedTheme.accentColor)
-        .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             SimplifiedAppBottomBar(
                 selection: $selection,
