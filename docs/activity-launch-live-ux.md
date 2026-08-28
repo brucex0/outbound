@@ -13,7 +13,7 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 ## Launch Dock
 
-Use one fixed, flat two-row control area at the bottom of Today. Workout choices and launch options each occupy their own independently horizontal-scrollable row, with roomy fixed-width controls so compact phones do not compress labels or tap targets. The Today navigation controls, app shell, and bounded map background remain permanent. The map extends behind the transparent navigation bar to the screen top, then ends at the dock boundary; it never becomes the full-screen app surface.
+Use one fixed, flat two-row control area at the bottom of Today. Workout choices occupy a horizontal scrolling row. The second row keeps launch settings in a horizontal scroller and pins Photo at the trailing edge as a separate action, with roomy fixed-width controls so compact phones do not compress labels or tap targets. The Today navigation controls, app shell, and bounded map background remain permanent. The map extends behind the transparent navigation bar to the screen top, then ends at the dock boundary; it never becomes the full-screen app surface.
 
 The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Selecting a manual sport builds the corresponding activity intent and preserves the user's manual goal when switching between sports.
 
@@ -27,6 +27,7 @@ Configure launch options from the dock:
 
 - Music, Live Track, and Shoes use compact icon-plus-label controls that open focused overlays and return the chosen value to the dock.
 - Environment and Voice Guide use the same icon-plus-label treatment and toggle directly.
+- Photo stays pinned outside the settings scroller because it performs an immediate capture rather than configuring the activity. Before capture it opens the camera; afterward it becomes a checked thumbnail that opens the preview with Retake and Remove.
 - Off states must stop using the configured treatment.
 - Every independent control keeps a minimum 44-point target and a visible or accessible label.
 
@@ -59,7 +60,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 
 ## Acceptance Criteria
 
-- The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; each dock row scrolls independently to expose every action.
+- The two-row launch dock fits at 360-point width without compressing controls or hiding the contextual Start control or tab bar; workout choices and launch settings scroll independently while Photo remains pinned and visible.
 - Today opens directly with its existing content plus the retained dock; no Quick Start or Start Activity setup route remains.
 - The map remains the background of the bounded content area for every goal mode, extends behind the navigation controls, and stops before the dock and tab bar.
 - The Apple Maps logo and Legal attribution remain unobstructed above Today cards and every live-run bottom overlay, including expanded route-guidance and group-run panels.
@@ -74,6 +75,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.
 - Goal and utility dock buttons display no secondary value line.
+- Photo is available for Planned and every manual sport, returns to the same retained setup after capture, and exposes preview, Retake, and Remove after a photo is added.
 - Setup choices carry into countdown and live status.
 - Countdown cancel preserves setup; only entry into live recording advances default learning.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.

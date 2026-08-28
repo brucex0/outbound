@@ -29,6 +29,7 @@ enum ActivityLaunchLayout {
     static let peerCardGap: CGFloat = 12
     static let controlWidth: CGFloat = 112
     static let controlHeight: CGFloat = 64
+    static let photoControlWidth: CGFloat = 78
 }
 
 struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
@@ -1251,61 +1252,70 @@ struct RecordView: View {
                 .padding(.horizontal, 16)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 10) {
-                    setupUtilityButton(
-                        title: String(localized: "record.setup.music", defaultValue: "Music"),
-                        value: musicSetupValue,
-                        systemImage: "music.note.list",
-                        isConfigured: musicIsConfigured
-                    ) {
-                        trackFeatureExposure("music")
-                        dismissMusicDiscoveryTip(result: "opened")
-                        setupSheet = .music
-                    }
+            HStack(spacing: 10) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 10) {
+                        setupUtilityButton(
+                            title: String(localized: "record.setup.music", defaultValue: "Music"),
+                            value: musicSetupValue,
+                            systemImage: "music.note.list",
+                            isConfigured: musicIsConfigured
+                        ) {
+                            trackFeatureExposure("music")
+                            dismissMusicDiscoveryTip(result: "opened")
+                            setupSheet = .music
+                        }
 
-                    setupUtilityButton(
-                        title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
-                        value: liveTrackValue,
-                        systemImage: "location.fill",
-                        isConfigured: liveShareStore.isArmedForNextActivity
-                    ) {
-                        if safetyContactStore.defaultContact == nil {
-                            showsTrustedContacts = true
-                        } else {
-                            liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                        setupUtilityButton(
+                            title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
+                            value: liveTrackValue,
+                            systemImage: "location.fill",
+                            isConfigured: liveShareStore.isArmedForNextActivity
+                        ) {
+                            if safetyContactStore.defaultContact == nil {
+                                showsTrustedContacts = true
+                            } else {
+                                liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                            }
+                        }
+
+                        launchShoeControl
+
+                        setupUtilityButton(
+                            title: String(localized: "record.setup.environment", defaultValue: "Environment"),
+                            value: isIndoorSession
+                                ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
+                                : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
+                            systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
+                            isConfigured: true
+                        ) {
+                            isIndoorSession.toggle()
+                            track(.init(.activityConfigurationChanged, properties: [
+                                .changeType: .string("environment"),
+                                .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
+                            ]))
+                        }
+
+                        setupUtilityButton(
+                            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
+                            value: isVoiceGuideEnabled
+                                ? String(localized: "common.on", defaultValue: "On")
+                                : String(localized: "common.off", defaultValue: "Off"),
+                            systemImage: isVoiceGuideEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                            isConfigured: isVoiceGuideEnabled
+                        ) {
+                            setVoiceGuideEnabled(!isVoiceGuideEnabled)
                         }
                     }
-
-                    launchShoeControl
-
-                    setupUtilityButton(
-                        title: String(localized: "record.setup.environment", defaultValue: "Environment"),
-                        value: isIndoorSession
-                            ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
-                            : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
-                        systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
-                        isConfigured: true
-                    ) {
-                        isIndoorSession.toggle()
-                        track(.init(.activityConfigurationChanged, properties: [
-                            .changeType: .string("environment"),
-                            .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
-                        ]))
-                    }
-
-                    setupUtilityButton(
-                        title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
-                        value: isVoiceGuideEnabled
-                            ? String(localized: "common.on", defaultValue: "On")
-                            : String(localized: "common.off", defaultValue: "Off"),
-                        systemImage: isVoiceGuideEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
-                        isConfigured: isVoiceGuideEnabled
-                    ) {
-                        setVoiceGuideEnabled(!isVoiceGuideEnabled)
-                    }
+                    .padding(.leading, 16)
                 }
-                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
+
+                Divider()
+                    .frame(height: 44)
+
+                photoLaunchControl
+                    .padding(.trailing, 16)
             }
         }
         .padding(.top, 12)
@@ -1635,18 +1645,45 @@ struct RecordView: View {
                 isPreActivityPhotoPreviewPresented = true
             }
         } label: {
-            ZStack(alignment: .bottomTrailing) {
-                if let photo = preActivityPhoto {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 52, height: 52)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.orange, lineWidth: 2))
-                    configuredBadge
-                } else {
-                    launchUtilityIcon(systemImage: "camera.fill", isConfigured: false)
+            VStack(spacing: 4) {
+                ZStack(alignment: .bottomTrailing) {
+                    if let photo = preActivityPhoto {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 30, height: 30)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .stroke(theme.actionColor, lineWidth: 2)
+                            }
+
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 7, weight: .black))
+                            .foregroundStyle(.white)
+                            .frame(width: 14, height: 14)
+                            .background(Color.green, in: Circle())
+                            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+                            .offset(x: 3, y: 3)
+                    } else {
+                        Image(systemName: "camera.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    }
                 }
+
+                Text(String(localized: "record.photo.control", defaultValue: "Photo"))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            .frame(width: ActivityLaunchLayout.photoControlWidth, height: ActivityLaunchLayout.controlHeight)
+            .background(theme.actionColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(theme.actionColor.opacity(0.24), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
