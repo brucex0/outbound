@@ -88,7 +88,7 @@ Each signed-in installation has an `AuthSession`:
 - `expiresAt`
 - `revokedAt`
 
-Refresh token values are generated from at least 32 cryptographically random bytes and are never stored in plaintext. Hash comparison uses SHA-256 over the high-entropy token. Each successful refresh replaces the current token atomically. Presentation of a known previous token revokes the whole session family because it indicates token reuse. Unknown, expired, or revoked tokens return an unauthenticated response without disclosing which condition occurred.
+Refresh token values are generated from at least 32 cryptographically random bytes and are never stored in plaintext. Hash comparison uses SHA-256 over the high-entropy token. Each successful refresh replaces the current token atomically. A known previous token presented within the 60-second rotation grace window is treated as a recoverable network or concurrency race: the backend issues a sibling refresh session with the same family and absolute expiry so either successful client response remains usable. Reuse outside that narrow window revokes the whole session family. Unknown, expired, or revoked tokens return an unauthenticated response without disclosing which condition occurred.
 
 ## Tokens and Keys
 
@@ -209,7 +209,11 @@ On launch, `AuthStore` loads the stored session and considers the user authentic
 1. Use the current access token when it is not near expiry.
 2. Coalesce concurrent refresh attempts into one in-flight operation.
 3. On an authentication response, refresh once and replay idempotent requests or requests whose body is safely reusable.
-4. If refresh fails permanently, clear the session and notify `AuthStore` to present the sign-in screen.
+4. If a 401 rejected an older access token after another request already refreshed, replay with the current access token without rotating again.
+5. Preserve the stored login through transport, server, decoding, and persistence failures; clear it only when the backend permanently rejects the still-current refresh token.
+6. If refresh fails permanently, clear the session and notify `AuthStore` to present the sign-in screen.
+
+Keychain replacement updates the existing item in place so there is no delete/add window where concurrent app work can observe a missing session. Session recovery emits only a bounded reason (`rotation_race`, `stale_access_rejection`, `newer_persisted_session`, or `transient_refresh_failure`) through the typed analytics contract; it never emits credentials or account details.
 
 The client must not enter an infinite refresh loop. Provider sign-in and refresh endpoints are explicitly unauthenticated and never trigger refresh behavior.
 

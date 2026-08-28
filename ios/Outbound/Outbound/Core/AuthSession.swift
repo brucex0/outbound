@@ -1,6 +1,6 @@
 import Foundation
 
-struct AuthenticatedUser: Codable, Equatable, Sendable {
+nonisolated struct AuthenticatedUser: Codable, Equatable, Sendable {
     let id: String
     let username: String
     let displayName: String
@@ -8,15 +8,16 @@ struct AuthenticatedUser: Codable, Equatable, Sendable {
     let email: String?
 }
 
-struct AuthSession: Codable, Equatable, Sendable {
+nonisolated struct AuthSession: Codable, Equatable, Sendable {
     let accessToken: String
     let accessTokenExpiresAt: Date
     let refreshToken: String
     let refreshTokenExpiresAt: Date
+    let refreshRecovery: Bool?
     let user: AuthenticatedUser
 
-    var isRefreshUsable: Bool { refreshTokenExpiresAt > Date() }
-    func hasUsableAccessToken(at date: Date = Date(), leeway: TimeInterval = 60) -> Bool {
+    nonisolated var isRefreshUsable: Bool { refreshTokenExpiresAt > Date() }
+    nonisolated func hasUsableAccessToken(at date: Date = Date(), leeway: TimeInterval = 60) -> Bool {
         accessTokenExpiresAt.timeIntervalSince(date) > leeway
     }
 }

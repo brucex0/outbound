@@ -39,7 +39,11 @@ router.post("/apple", zValidator("json", sessionClient.extend({
 
 router.post("/refresh", zValidator("json", z.object({ refreshToken: z.string().min(32) })), async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
-  try { return c.json(await rotateSession(c.req.valid("json").refreshToken)); }
+  try {
+    const session = await rotateSession(c.req.valid("json").refreshToken);
+    if (session.refreshRecovery) console.warn("[auth] refresh rotation race recovered", { code: "refresh_rotation_race_recovered" });
+    return c.json(session);
+  }
   catch { return c.json({ error: "Authentication required.", code: "invalid_refresh_token" }, 401); }
 });
 

@@ -6,7 +6,7 @@ import SwiftUI
 struct OutboundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let analyticsManager: AnalyticsManager
-    @StateObject private var authStore = AuthStore()
+    @StateObject private var authStore: AuthStore
     @StateObject private var guideStore = GuideStore()
     @StateObject private var guideCatalogStore = GuideCatalogStore()
     @StateObject private var activityStore: ActivityStore
@@ -44,6 +44,7 @@ struct OutboundApp: App {
             isFirebaseConfigured ? FirebaseAnalyticsProvider() : NoOpAnalyticsProvider()
         ])
         analyticsManager = manager
+        _authStore = StateObject(wrappedValue: AuthStore(analyticsManager: manager))
         _activityStore = StateObject(wrappedValue: ActivityStore(analyticsManager: manager))
         Task { await manager.initialize() }
     }

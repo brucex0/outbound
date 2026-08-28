@@ -361,7 +361,7 @@ final class ActivityStore: ObservableObject {
     }
 
     private func syncErrorCategory(_ error: Error) -> String {
-        if case let APIError.http(statusCode, _) = error {
+        if case let APIError.http(statusCode, _, _) = error {
             return "http_\(statusCode)"
         }
         if error is DecodingError { return "decoding" }

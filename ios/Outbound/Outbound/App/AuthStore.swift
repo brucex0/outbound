@@ -21,6 +21,7 @@ final class AuthStore: ObservableObject {
     @Published var user: AuthenticatedUser?
     @Published var localSessionLabel: String?
     private var appleCoordinator: AppleAuthorizationCoordinator?
+    private let analyticsManager: AnalyticsManager?
 
     static var currentUserId: String? { cachedUserID }
     private static var cachedUserID: String?
@@ -29,7 +30,8 @@ final class AuthStore: ObservableObject {
     var isAppleSignInAvailable: Bool { Self.hasAppleSignInEntitlement() }
     var isUsingDebugPersonas: Bool { ProcessInfo.processInfo.arguments.contains("-OutboundEnableDebugPersonas") }
 
-    init() {
+    init(analyticsManager: AnalyticsManager? = nil) {
+        self.analyticsManager = analyticsManager
         if ProcessInfo.processInfo.arguments.contains("-OutboundDisableAuthentication") || ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
             isAuthenticated = true; localSessionLabel = "UI test session"; return
         }
@@ -38,7 +40,16 @@ final class AuthStore: ObservableObject {
             self?.apply(session)
         }
         NotificationCenter.default.addObserver(forName: .outboundAuthenticationExpired, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.clearPresentation() }
+            Task { @MainActor [weak self] in self?.clearPresentation() }
+        }
+        NotificationCenter.default.addObserver(forName: .outboundAuthenticationSessionRecovered, object: nil, queue: .main) { [weak self] notification in
+            guard let recovery = notification.object as? AuthenticationSessionRecovery else { return }
+            Task {
+                await self?.analyticsManager?.track(.init(
+                    .authenticationSessionRecovered,
+                    properties: [.result: .string(recovery.rawValue)]
+                ))
+            }
         }
     }
 

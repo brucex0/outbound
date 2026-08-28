@@ -2,16 +2,18 @@ import Foundation
 import Security
 
 protocol SessionPersisting: Sendable {
-    func load() throws -> AuthSession?
-    func replace(_ session: AuthSession) throws
-    func delete() throws
+    nonisolated func load() throws -> AuthSession?
+    nonisolated func replace(_ session: AuthSession) throws
+    nonisolated func delete() throws
 }
 
 struct KeychainSessionRepository: SessionPersisting {
     private let service = "plainstride.outbound.auth-session"
     private let account = "current"
 
-    func load() throws -> AuthSession? {
+    nonisolated init() {}
+
+    nonisolated func load() throws -> AuthSession? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -22,24 +24,35 @@ struct KeychainSessionRepository: SessionPersisting {
         return try decoder.decode(AuthSession.self, from: data)
     }
 
-    func replace(_ session: AuthSession) throws {
+    nonisolated func replace(_ session: AuthSession) throws {
         let data = try encoder.encode(session)
-        SecItemDelete(baseQuery as CFDictionary)
-        var query = baseQuery
-        query[kSecValueData as String] = data
-        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let status = SecItemAdd(query as CFDictionary, nil)
-        guard status == errSecSuccess else { throw KeychainError(status) }
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        let status = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var query = baseQuery
+            attributes.forEach { query[$0.key] = $0.value }
+            let addStatus = SecItemAdd(query as CFDictionary, nil)
+            guard addStatus == errSecSuccess else { throw KeychainError(addStatus) }
+        } else if status != errSecSuccess {
+            throw KeychainError(status)
+        }
     }
 
-    func delete() throws {
+    nonisolated func delete() throws {
         let status = SecItemDelete(baseQuery as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status) }
     }
 
-    private var baseQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account] }
-    private var encoder: JSONEncoder { let value = JSONEncoder(); value.dateEncodingStrategy = .iso8601; return value }
-    private var decoder: JSONDecoder { let value = JSONDecoder(); value.dateDecodingStrategy = .iso8601; return value }
+    nonisolated private var baseQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account] }
+    nonisolated private var encoder: JSONEncoder { let value = JSONEncoder(); value.dateEncodingStrategy = .iso8601; return value }
+    nonisolated private var decoder: JSONDecoder { let value = JSONDecoder(); value.dateDecodingStrategy = .iso8601; return value }
 }
 
-private struct KeychainError: LocalizedError { let status: OSStatus; init(_ status: OSStatus) { self.status = status }; var errorDescription: String? { "Keychain error \(status)" } }
+private struct KeychainError: LocalizedError {
+    let status: OSStatus
+    nonisolated init(_ status: OSStatus) { self.status = status }
+    nonisolated var errorDescription: String? { "Keychain error \(status)" }
+}

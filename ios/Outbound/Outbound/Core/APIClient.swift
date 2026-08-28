@@ -625,7 +625,9 @@ final class APIClient {
     private func authenticatedData(for request: URLRequest) async throws -> (Data, URLResponse) {
         let first = try await URLSession.shared.data(for: request)
         guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
-              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized() else { return first }
+              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized(
+                rejectedAccessToken: request.bearerToken
+              ) else { return first }
         var replay = request
         replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
         return try await URLSession.shared.data(for: replay)
@@ -638,16 +640,20 @@ final class APIClient {
 
     private func validate(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let message = decodeErrorMessage(from: data) ?? "Request failed."
-            throw APIError.http(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1, message: message)
+            let payload = decodeErrorPayload(from: data)
+            let message = payload?.error ?? String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Request failed."
+            throw APIError.http(
+                statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1,
+                message: message,
+                code: payload?.code
+            )
         }
     }
 
-    private func decodeErrorMessage(from data: Data) -> String? {
+    private func decodeErrorPayload(from data: Data) -> APIErrorPayload? {
         guard !data.isEmpty else { return nil }
-        return (try? decoder.decode(APIErrorPayload.self, from: data).error)
-            ?? String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+        return try? decoder.decode(APIErrorPayload.self, from: data)
     }
 
     private let decoder: JSONDecoder = {
@@ -675,19 +681,36 @@ final class APIClient {
     private struct EmptyBody: Encodable {}
 }
 
-enum APIError: LocalizedError {
-    case http(statusCode: Int, message: String)
+nonisolated enum APIError: LocalizedError, Sendable {
+    case http(statusCode: Int, message: String, code: String?)
 
     var errorDescription: String? {
         switch self {
-        case let .http(statusCode, message):
+        case let .http(statusCode, message, _):
             return "HTTP \(statusCode): \(message)"
         }
     }
 }
 
+extension Error {
+    nonisolated var isPermanentSessionRefreshFailure: Bool {
+        guard let apiError = self as? APIError,
+              case let .http(statusCode, _, code) = apiError else { return false }
+        return statusCode == 401 && code == "invalid_refresh_token"
+    }
+}
+
 private struct APIErrorPayload: Decodable {
     let error: String
+    let code: String?
+}
+
+private extension URLRequest {
+    var bearerToken: String? {
+        guard let authorization = value(forHTTPHeaderField: "Authorization"),
+              authorization.hasPrefix("Bearer ") else { return nil }
+        return String(authorization.dropFirst("Bearer ".count))
+    }
 }
 
 private struct AccountDeletionResponse: Decodable {

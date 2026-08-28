@@ -4,6 +4,7 @@ import { getPrismaClient } from "./prisma.js";
 import { issueAccessToken } from "./accessTokens.js";
 
 const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+const refreshRotationGraceMs = 60 * 1000;
 export type SessionUser = Pick<User, "id" | "username" | "displayName" | "avatarUrl" | "normalizedEmail">;
 
 export async function issueSession(user: SessionUser, platform: string, deviceLabel?: string | null) {
@@ -20,8 +21,27 @@ export async function rotateSession(refreshToken: string) {
   const prisma = getPrismaClient();
   const tokenHash = hash(refreshToken);
   return prisma.$transaction(async (tx) => {
-    const previous = await tx.authSession.findFirst({ where: { previousRefreshTokenHash: tokenHash } });
+    const previous = await tx.authSession.findFirst({
+      where: { previousRefreshTokenHash: tokenHash },
+      include: { user: true },
+    });
     if (previous) {
+      const now = new Date();
+      const isRecoverableRotationRace = !previous.revokedAt
+        && previous.expiresAt > now
+        && now.getTime() - previous.lastUsedAt.getTime() <= refreshRotationGraceMs;
+      if (isRecoverableRotationRace) {
+        const recoveryToken = randomBytes(32).toString("base64url");
+        const recoverySession = await tx.authSession.create({ data: {
+          userId: previous.userId,
+          familyId: previous.familyId,
+          refreshTokenHash: hash(recoveryToken),
+          platform: previous.platform,
+          deviceLabel: previous.deviceLabel,
+          expiresAt: previous.expiresAt,
+        }});
+        return response(recoverySession.id, previous.user, recoveryToken, previous.expiresAt, true);
+      }
       await tx.authSession.updateMany({ where: { familyId: previous.familyId }, data: { revokedAt: new Date() } });
       throw new Error("invalid_refresh_token");
     }
@@ -41,9 +61,15 @@ export async function revokeSession(sessionId: string) {
 export async function revokeRefreshToken(token: string) {
   await getPrismaClient().authSession.updateMany({ where: { refreshTokenHash: hash(token) }, data: { revokedAt: new Date() } });
 }
-function response(sessionId: string, user: SessionUser, refreshToken: string, refreshTokenExpiresAt: Date) {
+function response(
+  sessionId: string,
+  user: SessionUser,
+  refreshToken: string,
+  refreshTokenExpiresAt: Date,
+  refreshRecovery = false,
+) {
   const access = issueAccessToken(user.id, sessionId);
-  return { accessToken: access.token, accessTokenExpiresAt: access.expiresAt, refreshToken, refreshTokenExpiresAt,
+  return { accessToken: access.token, accessTokenExpiresAt: access.expiresAt, refreshToken, refreshTokenExpiresAt, refreshRecovery,
     user: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl, email: user.normalizedEmail } };
 }
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
