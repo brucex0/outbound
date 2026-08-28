@@ -336,7 +336,6 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             CATransaction.setDisableActions(true)
             UIView.performWithoutAnimation {
                 tabBarController.selectedIndex = targetIndex
-                tabBarController.tabBar.selectedItem = tabBarController.tabBar.items?[targetIndex]
                 tabBarController.tabBar.layoutIfNeeded()
             }
             CATransaction.commit()
