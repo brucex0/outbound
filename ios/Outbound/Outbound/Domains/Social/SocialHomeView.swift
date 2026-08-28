@@ -1379,7 +1379,7 @@ struct SocialCommentsView: View {
     }
 }
 
-private struct SocialConnectionsView: View {
+struct SocialConnectionsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var searchQuery = ""

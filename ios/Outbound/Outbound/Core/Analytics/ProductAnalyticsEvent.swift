@@ -30,6 +30,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySyncFailed = "activity_sync_failed"
     case activityFeedLoaded = "activity_feed_loaded"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
+    case connectionsOpened = "connections_opened"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
@@ -165,6 +166,7 @@ enum ProductAnalyticsSchema {
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
+        .connectionsOpened: [.entrySource],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],

@@ -2079,6 +2079,7 @@ private struct TodayChangeSheet: View {
 }
 
 private struct SimplifiedMeView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
@@ -2090,10 +2091,12 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var gearStore: GearStore
     @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
+    @EnvironmentObject private var socialStore: TogetherStore
     @State private var profile: AppUserProfileDTO?
     @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
+    @State private var showsConnections = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
 
@@ -2129,6 +2132,7 @@ private struct SimplifiedMeView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    connectionsPreview
                     OutboundCard {
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                             Text("CURRENT FOCUS")
@@ -2275,6 +2279,7 @@ private struct SimplifiedMeView: View {
             .background(OutboundPalette.background)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
+            .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
             }
@@ -2407,7 +2412,73 @@ private struct SimplifiedMeView: View {
     private func loadMeData() async {
         async let profileLoad: Void = loadProfile()
         async let trainingProfileLoad: Void = loadTrainingProfile()
-        _ = await (profileLoad, trainingProfileLoad)
+        async let connectionsLoad: Void = loadConnectionsIfNeeded()
+        _ = await (profileLoad, trainingProfileLoad, connectionsLoad)
+        await analyticsManager?.track(.init(.featureExposed, properties: [
+            .feature: .string("me_connections_preview"),
+        ]))
+    }
+
+    private func loadConnectionsIfNeeded() async {
+        guard !socialStore.hasLoadedConnections else { return }
+        await socialStore.refreshConnections()
+    }
+
+    private var connectionPreview: [SocialConnectionDTO] {
+        Array(socialStore.connections.lazy.filter { $0.status == "accepted" }.prefix(4))
+    }
+
+    private var connectionsPreview: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text("Connections")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                HStack(spacing: 12) {
+                    if socialStore.isConnectionsLoading && !socialStore.hasLoadedConnections {
+                        ProgressView()
+                            .frame(width: 44, height: 44)
+                    } else if connectionPreview.isEmpty {
+                        Text("Find people")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(connectionPreview) { connection in
+                            SocialAvatar(
+                                name: connection.person.displayName,
+                                avatarURL: connection.person.avatarUrl
+                            )
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button(action: openConnections) {
+                        Image(systemName: "ellipsis")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(
+                        localized: "me.connections.more",
+                        defaultValue: "View all connections"
+                    ))
+                }
+            }
+        }
+    }
+
+    private func openConnections() {
+        showsConnections = true
+        Task {
+            await analyticsManager?.track(.init(.connectionsOpened, properties: [
+                .entrySource: .string("me_preview"),
+            ]))
+        }
     }
 
     private func loadTrainingProfile() async {
