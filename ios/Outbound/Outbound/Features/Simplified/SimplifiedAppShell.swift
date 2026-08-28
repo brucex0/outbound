@@ -214,7 +214,6 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             actionColor: UIColor(actionColor),
             onStart: onStart
         )
-        uiViewController.resolveTabBarController()
     }
 
     static func dismantleUIViewController(
@@ -236,22 +235,19 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
 
         private weak var tabBarController: UITabBarController?
         private weak var appliedItem: UITabBarItem?
-        private let delegateProxy = ContextualTabBarDelegateProxy()
+        private var startTapRecognizer: UITapGestureRecognizer?
         private var showsStart = false
         private var actionColor = UIColor.systemOrange
         private var appliedVisualState: VisualState?
         private var isDeferredApplyScheduled = false
-
-        init() {
-            delegateProxy.shouldHandleStart = { [weak self] in self?.showsStart == true }
-        }
+        private var onStart: (() -> Void)?
 
         func update(showsStart: Bool, actionColor: UIColor, onStart: @escaping () -> Void) {
             let previousState = VisualState(showsStart: self.showsStart, actionColor: self.actionColor)
             let nextState = VisualState(showsStart: showsStart, actionColor: actionColor)
             self.showsStart = showsStart
             self.actionColor = actionColor
-            delegateProxy.onStart = onStart
+            self.onStart = onStart
             if !nextState.matches(previousState) || appliedVisualState == nil {
                 configureTabBar()
             }
@@ -265,31 +261,47 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
                 appliedItem = nil
                 appliedVisualState = nil
             }
-            installDelegateProxy(on: controller)
+            installStartTapRecognizer(on: controller)
             configureTabBar()
         }
 
         func detach() {
-            if let tabBarController,
-               tabBarController.delegate === delegateProxy {
-                tabBarController.delegate = delegateProxy.forwardedDelegate
+            if let startTapRecognizer {
+                tabBarController?.tabBar.removeGestureRecognizer(startTapRecognizer)
             }
             tabBarController = nil
             appliedItem = nil
             appliedVisualState = nil
             isDeferredApplyScheduled = false
-            delegateProxy.forwardedDelegate = nil
+            startTapRecognizer = nil
         }
 
-        private func installDelegateProxy(on controller: UITabBarController) {
-            guard controller.delegate !== delegateProxy else { return }
-            delegateProxy.forwardedDelegate = controller.delegate
-            controller.delegate = delegateProxy
+        private func installStartTapRecognizer(on controller: UITabBarController) {
+            guard startTapRecognizer == nil else { return }
+            let recognizer = UITapGestureRecognizer(target: self, action: #selector(handleTabBarTap(_:)))
+            recognizer.cancelsTouchesInView = false
+            recognizer.delaysTouchesBegan = false
+            recognizer.delaysTouchesEnded = false
+            controller.tabBar.addGestureRecognizer(recognizer)
+            startTapRecognizer = recognizer
+        }
+
+        @objc private func handleTabBarTap(_ recognizer: UITapGestureRecognizer) {
+            guard showsStart,
+                  let tabBarController,
+                  tabBarController.selectedIndex == 1,
+                  let itemCount = tabBarController.tabBar.items?.count,
+                  itemCount > 1
+            else { return }
+
+            let location = recognizer.location(in: tabBarController.tabBar)
+            let itemWidth = tabBarController.tabBar.bounds.width / CGFloat(itemCount)
+            guard itemWidth > 0, Int(location.x / itemWidth) == 1 else { return }
+            onStart?()
         }
 
         private func configureTabBar(allowsDeferredRetry: Bool = true) {
             guard let tabBarController else { return }
-            installDelegateProxy(on: tabBarController)
             guard applyCenterItem(to: tabBarController) else {
                 if allowsDeferredRetry {
                     scheduleDeferredApply(on: tabBarController)
@@ -390,39 +402,6 @@ private final class TabBarAttachmentViewController: UIViewController {
             }
         }
         return findTabBarController(in: controller.presentedViewController)
-    }
-}
-
-private final class ContextualTabBarDelegateProxy: NSObject, UITabBarControllerDelegate {
-    weak var forwardedDelegate: UITabBarControllerDelegate?
-    var shouldHandleStart: (() -> Bool)?
-    var onStart: (() -> Void)?
-
-    func tabBarController(
-        _ tabBarController: UITabBarController,
-        shouldSelect viewController: UIViewController
-    ) -> Bool {
-        let selectedIndex = tabBarController.selectedIndex
-        let targetIndex = tabBarController.viewControllers?.firstIndex { $0 === viewController }
-        if selectedIndex == 1, targetIndex == 1, shouldHandleStart?() == true {
-            onStart?()
-            return false
-        }
-        return forwardedDelegate?.tabBarController?(tabBarController, shouldSelect: viewController) ?? true
-    }
-
-    override func responds(to aSelector: Selector!) -> Bool {
-        if aSelector == #selector(UITabBarControllerDelegate.tabBarController(_:shouldSelect:)) {
-            return true
-        }
-        return super.responds(to: aSelector) || forwardedDelegate?.responds(to: aSelector) == true
-    }
-
-    override func forwardingTarget(for aSelector: Selector!) -> Any? {
-        if forwardedDelegate?.responds(to: aSelector) == true {
-            return forwardedDelegate
-        }
-        return super.forwardingTarget(for: aSelector)
     }
 }
 
