@@ -29,7 +29,7 @@ enum ActivityLaunchLayout {
     static let peerCardGap: CGFloat = 12
     static let controlWidth: CGFloat = 112
     static let controlHeight: CGFloat = 64
-    static let photoControlWidth: CGFloat = 78
+    static let photoControlWidth: CGFloat = 56
 }
 
 struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
@@ -1645,46 +1645,36 @@ struct RecordView: View {
                 isPreActivityPhotoPreviewPresented = true
             }
         } label: {
-            VStack(spacing: 4) {
-                ZStack(alignment: .bottomTrailing) {
-                    if let photo = preActivityPhoto {
-                        Image(uiImage: photo)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 30, height: 30)
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .stroke(theme.actionColor, lineWidth: 2)
-                            }
+            ZStack(alignment: .bottomTrailing) {
+                if let photo = preActivityPhoto {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
 
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 7, weight: .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 14, height: 14)
-                            .background(Color.green, in: Circle())
-                            .overlay(Circle().stroke(.white, lineWidth: 1.5))
-                            .offset(x: 3, y: 3)
-                    } else {
-                        Image(systemName: "camera.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    }
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 17, height: 17)
+                        .background(Color.green, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .offset(x: 2, y: 2)
+                } else {
+                    Circle()
+                        .fill(theme.actionColor)
+                        .frame(width: 52, height: 52)
+                        .overlay {
+                            Image(systemName: "camera.fill")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+                        }
                 }
-
-                Text(String(localized: "record.photo.control", defaultValue: "Photo"))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
             }
             .frame(width: ActivityLaunchLayout.photoControlWidth, height: ActivityLaunchLayout.controlHeight)
-            .background(theme.actionColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(theme.actionColor.opacity(0.24), lineWidth: 1)
-            }
+            .contentShape(Rectangle())
+            .shadow(color: theme.actionColor.opacity(0.24), radius: 7, y: 3)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
