@@ -9,6 +9,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var latestInvitationURL: URL?
     @Published private(set) var connections: [SocialConnectionDTO] = []
+    @Published private(set) var hasLoadedConnections = false
     @Published private(set) var peopleResults: [SocialPersonSearchResultDTO] = []
     @Published private(set) var isConnectionsLoading = false
     @Published private(set) var isLoadingMoreConnections = false
@@ -39,6 +40,7 @@ final class TogetherStore: ObservableObject {
                 ?? TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
         if isUITestSeedData {
             connections = Self.uiTestConnections
+            hasLoadedConnections = true
             notifications = Self.uiTestNotifications
             discoverableGroups = Self.uiTestGroups
             blocks = Self.uiTestBlocks
@@ -311,6 +313,7 @@ final class TogetherStore: ObservableObject {
     func refreshConnections() async {
         if isUITestSeedData {
             connections = connections.isEmpty ? Self.uiTestConnections : connections
+            hasLoadedConnections = true
             nextConnectionsCursor = nil
             return
         }
@@ -320,6 +323,7 @@ final class TogetherStore: ObservableObject {
         do {
             let page = try await api.fetchSocialConnections()
             connections = page.connections
+            hasLoadedConnections = true
             nextConnectionsCursor = page.nextCursor
             errorMessage = nil
         } catch {

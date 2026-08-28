@@ -16,7 +16,8 @@ struct SocialHomeView: View {
     @State private var toastMessage: String?
 
     private var shouldShowConnectionPrompt: Bool {
-        socialStore.connections.filter { $0.status == "accepted" }.count < 3
+        socialStore.hasLoadedConnections
+            && socialStore.connections.filter { $0.status == "accepted" }.count < 3
     }
 
     private var syncedActivityIDs: [String] {
@@ -112,10 +113,18 @@ struct SocialHomeView: View {
                 _ = await (homeRefresh, connectionsRefresh)
             }
             .task {
-                if socialStore.connections.isEmpty {
+                if !socialStore.hasLoadedConnections {
                     await socialStore.refreshConnections()
                 }
                 await socialStore.refreshNotifications()
+            }
+            .onChange(of: shouldShowConnectionPrompt, initial: true) { _, showsPrompt in
+                guard showsPrompt else { return }
+                Task {
+                    await analyticsManager?.track(.init(.featureExposed, properties: [
+                        .feature: .string("social_connection_growth_prompt"),
+                    ]))
+                }
             }
             .task(id: syncedActivityIDs) {
                 await socialStore.refresh()
