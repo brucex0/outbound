@@ -11,6 +11,7 @@ const feedbackSchema = z.object({
   message: z.string().trim().min(1).max(5_000),
   currentPage: z.string().trim().min(1).max(200),
   diagnostics: z.string().max(2_000).nullable().optional(),
+  recentLogs: z.string().max(40_000).nullable().optional(),
   screenshotBase64: z.string().max(8_000_000).nullable().optional(),
   screenshotContentType: z.literal("image/jpeg").nullable().optional(),
 });
@@ -40,8 +41,24 @@ router.post("/", zValidator("json", feedbackSchema), async (c) => {
     `User ID: ${identity.internalUserId ?? identity.providerSubject}`,
     `User email: ${identity.email ?? "Unavailable"}`,
     `Current page: ${body.currentPage}`,
+    `Recent app logs: ${body.recentLogs ? "Attached" : "Not included"}`,
     ...(body.diagnostics ? ["", body.diagnostics] : []),
   ];
+  const attachments: Array<{ filename: string; content: string; content_type?: string }> = [];
+  if (body.screenshotBase64) {
+    attachments.push({
+      filename: "plainstride-feedback.jpg",
+      content: body.screenshotBase64,
+      content_type: body.screenshotContentType ?? "image/jpeg",
+    });
+  }
+  if (body.recentLogs) {
+    attachments.push({
+      filename: "plainstride-logs.txt",
+      content: Buffer.from(body.recentLogs, "utf8").toString("base64"),
+      content_type: "text/plain",
+    });
+  }
   const delivery = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -53,17 +70,7 @@ router.post("/", zValidator("json", feedbackSchema), async (c) => {
       to: [process.env.FEEDBACK_EMAIL_TO ?? "info@plainstride.com"],
       subject: `Plainstride ${body.kind} report`,
       text: sections.join("\n"),
-      ...(body.screenshotBase64
-        ? {
-            attachments: [
-              {
-                filename: "plainstride-feedback.jpg",
-                content: body.screenshotBase64,
-                content_type: body.screenshotContentType ?? "image/jpeg",
-              },
-            ],
-          }
-        : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
     }),
   });
   if (!delivery.ok) {

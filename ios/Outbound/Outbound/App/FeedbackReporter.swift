@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import OSLog
 
 enum FeedbackTrigger {
     static let notification = Notification.Name("plainstride.presentFeedback")
@@ -104,9 +105,11 @@ extension View {
 
 private struct FeedbackForm: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @State private var kind: FeedbackKind = .bug
     @State private var message = ""
     @State private var includesDiagnostics = true
+    @State private var includesRecentLogs = true
     @State private var screenshot: UIImage?
     @State private var isAnnotating = false
     @State private var isSubmitting = false
@@ -156,8 +159,9 @@ private struct FeedbackForm: View {
 
                 Section {
                     Toggle("Include app and device details", isOn: $includesDiagnostics)
+                    Toggle("Include recent app logs", isOn: $includesRecentLogs)
                 } footer: {
-                    Text("This includes the app version, specific device model, and iOS version. Your account ID, email, and current page are attached to every report. Health and location data are never included.")
+                    Text("App and device details include the app version, specific device model, and iOS version. Recent logs cover up to the last 15 minutes of this Plainstride session. Private values, health data, and precise locations are excluded. Your account ID, email, and current page are attached to every report.")
                 }
 
                 Section {
@@ -220,11 +224,20 @@ private struct FeedbackForm: View {
         guard !isSubmitting, !trimmedMessage.isEmpty else { return }
         isSubmitting = true
         toast = nil
+        let recentLogs = includesRecentLogs ? FeedbackLogCollector.snapshot() : nil
+        let logSelection = if !includesRecentLogs {
+            "logs_excluded"
+        } else if recentLogs == nil {
+            "logs_unavailable"
+        } else {
+            "logs_attached"
+        }
         let request = FeedbackSubmissionRequest(
             kind: kind.apiValue,
             message: trimmedMessage,
             currentPage: currentPage,
             diagnostics: includesDiagnostics ? FeedbackDiagnostics.summary : nil,
+            recentLogs: recentLogs,
             screenshotBase64: screenshot?.jpegData(compressionQuality: 0.82)?.base64EncodedString(),
             screenshotContentType: screenshot == nil ? nil : "image/jpeg"
         )
@@ -232,11 +245,29 @@ private struct FeedbackForm: View {
         Task {
             do {
                 _ = try await APIClient.shared.submitFeedback(request)
+                await analyticsManager?.track(
+                    .init(
+                        .feedbackReportSubmitted,
+                        properties: [
+                            .result: .string("succeeded"),
+                            .selectionType: .string(logSelection)
+                        ]
+                    )
+                )
                 isSubmitting = false
                 toast = FeedbackToast(text: String(localized: "Report submitted"), isError: false)
                 try? await Task.sleep(for: .seconds(1.2))
                 dismiss()
             } catch {
+                await analyticsManager?.track(
+                    .init(
+                        .feedbackReportSubmitted,
+                        properties: [
+                            .result: .string("failed"),
+                            .selectionType: .string(logSelection)
+                        ]
+                    )
+                )
                 isSubmitting = false
                 toast = FeedbackToast(
                     text: String(localized: "Could not submit report. Try again."),
@@ -254,6 +285,7 @@ struct FeedbackSubmissionRequest: Encodable {
     let message: String
     let currentPage: String
     let diagnostics: String?
+    let recentLogs: String?
     let screenshotBase64: String?
     let screenshotContentType: String?
 }
@@ -428,6 +460,77 @@ private enum FeedbackDiagnostics {
         let build = info?["CFBundleVersion"] as? String ?? "Unknown"
         let device = UIDevice.current
         return "App: \(version) (\(build))\nDevice: \(DeviceModel.displayName)\niOS: \(device.systemVersion)"
+    }
+}
+
+private enum FeedbackLogCollector {
+    private static let lookback: TimeInterval = 15 * 60
+    private static let maximumLines = 200
+    private static let maximumCharacters = 30_000
+    private static let allowedCategories: Set<String> = [
+        "Analytics",
+        "AppleMusic",
+        "Assistant",
+        "MusicStore",
+        "Weather"
+    ]
+
+    static func snapshot(now: Date = Date()) -> String? {
+        do {
+            let store = try OSLogStore(scope: .currentProcessIdentifier)
+            let position = store.position(date: now.addingTimeInterval(-lookback))
+            let entries = try store.getEntries(at: position)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let appSubsystems = Set([Bundle.main.bundleIdentifier, "plainstride.outbound"].compactMap { $0 })
+            var lines: [String] = []
+
+            for case let entry as OSLogEntryLog in entries {
+                guard appSubsystems.contains(entry.subsystem), allowedCategories.contains(entry.category) else {
+                    continue
+                }
+                let line = "\(formatter.string(from: entry.date)) [\(levelName(entry.level))] [\(entry.category)] \(redacted(entry.composedMessage))"
+                lines.append(line)
+                if lines.count > maximumLines {
+                    lines.removeFirst(lines.count - maximumLines)
+                }
+            }
+
+            guard !lines.isEmpty else { return nil }
+            let joined = lines.joined(separator: "\n")
+            return String(joined.suffix(maximumCharacters))
+        } catch {
+            return nil
+        }
+    }
+
+    private static func levelName(_ level: OSLogEntryLog.Level) -> String {
+        switch level {
+        case .undefined: "default"
+        case .debug: "debug"
+        case .info: "info"
+        case .notice: "notice"
+        case .error: "error"
+        case .fault: "fault"
+        @unknown default: "unknown"
+        }
+    }
+
+    private static func redacted(_ message: String) -> String {
+        let patterns = [
+            #"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+"#,
+            #"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"#,
+            #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"#,
+            #"(?i)\b(?:lat(?:itude)?|lon(?:gitude)?|lng)\s*[=:]\s*-?\d{1,3}(?:\.\d+)?"#,
+            #"(?<![\d.])-?\d{1,2}\.\d{4,}\s*[,/]\s*-?\d{1,3}\.\d{4,}(?![\d.])"#
+        ]
+        return patterns.reduce(message) { partial, pattern in
+            partial.replacingOccurrences(
+                of: pattern,
+                with: "[redacted]",
+                options: .regularExpression
+            )
+        }
     }
 }
 

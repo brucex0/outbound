@@ -237,7 +237,7 @@ Current API shape:
 Responsibilities:
 
 - accept authenticated in-app bug reports and suggestions
-- relay the authenticated user ID and email, current app page, optional app/device diagnostics, and the user-approved screenshot by email without database storage
+- relay the authenticated user ID and email, current app page, optional app/device diagnostics, privacy-filtered recent app logs, and the user-approved screenshot by email without database storage
 - keep delivery and storage mechanics out of the client UI
 
 Current API shape:

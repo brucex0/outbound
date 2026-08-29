@@ -62,7 +62,7 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### How to Report Feedback
 
-When no activity is recording, shake your iPhone twice within three seconds to open **Send feedback**. Choose **Bug** or **Suggestion**, describe what happened, and optionally include app/device details. Plainstride automatically captures the screen you were viewing; you can annotate it with the red marker, undo marks, or remove the screenshot. Tap **Submit report** to send it directly to the Plainstride team.
+When no activity is recording, shake your iPhone twice within three seconds to open **Send feedback**. Choose **Bug** or **Suggestion**, describe what happened, and optionally include app/device details and a privacy-filtered tail of recent Plainstride logs. Plainstride automatically captures the screen you were viewing; you can annotate it with the red marker, undo marks, or remove the screenshot. Tap **Submit report** to send it directly to the Plainstride team.
 
 If shaking is inconvenient or unavailable, open **Me > Settings > Send feedback** instead.
 
@@ -157,7 +157,7 @@ Likely collected and linked to identity:
 
 Confirm before selecting:
 
-- Diagnostics: select only if production logging/crash tooling receives device diagnostics tied to the app.
+- Diagnostics: in-app feedback can send optional app/device details and a privacy-filtered recent-log attachment linked to the authenticated account. Confirm the exact App Store Connect diagnostic subtype against the submitted build and final privacy policy.
 - Health: Apple Health values that remain on device are not collected; select Health only if they are sent to the backend.
 - Contacts: do not select merely because a user manually enters or shares with a trusted person; review what the backend retains.
 - Photos: local activity photos are not collected unless upload is enabled.
