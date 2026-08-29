@@ -76,6 +76,9 @@ model User {
   activityEventParticipants   ActivityEventParticipant[]
   routesOwned                 Route[]
   routeBookmarks              RouteBookmark[]
+  liveCoachSessions           LiveCoachSession[]
+  featureEntitlements         FeatureEntitlement[]
+  featureUsagePeriods         FeatureUsagePeriod[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -128,9 +131,9 @@ model GuideProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Guide identity
-  guideName   String @default("Guide")
-  personality String @default("encouraging") // encouraging | data-driven | direct | zen
-  voiceId     String @default("default")
+  guideName      String @default("Guide")
+  coachPersonaId String @default("plainstride_supportive_v1")
+  voiceProfileId String @default("plainstride_warm_1")
 
   // Athlete snapshot (rebuilt after each activity)
   fitnessLevel   String   @default("beginner") // beginner | intermediate | advanced | elite
@@ -154,6 +157,94 @@ model GuideProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model LiveCoachSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientSessionId     String
+  workoutId           String?
+  status              String
+  locale              String
+  market              String
+  coachPersonaId      String
+  personaVersion      Int
+  voiceProfileId      String
+  coachingContract    String
+  effectiveAudioMode  String
+  configVersion       String
+  accessReason        String
+  providerKey         String?
+  providerEndpointKey String?
+  providerModel       String?
+  providerVoice       String?
+  routePolicyVersion  String?
+  compiledContext     Json
+  contextHash         String
+  contextVersion      Int
+  dynamicCueLimit     Int
+  dynamicCueCount     Int       @default(0)
+  expiresAt           DateTime
+  endedAt             DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  cues                 LiveCoachCue[]
+
+  @@unique([userId, clientSessionId])
+  @@index([userId, status, createdAt])
+  @@index([expiresAt])
+}
+
+model LiveCoachCue {
+  id                String           @id @default(cuid())
+  sessionId         String
+  session           LiveCoachSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cueRequestId      String
+  moment            String
+  source            String
+  resultCategory    String
+  contextHash       String
+  latencyBucket     String?
+  inputTokenBucket  String?
+  outputAudioBucket String?
+  createdAt         DateTime         @default(now())
+  expiresAt         DateTime
+
+  @@unique([sessionId, cueRequestId])
+  @@index([expiresAt])
+}
+
+model FeatureEntitlement {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capability          String
+  source              String
+  status              String
+  sourceReferenceHash String?   @unique
+  startsAt            DateTime
+  expiresAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([userId, capability, source])
+  @@index([userId, capability, status, expiresAt])
+}
+
+model FeatureUsagePeriod {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capability      String
+  periodKey       String
+  reservedCount   Int      @default(0)
+  successfulCount Int      @default(0)
+  limitSnapshot   Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, capability, periodKey])
 }
 
 model Activity {

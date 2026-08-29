@@ -1,0 +1,31 @@
+{
+  "catalogVersion": "2026-08-28.1",
+  "entries": [
+    { "cueKey": "countdown.three", "scriptStyleId": "standard", "texts": { "en": "Three.", "es": "Tres.", "zh-Hans": "三。" } },
+    { "cueKey": "countdown.two", "scriptStyleId": "standard", "texts": { "en": "Two.", "es": "Dos.", "zh-Hans": "二。" } },
+    { "cueKey": "countdown.one", "scriptStyleId": "standard", "texts": { "en": "One.", "es": "Uno.", "zh-Hans": "一。" } },
+    { "cueKey": "countdown.go", "scriptStyleId": "standard", "texts": { "en": "Go.", "es": "Adelante.", "zh-Hans": "出发。" } },
+    { "cueKey": "workout.pause", "scriptStyleId": "standard", "texts": { "en": "Workout paused.", "es": "Entrenamiento en pausa.", "zh-Hans": "训练已暂停。" } },
+    { "cueKey": "workout.resume", "scriptStyleId": "standard", "texts": { "en": "Workout resumed.", "es": "Entrenamiento reanudado.", "zh-Hans": "训练已继续。" } },
+    { "cueKey": "workout.segment_start", "scriptStyleId": "standard", "texts": { "en": "New segment. Settle into the target before you press.", "es": "Nuevo segmento. Encuentra el objetivo antes de apretar.", "zh-Hans": "进入新阶段，先稳定到目标强度，再逐步发力。" } },
+    { "cueKey": "workout.complete", "scriptStyleId": "standard", "texts": { "en": "Workout complete. Ease down smoothly.", "es": "Entrenamiento completado. Baja el ritmo con suavidad.", "zh-Hans": "训练完成，平稳地放松下来。" } },
+    { "cueKey": "route.advisory", "scriptStyleId": "standard", "texts": { "en": "Route update ahead. Check the map when it is safe.", "es": "Hay una indicación de ruta. Mira el mapa cuando sea seguro.", "zh-Hans": "前方有路线提示，请在安全时查看地图。" } },
+    { "cueKey": "route.caution", "scriptStyleId": "standard", "texts": { "en": "Route caution. Slow down and check the map.", "es": "Atención a la ruta. Reduce el ritmo y mira el mapa.", "zh-Hans": "注意路线，请减速并查看地图。" } },
+    { "cueKey": "route.wrong_way", "scriptStyleId": "standard", "texts": { "en": "You may be going the wrong way. Slow down and check the map.", "es": "Puede que vayas en la dirección equivocada. Reduce el ritmo y mira el mapa.", "zh-Hans": "你可能走错了方向，请减速并查看地图。" } },
+    { "cueKey": "route.rejoin", "scriptStyleId": "standard", "texts": { "en": "You are back on the selected route.", "es": "Has vuelto a la ruta seleccionada.", "zh-Hans": "你已回到所选路线。" } },
+    { "cueKey": "route.arrival", "scriptStyleId": "standard", "texts": { "en": "You have reached the end of the route.", "es": "Has llegado al final de la ruta.", "zh-Hans": "你已到达路线终点。" } },
+    { "cueKey": "progress.one_third", "scriptStyleId": "standard", "texts": { "en": "One third complete. Keep it smooth.", "es": "Has completado un tercio. Mantén un ritmo fluido.", "zh-Hans": "已完成三分之一，继续保持顺畅。" } },
+    { "cueKey": "progress.halfway", "scriptStyleId": "standard", "texts": { "en": "Halfway there. Stay patient and steady.", "es": "Ya estás a mitad. Mantén la paciencia y la constancia.", "zh-Hans": "已经过半，保持耐心和稳定。" } },
+    { "cueKey": "progress.two_thirds", "scriptStyleId": "standard", "texts": { "en": "Two thirds complete. Stay composed.", "es": "Has completado dos tercios. Mantén la calma.", "zh-Hans": "已完成三分之二，继续保持从容。" } },
+    { "cueKey": "progress.finish_soon", "scriptStyleId": "standard", "texts": { "en": "The finish is close. Stay composed.", "es": "La meta está cerca. Mantén la calma.", "zh-Hans": "终点快到了，保持从容。" } },
+    { "cueKey": "progress.steady", "scriptStyleId": "standard", "texts": { "en": "Keep this steady rhythm.", "es": "Mantén este ritmo estable.", "zh-Hans": "保持现在的稳定节奏。" } },
+    { "cueKey": "coach.settle", "scriptStyleId": "standard", "texts": { "en": "Settle the effort and find a sustainable rhythm.", "es": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.", "zh-Hans": "稍微收住强度，找到可持续的节奏。" } },
+    { "cueKey": "coach.restore_rhythm", "scriptStyleId": "standard", "texts": { "en": "Relax your shoulders and gently find your rhythm again.", "es": "Relaja los hombros y recupera el ritmo poco a poco.", "zh-Hans": "放松肩膀，慢慢找回刚才的节奏。" } },
+    { "cueKey": "coach.rhythm_recovered", "scriptStyleId": "standard", "texts": { "en": "That adjustment worked. You found the rhythm again.", "es": "Ese ajuste funcionó. Recuperaste el ritmo.", "zh-Hans": "刚才的调整有效，你已经找回节奏了。" } },
+    { "cueKey": "coach.strong_finish", "scriptStyleId": "standard", "texts": { "en": "Stay composed and let the effort rise gradually.", "es": "Mantén la calma y aumenta el esfuerzo gradualmente.", "zh-Hans": "保持从容，让强度逐步提升。" } },
+    { "cueKey": "challenge.start", "scriptStyleId": "standard", "texts": { "en": "Challenge starts now. Build the pace smoothly.", "es": "Empieza el reto. Aumenta el ritmo con suavidad.", "zh-Hans": "挑战开始，平稳地提起速度。" } },
+    { "cueKey": "challenge.complete", "scriptStyleId": "standard", "texts": { "en": "Challenge complete. Settle back into your run.", "es": "Reto completado. Vuelve a tu ritmo de carrera.", "zh-Hans": "挑战完成，回到原来的跑步节奏。" } },
+    { "cueKey": "fallback.unavailable", "scriptStyleId": "standard", "texts": { "en": "Keep the effort steady and stay aware of how you feel.", "es": "Mantén un esfuerzo estable y presta atención a cómo te sientes.", "zh-Hans": "保持稳定强度，留意自己的感受。" } },
+    { "cueKey": "voice.preview", "scriptStyleId": "standard", "texts": { "en": "Nice work. Stay relaxed and keep this steady rhythm.", "es": "Buen trabajo. Mantente relajado y conserva este ritmo estable.", "zh-Hans": "做得不错，保持放松，稳住现在的节奏。" } }
+  ]
+}

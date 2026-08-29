@@ -41,12 +41,12 @@ final class APIClient {
         self.base = url
     }
 
-    func fetchGuideProfile(userId: String) async throws -> GuideProfile {
-        try await get("/guide/\(userId)/profile")
+    func fetchGuideProfile() async throws -> GuideProfile {
+        try await get("/guide/profile")
     }
 
-    func rebuildGuideProfile(userId: String) async throws -> GuideProfile {
-        try await post("/guide/\(userId)/rebuild", body: EmptyBody())
+    func rebuildGuideProfile() async throws -> GuideProfile {
+        try await post("/guide/rebuild", body: EmptyBody())
     }
 
     func uploadActivity(_ request: ActivityUploadRequest) async throws -> ActivityUploadResponse {
@@ -122,8 +122,24 @@ final class APIClient {
         try await post("/assistant/chat", body: request)
     }
 
-    func analyzeLiveCoach(_ request: LiveCoachAnalysisRequest) async throws -> LiveCoachAnalysisResponse {
-        try await post("/live-coach/analyze", body: request)
+    func fetchLiveCoachConfig() async throws -> LiveCoachConfigDTO {
+        try await get("/live-coach/config")
+    }
+
+    func fetchLiveCoachCatalog(locale: String) async throws -> LiveCoachCatalogDTO {
+        try await get("/live-coach/catalog", queryItems: [URLQueryItem(name: "locale", value: locale)])
+    }
+
+    func createLiveCoachSession(_ request: CreateLiveCoachSessionRequest) async throws -> CreateLiveCoachSessionResponse {
+        try await post("/live-coach/sessions", body: request)
+    }
+
+    func requestLiveCoachCue(sessionID: String, request: LiveCoachCueRequest) async throws -> LiveCoachCueResponse {
+        try await post("/live-coach/sessions/\(sessionID)/cues", body: request)
+    }
+
+    func endLiveCoachSession(sessionID: String, request: EndLiveCoachSessionRequest) async throws -> EndLiveCoachSessionResponse {
+        try await post("/live-coach/sessions/\(sessionID)/end", body: request)
     }
 
     func sendCompanionTurn(_ request: CompanionTurnRequestDTO) async throws -> CompanionTurnResponseDTO {
@@ -1165,18 +1181,6 @@ struct AssistantChatRequest: Encodable {
     let capability: String
     let context: AssistantChatAPIContext
     let messages: [AssistantChatAPIPriorMessage]
-}
-
-struct LiveCoachAnalysisRequest: Encodable {
-    let model: String
-    let packet: SessionNudgePacket
-}
-
-struct LiveCoachAnalysisResponse: Decodable {
-    let message: String
-    let urgency: String
-    let shouldSpeak: Bool
-    let model: String
 }
 
 struct AssistantChatAPIContext: Encodable {

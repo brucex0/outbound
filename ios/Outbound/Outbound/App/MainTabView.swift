@@ -53,19 +53,6 @@ struct MainTabView: View {
             .environmentObject(healthImportStore)
             .interactiveDismissDisabled()
         }
-        .fullScreenCover(isPresented: voiceSelectionPresentation) {
-            NavigationStack {
-                GuideSelectionView()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") {
-                                guideCatalog.dismissVoiceSelectionPrompt()
-                            }
-                        }
-                    }
-            }
-            .environmentObject(guideCatalog)
-        }
         .sheet(isPresented: $healthImportStore.isReviewPresented) {
             HealthWorkoutImportView()
                 .environmentObject(activityStore)
@@ -147,13 +134,6 @@ struct MainTabView: View {
                 return onboardingStore.isPresented && !isAppTestMode
             },
             set: { onboardingStore.isPresented = $0 }
-        )
-    }
-
-    private var voiceSelectionPresentation: Binding<Bool> {
-        Binding(
-            get: { guideCatalog.isVoiceSelectionPromptPresented && !onboardingPresentation.wrappedValue },
-            set: { if !$0 { guideCatalog.dismissVoiceSelectionPrompt() } }
         )
     }
 

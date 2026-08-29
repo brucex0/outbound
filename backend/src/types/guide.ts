@@ -1,4 +1,5 @@
-export type GuidePersonality = "encouraging" | "data-driven" | "direct" | "zen";
+export type CoachPersonaId = "plainstride_supportive_v1" | "plainstride_focused_v1" | "plainstride_calm_v1";
+export type VoiceProfileId = "plainstride_warm_1" | "plainstride_clear_1";
 export type FitnessLevel = "beginner" | "intermediate" | "advanced" | "elite";
 
 export interface GoalItem {
@@ -36,8 +37,8 @@ export interface MemorySnapshot {
 export interface GuideProfilePayload {
   version: number;
   guideName: string;
-  personality: GuidePersonality;
-  voiceId: string;
+  coachPersonaId: CoachPersonaId;
+  voiceProfileId: VoiceProfileId;
   athlete: {
     fitnessLevel: FitnessLevel;
     weeklyVolumeKm: number;
@@ -48,6 +49,5 @@ export interface GuideProfilePayload {
   };
   goals: GoalItem[];
   memorySnapshot: MemorySnapshot;
-  systemPrompt: string;     // pre-built prompt for on-device model
   builtAt: string;          // ISO datetime
 }

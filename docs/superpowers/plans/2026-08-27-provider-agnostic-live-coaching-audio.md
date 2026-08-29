@@ -1,12 +1,31 @@
 # Provider-Agnostic AI Live Coaching Audio Implementation Plan
 
-**Status:** Proposed implementation handoff
+**Status:** Implemented in code; operational audio-pack review/publication and rollout remain explicit release steps
 
 **Initial provider:** Alibaba Cloud Model Studio / Qwen
 
 **Primary outcome:** Every audible coaching cue is server-generated audio. The iOS app never uses an Apple system voice, chooses a vendor/model, or calls an AI vendor directly.
 
 This document is written for an implementation agent. Complete the tasks in order, keep each commit reviewable, and update this plan when implementation reveals a materially different constraint. Follow `AGENTS.md`: do not run the test suite unless the user explicitly requests it; use build-only checks and the manual acceptance matrix for normal verification.
+
+## Implementation reconciliation — 2026-08-28
+
+Cross-checking the handoff against the repository produced these necessary adjustments:
+
+- Reused `getAuthenticatedAppUser` and the existing first-party access-token boundary rather than adding a parallel live-coach auth system. All live-coach routes resolve the current internal user and accept no client user ID.
+- Kept public iOS/backend DTOs in the repository's established camel-case JSON convention. Provider payload shapes remain private to the Alibaba adapter.
+- Added the Prisma models to `schema.prisma` and the existing `prisma db push` deployment path; this repo does not maintain a Prisma migrations directory.
+- Changed `GuideProfile` to stable `coachPersonaId` and `voiceProfileId` fields and fixed `GET /v1/guide/profile` to return the app-shaped versioned payload instead of a raw Prisma row.
+- Preserved `VirtualGuide` moment detection, cooldowns, route arbitration, and outcome evaluation. Its output edge now accepts only validated server WAV bytes or reviewed fixed-pack assets. Arbitrary legacy stat/route strings with no reviewed asset are silent rather than invoking device speech.
+- Removed the old `/v1/live-coach/analyze`, debug client model selection, on-device Foundation Model coaching provider, rule-based speech provider, Apple voice picker/help, and `AVSpeechSynthesizer` path in the same cutover.
+- Pinned Alibaba's workspace-compatible base URL independently from the deployed model and product-to-provider voice map. The regional workspace ID and API key are deployment inputs, never app/catalog fields.
+- Kept the operational mode defaulted to `disabled`. `fixed_only` or `dynamic` fails startup unless an immutable HTTPS pack is marked reviewed/published; `dynamic` additionally requires the Alibaba Secret Manager binding, approved deployed model, and complete voice mapping for all enabled product voices/locales.
+- Rechecks both the global dynamic mode and deterministic rollout cohort on every cue, applies authenticated-user plus per-session rate limits, and permits at most one provider generation per session at a time.
+- Signs the provider-neutral manifest with ES256, binds it to the expected catalog version, declares compatible product personas, verifies every reviewed WAV again at publication, and makes immutable asset publication safely resumable.
+- Implemented generation and publication tooling, but intentionally did not fabricate or commit audio. Human listening approval, immutable upload, CDN URLs, and the bundled minimal pack remain required before enabling server audio.
+- `subscription_required` remains fail-closed until a verified StoreKit/server entitlement flow is explicitly marked ready. Open beta is the only enabled V1 access policy.
+
+The Alibaba key shared during implementation was not written to source, documentation, shell commands, logs, or generated artifacts. Rotate it before provisioning Secret Manager because chat is not an approved secret channel.
 
 ## 1. Goals
 
@@ -385,14 +404,14 @@ This authenticated endpoint lets iOS decide which setup UI to expose without mak
 
 ```json
 {
-  "contract_version": 1,
-  "config_version": "1",
+  "contractVersion": 1,
+  "configVersion": "1",
   "mode": "dynamic",
-  "catalog_version": "2026-08-27.1",
+  "catalogVersion": "2026-08-28.1",
   "access": {
-    "dynamic_coaching": "allowed",
+    "dynamicCoaching": "allowed",
     "reason": "open_beta",
-    "paywall_available": false
+    "paywallAvailable": false
   }
 }
 ```
@@ -407,24 +426,30 @@ Response:
 
 ```json
 {
-  "contract_version": 1,
-  "catalog_version": "2026-08-27.1",
-  "coach_personas": [
+  "contractVersion": 1,
+  "catalogVersion": "2026-08-28.1",
+  "audioPack": {
+    "manifestVersion": "2026-08-28.1",
+    "manifestUrl": "https://cdn.example/live-coach/2026-08-28.1/manifest.json"
+  },
+  "coachPersonas": [
     {
       "id": "plainstride_supportive_v1",
-      "display_name": "Supportive",
+      "displayName": "Supportive",
       "description": "Encouraging, practical coaching that keeps effort sustainable.",
-      "default_voice_profile_id": "plainstride_warm_1",
-      "allowed_voice_profile_ids": ["plainstride_warm_1", "plainstride_clear_1"],
+      "defaultVoiceProfileId": "plainstride_warm_1",
+      "allowedVoiceProfileIds": ["plainstride_warm_1", "plainstride_clear_1"],
+      "fixedScriptStyleId": "standard",
       "access": "included"
     }
   ],
   "voices": [
     {
       "id": "plainstride_warm_1",
-      "display_name": "Warm",
+      "displayName": "Warm",
+      "description": "Relaxed, natural, and reassuring.",
       "style": "warm",
-      "preview_asset_id": "voice-preview/en/plainstride_warm_1/v3"
+      "previewAssetId": "voice.preview"
     }
   ]
 }
@@ -440,18 +465,18 @@ Request:
 
 ```json
 {
-  "contract_version": 1,
-  "client_session_id": "uuid",
-  "workout_id": "optional-authoritative-workout-id",
+  "contractVersion": 1,
+  "clientSessionId": "uuid",
+  "workoutId": "optional-authoritative-workout-id",
   "locale": "en",
-  "coach_persona_id": "plainstride_supportive_v1",
-  "voice_profile_id": "plainstride_warm_1",
-  "coaching_contract": "responsive",
-  "session_intent": {
-    "activity_type": "running",
-    "goal_type": "workout"
+  "coachPersonaId": "plainstride_supportive_v1",
+  "voiceProfileId": "plainstride_warm_1",
+  "coachingContract": "responsive",
+  "sessionIntent": {
+    "activityType": "running",
+    "goalType": "workout"
   },
-  "app_distribution_hint": "global"
+  "appDistributionHint": "global"
 }
 ```
 
@@ -459,29 +484,29 @@ The backend authenticates the user, validates workout ownership, resolves the au
 
 ```json
 {
-  "contract_version": 1,
-  "session_id": "opaque-id",
-  "context_version": 1,
-  "expires_at": "ISO-8601",
-  "effective_mode": "dynamic",
-  "dynamic_coaching_available": true,
+  "contractVersion": 1,
+  "sessionId": "opaque-id",
+  "contextVersion": 1,
+  "expiresAt": "ISO-8601",
+  "effectiveMode": "dynamic",
+  "dynamicCoachingAvailable": true,
   "access": {
-    "dynamic_coaching": "allowed",
+    "dynamicCoaching": "allowed",
     "reason": "open_beta",
-    "paywall_available": false
+    "paywallAvailable": false
   },
-  "audio_pack": {
-    "manifest_version": "2026-08-27.1",
-    "manifest_url": "short-lived-or-public-content-url"
+  "audioPack": {
+    "manifestVersion": "2026-08-28.1",
+    "manifestUrl": "short-lived-or-public-content-url"
   },
   "limits": {
-    "cue_validity_milliseconds": 5000,
-    "maximum_dynamic_cues": 8
+    "cueValidityMilliseconds": 5000,
+    "maximumDynamicCues": 8
   }
 }
 ```
 
-Session creation must be idempotent for `(user, client_session_id)`. The backend validates persona/voice compatibility, access, fixed-pack readiness, and operational mode. If dynamic access is unavailable, still create a `fixed_only` session instead of breaking workout guidance. The app may offer an upgrade before the workout when `paywall_available` is true, but never interrupt an active run with a paywall.
+Session creation must be idempotent for `(user, clientSessionId)`. The backend validates persona/voice compatibility, access, fixed-pack readiness, and operational mode. If dynamic access is unavailable, still create a `fixed_only` session instead of breaking workout guidance. The app may offer an upgrade before the workout when `paywallAvailable` is true, but never interrupt an active run with a paywall.
 
 ### 9.4 Request a cue
 
@@ -491,20 +516,20 @@ Request:
 
 ```json
 {
-  "contract_version": 1,
-  "cue_request_id": "uuid",
+  "contractVersion": 1,
+  "cueRequestId": "uuid",
   "moment": "pace_drift",
-  "detected_at_elapsed_seconds": 842,
-  "valid_for_milliseconds": 5000,
-  "live_state": {
-    "elapsed_seconds": 842,
-    "distance_meters": 2740,
-    "current_pace_seconds_per_kilometer": 331,
-    "rolling_pace_seconds_per_kilometer": 324,
-    "target_pace_seconds_per_kilometer": 315,
-    "workout_segment_index": 2,
-    "workout_segment_phase": "work",
-    "route_guidance_active": false
+  "detectedAtElapsedSeconds": 842,
+  "validForMilliseconds": 5000,
+  "liveState": {
+    "elapsedSeconds": 842,
+    "distanceMeters": 2740,
+    "currentPaceSecondsPerKilometer": 331,
+    "rollingPaceSecondsPerKilometer": 324,
+    "targetPaceSecondsPerKilometer": 315,
+    "workoutSegmentIndex": 2,
+    "workoutSegmentPhase": "work",
+    "routeGuidanceActive": false
   }
 }
 ```
@@ -515,25 +540,26 @@ Response:
 
 ```json
 {
-  "contract_version": 1,
-  "cue_request_id": "uuid",
+  "contractVersion": 1,
+  "cueRequestId": "uuid",
   "source": "dynamic_generation",
+  "result": "success",
   "moment": "pace_drift",
   "urgency": "opportunity",
   "transcript": "Ease it back a touch and settle into your target rhythm.",
   "audio": {
-    "content_type": "audio/wav",
+    "contentType": "audio/wav",
     "base64": "...",
-    "duration_milliseconds": 3100
+    "durationMilliseconds": 3100
   },
-  "generated_at": "ISO-8601",
-  "expires_at": "ISO-8601"
+  "generatedAt": "ISO-8601",
+  "expiresAt": "ISO-8601"
 }
 ```
 
 V1 uses base64 because cues are tiny and this keeps one authenticated request. If measurement shows response overhead or time-to-first-audio is unacceptable, add a provider-neutral binary/streaming endpoint without changing the domain provider interface.
 
-The cue route is idempotent for `(session, cue_request_id)`. Concurrent duplicates share one in-flight generation. The server may retain the completed bounded result only until its short expiration; do not permanently store audio or transcript.
+The cue route is idempotent for `(session, cueRequestId)`. Concurrent duplicates share one in-flight generation. The server may retain the completed bounded result only until its short expiration; do not permanently store audio or transcript.
 
 If configuration, entitlement, or quota no longer permits a dynamic call, return an appropriate `fixed_pack`/`cached_fallback` cue envelope and make no provider request. A modified client cannot bypass this behavior.
 
@@ -610,7 +636,7 @@ Do not synthesize messages by joining independently recorded fragments unless li
 Add an explicit generator command such as:
 
 ```bash
-npm run live-coach:generate-audio -- --catalog-version 2026-08-27.1 --provider alibaba
+npm run live-coach:generate-audio -- --catalog-version 2026-08-28.1 --provider alibaba
 ```
 
 The command must:

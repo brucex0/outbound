@@ -1,36 +1,23 @@
-import Foundation
 import Combine
-
-enum VoiceSelectionRequirementReason {
-    case appLanguageChanged
-    case selectedVoiceUnavailable
-    case initialSelection
-}
+import Foundation
 
 @MainActor
 final class GuideCatalogStore: ObservableObject {
     nonisolated static let themeKey = "outbound_theme_v1"
+
     @Published private(set) var templates: [GuideTemplate]
     @Published private(set) var selection: GuideSelection
-    @Published private(set) var requiresVoiceSelection = false
-    @Published private(set) var isVoiceSelectionPromptPresented = false
-    @Published private(set) var isVoiceUpgradePromptPresented = false
-    @Published private(set) var voiceSelectionRequirementReason: VoiceSelectionRequirementReason?
-
     private let defaults: UserDefaults
-    private let selectionKey = "guide_catalog_selection_v1"
-    private let voiceLanguageKey = "guide_catalog_voice_language_v1"
-    private let voiceUpgradePromptKey = "guide_catalog_voice_upgrade_prompt_v1"
+    private let selectionKey = "guide_catalog_selection_v2"
     private let learningKey = "live_guidance_learning_v1"
     private var learningState: LiveGuidanceLearningState
-    private var pendingVoiceUpgradeSignature: String?
 
     var selectedTemplate: GuideTemplate {
-        templates.first { $0.id == selection.templateId } ?? templates[0]
+        templates.first { $0.id == selection.coachPersonaId } ?? templates[0]
     }
 
     var selectedVoice: GuideVoice {
-        selectedTemplate.voiceOptions.first { $0.id == selection.voiceId } ?? selectedTemplate.defaultVoice
+        selectedTemplate.voiceOptions.first { $0.id == selection.voiceProfileId } ?? selectedTemplate.defaultVoice
     }
 
     var selectedPersona: GuidePersona {
@@ -45,10 +32,6 @@ final class GuideCatalogStore: ObservableObject {
 
     var selectedTheme: OutboundTheme { selection.theme }
 
-    var hasDownloadedAppleVoices: Bool {
-        selectedTemplate.voiceOptions.contains(where: \.isPremiumOrEnhancedQuality)
-    }
-
     init(
         templates: [GuideTemplate] = GuideTemplate.fixtures,
         defaults: UserDefaults = .standard
@@ -59,87 +42,59 @@ final class GuideCatalogStore: ObservableObject {
             .flatMap { try? JSONDecoder().decode(LiveGuidanceLearningState.self, from: $0) }
             ?? LiveGuidanceLearningState()
 
-        let fallbackTemplate = templates[0]
-        let fallbackSelection = GuideSelection(
-            templateId: fallbackTemplate.id,
-            voiceId: fallbackTemplate.defaultVoice.id,
-            theme: .victoryGold,
-            intensity: .balanced,
-            nudgeFrequency: .normal,
-            coachingContract: .responsive
-        )
-
-        let hasSavedSelection: Bool
+        let fallback = templates[0]
+        let savedTheme = defaults.string(forKey: Self.themeKey)
+            .flatMap(OutboundTheme.init(rawValue:)) ?? .victoryGold
         if let data = defaults.data(forKey: selectionKey),
            let decoded = try? JSONDecoder().decode(GuideSelection.self, from: data) {
             selection = decoded
-            hasSavedSelection = true
         } else {
-            selection = fallbackSelection
-            hasSavedSelection = false
+            selection = GuideSelection(
+                coachPersonaId: fallback.id,
+                voiceProfileId: fallback.defaultVoice.id,
+                theme: savedTheme,
+                intensity: .balanced,
+                nudgeFrequency: .normal,
+                coachingContract: .responsive
+            )
         }
-
-        let savedVoiceIsCompatible = templates
-            .first(where: { $0.id == selection.templateId })?
-            .voiceOptions
-            .contains(where: { $0.id == selection.voiceId }) == true
-        if hasSavedSelection,
-           savedVoiceIsCompatible,
-           defaults.string(forKey: voiceLanguageKey) == nil {
-            // Migrate selections created before voice-language tracking existed.
-            defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
-        }
-
-        let confirmedLanguage = defaults.string(forKey: voiceLanguageKey)
         normalizeSelection()
-        if !hasSavedSelection {
-            voiceSelectionRequirementReason = .initialSelection
-        } else if confirmedLanguage != nil,
-                  confirmedLanguage != AppLanguage.currentIdentifier {
-            voiceSelectionRequirementReason = .appLanguageChanged
-        } else if !savedVoiceIsCompatible {
-            voiceSelectionRequirementReason = .selectedVoiceUnavailable
-        }
-        requiresVoiceSelection = voiceSelectionRequirementReason != nil
-        resolveVoiceSelectionRequirementWithInstalledVoice()
         defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
+        updateAudioPackSelection()
+    }
+
+    func refreshServerCatalog() async {
+        await LiveCoachFeatureState.shared.refresh()
+        guard let catalog = LiveCoachFeatureState.shared.catalog else { return }
+        let serverTemplates = GuideTemplate.from(catalog: catalog)
+        guard !serverTemplates.isEmpty else { return }
+        templates = serverTemplates
+        normalizeSelection()
+        updateAudioPackSelection()
+    }
+
+    func setCoachPersona(id: String) {
+        guard let template = templates.first(where: { $0.id == id }) else { return }
+        selection.coachPersonaId = id
+        if !template.allowedVoiceIds.contains(selection.voiceProfileId) {
+            selection.voiceProfileId = template.defaultVoice.id
+        }
+        saveSelection()
+        updateAudioPackSelection()
     }
 
     func setVoice(id: String) {
-        guard selectedTemplate.voiceOptions.contains(where: { $0.id == id }) else { return }
-        selection.voiceId = id
-        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
-        requiresVoiceSelection = false
-        isVoiceSelectionPromptPresented = false
-        voiceSelectionRequirementReason = nil
+        guard selectedTemplate.allowedVoiceIds.contains(id),
+              selectedTemplate.voiceOptions.contains(where: { $0.id == id })
+        else { return }
+        selection.voiceProfileId = id
         saveSelection()
+        updateAudioPackSelection()
     }
 
-    func requestVoiceSelection() {
-        guard requiresVoiceSelection else { return }
-        isVoiceSelectionPromptPresented = true
-    }
-
-    func dismissVoiceSelectionPrompt() {
-        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
-        requiresVoiceSelection = false
-        isVoiceSelectionPromptPresented = false
-        voiceSelectionRequirementReason = nil
-        saveSelection()
-    }
-
-    func dismissVoiceUpgradePrompt() {
-        if let pendingVoiceUpgradeSignature {
-            defaults.set(pendingVoiceUpgradeSignature, forKey: voiceUpgradePromptKey)
-        }
-        pendingVoiceUpgradeSignature = nil
-        isVoiceUpgradePromptPresented = false
-    }
-
-    @discardableResult
-    func requestVoiceUpgradePromptIfNeeded() -> Bool {
-        presentVoiceUpgradePromptIfNeeded()
-        return isVoiceUpgradePromptPresented
+    func refreshInstalledVoices() {
+        normalizeSelection()
+        updateAudioPackSelection()
     }
 
     func setTheme(_ theme: OutboundTheme) {
@@ -177,9 +132,7 @@ final class GuideCatalogStore: ObservableObject {
         for cue in report.cues where cue.outcome != .pending && cue.outcome != .notMeasured {
             var evidence = learningState.moments[cue.momentType.rawValue] ?? LiveGuidanceMomentEvidence()
             evidence.evaluatedCount += 1
-            if cue.outcome.isHelpfulResult {
-                evidence.helpfulCount += 1
-            }
+            if cue.outcome.isHelpfulResult { evidence.helpfulCount += 1 }
             learningState.moments[cue.momentType.rawValue] = evidence
         }
         saveLearningState()
@@ -190,89 +143,26 @@ final class GuideCatalogStore: ObservableObject {
         saveLearningState()
     }
 
-    func refreshInstalledVoices() {
-        if defaults.string(forKey: voiceLanguageKey) != AppLanguage.currentIdentifier {
-            requiresVoiceSelection = true
-            voiceSelectionRequirementReason = .appLanguageChanged
-        }
-        let voiceOptions = GuideVoice.availableOptions
-        if selectedTemplate.voiceOptions != voiceOptions {
-            templates = templates.map { template in
-                GuideTemplate(
-                    id: template.id,
-                    sport: template.sport,
-                    displayName: template.displayName,
-                    tagline: template.tagline,
-                    personality: template.personality,
-                    guidanceStyle: template.guidanceStyle,
-                    defaultVoiceId: template.defaultVoiceId,
-                    voiceOptions: voiceOptions,
-                    systemPromptSeed: template.systemPromptSeed
-                )
-            }
-            normalizeSelection()
-        }
-        resolveVoiceSelectionRequirementWithInstalledVoice()
-    }
-
-    private func presentVoiceUpgradePromptIfNeeded() {
-        guard selectedVoice.isStandardQuality else {
-            isVoiceUpgradePromptPresented = false
-            return
-        }
-
-        let availableVoiceIDs = selectedTemplate.voiceOptions
-            .filter(\.isPremiumOrEnhancedQuality)
-            .map(\.id)
-            .sorted()
-        guard !availableVoiceIDs.isEmpty else {
-            isVoiceUpgradePromptPresented = false
-            return
-        }
-
-        let availabilitySignature = availableVoiceIDs.joined(separator: "|")
-        guard defaults.string(forKey: voiceUpgradePromptKey) != availabilitySignature else { return }
-        pendingVoiceUpgradeSignature = availabilitySignature
-        isVoiceUpgradePromptPresented = true
-    }
-
-    private func resolveVoiceSelectionRequirementWithInstalledVoice() {
-        guard requiresVoiceSelection,
-              let installedVoice = selectedTemplate.voiceOptions.first(where: \.isPremiumOrEnhancedQuality)
-        else { return }
-
-        selection.voiceId = installedVoice.id
-        defaults.set(AppLanguage.currentIdentifier, forKey: voiceLanguageKey)
-        requiresVoiceSelection = false
-        isVoiceSelectionPromptPresented = false
-        voiceSelectionRequirementReason = nil
-        saveSelection()
-    }
-
     private func normalizeSelection() {
-        guard let template = templates.first(where: { $0.id == selection.templateId }) else {
-            selection = GuideSelection(
-                templateId: templates[0].id,
-                voiceId: templates[0].defaultVoice.id,
-                theme: .victoryGold,
-                intensity: .balanced,
-                nudgeFrequency: .normal,
-                coachingContract: .responsive
-            )
+        guard let template = templates.first(where: { $0.id == selection.coachPersonaId }) else {
+            selection.coachPersonaId = templates[0].id
+            selection.voiceProfileId = templates[0].defaultVoice.id
             saveSelection()
             return
         }
-
-        var changed = false
-        if !template.voiceOptions.contains(where: { $0.id == selection.voiceId }) {
-            selection.voiceId = template.defaultVoice.id
-            requiresVoiceSelection = true
-            voiceSelectionRequirementReason = .selectedVoiceUnavailable
-            changed = true
-        }
-        if changed {
+        if !template.allowedVoiceIds.contains(selection.voiceProfileId)
+            || !template.voiceOptions.contains(where: { $0.id == selection.voiceProfileId }) {
+            selection.voiceProfileId = template.defaultVoice.id
             saveSelection()
         }
+    }
+
+    private func updateAudioPackSelection() {
+        GuideAudioPackStore.shared.select(
+            coachPersonaID: selectedTemplate.id,
+            voiceProfileID: selectedVoice.id,
+            scriptStyleID: selectedTemplate.fixedScriptStyleId
+        )
     }
 
     private func saveSelection() {
@@ -284,46 +174,15 @@ final class GuideCatalogStore: ObservableObject {
         guard let data = try? JSONEncoder().encode(learningState) else { return }
         defaults.set(data, forKey: learningKey)
     }
-
 }
 
 struct GuideSelection: Codable, Equatable {
-    var templateId: String
-    var voiceId: String
+    var coachPersonaId: String
+    var voiceProfileId: String
     var theme: OutboundTheme
     var intensity: GuidanceIntensity
     var nudgeFrequency: NudgeFrequency
     var coachingContract: CoachingContract
-
-    private enum CodingKeys: String, CodingKey {
-        case templateId, voiceId, theme, intensity, nudgeFrequency, coachingContract
-    }
-
-    init(
-        templateId: String,
-        voiceId: String,
-        theme: OutboundTheme,
-        intensity: GuidanceIntensity,
-        nudgeFrequency: NudgeFrequency,
-        coachingContract: CoachingContract
-    ) {
-        self.templateId = templateId
-        self.voiceId = voiceId
-        self.theme = theme
-        self.intensity = intensity
-        self.nudgeFrequency = nudgeFrequency
-        self.coachingContract = coachingContract
-    }
-
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        templateId = try values.decode(String.self, forKey: .templateId)
-        voiceId = try values.decode(String.self, forKey: .voiceId)
-        theme = try values.decodeIfPresent(OutboundTheme.self, forKey: .theme) ?? .victoryGold
-        intensity = try values.decode(GuidanceIntensity.self, forKey: .intensity)
-        nudgeFrequency = try values.decode(NudgeFrequency.self, forKey: .nudgeFrequency)
-        coachingContract = try values.decodeIfPresent(CoachingContract.self, forKey: .coachingContract) ?? .responsive
-    }
 }
 
 private struct LiveGuidanceLearningState: Codable {

@@ -19,6 +19,7 @@ Adding a China-friendly login button would not make the product reliable by itse
 4. Email or SMS delivery.
 5. Push delivery, especially on Android devices without Google Play services.
 6. Data residency, privacy disclosures, SDK compliance, and other applicable regulatory requirements.
+7. The complete live-coaching path from the regional Plainstride deployment through its selected AI endpoint, fixed-audio CDN, and operational monitoring.
 
 A mainland launch should therefore be treated as a market/infrastructure project rather than a localized authentication feature.
 
@@ -53,6 +54,7 @@ The implemented session system uses short-lived access tokens, rotating refresh 
 - Authentication changes do not help if the production API cannot be reached reliably.
 - Before committing to mainland support, test the complete production API from multiple mainland networks and carriers, including login, token refresh, planning, activity sync, media, social, and live-sharing paths.
 - Decide hosting, domain, CDN, data-location, and operational requirements only after measuring the current Cloud Run deployment from the target market and obtaining appropriate legal/compliance guidance.
+- Live coaching now has a provider-neutral server router, but locale does not select market or authorize a mainland route. A future mainland route must explicitly validate provider terms/availability, deployed region, data handling, app-to-Plainstride latency, Plainstride-to-provider latency, fixed-pack delivery, and applicable distribution requirements before it becomes eligible.
 
 ## Push Notification Findings
 
@@ -72,11 +74,11 @@ When mainland China becomes an explicit target:
 1. Define iOS/Android distribution goals and expected device mix.
 2. Get legal and operational guidance for distribution, hosting, data, third-party SDKs, and messaging.
 3. Measure the existing backend and login paths from representative mainland networks.
-4. Choose the session architecture: retain Firebase where viable or introduce dual Firebase/Outbound token verification during migration.
+4. Validate the complete live-coaching route and fixed-audio CDN from representative networks; add a mainland provider route only after its eligibility facts and operational policy are approved.
 5. Select at least one mainland-appropriate login path, likely Apple plus email for iOS and WeChat or verified phone/email options where justified.
 6. Implement provider-neutral notification registration and routing.
 7. Add Android manufacturer push channels directly or through an evaluated aggregator.
-8. Test signup, refresh, account recovery, API access, notification delivery, and account deletion on real devices and carriers before launch.
+8. Test signup, refresh, account recovery, API access, live-coaching audio, notification delivery, and account deletion on real devices and carriers before launch.
 
 ## Primary References
 

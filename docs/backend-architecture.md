@@ -162,6 +162,26 @@ Recommended API shape:
 - `POST /v1/guide/customize`
 - `POST /v1/guide/weekly-review`
 
+### Live Coaching Audio
+
+Responsibilities:
+
+- authenticate the current Plainstride user and create one provider-neutral coaching session per workout;
+- compile bounded session context once, resolve entitlement/rollout, and pin an eligible provider route and product voice for the session;
+- accept only semantic moments plus bounded live-state fields, enforce idempotency/quotas/deadlines, and return dynamic WAV audio or a reviewed fixed-pack key;
+- keep provider credentials, model IDs, prompts, voice mappings, health state, and operational metrics server-side;
+- generate and publish immutable, checksummed fixed packs through a separate explicit review pipeline.
+
+Current API shape:
+
+- `GET /v1/live-coach/config`
+- `GET /v1/live-coach/catalog`
+- `POST /v1/live-coach/sessions`
+- `POST /v1/live-coach/sessions/:sessionId/cues`
+- `POST /v1/live-coach/sessions/:sessionId/end`
+
+`src/services/aiProviders/` owns generic routing, capabilities, health, validation, and the Alibaba adapter. `src/services/liveCoach/` owns product catalog, access, context, cue policy, fallbacks, session persistence, and orchestration. Routes must not import vendor types. Configuration defaults to `disabled`; enabled modes fail startup unless the reviewed pack and required provider configuration are complete.
+
 ### Assistant
 
 Responsibilities:
@@ -183,7 +203,6 @@ Implemented evolution:
 - Typed candidate generation, policy validation, permission tiers, and the action ledger prevent the model from mutating plans directly.
 - `/v1/assistant/chat` remains a compatibility adapter and delegates to the companion kernel when authenticated database context is available.
 - Memory inspection, correction, forgetting, situational signal intake, action decisions, and compiled session briefs live under `/v1/companion`.
-- `POST /v1/live-coach/analyze` is an authenticated, rate-limited experiment endpoint for short live-session cues. Provider keys stay server-side and selectable model IDs are restricted by the comma-separated `LIVE_COACH_ALLOWED_MODELS` environment variable.
 
 ### Plans
 

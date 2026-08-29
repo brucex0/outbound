@@ -5,12 +5,11 @@ struct GuideProfile: Codable, Identifiable {
     var id: String { guideName + "\(version)" }
     let version: Int
     let guideName: String
-    let personality: String
-    let voiceId: String
+    let coachPersonaId: String
+    let voiceProfileId: String
     let athlete: AthleteSnapshot
     let goals: [GoalItem]
     let memorySnapshot: MemorySnapshot
-    let systemPrompt: String
     let builtAt: Date
 
     struct AthleteSnapshot: Codable {

@@ -10,10 +10,10 @@ final class GuideStore: ObservableObject {
     private let api = APIClient.shared
 
     func syncIfNeeded() async {
-        guard let userId = AuthStore.currentUserId else { return }
+        guard AuthStore.currentUserId != nil else { return }
         let localVersion = UserDefaults.standard.integer(forKey: localKey)
         do {
-            let remote = try await api.fetchGuideProfile(userId: userId)
+            let remote = try await api.fetchGuideProfile()
             if remote.version > localVersion {
                 save(remote)
             }
@@ -22,11 +22,11 @@ final class GuideStore: ObservableObject {
         }
     }
 
-    func rebuild(userId: String) async {
+    func rebuild() async {
         isSyncing = true
         defer { isSyncing = false }
         do {
-            let profile = try await api.rebuildGuideProfile(userId: userId)
+            let profile = try await api.rebuildGuideProfile()
             save(profile)
         } catch {
             print("[GuideStore] rebuild failed: \(error)")

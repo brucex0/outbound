@@ -128,6 +128,56 @@ Notes:
 - Do not pass `backend/.env` to `--env-vars-file`. That flag expects YAML or JSON map syntax, not dotenv format.
 - Keep Cloud Run env and secret wiring on the service itself, then redeploy code with `--source=backend`.
 
+## Live Coaching Audio Rollout
+
+The deploy script defaults live coaching to `disabled`, Alibaba routing to disabled, and dynamic rollout to zero. A code deploy therefore cannot begin AI traffic by itself.
+
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, and Alibaba endpoint identity/region. Defaults match the reviewed plan; override them explicitly for a catalog or routing change and increment `LIVE_COACH_CONFIG_VERSION` when changing rollout behavior.
+
+Operational sequence:
+
+1. Rotate any key that has been pasted into chat, logs, shell history, or another non-secret channel.
+2. Store the replacement in Secret Manager as `outbound-alibaba-ai-api-key` and grant only the Cloud Run runtime identity access.
+3. Set the workspace-specific Singapore compatible endpoint, an explicitly approved deployed model ID, and complete product-voice mappings for `en`, `es`, and `zh-Hans` through deployment environment overrides. Do not commit these values to app code or a dotenv file.
+4. Generate the content-addressed pack with `cd backend && npm run live-coach:generate-audio -- --catalog-version 2026-08-28.1 --provider alibaba`.
+5. Listen to every review WAV, mark every manifest entry approved, configure an ES256 manifest signing key/key ID, add the matching public PEM under `LiveCoachAudioManifestPublicKeys` in the iOS app's `Info.plist`, and publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved`.
+6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
+7. Deploy `fixed_only`, verify device playback and rollback, then deploy `dynamic` with a 0% rollout before raising the deterministic percentage.
+
+Create the secret container, add the replacement key from a protected file, and grant the runtime identity access without putting the key in the command line:
+
+```sh
+$HOME/google-cloud-sdk/bin/gcloud secrets create outbound-alibaba-ai-api-key \
+  --project=outbound-494602 \
+  --replication-policy=automatic
+$HOME/google-cloud-sdk/bin/gcloud secrets versions add outbound-alibaba-ai-api-key \
+  --project=outbound-494602 \
+  --data-file=/secure/path/alibaba-live-coach-api-key.txt
+$HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-alibaba-ai-api-key \
+  --project=outbound-494602 \
+  --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
+  --role='roles/secretmanager.secretAccessor'
+```
+
+Representative deploy environment (placeholders only):
+
+```sh
+ALIBABA_AI_API_KEY_SECRET=outbound-alibaba-ai-api-key \
+ALIBABA_AI_ENABLED=true \
+ALIBABA_AI_BASE_URL='https://WORKSPACE_ID.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' \
+ALIBABA_LIVE_COACH_MODEL='APPROVED_DEPLOYED_MODEL_ID' \
+ALIBABA_LIVE_COACH_VOICE_MAP='{"plainstride_warm_1":{"en":"VOICE","es":"VOICE","zh-Hans":"VOICE"},"plainstride_clear_1":{"en":"VOICE","es":"VOICE","zh-Hans":"VOICE"}}' \
+LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
+LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
+LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-28.1/manifest.json' \
+LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-28.1/assets' \
+./scripts/deploy-backend-gcloud.sh
+```
+
+Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing secret/model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only`. Use `disabled` when server audio itself must be unavailable; the iOS app never re-enables Apple speech.
+
+Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID` and an ES256 private PEM in `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY`. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last known-good or bundled pack untouched.
+
 ## Secret Manager Plan
 
 First-party authentication additionally requires `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `AUTH_ACCESS_KEY_ID`, `AUTH_ACCESS_PRIVATE_KEY`, and `AUTH_ACCESS_PUBLIC_KEYS` (a JSON map containing the current and immediately previous ES256 public keys). Store private keys in Secret Manager. Set `AUTH_ACCEPT_LEGACY_FIREBASE=true` only during beta migration.
@@ -136,13 +186,14 @@ Local stack startup generates an ephemeral ES256 access-token key pair in memory
 
 Never set `AUTH_ENABLE_DEBUG_PERSONAS` in production; startup deliberately fails if it is true. Local development uses the explicitly committed `backend/config/dev-auth-*.pem` fixture key, which must never be deployed.
 
-`DATABASE_URL`, `APP_AI_KEY`, and `RESEND_API_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables. Set `FEEDBACK_EMAIL_FROM` to a sender on a verified mail-provider domain; `FEEDBACK_EMAIL_TO` is optional and defaults to the private product-feedback inbox.
+`DATABASE_URL`, `APP_AI_KEY`, `RESEND_API_KEY`, and `ALIBABA_AI_API_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables. Set `FEEDBACK_EMAIL_FROM` to a sender on a verified mail-provider domain; `FEEDBACK_EMAIL_TO` is optional and defaults to the private product-feedback inbox.
 
 Recommended secrets:
 
 - `outbound-database-url`
 - `outbound-app-ai-key`
 - `outbound-resend-api-key`
+- `outbound-alibaba-ai-api-key`
 
 Provision first-party production authentication in one pass after downloading
 the Apple `.p8` key:
@@ -235,7 +286,7 @@ Before executing the schema job, update it to the same image digest as the lates
 
 After that, confirm the service and schema job contain `valueFrom.secretKeyRef`, not plaintext `value` entries.
 
-Provider-side AI-key rotation is separate from Secret Manager migration: create a replacement key in the AI provider, add it as a new `outbound-app-ai-key` version, verify the service, then revoke the old provider key.
+Provider-side AI-key rotation is separate from Secret Manager migration: create a replacement key in the relevant AI provider, add it as a new Secret Manager version, verify the service, then revoke the old provider key. Assistant and Alibaba live-coach keys use separate secrets.
 
 ## Launch Operations
 
@@ -310,3 +361,4 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - Activity history sync requires the nullable `Activity.clientData`, `clientUpdatedAt`, `deletedAt`, and `updatedAt` fields. After deploying this change, run the pinned schema job before distributing the matching iOS build. Existing activity rows are restored through the route's legacy-field adapter and are upgraded to lossless client snapshots the next time a device with a local copy synchronizes.
 - Activity photo sync requires the current `Photo` columns and uniqueness constraints. Deploy the API and run the pinned schema job before distributing the matching iOS build. Uploads are idempotent by `(activityId, clientPhotoId)`; the iOS client keeps local JPEGs, retries missing uploads at launch/foreground, and downloads authenticated copies when restoring history on another device.
 - The coherent companion schema adds evidence, belief, episode, conversation, context-manifest, situational-signal, action, and outcome tables. Deploy the service image and execute the pinned `outbound-db-push` job before enabling `/v1/companion` clients against that revision.
+- Live coaching adds session, metadata-only cue, entitlement, and usage-period tables and replaces the legacy guide persona/voice columns with stable product IDs. Run the pinned schema job with the documented pre-publish data-loss acceptance before enabling `/v1/live-coach`; no compatibility migration for pre-launch guide rows is maintained.

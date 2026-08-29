@@ -1,4 +1,3 @@
-import AVFoundation
 import Foundation
 import Combine
 
@@ -61,8 +60,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     @Published private(set) var sessionReport: LiveGuidanceSessionReport = .empty
 
     private let provider: any SessionAnalysisProvider
-    private let fallbackProvider = RuleBasedSessionAnalysisProvider()
-    private let synthesizer = GuideSpeechSynthesizer()
+    private let audioPlayer = GuideAudioPlayer()
     private let momentDirector = LiveGuidanceDirector()
     private var speechEnabled: Bool
     private var profile: GuideProfile?
@@ -111,7 +109,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.speechEnabled = speechEnabled
         providerName = selectedProvider.displayName
         super.init()
-        synthesizer.eventHandler = { [weak self] event in
+        audioPlayer.eventHandler = { [weak self] event in
             self?.speechEventHandler?(event)
         }
     }
@@ -119,7 +117,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     func setSpeechEnabled(_ isEnabled: Bool) {
         speechEnabled = isEnabled
         if !isEnabled {
-            synthesizer.stopSpeaking(at: .immediate)
+            audioPlayer.stopSpeaking(at: .immediate)
         }
     }
 
@@ -167,8 +165,12 @@ final class VirtualGuide: NSObject, ObservableObject {
             challenge: challenge,
             suppressedMomentTypes: suppressedMomentTypes
         )
-        provider.beginSession(profile: profile, persona: persona)
-        fallbackProvider.beginSession(profile: profile, persona: persona)
+        provider.beginSession(
+            profile: profile,
+            persona: persona,
+            sessionIntent: sessionIntent,
+            companionBrief: companionBrief
+        )
     }
 
     func deactivate() {
@@ -179,9 +181,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         analysisTask?.cancel()
         analysisTask = nil
         isAnalyzing = false
-        provider.endSession()
-        fallbackProvider.endSession()
-        synthesizer.stopSpeaking(at: .immediate)
+        provider.endSession(report: sessionReport)
+        audioPlayer.stopSpeaking(at: .immediate)
     }
 
     func finalizedSessionReport() -> LiveGuidanceSessionReport {
@@ -226,19 +227,26 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     func announceStartCountdown(_ texts: [String]) {
         guard speechEnabled else { return }
-
-        let voice = persona?.voice ?? GuideVoice.defaultOption
-        synthesizer.speakSequence(
-            texts,
-            voice: voice,
-            rate: speechRate(for: voice, urgency: .opportunity),
-            volume: voice.volume
-        )
+        let keys = ["countdown.three", "countdown.two", "countdown.one", "countdown.go"]
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            var clips: [Data] = []
+            for (index, key) in keys.enumerated() {
+                let transcript = texts.indices.contains(index) ? texts[index] : nil
+                guard let data = await GuideAudioPackStore.shared.audioData(for: key, transcript: transcript) else {
+                    return
+                }
+                clips.append(data)
+            }
+            guard self.speechEnabled else { return }
+            self.audioPlayer.playSequence(clips)
+        }
     }
 
     func announceRouteGuidance(
         _ message: String,
-        priority: RouteGuidanceSpeechPriority = .caution
+        priority: RouteGuidanceSpeechPriority = .caution,
+        semanticCueKey: String? = nil
     ) {
         guard isActive, !message.isEmpty else { return }
         lastNudge = message
@@ -248,11 +256,22 @@ final class VirtualGuide: NSObject, ObservableObject {
            Date().timeIntervalSince(lastRouteGuidanceSpokenAt) < 90 {
             return
         }
-        if priority == .advisory, speechEnabled, synthesizer.isSpeaking {
+        if priority == .advisory, speechEnabled, audioPlayer.isSpeaking {
             return
         }
         let urgency: SessionAnalysisUrgency = priority == .advisory ? .steady : .caution
-        if speak(message, urgency: urgency, role: priority == .advisory ? nil : .caution) {
+        let defaultCueKey = switch priority {
+        case .advisory: "route.advisory"
+        case .caution: "route.caution"
+        case .arrival: "route.arrival"
+        }
+        let cueKey = semanticCueKey ?? defaultCueKey
+        if speak(
+            message,
+            urgency: urgency,
+            role: priority == .advisory ? nil : .caution,
+            fixedCueKey: cueKey
+        ) {
             lastRouteGuidanceFingerprint = fingerprint
             lastRouteGuidanceSpokenAt = Date()
             routeSpeechQuietUntil = Date().addingTimeInterval(TimeInterval(minimumGuideSpeechGapSeconds))
@@ -272,15 +291,6 @@ final class VirtualGuide: NSObject, ObservableObject {
               canSpeakPendingMoment(moment, at: snapshot.elapsedSeconds)
         else { return }
 
-        if let message = moment.preferredMessage {
-            guard speak(message, urgency: .opportunity, role: role(for: moment.type)) else { return }
-            pendingMoment = nil
-            rememberGuideSpeech(at: snapshot.elapsedSeconds)
-            recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
-            advancePendingMoment()
-            return
-        }
-
         pendingMoment = nil
         runAnalysis(for: snapshot, moment: moment)
     }
@@ -295,9 +305,9 @@ final class VirtualGuide: NSObject, ObservableObject {
             snapshot: snapshot,
             recentSnapshots: snapshotHistory,
             sessionIntent: sessionIntent,
-            recentNudges: recentSpokenMessages,
             companionBrief: companionBrief,
-            momentType: moment.type
+            momentType: moment.type,
+            routeGuidanceActive: routeSpeechQuietUntil.map { Date() < $0 } ?? false
         )
         isAnalyzing = true
 
@@ -312,22 +322,23 @@ final class VirtualGuide: NSObject, ObservableObject {
                 let analysis = try await self.provider.analyze(request)
                 guard !Task.isCancelled else { return }
                 self.guidanceEventHandler?(.providerResult(
-                    source: self.provider.identifier.hasPrefix("remote-live-coach-") ? "remote" : "local",
-                    result: "success"
+                    source: analysis.source,
+                    result: analysis.result,
+                    mode: analysis.effectiveMode,
+                    accessReason: analysis.accessReason,
+                    latency: analysis.latencyBucket
                 ))
                 self.apply(analysis, for: snapshot, moment: moment)
             } catch {
+                guard !(error is CancellationError) else { return }
                 self.guidanceEventHandler?(.providerResult(
-                    source: self.provider.identifier.hasPrefix("remote-live-coach-") ? "remote" : "local",
-                    result: "fallback"
+                    source: .cachedFallback,
+                    result: .unavailable,
+                    mode: .disabled,
+                    accessReason: .featureDisabled,
+                    latency: .fourSecondsPlus
                 ))
-                guard self.provider.identifier != self.fallbackProvider.identifier,
-                      let fallback = try? await self.fallbackProvider.analyze(request),
-                      !Task.isCancelled
-                else {
-                    return
-                }
-                self.apply(fallback, for: snapshot, moment: moment)
+                self.advancePendingMoment()
             }
         }
     }
@@ -338,6 +349,17 @@ final class VirtualGuide: NSObject, ObservableObject {
         moment: DetectedLiveGuidanceMoment
     ) {
         latestAnalysis = analysis
+        guard analysis.expiresAt > Date() else {
+            guidanceEventHandler?(.providerResult(
+                source: analysis.source,
+                result: .stale,
+                mode: analysis.effectiveMode,
+                accessReason: analysis.accessReason,
+                latency: analysis.latencyBucket
+            ))
+            if pendingMoment == nil { advancePendingMoment() }
+            return
+        }
         let message = analysis.message.correctingPrematureCurrentDistanceClaims(
             currentDistanceMeters: snapshot.distanceMeters
         )
@@ -374,7 +396,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         if speak(
             message,
             urgency: analysis.urgency,
-            role: role(for: moment.type)
+            role: role(for: moment.type),
+            fixedCueKey: analysis.fixedCueKey,
+            audioData: analysis.audioData
         ) {
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
             recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
@@ -434,6 +458,26 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
+    private static func fixedCueKey(for milestone: GoalMilestone) -> String {
+        switch milestone {
+        case .distanceOneThird, .durationOneThird: "progress.one_third"
+        case .distanceHalfway, .durationHalfway: "progress.halfway"
+        case .distanceTwoThirds, .durationTwoThirds: "progress.two_thirds"
+        case .distanceLastUnit, .distance300MetersRemaining, .distance100MetersRemaining,
+             .durationLastFiveMinutes, .durationLastMinute: "progress.finish_soon"
+        case .distanceComplete, .durationComplete: "workout.complete"
+        }
+    }
+
+    private static func countdownCueKey(for text: String) -> String? {
+        switch text.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "3": "countdown.three"
+        case "2": "countdown.two"
+        case "1": "countdown.one"
+        default: nil
+        }
+    }
+
     private func announceProgressIfNeeded(for snapshot: ActiveSessionSnapshot) {
         observeDistanceCheckpoint(for: snapshot)
         guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { return }
@@ -448,7 +492,8 @@ final class VirtualGuide: NSObject, ObservableObject {
 
             if speakPriorityIfNeeded(
                 goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot),
-                isPriority: isFinishCue
+                isPriority: isFinishCue,
+                fixedCueKey: Self.fixedCueKey(for: goalMilestone)
             ) {
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
@@ -493,7 +538,8 @@ final class VirtualGuide: NSObject, ObservableObject {
                 pace: checkpointPace,
                 includesAveragePace: includesAveragePace
             ),
-            role: .progress
+            role: .progress,
+            fixedCueKey: "progress.steady"
         ) {
             lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
@@ -632,8 +678,16 @@ final class VirtualGuide: NSObject, ObservableObject {
                 cue.text += " \(summary)"
             }
         }
-        synthesizer.stopSpeaking(at: .immediate)
-        guard speak(cue.text, urgency: .opportunity, role: cue.isCompletion ? .finish : .segment) else {
+        audioPlayer.stopSpeaking(at: .immediate)
+        let cueKey = cue.isCompletion ? "workout.complete"
+            : cue.isSegmentTransition ? "workout.segment_start"
+            : Self.countdownCueKey(for: cue.text)
+        guard speak(
+            cue.text,
+            urgency: .opportunity,
+            role: cue.isCompletion ? .finish : .segment,
+            fixedCueKey: cueKey
+        ) else {
             return false
         }
         spokenTimedBoundaryCues.insert(cue.id)
@@ -691,11 +745,20 @@ final class VirtualGuide: NSObject, ObservableObject {
         return nil
     }
 
-    private func speakPriorityIfNeeded(_ text: String, isPriority: Bool) -> Bool {
+    private func speakPriorityIfNeeded(
+        _ text: String,
+        isPriority: Bool,
+        fixedCueKey: String? = nil
+    ) -> Bool {
         if isPriority {
-            synthesizer.stopSpeaking(at: .immediate)
+            audioPlayer.stopSpeaking(at: .immediate)
         }
-        return speak(text, urgency: isPriority ? .opportunity : .steady, role: isPriority ? .finish : .progress)
+        return speak(
+            text,
+            urgency: isPriority ? .opportunity : .steady,
+            role: isPriority ? .finish : .progress,
+            fixedCueKey: fixedCueKey
+        )
     }
 
     private func preferredLastDistanceUnitMeters(for targetDistance: Double) -> Double {
@@ -835,12 +898,14 @@ final class VirtualGuide: NSObject, ObservableObject {
     private func speak(
         _ text: String,
         urgency: SessionAnalysisUrgency = .steady,
-        role: GuidanceMomentRole? = nil
+        role: GuidanceMomentRole? = nil,
+        fixedCueKey: String? = nil,
+        audioData: Data? = nil
     ) -> Bool {
         let announcement = spokenText(for: text)
-        if speechEnabled, synthesizer.isSpeaking {
+        if speechEnabled, audioPlayer.isSpeaking {
             guard urgency == .caution else { return false }
-            synthesizer.stopSpeaking(at: .currentWord)
+            audioPlayer.stopSpeaking(at: .currentCue)
         }
 
         lastSpokenAnnouncement = announcement
@@ -848,14 +913,19 @@ final class VirtualGuide: NSObject, ObservableObject {
             rememberSpokenRole(role)
         }
         guard speechEnabled else { return true }
-
-        let voice = persona?.voice ?? GuideVoice.defaultOption
-        synthesizer.speak(
-            announcement,
-            voice: voice,
-            rate: speechRate(for: voice, urgency: urgency),
-            volume: voice.volume
-        )
+        if let audioData {
+            return audioPlayer.play(audioData, interrupt: urgency == .caution)
+        }
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let data = await GuideAudioPackStore.shared.audioData(
+                    for: fixedCueKey ?? "",
+                    transcript: announcement
+                  ),
+                  self.speechEnabled
+            else { return }
+            _ = self.audioPlayer.play(data, interrupt: urgency == .caution)
+        }
         return true
     }
 
@@ -901,22 +971,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         message
             .replacingOccurrences(of: ";", with: ", ")
             .replacingOccurrences(of: "—", with: ", ")
-    }
-
-    private func speechRate(for voice: GuideVoice, urgency: SessionAnalysisUrgency) -> Float {
-        let delta: Float
-        switch urgency {
-        case .steady:
-            delta = -0.04
-        case .opportunity:
-            delta = 0.03
-        case .caution:
-            delta = -0.08
-        }
-        return max(
-            AVSpeechUtteranceMinimumSpeechRate,
-            min(AVSpeechUtteranceMaximumSpeechRate, voice.rate + delta)
-        )
     }
 
     private func normalizedFingerprint(for message: String) -> String {

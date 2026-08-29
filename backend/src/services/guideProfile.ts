@@ -1,5 +1,4 @@
-import { Prisma } from "@prisma/client/index.js";
-import { buildGuideSystemPrompt } from "./ai.js";
+import { Prisma, type GuideProfile } from "@prisma/client/index.js";
 import { getPrismaClient } from "./prisma.js";
 import type { GuideProfilePayload, GoalItem, MemorySnapshot, PersonalRecords } from "../types/guide.js";
 
@@ -66,18 +65,9 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
     memorySnapshot.weeklyVolumeKm > 40 ? "advanced" :
     memorySnapshot.weeklyVolumeKm > 20 ? "intermediate" : "beginner";
 
-  const athleteProfile = {
-    fitnessLevel,
-    weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
-    records,
-    memorySnapshot,
-  };
-
-  const systemPrompt = await buildGuideSystemPrompt(athleteProfile);
-
   const guideName = existing?.guideName ?? "Guide";
-  const personality = (existing?.personality ?? "encouraging") as GuideProfilePayload["personality"];
-  const voiceId = existing?.voiceId ?? "default";
+  const coachPersonaId = (existing?.coachPersonaId ?? "plainstride_supportive_v1") as GuideProfilePayload["coachPersonaId"];
+  const voiceProfileId = (existing?.voiceProfileId ?? "plainstride_warm_1") as GuideProfilePayload["voiceProfileId"];
   const goals = ((existing?.goals ?? []) as unknown) as GoalItem[];
   const version = (existing?.version ?? 0) + 1;
 
@@ -86,8 +76,8 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
     create: {
       userId,
       guideName,
-      personality,
-      voiceId,
+      coachPersonaId,
+      voiceProfileId,
       fitnessLevel,
       weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
       strengths: [],
@@ -111,8 +101,8 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
   const payload: GuideProfilePayload = {
     version,
     guideName,
-    personality,
-    voiceId,
+    coachPersonaId,
+    voiceProfileId,
     athlete: {
       fitnessLevel: fitnessLevel as GuideProfilePayload["athlete"]["fitnessLevel"],
       weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
@@ -122,9 +112,33 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
     },
     goals,
     memorySnapshot,
-    systemPrompt,
     builtAt: new Date().toISOString(),
   };
 
   return payload;
+}
+
+export async function getGuideProfile(userId: string): Promise<GuideProfilePayload | null> {
+  const profile = await getPrismaClient().guideProfile.findUnique({ where: { userId } });
+  return profile ? guideProfilePayload(profile) : null;
+}
+
+function guideProfilePayload(profile: GuideProfile): GuideProfilePayload {
+  return {
+    version: profile.version,
+    guideName: profile.guideName,
+    coachPersonaId: profile.coachPersonaId as GuideProfilePayload["coachPersonaId"],
+    voiceProfileId: profile.voiceProfileId as GuideProfilePayload["voiceProfileId"],
+    athlete: {
+      fitnessLevel: profile.fitnessLevel as GuideProfilePayload["athlete"]["fitnessLevel"],
+      weeklyVolumeKm: profile.weeklyVolumeKm,
+      preferredPaceSecs: profile.preferredPace ?? undefined,
+      strengths: profile.strengths,
+      weaknesses: profile.weaknesses,
+      records: profile.records as PersonalRecords,
+    },
+    goals: profile.goals as unknown as GoalItem[],
+    memorySnapshot: profile.memorySnapshot as unknown as MemorySnapshot,
+    builtAt: (profile.lastBuiltAt ?? profile.updatedAt).toISOString(),
+  };
 }

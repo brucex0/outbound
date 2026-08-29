@@ -122,7 +122,6 @@ struct RecordView: View {
     @State private var showsStandaloneWorkouts = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
-    @State private var showsVoiceDownloadHelp = false
     @State private var showsRouteLibrary = false
     @State private var setupToastMessage: String?
     @State private var setupToastTask: Task<Void, Never>?
@@ -136,8 +135,6 @@ struct RecordView: View {
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
-    @State private var isVoiceSettingsPresented = false
-    @State private var shouldStartAfterVoiceUpgradePrompt = false
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -236,6 +233,7 @@ struct RecordView: View {
         .task {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
+            await guideCatalog.refreshServerCatalog()
             applyWorkoutMusicSuggestion()
             presentMusicDiscoveryTipIfNeeded()
             guide.speechEventHandler = { event in
@@ -273,43 +271,6 @@ struct RecordView: View {
         }
         .onDisappear {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
-        }
-        .alert(
-            String(localized: "guide.voice.upgrade.title", defaultValue: "A better voice is available"),
-            isPresented: Binding(
-                get: { guideCatalog.isVoiceUpgradePromptPresented },
-                set: { if !$0 { guideCatalog.dismissVoiceUpgradePrompt() } }
-            )
-        ) {
-            Button(String(localized: "guide.voice.upgrade.update", defaultValue: "Update Voice Settings")) {
-                track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("open_settings")]))
-                shouldStartAfterVoiceUpgradePrompt = false
-                guideCatalog.dismissVoiceUpgradePrompt()
-                isVoiceSettingsPresented = true
-            }
-            Button(String(localized: "common.not_now", defaultValue: "Not Now"), role: .cancel) {
-                track(.init(.voiceUpgradePromptAction, properties: [.selectionType: .string("not_now")]))
-                guideCatalog.dismissVoiceUpgradePrompt()
-                if shouldStartAfterVoiceUpgradePrompt {
-                    shouldStartAfterVoiceUpgradePrompt = false
-                    beginStartRecording()
-                }
-            }
-        } message: {
-            Text(String(localized: "guide.voice.upgrade.message", defaultValue: "You’re using a Standard voice. An Apple Premium or Enhanced voice is now available for more natural spoken coaching."))
-        }
-        .fullScreenCover(isPresented: $isVoiceSettingsPresented) {
-            NavigationStack {
-                GuideSelectionView()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button(String(localized: "common.close", defaultValue: "Close")) {
-                                isVoiceSettingsPresented = false
-                            }
-                        }
-                    }
-            }
-            .environmentObject(guideCatalog)
         }
         .overlay(alignment: .topLeading) {
             if isVisible,
@@ -393,9 +354,6 @@ struct RecordView: View {
                 selectedGoalMode = .planned
                 showsStandaloneWorkouts = false
             }
-        }
-        .sheet(isPresented: $showsVoiceDownloadHelp) {
-            AppleVoiceDownloadHelpView()
         }
         .fullScreenCover(isPresented: $isPreActivityCameraPresented) {
             PostRunCameraView { image in
@@ -658,16 +616,6 @@ struct RecordView: View {
     private func startRecording() {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
-        guideCatalog.refreshInstalledVoices()
-        guard !isVoiceGuideEnabled || !guideCatalog.requiresVoiceSelection else {
-            guideCatalog.requestVoiceSelection()
-            return
-        }
-        if isVoiceGuideEnabled, guideCatalog.requestVoiceUpgradePromptIfNeeded() {
-            shouldStartAfterVoiceUpgradePrompt = true
-            track(.init(.voiceUpgradePromptViewed))
-            return
-        }
         beginStartRecording()
     }
 
@@ -1665,13 +1613,7 @@ struct RecordView: View {
             .selectionType: .string(isEnabled ? "enabled" : "disabled")
         ]))
         guard isEnabled else { return }
-        guideCatalog.refreshInstalledVoices()
-        if !guideCatalog.hasDownloadedAppleVoices {
-            showsVoiceDownloadHelp = true
-        } else if guideCatalog.requestVoiceUpgradePromptIfNeeded() {
-            shouldStartAfterVoiceUpgradePrompt = false
-            track(.init(.voiceUpgradePromptViewed))
-        }
+        Task { await guideCatalog.refreshServerCatalog() }
     }
 
     private var photoLaunchControl: some View {
@@ -1858,13 +1800,7 @@ struct RecordView: View {
                 .selectionType: .string(isEnabled ? "enabled" : "disabled")
             ]))
             guard isEnabled else { return }
-            guideCatalog.refreshInstalledVoices()
-            if !guideCatalog.hasDownloadedAppleVoices {
-                showsVoiceDownloadHelp = true
-            } else if guideCatalog.requestVoiceUpgradePromptIfNeeded() {
-                shouldStartAfterVoiceUpgradePrompt = false
-                track(.init(.voiceUpgradePromptViewed))
-            }
+            Task { await guideCatalog.refreshServerCatalog() }
         }
     }
 
@@ -2159,10 +2095,13 @@ struct RecordView: View {
                 .momentType: .string(type.rawValue),
                 .result: .string(outcome.rawValue)
             ]))
-        case .providerResult(let source, let result):
+        case .providerResult(let source, let result, let mode, let accessReason, let latency):
             track(.init(.liveGuidanceProviderResult, properties: [
-                .sourceType: .string(source),
-                .result: .string(result)
+                .sourceType: .string(source.rawValue),
+                .result: .string(result.rawValue),
+                .audioMode: .string(mode.rawValue),
+                .accessReason: .string(accessReason.rawValue),
+                .latencyBucket: .string(latency.rawValue)
             ]))
         }
     }
@@ -2226,24 +2165,24 @@ struct RecordView: View {
             ]))
         case .deviated(let distanceMeters):
             let message = String(localized: "route.guidance.off_route", defaultValue: "You’re off the selected route. Head back toward the highlighted line.")
-            guide.announceRouteGuidance(message, priority: .caution)
+            guide.announceRouteGuidance(message, priority: .caution, semanticCueKey: "route.caution")
             track(.init(.routeDeviationDetected, properties: [
                 .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: distanceMeters))
             ]))
         case .rejoined:
             let message = String(localized: "route.guidance.rejoined", defaultValue: "You’re back on the selected route.")
-            guide.announceRouteGuidance(message, priority: .advisory)
+            guide.announceRouteGuidance(message, priority: .advisory, semanticCueKey: "route.rejoin")
             track(.init(.routeRejoined))
         case .wrongWay:
             let message = String(localized: "route.guidance.wrong_way", defaultValue: "You may be going the wrong way. Turn back toward the highlighted route.")
-            guide.announceRouteGuidance(message, priority: .caution)
+            guide.announceRouteGuidance(message, priority: .caution, semanticCueKey: "route.wrong_way")
             track(.init(.routeWrongWayDetected, properties: [
                 .sourceType: .string(route.source.rawValue),
                 .direction: .string(route.direction.rawValue)
             ]))
         case .arrival:
             let message = String(localized: "route.guidance.arrival", defaultValue: "Route complete. Nice work.")
-            guide.announceRouteGuidance(message, priority: .arrival)
+            guide.announceRouteGuidance(message, priority: .arrival, semanticCueKey: "route.arrival")
             track(.init(.routeGuidanceArrived, properties: [
                 .sourceType: .string(route.source.rawValue),
                 .direction: .string(route.direction.rawValue)

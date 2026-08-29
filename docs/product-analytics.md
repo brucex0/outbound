@@ -81,7 +81,7 @@ Avoid continuous progress telemetry. Emit at most one event for each meaningful 
 
 Route Guidance follows the same bounded rule. Its events may contain source (`community` or `imported`), intended direction, coarse progress percent, coarse distance bucket, and a semantic outcome. They must never contain raw route ID, route name, geometry, coordinates, or exact remaining distance. Recovery suppresses already-fired progress, deviation, wrong-way, and arrival events.
 
-Live Guidance uses semantic values such as moment type, coaching contract, outcome, and a coarse cue-count bucket. Generated speech, prompts, snapshot history, exact pace, exact distance, and exact elapsed time stay on device. Evaluated cue outcomes update local aggregate evidence used to reduce repeatedly unhelpful Responsive cues; post-run feedback is stored only as aggregate preference evidence.
+Live Guidance uses semantic values such as moment type, coaching contract, outcome, and a coarse cue-count bucket. `live_guidance_provider_result` additionally permits only typed product values: `source_type` (`dynamic_generation`, `fixed_pack`, `cached_fallback`), bounded result category, effective `audio_mode`, bounded `access_reason`, and a coarse latency bucket. It never includes provider/model IDs, request/session IDs, generated speech, prompts, audio, snapshot history, exact pace, exact distance, or exact elapsed time. Evaluated cue outcomes update local aggregate evidence used to reduce repeatedly unhelpful Responsive cues; post-run feedback is stored only as aggregate preference evidence.
 
 ### Questions And Dashboards
 

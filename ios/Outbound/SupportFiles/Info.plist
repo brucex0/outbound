@@ -84,6 +84,8 @@
     <string>https://outbound-api-186140050970.us-central1.run.app/v1</string>
     <key>OutboundAppTestMode</key>
     <string>$(OUTBOUND_APP_TEST_MODE)</string>
+    <key>LiveCoachAudioManifestPublicKeys</key>
+    <dict/>
 
     <key>UIBackgroundModes</key>
     <array>

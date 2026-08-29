@@ -85,8 +85,6 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case healthConnectionCompleted = "health_connection_completed"
     case healthImportPromptViewed = "health_import_prompt_viewed"
     case healthImportCompleted = "health_import_completed"
-    case voiceUpgradePromptViewed = "voice_upgrade_prompt_viewed"
-    case voiceUpgradePromptAction = "voice_upgrade_prompt_action"
     case feedbackReporterOpened = "feedback_reporter_opened"
 }
 
@@ -128,6 +126,9 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case momentType = "moment_type"
     case coachingContract = "coaching_contract"
     case cueCountBucket = "cue_count_bucket"
+    case audioMode = "audio_mode"
+    case accessReason = "access_reason"
+    case latencyBucket = "latency_bucket"
     case missingDisplayName = "missing_display_name"
     case missingEmail = "missing_email"
 }
@@ -215,7 +216,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceCueEvaluated: [.momentType, .result],
         .liveGuidanceChallengeSelected: [.selectionType],
         .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket],
-        .liveGuidanceProviderResult: [.sourceType, .result],
+        .liveGuidanceProviderResult: [.sourceType, .result, .audioMode, .accessReason, .latencyBucket],
         .pushNotificationOpened: [.sourceType, .selectionType],
         .onboardingIdentityPromptViewed: [.missingDisplayName, .missingEmail],
         .onboardingIdentityCompleted: [.missingDisplayName, .missingEmail],
@@ -224,8 +225,6 @@ enum ProductAnalyticsSchema {
         .healthConnectionCompleted: [.result],
         .healthImportPromptViewed: [.sourceType],
         .healthImportCompleted: [.result, .sourceType, .selectionType, .control, .countBucket],
-        .voiceUpgradePromptViewed: [],
-        .voiceUpgradePromptAction: [.selectionType],
         .feedbackReporterOpened: [.entrySource, .result]
     ]
 

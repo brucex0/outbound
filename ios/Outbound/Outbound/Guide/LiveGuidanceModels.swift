@@ -162,7 +162,13 @@ enum LiveGuidanceTelemetryEvent: Equatable {
     case momentDetected(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueSpoken(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueEvaluated(type: LiveGuidanceMomentType, outcome: LiveGuidanceCueOutcome)
-    case providerResult(source: String, result: String)
+    case providerResult(
+        source: LiveCoachCueSource,
+        result: LiveCoachCueResult,
+        mode: LiveCoachAudioMode,
+        accessReason: LiveCoachAccessReason,
+        latency: LiveCoachLatencyBucket
+    )
 }
 
 struct DetectedLiveGuidanceMoment: Equatable {

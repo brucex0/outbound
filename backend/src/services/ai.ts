@@ -67,33 +67,6 @@ export async function analyzeActivity(
   return response.content[0].type === "text" ? response.content[0].text : "";
 }
 
-export async function buildGuideSystemPrompt(
-  athleteProfile: object
-): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 512,
-    system: [
-      {
-        type: "text",
-        text: GUIDE_SYSTEM_CACHE_PREFIX,
-      },
-    ],
-    messages: [
-      {
-        role: "user",
-        content: `Generate a concise on-device system prompt (max 300 words) for a virtual guide with this athlete profile.
-The prompt will run on a small on-device LLM for real-time guidance during runs.
-Focus on: the athlete's current level, known weaknesses to watch, pacing guidance, and motivational style.
-
-Athlete: ${JSON.stringify(athleteProfile)}`,
-      },
-    ],
-  });
-
-  return response.content[0].type === "text" ? response.content[0].text : "";
-}
-
 export async function generateWeeklyReview(
   userId: string,
   activities: object[],

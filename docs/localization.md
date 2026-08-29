@@ -27,7 +27,7 @@ Localization covers every user-facing surface, including accessibility, system p
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
 - Built-in training-plan templates persist semantic `training_plan.title.*` keys. The iOS client resolves those keys through `Localizable.xcstrings`; plan analytics and selection continue to use the stable template ID, never a localized title.
 - Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
-- Speech recognition, speech-analysis assets, spoken guidance voices, command hints, and deterministic activity parsing support English, Spanish, and Mandarin, including localized duration and distance units.
+- Speech recognition, reviewed server-generated coaching packs, command hints, and deterministic activity parsing support English, Spanish, and Mandarin. Pack entries are keyed by canonical locale and product voice profile; provider voice names never enter the app catalog.
 
 The catalogs are product-authored translations and still require native-speaker release review, as described below. User-authored content remains unchanged.
 
@@ -100,7 +100,7 @@ Visual localization does not automatically localize voice behavior.
 
 - Select speech-recognition locales compatible with the active app language and available on-device assets.
 - Add Spanish and Mandarin vocabulary and parsing paths for deterministic activity commands, including distance and duration units.
-- Route generated companion announcements through iOS speech synthesis. Settings lists only voices compatible with the active app language: every installed Apple Premium and Enhanced voice for selection and on-device preview, plus one deterministic Standard fallback under its actual system name. Preselect the first compatible Premium or Enhanced voice as the default; use the Standard voice only when no high-quality voice is installed. Warn before selecting the Standard voice because it may sound poor. When the app language changes, require a new explicit voice choice instead of silently accepting an incompatible or Standard fallback. Speech must use the selected voice's identifier, locale, configured rate, and volume.
+- Route audible companion announcements through the server-generated audio player. Settings lists only server-approved Plainstride voice profiles compatible with the current locale; previews come from the reviewed pack. When language changes, refresh the catalog and pack for the new canonical locale. Missing, invalid, stale, or untranslated audio is silent or uses a reviewed same-locale fallback—never Apple speech or an English-only fallback.
 - Localize App Intent titles, parameter labels, dialogs, shortcuts phrases, and invocation examples.
 - Keep spoken measurement units consistent with the user's measurement preference.
 
