@@ -16,6 +16,7 @@
     "seed:e2e": "npm run build && node dist/scripts/seedTestPersonas.js",
     "live-coach:list-audio": "npm run build && node dist/scripts/generateLiveCoachAudio.js --list",
     "live-coach:generate-audio": "npm run build && node dist/scripts/generateLiveCoachAudio.js",
+    "live-coach:review-audio": "npm run build && node dist/scripts/reviewLiveCoachAudio.js",
     "live-coach:publish-audio": "npm run build && node dist/scripts/publishLiveCoachAudio.js"
   },
   "dependencies": {

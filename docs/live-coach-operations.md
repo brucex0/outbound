@@ -66,6 +66,26 @@ The script downloads content-addressed WAVs to `backend/.local/live-coach-review
 
 Generation does not approve or publish audio. Listen to every file and set `approved` to `true` only for an exact, correctly pronounced, naturally paced rendition. Regenerate any rejected entry before publication.
 
+Run the loopback-only review screen from `backend/`:
+
+```sh
+npm run live-coach:review-audio
+```
+
+Open `http://127.0.0.1:4173`. The screen pairs each hashed WAV with its cue, locale, product voice, and exact transcript. Playback must finish before **Approve** or **Reject** is enabled. Use Space to play or pause, A to approve, R to reject, and the arrow keys to navigate. Progress is written atomically to the gitignored `review-manifest.json` and `review-progress.json`; publication remains blocked while any manifest entry is unapproved.
+
+Regenerate a rejected rendition without replacing the rest of the completed manifest:
+
+```sh
+./scripts/generate-live-coach-audio.sh \
+  --voice-profile plainstride_clear_1 \
+  --locale es \
+  --cue coach.strong_finish \
+  --force
+```
+
+The targeted run safely replaces only that manifest entry. Its new audio checksum resets approval, so listen to the replacement in the review screen before publishing.
+
 ## Manifest Trust And Publication
 
 The active key ID is `live-coach-audio-2026-v1`.

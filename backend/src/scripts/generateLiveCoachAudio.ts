@@ -45,7 +45,9 @@ const manifest: AudioPackManifest = {
   contractVersion: 1,
   catalogVersion: source.catalogVersion,
   generatedAt: new Date().toISOString(),
-  entries: [],
+  entries: args.voiceProfileId || args.locale || args.cueKey
+    ? [...(existingManifest?.entries ?? [])]
+    : [],
 };
 
 const voiceProfileIds = args.voiceProfileId
@@ -86,13 +88,54 @@ for (const voiceProfileId of voiceProfileIds) {
       const fileName = `${hash}.wav`;
       const filePath = path.join(outputDirectory, fileName);
       let audio: Buffer;
-      try {
-        audio = await readFile(filePath);
-        validateLiveCoachWav(audio, {
-          maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS,
-        });
-        console.log(`[${assetIndex}/${totalAssetCount}] cached ${voiceProfileId}/${locale}/${entry.cueKey}`);
-      } catch {
+      if (!args.force) {
+        try {
+          audio = await readFile(filePath);
+          validateLiveCoachWav(audio, {
+            maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS,
+          });
+          console.log(`[${assetIndex}/${totalAssetCount}] cached ${voiceProfileId}/${locale}/${entry.cueKey}`);
+        } catch {
+          audio = await generateAudio();
+        }
+      } else {
+        audio = await generateAudio();
+      }
+
+      const manifestEntry: AudioPackManifest["entries"][number] = {
+        cueKey: entry.cueKey,
+        locale,
+        voiceProfileId,
+        scriptStyleId: entry.scriptStyleId,
+        compatibleCoachPersonaIds: COACH_PERSONAS.filter((persona) =>
+          persona.allowedVoiceProfileIds.includes(voiceProfileId)
+          && (persona.fixedScriptStyleId === entry.scriptStyleId || entry.scriptStyleId === "standard")
+        ).map((persona) => persona.id),
+        transcript: text,
+        sha256: createHash("sha256").update(audio).digest("hex"),
+        byteCount: audio.byteLength,
+        durationMilliseconds: wavDuration(audio),
+        contentType: "audio/wav",
+        reviewFileName: fileName,
+        approved: existingManifest?.entries.some((existing) =>
+          existing.cueKey === entry.cueKey
+          && existing.locale === locale
+          && existing.voiceProfileId === voiceProfileId
+          && existing.scriptStyleId === entry.scriptStyleId
+          && existing.sha256 === createHash("sha256").update(audio).digest("hex")
+          && existing.approved
+        ) ?? false,
+      };
+      const existingIndex = manifest.entries.findIndex((existing) =>
+        existing.cueKey === manifestEntry.cueKey
+        && existing.locale === manifestEntry.locale
+        && existing.voiceProfileId === manifestEntry.voiceProfileId
+        && existing.scriptStyleId === manifestEntry.scriptStyleId
+      );
+      if (existingIndex >= 0) manifest.entries[existingIndex] = manifestEntry;
+      else manifest.entries.push(manifestEntry);
+
+      async function generateAudio(): Promise<Buffer> {
         console.log(`[${assetIndex}/${totalAssetCount}] generating ${voiceProfileId}/${locale}/${entry.cueKey}`);
         const result = await generateWithRetry(
           () => resolved.provider.generateCue({
@@ -116,33 +159,10 @@ for (const voiceProfileId of voiceProfileIds) {
           }, new AbortController().signal),
           `[${assetIndex}/${totalAssetCount}] ${voiceProfileId}/${locale}/${entry.cueKey}`
         );
-        audio = Buffer.from(result.audio);
-        await writeFile(filePath, audio);
+        const generatedAudio = Buffer.from(result.audio);
+        await writeFile(filePath, generatedAudio);
+        return generatedAudio;
       }
-      manifest.entries.push({
-        cueKey: entry.cueKey,
-        locale,
-        voiceProfileId,
-        scriptStyleId: entry.scriptStyleId,
-        compatibleCoachPersonaIds: COACH_PERSONAS.filter((persona) =>
-          persona.allowedVoiceProfileIds.includes(voiceProfileId)
-          && (persona.fixedScriptStyleId === entry.scriptStyleId || entry.scriptStyleId === "standard")
-        ).map((persona) => persona.id),
-        transcript: text,
-        sha256: createHash("sha256").update(audio).digest("hex"),
-        byteCount: audio.byteLength,
-        durationMilliseconds: wavDuration(audio),
-        contentType: "audio/wav",
-        reviewFileName: fileName,
-        approved: existingManifest?.entries.some((existing) =>
-          existing.cueKey === entry.cueKey
-          && existing.locale === locale
-          && existing.voiceProfileId === voiceProfileId
-          && existing.scriptStyleId === entry.scriptStyleId
-          && existing.sha256 === createHash("sha256").update(audio).digest("hex")
-          && existing.approved
-        ) ?? false,
-      });
     }
   }
 }
@@ -158,9 +178,11 @@ function parseArgs(values: string[]) {
     voiceProfileId?: VoiceProfileId;
     locale?: SupportedAILocale;
     cueKey?: string;
+    force: boolean;
   } = {
     provider: "alibaba",
     list: false,
+    force: false,
   };
   for (let index = 0; index < values.length; index += 1) {
     if (values[index] === "--catalog-version") result.catalogVersion = requiredValue(values, ++index, "--catalog-version");
@@ -177,6 +199,7 @@ function parseArgs(values: string[]) {
       result.locale = value as SupportedAILocale;
     }
     else if (values[index] === "--cue") result.cueKey = requiredValue(values, ++index, "--cue");
+    else if (values[index] === "--force") result.force = true;
     else if (values[index] === "--list") result.list = true;
     else throw new Error(`Unknown argument: ${values[index]}.`);
   }
