@@ -200,11 +200,10 @@ struct RecordView: View {
             guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
             liveGroupStore.ingest(snapshot)
-            liveActivityManager.update(
+            updateLiveActivity(
                 snapshot: snapshot,
                 state: recorder.state,
-                intent: activeIntent ?? plannedIntent,
-                unitSystem: measurementPreferences.unitSystem
+                intent: activeIntent ?? plannedIntent
             )
             trackGoalProgressIfNeeded(snapshot)
         }
@@ -861,15 +860,31 @@ struct RecordView: View {
         reachedGoalThresholds = []
         activityStartedWithGroupRun = liveGroupStore.isSharing
         track(.init(.activityStarted, properties: activityConfigurationProperties))
-        liveActivityManager.update(
+        updateLiveActivity(
             snapshot: recorder.liveSnapshot,
             state: recorder.state,
-            intent: activeIntent,
-            unitSystem: measurementPreferences.unitSystem
+            intent: activeIntent
         )
         Task {
             await musicStore.beginWorkoutPlaybackIfNeeded()
         }
+    }
+
+    private func updateLiveActivity(
+        snapshot: ActiveSessionSnapshot,
+        state: RecordingState,
+        intent: SessionIntent?
+    ) {
+        guard let result = liveActivityManager.update(
+            snapshot: snapshot,
+            state: state,
+            intent: intent,
+            unitSystem: measurementPreferences.unitSystem
+        ) else { return }
+
+        track(.init(.liveActivityReconciled, properties: [
+            .result: .string(result.rawValue)
+        ]))
     }
 
     private func cancelStartCountdown(returnToSetup: Bool) {

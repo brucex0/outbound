@@ -27,6 +27,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Authentication identity is synchronized at the app root with the opaque Plainstride account ID and cleared when the authenticated user disappears.
 - Authentication recovery emits `authentication_session_recovered` with only a bounded recovery reason so rotation races and preserved transient failures can be monitored without sending credentials, account details, or raw errors.
 - The activity flow emits setup exposure, configuration, start/pause/resume/finish/save/discard, goal-threshold, music, route-selection, shoe-selection, photo, and group-run events.
+- Live Activity recovery emits `live_activity_reconciled` only when ActivityKit already owns a card, with a bounded result of `restored`, `duplicates_removed`, or `stale_replaced`; it never includes session identifiers, workout details, timestamps, or activity counts.
 - Confirmed history deletion emits `activity_deleted` with only the history source and a coarse deleted-count bucket; it never includes activity identifiers or details.
 - Live Guidance emits bounded semantic moment, spoken-cue, evaluated-outcome, challenge-selection, and post-run-feedback events. It never sends generated coaching text or exact pace, distance, or time values.
 - Live Guidance model experiments also emit only coarse provider source (`remote` or `local`) and result (`success` or `fallback`); model IDs and prompts are excluded.

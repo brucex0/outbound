@@ -35,7 +35,7 @@ Configure launch options from the dock:
 
 The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
-The top-left cancel action exists only during the countdown. Once recording begins, the live camera/map surface is non-dismissible and remains full-screen until Finish hands off to post-run Save or Discard. An interrupted session restores paused directly into that live surface rather than behind Today.
+The top-left cancel action exists only during the countdown. Once recording begins, the live camera/map surface is non-dismissible and remains full-screen until Finish hands off to post-run Save or Discard. An interrupted session restores paused directly into that live surface rather than behind Today. Relaunch recovery adopts the surviving ActivityKit card for that session and immediately removes duplicate app-owned cards, so repeated force-kill/relaunch cycles still leave exactly one Live Activity.
 
 Primary live metrics follow the selected mode:
 
@@ -80,4 +80,5 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Countdown cancel preserves setup; only entry into live recording advances default learning.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
 - Interrupted-session recovery opens the paused live surface directly.
+- Repeated force-kill/relaunch recovery leaves exactly one app-owned Live Activity card for the recovered session.
 - Goal-specific live metrics, pause/resume, finish confirmation, and expanded-map return all work without console warnings or errors.

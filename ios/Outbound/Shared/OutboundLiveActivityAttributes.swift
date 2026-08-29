@@ -11,6 +11,7 @@ struct OutboundLiveActivityAttributes: ActivityAttributes {
         let isPaused: Bool
     }
 
+    let sessionStartedAt: Date?
     let activityName: String
     let sportName: String
     let sportSystemImageName: String
