@@ -62,7 +62,7 @@ The local script first uses `ALIBABA_AI_API_KEY` or `DASHSCOPE_API_KEY`. If neit
 
 Alibaba's OpenAI-compatible Omni response returns Base64-encoded 24 kHz, mono, 16-bit PCM chunks even when the request's required format field is `wav`. The adapter wraps those chunks in a standard WAV container before validation and storage, matching Alibaba's official Node.js example.
 
-The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again.
+The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. Each uncached asset gets up to three attempts when Alibaba times out, is unavailable, or returns invalid output. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again.
 
 Generation does not approve or publish audio. Listen to every file and set `approved` to `true` only for an exact, correctly pronounced, naturally paced rendition. Regenerate any rejected entry before publication.
 

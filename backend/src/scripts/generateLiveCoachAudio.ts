@@ -9,6 +9,7 @@ import type { AudioPackManifest } from "../services/liveCoach/audioPackManifest.
 import { stableLiveCoachInstructions } from "../services/liveCoach/liveCoachPrompt.js";
 import { audioPackManifestSchema } from "../services/liveCoach/audioPackManifest.js";
 import { validateLiveCoachWav } from "../services/aiProviders/audioValidation.js";
+import { AIProviderError } from "../services/aiProviders/errors.js";
 import { COACH_PERSONAS } from "../services/liveCoach/liveCoachCatalog.js";
 
 type SourceCatalog = {
@@ -19,6 +20,9 @@ type SourceCatalog = {
     texts: Record<SupportedAILocale, string>;
   }>;
 };
+
+const GENERATION_MAX_ATTEMPTS = 3;
+const GENERATION_RETRY_DELAY_MILLISECONDS = 1_000;
 
 const args = parseArgs(process.argv.slice(2));
 if (args.provider !== "alibaba") throw new Error(`Unsupported live-coach provider: ${args.provider}.`);
@@ -90,25 +94,28 @@ for (const voiceProfileId of voiceProfileIds) {
         console.log(`[${assetIndex}/${totalAssetCount}] cached ${voiceProfileId}/${locale}/${entry.cueKey}`);
       } catch {
         console.log(`[${assetIndex}/${totalAssetCount}] generating ${voiceProfileId}/${locale}/${entry.cueKey}`);
-        const result = await resolved.provider.generateCue({
-          requestId: crypto.randomUUID(),
-          locale,
-          coachPersonaId: "plainstride_supportive_v1",
-          coachPersonaInstructions: "Speak naturally and clearly without changing the supplied fixed text.",
-          voiceProfileId,
-          providerVoice: resolved.route.providerVoice,
-          semanticMoment: entry.cueKey,
-          stableInstructions: stableLiveCoachInstructions(locale),
-          compiledContext: {
-            version: 1, runnerModelVersion: "fixed-asset", workout: null, readiness: null,
-            guidancePriorities: [], cuePreferences: [], safetyRequiresFixedOnly: false,
-          },
-          liveState: { elapsedSeconds: 0, distanceMeters: 0, routeGuidanceActive: false },
-          recentCueSummaries: [],
-          maximumSpokenWordsEquivalent: 40,
-          exactTranscript: text,
-          deadline: new Date(Date.now() + 30_000),
-        }, new AbortController().signal);
+        const result = await generateWithRetry(
+          () => resolved.provider.generateCue({
+            requestId: crypto.randomUUID(),
+            locale,
+            coachPersonaId: "plainstride_supportive_v1",
+            coachPersonaInstructions: "Speak naturally and clearly without changing the supplied fixed text.",
+            voiceProfileId,
+            providerVoice: resolved.route.providerVoice,
+            semanticMoment: entry.cueKey,
+            stableInstructions: stableLiveCoachInstructions(locale),
+            compiledContext: {
+              version: 1, runnerModelVersion: "fixed-asset", workout: null, readiness: null,
+              guidancePriorities: [], cuePreferences: [], safetyRequiresFixedOnly: false,
+            },
+            liveState: { elapsedSeconds: 0, distanceMeters: 0, routeGuidanceActive: false },
+            recentCueSummaries: [],
+            maximumSpokenWordsEquivalent: 40,
+            exactTranscript: text,
+            deadline: new Date(Date.now() + 30_000),
+          }, new AbortController().signal),
+          `[${assetIndex}/${totalAssetCount}] ${voiceProfileId}/${locale}/${entry.cueKey}`
+        );
         audio = Buffer.from(result.audio);
         await writeFile(filePath, audio);
       }
@@ -204,4 +211,30 @@ function wavDuration(audio: Buffer): number {
     offset += 8 + size + (size % 2);
   }
   throw new Error("Generated WAV is missing its data chunk.");
+}
+
+async function generateWithRetry<T>(generate: () => Promise<T>, assetLabel: string): Promise<T> {
+  for (let attempt = 1; attempt <= GENERATION_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await generate();
+    } catch (error) {
+      if (!isRetryableGenerationFailure(error) || attempt === GENERATION_MAX_ATTEMPTS) throw error;
+      const delayMilliseconds = GENERATION_RETRY_DELAY_MILLISECONDS * attempt;
+      console.warn(`${assetLabel} retrying after ${generationFailureSummary(error)} (attempt ${attempt + 1}/${GENERATION_MAX_ATTEMPTS})`);
+      await delay(delayMilliseconds);
+    }
+  }
+  throw new Error("Live-coach audio generation exhausted its retry attempts.");
+}
+
+function isRetryableGenerationFailure(error: unknown): error is AIProviderError {
+  return error instanceof AIProviderError && (error.retryable || error.code === "invalid_provider_output");
+}
+
+function generationFailureSummary(error: AIProviderError): string {
+  return `${error.code}: ${error.message}`;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
