@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+struct SocialPeopleSearchOutcome: Sendable {
+    let count: Int
+    let matchMode: String
+}
+
 @MainActor
 final class TogetherStore: ObservableObject {
     @Published private(set) var state: TogetherResponseDTO
@@ -358,26 +363,32 @@ final class TogetherStore: ObservableObject {
     }
 
     @discardableResult
-    func searchPeople(_ query: String) async -> Int? {
+    func searchPeople(_ query: String) async -> SocialPeopleSearchOutcome? {
         let cleaned = Self.normalizedPeopleSearchQuery(query)
         latestPeopleSearchQuery = cleaned
         guard !cleaned.isEmpty else {
             peopleResults = []
-            return 0
+            return SocialPeopleSearchOutcome(count: 0, matchMode: "none")
         }
         if isUITestSeedData {
             peopleResults = Self.uiTestPeople.filter {
                 $0.displayName.localizedCaseInsensitiveContains(cleaned)
                     || $0.username.localizedCaseInsensitiveContains(cleaned)
             }
-            return peopleResults.count
+            return SocialPeopleSearchOutcome(
+                count: peopleResults.count,
+                matchMode: peopleResults.isEmpty ? "none" : "literal"
+            )
         }
         do {
             let response = try await api.searchSocialPeople(query: cleaned)
             guard latestPeopleSearchQuery == cleaned else { return nil }
             peopleResults = response.people
             errorMessage = nil
-            return peopleResults.count
+            return SocialPeopleSearchOutcome(
+                count: peopleResults.count,
+                matchMode: Self.analyticsSearchMatchMode(response.matchMode)
+            )
         } catch {
             guard latestPeopleSearchQuery == cleaned else { return nil }
             errorMessage = error.localizedDescription
@@ -389,6 +400,13 @@ final class TogetherStore: ObservableObject {
         query
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .precomposedStringWithCompatibilityMapping
+    }
+
+    nonisolated private static func analyticsSearchMatchMode(_ value: String?) -> String {
+        switch value {
+        case "none", "literal", "fuzzy", "mixed": value ?? "unknown"
+        default: "unknown"
+        }
     }
 
     func requestConnection(to person: SocialPersonSearchResultDTO) async {

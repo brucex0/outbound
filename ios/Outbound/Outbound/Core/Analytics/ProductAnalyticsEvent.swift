@@ -123,6 +123,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case pageDepthBucket = "page_depth_bucket"
     case queryLengthBucket = "query_length_bucket"
     case inputScript = "input_script"
+    case matchMode = "match_mode"
     case goalCompletionBucket = "goal_completion_bucket"
     case control
     case result
@@ -176,7 +177,7 @@ enum ProductAnalyticsSchema {
         .liveActivityReconciled: [.result],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .connectionsOpened: [.entrySource],
-        .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .result],
+        .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],

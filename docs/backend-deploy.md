@@ -32,6 +32,7 @@ What it does:
 - starts an embedded Postgres instance under `backend/.local/postgres`
 - creates the local `outbound` database if needed
 - runs `prisma db push`
+- enables the schema-declared `pg_trgm` extension and trigram indexes used by connection search
 - seeds training plan template rows
 - starts the API with `DATABASE_URL` pointed at the local embedded database
 
@@ -356,6 +357,7 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - The local backend can run assistant-only when `DATABASE_URL` is absent, or use the embedded Postgres workflow documented above.
 - The live Cloud Run service is connected to the `outbound` Cloud SQL database, so authenticated activity, planning, personalization, safety, social, and account-deletion routes can use durable storage.
 - After any Prisma schema change, deploy the API first, pin `outbound-db-push` to the new revision's exact image digest, and execute the job before relying on the changed route behavior.
+- Fuzzy connection search requires the schema-declared `pg_trgm` extension and `User` trigram indexes. The route falls back to literal matching while the extension is absent; execute the pinned schema job to enable fuzzy results after deploying the matching image.
 - Activity history sync requires the nullable `Activity.clientData`, `clientUpdatedAt`, `deletedAt`, and `updatedAt` fields. After deploying this change, run the pinned schema job before distributing the matching iOS build. Existing activity rows are restored through the route's legacy-field adapter and are upgraded to lossless client snapshots the next time a device with a local copy synchronizes.
 - Activity photo sync requires the current `Photo` columns and uniqueness constraints. Deploy the API and run the pinned schema job before distributing the matching iOS build. Uploads are idempotent by `(activityId, clientPhotoId)`; the iOS client keeps local JPEGs, retries missing uploads at launch/foreground, and downloads authenticated copies when restoring history on another device.
 - The coherent companion schema adds evidence, belief, episode, conversation, context-manifest, situational-signal, action, and outcome tables. Deploy the service image and execute the pinned `outbound-db-push` job before enabling `/v1/companion` clients against that revision.

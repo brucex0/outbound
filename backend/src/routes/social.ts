@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Hono, type Context } from "hono";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
@@ -13,6 +14,7 @@ const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
 const socialConnectionsPageSize = 20;
+const socialPeopleSearchLimit = 20;
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 const reportSchema = z.object({
@@ -188,21 +190,21 @@ router.get("/connections", async (c) => {
 router.get("/people/search", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const query = c.req.query("q")?.trim().normalize("NFKC");
-  if (!query) return c.json({ people: [] });
+  const query = c.req.query("q")?.trim().normalize("NFKC").slice(0, 50);
+  if (!query) return c.json({ people: [], matchMode: "none" });
   const blocked = await blockedUserIDs(user.id);
-  const people = await getPrismaClient().user.findMany({
-    where: {
-      id: { notIn: [user.id, ...blocked] },
-      OR: [
-        { displayName: { contains: query, mode: "insensitive" } },
-        { username: { contains: query, mode: "insensitive" } },
-      ],
-    },
-    select: socialPersonSelect,
-    orderBy: [{ displayName: "asc" }, { username: "asc" }],
-    take: 20,
-  });
+  const excludedUserIDs = [user.id, ...blocked];
+  let people: SocialPeopleSearchRow[];
+  if (Array.from(query).length < 3) {
+    people = await literalPeopleSearch(query, excludedUserIDs);
+  } else {
+    try {
+      people = await fuzzyPeopleSearch(query, excludedUserIDs);
+    } catch (error) {
+      if (!isMissingTrigramExtension(error)) throw error;
+      people = await literalPeopleSearch(query, excludedUserIDs);
+    }
+  }
   const relationships = await getPrismaClient().connection.findMany({
     where: {
       OR: [
@@ -211,13 +213,22 @@ router.get("/people/search", async (c) => {
       ],
     },
   });
+  const matchKinds = new Set(people.map((person) => person.matchKind));
+  const matchMode = matchKinds.size === 0
+    ? "none"
+    : matchKinds.size === 1
+      ? people[0].matchKind
+      : "mixed";
   return c.json({
     people: people.map((person) => {
       const relationship = relationships.find((candidate) =>
         candidate.requesterId === person.id || candidate.addresseeId === person.id
       );
       return {
-        ...person,
+        id: person.id,
+        username: person.username,
+        displayName: person.displayName,
+        avatarUrl: person.avatarUrl,
         relationship: relationship
           ? {
               id: relationship.id,
@@ -227,8 +238,85 @@ router.get("/people/search", async (c) => {
           : null,
       };
     }),
+    matchMode,
   });
 });
+
+type SocialPeopleSearchRow = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  matchKind: "literal" | "fuzzy";
+};
+
+async function literalPeopleSearch(query: string, excludedUserIDs: string[]): Promise<SocialPeopleSearchRow[]> {
+  const people = await getPrismaClient().user.findMany({
+    where: {
+      id: { notIn: excludedUserIDs },
+      OR: [
+        { displayName: { contains: query, mode: "insensitive" } },
+        { username: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    select: socialPersonSelect,
+    orderBy: [{ displayName: "asc" }, { username: "asc" }],
+    take: socialPeopleSearchLimit,
+  });
+  return people.map((person) => ({ ...person, matchKind: "literal" }));
+}
+
+async function fuzzyPeopleSearch(query: string, excludedUserIDs: string[]): Promise<SocialPeopleSearchRow[]> {
+  return getPrismaClient().$transaction(async (transaction) => {
+    await transaction.$executeRaw`SET LOCAL pg_trgm.similarity_threshold = 0.35`;
+    await transaction.$executeRaw`SET LOCAL pg_trgm.strict_word_similarity_threshold = 0.35`;
+    return transaction.$queryRaw<SocialPeopleSearchRow[]>(Prisma.sql`
+      SELECT
+        candidate.id,
+        candidate.username,
+        candidate."displayName",
+        candidate."avatarUrl",
+        CASE
+          WHEN strpos(lower(candidate."displayName"), lower(${query})) > 0
+            OR strpos(lower(candidate.username), lower(${query})) > 0
+          THEN 'literal'
+          ELSE 'fuzzy'
+        END AS "matchKind"
+      FROM "User" AS candidate
+      WHERE candidate.id NOT IN (${Prisma.join(excludedUserIDs)})
+        AND (
+          strpos(lower(candidate."displayName"), lower(${query})) > 0
+          OR strpos(lower(candidate.username), lower(${query})) > 0
+          OR ${query} <<% candidate."displayName"
+          OR candidate.username % ${query}
+        )
+      ORDER BY
+        CASE
+          WHEN lower(candidate.username) = lower(${query}) THEN 0
+          WHEN lower(candidate."displayName") = lower(${query}) THEN 1
+          WHEN strpos(lower(candidate.username), lower(${query})) = 1 THEN 2
+          WHEN strpos(lower(candidate."displayName"), lower(${query})) = 1
+            OR strpos(lower(candidate."displayName"), ' ' || lower(${query})) > 0 THEN 3
+          WHEN strpos(lower(candidate.username), lower(${query})) > 0
+            OR strpos(lower(candidate."displayName"), lower(${query})) > 0 THEN 4
+          ELSE 5
+        END,
+        GREATEST(
+          similarity(candidate.username, ${query}),
+          strict_word_similarity(${query}, candidate."displayName")
+        ) DESC,
+        candidate."displayName" ASC,
+        candidate.username ASC
+      LIMIT ${socialPeopleSearchLimit}
+    `);
+  });
+}
+
+function isMissingTrigramExtension(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError
+    && error.code === "P2010"
+    && error.meta?.code === "42883";
+}
 
 router.post("/connections", zValidator("json", z.object({ userId: z.string().min(1) })), async (c) => {
   const user = await requireSocialUser(c);

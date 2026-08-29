@@ -54,6 +54,7 @@ struct SocialPersonSearchResultDTO: Codable, Identifiable, Sendable {
 
 struct SocialPeopleSearchResponseDTO: Codable, Sendable {
     let people: [SocialPersonSearchResultDTO]
+    let matchMode: String?
 }
 
 struct SocialConnectionRequestDTO: Codable, Sendable {

@@ -1623,19 +1623,20 @@ struct SocialConnectionsView: View {
         guard normalizedQuery != lastRequestedSearchQuery else { return }
         lastRequestedSearchQuery = normalizedQuery
 
-        let resultCount = await socialStore.searchPeople(normalizedQuery)
+        let outcome = await socialStore.searchPeople(normalizedQuery)
         guard lastRequestedSearchQuery == normalizedQuery,
               TogetherStore.normalizedPeopleSearchQuery(searchQuery) == normalizedQuery else { return }
 
-        if resultCount == nil {
+        if outcome == nil {
             lastRequestedSearchQuery = nil
         }
         await analyticsManager?.track(.init(.connectionsSearchCompleted, properties: [
             .sourceType: .string(source),
             .inputScript: .string(Self.searchInputScript(normalizedQuery)),
             .queryLengthBucket: .string(ProductAnalyticsBucket.count(normalizedQuery.count)),
-            .countBucket: .string(ProductAnalyticsBucket.count(resultCount ?? 0)),
-            .result: .string(resultCount == nil ? "failure" : "success")
+            .countBucket: .string(ProductAnalyticsBucket.count(outcome?.count ?? 0)),
+            .matchMode: .string(outcome?.matchMode ?? "unavailable"),
+            .result: .string(outcome == nil ? "failure" : "success")
         ]))
     }
 

@@ -181,7 +181,7 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `social_profile_opened` records only the source surface for profile navigation through the shared social-profile link. It excludes the runner's name, username, profile ID, and connection ID.
 
-`connections_search_completed` measures successful and failed people-search submissions with only the trigger (`debounced` or `submitted`), coarse input script (`han`, `latin`, `mixed`, or `other`), query-length bucket, result-count bucket, and result. It never includes the query, matched names or usernames, profile IDs, or connection IDs.
+`connections_search_completed` measures successful and failed people-search submissions with only the trigger (`debounced` or `submitted`), coarse input script (`han`, `latin`, `mixed`, or `other`), query-length bucket, result-count bucket, match mode (`none`, `literal`, `fuzzy`, `mixed`, `unknown`, or `unavailable`), and result. Match mode makes fuzzy-search usefulness measurable without identifying a search or result. The event never includes the query, matched names or usernames, profile IDs, or connection IDs.
 
 | Provider | Strengths for Plainstride | Tradeoffs | Fit now |
 | --- | --- | --- | --- |
