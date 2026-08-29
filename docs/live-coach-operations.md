@@ -86,6 +86,14 @@ Regenerate a rejected rendition without replacing the rest of the completed mani
 
 The targeted run safely replaces only that manifest entry. When its current checksum has saved rejection feedback, the generator automatically adds the category-specific correction and reviewer detail to the fixed-text instructions. Its new audio checksum resets approval, so restart the review screen and listen to the replacement before publishing.
 
+Regenerate every currently rejected rendition in one run:
+
+```sh
+./scripts/generate-live-coach-audio.sh --rejected
+```
+
+`--rejected` implies `--force`, preserves every non-rejected manifest entry, and applies saved checksum-matched rejection feedback. It can be combined with `--voice-profile`, `--locale`, or `--cue` to narrow the rejected set.
+
 ## Manifest Trust And Publication
 
 The active key ID is `live-coach-audio-2026-v1`.

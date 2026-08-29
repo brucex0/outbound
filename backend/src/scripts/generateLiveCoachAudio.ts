@@ -53,7 +53,7 @@ const manifest: AudioPackManifest = {
   contractVersion: 1,
   catalogVersion: source.catalogVersion,
   generatedAt: new Date().toISOString(),
-  entries: args.voiceProfileId || args.locale || args.cueKey
+  entries: args.voiceProfileId || args.locale || args.cueKey || args.rejected
     ? [...(existingManifest?.entries ?? [])]
     : [],
 };
@@ -73,11 +73,38 @@ if (args.voiceProfileId && !providerConfig.alibaba.voiceMap[args.voiceProfileId]
 if (entries.length === 0) {
   throw new Error(`Unknown live-coach cue: ${args.cueKey}.`);
 }
-const totalAssetCount = voiceProfileIds.length * locales.length * entries.length;
+const targetIDs = new Set<string>();
+for (const voiceProfileId of voiceProfileIds) {
+  for (const locale of locales) {
+    for (const entry of entries) {
+      const id = liveCoachReviewEntryID({
+        cueKey: entry.cueKey,
+        locale,
+        voiceProfileId,
+        scriptStyleId: entry.scriptStyleId,
+      });
+      const savedReview = reviewProgress?.entries[id];
+      const existingEntry = existingManifest?.entries.find((existing) => liveCoachReviewEntryID(existing) === id);
+      if (!args.rejected || (savedReview?.status === "rejected" && savedReview.sha256 === existingEntry?.sha256)) {
+        targetIDs.add(id);
+      }
+    }
+  }
+}
+if (targetIDs.size === 0) throw new Error("No current rejected live-coach assets match the selected filters.");
+const forceGeneration = args.force || args.rejected;
+const totalAssetCount = targetIDs.size;
 let assetIndex = 0;
 for (const voiceProfileId of voiceProfileIds) {
   for (const locale of locales) {
     for (const entry of entries) {
+      const reviewEntryID = liveCoachReviewEntryID({
+        cueKey: entry.cueKey,
+        locale,
+        voiceProfileId,
+        scriptStyleId: entry.scriptStyleId,
+      });
+      if (!targetIDs.has(reviewEntryID)) continue;
       assetIndex += 1;
       const text = entry.texts[locale];
       const resolved = resolveAIRoute(registry, {
@@ -101,13 +128,8 @@ for (const voiceProfileId of voiceProfileIds) {
         && existing.voiceProfileId === voiceProfileId
         && existing.scriptStyleId === entry.scriptStyleId
       );
-      const savedReview = reviewProgress?.entries[liveCoachReviewEntryID({
-        cueKey: entry.cueKey,
-        locale,
-        voiceProfileId,
-        scriptStyleId: entry.scriptStyleId,
-      })];
-      const rejectionReason = args.force
+      const savedReview = reviewProgress?.entries[reviewEntryID];
+      const rejectionReason = forceGeneration
         && existingEntry
         && savedReview?.status === "rejected"
         && savedReview.sha256 === existingEntry.sha256
@@ -117,7 +139,7 @@ for (const voiceProfileId of voiceProfileIds) {
         ? liveCoachRegenerationInstruction(rejectionReason)
         : "";
       let audio: Buffer;
-      if (!args.force) {
+      if (!forceGeneration) {
         try {
           audio = await readFile(filePath);
           validateLiveCoachWav(audio, {
@@ -212,10 +234,12 @@ function parseArgs(values: string[]) {
     locale?: SupportedAILocale;
     cueKey?: string;
     force: boolean;
+    rejected: boolean;
   } = {
     provider: "alibaba",
     list: false,
     force: false,
+    rejected: false,
   };
   for (let index = 0; index < values.length; index += 1) {
     if (values[index] === "--catalog-version") result.catalogVersion = requiredValue(values, ++index, "--catalog-version");
@@ -233,6 +257,7 @@ function parseArgs(values: string[]) {
     }
     else if (values[index] === "--cue") result.cueKey = requiredValue(values, ++index, "--cue");
     else if (values[index] === "--force") result.force = true;
+    else if (values[index] === "--rejected") result.rejected = true;
     else if (values[index] === "--list") result.list = true;
     else throw new Error(`Unknown argument: ${values[index]}.`);
   }
