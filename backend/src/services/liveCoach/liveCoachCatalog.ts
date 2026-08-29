@@ -151,9 +151,10 @@ export function findVoiceProfile(id: string): VoiceProfileDefinition | null {
 }
 
 export function publicLiveCoachCatalog(config: LiveCoachFeatureConfig, locale: SupportedAILocale) {
-  const voices = VOICE_PROFILES.filter((voice) =>
+  const localeEnabled = config.enabledLocales.includes(locale);
+  const voices = localeEnabled ? VOICE_PROFILES.filter((voice) =>
     config.enabledVoiceProfileIds.includes(voice.id) && voice.supportedLocales.includes(locale)
-  );
+  ) : [];
   const voiceIds = new Set(voices.map((voice) => voice.id));
   const personas = COACH_PERSONAS.filter((persona) => config.enabledPersonaIds.includes(persona.id))
     .map((persona) => ({ ...persona, allowed: persona.allowedVoiceProfileIds.filter((id) => voiceIds.has(id)) }))
@@ -161,7 +162,7 @@ export function publicLiveCoachCatalog(config: LiveCoachFeatureConfig, locale: S
   return {
     contractVersion: 1,
     catalogVersion: config.catalogVersion,
-    audioPack: config.audioManifestUrl ? {
+    audioPack: localeEnabled && config.audioManifestUrl ? {
       manifestVersion: config.catalogVersion,
       manifestUrl: config.audioManifestUrl,
     } : undefined,

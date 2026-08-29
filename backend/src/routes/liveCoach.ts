@@ -10,7 +10,7 @@ import { getPrismaClient } from "../services/prisma.js";
 import { DatabaseLiveCoachEntitlementResolver } from "../services/liveCoach/liveCoachAccessPolicy.js";
 import { publicLiveCoachCatalog } from "../services/liveCoach/liveCoachCatalog.js";
 import { liveCoachCueRepository } from "../services/liveCoach/liveCoachCueRepository.js";
-import { loadLiveCoachFeatureConfig, effectiveModeForUser } from "../services/liveCoach/liveCoachFeatureConfig.js";
+import { loadLiveCoachFeatureConfig, effectiveModeForUser, isLiveCoachLocaleEnabled } from "../services/liveCoach/liveCoachFeatureConfig.js";
 import { LiveCoachOrchestrator } from "../services/liveCoach/liveCoachOrchestrator.js";
 import { LiveCoachSessionService } from "../services/liveCoach/liveCoachSessionService.js";
 import { LIVE_COACH_MOMENTS } from "../services/liveCoach/liveCoachTypes.js";
@@ -78,7 +78,8 @@ router.get("/config", async (c) => {
   const config = loadLiveCoachFeatureConfig();
   const access = await new DatabaseLiveCoachEntitlementResolver(getPrismaClient())
     .resolve(appUser.id, new Date(), config);
-  const mode = effectiveModeForUser(config, appUser.id);
+  const localeEnabled = isLiveCoachLocaleEnabled(config, c.get("locale"));
+  const mode = localeEnabled ? effectiveModeForUser(config, appUser.id) : "disabled";
   return c.json({
     contractVersion: 1,
     configVersion: config.configVersion,
@@ -86,7 +87,7 @@ router.get("/config", async (c) => {
     catalogVersion: config.catalogVersion,
     access: {
       dynamicCoaching: mode === "dynamic" && access.allowed ? "allowed" : "unavailable",
-      reason: access.reason,
+      reason: localeEnabled ? access.reason : "feature_disabled",
       paywallAvailable: access.paywallAvailable,
     },
   });

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { AIProviderError } from "../aiProviders/errors.js";
 import { assertAIProviderConfiguration, loadAIProviderConfiguration } from "../aiProviders/config.js";
-import { VOICE_PROFILE_IDS, type CoachPersonaId, type VoiceProfileId } from "../aiProviders/types.js";
+import { SUPPORTED_AI_LOCALES, VOICE_PROFILE_IDS, type CoachPersonaId, type SupportedAILocale, type VoiceProfileId } from "../aiProviders/types.js";
 
 export const LIVE_COACH_MODES = ["disabled", "fixed_only", "dynamic"] as const;
 export type LiveCoachMode = (typeof LIVE_COACH_MODES)[number];
@@ -13,6 +13,7 @@ export type LiveCoachFeatureConfig = {
   configVersion: string;
   catalogVersion: string;
   allowedMarkets: ["global"];
+  enabledLocales: SupportedAILocale[];
   enabledPersonaIds: CoachPersonaId[];
   enabledVoiceProfileIds: VoiceProfileId[];
   dynamicRolloutPercent: number;
@@ -45,6 +46,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     configVersion: trimmed(env.LIVE_COACH_CONFIG_VERSION) || "1",
     catalogVersion: trimmed(env.LIVE_COACH_CATALOG_VERSION) || "2026-08-28.1",
     allowedMarkets: ["global"],
+    enabledLocales: csv(env.LIVE_COACH_ENABLED_LOCALES, [...SUPPORTED_AI_LOCALES]) as SupportedAILocale[],
     enabledPersonaIds: csv(env.LIVE_COACH_ENABLED_PERSONAS, [
       "plainstride_supportive_v1",
       "plainstride_focused_v1",
@@ -94,6 +96,10 @@ export function assertLiveCoachConfiguration(env: NodeJS.ProcessEnv = process.en
   if (feature.enabledPersonaIds.length === 0 || feature.enabledVoiceProfileIds.length === 0) {
     throw new AIProviderError("not_configured", "At least one live-coach persona and voice profile must be enabled.");
   }
+  if (feature.enabledLocales.length === 0
+      || feature.enabledLocales.some((locale) => !SUPPORTED_AI_LOCALES.includes(locale))) {
+    throw new AIProviderError("not_configured", "LIVE_COACH_ENABLED_LOCALES contains an unsupported locale.");
+  }
   if (feature.enabledPersonaIds.some((id) => !knownPersonaIds.includes(id))
       || feature.enabledVoiceProfileIds.some((id) => !knownVoiceProfileIds.includes(id))) {
     throw new AIProviderError("not_configured", "Live-coach configuration contains an unknown persona or voice profile ID.");
@@ -118,6 +124,10 @@ export function assertLiveCoachConfiguration(env: NodeJS.ProcessEnv = process.en
       }
     }
   }
+}
+
+export function isLiveCoachLocaleEnabled(config: LiveCoachFeatureConfig, locale: SupportedAILocale): boolean {
+  return config.enabledLocales.includes(locale);
 }
 
 export function effectiveModeForUser(config: LiveCoachFeatureConfig, userId: string): LiveCoachMode {

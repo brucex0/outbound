@@ -7,20 +7,23 @@ import type { ResolvedAIRoute, SupportedAILocale } from "../aiProviders/types.js
 import { compileLiveCoachContext } from "./liveCoachContextCompiler.js";
 import { DatabaseLiveCoachEntitlementResolver } from "./liveCoachAccessPolicy.js";
 import { findCoachPersona, findVoiceProfile } from "./liveCoachCatalog.js";
-import { effectiveModeForUser, loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
+import { effectiveModeForUser, isLiveCoachLocaleEnabled, loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { CreateLiveCoachSessionInput, LiveCoachAccessDecision, LiveCoachSessionSnapshot } from "./liveCoachTypes.js";
 
 export class LiveCoachSessionService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(userId: string, input: CreateLiveCoachSessionInput) {
+    const feature = loadLiveCoachFeatureConfig();
+    if (feature.mode === "disabled") throw new AIProviderError("not_eligible", "Server audio coaching is disabled.");
+    if (!isLiveCoachLocaleEnabled(feature, input.locale)) {
+      throw new AIProviderError("not_eligible", "Server audio coaching is unavailable for the selected language.");
+    }
     const existing = await this.prisma.liveCoachSession.findUnique({
       where: { userId_clientSessionId: { userId, clientSessionId: input.clientSessionId } },
     });
     if (existing) return this.createResponse(existing);
 
-    const feature = loadLiveCoachFeatureConfig();
-    if (feature.mode === "disabled") throw new AIProviderError("not_eligible", "Server audio coaching is disabled.");
     const persona = findCoachPersona(input.coachPersonaId);
     const voice = findVoiceProfile(input.voiceProfileId);
     if (!persona || !voice

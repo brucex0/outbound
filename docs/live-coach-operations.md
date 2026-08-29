@@ -102,6 +102,15 @@ The active key ID is `live-coach-audio-2026-v1`.
 - The private PEM is stored in Google Secret Manager as `outbound-live-coach-manifest-private-key`; it must never be placed in source, persistent Cloud Run environment values, logs, or chat.
 - The publisher signs the provider-neutral manifest with ES256. iOS verifies the signature and each WAV checksum before replacing its last-known-good pack.
 
+The initial fixed-only pilot is deliberately limited to English and Simplified Chinese:
+
+- Pilot catalog: `2026-08-28.1-en-zh`
+- Public bucket: `outbound-494602-live-coach-audio`
+- Approved matrix: 26 cues × 2 locales × 6 voices = 312 WAV files
+- Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
+
+For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The existing `audio_mode` and `access_reason` analytics fields therefore record the locale gate without adding a separate event or collecting locale as a new analytics property. Do not add Spanish to the allowlist until all 156 current Spanish assets are reviewed, approved, signed, and published in a complete successor catalog.
+
 Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after human review.
 
 ## Rollout Meaning
@@ -120,4 +129,4 @@ Never skip the fixed-only burn-in. If dynamic latency, cost, policy, or provider
 
 ## Current Release Gate
 
-Do not enable `fixed_only` until all 468 assets have been generated, listened to, approved, signed, uploaded, and exposed through immutable HTTPS URLs. Do not set global mode to `dynamic`, even at 0%, until the Alibaba API key is in Secret Manager and startup validation passes with the workspace endpoint, approved model, complete six-voice map, and published pack.
+For the EN/ZH pilot, do not enable `fixed_only` until all 312 in-scope assets have been generated, approved, signed, uploaded, exposed through immutable HTTPS URLs, and protected by the server locale gate. A complete three-locale release still requires all 468 assets. Do not set global mode to `dynamic`, even at 0%, until the Alibaba API key is in Secret Manager and startup validation passes with the workspace endpoint, approved model, complete six-voice map, and published pack.

@@ -131,7 +131,7 @@ Notes:
 
 ## Live Coaching Audio Rollout
 
-The deploy script defaults live coaching to `disabled`, Alibaba routing to enabled and wired to workspace `ws-i638drcm5lthrc29`, and dynamic rollout to zero. Once provisioned, it binds `ALIBABA_AI_API_KEY` from Secret Manager entry `outbound-alibaba-ai-api-key`. Because server audio remains disabled, a code deploy cannot begin AI traffic by itself.
+The deploy script defaults live coaching to `disabled`, enables only `en` and `zh-Hans` for the fixed-audio pilot, wires Alibaba routing to workspace `ws-i638drcm5lthrc29`, and keeps dynamic rollout at zero. Once provisioned, it binds `ALIBABA_AI_API_KEY` from Secret Manager entry `outbound-alibaba-ai-api-key`. Because server audio remains disabled, a code deploy cannot begin AI traffic by itself.
 
 The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, and Alibaba endpoint identity/region. The approved dated model and six product-to-provider voice mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for the current mapping and increment `LIVE_COACH_CONFIG_VERSION` when a fresh rollout cohort assignment is intended.
 
