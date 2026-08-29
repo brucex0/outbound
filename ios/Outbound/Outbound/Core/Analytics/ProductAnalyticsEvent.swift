@@ -32,6 +32,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveActivityReconciled = "live_activity_reconciled"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case connectionsOpened = "connections_opened"
+    case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
@@ -120,6 +121,8 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case participantCountBucket = "participant_count_bucket"
     case countBucket = "count_bucket"
     case pageDepthBucket = "page_depth_bucket"
+    case queryLengthBucket = "query_length_bucket"
+    case inputScript = "input_script"
     case goalCompletionBucket = "goal_completion_bucket"
     case control
     case result
@@ -173,6 +176,7 @@ enum ProductAnalyticsSchema {
         .liveActivityReconciled: [.result],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .connectionsOpened: [.entrySource],
+        .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .result],
         .socialProfileOpened: [.entrySource],
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],

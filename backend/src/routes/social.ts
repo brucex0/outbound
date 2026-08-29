@@ -188,8 +188,8 @@ router.get("/connections", async (c) => {
 router.get("/people/search", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const query = c.req.query("q")?.trim();
-  if (!query || query.length < 2) return c.json({ people: [] });
+  const query = c.req.query("q")?.trim().normalize("NFKC");
+  if (!query) return c.json({ people: [] });
   const blocked = await blockedUserIDs(user.id);
   const people = await getPrismaClient().user.findMany({
     where: {

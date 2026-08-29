@@ -181,6 +181,8 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `social_profile_opened` records only the source surface for profile navigation through the shared social-profile link. It excludes the runner's name, username, profile ID, and connection ID.
 
+`connections_search_completed` measures successful and failed people-search submissions with only the trigger (`debounced` or `submitted`), coarse input script (`han`, `latin`, `mixed`, or `other`), query-length bucket, result-count bucket, and result. It never includes the query, matched names or usernames, profile IDs, or connection IDs.
+
 | Provider | Strengths for Plainstride | Tradeoffs | Fit now |
 | --- | --- | --- | --- |
 | Firebase Analytics | Already linked; minimal implementation work; familiar iOS SDK; automatic baseline events; custom events; direct BigQuery export for SQL and long-term ownership | Console analysis is less product-focused than dedicated tools; custom parameters need console registration for standard reports; GA naming and reporting constraints can leak into a poorly designed taxonomy | Best initial provider |

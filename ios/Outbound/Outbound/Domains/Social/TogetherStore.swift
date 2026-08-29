@@ -26,6 +26,7 @@ final class TogetherStore: ObservableObject {
     private let defaults: UserDefaults
     private let cacheKey = "together_state_v1"
     private var nextConnectionsCursor: String?
+    private var latestPeopleSearchQuery = ""
 
     var hasMoreConnections: Bool {
         nextConnectionsCursor != nil
@@ -356,25 +357,38 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func searchPeople(_ query: String) async {
-        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard cleaned.count >= 2 else {
+    @discardableResult
+    func searchPeople(_ query: String) async -> Int? {
+        let cleaned = Self.normalizedPeopleSearchQuery(query)
+        latestPeopleSearchQuery = cleaned
+        guard !cleaned.isEmpty else {
             peopleResults = []
-            return
+            return 0
         }
         if isUITestSeedData {
             peopleResults = Self.uiTestPeople.filter {
                 $0.displayName.localizedCaseInsensitiveContains(cleaned)
                     || $0.username.localizedCaseInsensitiveContains(cleaned)
             }
-            return
+            return peopleResults.count
         }
         do {
-            peopleResults = try await api.searchSocialPeople(query: cleaned).people
+            let response = try await api.searchSocialPeople(query: cleaned)
+            guard latestPeopleSearchQuery == cleaned else { return nil }
+            peopleResults = response.people
             errorMessage = nil
+            return peopleResults.count
         } catch {
+            guard latestPeopleSearchQuery == cleaned else { return nil }
             errorMessage = error.localizedDescription
+            return nil
         }
+    }
+
+    nonisolated static func normalizedPeopleSearchQuery(_ query: String) -> String {
+        query
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCompatibilityMapping
     }
 
     func requestConnection(to person: SocialPersonSearchResultDTO) async {

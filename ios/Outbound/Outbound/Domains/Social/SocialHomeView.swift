@@ -1389,6 +1389,7 @@ struct SocialConnectionsView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var searchQuery = ""
     @State private var paginationToast: String?
+    @State private var lastRequestedSearchQuery: String?
     @FocusState private var isSearchFocused: Bool
 
     private static let pageSize = 20
@@ -1416,6 +1417,13 @@ struct SocialConnectionsView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
+                        .onSubmit {
+                            isSearchFocused = false
+                            Task {
+                                await Task.yield()
+                                await performPeopleSearch(source: "submitted")
+                            }
+                        }
                     if !searchQuery.isEmpty {
                         Button {
                             searchQuery = ""
@@ -1542,7 +1550,7 @@ struct SocialConnectionsView: View {
                         }
                     }
                 }
-            } else if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2,
+            } else if !TogetherStore.normalizedPeopleSearchQuery(searchQuery).isEmpty,
                       !socialStore.isConnectionsLoading {
                 ContentUnavailableView.search(text: searchQuery)
             }
@@ -1576,7 +1584,7 @@ struct SocialConnectionsView: View {
         .task(id: searchQuery) {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            await socialStore.searchPeople(searchQuery)
+            await performPeopleSearch(source: "debounced")
         }
         .refreshable { await socialStore.refreshConnections() }
         .overlay {
@@ -1603,6 +1611,44 @@ struct SocialConnectionsView: View {
             guard !Task.isCancelled else { return }
             paginationToast = nil
         }
+    }
+
+    private func performPeopleSearch(source: String) async {
+        let normalizedQuery = TogetherStore.normalizedPeopleSearchQuery(searchQuery)
+        guard !normalizedQuery.isEmpty else {
+            lastRequestedSearchQuery = nil
+            await socialStore.searchPeople("")
+            return
+        }
+        guard normalizedQuery != lastRequestedSearchQuery else { return }
+        lastRequestedSearchQuery = normalizedQuery
+
+        let resultCount = await socialStore.searchPeople(normalizedQuery)
+        guard lastRequestedSearchQuery == normalizedQuery,
+              TogetherStore.normalizedPeopleSearchQuery(searchQuery) == normalizedQuery else { return }
+
+        if resultCount == nil {
+            lastRequestedSearchQuery = nil
+        }
+        await analyticsManager?.track(.init(.connectionsSearchCompleted, properties: [
+            .sourceType: .string(source),
+            .inputScript: .string(Self.searchInputScript(normalizedQuery)),
+            .queryLengthBucket: .string(ProductAnalyticsBucket.count(normalizedQuery.count)),
+            .countBucket: .string(ProductAnalyticsBucket.count(resultCount ?? 0)),
+            .result: .string(resultCount == nil ? "failure" : "success")
+        ]))
+    }
+
+    nonisolated private static func searchInputScript(_ query: String) -> String {
+        let meaningfulScalars = query.unicodeScalars.filter {
+            CharacterSet.alphanumerics.contains($0)
+        }
+        let hasHan = meaningfulScalars.contains { $0.properties.isIdeographic }
+        let hasNonHan = meaningfulScalars.contains { !$0.properties.isIdeographic }
+        if hasHan && hasNonHan { return "mixed" }
+        if hasHan { return "han" }
+        if meaningfulScalars.allSatisfy(\.isASCII) { return "latin" }
+        return "other"
     }
 
     private func loadMoreConnections() async {
