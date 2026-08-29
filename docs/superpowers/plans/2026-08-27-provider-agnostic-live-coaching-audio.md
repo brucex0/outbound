@@ -16,8 +16,11 @@ Build one provider-neutral backend boundary that:
 - compiles bounded user, plan, readiness, preference, and live-session context on the server;
 - chooses an eligible AI service, model, endpoint, and provider voice using server policy;
 - uses Alibaba only in the first release while leaving a real routing seam for Gemini or another provider;
+- supports multiple product-owned coach personas and multiple acoustic voice profiles without exposing provider voice IDs;
 - obtains the dynamic coaching utterance and its audio in one provider request when the selected provider supports that capability;
 - serves fixed cues as pre-generated server assets, with no runtime AI call;
+- grants dynamic coaching to everyone during an open beta while enforcing a backend entitlement seam that can later require a subscription;
+- keeps the new server-audio architecture behind a validated operational mode with a fast dynamic-generation kill switch;
 - pins the selected route for the full workout so the runner does not hear a different voice mid-session;
 - bounds cost, latency, privacy exposure, and cue frequency before any provider call;
 - falls back to cached, server-generated audio instead of an on-device Apple voice.
@@ -33,6 +36,7 @@ This implementation covers the live-coaching path first. The provider registry a
 - Do not add mainland China distribution, hosting, registrations, or data residency in this project. Preserve a routing seam and follow `docs/mainland-china-readiness.md` when that market becomes an explicit launch target.
 - Do not keep `AVSpeechSynthesizer` as a hidden fallback. A server-generated cached pack is the offline fallback.
 - Do not regenerate fixed assets during every deployment.
+- Do not trust a client-side premium boolean, StoreKit state, receipt, persona definition, or voice mapping.
 
 ## 3. Product and architecture decisions
 
@@ -80,6 +84,58 @@ Relevant vendor references, which must be rechecked during implementation becaus
 
 Do not make correctness depend on a vendor prompt cache. Cache hits are an optional cost optimization; the complete request must remain valid on a cache miss.
 
+### 3.4 Coach personas and acoustic voices
+
+Treat these as two related but independent product concepts:
+
+- **Coach persona** controls vocabulary, tone, directness, use of metrics, motivation style, and other wording constraints. It is a versioned, product-authored prompt profile such as `plainstride_supportive_v1`, `plainstride_focused_v1`, or `plainstride_calm_v1`.
+- **Voice profile** controls the audible identity and acoustic qualities such as warmth, clarity, pace, and energy. It has a stable Plainstride ID such as `plainstride_warm_1`; only the backend maps it to an Alibaba voice for a specific model/locale.
+
+The current `GuideTemplate`/`GuidePersona` combines template, Apple voice, intensity, frequency, and coaching contract. Migrate it so the saved selection contains `coachPersonaId` and `voiceProfileId` separately. Intensity, nudge frequency, and coaching contract remain independent controls.
+
+Each coach persona declares a default voice and an allowlist of compatible voice profiles. The public catalog exposes only combinations that have:
+
+- a supported provider voice mapping for the requested locale;
+- a complete and published fixed fallback pack;
+- an approved dynamic prompt profile when dynamic coaching is enabled;
+- any required product entitlement.
+
+Do not create a provider-specific persona type. A persona is product content; the provider adapter only sees the resolved instructions and voice mapping.
+
+Avoid unnecessary fixed-pack multiplication. Fixed route, safety, countdown, and workout-transition wording should normally be shared across personas and generated once per `(locale, voiceProfileId, cueKey, catalogVersion)`. Add a `scriptStyleId` dimension only when a persona genuinely changes fixed wording. Dynamic cues always include the selected persona's versioned instruction profile.
+
+Pin `coachPersonaId`, persona instruction version, `voiceProfileId`, and resolved provider voice for the entire workout. A catalog/config change applies to the next session, not halfway through a run.
+
+### 3.5 Configuration and kill switches
+
+The backend is the authority for whether the new architecture can run. Start with environment-backed, startup-validated configuration:
+
+```text
+LIVE_COACH_SERVER_AUDIO_MODE=disabled|fixed_only|dynamic
+LIVE_COACH_ACCESS_MODE=open_beta|subscription_required
+LIVE_COACH_CONFIG_VERSION=1
+LIVE_COACH_ALLOWED_MARKETS=global
+LIVE_COACH_ENABLED_PERSONAS=plainstride_supportive_v1,plainstride_focused_v1
+LIVE_COACH_ENABLED_VOICE_PROFILES=plainstride_warm_1,plainstride_clear_1
+LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT=0
+LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE=8
+LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME=15
+```
+
+Mode semantics:
+
+- `disabled`: do not create server-audio sessions or make AI calls. The app may show non-audio guidance; it must not fall back to Apple speech.
+- `fixed_only`: allow published server-generated packs and bundled fallback audio, but make no runtime AI calls.
+- `dynamic`: allow dynamic generation after entitlement, quota, route, health, safety, and cost gates; fixed audio remains the fallback.
+
+Default every new deployment and developer environment to `disabled`. Production enablement is an explicit deploy configuration change. Invalid or incomplete configuration fails closed: `dynamic` cannot start without a provider route, voice mappings, published fallback packs, and required secrets.
+
+When mode is `dynamic`, apply `LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT` using a deterministic server-side hash of internal user ID plus config version. Users outside the rollout receive effective `fixed_only` behavior. This supports 0/partial/100-percent rollout without a new app build; it is an availability control, not an entitlement. A future operator override must also be server-owned and audit logged.
+
+Return a provider-neutral snapshot from `GET /v1/live-coach/config` containing the effective mode, config version, catalog version, access presentation state, and supported contract version. Do not expose environment values, provider/model IDs, routing scores, or vendor health. iOS may also have a build-time capability flag while the client implementation is incomplete, but the client flag is never an authorization or cost-control boundary.
+
+Most configuration is pinned when a session starts. The emergency rule is different: every cue request rechecks whether dynamic generation is still globally allowed. Changing `dynamic` to `fixed_only` immediately stops new AI calls for existing sessions and returns a fixed-fallback decision. Never change persona or provider voice mid-session because of a routine config refresh.
+
 ## 4. Current code: preserve and replace
 
 ### Preserve
@@ -98,6 +154,7 @@ Do not make correctness depend on a vendor prompt cache. Cache hits are an optio
 - `ios/Outbound/Outbound/Guide/AppleFoundationModelSessionAnalysisProvider.swift`: remove it from live cue generation.
 - `ios/Outbound/Outbound/Guide/GuideSpeechSynthesizer.swift`: replace `AVSpeechSynthesizer` with playback of server-generated audio data/assets.
 - Apple installed-voice discovery in `GuideTemplate.swift`, `GuideCatalogStore.swift`, and `GuideSelectionView.swift`: replace provider voice identifiers with stable Plainstride voice-profile IDs returned by the backend.
+- Legacy `GuideProfile.personality`/`voiceId` and `backend/src/types/guide.ts`: replace loose personality values and provider-shaped voice IDs with stable `coachPersonaId`/`voiceProfileId`. This project is pre-launch, so use a clean schema migration rather than maintaining both shapes.
 
 ### Existing auth gap
 
@@ -163,6 +220,14 @@ export type VoiceProfile = {
   style: "warm" | "clear";
 };
 
+export type CoachPersona = {
+  id: "plainstride_supportive_v1" | "plainstride_focused_v1" | "plainstride_calm_v1";
+  instructionVersion: number;
+  defaultVoiceProfileId: VoiceProfile["id"];
+  allowedVoiceProfileIds: Array<VoiceProfile["id"]>;
+  fixedScriptStyleId: "standard" | "calm";
+};
+
 export type ProviderCapabilities = {
   text: boolean;
   audioOutput: boolean;
@@ -176,6 +241,8 @@ export type ProviderCapabilities = {
 export type LiveCoachGenerationInput = {
   requestId: string;
   locale: "en" | "es" | "zh-Hans";
+  coachPersonaId: CoachPersona["id"];
+  coachPersonaInstructions: string;
   voiceProfileId: VoiceProfile["id"];
   semanticMoment: string;
   stableInstructions: string;
@@ -310,15 +377,48 @@ Never place full prompts, provider response bodies, transcripts, audio bytes, au
 
 Use provider-neutral DTOs with strict Zod schemas, size limits, enumerations, and unknown-key rejection. Include a contract version in every response.
 
-### 9.1 Voice profiles
+### 9.1 Effective configuration
 
-`GET /v1/live-coach/voices?locale=en`
+`GET /v1/live-coach/config`
+
+This authenticated endpoint lets iOS decide which setup UI to expose without making the client authoritative:
+
+```json
+{
+  "contract_version": 1,
+  "config_version": "1",
+  "mode": "dynamic",
+  "catalog_version": "2026-08-27.1",
+  "access": {
+    "dynamic_coaching": "allowed",
+    "reason": "open_beta",
+    "paywall_available": false
+  }
+}
+```
+
+Cache briefly and refresh before starting a workout. The create-session response is authoritative if this snapshot is stale. When the endpoint is unavailable, iOS uses its bundled fixed pack only.
+
+### 9.2 Coach and voice catalog
+
+`GET /v1/live-coach/catalog?locale=en`
 
 Response:
 
 ```json
 {
   "contract_version": 1,
+  "catalog_version": "2026-08-27.1",
+  "coach_personas": [
+    {
+      "id": "plainstride_supportive_v1",
+      "display_name": "Supportive",
+      "description": "Encouraging, practical coaching that keeps effort sustainable.",
+      "default_voice_profile_id": "plainstride_warm_1",
+      "allowed_voice_profile_ids": ["plainstride_warm_1", "plainstride_clear_1"],
+      "access": "included"
+    }
+  ],
   "voices": [
     {
       "id": "plainstride_warm_1",
@@ -330,9 +430,9 @@ Response:
 }
 ```
 
-Display names are localized product strings. Do not return provider, model, endpoint, or vendor voice IDs.
+Display names and descriptions are localized product strings. `access` is a bounded presentation hint such as `included` or `upgrade_required`; session creation rechecks it. Do not return prompt instructions, provider, model, endpoint, or vendor voice IDs.
 
-### 9.2 Create a live-coach session
+### 9.3 Create a live-coach session
 
 `POST /v1/live-coach/sessions`
 
@@ -344,9 +444,9 @@ Request:
   "client_session_id": "uuid",
   "workout_id": "optional-authoritative-workout-id",
   "locale": "en",
+  "coach_persona_id": "plainstride_supportive_v1",
   "voice_profile_id": "plainstride_warm_1",
   "coaching_contract": "responsive",
-  "tone": "encouraging",
   "session_intent": {
     "activity_type": "running",
     "goal_type": "workout"
@@ -363,7 +463,13 @@ The backend authenticates the user, validates workout ownership, resolves the au
   "session_id": "opaque-id",
   "context_version": 1,
   "expires_at": "ISO-8601",
+  "effective_mode": "dynamic",
   "dynamic_coaching_available": true,
+  "access": {
+    "dynamic_coaching": "allowed",
+    "reason": "open_beta",
+    "paywall_available": false
+  },
   "audio_pack": {
     "manifest_version": "2026-08-27.1",
     "manifest_url": "short-lived-or-public-content-url"
@@ -375,9 +481,9 @@ The backend authenticates the user, validates workout ownership, resolves the au
 }
 ```
 
-Session creation must be idempotent for `(user, client_session_id)`.
+Session creation must be idempotent for `(user, client_session_id)`. The backend validates persona/voice compatibility, access, fixed-pack readiness, and operational mode. If dynamic access is unavailable, still create a `fixed_only` session instead of breaking workout guidance. The app may offer an upgrade before the workout when `paywall_available` is true, but never interrupt an active run with a paywall.
 
-### 9.3 Request a cue
+### 9.4 Request a cue
 
 `POST /v1/live-coach/sessions/:sessionId/cues`
 
@@ -429,15 +535,17 @@ V1 uses base64 because cues are tiny and this keeps one authenticated request. I
 
 The cue route is idempotent for `(session, cue_request_id)`. Concurrent duplicates share one in-flight generation. The server may retain the completed bounded result only until its short expiration; do not permanently store audio or transcript.
 
-### 9.4 End a session
+If configuration, entitlement, or quota no longer permits a dynamic call, return an appropriate `fixed_pack`/`cached_fallback` cue envelope and make no provider request. A modified client cannot bypass this behavior.
+
+### 9.5 End a session
 
 `POST /v1/live-coach/sessions/:sessionId/end`
 
 Accept final coarse counts and outcome buckets needed for cost/reliability reconciliation. Mark the session ended, discard any transient cue payload cache, and abort in-flight generation. Do not upload the full local cue record unless a separate privacy-reviewed learning design requires it.
 
-### 9.5 Fixed assets
+### 9.6 Fixed assets
 
-Expose an immutable manifest and asset endpoint/CDN path. The manifest maps semantic keys, locale, voice-profile ID, and version to a checksum, duration, content type, and URL. It never includes provider/model metadata.
+Expose an immutable manifest and asset endpoint/CDN path. The manifest maps semantic keys, locale, voice-profile ID, optional fixed-script style, and version to a checksum, duration, content type, and URL. It declares compatible coach personas but never includes prompt instructions or provider/model metadata.
 
 ## 10. Live-coach context compilation
 
@@ -483,7 +591,7 @@ The stable prefix should be identical across sessions for a given policy/locale 
 
 ## 11. Fixed audio pack pipeline
 
-Create a semantic catalog in `backend/resources/liveCoachAudio/` for `en`, `es`, and `zh-Hans`. Product strings must be natural translations, not concatenated word fragments.
+Create a semantic catalog in `backend/resources/liveCoachAudio/` for `en`, `es`, and `zh-Hans`. Product strings must be natural translations, not concatenated word fragments. Keep universal/safety scripts separate from the smaller set of persona-specific script styles so adding a persona does not automatically duplicate the whole catalog.
 
 Initial asset families:
 
@@ -508,7 +616,7 @@ npm run live-coach:generate-audio -- --catalog-version 2026-08-27.1 --provider a
 The command must:
 
 1. load secrets only from environment/Secret Manager integration;
-2. hash normalized text + locale + voice profile + audio spec + provider route version;
+2. hash normalized text + locale + voice profile + script style + audio spec + provider route version;
 3. skip already generated matching hashes;
 4. call the provider through the same registry with request kind `live_coach_fixed_asset`;
 5. validate WAV format, maximum duration, transcript agreement, and non-silence;
@@ -517,7 +625,7 @@ The command must:
 8. upload immutable content-addressed objects;
 9. publish a provider-neutral signed manifest atomically.
 
-Bundle a small default pack with the app for countdown, workout transitions, route safety, and generic fallback. Download the selected full pack after voice selection/session setup and cache by checksum. Retain the last known-good pack until the replacement is fully verified.
+Bundle a small default pack with the app for countdown, workout transitions, route safety, and generic fallback. Download the selected persona-compatible voice pack after selection/session setup and cache by checksum. Retain the last known-good pack until the replacement is fully verified.
 
 ## 12. Persistence and transient caching
 
@@ -532,8 +640,13 @@ model LiveCoachSession {
   status                String
   locale                String
   market                String
+  coachPersonaId        String
+  personaVersion        Int
   voiceProfileId        String
   coachingContract      String
+  effectiveAudioMode    String
+  configVersion         String
+  accessReason          String
   providerKey           String
   providerEndpointKey   String
   providerModel         String
@@ -575,13 +688,98 @@ model LiveCoachCue {
   @@unique([sessionId, cueRequestId])
   @@index([expiresAt])
 }
+
+model FeatureEntitlement {
+  id                    String   @id @default(cuid())
+  userId                String
+  capability            String
+  source                String
+  status                String
+  sourceReferenceHash   String?  @unique
+  startsAt              DateTime
+  expiresAt             DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability, source])
+  @@index([userId, capability, status, expiresAt])
+}
+
+model FeatureUsagePeriod {
+  id                    String   @id @default(cuid())
+  userId                String
+  capability            String
+  periodKey             String
+  reservedCount         Int      @default(0)
+  successfulCount       Int      @default(0)
+  limitSnapshot         Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability, periodKey])
+}
 ```
 
-Adjust relations to the actual Prisma `User` model. Treat provider/model/voice as internal operational data. Do not persist transcript, audio, prompt, exact telemetry, or provider response body in `LiveCoachCue`. Use an in-process short TTL cache for V1 idempotent response replay; if Cloud Run concurrency or multiple instances make duplicate cost measurable, move only the short-lived encrypted result and in-flight lock to an appropriate shared cache.
+Adjust relations to the actual Prisma `User` model. `FeatureEntitlement` stores only durable, backend-verified grants; the `open_beta` policy is computed and does not create a fake grant for every user. Store only a hash or opaque reference for an external transaction, never raw receipts or signed payloads. `FeatureUsagePeriod` is optional until a cross-session/monthly quota is enabled, but the access interface must support it from the start.
+
+Treat provider/model/voice as internal operational data. Do not persist transcript, audio, prompt, exact telemetry, or provider response body in `LiveCoachCue`. Use an in-process short TTL cache for V1 idempotent response replay; if Cloud Run concurrency or multiple instances make duplicate cost measurable, move only the short-lived encrypted result and in-flight lock to an appropriate shared cache.
 
 Because this product is pre-public launch, use the cleanest schema and document the required migration/reset command; do not build compatibility layers for old debug live-coach rows.
 
-## 13. Cost and latency policy
+## 13. Entitlements, future paywall, cost, and latency
+
+### 13.1 Access policy
+
+Gate the backend capability `live_coach_dynamic`, not a provider/model and not the entire workout recorder. Fixed countdown, workout-transition, route, safety, and generic fallback audio remains available without a paid entitlement. This preserves a useful free product and guarantees that losing access never removes safety-critical guidance.
+
+Create a provider-neutral resolver:
+
+```ts
+type LiveCoachAccessDecision = {
+  capability: "live_coach_dynamic";
+  allowed: boolean;
+  reason:
+    | "open_beta"
+    | "verified_subscription"
+    | "promotion"
+    | "entitlement_required"
+    | "quota_exhausted"
+    | "feature_disabled";
+  quota?: { limit: number; remaining: number; resetsAt?: Date };
+  paywallAvailable: boolean;
+};
+
+interface LiveCoachEntitlementResolver {
+  resolve(userId: string, now: Date): Promise<LiveCoachAccessDecision>;
+}
+```
+
+V1 uses `LIVE_COACH_ACCESS_MODE=open_beta`; every authenticated user receives an ephemeral `allowed: true, reason: open_beta` decision, subject to operational mode and abuse/cost limits. There is no paywall UI and no database entitlement row for this automatic grant.
+
+Future monetization changes the backend mode to `subscription_required` only after the purchase flow and server verifier are deployed. iOS uses StoreKit 2 for localized product display, purchase, restore, and immediate UI state, then sends the App Store-signed transaction representation to a dedicated backend sync endpoint. The backend verifies the signed transaction and current subscription state, binds it to the authenticated Plainstride account, and writes/revokes a durable capability grant. Apple documents that StoreKit transactions and App Store Server API transaction/subscription results are App Store-signed JWS data; use the current official [StoreKit Transaction](https://developer.apple.com/documentation/storekit/transaction), [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi), and [App Store Server Notifications](https://developer.apple.com/documentation/AppStoreServerNotifications/receiving-app-store-server-notifications) guidance when implementing this later phase.
+
+Rules for the future paid mode:
+
+- the backend is authoritative; a client `isPremium` boolean or local StoreKit cache never authorizes an AI call;
+- use an app-account token or equivalent verified binding so a transaction cannot be claimed by another Plainstride account;
+- process renewal, expiration, billing-retry/grace state, refund, and revocation updates idempotently;
+- provide `POST /v1/entitlements/app-store/sync` for purchase/restore reconciliation and a signed server-notification endpoint;
+- never store raw receipt/JWS payloads longer than operationally required; retain normalized grant state and opaque/hash references;
+- require the correct bundle, environment, product allowlist, subscription group, signature, and validity window;
+- prevent `subscription_required` configuration from activating until the minimum supported iOS build has a working localized paywall and restore path;
+- show upgrade UI in setup/settings, not during an active run;
+- entitlement service failure fails closed for new dynamic calls but fixed audio continues;
+- promotions, trials, staff access, or future web billing issue the same `live_coach_dynamic` capability through different verified grant sources.
+
+Persona and voice monetization may later use additional stable capabilities such as `live_coach_persona:plainstride_focused_v1` or `live_coach_voice:plainstride_warm_1`. Do not encode `isPremium` into persona IDs, voice IDs, provider mappings, or fixed manifests. V1 includes all enabled personas/voices for open-beta users unless product configuration explicitly says otherwise.
+
+Quota enforcement occurs after entitlement resolution and before provider selection. Reserve usage atomically before calling the provider, finalize on a valid successful result, and release the reservation for provider failure, timeout, cancellation, or stale output. Idempotent duplicate cue requests reuse the original reservation/result and never double count.
+
+### 13.2 Runtime cost and latency policy
 
 Enforce policy before calling Alibaba:
 
@@ -621,11 +819,14 @@ Measure actual time to usable audio, provider p50/p95, fallback rate, audio byte
 Preserve existing semantic Live Guidance events. Update the typed analytics contract so provider results use only bounded product values:
 
 - `source`: `dynamic_generation`, `fixed_pack`, `cached_fallback`;
-- `result`: `success`, `offline`, `timeout`, `stale`, `invalid`, `unavailable`, `budget_exhausted`;
+- `result`: `success`, `offline`, `timeout`, `stale`, `invalid`, `unavailable`, `feature_disabled`, `entitlement_required`, `quota_exhausted`, `budget_exhausted`;
+- effective audio mode and bounded access reason (`open_beta`, `verified_subscription`, `promotion`, or `entitlement_required`);
 - coarse latency bucket;
 - semantic moment, coaching contract, outcome, and coarse cue-count bucket already allowed by the product analytics spec.
 
-Never send provider/model/voice vendor ID, transcript, audio, prompt, exact pace/distance/time, session ID, request ID, or user ID as Firebase event properties.
+Never send provider/model/voice vendor ID, transcript, audio, prompt, exact pace/distance/time, session ID, request ID, user ID, transaction ID, receipt/JWS, or subscription expiration timestamp as Firebase event properties.
+
+When the paid phase is implemented, add typed events for paywall exposure, purchase/restore attempted, and bounded result. Those events answer funnel/reliability questions; they do not authorize access. Do not emit a paywall exposure during a workout.
 
 Server operational metrics may include provider, dated model, endpoint key/region, route-policy version, resolved market, locale, Plainstride voice profile, categorized result, latency, usage buckets, audio-size bucket, context-token bucket, and circuit state. Keep user identity and sensitive content out. Use these metrics to support future provider selection and cost decisions.
 
@@ -649,6 +850,8 @@ Health checks must not call the model on every application `/health` request.
 - `backend/src/services/aiProviders/errors.ts`
 - `backend/src/services/aiProviders/config.ts`
 - `backend/src/services/aiProviders/registry.ts`
+- `backend/src/services/liveCoach/liveCoachFeatureConfig.ts`
+- `backend/src/services/liveCoach/liveCoachCatalog.ts`
 
 **Modify**
 
@@ -657,7 +860,8 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - Product code can express required capability without naming a vendor/model.
-- Configuration rejects enabled routes with missing secrets, model, endpoint, or voice mappings.
+- Configuration defaults to `disabled` and rejects enabled routes with missing secrets, model, endpoint, persona profiles, voice mappings, or published fixed packs.
+- The catalog keeps product coach-persona instructions separate from provider voice mappings and exposes only compatible combinations.
 - Provider errors are sanitized and categorized.
 
 ### Task 2: Implement routing, scoring, health, and route pinning types
@@ -692,25 +896,30 @@ Health checks must not call the model on every application `/health` request.
 - No Alibaba type escapes the adapter directory.
 - Error paths do not log response bodies.
 
-### Task 4: Add live-coach persistence and context compilation
+### Task 4: Add live-coach persistence, access policy, and context compilation
 
 **Create**
 
-- Prisma migration for `LiveCoachSession` and `LiveCoachCue`
+- Prisma migration for `LiveCoachSession`, `LiveCoachCue`, `FeatureEntitlement`, and optional `FeatureUsagePeriod`
 - `backend/src/services/liveCoach/liveCoachTypes.ts`
 - `backend/src/services/liveCoach/liveCoachContextCompiler.ts`
 - `backend/src/services/liveCoach/liveCoachSessionService.ts`
 - `backend/src/services/liveCoach/liveCoachCueRepository.ts`
+- `backend/src/services/liveCoach/liveCoachAccessPolicy.ts`
 
 **Modify**
 
 - `backend/prisma/schema.prisma`
+- `backend/src/types/guide.ts`
+- `backend/src/routes/guide.ts` where guide settings/profile DTOs expose the legacy fields
 - `backend/src/services/companion/sessionBrief.ts` only if a provider-neutral projection is needed; preserve existing consumers.
 
 **Acceptance**
 
 - Context is compiled once with stable ordering, a hash, and an enforced budget.
-- Session ownership, idempotent creation, expiration, and cue quotas are enforced transactionally.
+- Guide profile/settings persistence uses stable coach-persona and voice-profile IDs; provider voice IDs never enter the user profile.
+- `open_beta` grants every authenticated user dynamic access without fake persisted grants.
+- Session ownership, config mode, entitlement, idempotent creation, expiration, usage reservations, and cue quotas are enforced transactionally.
 - Cue rows contain only operational metadata, never content or exact telemetry.
 
 ### Task 5: Add cue policy, prompt construction, and orchestration
@@ -726,6 +935,7 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - Fixed vs dynamic selection is deterministic.
+- Configuration, persona/voice compatibility, entitlement, quota, and fixed-pack readiness are checked before provider routing.
 - Urgency, expiry, and fallback selection do not trust model output.
 - Only one generation is in flight for a session.
 - Disconnect, session end, and deadline abort provider work.
@@ -741,9 +951,10 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - Remove `/analyze` and all client-selected `model`/arbitrary `packet` handling.
-- Implement voices, create-session, cue, and end-session endpoints.
+- Implement effective-config, coach/voice catalog, create-session, cue, and end-session endpoints.
 - Use strict schemas, request-size bounds, ownership checks, and user/session rate limits.
 - Public DTOs contain no provider implementation details.
+- A denied dynamic entitlement or `fixed_only` mode creates a usable fixed-audio session and cannot be bypassed by the client.
 
 ### Task 7: Build and publish fixed server-generated voice packs
 
@@ -766,6 +977,7 @@ Health checks must not call the model on every application `/health` request.
 - Generation is content-addressed, resumable, validated, and separate from publication.
 - Publication requires a reviewed manifest and is atomic.
 - Manifest/asset contracts are provider-neutral and immutable.
+- Every exposed persona/voice/locale combination has a complete fixed fallback pack; shared scripts are not duplicated across personas unnecessarily.
 - Minimal fallback packs for all supported locales are ready to bundle with iOS.
 
 ### Task 8: Add provider-neutral iOS API and session lifecycle
@@ -781,6 +993,7 @@ Health checks must not call the model on every application `/health` request.
 - `ios/Outbound/Outbound/Guide/LiveCoachAPIModels.swift`
 - `ios/Outbound/Outbound/Guide/ServerLiveCoachProvider.swift`
 - `ios/Outbound/Outbound/Guide/LiveCoachSessionController.swift`
+- `ios/Outbound/Outbound/Guide/LiveCoachFeatureState.swift`
 
 **Remove after call sites migrate**
 
@@ -790,6 +1003,7 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - iOS sends semantic moment plus bounded state, never a provider/model/prompt.
+- iOS consumes effective mode/access/catalog state but never authorizes itself.
 - A server session is created once and ended best-effort.
 - Cue tasks are cancelable and stale responses never play.
 - Server unavailability selects fixed cached audio without invoking device TTS.
@@ -818,7 +1032,7 @@ Health checks must not call the model on every application `/health` request.
 - Advisory/caution/arrival priority, music ducking, cancellation, interruption recovery, and speech start/finish callbacks still work.
 - Audio validation failure is silent or fixed fallback according to cue policy; it never reaches Apple TTS.
 
-### Task 10: Replace Apple voice selection with Plainstride profiles
+### Task 10: Replace Apple voice selection with Plainstride coach personas and voice profiles
 
 **Modify**
 
@@ -830,6 +1044,8 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - Settings store a stable Plainstride voice-profile ID.
+- Settings store the stable coach-persona ID separately from voice profile, intensity, frequency, and coaching contract.
+- The picker shows only server-approved compatible persona/voice combinations and falls back to each persona's default voice when a saved option disappears.
 - Voice previews play server-generated preview assets.
 - All new/changed user-facing strings are localized naturally in `en`, `es`, and `zh-Hans`.
 - Save/load/API failures use temporary toast-style feedback unless user action is required.
@@ -845,6 +1061,7 @@ Health checks must not call the model on every application `/health` request.
 **Acceptance**
 
 - New source/result/latency values pass the typed allowlist.
+- Effective mode, bounded access reason, paywall exposure, and future purchase/restore result use typed privacy-reviewed values.
 - No generated content, exact telemetry, vendor/model ID, or request/session identifier reaches Firebase.
 - Fixed, dynamic, fallback, stale, and unavailable outcomes are distinguishable.
 
@@ -863,8 +1080,40 @@ Health checks must not call the model on every application `/health` request.
 
 - Alibaba secret is a Secret Manager binding, not an ordinary environment variable.
 - Deployment configuration selects one approved endpoint/model/route policy.
+- `LIVE_COACH_SERVER_AUDIO_MODE` and `LIVE_COACH_ACCESS_MODE` default to safe values, are validated at startup, and have documented rollout/rollback commands.
 - Audio bucket access, cache headers, lifecycle, and publish command are documented.
-- Rollback includes disabling dynamic generation while preserving fixed packs.
+- Rollback uses `fixed_only` to stop AI cost immediately while preserving fixed packs; `disabled` never re-enables Apple speech.
+
+### Deferred paid phase: implement verified App Store entitlements
+
+Do not implement or expose the paywall during the free launch. Complete this phase before changing `LIVE_COACH_ACCESS_MODE` to `subscription_required`.
+
+**Create**
+
+- `backend/src/routes/entitlements.ts`
+- `backend/src/services/entitlements/appStoreEntitlementService.ts`
+- `backend/src/services/entitlements/appStoreNotificationService.ts`
+- `ios/Outbound/Outbound/Core/Entitlements/StoreKitEntitlementStore.swift`
+- `ios/Outbound/Outbound/Guide/LiveCoachPaywallView.swift`
+
+**Modify**
+
+- `backend/src/index.ts`
+- `backend/prisma/schema.prisma` if the entitlement schema was deferred in the free phase
+- `ios/Outbound/Outbound/Core/APIClient.swift`
+- `ios/Outbound/Outbound/Localizable.xcstrings`
+- `docs/app-store-release.md`
+- product analytics contract and App Store privacy/subscription disclosures.
+
+**Acceptance**
+
+- StoreKit product display, purchase, restore, and subscription management UI is localized and accessible.
+- The backend verifies App Store-signed data and current status before issuing `live_coach_dynamic`.
+- Server notifications idempotently update renewals, expiration, refunds, and revocations.
+- Account binding prevents one purchase from being claimed by unrelated Plainstride accounts.
+- The app handles offline/unknown entitlement state without granting a new dynamic call; fixed audio continues.
+- Paywall and restore flows are reachable before a run and never interrupt an active workout.
+- Switching to `subscription_required` is blocked until the minimum supported client version includes this flow.
 
 ### Task 13: Add focused tests, but do not run them without user authorization
 
@@ -872,18 +1121,26 @@ Health checks must not call the model on every application `/health` request.
 
 - route hard eligibility and deterministic scoring;
 - market/locale separation;
+- config mode fail-closed behavior and per-cue dynamic kill-switch recheck;
+- deterministic 0/partial/100-percent rollout with fixed-only behavior outside the cohort;
+- coach-persona/voice compatibility and catalog filtering;
+- `open_beta`, entitlement-required, promotion, subscription, and quota decisions;
+- idempotent quota reservation/finalization/release;
 - Alibaba stream parsing and sanitized errors;
 - audio format/size/duration validation;
 - context ordering, truncation, exclusion, and hashing;
 - idempotent session/cue behavior and ownership;
 - quota/deadline/stale gates;
 - no provider details in public DTOs;
-- fixed catalog/manifest completeness for all locales.
+- fixed catalog/manifest completeness for every exposed persona/voice/locale combination.
 
 **iOS test coverage to add**
 
 - stale cue rejection;
 - cancellation and single in-flight request;
+- disabled/fixed-only/dynamic UI and session behavior;
+- separate persona/voice selection and missing-selection fallback;
+- access-denied fixed-audio behavior with no in-run paywall;
 - fixed fallback selection;
 - audio queue priority and interruption state;
 - pack checksum/last-known-good behavior;
@@ -896,28 +1153,35 @@ Do not execute these tests unless the user explicitly asks. A later authorized v
 Run the backend TypeScript build and an iOS build-only compile check. Then verify on a real device/network profile:
 
 1. select each Plainstride voice profile and hear its generated preview;
-2. start a workout and hear server-generated countdown audio;
-3. trigger a dynamic semantic moment and confirm one Alibaba call returns matching text/audio;
-4. confirm music ducks and resumes;
-5. trigger route caution during coaching and confirm priority/cancellation;
-6. introduce slow/offline networking and confirm stale audio never plays and cached fallback is used;
-7. finish the session and confirm in-flight work stops;
-8. run in `en`, `es`, and `zh-Hans`;
-9. inspect logs/analytics to confirm no prompt, transcript, audio, exact telemetry, provider response, or credentials were emitted;
-10. confirm the app contains no active Apple speech path.
+2. select each enabled coach persona with at least its default compatible voice and confirm the wording style changes without exposing a provider voice;
+3. start a workout and hear server-generated countdown audio;
+4. trigger a dynamic semantic moment and confirm one Alibaba call returns matching text/audio;
+5. set `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and confirm no new Alibaba calls occur while fixed cues continue;
+6. set the mode to `disabled` and confirm neither server AI nor Apple speech runs;
+7. use `LIVE_COACH_ACCESS_MODE=open_beta` and confirm every authenticated user is allowed subject to quotas;
+8. simulate an entitlement-required decision and confirm fixed guidance continues and no paywall appears mid-run;
+9. confirm music ducks and resumes;
+10. trigger route caution during coaching and confirm priority/cancellation;
+11. introduce slow/offline networking and confirm stale audio never plays and cached fallback is used;
+12. finish the session and confirm in-flight work stops;
+13. run in `en`, `es`, and `zh-Hans`;
+14. inspect logs/analytics to confirm no prompt, transcript, audio, exact telemetry, transaction data, provider response, or credentials were emitted;
+15. confirm the app contains no active Apple speech path.
 
 ## 17. Rollout sequence
 
-1. Land contracts, router, Alibaba adapter, validation, and operational metrics behind `LIVE_COACH_SERVER_AUDIO_ENABLED=false`.
+1. Land contracts, catalog, access resolver, router, Alibaba adapter, validation, and operational metrics with `LIVE_COACH_SERVER_AUDIO_MODE=disabled` and `LIVE_COACH_ACCESS_MODE=open_beta`.
 2. Generate, review, publish, and bundle fixed packs before enabling any dynamic path.
-3. Land new backend routes while the old debug `/analyze` path remains disabled outside local development.
-4. Land iOS provider-neutral session/cue client and audio player behind a feature flag.
-5. Remove Apple/Foundation/debug provider paths and the old `/analyze` route in the same release boundary; do not ship a mixed voice fallback.
-6. Enable employee/device testing with Alibaba pinned to one dated model and voice mapping.
-7. Measure p50/p95 latency, invalid/stale/fallback rate, cue frequency, and estimated cost by locale/voice profile.
-8. Tune request deadlines and cue limits through server policy.
-9. Gradually enable dynamic coaching; fixed server-generated cues remain available even when the feature flag is off.
-10. Add a second provider only after defining its adapter, capability/market facts, voice-quality evaluation, and explicit route policy. Do not add provider conditionals to routes or iOS.
+3. Publish the first server catalog with at least one coach persona and one compatible voice per supported locale; add more combinations only after their fixed packs pass review.
+4. Land new backend routes while the old debug `/analyze` path remains disabled outside local development.
+5. Land iOS provider-neutral session/cue client and audio player behind its build capability flag.
+6. Remove Apple/Foundation/debug provider paths and the old `/analyze` route in the same release boundary; do not ship a mixed voice fallback.
+7. Enable `fixed_only` for device testing and validate config rollback before allowing AI traffic.
+8. Enable `dynamic` for an internal cohort with Alibaba pinned to one dated model and voice mapping. Keep access mode `open_beta`.
+9. Measure p50/p95 latency, invalid/stale/fallback rate, cue frequency, and estimated cost by locale, persona, and voice profile.
+10. Tune request deadlines and cue limits through server policy, then gradually expand the dynamic cohort. The emergency dynamic kill switch remains effective for existing sessions.
+11. Before charging, complete the deferred StoreKit/server-verification phase, ship a localized paywall/restore path, enforce a minimum client version, and validate subscription lifecycle events. Only then switch access mode to `subscription_required`.
+12. Add a second provider only after defining its adapter, capability/market facts, voice-quality evaluation, and explicit route policy. Do not add provider conditionals to routes or iOS.
 
 ## 18. Completion criteria
 
@@ -929,7 +1193,11 @@ The implementation is complete only when:
 - dynamic wording and audio use one Alibaba request where supported;
 - the client cannot choose or observe service/model/endpoint/vendor voice;
 - Alibaba is the only registered V1 provider, selected through the generic router;
+- coach persona and acoustic voice are separate stable product selections, with every exposed combination supported by dynamic routing and a reviewed fixed fallback pack;
 - the selected route is pinned for the workout and failure uses a cached generated pack;
+- the backend architecture defaults to `disabled`, supports `fixed_only`/`dynamic`, fails closed on invalid configuration, and rechecks the emergency dynamic kill switch for every cue;
+- free launch uses the backend `open_beta` access policy for all authenticated users, and no client flag can bypass entitlement/quota decisions;
+- future paid mode has a documented server-verified capability-grant path and cannot remove fixed safety/workout audio;
 - live-coach routes require auth, ownership, bounded schemas, idempotency, quotas, and deadlines;
 - server context is authoritative, compact, deterministic, privacy-filtered, and compiled once per session;
 - provider prompts/results/audio and exact live telemetry do not enter logs or product analytics;
