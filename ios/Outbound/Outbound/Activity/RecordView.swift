@@ -29,7 +29,6 @@ enum ActivityLaunchLayout {
     static let peerCardGap: CGFloat = 12
     static let controlWidth: CGFloat = 112
     static let controlHeight: CGFloat = 64
-    static let photoControlWidth: CGFloat = 56
 }
 
 struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
@@ -313,6 +312,17 @@ struct RecordView: View {
                 .padding(.top, showCamera ? 18 : 14)
                 .padding(.trailing, 16)
                 .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if isVisible,
+               isEmbeddedInToday,
+               pendingActivity == nil,
+               recorder.state == .idle,
+               !showCamera {
+                embeddedFloatingPhotoControl
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 40)
             }
         }
         .sheet(isPresented: $showsRouteLibrary) {
@@ -1308,14 +1318,17 @@ struct RecordView: View {
                         }
                     }
                     .padding(.leading, 16)
+                    .padding(.trailing, isEmbeddedInToday ? 16 : 0)
                 }
                 .frame(maxWidth: .infinity)
 
-                Divider()
-                    .frame(height: 44)
+                if !isEmbeddedInToday {
+                    Divider()
+                        .frame(height: 44)
 
-                photoLaunchControl
-                    .padding(.trailing, 16)
+                    photoLaunchControl
+                        .padding(.trailing, 16)
+                }
             }
         }
         .padding(.top, 12)
@@ -1641,15 +1654,7 @@ struct RecordView: View {
     }
 
     private var photoLaunchControl: some View {
-        Button {
-            if preActivityPhoto == nil {
-                track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
-                isPreActivityCameraPresented = true
-            } else {
-                track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
-                isPreActivityPhotoPreviewPresented = true
-            }
-        } label: {
+        Button(action: handlePreActivityPhotoAction) {
             ZStack(alignment: .bottomTrailing) {
                 if let photo = preActivityPhoto {
                     Image(uiImage: photo)
@@ -1677,13 +1682,59 @@ struct RecordView: View {
                         }
                 }
             }
-            .frame(width: ActivityLaunchLayout.photoControlWidth, height: ActivityLaunchLayout.controlHeight)
+            .frame(width: 56, height: ActivityLaunchLayout.controlHeight)
             .contentShape(Rectangle())
             .shadow(color: theme.actionColor.opacity(0.24), radius: 7, y: 3)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
         .accessibilityValue(photoAccessibilityValue)
+    }
+
+    private var embeddedFloatingPhotoControl: some View {
+        Button(action: handlePreActivityPhotoAction) {
+            ZStack(alignment: .bottomTrailing) {
+                if let photo = preActivityPhoto {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 17, height: 17)
+                        .background(Color.green, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .offset(x: 2, y: 2)
+                } else {
+                    Image(systemName: "camera.fill")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(theme.actionColor.gradient, in: Circle())
+                        .overlay {
+                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                        }
+                }
+            }
+            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+        .accessibilityValue(photoAccessibilityValue)
+    }
+
+    private func handlePreActivityPhotoAction() {
+        if preActivityPhoto == nil {
+            track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
+            isPreActivityCameraPresented = true
+        } else {
+            track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
+            isPreActivityPhotoPreviewPresented = true
+        }
     }
 
     private func launchUtilityButton(
