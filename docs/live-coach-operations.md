@@ -4,9 +4,9 @@ Open this when selecting the Alibaba route, generating or publishing fixed audio
 
 ## Approved Alibaba Route
 
-Plainstride uses Alibaba Model Studio's workspace-specific Singapore OpenAI-compatible endpoint. The approved model is the dated `qwen3-omni-flash-2025-12-01` snapshot. It fits short, cost-sensitive coaching output, supports `en`, `es`, and Mandarin audio, and avoids the moving behavior of an unversioned model alias.
+Plainstride uses two Alibaba Model Studio APIs in the same Singapore workspace. Dynamic cues retain the dated `qwen3-omni-flash-2025-12-01` conversational snapshot because they require the provider to write and speak a response. Fixed assets use the dedicated non-real-time `qwen3-tts-instruct-flash-2026-01-26` snapshot so the product can supply explicit situation, pacing, emphasis, tone, and voice-style direction while keeping the authored transcript exact. Both are pinned to avoid moving alias behavior.
 
-The configured workspace is `ws-i638drcm5lthrc29` (account `1093525`) at `https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`. Both the deploy and local generation scripts use this endpoint by default. Cloud Run and authenticated local generation are configured to share the Secret Manager entry `outbound-alibaba-ai-api-key`; the credential value is not stored in the repository.
+The configured workspace is `ws-i638drcm5lthrc29` (account `1093525`). Dynamic cues use `https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; fixed TTS uses the same host at `/api/v1`. Both the deploy and local generation scripts use these endpoints by default. Cloud Run and authenticated local generation are configured to share the Secret Manager entry `outbound-alibaba-ai-api-key`; the credential value is not stored in the repository.
 
 The backend owns the following provider map. The iOS app and public APIs see only the Plainstride profile ID and localized product name.
 
@@ -16,12 +16,12 @@ The backend owns the following provider map. The iOS app and public APIs see onl
 | `plainstride_gentle_1` | Gentle | `Serena` | Female | Yes | Yes | Yes |
 | `plainstride_composed_1` | Composed | `Maia` | Female | Yes | Yes | Yes |
 | `plainstride_clear_1` | Bright | `Ethan` | Male | Yes | Yes | Yes |
-| `plainstride_driven_1` | Driven | `Ryan` | Male | Yes | Yes | Yes |
-| `plainstride_easygoing_1` | Easygoing | `Aiden` | Male | Yes | Yes | Yes |
+| `plainstride_driven_1` | Driven | `Moon` | Male | Yes | Yes | Yes |
+| `plainstride_easygoing_1` | Easygoing | `Kai` | Male | Yes | Yes | Yes |
 
-The same provider voice is deliberately used across the three locales so a runner's selected audible identity does not change when the app language changes. Alibaba's official snapshot-specific list marks all six voices as supporting Chinese, English, and Spanish.
+The same provider voice is deliberately used across the three locales so a runner's selected audible identity does not change when the app language changes. Alibaba's instruction-capable non-real-time voice list marks all six voices as supporting Chinese, English, and Spanish. `Ryan` and `Aiden` were replaced because the dedicated Instruct snapshot does not support them.
 
-Recheck the [Qwen-Omni model documentation](https://www.alibabacloud.com/help/en/model-studio/qwen-omni) and [official Omni voice list](https://www.alibabacloud.com/help/en/model-studio/omni-voice-list) before changing the pinned snapshot or map.
+Recheck the [Qwen-Omni model documentation](https://www.alibabacloud.com/help/en/model-studio/qwen-omni), [Qwen TTS API](https://www.alibabacloud.com/help/en/model-studio/qwen-tts-api), and [Qwen TTS voice list](https://www.alibabacloud.com/help/en/model-studio/qwen-tts-voice-list) before changing either pinned snapshot or the map.
 
 ## Fixed Pack Inventory
 
@@ -60,9 +60,9 @@ The local script first uses `ALIBABA_AI_API_KEY` or `DASHSCOPE_API_KEY`. If neit
 
 `--smoke` generates only the English `voice.preview` cue with `plainstride_warm_1` into `backend/.local/live-coach-smoke/`. Use it after credential or endpoint changes before starting the complete pack.
 
-Alibaba's OpenAI-compatible Omni response returns Base64-encoded 24 kHz, mono, 16-bit PCM chunks even when the request's required format field is `wav`. The adapter wraps those chunks in a standard WAV container before validation and storage, matching Alibaba's official Node.js example.
+Fixed generation sends the exact transcript separately from an English delivery instruction. The instruction includes the semantic situation, cue-specific pacing and tone direction, the selected product voice style, outdoor-listening context, and checksum-matched rejection feedback. Alibaba returns a short-lived audio URL; the adapter downloads and validates the resulting 24 kHz mono PCM WAV before storage. Dynamic Omni responses continue to use Base64-encoded audio chunks that the adapter wraps in a standard WAV container.
 
-The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. Each uncached asset gets up to three attempts when Alibaba times out, is unavailable, or returns invalid output. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again.
+The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. Each uncached asset gets up to three attempts when Alibaba times out, is unavailable, or returns invalid output. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again. The content hash includes the fixed TTS model, so a model change cannot silently reuse an older model's rendition.
 
 Generation does not approve or publish audio. Listen to every file and set `approved` to `true` only for an exact, correctly pronounced, naturally paced rendition. Regenerate any rejected entry before publication.
 

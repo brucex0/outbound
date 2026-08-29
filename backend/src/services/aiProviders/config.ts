@@ -1,7 +1,8 @@
 import { AIProviderError } from "./errors.js";
 import { VOICE_PROFILE_IDS, type SupportedAILocale, type VoiceProfileId } from "./types.js";
 import {
-  APPROVED_ALIBABA_LIVE_COACH_MODEL,
+  APPROVED_ALIBABA_DYNAMIC_LIVE_COACH_MODEL,
+  APPROVED_ALIBABA_FIXED_AUDIO_MODEL,
   APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
 } from "./alibaba/approvedLiveCoachConfiguration.js";
 
@@ -9,9 +10,11 @@ export type AlibabaProviderConfig = {
   enabled: boolean;
   apiKey: string;
   baseUrl: string;
+  fixedAudioBaseUrl: string;
   endpointKey: string;
   deploymentRegion: string;
   model: string;
+  fixedAudioModel: string;
   voiceMap: Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>>;
 };
 
@@ -21,15 +24,18 @@ export type AIProviderConfiguration = {
 };
 
 export function loadAIProviderConfiguration(env: NodeJS.ProcessEnv = process.env): AIProviderConfiguration {
+  const baseUrl = trimTrailingSlash(env.ALIBABA_AI_BASE_URL);
   return {
     routePolicyVersion: trimmed(env.AI_ROUTE_POLICY_VERSION) || "1",
     alibaba: {
       enabled: env.ALIBABA_AI_ENABLED === "true",
       apiKey: trimmed(env.ALIBABA_AI_API_KEY),
-      baseUrl: trimTrailingSlash(env.ALIBABA_AI_BASE_URL),
+      baseUrl,
+      fixedAudioBaseUrl: trimTrailingSlash(env.ALIBABA_TTS_BASE_URL) || inferredTTSBaseUrl(baseUrl),
       endpointKey: trimmed(env.ALIBABA_AI_ENDPOINT_KEY) || "alibaba-global-primary",
       deploymentRegion: trimmed(env.ALIBABA_AI_DEPLOYMENT_REGION) || "ap-southeast-1",
-      model: trimmed(env.ALIBABA_LIVE_COACH_MODEL) || APPROVED_ALIBABA_LIVE_COACH_MODEL,
+      model: trimmed(env.ALIBABA_LIVE_COACH_MODEL) || APPROVED_ALIBABA_DYNAMIC_LIVE_COACH_MODEL,
+      fixedAudioModel: trimmed(env.ALIBABA_FIXED_AUDIO_MODEL) || APPROVED_ALIBABA_FIXED_AUDIO_MODEL,
       voiceMap: env.ALIBABA_LIVE_COACH_VOICE_MAP?.trim()
         ? parseVoiceMap(env.ALIBABA_LIVE_COACH_VOICE_MAP)
         : APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
@@ -42,7 +48,9 @@ export function assertAIProviderConfiguration(config: AIProviderConfiguration): 
   const missing = [
     ["ALIBABA_AI_API_KEY", config.alibaba.apiKey],
     ["ALIBABA_AI_BASE_URL", config.alibaba.baseUrl],
+    ["ALIBABA_TTS_BASE_URL", config.alibaba.fixedAudioBaseUrl],
     ["ALIBABA_LIVE_COACH_MODEL", config.alibaba.model],
+    ["ALIBABA_FIXED_AUDIO_MODEL", config.alibaba.fixedAudioModel],
   ].filter(([, value]) => !value).map(([name]) => name);
   if (missing.length > 0) {
     throw new AIProviderError("not_configured", `Alibaba AI configuration is missing: ${missing.join(", ")}.`);
@@ -50,14 +58,28 @@ export function assertAIProviderConfiguration(config: AIProviderConfiguration): 
   if (Object.keys(config.alibaba.voiceMap).length === 0) {
     throw new AIProviderError("not_configured", "ALIBABA_LIVE_COACH_VOICE_MAP is required when Alibaba AI is enabled.");
   }
-  let url: URL;
+  assertHTTPSURL(config.alibaba.baseUrl, "ALIBABA_AI_BASE_URL");
+  assertHTTPSURL(config.alibaba.fixedAudioBaseUrl, "ALIBABA_TTS_BASE_URL");
+}
+
+function assertHTTPSURL(value: string, name: string): void {
   try {
-    url = new URL(config.alibaba.baseUrl);
+    if (new URL(value).protocol === "https:") return;
   } catch {
-    throw new AIProviderError("not_configured", "ALIBABA_AI_BASE_URL must be a valid HTTPS URL.");
+    // Use the configuration error below for malformed URLs too.
   }
-  if (url.protocol !== "https:") {
-    throw new AIProviderError("not_configured", "ALIBABA_AI_BASE_URL must use HTTPS.");
+  throw new AIProviderError("not_configured", `${name} must be a valid HTTPS URL.`);
+}
+
+function inferredTTSBaseUrl(baseUrl: string): string {
+  if (!baseUrl) return "";
+  try {
+    const url = new URL(baseUrl);
+    if (url.pathname.replace(/\/+$/, "") !== "/compatible-mode/v1") return "";
+    url.pathname = "/api/v1";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
   }
 }
 

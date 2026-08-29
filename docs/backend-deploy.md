@@ -138,7 +138,7 @@ The same script forwards the enabled persona/voice allowlists, per-contract cue 
 Operational sequence:
 
 1. Store the active key in Secret Manager as `outbound-alibaba-ai-api-key` and grant only the Cloud Run runtime identity access.
-2. The scripts default to the configured workspace-specific Singapore endpoint. The backend defaults to the approved `qwen3-omni-flash-2025-12-01` snapshot and complete six-voice `en`/`es`/`zh-Hans` map; use deployment overrides only for a separately reviewed change.
+2. The scripts default to the configured workspace-specific Singapore endpoints. Dynamic cues use `qwen3-omni-flash-2025-12-01`; fixed assets use `qwen3-tts-instruct-flash-2026-01-26` through the workspace `/api/v1` endpoint and the complete instruction-capable six-voice `en`/`es`/`zh-Hans` map. Use deployment overrides only for a separately reviewed change.
 3. Validate one request with `./scripts/generate-live-coach-audio.sh --smoke`.
 4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 468 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
 5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.

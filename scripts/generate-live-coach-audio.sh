@@ -6,7 +6,9 @@ PROJECT_ID="${PROJECT_ID:-outbound-494602}"
 GCLOUD_ACCOUNT="${GCLOUD_ACCOUNT:-bruce.xia74@gmail.com}"
 ALIBABA_AI_API_KEY_SECRET="${ALIBABA_AI_API_KEY_SECRET:-outbound-alibaba-ai-api-key}"
 ALIBABA_AI_BASE_URL="${ALIBABA_AI_BASE_URL:-https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1}"
+ALIBABA_TTS_BASE_URL="${ALIBABA_TTS_BASE_URL:-https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/api/v1}"
 export ALIBABA_AI_BASE_URL
+export ALIBABA_TTS_BASE_URL
 SMOKE=0
 
 if [[ "${1:-}" == "--list" ]]; then
@@ -44,6 +46,10 @@ if [[ -z "${ALIBABA_AI_API_KEY:-}" ]]; then
 fi
 if [[ ! "$ALIBABA_AI_BASE_URL" =~ ^https://[^/]+\.ap-southeast-1\.maas\.aliyuncs\.com/compatible-mode/v1/?$ ]]; then
   echo "ALIBABA_AI_BASE_URL must be the HTTPS workspace-specific Singapore compatible-mode/v1 URL." >&2
+  exit 1
+fi
+if [[ ! "$ALIBABA_TTS_BASE_URL" =~ ^https://[^/]+\.ap-southeast-1\.maas\.aliyuncs\.com/api/v1/?$ ]]; then
+  echo "ALIBABA_TTS_BASE_URL must be the HTTPS workspace-specific Singapore api/v1 URL." >&2
   exit 1
 fi
 

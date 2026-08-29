@@ -36,6 +36,9 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
     if (!this.config.enabled || !this.config.apiKey || !this.config.baseUrl || !this.config.model) {
       throw new AIProviderError("not_configured", "Alibaba live coaching is not configured.");
     }
+    if (input.exactTranscript && (!this.config.fixedAudioBaseUrl || !this.config.fixedAudioModel)) {
+      throw new AIProviderError("not_configured", "Alibaba fixed-audio synthesis is not configured.");
+    }
     const deadlineMilliseconds = Math.max(1, input.deadline.getTime() - Date.now());
     const deadlineController = new AbortController();
     const abortFromCaller = () => deadlineController.abort(signal.reason);
@@ -43,49 +46,11 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
     const timer = setTimeout(() => deadlineController.abort(), deadlineMilliseconds);
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "X-DashScope-SSE": "enable",
-        },
-        body: JSON.stringify({
-          model: this.config.model,
-          modalities: ["text", "audio"],
-          audio: { voice: input.providerVoice, format: "wav" },
-          stream: true,
-          stream_options: { include_usage: true },
-          enable_thinking: false,
-          temperature: input.exactTranscript ? 0 : 0.35,
-          max_tokens: input.exactTranscript ? 192 : 96,
-          messages: [
-            { role: "system", content: `${input.stableInstructions}\n${input.coachPersonaInstructions}` },
-            { role: "user", content: JSON.stringify(providerPayload(input)) },
-          ],
-        }),
-        signal: deadlineController.signal,
-      });
-      if (!response.ok) throw providerHTTPError(response.status);
-      const parsed = await parseAlibabaResponse(response, deadlineController.signal);
-      const transcript = normalizeTranscript(parsed.transcript);
-      validateTranscript(transcript, input);
-      const wav = validateLiveCoachWav(parsed.audio, input.exactTranscript
-        ? { maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS }
-        : undefined);
+      const result = input.exactTranscript
+        ? await this.generateFixedCue(input, deadlineController.signal)
+        : await this.generateDynamicCue(input, deadlineController.signal);
       recordRouteSuccess(this.key, this.endpointKey);
-      return {
-        transcript,
-        audio: parsed.audio,
-        audioEncoding: wav.encoding,
-        durationMilliseconds: wav.durationMilliseconds,
-        usage: {
-          inputTokens: parsed.usage.prompt_tokens,
-          outputTextTokens: parsed.usage.output_tokens_details?.text_tokens ?? parsed.usage.completion_tokens,
-          outputAudioTokens: parsed.usage.output_tokens_details?.audio_tokens,
-        },
-        providerRequestId: parsed.providerRequestId,
-      };
+      return result;
     } catch (error) {
       recordRouteFailure(this.key, this.endpointKey);
       throw sanitizedProviderError(error);
@@ -94,17 +59,97 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
       signal.removeEventListener("abort", abortFromCaller);
     }
   }
+
+  private async generateDynamicCue(input: LiveCoachGenerationInput, signal: AbortSignal) {
+    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.config.apiKey}`,
+        "X-DashScope-SSE": "enable",
+      },
+      body: JSON.stringify({
+        model: this.config.model,
+        modalities: ["text", "audio"],
+        audio: { voice: input.providerVoice, format: "wav" },
+        stream: true,
+        stream_options: { include_usage: true },
+        enable_thinking: false,
+        temperature: 0.35,
+        max_tokens: 96,
+        messages: [
+          { role: "system", content: `${input.stableInstructions}\n${input.coachPersonaInstructions}` },
+          { role: "user", content: JSON.stringify(providerPayload(input)) },
+        ],
+      }),
+      signal,
+    });
+    if (!response.ok) throw providerHTTPError(response.status);
+    const parsed = await parseAlibabaResponse(response, signal);
+    const transcript = normalizeTranscript(parsed.transcript);
+    validateTranscript(transcript, input);
+    const wav = validateLiveCoachWav(parsed.audio);
+    return {
+      transcript,
+      audio: parsed.audio,
+      audioEncoding: wav.encoding,
+      durationMilliseconds: wav.durationMilliseconds,
+      usage: {
+        inputTokens: parsed.usage.prompt_tokens,
+        outputTextTokens: parsed.usage.output_tokens_details?.text_tokens ?? parsed.usage.completion_tokens,
+        outputAudioTokens: parsed.usage.output_tokens_details?.audio_tokens,
+      },
+      providerRequestId: parsed.providerRequestId,
+    };
+  }
+
+  private async generateFixedCue(input: LiveCoachGenerationInput, signal: AbortSignal) {
+    const transcript = normalizeTranscript(input.exactTranscript ?? "");
+    validateTranscript(transcript, input);
+    const response = await fetch(
+      `${this.config.fixedAudioBaseUrl}/services/aigc/multimodal-generation/generation`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.config.fixedAudioModel,
+          input: {
+            text: transcript,
+            voice: input.providerVoice,
+            language_type: ttsLanguage(input.locale),
+            instructions: fixedCueInstructions(input),
+            optimize_instructions: true,
+          },
+        }),
+        signal,
+      }
+    );
+    if (!response.ok) throw providerHTTPError(response.status);
+    const parsed = await parseTTSResponse(response);
+    const audioResponse = await fetch(validatedAudioURL(parsed.audioUrl), { signal });
+    if (!audioResponse.ok) throw providerHTTPError(audioResponse.status);
+    const audio = new Uint8Array(await audioResponse.arrayBuffer());
+    const wav = validateLiveCoachWav(audio, {
+      maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS,
+    });
+    return {
+      transcript,
+      audio,
+      audioEncoding: wav.encoding,
+      durationMilliseconds: wav.durationMilliseconds,
+      usage: {
+        inputTokens: parsed.inputTokens,
+        outputAudioTokens: parsed.outputAudioTokens,
+      },
+      providerRequestId: parsed.requestId,
+    };
+  }
 }
 
 function providerPayload(input: LiveCoachGenerationInput): object {
-  if (input.exactTranscript) {
-    return {
-      task: "speak_exact_text",
-      locale: input.locale,
-      text: input.exactTranscript,
-      constraint: "Speak the exact text with no additions or omissions.",
-    };
-  }
   return {
     task: "live_coach_cue",
     locale: input.locale,
@@ -115,6 +160,73 @@ function providerPayload(input: LiveCoachGenerationInput): object {
     maximumSpokenWordsEquivalent: input.maximumSpokenWordsEquivalent,
     output: "Return and speak exactly one short coaching sentence. Do not include markdown or labels.",
   };
+}
+
+function fixedCueInstructions(input: LiveCoachGenerationInput): string {
+  return [
+    "Voice a prerecorded Plainstride live endurance coaching cue for one runner who is already moving.",
+    `Semantic moment: ${input.semanticMoment}.`,
+    input.coachPersonaInstructions,
+    "Use natural conversational cadence, human sentence stress, and clean pronunciation that remains easy to catch outdoors.",
+    "Speak only the supplied text, exactly once, with no additions, omissions, labels, sound effects, or background audio.",
+    "Avoid robotic, sing-song, announcer, commercial, and theatrical delivery.",
+  ].join(" ");
+}
+
+function ttsLanguage(locale: SupportedAILocale): "English" | "Spanish" | "Chinese" {
+  if (locale === "zh-Hans") return "Chinese";
+  if (locale === "es") return "Spanish";
+  return "English";
+}
+
+type ParsedTTSResponse = {
+  audioUrl: string;
+  requestId?: string;
+  inputTokens?: number;
+  outputAudioTokens?: number;
+};
+
+async function parseTTSResponse(response: Response): Promise<ParsedTTSResponse> {
+  let value: unknown;
+  try {
+    value = await response.json();
+  } catch {
+    throw new AIProviderError("invalid_provider_output", "Provider returned malformed TTS JSON.");
+  }
+  if (!isRecord(value)) throw new AIProviderError("invalid_provider_output", "Provider returned invalid TTS output.");
+  const output = isRecord(value.output) ? value.output : null;
+  const audio = output && isRecord(output.audio) ? output.audio : null;
+  if (!audio || typeof audio.url !== "string" || !audio.url.trim()) {
+    throw new AIProviderError("invalid_provider_output", "Provider returned no TTS audio URL.");
+  }
+  const usage = isRecord(value.usage) ? value.usage : null;
+  return {
+    audioUrl: audio.url,
+    requestId: typeof value.request_id === "string" ? value.request_id : undefined,
+    inputTokens: numericValue(usage?.input_tokens),
+    outputAudioTokens: numericValue(usage?.output_tokens),
+  };
+}
+
+function validatedAudioURL(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new AIProviderError("invalid_provider_output", "Provider returned an invalid TTS audio URL.");
+  }
+  if (!["http:", "https:"].includes(url.protocol) || !url.hostname.endsWith(".aliyuncs.com")) {
+    throw new AIProviderError("invalid_provider_output", "Provider returned an untrusted TTS audio URL.");
+  }
+  return url;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function numericValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function validateTranscript(transcript: string, input: LiveCoachGenerationInput): void {

@@ -44,6 +44,8 @@ Environment overrides:
   ALIBABA_AI_DEPLOYMENT_REGION default: ap-southeast-1
   ALIBABA_AI_BASE_URL          default: approved Singapore workspace compatible-mode/v1 URL
   ALIBABA_LIVE_COACH_MODEL     optional override; default: qwen3-omni-flash-2025-12-01
+  ALIBABA_TTS_BASE_URL         optional override; defaults to the workspace api/v1 URL
+  ALIBABA_FIXED_AUDIO_MODEL    optional override; default: qwen3-tts-instruct-flash-2026-01-26
   ALIBABA_LIVE_COACH_VOICE_MAP optional override; default: approved 3 female/3 male locale map
   ALIBABA_AI_API_KEY_SECRET    default: outbound-alibaba-ai-api-key
   SOURCE_DIR              default: backend
@@ -96,6 +98,8 @@ ALIBABA_AI_ENDPOINT_KEY="${ALIBABA_AI_ENDPOINT_KEY:-alibaba-sg-ws-i638drcm5lthrc
 ALIBABA_AI_DEPLOYMENT_REGION="${ALIBABA_AI_DEPLOYMENT_REGION:-ap-southeast-1}"
 ALIBABA_AI_BASE_URL="${ALIBABA_AI_BASE_URL:-https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1}"
 ALIBABA_LIVE_COACH_MODEL="${ALIBABA_LIVE_COACH_MODEL:-}"
+ALIBABA_TTS_BASE_URL="${ALIBABA_TTS_BASE_URL:-}"
+ALIBABA_FIXED_AUDIO_MODEL="${ALIBABA_FIXED_AUDIO_MODEL:-}"
 ALIBABA_LIVE_COACH_VOICE_MAP="${ALIBABA_LIVE_COACH_VOICE_MAP:-}"
 ALIBABA_AI_API_KEY_SECRET="${ALIBABA_AI_API_KEY_SECRET:-outbound-alibaba-ai-api-key}"
 SOURCE_DIR="${SOURCE_DIR:-backend}"
@@ -199,6 +203,12 @@ if [[ -n "$ALIBABA_AI_BASE_URL" ]]; then
 fi
 if [[ -n "$ALIBABA_LIVE_COACH_MODEL" ]]; then
   environment_bindings+=("ALIBABA_LIVE_COACH_MODEL=$ALIBABA_LIVE_COACH_MODEL")
+fi
+if [[ -n "$ALIBABA_TTS_BASE_URL" ]]; then
+  environment_bindings+=("ALIBABA_TTS_BASE_URL=$ALIBABA_TTS_BASE_URL")
+fi
+if [[ -n "$ALIBABA_FIXED_AUDIO_MODEL" ]]; then
+  environment_bindings+=("ALIBABA_FIXED_AUDIO_MODEL=$ALIBABA_FIXED_AUDIO_MODEL")
 fi
 if [[ -n "$ALIBABA_LIVE_COACH_VOICE_MAP" ]]; then
   environment_bindings+=("ALIBABA_LIVE_COACH_VOICE_MAP=$ALIBABA_LIVE_COACH_VOICE_MAP")

@@ -11,6 +11,7 @@ import { audioPackManifestSchema } from "../services/liveCoach/audioPackManifest
 import { validateLiveCoachWav } from "../services/aiProviders/audioValidation.js";
 import { AIProviderError } from "../services/aiProviders/errors.js";
 import { COACH_PERSONAS } from "../services/liveCoach/liveCoachCatalog.js";
+import { fixedCueDeliveryInstructions } from "../services/liveCoach/fixedCueDelivery.js";
 import {
   liveCoachRegenerationInstruction,
   liveCoachReviewEntryID,
@@ -119,6 +120,7 @@ for (const voiceProfileId of voiceProfileIds) {
       const hash = createHash("sha256").update(JSON.stringify({
         text: text.trim(), locale, voiceProfileId, scriptStyleId: entry.scriptStyleId,
         audio: "wav-pcm_s16le-24000-mono", route: resolved.route,
+        fixedAudioModel: providerConfig.alibaba.fixedAudioModel,
       })).digest("hex");
       const fileName = `${hash}.wav`;
       const filePath = path.join(outputDirectory, fileName);
@@ -194,10 +196,11 @@ for (const voiceProfileId of voiceProfileIds) {
             requestId: crypto.randomUUID(),
             locale,
             coachPersonaId: "plainstride_supportive_v1",
-            coachPersonaInstructions: [
-              "Speak naturally and clearly without changing the supplied fixed text.",
-              regenerationInstruction,
-            ].filter(Boolean).join(" "),
+            coachPersonaInstructions: fixedCueDeliveryInstructions(
+              entry.cueKey,
+              voiceProfileId,
+              regenerationInstruction
+            ),
             voiceProfileId,
             providerVoice: resolved.route.providerVoice,
             semanticMoment: entry.cueKey,
