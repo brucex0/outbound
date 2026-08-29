@@ -2,13 +2,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { audioPackManifestSchema, type AudioPackManifest } from "../services/liveCoach/audioPackManifest.js";
-
-type ReviewStatus = "unreviewed" | "approved" | "rejected";
-type ReviewProgress = {
-  contractVersion: 1;
-  catalogVersion: string;
-  entries: Record<string, { sha256: string; status: ReviewStatus; reviewedAt?: string }>;
-};
+import {
+  LIVE_COACH_REJECTION_REASON_CODES,
+  liveCoachReviewEntryID,
+  normalizeLiveCoachRejectionReason,
+  parseLiveCoachReviewProgress,
+  type LiveCoachReviewProgress,
+  type LiveCoachReviewStatus,
+} from "../services/liveCoach/audioReviewFeedback.js";
 
 const args = parseArgs(process.argv.slice(2));
 const manifestPath = path.resolve(process.cwd(), args.reviewManifest ?? ".local/live-coach-review/2026-08-28.1/review-manifest.json");
@@ -60,17 +61,29 @@ async function updateReview(request: IncomingMessage, response: ServerResponse, 
   }
   const entry = manifest.entries[index];
   if (!entry) return sendJSON(response, 404, { error: "Review entry not found." });
-  const body = JSON.parse(await readBody(request)) as { sha256?: unknown; status?: unknown; listened?: unknown };
+  const body = JSON.parse(await readBody(request)) as {
+    sha256?: unknown;
+    status?: unknown;
+    listened?: unknown;
+    rejectionReason?: unknown;
+  };
   if (body.sha256 !== entry.sha256) return sendJSON(response, 409, { error: "Audio changed; reload before reviewing." });
   if (!isReviewStatus(body.status)) return sendJSON(response, 400, { error: "Invalid review status." });
   if (body.status !== "unreviewed" && body.listened !== true) {
     return sendJSON(response, 400, { error: "Play the complete clip before reviewing it." });
+  }
+  const rejectionReason = body.status === "rejected"
+    ? normalizeLiveCoachRejectionReason(body.rejectionReason)
+    : undefined;
+  if (body.status === "rejected" && !rejectionReason) {
+    return sendJSON(response, 400, { error: "Select a rejection reason. Other requires a written detail." });
   }
   entry.approved = body.status === "approved";
   progress.entries[entryID(entry)] = {
     sha256: entry.sha256,
     status: body.status,
     ...(body.status === "unreviewed" ? {} : { reviewedAt: new Date().toISOString() }),
+    ...(rejectionReason ? { rejectionReason } : {}),
   };
   await persistReview();
   sendJSON(response, 200, reviewState());
@@ -89,14 +102,22 @@ function reviewState() {
       durationMilliseconds: entry.durationMilliseconds,
       sha256: entry.sha256,
       status: currentStatus(entry),
+      rejectionReason: currentRejectionReason(entry),
     })),
+    rejectionReasonCodes: LIVE_COACH_REJECTION_REASON_CODES,
   };
 }
 
-function currentStatus(entry: AudioPackManifest["entries"][number]): ReviewStatus {
+function currentStatus(entry: AudioPackManifest["entries"][number]): LiveCoachReviewStatus {
   if (entry.approved) return "approved";
   const saved = progress.entries[entryID(entry)];
   return saved?.sha256 === entry.sha256 && saved.status === "rejected" ? "rejected" : "unreviewed";
+}
+
+function currentRejectionReason(entry: AudioPackManifest["entries"][number]) {
+  const saved = progress.entries[entryID(entry)];
+  if (saved?.sha256 !== entry.sha256 || saved.status !== "rejected") return undefined;
+  return normalizeLiveCoachRejectionReason(saved.rejectionReason) ?? undefined;
 }
 
 function reconcileProgress(): void {
@@ -114,14 +135,15 @@ function reconcileProgress(): void {
   for (const id of Object.keys(progress.entries)) if (!currentIDs.has(id)) delete progress.entries[id];
 }
 
-function entryID(entry: AudioPackManifest["entries"][number]): string {
-  return [entry.cueKey, entry.locale, entry.voiceProfileId, entry.scriptStyleId].join("|");
-}
+function entryID(entry: AudioPackManifest["entries"][number]): string { return liveCoachReviewEntryID(entry); }
 
-async function loadProgress(): Promise<ReviewProgress> {
+async function loadProgress(): Promise<LiveCoachReviewProgress> {
   try {
-    const parsed = JSON.parse(await readFile(progressPath, "utf8")) as ReviewProgress;
-    if (parsed.contractVersion === 1 && parsed.catalogVersion === manifest.catalogVersion && parsed.entries) return parsed;
+    const parsed = parseLiveCoachReviewProgress(
+      JSON.parse(await readFile(progressPath, "utf8")),
+      manifest.catalogVersion
+    );
+    if (parsed) return parsed;
   } catch {}
   return { contractVersion: 1, catalogVersion: manifest.catalogVersion, entries: {} };
 }
@@ -157,7 +179,7 @@ function requiredValue(values: string[], index: number, flag: string): string {
   return value;
 }
 
-function isReviewStatus(value: unknown): value is ReviewStatus {
+function isReviewStatus(value: unknown): value is LiveCoachReviewStatus {
   return value === "unreviewed" || value === "approved" || value === "rejected";
 }
 
@@ -175,6 +197,7 @@ async function readBody(request: IncomingMessage): Promise<string> {
 
 function addSecurityHeaders(response: ServerResponse): void {
   response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self'; connect-src 'self'");
+  response.setHeader("Cache-Control", "no-store");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "no-referrer");
 }
@@ -220,6 +243,8 @@ const reviewPage = String.raw`<!doctype html>
     .transcript { font-size: clamp(24px, 4vw, 37px); line-height: 1.25; letter-spacing: -.025em; min-height: 96px; margin-bottom: 26px; }
     audio { width: 100%; margin-bottom: 16px; }
     .listen-note { color: #d2b883; min-height: 24px; }
+    .rejection-fields { display: grid; grid-template-columns: .8fr 1.2fr; gap: 12px; margin-top: 14px; }
+    textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid #46534a; border-radius: 10px; padding: 10px; background: #101411; color: #f4f6f1; font: inherit; }
     .actions { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr 1fr; gap: 10px; margin-top: 18px; }
     button { border: 1px solid #4a574e; border-radius: 12px; padding: 13px 14px; background: #252c27; color: #f4f6f1; font: inherit; font-weight: 750; cursor: pointer; }
     button:hover:not(:disabled) { filter: brightness(1.15); }
@@ -230,7 +255,7 @@ const reviewPage = String.raw`<!doctype html>
     .footer label { display: flex; align-items: center; gap: 8px; }
     kbd { border: 1px solid #526057; border-bottom-width: 2px; border-radius: 5px; padding: 2px 6px; color: #dce4da; }
     .empty { padding: 50px; text-align: center; color: #b8c2b5; }
-    @media (max-width: 700px) { header { align-items: start; flex-direction: column; } .summary { text-align: left; } .toolbar { grid-template-columns: 1fr; } .actions { grid-template-columns: 1fr 1fr; } .footer { align-items: start; flex-direction: column; } }
+    @media (max-width: 700px) { header { align-items: start; flex-direction: column; } .summary { text-align: left; } .toolbar, .rejection-fields { grid-template-columns: 1fr; } .actions { grid-template-columns: 1fr 1fr; } .footer { align-items: start; flex-direction: column; } }
   </style>
 </head>
 <body>
@@ -243,12 +268,12 @@ const reviewPage = String.raw`<!doctype html>
   </section>
   <section id="card" class="card">
     <div class="card-head"><div><div id="cue" class="cue"></div><div id="meta" class="meta"></div></div><div id="status" class="status unreviewed"></div></div>
-    <div class="content"><div id="transcript" class="transcript"></div><audio id="audio" controls preload="metadata"></audio><div id="listen-note" class="listen-note"></div><div class="actions"><button id="previous">← Previous</button><button id="reject" disabled>Reject · R</button><button id="approve" disabled>Approve · A</button><button id="next">Next →</button></div></div>
+    <div class="content"><div id="transcript" class="transcript"></div><audio id="audio" controls preload="metadata"></audio><div id="listen-note" class="listen-note"></div><div class="rejection-fields"><label>Reason if rejected<select id="rejection-reason"><option value="">Select a reason…</option><option value="pronunciation">Pronunciation</option><option value="too_fast">Too fast</option><option value="too_slow">Too slow</option><option value="unnatural_pacing">Unnatural pacing or pauses</option><option value="wrong_tone">Wrong tone</option><option value="wrong_emphasis">Wrong emphasis</option><option value="audio_artifact">Audio artifact or clipping</option><option value="transcript_mismatch">Spoken words do not match</option><option value="other">Other</option></select></label><label>Detail for regeneration<textarea id="rejection-detail" maxlength="500" placeholder="Optional except for Other. Note the word, sound, tone, pause, or artifact to correct."></textarea></label></div><div class="actions"><button id="previous">← Previous</button><button id="reject" disabled>Reject · R</button><button id="approve" disabled>Approve · A</button><button id="next">Next →</button></div></div>
     <div class="footer"><span><kbd>Space</kbd> play · <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>←</kbd><kbd>→</kbd> navigate</span><label><input id="autoplay" type="checkbox" checked> Autoplay next clip</label></div>
   </section>
 </main>
 <script>
-  const elements = Object.fromEntries(["summary","card","cue","meta","status","transcript","audio","listen-note","previous","reject","approve","next","status-filter","locale-filter","voice-filter","autoplay"].map(function (id) { return [id, document.getElementById(id)]; }));
+  const elements = Object.fromEntries(["summary","card","cue","meta","status","transcript","audio","listen-note","rejection-reason","rejection-detail","previous","reject","approve","next","status-filter","locale-filter","voice-filter","autoplay"].map(function (id) { return [id, document.getElementById(id)]; }));
   let entries = [];
   let filtered = [];
   let cursor = 0;
@@ -275,30 +300,37 @@ const reviewPage = String.raw`<!doctype html>
   function render(autoplay) {
     const counts = { approved: 0, rejected: 0, unreviewed: 0 };
     entries.forEach(function (entry) { counts[entry.status] += 1; });
-    elements.summary.textContent = counts.approved + " approved · " + counts.rejected + " rejected · " + counts.unreviewed + " remaining";
+    const missingReasons = entries.filter(function (entry) { return entry.status === "rejected" && !entry.rejectionReason; }).length;
+    elements.summary.textContent = counts.approved + " approved · " + counts.rejected + " rejected" + (missingReasons ? " (" + missingReasons + " need reasons)" : "") + " · " + counts.unreviewed + " remaining";
     if (!filtered.length) { elements.card.style.display = "none"; return; }
     elements.card.style.display = "block";
     const entry = filtered[cursor];
-    listened = false;
+    listened = entry.status === "rejected";
     elements.cue.textContent = entry.cueKey;
     elements.meta.textContent = entry.locale + " · " + entry.voiceProfileId + " · " + (entry.durationMilliseconds / 1000).toFixed(2) + "s · " + (cursor + 1) + "/" + filtered.length;
     elements.status.textContent = entry.status;
     elements.status.className = "status " + entry.status;
     elements.transcript.textContent = entry.transcript;
+    elements["rejection-reason"].value = entry.rejectionReason ? entry.rejectionReason.code : "";
+    elements["rejection-detail"].value = entry.rejectionReason && entry.rejectionReason.detail ? entry.rejectionReason.detail : "";
     elements.audio.src = "/audio/" + entry.index + "?sha=" + entry.sha256;
     elements.audio.load();
-    elements["listen-note"].textContent = "Listen through the complete clip to unlock approve/reject.";
-    setReviewEnabled(false);
+    elements["listen-note"].textContent = entry.status === "rejected"
+      ? (entry.rejectionReason ? "Rejection feedback is saved and will guide regeneration." : "Add the reason this previously reviewed clip was rejected.")
+      : "Listen through the complete clip to unlock approve/reject.";
+    updateReviewControls();
     elements.previous.disabled = cursor === 0;
     elements.next.disabled = cursor === filtered.length - 1;
     if (autoplay && elements.autoplay.checked) elements.audio.play().catch(function () {});
   }
-  function setReviewEnabled(enabled) { elements.approve.disabled = !enabled; elements.reject.disabled = !enabled; }
+  function validRejectionReason() { return Boolean(elements["rejection-reason"].value) && (elements["rejection-reason"].value !== "other" || Boolean(elements["rejection-detail"].value.trim())); }
+  function updateReviewControls() { elements.approve.disabled = !listened; elements.reject.disabled = !listened || !validRejectionReason(); }
   function move(delta, autoplay) { const next = cursor + delta; if (next >= 0 && next < filtered.length) { cursor = next; render(autoplay); } }
   async function review(status) {
-    if (!listened || !filtered.length) return;
+    if (!listened || !filtered.length || (status === "rejected" && !validRejectionReason())) return;
     const entry = filtered[cursor];
-    const response = await fetch("/api/reviews/" + entry.index, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sha256: entry.sha256, status: status, listened: true }) });
+    const rejectionReason = status === "rejected" ? { code: elements["rejection-reason"].value, detail: elements["rejection-detail"].value.trim() } : undefined;
+    const response = await fetch("/api/reviews/" + entry.index, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sha256: entry.sha256, status: status, listened: true, rejectionReason: rejectionReason }) });
     const state = await response.json();
     if (!response.ok) { elements["listen-note"].textContent = state.error || "Review update failed."; return; }
     entries = state.entries;
@@ -306,14 +338,16 @@ const reviewPage = String.raw`<!doctype html>
     applyFilters(nextEntry && nextEntry.index);
     if (filtered.length && elements.autoplay.checked) elements.audio.play().catch(function () {});
   }
-  elements.audio.addEventListener("ended", function () { listened = true; setReviewEnabled(true); elements["listen-note"].textContent = "Playback complete. Approve or reject this exact recording."; });
+  elements.audio.addEventListener("ended", function () { listened = true; updateReviewControls(); elements["listen-note"].textContent = "Playback complete. Approve, or select a reason and reject this exact recording."; });
   elements.previous.addEventListener("click", function () { move(-1, false); });
   elements.next.addEventListener("click", function () { move(1, false); });
   elements.approve.addEventListener("click", function () { review("approved"); });
   elements.reject.addEventListener("click", function () { review("rejected"); });
+  elements["rejection-reason"].addEventListener("change", updateReviewControls);
+  elements["rejection-detail"].addEventListener("input", updateReviewControls);
   [elements["status-filter"], elements["locale-filter"], elements["voice-filter"]].forEach(function (select) { select.addEventListener("change", function () { applyFilters(); }); });
   document.addEventListener("keydown", function (event) {
-    if (event.target && ["SELECT", "INPUT"].includes(event.target.tagName)) return;
+    if (event.target && ["SELECT", "INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
     if (event.code === "Space") { event.preventDefault(); if (elements.audio.paused) elements.audio.play(); else elements.audio.pause(); }
     else if (event.key === "a" || event.key === "A") review("approved");
     else if (event.key === "r" || event.key === "R") review("rejected");

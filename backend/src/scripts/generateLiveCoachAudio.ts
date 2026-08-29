@@ -11,6 +11,13 @@ import { audioPackManifestSchema } from "../services/liveCoach/audioPackManifest
 import { validateLiveCoachWav } from "../services/aiProviders/audioValidation.js";
 import { AIProviderError } from "../services/aiProviders/errors.js";
 import { COACH_PERSONAS } from "../services/liveCoach/liveCoachCatalog.js";
+import {
+  liveCoachRegenerationInstruction,
+  liveCoachReviewEntryID,
+  normalizeLiveCoachRejectionReason,
+  parseLiveCoachReviewProgress,
+  type LiveCoachReviewProgress,
+} from "../services/liveCoach/audioReviewFeedback.js";
 
 type SourceCatalog = {
   catalogVersion: string;
@@ -40,6 +47,7 @@ assertAIProviderConfiguration(providerConfig);
 const outputDirectory = path.resolve(process.cwd(), args.output ?? `.local/live-coach-review/${source.catalogVersion}`);
 await mkdir(outputDirectory, { recursive: true });
 const existingManifest = await loadExistingManifest(path.join(outputDirectory, "review-manifest.json"));
+const reviewProgress = await loadReviewProgress(path.join(outputDirectory, "review-progress.json"), source.catalogVersion);
 const registry = buildAIProviderRegistry(providerConfig);
 const manifest: AudioPackManifest = {
   contractVersion: 1,
@@ -87,6 +95,27 @@ for (const voiceProfileId of voiceProfileIds) {
       })).digest("hex");
       const fileName = `${hash}.wav`;
       const filePath = path.join(outputDirectory, fileName);
+      const existingEntry = existingManifest?.entries.find((existing) =>
+        existing.cueKey === entry.cueKey
+        && existing.locale === locale
+        && existing.voiceProfileId === voiceProfileId
+        && existing.scriptStyleId === entry.scriptStyleId
+      );
+      const savedReview = reviewProgress?.entries[liveCoachReviewEntryID({
+        cueKey: entry.cueKey,
+        locale,
+        voiceProfileId,
+        scriptStyleId: entry.scriptStyleId,
+      })];
+      const rejectionReason = args.force
+        && existingEntry
+        && savedReview?.status === "rejected"
+        && savedReview.sha256 === existingEntry.sha256
+        ? normalizeLiveCoachRejectionReason(savedReview.rejectionReason)
+        : null;
+      const regenerationInstruction = rejectionReason
+        ? liveCoachRegenerationInstruction(rejectionReason)
+        : "";
       let audio: Buffer;
       if (!args.force) {
         try {
@@ -137,12 +166,16 @@ for (const voiceProfileId of voiceProfileIds) {
 
       async function generateAudio(): Promise<Buffer> {
         console.log(`[${assetIndex}/${totalAssetCount}] generating ${voiceProfileId}/${locale}/${entry.cueKey}`);
+        if (rejectionReason) console.log(`  applying rejection feedback: ${rejectionReason.code}`);
         const result = await generateWithRetry(
           () => resolved.provider.generateCue({
             requestId: crypto.randomUUID(),
             locale,
             coachPersonaId: "plainstride_supportive_v1",
-            coachPersonaInstructions: "Speak naturally and clearly without changing the supplied fixed text.",
+            coachPersonaInstructions: [
+              "Speak naturally and clearly without changing the supplied fixed text.",
+              regenerationInstruction,
+            ].filter(Boolean).join(" "),
             voiceProfileId,
             providerVoice: resolved.route.providerVoice,
             semanticMoment: entry.cueKey,
@@ -222,6 +255,16 @@ function printCatalog(source: SourceCatalog): void {
 async function loadExistingManifest(manifestPath: string): Promise<AudioPackManifest | null> {
   try {
     return audioPackManifestSchema.parse(JSON.parse(await readFile(manifestPath, "utf8")));
+  } catch {
+    return null;
+  }
+}
+async function loadReviewProgress(
+  progressPath: string,
+  catalogVersion: string
+): Promise<LiveCoachReviewProgress | null> {
+  try {
+    return parseLiveCoachReviewProgress(JSON.parse(await readFile(progressPath, "utf8")), catalogVersion);
   } catch {
     return null;
   }

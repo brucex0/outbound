@@ -72,7 +72,7 @@ Run the loopback-only review screen from `backend/`:
 npm run live-coach:review-audio
 ```
 
-Open `http://127.0.0.1:4173`. The screen pairs each hashed WAV with its cue, locale, product voice, and exact transcript. Playback must finish before **Approve** or **Reject** is enabled. Use Space to play or pause, A to approve, R to reject, and the arrow keys to navigate. Progress is written atomically to the gitignored `review-manifest.json` and `review-progress.json`; publication remains blocked while any manifest entry is unapproved.
+Open `http://127.0.0.1:4173`. The screen pairs each hashed WAV with its cue, locale, product voice, and exact transcript. Playback must finish before **Approve** or **Reject** is enabled. A rejection also requires a structured reason—such as pronunciation, speed, pacing, tone, emphasis, artifact, or transcript mismatch—and accepts a detailed reviewer note. Use Space to play or pause, A to approve, R to reject, and the arrow keys to navigate. Progress and rejection feedback are written atomically to the gitignored `review-manifest.json` and `review-progress.json`; publication remains blocked while any manifest entry is unapproved.
 
 Regenerate a rejected rendition without replacing the rest of the completed manifest:
 
@@ -84,7 +84,7 @@ Regenerate a rejected rendition without replacing the rest of the completed mani
   --force
 ```
 
-The targeted run safely replaces only that manifest entry. Its new audio checksum resets approval, so listen to the replacement in the review screen before publishing.
+The targeted run safely replaces only that manifest entry. When its current checksum has saved rejection feedback, the generator automatically adds the category-specific correction and reviewer detail to the fixed-text instructions. Its new audio checksum resets approval, so restart the review screen and listen to the replacement before publishing.
 
 ## Manifest Trust And Publication
 
