@@ -574,6 +574,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     onStart: startRecording,
+                    onResume: resumeRecording,
                     onFinish: finishRecording
                 ) { image, meta in
                     capturedPhotos.append((image, meta))
@@ -595,6 +596,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     onStart: startRecording,
+                    onResume: resumeRecording,
                     onFinish: finishRecording
                 )
                 .tag(SessionPage.map)
@@ -941,6 +943,28 @@ struct RecordView: View {
             showCamera = false
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func resumeRecording() {
+        let shouldRecoverWorkoutMusic = recorder.recoveredSession
+        recorder.resume()
+        guard shouldRecoverWorkoutMusic else { return }
+
+        Task {
+            guard let outcome = await musicStore.resumeRecoveredWorkoutPlaybackIfNeeded() else { return }
+            let properties: [ProductPropertyKey: AnalyticsValue]
+            switch outcome {
+            case .alreadyPlaying:
+                properties = [.result: .string("success"), .sourceType: .string("already_playing")]
+            case .resumedExistingQueue:
+                properties = [.result: .string("success"), .sourceType: .string("existing_queue")]
+            case .rebuiltSelection:
+                properties = [.result: .string("success"), .sourceType: .string("rebuilt_selection")]
+            case .failed:
+                properties = [.result: .string("failure"), .sourceType: .string("unavailable")]
+            }
+            track(.init(.musicPlaybackRecoveryCompleted, properties: properties))
+        }
     }
 
     private func savePendingActivity(

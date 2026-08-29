@@ -20,6 +20,7 @@ struct CameraHUDView: View {
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
     let onStart: () -> Void
+    let onResume: () -> Void
     let onFinish: () -> Void
     let onCapture: (UIImage, PhotoMetadata) -> Void
 
@@ -92,7 +93,7 @@ struct CameraHUDView: View {
                         },
                         onStart: onStart,
                         onPause: pauseActivity,
-                        onResume: resumeActivity,
+                        onResume: onResume,
                         onFinish: onFinish
                     )
                     .background {
@@ -306,10 +307,6 @@ struct CameraHUDView: View {
 
     private func pauseActivity() {
         recorder.pause()
-    }
-
-    private func resumeActivity() {
-        recorder.resume()
     }
 
     private func trackMusicControl(_ control: String) {

@@ -40,6 +40,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case musicAuthorizationCompleted = "music_authorization_completed"
     case musicQuickPickSelected = "music_quick_pick_selected"
     case musicPlaybackStarted = "music_playback_started"
+    case musicPlaybackRecoveryCompleted = "music_playback_recovery_completed"
     case musicControlUsed = "music_control_used"
     case musicOperationFailed = "music_operation_failed"
     case routeLibraryOpened = "route_library_opened"
@@ -178,6 +179,7 @@ enum ProductAnalyticsSchema {
         .musicAuthorizationCompleted: [.result],
         .musicQuickPickSelected: [.selectionType],
         .musicPlaybackStarted: [.result],
+        .musicPlaybackRecoveryCompleted: [.result, .sourceType],
         .musicControlUsed: [.control],
         .musicOperationFailed: [.errorCategory],
         .routeLibraryOpened: [],

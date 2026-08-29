@@ -221,6 +221,7 @@ V1 behavior should be:
 - user music keeps playing while the app records
 - guide speech ducks music briefly instead of stopping it
 - pausing a run should not automatically stop music
+- if the process is terminated mid-workout, restore the activity as paused and resume music when the runner taps Resume; reuse the provider queue when available, otherwise rebuild the locally persisted selection
 - finishing a run stops music that Outbound started for that workout; playback that was never started by Outbound remains untouched
 
 Implementation guidance:
@@ -358,6 +359,8 @@ Do not persist:
 - raw audio assets
 - stream URLs
 - anything that implies local media export or redistribution
+
+The active-workout recovery marker also records whether Plainstride owned playback and whether playback was intentionally playing. Clear it when the workout finishes or music is disabled so ordinary app launches never start music unexpectedly. Recovery telemetry records only success/failure and whether an existing queue or rebuilt selection was used; it never records music identifiers or display metadata.
 
 ## Delivery Plan
 

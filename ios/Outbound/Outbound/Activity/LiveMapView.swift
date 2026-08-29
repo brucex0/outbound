@@ -16,6 +16,7 @@ struct LiveMapView: View {
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
     let onStart: () -> Void
+    let onResume: () -> Void
     let onFinish: () -> Void
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
@@ -185,7 +186,7 @@ struct LiveMapView: View {
                         },
                         onStart: onStart,
                         onPause: pauseActivity,
-                        onResume: resumeActivity,
+                        onResume: onResume,
                         onFinish: onFinish
                     )
                     .background {
@@ -408,10 +409,6 @@ struct LiveMapView: View {
 
     private func pauseActivity() {
         recorder.pause()
-    }
-
-    private func resumeActivity() {
-        recorder.resume()
     }
 
     private func trackMusicControl(_ control: String) {

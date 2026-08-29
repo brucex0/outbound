@@ -42,7 +42,7 @@ final class AppleMusicService: MusicService {
 
     func loadQuickPicks() async throws -> [MusicQuickPick] {
         var picks: [MusicQuickPick] = []
-        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
+        if player.queue.currentEntry != nil || queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             picks.append(
                 MusicQuickPick(
                     id: "continue-current",
@@ -214,7 +214,7 @@ final class AppleMusicService: MusicService {
     }
 
     private func resumeIfPossible() async throws {
-        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
+        if player.queue.currentEntry != nil || queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             Self.logger.info("Resume existing Apple Music queue.")
             try await player.play()
             return

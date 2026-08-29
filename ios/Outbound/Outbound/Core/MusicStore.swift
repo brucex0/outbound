@@ -24,9 +24,16 @@ final class MusicStore: ObservableObject {
     private let service: any MusicService
     private let defaults: UserDefaults
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
+    private let selectedCustomItemsKey = "music_selected_custom_items_v1"
     private let musicDisabledKey = "music_disabled_v1"
+    private let workoutPlaybackOwnedKey = "music_workout_playback_owned_v1"
+    private let workoutPlaybackShouldResumeKey = "music_workout_playback_should_resume_v1"
+    private let workoutQuickPickKey = "music_workout_quick_pick_v1"
     private var pendingWorkoutPlayback = false
     private var startedPlaybackForWorkout = false
+    private var shouldResumeWorkoutPlayback = false
+    private var activeWorkoutQuickPick: MusicQuickPick?
+    private var didAttemptRecoveredWorkoutPlayback = false
     private var didChooseMusicForCurrentSetup = false
 
     init(
@@ -39,6 +46,16 @@ final class MusicStore: ObservableObject {
         playback = self.service.currentPlayback
         isMusicDisabled = defaults.bool(forKey: musicDisabledKey)
         selectedQuickPickID = isMusicDisabled ? nil : defaults.string(forKey: selectedQuickPickKey)
+        selectedCustomItems = Self.decode(
+            [MusicSearchResult].self,
+            from: defaults.data(forKey: selectedCustomItemsKey)
+        ) ?? []
+        startedPlaybackForWorkout = defaults.bool(forKey: workoutPlaybackOwnedKey)
+        shouldResumeWorkoutPlayback = defaults.bool(forKey: workoutPlaybackShouldResumeKey)
+        activeWorkoutQuickPick = Self.decode(
+            MusicQuickPick.self,
+            from: defaults.data(forKey: workoutQuickPickKey)
+        )
     }
 
     var isConnected: Bool {
@@ -159,7 +176,7 @@ final class MusicStore: ObservableObject {
 
         do {
             quickPicks = try await service.loadQuickPicks()
-            if selectedQuickPick == nil, !isMusicDisabled {
+            if selectedQuickPick == nil, selectedCustomItems.isEmpty, !isMusicDisabled {
                 selectedQuickPickID = quickPicks.first?.id
             }
             persistSelectedQuickPick()
@@ -178,6 +195,7 @@ final class MusicStore: ObservableObject {
         didChooseMusicForCurrentSetup = true
         persistMusicDisabled()
         persistSelectedQuickPick()
+        persistSelectedCustomItems()
     }
 
     func disableMusic() {
@@ -187,8 +205,10 @@ final class MusicStore: ObservableObject {
         isMusicDisabled = true
         didChooseMusicForCurrentSetup = true
         pendingWorkoutPlayback = false
+        clearWorkoutPlaybackRecoveryState()
         persistMusicDisabled()
         persistSelectedQuickPick()
+        persistSelectedCustomItems()
     }
 
     func applyWorkoutSuggestion(title: String, detail: String, sport: SportType) {
@@ -244,11 +264,13 @@ final class MusicStore: ObservableObject {
             persistMusicDisabled()
             persistSelectedQuickPick()
         }
+        persistSelectedCustomItems()
     }
 
     func beginWorkoutPlaybackIfNeeded() async {
         guard isConnected, !isMusicDisabled else { return }
         guard selectedQuickPick != nil || !selectedCustomItems.isEmpty else { return }
+        activeWorkoutQuickPick = selectedQuickPick
         pendingWorkoutPlayback = true
         isStartingPlayback = true
         defer { isStartingPlayback = false }
@@ -267,10 +289,88 @@ final class MusicStore: ObservableObject {
             }
             pendingWorkoutPlayback = !playback.hasActiveQueue
             startedPlaybackForWorkout = playback.hasActiveQueue
+            shouldResumeWorkoutPlayback = playback.isPlaying
+            persistWorkoutPlaybackRecoveryState()
         } catch {
             Self.logger.error("Begin workout playback failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
             playback = await service.refreshPlayback()
+            startedPlaybackForWorkout = false
+            shouldResumeWorkoutPlayback = false
+            persistWorkoutPlaybackRecoveryState()
+        }
+    }
+
+    func resumeRecoveredWorkoutPlaybackIfNeeded() async -> WorkoutMusicRecoveryOutcome? {
+        guard startedPlaybackForWorkout,
+              shouldResumeWorkoutPlayback,
+              !didAttemptRecoveredWorkoutPlayback
+        else { return nil }
+
+        didAttemptRecoveredWorkoutPlayback = true
+        isStartingPlayback = true
+        defer { isStartingPlayback = false }
+        lastErrorMessage = nil
+        Self.logger.info("Recover workout music after interrupted activity resumed.")
+
+        snapshot = await service.refreshSnapshot()
+        guard isConnected else {
+            lastErrorMessage = snapshot.statusDetail
+            pendingWorkoutPlayback = true
+            return .failed
+        }
+
+        playback = await service.refreshPlayback()
+        if playback.isPlaying {
+            pendingWorkoutPlayback = false
+            return .alreadyPlaying
+        }
+
+        do {
+            let outcome: WorkoutMusicRecoveryOutcome
+            if playback.hasActiveQueue {
+                playback = try await service.resume()
+                outcome = .resumedExistingQueue
+            } else {
+                if quickPicks.isEmpty {
+                    await loadQuickPicks()
+                }
+                let quickPick = selectedQuickPick ?? activeWorkoutQuickPick
+                if selectedCustomItems.isEmpty, let quickPick {
+                    playback = try await service.play(
+                        quickPick: quickPick,
+                        repeatAll: repeatsQueue,
+                        shuffle: shufflesQueue
+                    )
+                } else if !selectedCustomItems.isEmpty {
+                    playback = try await service.play(
+                        selection: selectedCustomItems,
+                        repeatAll: repeatsQueue,
+                        shuffle: shufflesQueue
+                    )
+                } else {
+                    lastErrorMessage = snapshot.statusDetail
+                    pendingWorkoutPlayback = true
+                    return .failed
+                }
+                outcome = .rebuiltSelection
+            }
+
+            guard playback.isPlaying else {
+                pendingWorkoutPlayback = true
+                return .failed
+            }
+            pendingWorkoutPlayback = false
+            startedPlaybackForWorkout = true
+            shouldResumeWorkoutPlayback = true
+            persistWorkoutPlaybackRecoveryState()
+            return outcome
+        } catch {
+            Self.logger.error("Recover workout playback failed. \(self.describe(error), privacy: .public)")
+            lastErrorMessage = error.localizedDescription
+            playback = await service.refreshPlayback()
+            pendingWorkoutPlayback = true
+            return .failed
         }
     }
 
@@ -282,6 +382,10 @@ final class MusicStore: ObservableObject {
                 playback = await service.pause()
             } else {
                 playback = try await service.resume()
+            }
+            if startedPlaybackForWorkout {
+                shouldResumeWorkoutPlayback = playback.isPlaying
+                persistWorkoutPlaybackRecoveryState()
             }
         } catch {
             Self.logger.error("Toggle music playback failed. \(self.describe(error), privacy: .public)")
@@ -295,6 +399,10 @@ final class MusicStore: ObservableObject {
         lastErrorMessage = nil
         do {
             playback = try await service.skipToNext()
+            if startedPlaybackForWorkout {
+                shouldResumeWorkoutPlayback = playback.isPlaying
+                persistWorkoutPlaybackRecoveryState()
+            }
         } catch {
             Self.logger.error("Skip music track failed. \(self.describe(error), privacy: .public)")
             lastErrorMessage = error.localizedDescription
@@ -315,9 +423,12 @@ final class MusicStore: ObservableObject {
 
     func endWorkoutPlaybackIfNeeded() async {
         pendingWorkoutPlayback = false
-        guard startedPlaybackForWorkout else { return }
+        guard startedPlaybackForWorkout else {
+            clearWorkoutPlaybackRecoveryState()
+            return
+        }
+        clearWorkoutPlaybackRecoveryState()
         playback = await service.stop()
-        startedPlaybackForWorkout = false
     }
 
     func performPrimaryAction() async {
@@ -335,8 +446,32 @@ final class MusicStore: ObservableObject {
         defaults.set(selectedQuickPickID, forKey: selectedQuickPickKey)
     }
 
+    private func persistSelectedCustomItems() {
+        defaults.set(try? JSONEncoder().encode(selectedCustomItems), forKey: selectedCustomItemsKey)
+    }
+
     private func persistMusicDisabled() {
         defaults.set(isMusicDisabled, forKey: musicDisabledKey)
+    }
+
+    private func persistWorkoutPlaybackRecoveryState() {
+        defaults.set(startedPlaybackForWorkout, forKey: workoutPlaybackOwnedKey)
+        defaults.set(shouldResumeWorkoutPlayback, forKey: workoutPlaybackShouldResumeKey)
+        defaults.set(try? JSONEncoder().encode(activeWorkoutQuickPick), forKey: workoutQuickPickKey)
+    }
+
+    private func clearWorkoutPlaybackRecoveryState() {
+        startedPlaybackForWorkout = false
+        shouldResumeWorkoutPlayback = false
+        activeWorkoutQuickPick = nil
+        defaults.removeObject(forKey: workoutPlaybackOwnedKey)
+        defaults.removeObject(forKey: workoutPlaybackShouldResumeKey)
+        defaults.removeObject(forKey: workoutQuickPickKey)
+    }
+
+    private static func decode<Value: Decodable>(_ type: Value.Type, from data: Data?) -> Value? {
+        guard let data else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
     }
 
     private func describe(_ error: Error) -> String {
@@ -403,8 +538,8 @@ struct MusicPlaybackSnapshot: Equatable {
     )
 }
 
-struct MusicQuickPick: Identifiable, Equatable, Hashable {
-    enum Kind: String, Hashable {
+struct MusicQuickPick: Identifiable, Codable, Equatable, Hashable {
+    enum Kind: String, Codable, Hashable {
         case continueCurrent
         case searchSongs
     }
@@ -417,18 +552,25 @@ struct MusicQuickPick: Identifiable, Equatable, Hashable {
     let query: String?
 }
 
-enum MusicSearchCategory: String, CaseIterable, Identifiable {
+enum MusicSearchCategory: String, Codable, CaseIterable, Identifiable {
     case songs
     case albums
     case playlists
     var id: String { rawValue }
 }
 
-struct MusicSearchResult: Identifiable, Equatable, Hashable {
+struct MusicSearchResult: Identifiable, Codable, Equatable, Hashable {
     let id: String
     let title: String
     let subtitle: String
     let category: MusicSearchCategory
+}
+
+enum WorkoutMusicRecoveryOutcome {
+    case alreadyPlaying
+    case resumedExistingQueue
+    case rebuiltSelection
+    case failed
 }
 
 @MainActor
