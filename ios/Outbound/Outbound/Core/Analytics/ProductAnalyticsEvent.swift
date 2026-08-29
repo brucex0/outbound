@@ -28,6 +28,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityDeleted = "activity_deleted"
     case activitySyncCompleted = "activity_sync_completed"
     case activitySyncFailed = "activity_sync_failed"
+    case activityRecordingQuality = "activity_recording_quality"
     case activityFeedLoaded = "activity_feed_loaded"
     case liveActivityReconciled = "live_activity_reconciled"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
@@ -174,6 +175,7 @@ enum ProductAnalyticsSchema {
         .activityDeleted: [.sourceType, .countBucket],
         .activitySyncCompleted: [.sourceType, .routeSelected],
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
+        .activityRecordingQuality: [.sourceType, .countBucket, .result],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .liveActivityReconciled: [.result],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
@@ -286,6 +288,17 @@ enum ProductAnalyticsBucket {
         case 2...3: "2_3"
         case 4...7: "4_7"
         default: "8_plus"
+        }
+    }
+
+    static func locationPointCount(_ count: Int) -> String {
+        return switch max(0, count) {
+        case 0: "0"
+        case 1: "1"
+        case 2..<10: "2_9"
+        case 10..<50: "10_49"
+        case 50..<200: "50_199"
+        default: "200_plus"
         }
     }
 

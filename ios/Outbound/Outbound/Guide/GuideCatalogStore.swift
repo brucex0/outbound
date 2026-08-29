@@ -7,6 +7,7 @@ final class GuideCatalogStore: ObservableObject {
 
     @Published private(set) var templates: [GuideTemplate]
     @Published private(set) var selection: GuideSelection
+    @Published private(set) var liveCoachAudioMode: LiveCoachAudioMode?
     private let defaults: UserDefaults
     private let selectionKey = "guide_catalog_selection_v2"
     private let learningKey = "live_guidance_learning_v1"
@@ -65,6 +66,7 @@ final class GuideCatalogStore: ObservableObject {
 
     func refreshServerCatalog() async {
         await LiveCoachFeatureState.shared.refresh()
+        liveCoachAudioMode = LiveCoachFeatureState.shared.configuration?.mode
         guard let catalog = LiveCoachFeatureState.shared.catalog else { return }
         let serverTemplates = GuideTemplate.from(catalog: catalog)
         guard !serverTemplates.isEmpty else { return }

@@ -234,6 +234,7 @@ struct RecordView: View {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
             await guideCatalog.refreshServerCatalog()
+            guide.setSpeechEnabled(voiceGuideSpeechEnabled)
             applyWorkoutMusicSuggestion()
             presentMusicDiscoveryTipIfNeeded()
             guide.speechEventHandler = { event in
@@ -621,7 +622,7 @@ struct RecordView: View {
 
     private func beginStartRecording() {
         guard recorder.state == .idle, !isCountingDown, !isStartingActivity else { return }
-        guide.setSpeechEnabled(isVoiceGuideEnabled)
+        guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         isStartingActivity = true
         let intent = plannedIntent
         beginRecordingAfterLiveShareSetup()
@@ -678,7 +679,7 @@ struct RecordView: View {
         activeIntent = plannedIntent
         activePage = preferredSessionPage
         showCamera = true
-        guide.setSpeechEnabled(isVoiceGuideEnabled)
+        guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
@@ -732,7 +733,7 @@ struct RecordView: View {
         activePage = preferredSessionPage
         activeIntent = plannedIntent
         recorder.locationManager.requestPermission()
-        guide.setSpeechEnabled(isVoiceGuideEnabled)
+        guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
@@ -859,6 +860,14 @@ struct RecordView: View {
         let guidanceReport = guide.finalizedSessionReport()
         guideCatalog.recordGuidanceReport(guidanceReport)
         track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
+        let locationDiagnostics = recorder.locationManager.recordingDiagnostics
+        track(.init(.activityRecordingQuality, properties: [
+            .sourceType: .string(locationDiagnostics.deliveryMode),
+            .countBucket: .string(ProductAnalyticsBucket.locationPointCount(
+                locationDiagnostics.acceptedTrackPointCount
+            )),
+            .result: .string(locationDiagnostics.result)
+        ]))
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
         liveGroupStore.finishActivity()
@@ -1285,13 +1294,17 @@ struct RecordView: View {
 
                         setupUtilityButton(
                             title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
-                            value: isVoiceGuideEnabled
-                                ? String(localized: "common.on", defaultValue: "On")
-                                : String(localized: "common.off", defaultValue: "Off"),
-                            systemImage: isVoiceGuideEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
-                            isConfigured: isVoiceGuideEnabled
+                            value: isVoiceGuideExplicitlyUnavailable
+                                ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
+                                : (isVoiceGuideEnabled
+                                    ? String(localized: "common.on", defaultValue: "On")
+                                    : String(localized: "common.off", defaultValue: "Off")),
+                            systemImage: voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                            isConfigured: voiceGuideSpeechEnabled
                         ) {
-                            setVoiceGuideEnabled(!isVoiceGuideEnabled)
+                            setVoiceGuideEnabled(
+                                isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
+                            )
                         }
                     }
                     .padding(.leading, 16)
@@ -1606,8 +1619,19 @@ struct RecordView: View {
     }
 
     private func setVoiceGuideEnabled(_ isEnabled: Bool) {
+        if isEnabled, isVoiceGuideExplicitlyUnavailable {
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("voice_guide"),
+                .selectionType: .string("unavailable")
+            ]))
+            showSetupToast(String(
+                localized: "record.voice_guide.unavailable.message",
+                defaultValue: "Voice Guide audio is temporarily unavailable."
+            ))
+            return
+        }
         isVoiceGuideEnabled = isEnabled
-        guide.setSpeechEnabled(isEnabled)
+        guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         track(.init(.activityConfigurationChanged, properties: [
             .changeType: .string("voice_guide"),
             .selectionType: .string(isEnabled ? "enabled" : "disabled")
@@ -1780,21 +1804,30 @@ struct RecordView: View {
     }
 
     private var voiceGuideCard: some View {
-        Toggle(isOn: $isVoiceGuideEnabled) {
+        Toggle(isOn: Binding(
+            get: { voiceGuideSpeechEnabled },
+            set: { isVoiceGuideEnabled = $0 }
+        )) {
             VStack(alignment: .leading, spacing: 3) {
                 Label(String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"), systemImage: "waveform.circle")
                     .font(.subheadline.weight(.semibold))
-                Text(String(localized: "record.voice_guide.detail", defaultValue: "Hear countdowns, progress updates, and live coaching."))
+                Text(isVoiceGuideExplicitlyUnavailable
+                    ? String(
+                        localized: "record.voice_guide.unavailable.message",
+                        defaultValue: "Voice Guide audio is temporarily unavailable."
+                    )
+                    : String(localized: "record.voice_guide.detail", defaultValue: "Hear countdowns, progress updates, and live coaching."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
+        .disabled(isVoiceGuideExplicitlyUnavailable)
         .tint(.orange)
         .padding(16)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
         .onChange(of: isVoiceGuideEnabled) { _, isEnabled in
-            guide.setSpeechEnabled(isEnabled)
+            guide.setSpeechEnabled(voiceGuideSpeechEnabled)
             track(.init(.activityConfigurationChanged, properties: [
                 .changeType: .string("voice_guide"),
                 .selectionType: .string(isEnabled ? "enabled" : "disabled")
@@ -2076,6 +2109,14 @@ struct RecordView: View {
     private func track(_ event: ProductAnalyticsEvent) {
         guard let analyticsManager else { return }
         Task { await analyticsManager.track(event) }
+    }
+
+    private var isVoiceGuideExplicitlyUnavailable: Bool {
+        guideCatalog.liveCoachAudioMode == .disabled
+    }
+
+    private var voiceGuideSpeechEnabled: Bool {
+        isVoiceGuideEnabled && !isVoiceGuideExplicitlyUnavailable
     }
 
     private func trackGuidanceEvent(_ event: LiveGuidanceTelemetryEvent) {

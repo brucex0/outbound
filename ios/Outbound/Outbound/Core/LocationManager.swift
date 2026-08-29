@@ -1,6 +1,23 @@
 import CoreLocation
 import Combine
 
+struct LocationRecordingDiagnostics: Equatable {
+    let receivedBatchCount: Int
+    let maximumBatchSize: Int
+    let acceptedTrackPointCount: Int
+    let rejectedLocationCount: Int
+
+    var deliveryMode: String {
+        if receivedBatchCount == 0 { return "no_updates" }
+        return maximumBatchSize > 1 ? "batched_updates" : "single_updates"
+    }
+
+    var result: String {
+        if acceptedTrackPointCount == 0 { return "no_usable_points" }
+        return rejectedLocationCount == 0 ? "all_accepted" : "some_filtered"
+    }
+}
+
 @MainActor
 final class LocationManager: NSObject, ObservableObject {
     @Published var location: CLLocation?
@@ -40,6 +57,10 @@ final class LocationManager: NSObject, ObservableObject {
     private var trackingStartedAt: Date?
     private var accumulatedDistanceMeters: Double = 0
     private var elevationAccumulator = ElevationGainCalculator.StreamingRangeAccumulator()
+    private var receivedBatchCount = 0
+    private var maximumBatchSize = 0
+    private var acceptedTrackPointCount = 0
+    private var rejectedLocationCount = 0
 #if DEBUG
     private var testDistanceMeters: Double?
     private var testElevationGainMeters: Double?
@@ -82,6 +103,10 @@ final class LocationManager: NSObject, ObservableObject {
         trackCoordinates = []
         accumulatedDistanceMeters = 0
         elevationAccumulator.reset()
+        receivedBatchCount = 0
+        maximumBatchSize = 0
+        acceptedTrackPointCount = 0
+        rejectedLocationCount = 0
         location = nil
         trackingStartedAt = Date()
         wantsTracking = true
@@ -148,6 +173,15 @@ final class LocationManager: NSObject, ObservableObject {
         return elevationAccumulator.rangeMeters
     }
 
+    var recordingDiagnostics: LocationRecordingDiagnostics {
+        LocationRecordingDiagnostics(
+            receivedBatchCount: receivedBatchCount,
+            maximumBatchSize: maximumBatchSize,
+            acceptedTrackPointCount: acceptedTrackPointCount,
+            rejectedLocationCount: rejectedLocationCount
+        )
+    }
+
     var currentPaceSecsPerKm: Double? {
 #if DEBUG
         if let testCurrentPaceSecsPerKm { return testCurrentPaceSecsPerKm }
@@ -200,20 +234,41 @@ final class LocationManager: NSObject, ObservableObject {
 
 extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
+        guard !locations.isEmpty else { return }
         Task { @MainActor in
             self.wantsOneShotLocation = false
-            guard self.shouldAcceptLocationUpdate(loc) else { return }
             if self.wantsTracking {
-                guard self.shouldAppendTrackPoint(loc) else { return }
-                if let previous = self.trackPoints.last {
-                    self.accumulatedDistanceMeters += previous.distance(from: loc)
-                }
-                self.trackPoints.append(loc)
-                self.trackCoordinates.append(loc.coordinate)
-                self.elevationAccumulator.ingest(loc)
+                self.receivedBatchCount += 1
+                self.maximumBatchSize = max(self.maximumBatchSize, locations.count)
             }
-            self.location = loc
+
+            var latestAcceptedLocation: CLLocation?
+            for location in locations {
+                guard self.shouldAcceptLocationUpdate(location) else {
+                    if self.wantsTracking { self.rejectedLocationCount += 1 }
+                    continue
+                }
+                if self.wantsTracking {
+                    guard self.shouldAppendTrackPoint(location) else {
+                        self.rejectedLocationCount += 1
+                        continue
+                    }
+                    if let previous = self.trackPoints.last {
+                        self.accumulatedDistanceMeters += previous.distance(from: location)
+                    }
+                    self.trackPoints.append(location)
+                    self.trackCoordinates.append(location.coordinate)
+                    self.elevationAccumulator.ingest(location)
+                    self.acceptedTrackPointCount += 1
+                }
+                latestAcceptedLocation = location
+            }
+
+            // Publishing once after the chronological batch is fully ingested keeps
+            // downstream metrics consistent while retaining every background fix.
+            if let latestAcceptedLocation {
+                self.location = latestAcceptedLocation
+            }
         }
     }
 

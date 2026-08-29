@@ -17919,6 +17919,22 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收听倒计时、进度播报和实时指导。" } }
       }
     },
+    "record.voice_guide.unavailable.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Voice Guide audio is temporarily unavailable." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El audio de la guía por voz no está disponible temporalmente." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音指导暂时不可用。" } }
+      }
+    },
+    "record.voice_guide.unavailable.short" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unavailable" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No disponible" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂不可用" } }
+      }
+    },
     "record.voice_guide.title" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
