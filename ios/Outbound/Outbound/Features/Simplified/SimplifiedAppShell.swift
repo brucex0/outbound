@@ -2323,9 +2323,8 @@ private struct SimplifiedMeView: View {
                     NavigationLink {
                         SimplifiedSettingsView(
                             profile: profile,
-                            trainingProfileSex: trainingProfileSex,
-                            onProfileUpdated: { profile = $0 },
-                            onTrainingProfileUpdated: { trainingProfileSex = $0.sexAtBirth }
+                            trainingProfileSex: $trainingProfileSex,
+                            onProfileUpdated: { profile = $0 }
                         )
                     } label: {
                         Image(systemName: "gearshape")
@@ -2389,9 +2388,8 @@ private struct SimplifiedMeView: View {
             case .settings:
                 SimplifiedSettingsView(
                     profile: profile,
-                    trainingProfileSex: trainingProfileSex,
-                    onProfileUpdated: { profile = $0 },
-                    onTrainingProfileUpdated: { trainingProfileSex = $0.sexAtBirth }
+                    trainingProfileSex: $trainingProfileSex,
+                    onProfileUpdated: { profile = $0 }
                 )
             case .appearance:
                 ThemeChooserView()
@@ -2487,7 +2485,14 @@ private struct SimplifiedMeView: View {
     }
 
     private func loadTrainingProfile() async {
-        trainingProfileSex = try? await APIClient.shared.fetchTrainingProfile().sexAtBirth
+        applyTrainingProfileSex(try? await APIClient.shared.fetchTrainingProfile().sexAtBirth)
+    }
+
+    private func applyTrainingProfileSex(_ sex: TrainingProfileSex?) {
+        trainingProfileSex = sex
+        guard sex == .male else { return }
+        cycleAwareStore.isEnabled = false
+        showsCycleAwareCheckIn = false
     }
 
     private var showsCycleAwareGuidance: Bool {
@@ -2536,10 +2541,10 @@ private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var cycleAwareStore: CycleAwareStore
     let profile: AppUserProfileDTO?
-    let trainingProfileSex: TrainingProfileSex?
+    @Binding var trainingProfileSex: TrainingProfileSex?
     let onProfileUpdated: (AppUserProfileDTO) -> Void
-    let onTrainingProfileUpdated: (TrainingProfileDTO) -> Void
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
 
@@ -2563,7 +2568,7 @@ private struct SimplifiedSettingsView: View {
                     BioSettingsView(
                         profile: profile,
                         onProfileUpdated: onProfileUpdated,
-                        onTrainingProfileUpdated: onTrainingProfileUpdated
+                        onTrainingProfileUpdated: applyTrainingProfile
                     )
                 } label: {
                     Label("Bio", systemImage: "person.crop.circle")
@@ -2698,6 +2703,13 @@ private struct SimplifiedSettingsView: View {
             return trainingProfileSex == .male
         }
         return onboardingStore.completedProfile?.bodyProfile.sex == .male
+    }
+
+    private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
+        trainingProfileSex = profile.sexAtBirth
+        if profile.sexAtBirth == .male {
+            cycleAwareStore.isEnabled = false
+        }
     }
 
     private var appVersion: String {

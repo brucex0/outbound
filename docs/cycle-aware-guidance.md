@@ -12,6 +12,8 @@ Cycle dates provide context. The runner's actual symptoms, training impact, and 
 
 Use `Cycle-aware guidance`, not `female mode`. Hide its Me and Settings entry points when the onboarding body profile is male; keep it available when the body profile is female or unspecified. The feature remains optional.
 
+Apply eligibility changes immediately after the training profile is saved. When the effective body profile becomes male, turn cycle-aware guidance off without deleting existing private logs. Do not send body-profile eligibility or eligibility-driven visibility changes to product analytics.
+
 Do not prescribe training from menstrual phase alone. Current evidence does not support universal phase-based programming; use individualized symptom monitoring and cautious, user-controlled adaptation instead.
 
 Primary references:
