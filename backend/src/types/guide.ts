@@ -1,5 +1,5 @@
-export type CoachPersonaId = "plainstride_supportive_v1" | "plainstride_focused_v1" | "plainstride_calm_v1";
-export type VoiceProfileId = "plainstride_warm_1" | "plainstride_clear_1";
+export type { CoachPersonaId, VoiceProfileId } from "../services/aiProviders/types.js";
+import type { CoachPersonaId, VoiceProfileId } from "../services/aiProviders/types.js";
 export type FitnessLevel = "beginner" | "intermediate" | "advanced" | "elite";
 
 export interface GoalItem {

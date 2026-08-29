@@ -14,6 +14,7 @@
     "db:rebuild": "prisma db push --force-reset && prisma generate && npm run build && npm run seed:training-plans",
     "seed:training-plans": "node dist/scripts/seedTrainingPlanTemplates.js",
     "seed:e2e": "npm run build && node dist/scripts/seedTestPersonas.js",
+    "live-coach:list-audio": "npm run build && node dist/scripts/generateLiveCoachAudio.js --list",
     "live-coach:generate-audio": "npm run build && node dist/scripts/generateLiveCoachAudio.js",
     "live-coach:publish-audio": "npm run build && node dist/scripts/publishLiveCoachAudio.js"
   },

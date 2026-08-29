@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GuideSelectionView: View {
     @EnvironmentObject var guideCatalog: GuideCatalogStore
+    @Environment(\.analyticsManager) private var analyticsManager
     @State private var previewPlayer: GuideAudioPlayer?
     @State private var previewingVoiceID: String?
     @State private var toastMessage: String?
@@ -121,7 +122,7 @@ struct GuideSelectionView: View {
 
             Button {
                 stopVoicePreview()
-                guideCatalog.setVoice(id: voice.id)
+                selectVoice(voice, source: "settings")
             } label: {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -149,7 +150,7 @@ struct GuideSelectionView: View {
             return
         }
         stopVoicePreview()
-        guideCatalog.setVoice(id: voice.id)
+        selectVoice(voice, source: "preview")
         previewingVoiceID = voice.id
         Task { @MainActor in
             guard let data = await GuideAudioPackStore.shared.audioData(for: voice.previewAssetID) else {
@@ -169,6 +170,18 @@ struct GuideSelectionView: View {
     private func stopVoicePreview() {
         previewPlayer?.stopSpeaking(at: .immediate)
         previewingVoiceID = nil
+    }
+
+    private func selectVoice(_ voice: GuideVoice, source: String) {
+        let changed = guideCatalog.selectedVoice.id != voice.id
+        guideCatalog.setVoice(id: voice.id)
+        guard changed else { return }
+        Task {
+            await analyticsManager?.track(.init(.liveGuidanceVoiceSelected, properties: [
+                .selectionType: .string(voice.style),
+                .sourceType: .string(source)
+            ]))
+        }
     }
 
     private func showToast(_ message: String) {

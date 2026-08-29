@@ -27,6 +27,14 @@ Cross-checking the handoff against the repository produced these necessary adjus
 
 The Alibaba key shared during implementation was not written to source, documentation, shell commands, logs, or generated artifacts. Rotate it before provisioning Secret Manager because chat is not an approved secret channel.
 
+## Operational configuration — 2026-08-29
+
+- Pinned the approved route to `qwen3-omni-flash-2025-12-01`, which is the snapshot Alibaba documents for short, cost-sensitive Omni output across English, Spanish, and Chinese.
+- Limited the product catalog to six provider-neutral profiles backed by three official female voices (`Cherry`, `Serena`, `Maia`) and three official male voices (`Ethan`, `Ryan`, `Aiden`). All six map across `en`, `es`, and `zh-Hans` without exposing provider IDs to iOS.
+- Cataloged 26 fixed cues, producing 468 WAV review assets across six voices and three locales. Added a list-only command and resumable generation wrapper; generation and human listening approval remain release gates.
+- Added ES256 manifest key ID `live-coach-audio-2026-v1` to the iOS trust map and stored the private half in Secret Manager as `outbound-live-coach-manifest-private-key`.
+- Kept deployed server audio disabled until the pack is generated, reviewed, published, and device-validated in `fixed_only`. A later `dynamic` deployment at 0% validates readiness while leaving every runner effectively on fixed audio.
+
 ## 1. Goals
 
 Build one provider-neutral backend boundary that:
@@ -135,7 +143,7 @@ LIVE_COACH_ACCESS_MODE=open_beta|subscription_required
 LIVE_COACH_CONFIG_VERSION=1
 LIVE_COACH_ALLOWED_MARKETS=global
 LIVE_COACH_ENABLED_PERSONAS=plainstride_supportive_v1,plainstride_focused_v1
-LIVE_COACH_ENABLED_VOICE_PROFILES=plainstride_warm_1,plainstride_clear_1
+LIVE_COACH_ENABLED_VOICE_PROFILES=plainstride_warm_1,plainstride_gentle_1,plainstride_composed_1,plainstride_clear_1,plainstride_driven_1,plainstride_easygoing_1
 LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT=0
 LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE=8
 LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME=15
@@ -234,7 +242,13 @@ export type AudioEncoding = {
 };
 
 export type VoiceProfile = {
-  id: "plainstride_warm_1" | "plainstride_clear_1";
+  id:
+    | "plainstride_warm_1"
+    | "plainstride_gentle_1"
+    | "plainstride_composed_1"
+    | "plainstride_clear_1"
+    | "plainstride_driven_1"
+    | "plainstride_easygoing_1";
   supportedLocales: Array<"en" | "es" | "zh-Hans">;
   style: "warm" | "clear";
 };
@@ -438,7 +452,7 @@ Response:
       "displayName": "Supportive",
       "description": "Encouraging, practical coaching that keeps effort sustainable.",
       "defaultVoiceProfileId": "plainstride_warm_1",
-      "allowedVoiceProfileIds": ["plainstride_warm_1", "plainstride_clear_1"],
+      "allowedVoiceProfileIds": ["plainstride_warm_1", "plainstride_gentle_1", "plainstride_composed_1", "plainstride_clear_1", "plainstride_driven_1", "plainstride_easygoing_1"],
       "fixedScriptStyleId": "standard",
       "access": "included"
     }

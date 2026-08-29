@@ -4,7 +4,7 @@ import path from "node:path";
 import { loadAIProviderConfiguration, assertAIProviderConfiguration } from "../services/aiProviders/config.js";
 import { buildAIProviderRegistry } from "../services/aiProviders/registry.js";
 import { resolveAIRoute } from "../services/aiProviders/router.js";
-import type { SupportedAILocale, VoiceProfileId } from "../services/aiProviders/types.js";
+import { LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS, VOICE_PROFILE_IDS, type SupportedAILocale, type VoiceProfileId } from "../services/aiProviders/types.js";
 import type { AudioPackManifest } from "../services/liveCoach/audioPackManifest.js";
 import { stableLiveCoachInstructions } from "../services/liveCoach/liveCoachPrompt.js";
 import { audioPackManifestSchema } from "../services/liveCoach/audioPackManifest.js";
@@ -22,13 +22,17 @@ type SourceCatalog = {
 
 const args = parseArgs(process.argv.slice(2));
 if (args.provider !== "alibaba") throw new Error(`Unsupported live-coach provider: ${args.provider}.`);
-const providerConfig = loadAIProviderConfiguration();
-assertAIProviderConfiguration(providerConfig);
 const catalogPath = path.resolve(process.cwd(), "resources/liveCoachAudio/catalog.v1.json");
 const source = JSON.parse(await readFile(catalogPath, "utf8")) as SourceCatalog;
 if (args.catalogVersion && args.catalogVersion !== source.catalogVersion) {
   throw new Error(`Catalog version mismatch: requested ${args.catalogVersion}, source is ${source.catalogVersion}.`);
 }
+if (args.list) {
+  printCatalog(source);
+  process.exit(0);
+}
+const providerConfig = loadAIProviderConfiguration();
+assertAIProviderConfiguration(providerConfig);
 const outputDirectory = path.resolve(process.cwd(), args.output ?? `.local/live-coach-review/${source.catalogVersion}`);
 await mkdir(outputDirectory, { recursive: true });
 const existingManifest = await loadExistingManifest(path.join(outputDirectory, "review-manifest.json"));
@@ -40,9 +44,13 @@ const manifest: AudioPackManifest = {
   entries: [],
 };
 
-for (const voiceProfileId of Object.keys(providerConfig.alibaba.voiceMap) as VoiceProfileId[]) {
+const voiceProfileIds = Object.keys(providerConfig.alibaba.voiceMap) as VoiceProfileId[];
+const totalAssetCount = voiceProfileIds.length * 3 * source.entries.length;
+let assetIndex = 0;
+for (const voiceProfileId of voiceProfileIds) {
   for (const locale of ["en", "es", "zh-Hans"] as const) {
     for (const entry of source.entries) {
+      assetIndex += 1;
       const text = entry.texts[locale];
       const resolved = resolveAIRoute(registry, {
         requestKind: "live_coach_fixed_asset",
@@ -62,8 +70,12 @@ for (const voiceProfileId of Object.keys(providerConfig.alibaba.voiceMap) as Voi
       let audio: Buffer;
       try {
         audio = await readFile(filePath);
-        validateLiveCoachWav(audio);
+        validateLiveCoachWav(audio, {
+          maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS,
+        });
+        console.log(`[${assetIndex}/${totalAssetCount}] cached ${voiceProfileId}/${locale}/${entry.cueKey}`);
       } catch {
+        console.log(`[${assetIndex}/${totalAssetCount}] generating ${voiceProfileId}/${locale}/${entry.cueKey}`);
         const result = await resolved.provider.generateCue({
           requestId: crypto.randomUUID(),
           locale,
@@ -117,13 +129,27 @@ await writeFile(path.join(outputDirectory, "review-manifest.json"), `${JSON.stri
 console.log(`Generated ${manifest.entries.length} review assets in ${outputDirectory}. Listen to every asset and mark approved=true before publishing.`);
 
 function parseArgs(values: string[]) {
-  const result: { catalogVersion?: string; output?: string; provider: string } = { provider: "alibaba" };
+  const result: { catalogVersion?: string; output?: string; provider: string; list: boolean } = {
+    provider: "alibaba",
+    list: false,
+  };
   for (let index = 0; index < values.length; index += 1) {
     if (values[index] === "--catalog-version") result.catalogVersion = values[++index];
     else if (values[index] === "--output") result.output = values[++index];
     else if (values[index] === "--provider") result.provider = values[++index];
+    else if (values[index] === "--list") result.list = true;
+    else throw new Error(`Unknown argument: ${values[index]}.`);
   }
   return result;
+}
+function printCatalog(source: SourceCatalog): void {
+  console.log(`Catalog ${source.catalogVersion}: ${source.entries.length} cues, 3 locales, ${VOICE_PROFILE_IDS.length} voices, ${source.entries.length * 3 * VOICE_PROFILE_IDS.length} WAV assets.`);
+  for (const entry of source.entries) {
+    console.log(`\n${entry.cueKey} [${entry.scriptStyleId}]`);
+    console.log(`  en: ${entry.texts.en}`);
+    console.log(`  es: ${entry.texts.es}`);
+    console.log(`  zh-Hans: ${entry.texts["zh-Hans"]}`);
+  }
 }
 async function loadExistingManifest(manifestPath: string): Promise<AudioPackManifest | null> {
   try {

@@ -110,15 +110,43 @@ struct GuideVoice: Codable, Hashable, Identifiable {
             GuideVoice(
                 id: "plainstride_warm_1",
                 displayName: String(localized: "guide.voice.warm.name", defaultValue: "Warm"),
-                description: String(localized: "guide.voice.warm.detail", defaultValue: "Relaxed, natural, and reassuring."),
+                description: String(localized: "guide.voice.warm.detail", defaultValue: "Bright, friendly, and naturally encouraging."),
                 style: "warm",
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
+                id: "plainstride_gentle_1",
+                displayName: String(localized: "guide.voice.gentle.name", defaultValue: "Gentle"),
+                description: String(localized: "guide.voice.gentle.detail", defaultValue: "Soft, calm, and reassuring."),
+                style: "gentle",
+                previewAssetID: "voice.preview"
+            ),
+            GuideVoice(
+                id: "plainstride_composed_1",
+                displayName: String(localized: "guide.voice.composed.name", defaultValue: "Composed"),
+                description: String(localized: "guide.voice.composed.detail", defaultValue: "Thoughtful, balanced, and clear."),
+                style: "composed",
+                previewAssetID: "voice.preview"
+            ),
+            GuideVoice(
                 id: "plainstride_clear_1",
-                displayName: String(localized: "guide.voice.clear.name", defaultValue: "Clear"),
-                description: String(localized: "guide.voice.clear.detail", defaultValue: "Crisp, steady, and easy to follow while moving."),
-                style: "clear",
+                displayName: String(localized: "guide.voice.bright.name", defaultValue: "Bright"),
+                description: String(localized: "guide.voice.bright.detail", defaultValue: "Warm, energetic, and easy to hear while moving."),
+                style: "bright",
+                previewAssetID: "voice.preview"
+            ),
+            GuideVoice(
+                id: "plainstride_driven_1",
+                displayName: String(localized: "guide.voice.driven.name", defaultValue: "Driven"),
+                description: String(localized: "guide.voice.driven.detail", defaultValue: "Rhythmic and motivating for harder efforts."),
+                style: "driven",
+                previewAssetID: "voice.preview"
+            ),
+            GuideVoice(
+                id: "plainstride_easygoing_1",
+                displayName: String(localized: "guide.voice.easygoing.name", defaultValue: "Easygoing"),
+                description: String(localized: "guide.voice.easygoing.detail", defaultValue: "Friendly, casual, and low-pressure."),
+                style: "easygoing",
                 previewAssetID: "voice.preview"
             )
         ]
@@ -182,9 +210,21 @@ extension GuideTemplate {
                 sport: .run,
                 displayName: String(localized: "guide.persona.calm.name", defaultValue: "Calm"),
                 tagline: String(localized: "guide.persona.calm.detail", defaultValue: "Low-key guidance centered on breathing, rhythm, and composure."),
-                defaultVoiceId: "plainstride_warm_1",
-                allowedVoiceIds: ["plainstride_warm_1"],
-                voiceOptions: voices.filter { $0.id == "plainstride_warm_1" },
+                defaultVoiceId: "plainstride_gentle_1",
+                allowedVoiceIds: [
+                    "plainstride_gentle_1",
+                    "plainstride_composed_1",
+                    "plainstride_easygoing_1",
+                    "plainstride_warm_1"
+                ],
+                voiceOptions: voices.filter {
+                    [
+                        "plainstride_gentle_1",
+                        "plainstride_composed_1",
+                        "plainstride_easygoing_1",
+                        "plainstride_warm_1"
+                    ].contains($0.id)
+                },
                 fixedScriptStyleId: "calm"
             )
         ]

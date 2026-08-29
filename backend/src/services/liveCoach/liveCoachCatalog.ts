@@ -13,7 +13,7 @@ export type CoachPersonaDefinition = {
 
 export type VoiceProfileDefinition = {
   id: VoiceProfileId;
-  style: "warm" | "clear";
+  style: "warm" | "gentle" | "composed" | "bright" | "driven" | "easygoing";
   supportedLocales: SupportedAILocale[];
   localized: Record<SupportedAILocale, { displayName: string; description: string }>;
 };
@@ -24,7 +24,14 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     instructionVersion: 1,
     instructions: "Sound encouraging, practical, and grounded. Acknowledge the moment, give one sustainable adjustment, and avoid hype or judgment.",
     defaultVoiceProfileId: "plainstride_warm_1",
-    allowedVoiceProfileIds: ["plainstride_warm_1", "plainstride_clear_1"],
+    allowedVoiceProfileIds: [
+      "plainstride_warm_1",
+      "plainstride_gentle_1",
+      "plainstride_composed_1",
+      "plainstride_clear_1",
+      "plainstride_driven_1",
+      "plainstride_easygoing_1",
+    ],
     fixedScriptStyleId: "standard",
     localized: {
       en: { displayName: "Supportive", description: "Encouraging, practical coaching that keeps effort sustainable." },
@@ -37,7 +44,14 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     instructionVersion: 1,
     instructions: "Sound direct, calm, and precise. Use one relevant metric when available, then state one clear action without criticism or pressure.",
     defaultVoiceProfileId: "plainstride_clear_1",
-    allowedVoiceProfileIds: ["plainstride_clear_1", "plainstride_warm_1"],
+    allowedVoiceProfileIds: [
+      "plainstride_clear_1",
+      "plainstride_driven_1",
+      "plainstride_composed_1",
+      "plainstride_warm_1",
+      "plainstride_gentle_1",
+      "plainstride_easygoing_1",
+    ],
     fixedScriptStyleId: "standard",
     localized: {
       en: { displayName: "Focused", description: "Clear, concise coaching with one useful action at a time." },
@@ -49,8 +63,13 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     id: "plainstride_calm_v1",
     instructionVersion: 1,
     instructions: "Sound quiet, reassuring, and unhurried. Favor breathing, relaxation, and composure. Never add urgency unless the product marks a caution.",
-    defaultVoiceProfileId: "plainstride_warm_1",
-    allowedVoiceProfileIds: ["plainstride_warm_1"],
+    defaultVoiceProfileId: "plainstride_gentle_1",
+    allowedVoiceProfileIds: [
+      "plainstride_gentle_1",
+      "plainstride_composed_1",
+      "plainstride_easygoing_1",
+      "plainstride_warm_1",
+    ],
     fixedScriptStyleId: "calm",
     localized: {
       en: { displayName: "Calm", description: "Low-key guidance centered on breathing, rhythm, and composure." },
@@ -66,19 +85,59 @@ export const VOICE_PROFILES: VoiceProfileDefinition[] = [
     style: "warm",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Warm", description: "Relaxed, natural, and reassuring." },
-      es: { displayName: "Cálida", description: "Relajada, natural y tranquilizadora." },
-      "zh-Hans": { displayName: "温暖", description: "自然放松，令人安心。" },
+      en: { displayName: "Warm", description: "Bright, friendly, and naturally encouraging." },
+      es: { displayName: "Cálida", description: "Luminosa, cercana y alentadora con naturalidad." },
+      "zh-Hans": { displayName: "温暖", description: "明亮亲切，自然而有鼓励感。" },
+    },
+  },
+  {
+    id: "plainstride_gentle_1",
+    style: "gentle",
+    supportedLocales: ["en", "es", "zh-Hans"],
+    localized: {
+      en: { displayName: "Gentle", description: "Soft, calm, and reassuring." },
+      es: { displayName: "Suave", description: "Suave, tranquila y reconfortante." },
+      "zh-Hans": { displayName: "轻柔", description: "轻柔平静，让人安心。" },
+    },
+  },
+  {
+    id: "plainstride_composed_1",
+    style: "composed",
+    supportedLocales: ["en", "es", "zh-Hans"],
+    localized: {
+      en: { displayName: "Composed", description: "Thoughtful, balanced, and clear." },
+      es: { displayName: "Serena", description: "Reflexiva, equilibrada y clara." },
+      "zh-Hans": { displayName: "沉稳", description: "理性从容，表达清楚。" },
     },
   },
   {
     id: "plainstride_clear_1",
-    style: "clear",
+    style: "bright",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Clear", description: "Crisp, steady, and easy to follow while moving." },
-      es: { displayName: "Clara", description: "Nítida, estable y fácil de seguir en movimiento." },
-      "zh-Hans": { displayName: "清晰", description: "清楚稳定，运动中也容易听懂。" },
+      en: { displayName: "Bright", description: "Warm, energetic, and easy to hear while moving." },
+      es: { displayName: "Enérgica", description: "Cálida, enérgica y fácil de seguir en movimiento." },
+      "zh-Hans": { displayName: "明快", description: "温暖有活力，运动中也容易听清。" },
+    },
+  },
+  {
+    id: "plainstride_driven_1",
+    style: "driven",
+    supportedLocales: ["en", "es", "zh-Hans"],
+    localized: {
+      en: { displayName: "Driven", description: "Rhythmic and motivating for harder efforts." },
+      es: { displayName: "Intensa", description: "Rítmica y motivadora para los esfuerzos exigentes." },
+      "zh-Hans": { displayName: "激励", description: "节奏有力，适合更具挑战的训练。" },
+    },
+  },
+  {
+    id: "plainstride_easygoing_1",
+    style: "easygoing",
+    supportedLocales: ["en", "es", "zh-Hans"],
+    localized: {
+      en: { displayName: "Easygoing", description: "Friendly, casual, and low-pressure." },
+      es: { displayName: "Relajada", description: "Cercana, informal y sin presión." },
+      "zh-Hans": { displayName: "随和", description: "友好随和，没有压力感。" },
     },
   },
 ];

@@ -85,7 +85,10 @@
     <key>OutboundAppTestMode</key>
     <string>$(OUTBOUND_APP_TEST_MODE)</string>
     <key>LiveCoachAudioManifestPublicKeys</key>
-    <dict/>
+    <dict>
+        <key>live-coach-audio-2026-v1</key>
+        <string>-----BEGIN PUBLIC KEY-----&#10;MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzOQ+dtpteVzDRG6ZgAWsbl2a9nDV&#10;IUWXep0GWK1xUNtuIIF8P3nGVvnucyHGP/UclpLUmFDXgR1DNAiFJkHXuQ==&#10;-----END PUBLIC KEY-----</string>
+    </dict>
 
     <key>UIBackgroundModes</key>
     <array>

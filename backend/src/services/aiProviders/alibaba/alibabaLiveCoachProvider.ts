@@ -2,7 +2,7 @@ import { validateLiveCoachWav } from "../audioValidation.js";
 import type { AlibabaProviderConfig } from "../config.js";
 import { AIProviderError, sanitizedProviderError } from "../errors.js";
 import { recordRouteFailure, recordRouteSuccess } from "../health.js";
-import { LIVE_COACH_AUDIO_ENCODING, type LiveCoachAIProvider, type LiveCoachGenerationInput, type ProviderCapabilities, type SupportedAILocale, type VoiceProfileId } from "../types.js";
+import { LIVE_COACH_AUDIO_ENCODING, LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS, type LiveCoachAIProvider, type LiveCoachGenerationInput, type ProviderCapabilities, type SupportedAILocale, type VoiceProfileId } from "../types.js";
 import { parseAlibabaResponse } from "./alibabaStreamParser.js";
 import { resolveAlibabaVoice } from "./alibabaVoiceMap.js";
 
@@ -58,7 +58,7 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
           stream_options: { include_usage: true },
           enable_thinking: false,
           temperature: input.exactTranscript ? 0 : 0.35,
-          max_tokens: 96,
+          max_tokens: input.exactTranscript ? 192 : 96,
           messages: [
             { role: "system", content: `${input.stableInstructions}\n${input.coachPersonaInstructions}` },
             { role: "user", content: JSON.stringify(providerPayload(input)) },
@@ -70,7 +70,9 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
       const parsed = await parseAlibabaResponse(response, deadlineController.signal);
       const transcript = normalizeTranscript(parsed.transcript);
       validateTranscript(transcript, input);
-      const wav = validateLiveCoachWav(parsed.audio);
+      const wav = validateLiveCoachWav(parsed.audio, input.exactTranscript
+        ? { maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS }
+        : undefined);
       recordRouteSuccess(this.key, this.endpointKey);
       return {
         transcript,

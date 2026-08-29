@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { AppEnv } from "../types/hono.js";
 import { AIProviderError } from "../services/aiProviders/errors.js";
-import { SUPPORTED_AI_LOCALES } from "../services/aiProviders/types.js";
+import { SUPPORTED_AI_LOCALES, VOICE_PROFILE_IDS } from "../services/aiProviders/types.js";
 import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
@@ -24,7 +24,7 @@ const createSessionSchema = z.object({
   workoutId: z.string().min(1).max(120).optional(),
   locale: z.enum(SUPPORTED_AI_LOCALES),
   coachPersonaId: z.enum(["plainstride_supportive_v1", "plainstride_focused_v1", "plainstride_calm_v1"]),
-  voiceProfileId: z.enum(["plainstride_warm_1", "plainstride_clear_1"]),
+  voiceProfileId: z.enum(VOICE_PROFILE_IDS),
   coachingContract: z.enum(["quiet", "responsive", "coach_me"]),
   sessionIntent: z.object({
     activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),

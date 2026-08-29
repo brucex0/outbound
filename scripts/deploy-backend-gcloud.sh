@@ -29,7 +29,7 @@ Environment overrides:
   LIVE_COACH_CONFIG_VERSION    default: 1
   LIVE_COACH_CATALOG_VERSION   default: 2026-08-28.1
   LIVE_COACH_ENABLED_PERSONAS  default: supportive,focused product IDs
-  LIVE_COACH_ENABLED_VOICE_PROFILES default: warm,clear product IDs
+  LIVE_COACH_ENABLED_VOICE_PROFILES default: approved six product voice IDs
   LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT default: 0
   LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE default: 8
   LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME default: 15
@@ -43,8 +43,8 @@ Environment overrides:
   ALIBABA_AI_ENDPOINT_KEY      default: alibaba-global-primary
   ALIBABA_AI_DEPLOYMENT_REGION default: ap-southeast-1
   ALIBABA_AI_BASE_URL          provider workspace compatible-mode/v1 URL
-  ALIBABA_LIVE_COACH_MODEL     dated/deployed model ID
-  ALIBABA_LIVE_COACH_VOICE_MAP provider voice JSON keyed by product voice and locale
+  ALIBABA_LIVE_COACH_MODEL     optional override; default: qwen3-omni-flash-2025-12-01
+  ALIBABA_LIVE_COACH_VOICE_MAP optional override; default: approved 3 female/3 male locale map
   ALIBABA_AI_API_KEY_SECRET    optional Secret Manager secret name to bind
   SOURCE_DIR              default: backend
   GCLOUD_BIN              default: $HOME/google-cloud-sdk/bin/gcloud, then PATH
@@ -81,7 +81,7 @@ LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-open_beta}"
 LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-1}"
 LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-08-28.1}"
 LIVE_COACH_ENABLED_PERSONAS="${LIVE_COACH_ENABLED_PERSONAS:-plainstride_supportive_v1,plainstride_focused_v1}"
-LIVE_COACH_ENABLED_VOICE_PROFILES="${LIVE_COACH_ENABLED_VOICE_PROFILES:-plainstride_warm_1,plainstride_clear_1}"
+LIVE_COACH_ENABLED_VOICE_PROFILES="${LIVE_COACH_ENABLED_VOICE_PROFILES:-plainstride_warm_1,plainstride_gentle_1,plainstride_composed_1,plainstride_clear_1,plainstride_driven_1,plainstride_easygoing_1}"
 LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT="${LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT:-0}"
 LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE="${LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE:-8}"
 LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME="${LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME:-15}"

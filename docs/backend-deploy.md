@@ -132,15 +132,15 @@ Notes:
 
 The deploy script defaults live coaching to `disabled`, Alibaba routing to disabled, and dynamic rollout to zero. A code deploy therefore cannot begin AI traffic by itself.
 
-The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, and Alibaba endpoint identity/region. Defaults match the reviewed plan; override them explicitly for a catalog or routing change and increment `LIVE_COACH_CONFIG_VERSION` when changing rollout behavior.
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, and Alibaba endpoint identity/region. The approved dated model and six product-to-provider voice mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for the current mapping and increment `LIVE_COACH_CONFIG_VERSION` when a fresh rollout cohort assignment is intended.
 
 Operational sequence:
 
 1. Rotate any key that has been pasted into chat, logs, shell history, or another non-secret channel.
 2. Store the replacement in Secret Manager as `outbound-alibaba-ai-api-key` and grant only the Cloud Run runtime identity access.
-3. Set the workspace-specific Singapore compatible endpoint, an explicitly approved deployed model ID, and complete product-voice mappings for `en`, `es`, and `zh-Hans` through deployment environment overrides. Do not commit these values to app code or a dotenv file.
-4. Generate the content-addressed pack with `cd backend && npm run live-coach:generate-audio -- --catalog-version 2026-08-28.1 --provider alibaba`.
-5. Listen to every review WAV, mark every manifest entry approved, configure an ES256 manifest signing key/key ID, add the matching public PEM under `LiveCoachAudioManifestPublicKeys` in the iOS app's `Info.plist`, and publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved`.
+3. Set the workspace-specific Singapore compatible endpoint. The backend defaults to the approved `qwen3-omni-flash-2025-12-01` snapshot and complete six-voice `en`/`es`/`zh-Hans` map; use deployment overrides only for a separately reviewed change.
+4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 468 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
+5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
 7. Deploy `fixed_only`, verify device playback and rollback, then deploy `dynamic` with a 0% rollout before raising the deterministic percentage.
 
@@ -165,8 +165,6 @@ Representative deploy environment (placeholders only):
 ALIBABA_AI_API_KEY_SECRET=outbound-alibaba-ai-api-key \
 ALIBABA_AI_ENABLED=true \
 ALIBABA_AI_BASE_URL='https://WORKSPACE_ID.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' \
-ALIBABA_LIVE_COACH_MODEL='APPROVED_DEPLOYED_MODEL_ID' \
-ALIBABA_LIVE_COACH_VOICE_MAP='{"plainstride_warm_1":{"en":"VOICE","es":"VOICE","zh-Hans":"VOICE"},"plainstride_clear_1":{"en":"VOICE","es":"VOICE","zh-Hans":"VOICE"}}' \
 LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
 LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-28.1/manifest.json' \
@@ -176,7 +174,7 @@ LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-28.1/ass
 
 Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing secret/model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only`. Use `disabled` when server audio itself must be unavailable; the iOS app never re-enables Apple speech.
 
-Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID` and an ES256 private PEM in `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY`. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last known-good or bundled pack untouched.
+Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-2026-v1` and the Secret Manager ES256 private PEM supplied to `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY` without logging it. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last-known-good or bundled pack untouched.
 
 ## Secret Manager Plan
 

@@ -8,6 +8,7 @@ import { getPrismaClient } from "../services/prisma.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import type { AppEnv } from "../types/hono.js";
 import { findCoachPersona, findVoiceProfile } from "../services/liveCoach/liveCoachCatalog.js";
+import { VOICE_PROFILE_IDS } from "../services/aiProviders/types.js";
 
 const router = new Hono<AppEnv>();
 
@@ -47,7 +48,7 @@ router.post(
     z.object({
       guideName: z.string().min(1).max(30).optional(),
       coachPersonaId: z.enum(["plainstride_supportive_v1", "plainstride_focused_v1", "plainstride_calm_v1"]).optional(),
-      voiceProfileId: z.enum(["plainstride_warm_1", "plainstride_clear_1"]).optional(),
+      voiceProfileId: z.enum(VOICE_PROFILE_IDS).optional(),
     }).strict()
   ),
   async (c) => {

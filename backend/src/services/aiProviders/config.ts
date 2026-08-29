@@ -1,5 +1,9 @@
 import { AIProviderError } from "./errors.js";
-import type { SupportedAILocale, VoiceProfileId } from "./types.js";
+import { VOICE_PROFILE_IDS, type SupportedAILocale, type VoiceProfileId } from "./types.js";
+import {
+  APPROVED_ALIBABA_LIVE_COACH_MODEL,
+  APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
+} from "./alibaba/approvedLiveCoachConfiguration.js";
 
 export type AlibabaProviderConfig = {
   enabled: boolean;
@@ -25,8 +29,10 @@ export function loadAIProviderConfiguration(env: NodeJS.ProcessEnv = process.env
       baseUrl: trimTrailingSlash(env.ALIBABA_AI_BASE_URL),
       endpointKey: trimmed(env.ALIBABA_AI_ENDPOINT_KEY) || "alibaba-global-primary",
       deploymentRegion: trimmed(env.ALIBABA_AI_DEPLOYMENT_REGION) || "ap-southeast-1",
-      model: trimmed(env.ALIBABA_LIVE_COACH_MODEL),
-      voiceMap: parseVoiceMap(env.ALIBABA_LIVE_COACH_VOICE_MAP),
+      model: trimmed(env.ALIBABA_LIVE_COACH_MODEL) || APPROVED_ALIBABA_LIVE_COACH_MODEL,
+      voiceMap: env.ALIBABA_LIVE_COACH_VOICE_MAP?.trim()
+        ? parseVoiceMap(env.ALIBABA_LIVE_COACH_VOICE_MAP)
+        : APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
     },
   };
 }
@@ -62,6 +68,9 @@ function parseVoiceMap(value: string | undefined): AlibabaProviderConfig["voiceM
     if (!isRecord(parsed)) throw new Error("not an object");
     const result: Record<string, Partial<Record<SupportedAILocale, string>>> = {};
     for (const [profileId, localeMap] of Object.entries(parsed)) {
+      if (!VOICE_PROFILE_IDS.some((knownId) => knownId === profileId)) {
+        throw new Error("unknown voice profile");
+      }
       if (!isRecord(localeMap)) throw new Error("voice profile mapping is not an object");
       const normalized: Partial<Record<SupportedAILocale, string>> = {};
       for (const locale of ["en", "es", "zh-Hans"] as const) {

@@ -4,6 +4,7 @@ import path from "node:path";
 import { audioPackManifestSchema } from "../services/liveCoach/audioPackManifest.js";
 import { publishLiveCoachAudioObject, publishLiveCoachManifest } from "../services/liveCoach/audioPackStorage.js";
 import { validateLiveCoachWav } from "../services/aiProviders/audioValidation.js";
+import { LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS } from "../services/aiProviders/types.js";
 
 const manifestArgument = process.argv[process.argv.indexOf("--review-manifest") + 1];
 if (!process.argv.includes("--approved") || !manifestArgument) {
@@ -25,7 +26,9 @@ for (const entry of manifest.entries) {
   if (!entry.reviewFileName) throw new Error(`Review file is missing for ${entry.cueKey}.`);
   const filePath = path.join(directory, entry.reviewFileName);
   const audio = await readFile(filePath);
-  const validated = validateLiveCoachWav(audio);
+  const validated = validateLiveCoachWav(audio, {
+    maximumDurationMilliseconds: LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS,
+  });
   const sha256 = createHash("sha256").update(audio).digest("hex");
   if (sha256 !== entry.sha256 || audio.byteLength !== entry.byteCount
       || validated.durationMilliseconds !== entry.durationMilliseconds) {

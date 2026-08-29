@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { AIProviderError } from "../aiProviders/errors.js";
 import { assertAIProviderConfiguration, loadAIProviderConfiguration } from "../aiProviders/config.js";
-import type { CoachPersonaId, VoiceProfileId } from "../aiProviders/types.js";
+import { VOICE_PROFILE_IDS, type CoachPersonaId, type VoiceProfileId } from "../aiProviders/types.js";
 
 export const LIVE_COACH_MODES = ["disabled", "fixed_only", "dynamic"] as const;
 export type LiveCoachMode = (typeof LIVE_COACH_MODES)[number];
@@ -30,7 +30,7 @@ const knownPersonaIds: CoachPersonaId[] = [
   "plainstride_focused_v1",
   "plainstride_calm_v1",
 ];
-const knownVoiceProfileIds: VoiceProfileId[] = ["plainstride_warm_1", "plainstride_clear_1"];
+const knownVoiceProfileIds: readonly VoiceProfileId[] = VOICE_PROFILE_IDS;
 
 export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env): LiveCoachFeatureConfig {
   const mode = enumValue(env.LIVE_COACH_SERVER_AUDIO_MODE, LIVE_COACH_MODES, "disabled");
@@ -51,7 +51,11 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     ]) as CoachPersonaId[],
     enabledVoiceProfileIds: csv(env.LIVE_COACH_ENABLED_VOICE_PROFILES, [
       "plainstride_warm_1",
+      "plainstride_gentle_1",
+      "plainstride_composed_1",
       "plainstride_clear_1",
+      "plainstride_driven_1",
+      "plainstride_easygoing_1",
     ]) as VoiceProfileId[],
     dynamicRolloutPercent: boundedInteger(env.LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT, 0, 0, 100),
     dynamicCueLimitResponsive: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE, 8, 0, 30),
