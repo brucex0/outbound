@@ -38,14 +38,14 @@ Environment overrides:
   LIVE_COACH_AUDIO_PACK_PUBLISHED default: false
   LIVE_COACH_AUDIO_MANIFEST_URL optional immutable HTTPS manifest URL
   LIVE_COACH_AUDIO_ASSET_BASE_URL optional immutable HTTPS asset base URL
-  ALIBABA_AI_ENABLED           default: false
+  ALIBABA_AI_ENABLED           default: true
   AI_ROUTE_POLICY_VERSION      default: 1
-  ALIBABA_AI_ENDPOINT_KEY      default: alibaba-global-primary
+  ALIBABA_AI_ENDPOINT_KEY      default: alibaba-sg-ws-i638drcm5lthrc29
   ALIBABA_AI_DEPLOYMENT_REGION default: ap-southeast-1
-  ALIBABA_AI_BASE_URL          provider workspace compatible-mode/v1 URL
+  ALIBABA_AI_BASE_URL          default: approved Singapore workspace compatible-mode/v1 URL
   ALIBABA_LIVE_COACH_MODEL     optional override; default: qwen3-omni-flash-2025-12-01
   ALIBABA_LIVE_COACH_VOICE_MAP optional override; default: approved 3 female/3 male locale map
-  ALIBABA_AI_API_KEY_SECRET    optional Secret Manager secret name to bind
+  ALIBABA_AI_API_KEY_SECRET    default: outbound-alibaba-ai-api-key
   SOURCE_DIR              default: backend
   GCLOUD_BIN              default: $HOME/google-cloud-sdk/bin/gcloud, then PATH
   NPM_BIN                 optional npm path
@@ -90,14 +90,14 @@ LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS="${LIVE_COACH_PROVIDER_DEADLINE_MILLIS
 LIVE_COACH_AUDIO_PACK_PUBLISHED="${LIVE_COACH_AUDIO_PACK_PUBLISHED:-false}"
 LIVE_COACH_AUDIO_MANIFEST_URL="${LIVE_COACH_AUDIO_MANIFEST_URL:-}"
 LIVE_COACH_AUDIO_ASSET_BASE_URL="${LIVE_COACH_AUDIO_ASSET_BASE_URL:-}"
-ALIBABA_AI_ENABLED="${ALIBABA_AI_ENABLED:-false}"
+ALIBABA_AI_ENABLED="${ALIBABA_AI_ENABLED:-true}"
 AI_ROUTE_POLICY_VERSION="${AI_ROUTE_POLICY_VERSION:-1}"
-ALIBABA_AI_ENDPOINT_KEY="${ALIBABA_AI_ENDPOINT_KEY:-alibaba-global-primary}"
+ALIBABA_AI_ENDPOINT_KEY="${ALIBABA_AI_ENDPOINT_KEY:-alibaba-sg-ws-i638drcm5lthrc29}"
 ALIBABA_AI_DEPLOYMENT_REGION="${ALIBABA_AI_DEPLOYMENT_REGION:-ap-southeast-1}"
-ALIBABA_AI_BASE_URL="${ALIBABA_AI_BASE_URL:-}"
+ALIBABA_AI_BASE_URL="${ALIBABA_AI_BASE_URL:-https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1}"
 ALIBABA_LIVE_COACH_MODEL="${ALIBABA_LIVE_COACH_MODEL:-}"
 ALIBABA_LIVE_COACH_VOICE_MAP="${ALIBABA_LIVE_COACH_VOICE_MAP:-}"
-ALIBABA_AI_API_KEY_SECRET="${ALIBABA_AI_API_KEY_SECRET:-}"
+ALIBABA_AI_API_KEY_SECRET="${ALIBABA_AI_API_KEY_SECRET:-outbound-alibaba-ai-api-key}"
 SOURCE_DIR="${SOURCE_DIR:-backend}"
 GCLOUD_BIN="${GCLOUD_BIN:-$HOME/google-cloud-sdk/bin/gcloud}"
 NPM_BIN="${NPM_BIN:-}"

@@ -44,12 +44,26 @@ const manifest: AudioPackManifest = {
   entries: [],
 };
 
-const voiceProfileIds = Object.keys(providerConfig.alibaba.voiceMap) as VoiceProfileId[];
-const totalAssetCount = voiceProfileIds.length * 3 * source.entries.length;
+const voiceProfileIds = args.voiceProfileId
+  ? [args.voiceProfileId]
+  : Object.keys(providerConfig.alibaba.voiceMap) as VoiceProfileId[];
+const locales = args.locale
+  ? [args.locale]
+  : ["en", "es", "zh-Hans"] as SupportedAILocale[];
+const entries = args.cueKey
+  ? source.entries.filter((entry) => entry.cueKey === args.cueKey)
+  : source.entries;
+if (args.voiceProfileId && !providerConfig.alibaba.voiceMap[args.voiceProfileId]) {
+  throw new Error(`Voice profile is not configured for Alibaba: ${args.voiceProfileId}.`);
+}
+if (entries.length === 0) {
+  throw new Error(`Unknown live-coach cue: ${args.cueKey}.`);
+}
+const totalAssetCount = voiceProfileIds.length * locales.length * entries.length;
 let assetIndex = 0;
 for (const voiceProfileId of voiceProfileIds) {
-  for (const locale of ["en", "es", "zh-Hans"] as const) {
-    for (const entry of source.entries) {
+  for (const locale of locales) {
+    for (const entry of entries) {
       assetIndex += 1;
       const text = entry.texts[locale];
       const resolved = resolveAIRoute(registry, {
@@ -129,18 +143,42 @@ await writeFile(path.join(outputDirectory, "review-manifest.json"), `${JSON.stri
 console.log(`Generated ${manifest.entries.length} review assets in ${outputDirectory}. Listen to every asset and mark approved=true before publishing.`);
 
 function parseArgs(values: string[]) {
-  const result: { catalogVersion?: string; output?: string; provider: string; list: boolean } = {
+  const result: {
+    catalogVersion?: string;
+    output?: string;
+    provider: string;
+    list: boolean;
+    voiceProfileId?: VoiceProfileId;
+    locale?: SupportedAILocale;
+    cueKey?: string;
+  } = {
     provider: "alibaba",
     list: false,
   };
   for (let index = 0; index < values.length; index += 1) {
-    if (values[index] === "--catalog-version") result.catalogVersion = values[++index];
-    else if (values[index] === "--output") result.output = values[++index];
-    else if (values[index] === "--provider") result.provider = values[++index];
+    if (values[index] === "--catalog-version") result.catalogVersion = requiredValue(values, ++index, "--catalog-version");
+    else if (values[index] === "--output") result.output = requiredValue(values, ++index, "--output");
+    else if (values[index] === "--provider") result.provider = requiredValue(values, ++index, "--provider");
+    else if (values[index] === "--voice-profile") {
+      const value = requiredValue(values, ++index, "--voice-profile");
+      if (!VOICE_PROFILE_IDS.includes(value as VoiceProfileId)) throw new Error(`Unknown voice profile: ${value}.`);
+      result.voiceProfileId = value as VoiceProfileId;
+    }
+    else if (values[index] === "--locale") {
+      const value = requiredValue(values, ++index, "--locale");
+      if (!["en", "es", "zh-Hans"].includes(value)) throw new Error(`Unsupported locale: ${value}.`);
+      result.locale = value as SupportedAILocale;
+    }
+    else if (values[index] === "--cue") result.cueKey = requiredValue(values, ++index, "--cue");
     else if (values[index] === "--list") result.list = true;
     else throw new Error(`Unknown argument: ${values[index]}.`);
   }
   return result;
+}
+function requiredValue(values: string[], index: number, flag: string): string {
+  const value = values[index];
+  if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value.`);
+  return value;
 }
 function printCatalog(source: SourceCatalog): void {
   console.log(`Catalog ${source.catalogVersion}: ${source.entries.length} cues, 3 locales, ${VOICE_PROFILE_IDS.length} voices, ${source.entries.length * 3 * VOICE_PROFILE_IDS.length} WAV assets.`);

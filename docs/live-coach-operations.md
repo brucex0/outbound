@@ -6,6 +6,8 @@ Open this when selecting the Alibaba route, generating or publishing fixed audio
 
 Plainstride uses Alibaba Model Studio's workspace-specific Singapore OpenAI-compatible endpoint. The approved model is the dated `qwen3-omni-flash-2025-12-01` snapshot. It fits short, cost-sensitive coaching output, supports `en`, `es`, and Mandarin audio, and avoids the moving behavior of an unversioned model alias.
 
+The configured workspace is `ws-i638drcm5lthrc29` (account `1093525`) at `https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`. Both the deploy and local generation scripts use this endpoint by default. Cloud Run and authenticated local generation are configured to share the Secret Manager entry `outbound-alibaba-ai-api-key`; the credential value is not stored in the repository.
+
 The backend owns the following provider map. The iOS app and public APIs see only the Plainstride profile ID and localized product name.
 
 | Product voice | Product style | Alibaba voice | Presentation | `en` | `es` | `zh-Hans` |
@@ -49,13 +51,16 @@ Print every key and all three scripts without making an API call:
 
 ## Generate And Download Review Audio
 
-Use a Singapore API key and the workspace-specific compatible endpoint. Do not pass the key as a command argument or commit it to dotenv files.
+The local script first uses `ALIBABA_AI_API_KEY` or `DASHSCOPE_API_KEY`. If neither is set, it reads `outbound-alibaba-ai-api-key` from project `outbound-494602` using the configured gcloud account. The approved workspace URL is already the default.
 
 ```sh
-export DASHSCOPE_API_KEY='REDACTED'
-export ALIBABA_AI_BASE_URL='https://WORKSPACE_ID.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1'
+./scripts/generate-live-coach-audio.sh --smoke
 ./scripts/generate-live-coach-audio.sh
 ```
+
+`--smoke` generates only the English `voice.preview` cue with `plainstride_warm_1` into `backend/.local/live-coach-smoke/`. Use it after credential or endpoint changes before starting the complete pack.
+
+Alibaba's OpenAI-compatible Omni response returns Base64-encoded 24 kHz, mono, 16-bit PCM chunks even when the request's required format field is `wav`. The adapter wraps those chunks in a standard WAV container before validation and storage, matching Alibaba's official Node.js example.
 
 The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again.
 

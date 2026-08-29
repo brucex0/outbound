@@ -77,7 +77,39 @@ function parseChunks(chunks: AlibabaStreamChunk[]): ParsedAlibabaStream {
   if (audioParts.length === 0) throw new AIProviderError("invalid_provider_output", "Provider returned no audio modality.");
   const transcript = (transcriptParts.length > 0 ? transcriptParts : contentParts).join("").trim();
   if (!transcript) throw new AIProviderError("invalid_provider_output", "Provider returned no transcript.");
-  return { transcript, audio: Buffer.concat(audioParts), usage, providerRequestId };
+  const providerAudio = Buffer.concat(audioParts);
+  const audio = isWav(providerAudio) ? providerAudio : pcm16Mono24KToWav(providerAudio);
+  return { transcript, audio, usage, providerRequestId };
+}
+
+function isWav(audio: Uint8Array): boolean {
+  return audio.byteLength >= 12
+    && Buffer.from(audio.subarray(0, 4)).toString("ascii") === "RIFF"
+    && Buffer.from(audio.subarray(8, 12)).toString("ascii") === "WAVE";
+}
+
+// Alibaba's OpenAI-compatible Omni stream labels the requested output as WAV,
+// but its documented audio.data payload is headerless 24 kHz mono PCM16.
+function pcm16Mono24KToWav(pcm: Uint8Array): Buffer {
+  if (pcm.byteLength === 0 || pcm.byteLength % 2 !== 0) {
+    throw new AIProviderError("invalid_provider_output", "Provider returned malformed PCM audio data.");
+  }
+  const wav = Buffer.allocUnsafe(44 + pcm.byteLength);
+  wav.write("RIFF", 0, "ascii");
+  wav.writeUInt32LE(36 + pcm.byteLength, 4);
+  wav.write("WAVE", 8, "ascii");
+  wav.write("fmt ", 12, "ascii");
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(24_000, 24);
+  wav.writeUInt32LE(48_000, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write("data", 36, "ascii");
+  wav.writeUInt32LE(pcm.byteLength, 40);
+  Buffer.from(pcm).copy(wav, 44);
+  return wav;
 }
 
 async function safeJSON(response: Response): Promise<AlibabaStreamChunk> {
