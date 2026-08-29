@@ -36,7 +36,10 @@ struct SimplifiedAppShell: View {
     @Binding var customizedTodayIntent: SessionIntent?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
+    let showsPreActivityPhotoAction: Bool
+    let preActivityPhoto: UIImage?
     let onContextualStart: () -> Void
+    let onPreActivityPhotoAction: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
     @State private var selectedRouteName: String?
@@ -80,24 +83,19 @@ struct SimplifiedAppShell: View {
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
         }
-        .overlay(alignment: .bottomLeading) {
-            Button {
-                showsAssistant = true
-            } label: {
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-                    .overlay {
-                        Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                    }
-                    .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+        .overlay(alignment: .bottom) {
+            HStack {
+                assistantLaunchButton
+
+                Spacer(minLength: 0)
+
+                if selection == .today,
+                   activitySessionState == .idle,
+                   showsPreActivityPhotoAction {
+                    preActivityPhotoLaunchButton
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "Open assistant"))
-            .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-            .padding(.leading, 18)
+            .padding(.horizontal, 18)
             .padding(.bottom, 40)
         }
         .sheet(isPresented: $showsAssistant) {
@@ -186,6 +184,65 @@ struct SimplifiedAppShell: View {
         case .me:
             return String(localized: "Me")
         }
+    }
+
+    private var assistantLaunchButton: some View {
+        Button {
+            showsAssistant = true
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+                .overlay {
+                    Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                }
+                .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Open assistant"))
+        .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+    }
+
+    private var preActivityPhotoLaunchButton: some View {
+        Button(action: onPreActivityPhotoAction) {
+            ZStack(alignment: .bottomTrailing) {
+                if let preActivityPhoto {
+                    Image(uiImage: preActivityPhoto)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(width: 17, height: 17)
+                        .background(Color.green, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .offset(x: 2, y: 2)
+                } else {
+                    Image(systemName: "camera.fill")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(theme.actionColor.gradient, in: Circle())
+                        .overlay {
+                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+                        }
+                }
+            }
+            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
+        .accessibilityValue(
+            preActivityPhoto == nil
+                ? String(localized: "record.photo.not_added", defaultValue: "No photo added")
+                : String(localized: "record.photo.added", defaultValue: "Photo added")
+        )
     }
 
     private func selectTabWithoutAnimation(_ tab: SimplifiedAppTab) {
@@ -3228,7 +3285,10 @@ private extension RunnerConfidence {
         customizedTodayIntent: .constant(nil),
         activityLaunchSurface: AnyView(EmptyView()),
         launchGoalMode: .planned,
+        showsPreActivityPhotoAction: true,
+        preActivityPhoto: nil,
         onContextualStart: {},
+        onPreActivityPhotoAction: {},
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())

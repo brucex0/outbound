@@ -22,6 +22,8 @@ struct MainTabView: View {
     @State private var feedbackPage = "Today"
     @State private var selectedAppTab: SimplifiedAppTab = .today
     @State private var activityStartRequest = 0
+    @State private var preActivityPhotoRequest = 0
+    @State private var preActivityPhoto: UIImage?
     @State private var launchGoalMode: SessionGoalMode = .planned
     @State private var customizedTodayIntent: SessionIntent?
 
@@ -148,8 +150,13 @@ struct MainTabView: View {
             customizedTodayIntent: $customizedTodayIntent,
             activityLaunchSurface: activityLaunchSurface,
             launchGoalMode: launchGoalMode,
+            showsPreActivityPhotoAction: isActivityVisible,
+            preActivityPhoto: preActivityPhoto,
             onContextualStart: {
                 activityStartRequest += 1
+            },
+            onPreActivityPhotoAction: {
+                preActivityPhotoRequest += 1
             }
         ) { intent in
             presentActivity(intent: intent)
@@ -163,7 +170,9 @@ struct MainTabView: View {
                 isVisible: isActivityVisible && selectedAppTab == .today,
                 isEmbeddedInToday: true,
                 startRequest: activityStartRequest,
+                preActivityPhotoRequest: preActivityPhotoRequest,
                 onGoalModeChange: { launchGoalMode = $0 },
+                onPreActivityPhotoChange: { preActivityPhoto = $0 },
                 onCloseRequest: handleActivityClose,
                 onSessionStateChange: { activitySessionState = $0 },
                 onElapsedTimeChange: { activityElapsedSeconds = $0 }

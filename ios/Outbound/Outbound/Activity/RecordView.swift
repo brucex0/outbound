@@ -138,8 +138,10 @@ struct RecordView: View {
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
     private let startRequest: Int
+    private let preActivityPhotoRequest: Int
     private let shouldApplySmartGoalDefault: Bool
     private let onGoalModeChange: ((SessionGoalMode) -> Void)?
+    private let onPreActivityPhotoChange: ((UIImage?) -> Void)?
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
     private let onElapsedTimeChange: ((Int) -> Void)?
@@ -149,7 +151,9 @@ struct RecordView: View {
         isVisible: Bool = true,
         isEmbeddedInToday: Bool = false,
         startRequest: Int = 0,
+        preActivityPhotoRequest: Int = 0,
         onGoalModeChange: ((SessionGoalMode) -> Void)? = nil,
+        onPreActivityPhotoChange: ((UIImage?) -> Void)? = nil,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
@@ -167,7 +171,9 @@ struct RecordView: View {
         self.isVisible = isVisible
         self.isEmbeddedInToday = isEmbeddedInToday
         self.startRequest = startRequest
+        self.preActivityPhotoRequest = preActivityPhotoRequest
         self.onGoalModeChange = onGoalModeChange
+        self.onPreActivityPhotoChange = onPreActivityPhotoChange
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -175,7 +181,7 @@ struct RecordView: View {
         _recorder = StateObject(wrappedValue: ActivityRecorder(locationManager: loc))
     }
 
-    var body: some View {
+    private var recordStateSurface: some View {
         Group {
             if isEmbeddedInToday {
                 embeddedReadyView
@@ -220,15 +226,23 @@ struct RecordView: View {
             guard isEmbeddedInToday, isVisible, !showCamera else { return }
             startRecording()
         }
+        .onChange(of: preActivityPhotoRequest) { _, _ in
+            handlePreActivityPhotoRequest()
+        }
         .onChange(of: selectedGoalMode, initial: true) { _, mode in
             onGoalModeChange?(mode)
         }
         .onAppear {
+            onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
             if recorder.state == .idle {
                 recorder.locationManager.requestCurrentLocation()
             }
         }
+    }
+
+    var body: some View {
+        recordStateSurface
         .task {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
@@ -312,17 +326,6 @@ struct RecordView: View {
                 .padding(.top, showCamera ? 18 : 14)
                 .padding(.trailing, 16)
                 .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
-            }
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if isVisible,
-               isEmbeddedInToday,
-               pendingActivity == nil,
-               recorder.state == .idle,
-               !showCamera {
-                embeddedFloatingPhotoControl
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 40)
             }
         }
         .sheet(isPresented: $showsRouteLibrary) {
@@ -1067,6 +1070,7 @@ struct RecordView: View {
         cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
         capturedPhotos = []
+        onPreActivityPhotoChange?(nil)
         activeIntent = nil
         plannedIntent = nil
         selectedWorkoutChoice = .sport(.run)
@@ -1691,42 +1695,6 @@ struct RecordView: View {
         .accessibilityValue(photoAccessibilityValue)
     }
 
-    private var embeddedFloatingPhotoControl: some View {
-        Button(action: handlePreActivityPhotoAction) {
-            ZStack(alignment: .bottomTrailing) {
-                if let photo = preActivityPhoto {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 48, height: 48)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 17, height: 17)
-                        .background(Color.green, in: Circle())
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .offset(x: 2, y: 2)
-                } else {
-                    Image(systemName: "camera.fill")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(theme.actionColor.gradient, in: Circle())
-                        .overlay {
-                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                        }
-                }
-            }
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
-        .accessibilityValue(photoAccessibilityValue)
-    }
-
     private func handlePreActivityPhotoAction() {
         if preActivityPhoto == nil {
             track(.init(.photoCaptureAttempted, properties: [.sourceType: .string("pre_activity_camera")]))
@@ -1735,6 +1703,16 @@ struct RecordView: View {
             track(.init(.photoPreviewed, properties: [.sourceType: .string("pre_activity")]))
             isPreActivityPhotoPreviewPresented = true
         }
+    }
+
+    private func handlePreActivityPhotoRequest() {
+        guard isEmbeddedInToday,
+              isVisible,
+              pendingActivity == nil,
+              recorder.state == .idle,
+              !showCamera
+        else { return }
+        handlePreActivityPhotoAction()
     }
 
     private func launchUtilityButton(
@@ -2558,10 +2536,12 @@ struct RecordView: View {
             .sourceType: .string("pre_activity"),
             .locationAttached: .boolean(coordinate != nil)
         ]))
+        onPreActivityPhotoChange?(image)
     }
 
     private func removePreActivityPhoto() {
         capturedPhotos.removeAll { $0.1.captureContext == .preActivity }
+        onPreActivityPhotoChange?(nil)
     }
 
     private var sessionOptionsCard: some View {
