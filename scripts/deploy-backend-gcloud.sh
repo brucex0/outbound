@@ -55,6 +55,8 @@ Environment overrides:
   NODE_BIN                optional node path for TypeScript fallback
   RUN_LOCAL_BUILD=0       skip local build before deploy
   RUN_HEALTH_CHECK=0      skip /health check after deploy
+  HEALTH_CHECK_RETRIES    default: 5 retries after the first attempt
+  HEALTH_CHECK_RETRY_DELAY_SECONDS default: 5
   ALLOW_DIRTY_BACKEND=1   allow deploy with uncommitted backend changes
   QUIET=0                 allow interactive gcloud prompts
 
@@ -110,6 +112,8 @@ NPM_BIN="${NPM_BIN:-}"
 NODE_BIN="${NODE_BIN:-}"
 RUN_LOCAL_BUILD="${RUN_LOCAL_BUILD:-1}"
 RUN_HEALTH_CHECK="${RUN_HEALTH_CHECK:-1}"
+HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-5}"
+HEALTH_CHECK_RETRY_DELAY_SECONDS="${HEALTH_CHECK_RETRY_DELAY_SECONDS:-5}"
 ALLOW_DIRTY_BACKEND="${ALLOW_DIRTY_BACKEND:-0}"
 QUIET="${QUIET:-1}"
 
@@ -254,6 +258,10 @@ echo "Cloud Run URL: $service_url"
 
 if [[ "$RUN_HEALTH_CHECK" != "0" ]]; then
   echo "Checking $service_url/health"
-  curl --fail --silent --show-error "$service_url/health"
+  curl --fail --silent --show-error \
+    --retry "$HEALTH_CHECK_RETRIES" \
+    --retry-all-errors \
+    --retry-delay "$HEALTH_CHECK_RETRY_DELAY_SECONDS" \
+    "$service_url/health"
   echo
 fi
