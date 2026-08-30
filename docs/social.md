@@ -8,6 +8,8 @@ Social home has a persistent Connections section rather than burying Connections
 
 The Social home connection-growth card is limited to runners with no accepted connections and remains hidden until the first connection snapshot loads successfully, so an unknown empty state never flashes the prompt. Connections keeps people discovery in its always-visible inline search field, while the top-right add menu opens referral-link sharing. Upcoming includes a visible Discover entry for browsing compatible activities from connections and joined groups. Upcoming and Recent sections remain visible with explicit empty cards when they have no content.
 
+Background refresh failures leave cached Social content in place and use a transient localized toast rather than inserting raw HTTP status text into the page layout.
+
 The header keeps the community menu focused on Groups and routes; planning and discovery stay beside Upcoming, Connections stays in its home section, and Notifications remains a dedicated action. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.

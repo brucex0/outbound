@@ -36,12 +36,6 @@ struct SocialHomeView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    if let message = socialStore.errorMessage {
-                        Text(message)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
                     if let incomingRequest = socialStore.connections.first(where: {
                         $0.status == "pending" && $0.direction == "incoming"
                     }) {
@@ -122,6 +116,19 @@ struct SocialHomeView: View {
                 Task {
                     await analyticsManager?.track(.init(.featureExposed, properties: [
                         .feature: .string("social_connections_section"),
+                    ]))
+                }
+            }
+            .onChange(of: socialStore.errorMessage) { _, message in
+                guard message != nil else { return }
+                toastMessage = String(
+                    localized: "social.error.refresh",
+                    defaultValue: "Social couldn’t fully refresh. Pull down to try again."
+                )
+                Task {
+                    await analyticsManager?.track(.init(.socialOperationFailed, properties: [
+                        .sourceType: .string("social_home"),
+                        .errorCategory: .string("api_unavailable"),
                     ]))
                 }
             }
