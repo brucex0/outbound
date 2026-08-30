@@ -62,7 +62,8 @@ Track:
 - `pre_run_photo_added`;
 - `group_run_enabled`;
 - `live_share_enabled`;
-- `indoor`.
+- `indoor`;
+- `voice_guide_enabled`.
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 

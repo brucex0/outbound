@@ -79,7 +79,7 @@ struct RecordView: View {
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @StateObject private var workoutPresence = WorkoutPresenceController()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
-    @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = false
+    @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
     @AppStorage("preferred_launch_goal_mode_v1") private var preferredLaunchGoalModeRawValue = ""
     @AppStorage("launch_goal_mode_start_history_v1") private var launchGoalModeStartHistoryData = Data()
     @State private var showCamera = false
@@ -221,8 +221,10 @@ struct RecordView: View {
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
         }
-        .onChange(of: isVisible, initial: true) { _, _ in
+        .onChange(of: isVisible, initial: true) { wasVisible, isNowVisible in
             seedLiveRunForUITestIfRequested()
+            guard !wasVisible, isNowVisible else { return }
+            presentMusicDiscoveryTipIfNeeded()
         }
         .onChange(of: startRequest) { _, _ in
             guard isEmbeddedInToday, isVisible, !showCamera else { return }
@@ -1279,6 +1281,22 @@ struct RecordView: View {
                             dismissMusicDiscoveryTip(result: "opened")
                             setupSheet = .music
                         }
+                        .popover(isPresented: $showsMusicDiscoveryTip, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(String(localized: "record.music.discovery.title", defaultValue: "Bring music on your activity"))
+                                    .font(.headline)
+                                Text(String(localized: "record.music.discovery.detail", defaultValue: "Tap the Music button to connect Apple Music or choose what to play."))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Button(String(localized: "record.music.discovery.dismiss", defaultValue: "Not now")) {
+                                    dismissMusicDiscoveryTip(result: "dismissed")
+                                }
+                                .font(.subheadline.weight(.semibold))
+                            }
+                            .padding()
+                            .frame(idealWidth: 280, alignment: .leading)
+                            .presentationCompactAdaptation(.popover)
+                        }
 
                         setupUtilityButton(
                             title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
@@ -1296,10 +1314,8 @@ struct RecordView: View {
                         launchShoeControl
 
                         setupUtilityButton(
-                            title: String(localized: "record.setup.environment", defaultValue: "Environment"),
-                            value: isIndoorSession
-                                ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
-                                : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
+                            title: indoorOutdoorLabel,
+                            value: indoorOutdoorLabel,
                             systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
                             isConfigured: true
                         ) {
@@ -2008,7 +2024,7 @@ struct RecordView: View {
                 VStack(alignment: .leading, spacing: 12) { liveGroupSetup }
                     .padding(.vertical, 6)
             }
-            Section(String(localized: "record.environment.title", defaultValue: "Environment")) {
+            Section(String(localized: "record.environment.title", defaultValue: "Indoor / Outdoor")) {
                 Button { isIndoorSession = false } label: {
                     setupChoiceRow(title: String(localized: "record.environment.outdoor", defaultValue: "Outdoor"), detail: "", systemImage: "sun.max.fill", isSelected: !isIndoorSession)
                 }
@@ -2113,6 +2129,7 @@ struct RecordView: View {
 
     private func presentMusicDiscoveryTipIfNeeded() {
         guard !didPresentMusicDiscoveryTip,
+              isVisible,
               !showCamera,
               musicStore.snapshot.connectionState == .notConnected
                 || musicStore.snapshot.connectionState == .denied
@@ -2137,6 +2154,11 @@ struct RecordView: View {
         musicStore.applyWorkoutSuggestion(title: intent.title, detail: intent.detail, sport: intent.sport)
     }
     private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (safetyContactStore.defaultContact?.name ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
+    private var indoorOutdoorLabel: String {
+        isIndoorSession
+            ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
+            : String(localized: "record.setup.outdoor", defaultValue: "Outdoor")
+    }
     private var photoAccessibilityValue: String { preActivityPhoto == nil ? String(localized: "record.photo.not_added", defaultValue: "No photo added") : String(localized: "record.photo.added", defaultValue: "Photo added") }
 
     private func track(_ event: ProductAnalyticsEvent) {
@@ -2281,6 +2303,7 @@ struct RecordView: View {
             .groupRunEnabled: .boolean(liveGroupStore.isSharing),
             .liveShareEnabled: .boolean(liveShareStore.isArmedForNextActivity),
             .indoor: .boolean(isIndoorSession),
+            .voiceGuideEnabled: .boolean(voiceGuideSpeechEnabled),
             .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
         ]
     }

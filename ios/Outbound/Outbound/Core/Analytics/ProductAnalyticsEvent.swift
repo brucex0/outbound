@@ -117,6 +117,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case groupRunEnabled = "group_run_enabled"
     case liveShareEnabled = "live_share_enabled"
     case indoor
+    case voiceGuideEnabled = "voice_guide_enabled"
     case durationBucket = "duration_bucket"
     case distanceBucket = "distance_bucket"
     case photoCountBucket = "photo_count_bucket"
@@ -166,7 +167,7 @@ enum ProductAnalyticsSchema {
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [
         .activitySetupViewed: [.entrySource],
         .activityConfigurationChanged: [.changeType, .selectionType, .goalType, .targetBucket],
-        .activityStarted: [.entrySource, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .participantCountBucket],
+        .activityStarted: [.entrySource, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .participantCountBucket],
         .activityPaused: [],
         .activityResumed: [],
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],

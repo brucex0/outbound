@@ -26,7 +26,7 @@ Learn a different manual goal default only after the same mode reaches live reco
 Configure launch options from the dock:
 
 - Music, Live Track, and Shoes use compact icon-plus-label controls that open focused overlays and return the chosen value to the dock.
-- Environment and Voice Guide use the same icon-plus-label treatment and toggle directly.
+- The current `Indoor` or `Outdoor` choice and Voice Guide use the same icon-plus-label treatment and toggle directly. Voice Guide defaults on for a new install and continues to honor an existing saved choice.
 - Photo floats outside the settings scroller as a round, action-colored camera button because it performs an immediate capture rather than configuring the activity. Before capture it opens the camera; afterward it becomes a checked circular thumbnail that opens the preview with Retake and Remove.
 - Off states must stop using the configured treatment.
 - Every independent control keeps a minimum 44-point target and a visible or accessible label.
