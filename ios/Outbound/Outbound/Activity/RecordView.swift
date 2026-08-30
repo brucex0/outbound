@@ -384,10 +384,16 @@ struct RecordView: View {
         }
         .sheet(isPresented: $showsStandaloneWorkouts) {
             StandaloneWorkoutPickerView { workout in
-                plannedIntent = workout.intent
+                let selectedRoute = plannedIntent?.preparedRoute
                 plannedWorkoutIntent = workout.intent
-                intentBeforeSelectedRoute = nil
-                selectedRouteDistanceMeters = nil
+                if let selectedRoute {
+                    intentBeforeSelectedRoute = workout.intent
+                    plannedIntent = routeIntent(selectedRoute, appliedTo: workout.intent)
+                } else {
+                    plannedIntent = workout.intent
+                    intentBeforeSelectedRoute = nil
+                    selectedRouteDistanceMeters = nil
+                }
                 selectedWorkoutChoice = .planned
                 selectedGoalMode = .planned
                 showsStandaloneWorkouts = false
@@ -1705,6 +1711,8 @@ struct RecordView: View {
 
     private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice) {
         isGoalChooserPresented = false
+        let selectedRoute = plannedIntent?.preparedRoute
+        let nextBaseIntent: SessionIntent
 
         switch choice {
         case .planned:
@@ -1714,12 +1722,22 @@ struct RecordView: View {
             }
             selectedWorkoutChoice = .planned
             selectedGoalMode = .planned
-            plannedIntent = plannedWorkoutIntent
+            nextBaseIntent = routeFreeIntent(from: plannedWorkoutIntent)
         case .sport(let sport):
             selectedWorkoutChoice = choice
             selectedGoalMode = SessionGoalMode(goal: manualActivityGoal)
-            plannedIntent = freestyleFallback(for: sport)
+            nextBaseIntent = freestyleFallback(for: sport)
                 .replacingGoal(manualActivityGoal, unitSystem: measurementPreferences.unitSystem)
+        }
+
+        if let selectedRoute {
+            intentBeforeSelectedRoute = nextBaseIntent
+            plannedIntent = routeIntent(selectedRoute, appliedTo: nextBaseIntent)
+            if selectedRouteDistanceMeters == nil {
+                selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(selectedRoute)
+            }
+        } else {
+            plannedIntent = nextBaseIntent
             intentBeforeSelectedRoute = nil
             selectedRouteDistanceMeters = nil
         }
@@ -3402,26 +3420,7 @@ struct RecordView: View {
                 intentBeforeSelectedRoute = currentIntent
             }
             let baseIntent = intentBeforeSelectedRoute ?? currentIntent
-            let resolvedSport = route.activityType.map { SportType(activityType: $0) }
-                ?? baseIntent.sport
-            let preservesBaseStructure = route.activityType == nil
-                || route.activityType == baseIntent.resolvedActivityType
-            plannedIntent = SessionIntent(
-                id: currentIntent.id,
-                sport: resolvedSport,
-                title: route.name,
-                detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
-                guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
-                startLabel: String(localized: "route.guidance.start", defaultValue: "Start Route Guidance"),
-                targetDistanceMeters: currentIntent.targetDistanceMeters,
-                targetDurationSeconds: currentIntent.targetDurationSeconds,
-                targetCalories: currentIntent.targetCalories,
-                routeName: route.name,
-                preparedRoute: route,
-                activityTypeOverride: route.activityType,
-                workoutSteps: preservesBaseStructure ? baseIntent.workoutSteps : [],
-                activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
-            )
+            plannedIntent = routeIntent(route, appliedTo: baseIntent)
             selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
         } else {
             let baseIntent = intentBeforeSelectedRoute ?? freestyleFallback(for: currentIntent.sport)
@@ -3456,6 +3455,35 @@ struct RecordView: View {
             .sourceType: .string(route.source.rawValue),
             .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: preparedRouteDistance(route)))
         ]))
+    }
+
+    private func routeIntent(_ route: PreparedRoute, appliedTo baseIntent: SessionIntent) -> SessionIntent {
+        let resolvedSport = route.activityType.map { SportType(activityType: $0) }
+            ?? baseIntent.sport
+        let preservesBaseStructure = route.activityType == nil
+            || route.activityType == baseIntent.resolvedActivityType
+        return SessionIntent(
+            id: baseIntent.id,
+            sport: resolvedSport,
+            title: route.name,
+            detail: String(localized: "route.guidance.setup.detail", defaultValue: "Follow the selected route with on-device guidance"),
+            guideLine: String(localized: "route.guidance.setup.companion", defaultValue: "Keep the route visible and follow it at your own pace."),
+            startLabel: String(localized: "route.guidance.start", defaultValue: "Start Route Guidance"),
+            targetDistanceMeters: baseIntent.targetDistanceMeters,
+            targetDurationSeconds: baseIntent.targetDurationSeconds,
+            targetCalories: baseIntent.targetCalories,
+            routeName: route.name,
+            preparedRoute: route,
+            activityTypeOverride: route.activityType,
+            workoutSteps: preservesBaseStructure ? baseIntent.workoutSteps : [],
+            activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
+        )
+    }
+
+    private func routeFreeIntent(from intent: SessionIntent) -> SessionIntent {
+        guard intent.preparedRoute != nil else { return intent }
+        return freestyleFallback(for: intent.sport)
+            .replacingGoal(intent.activityGoal, unitSystem: measurementPreferences.unitSystem)
     }
 
     private func freestyleFallback(for sport: SportType) -> SessionIntent {

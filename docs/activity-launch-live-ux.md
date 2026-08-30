@@ -15,7 +15,10 @@ The launch surface is the Today page itself; there is no separate start-activity
 
 Use one fixed, flat two-row control area at the bottom of Today. Workout choices occupy a horizontal scrolling row. The second row keeps launch settings in a full-width horizontal scroller with roomy fixed-width controls so compact phones do not compress labels or tap targets. A top-right overflow menu owns the pre-activity Photo and Find Route actions. Before capture its label is the standard ellipsis; after capture the label becomes a circular photo thumbnail with a small ellipsis badge so both photo state and menu behavior remain clear. The Today navigation controls, app shell, and bounded map background remain permanent. The map extends behind the transparent navigation bar to the screen top, then ends at the dock boundary; it never becomes the full-screen app surface.
 
+For discoverability, a compact popover points to the overflow control on at most two Today visits. It names Photo and Routes, disappears when Today or idle setup is left, and is permanently suppressed after `Got it` or either menu action. Its exposure uses the existing privacy-safe `feature_exposed` event without route names, photo content, or other private values.
+
 The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Selecting a manual sport builds the corresponding activity intent and preserves the user's manual goal when switching between sports.
+The selected route is an independent setup choice: switching between Planned and manual workout types, or choosing a different planned workout, rebuilds the workout intent while retaining the route and its map preview. Only the explicit Remove Route action clears it.
 
 For a manual sport, a separate horizontal row of compact text-only pills floats immediately above the dock: `Free`, `Distance`, `Time`, and `Calories`. This row is hidden for `Planned`; planned workouts already define their own structure and target. `Free` records without a target, while Distance, Time, and Calories record toward one explicit target. The target modes use their compact information card in the map region, and Free has no information card.
 
@@ -72,8 +75,10 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The native center tab contains exactly one control: an icon-only Start on idle Today and labeled Today navigation on Social or Me.
 - The floating assistant remains available in the same bottom-leading screen position on Today, Social, and Me.
 - Idle Today exposes Photo and Find Route through one top-right overflow menu without changing the settings-row width.
+- The overflow discovery popover appears no more than twice and stops permanently after acknowledgment or menu use.
 - Capturing a pre-activity photo replaces the overflow ellipsis with a circular thumbnail plus an ellipsis badge; removing the photo restores the standard ellipsis.
 - Selecting a route fits its highlighted line and endpoint pins in the map and shows a compact route name/distance card with Change and Remove actions.
+- Switching workout types or planned workouts retains the selected route; only Remove Route clears it.
 - Choosing Run, Walk, Hike, or Bike updates the prepared activity without losing the selected manual goal.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.

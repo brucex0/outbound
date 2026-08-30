@@ -485,6 +485,7 @@ private extension Collection {
 private struct SimplifiedTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
@@ -495,6 +496,8 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @AppStorage("theme_discovery_tip_dismissed_v1") private var hasDismissedThemeTip = false
     @AppStorage("theme_discovery_tip_presentation_count_v1") private var themeTipPresentationCount = 0
+    @AppStorage("activity_overflow_tip_dismissed_v1") private var hasDismissedActivityOverflowTip = false
+    @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
     let activityElapsedSeconds: Int
@@ -520,6 +523,7 @@ private struct SimplifiedTodayView: View {
     @State private var companionRequestID: UUID?
     @State private var currentDay = Calendar.current.startOfDay(for: Date())
     @State private var showsThemeTip = false
+    @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
     @State private var showsUpcomingWorkout = false
     @State private var showsPlanDetails = false
@@ -638,18 +642,28 @@ private struct SimplifiedTodayView: View {
                 refreshCurrentDayIfNeeded()
             }
             .task(id: isSelected) {
-                guard isSelected, canPresentThemeTip else { return }
+                guard isSelected else { return }
                 do {
                     try await Task.sleep(for: .milliseconds(650))
                 } catch {
                     return
                 }
-                guard isSelected, canPresentThemeTip else { return }
-                presentThemeTip()
+                guard isSelected else { return }
+                if canPresentActivityOverflowTip {
+                    presentActivityOverflowTip()
+                } else if canPresentThemeTip {
+                    presentThemeTip()
+                }
             }
             .onChange(of: isSelected) { _, isSelected in
                 if !isSelected {
                     showsThemeTip = false
+                    showsActivityOverflowTip = false
+                }
+            }
+            .onChange(of: activitySessionState) { _, state in
+                if state != .idle {
+                    showsActivityOverflowTip = false
                 }
             }
         }
@@ -792,7 +806,9 @@ private struct SimplifiedTodayView: View {
 
     private var activityOverflowMenu: some View {
         Menu {
-            Button(action: onPreActivityPhotoAction) {
+            Button {
+                performActivityOverflowAction(onPreActivityPhotoAction)
+            } label: {
                 Label(
                     preActivityPhoto == nil
                         ? String(localized: "record.photo.take", defaultValue: "Take photo")
@@ -801,7 +817,9 @@ private struct SimplifiedTodayView: View {
                 )
             }
 
-            Button(action: onRouteSelectionAction) {
+            Button {
+                performActivityOverflowAction(onRouteSelectionAction)
+            } label: {
                 Label(
                     preActivityRoute == nil
                         ? String(localized: "record.route.find", defaultValue: "Find a route")
@@ -812,7 +830,9 @@ private struct SimplifiedTodayView: View {
 
             if preActivityRoute != nil {
                 Divider()
-                Button(role: .destructive, action: onRouteRemovalAction) {
+                Button(role: .destructive) {
+                    performActivityOverflowAction(onRouteRemovalAction)
+                } label: {
                     Label(
                         String(localized: "record.route.remove", defaultValue: "Remove route"),
                         systemImage: "map.fill"
@@ -824,6 +844,31 @@ private struct SimplifiedTodayView: View {
         }
         .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
         .accessibilityValue(activityOverflowAccessibilityValue)
+        .popover(isPresented: $showsActivityOverflowTip, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(String(localized: "record.more_actions", defaultValue: "More activity options"))
+                    .font(.headline)
+
+                HStack(spacing: 18) {
+                    Label(
+                        String(localized: "record.photo.control", defaultValue: "Photo"),
+                        systemImage: "camera.fill"
+                    )
+                    Label(
+                        String(localized: "library.routes", defaultValue: "Routes"),
+                        systemImage: "map.fill"
+                    )
+                }
+                .font(.subheadline.weight(.medium))
+
+                Button(String(localized: "Got it")) {
+                    dismissActivityOverflowTip(permanently: true)
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+            .padding()
+            .presentationCompactAdaptation(.popover)
+        }
     }
 
     @ViewBuilder
@@ -863,6 +908,36 @@ private struct SimplifiedTodayView: View {
         case (false, false):
             return String(localized: "record.more_actions.none_selected", defaultValue: "No photo or route selected")
         }
+    }
+
+    private var canPresentActivityOverflowTip: Bool {
+        showsActivityOverflowMenu
+            && activitySessionState == .idle
+            && !hasDismissedActivityOverflowTip
+            && activityOverflowTipPresentationCount < 2
+    }
+
+    private func presentActivityOverflowTip() {
+        activityOverflowTipPresentationCount += 1
+        showsThemeTip = false
+        showsActivityOverflowTip = true
+        Task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("activity_overflow_tip")
+            ]))
+        }
+    }
+
+    private func dismissActivityOverflowTip(permanently: Bool) {
+        if permanently {
+            hasDismissedActivityOverflowTip = true
+        }
+        showsActivityOverflowTip = false
+    }
+
+    private func performActivityOverflowAction(_ action: () -> Void) {
+        dismissActivityOverflowTip(permanently: true)
+        action()
     }
 
     private var canPresentThemeTip: Bool {
