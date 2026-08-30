@@ -587,7 +587,7 @@ private struct SimplifiedTodayView: View {
                 mapAttributionBottomInset = height
             }
             .background(OutboundPalette.background)
-            .ignoresSafeArea(edges: .top)
+            .ignoresSafeArea(edges: isActivityFullscreenVisible ? [] : .top)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .toolbarBackground(.hidden, for: .navigationBar)

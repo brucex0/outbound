@@ -328,7 +328,7 @@ struct RecordView: View {
                pendingActivity == nil,
                let onCloseRequest,
                recorder.state == .idle,
-               !isEmbeddedInToday || isCountingDown {
+               !isEmbeddedInToday {
                 Button {
                     if isCountingDown {
                         cancelStartCountdown(returnToSetup: true)
@@ -634,7 +634,6 @@ struct RecordView: View {
             }
         }
         .background(Color(.systemBackground))
-        .ignoresSafeArea()
         .toolbar(.hidden, for: .tabBar)
         .overlay(alignment: .topLeading) {
             if isEmbeddedInToday, isCountingDown {

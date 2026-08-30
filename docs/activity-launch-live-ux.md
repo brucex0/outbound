@@ -87,6 +87,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Photo is available for Planned and every manual sport, returns to the same retained setup after capture, and exposes preview, Retake, and Remove after a photo is added.
 - Setup choices carry into countdown and live status.
 - Countdown cancel preserves setup; only entry into live recording advances default learning.
+- Edge-to-edge countdown and live backgrounds keep their top controls below the device status area.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
 - Interrupted-session recovery opens the paused live surface directly.
 - Cold-launch recovery renders the retained live surface directly, without a child modal or disabled fallback layer.
