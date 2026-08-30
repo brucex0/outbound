@@ -28,7 +28,7 @@ const gearItemSchema = z.object({
   brand: z.string().max(100),
   model: z.string().max(100),
   startedAt: z.string().datetime({ offset: true }),
-  retiredAt: z.string().datetime({ offset: true }).nullable(),
+  retiredAt: z.string().datetime({ offset: true }).nullable().default(null),
   distanceLimitM: z.number().finite().min(0).max(2_000_000),
   notes: z.string().max(500),
 }).strict();
@@ -55,16 +55,16 @@ const preferencesSchema = z.object({
     coachingContract: z.enum(["quiet", "responsive", "coach_me"]),
   }).strict(),
   shoes: z.array(gearItemSchema).max(50),
-  defaultShoeId: z.string().uuid().nullable(),
+  defaultShoeId: z.string().uuid().nullable().default(null),
   music: z.object({
-    selectedQuickPickId: z.string().min(1).max(200).nullable(),
+    selectedQuickPickId: z.string().min(1).max(200).nullable().default(null),
     selectedCustomItems: z.array(musicSelectionSchema).max(100),
     isDisabled: z.boolean(),
     repeatsQueue: z.boolean(),
     shufflesQueue: z.boolean(),
   }).strict(),
   preferredSessionPage: z.enum(["map", "camera"]),
-  preferredLaunchGoalMode: z.string().max(32).nullable(),
+  preferredLaunchGoalMode: z.string().max(32).nullable().default(null),
 }).strict();
 
 router.post("/apple", zValidator("json", sessionClient.extend({

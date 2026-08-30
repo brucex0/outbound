@@ -22,6 +22,12 @@ struct UserPreferencesResponseDTO: Decodable {
     let updatedAt: Date?
 }
 
+private struct UserDefaultsPreferenceSlice: Equatable {
+    let voiceGuideEnabled: Bool
+    let preferredSessionPage: String
+    let preferredLaunchGoalMode: String?
+}
+
 @MainActor
 final class UserPreferencesSyncStore: ObservableObject {
     private static let logger = Logger(
@@ -38,6 +44,8 @@ final class UserPreferencesSyncStore: ObservableObject {
     private var hasLocalChanges = false
     private var isApplyingRemotePreferences = false
     private var lastUploadedPreferences: UserPreferencesSnapshotDTO?
+    private var lastRejectedPreferences: UserPreferencesSnapshotDTO?
+    private var lastObservedDefaultsPreferences: UserDefaultsPreferenceSlice?
 
     private var measurementPreferences: MeasurementPreferences?
     private var appearancePreferences: AppearancePreferences?
@@ -101,24 +109,47 @@ final class UserPreferencesSyncStore: ObservableObject {
         hasLocalChanges = false
         isApplyingRemotePreferences = false
         lastUploadedPreferences = nil
+        lastRejectedPreferences = nil
+        lastObservedDefaultsPreferences = nil
     }
 
     private func beginObserving() {
+        guard let measurementPreferences,
+              let appearancePreferences,
+              let guideCatalog,
+              let gearStore,
+              let musicStore
+        else { return }
+
         let publishers: [AnyPublisher<Void, Never>] = [
-            measurementPreferences?.objectWillChange.eraseToAnyPublisher(),
-            appearancePreferences?.objectWillChange.eraseToAnyPublisher(),
-            guideCatalog?.objectWillChange.eraseToAnyPublisher(),
-            gearStore?.objectWillChange.eraseToAnyPublisher(),
-            musicStore?.objectWillChange.eraseToAnyPublisher(),
-        ].compactMap { $0 }
+            measurementPreferences.$unitSystem.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            measurementPreferences.$temperatureUnit.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            appearancePreferences.$mode.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            guideCatalog.$selection.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            gearStore.$shoes.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            gearStore.$defaultShoeID.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            musicStore.$selectedQuickPickID.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            musicStore.$selectedCustomItems.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            musicStore.$isMusicDisabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            musicStore.$repeatsQueue.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            musicStore.$shufflesQueue.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+        ]
 
         Publishers.MergeMany(publishers)
             .sink { [weak self] in self?.preferenceDidChange() }
             .store(in: &cancellables)
 
+        lastObservedDefaultsPreferences = captureDefaultsPreferences()
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification, object: defaults)
-            .sink { [weak self] _ in self?.preferenceDidChange() }
+            .sink { [weak self] _ in self?.userDefaultsDidChange() }
             .store(in: &cancellables)
+    }
+
+    private func userDefaultsDidChange() {
+        let current = captureDefaultsPreferences()
+        guard current != lastObservedDefaultsPreferences else { return }
+        lastObservedDefaultsPreferences = current
+        preferenceDidChange()
     }
 
     private func preferenceDidChange() {
@@ -139,16 +170,29 @@ final class UserPreferencesSyncStore: ObservableObject {
             hasLocalChanges = false
             return
         }
+        if snapshot == lastRejectedPreferences {
+            hasLocalChanges = false
+            return
+        }
         do {
             let response = try await api.updateUserPreferences(snapshot)
             guard currentUserID != nil else { return }
             lastUploadedPreferences = response.preferences ?? snapshot
+            lastRejectedPreferences = nil
             if captureSnapshot() == snapshot {
                 hasLocalChanges = false
             }
         } catch {
-            hasLocalChanges = true
-            Self.logger.error("Preference upload failed; it will retry later. \(error.localizedDescription, privacy: .public)")
+            if let apiError = error as? APIError,
+               case let .http(statusCode, _, _) = apiError,
+               statusCode == 400 {
+                lastRejectedPreferences = snapshot
+                hasLocalChanges = false
+                Self.logger.error("Preference upload was rejected; this snapshot will not retry until a preference changes. \(error.localizedDescription, privacy: .public)")
+            } else {
+                hasLocalChanges = true
+                Self.logger.error("Preference upload failed; it will retry later. \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -160,25 +204,34 @@ final class UserPreferencesSyncStore: ObservableObject {
               let musicStore
         else { return nil }
 
-        let preferredSessionPage = defaults.string(forKey: "preferred_session_page_v1") == "camera"
-            ? "camera"
-            : "map"
-        let preferredGoal = defaults.string(forKey: "preferred_launch_goal_mode_v1")
-            .flatMap { $0.isEmpty ? nil : $0 }
-        let voiceGuideEnabled = defaults.object(forKey: "voice_guide_enabled_v1") as? Bool ?? true
+        let defaultsPreferences = captureDefaultsPreferences()
 
         return UserPreferencesSnapshotDTO(
             schemaVersion: 1,
             measurementUnitSystem: measurementPreferences.unitSystem,
             temperatureUnit: measurementPreferences.temperatureUnit,
-            voiceGuideEnabled: voiceGuideEnabled,
+            voiceGuideEnabled: defaultsPreferences.voiceGuideEnabled,
             appearanceMode: appearancePreferences.mode,
             guideSelection: guideCatalog.selection,
             shoes: gearStore.shoes,
             defaultShoeId: gearStore.defaultShoeID,
             music: musicStore.persistedPreferences,
+            preferredSessionPage: defaultsPreferences.preferredSessionPage,
+            preferredLaunchGoalMode: defaultsPreferences.preferredLaunchGoalMode
+        )
+    }
+
+    private func captureDefaultsPreferences() -> UserDefaultsPreferenceSlice {
+        let preferredSessionPage = defaults.string(forKey: "preferred_session_page_v1") == "camera"
+            ? "camera"
+            : "map"
+        let preferredLaunchGoalMode = defaults.string(forKey: "preferred_launch_goal_mode_v1")
+            .flatMap { $0.isEmpty ? nil : $0 }
+        let voiceGuideEnabled = defaults.object(forKey: "voice_guide_enabled_v1") as? Bool ?? true
+        return UserDefaultsPreferenceSlice(
+            voiceGuideEnabled: voiceGuideEnabled,
             preferredSessionPage: preferredSessionPage,
-            preferredLaunchGoalMode: preferredGoal
+            preferredLaunchGoalMode: preferredLaunchGoalMode
         )
     }
 
