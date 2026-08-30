@@ -8,7 +8,7 @@ Open this for the first internal or external TestFlight upload. Product behavior
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.0`
-- Build: `30`
+- Build: `31`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -53,12 +53,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- Fix auth refresh races from forcing logout
-- Polish pinned photo action
-- Restore pinned pre-run photo action
-- Prevent stale Today card on tab switch
-- Keep MapKit attribution clear of run overlays
-- Plus 11 more fixes and improvements
+- Keep live activity controls below status bar
+- Render live activity directly in Today
+- Fix interrupted activity recovery presentation
+- Fix live route goal header
+- Add recognition milestones to Me
+- Plus 32 more fixes and improvements
 
 ### How to Report Feedback
 
@@ -172,6 +172,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.0 (30)`, validate, and upload from Xcode Organizer.
+- Archive `1.0 (31)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
