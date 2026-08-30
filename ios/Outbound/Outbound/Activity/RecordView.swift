@@ -135,6 +135,11 @@ struct RecordView: View {
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
+    @State private var embeddedLivePresentationRequested = false
+    @State private var embeddedLiveSurfacePresented = false
+    @State private var embeddedLivePresentationAttempt = 0
+    @State private var embeddedLivePresentationTask: Task<Void, Never>?
+    @State private var didTrackRecoveryPresentation = false
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -195,12 +200,8 @@ struct RecordView: View {
         Group {
             if isEmbeddedInToday {
                 embeddedReadyView
-                    .opacity(isVisible && !showCamera ? 1 : 0)
-                    .allowsHitTesting(isVisible && !showCamera)
-                    .fullScreenCover(isPresented: embeddedLivePresentation) {
-                        activityFullscreenSurface
-                            .interactiveDismissDisabled()
-                    }
+                    .opacity(isVisible ? 1 : 0)
+                    .allowsHitTesting(isVisible && !wantsEmbeddedLivePresentation)
             } else if showCamera || pendingActivity != nil {
                 activityFullscreenSurface
             } else {
@@ -208,6 +209,12 @@ struct RecordView: View {
             }
         }
         .background { recordBackground }
+        .fullScreenCover(isPresented: embeddedLivePresentation) {
+            activityFullscreenSurface
+                .interactiveDismissDisabled()
+                .onAppear(perform: handleEmbeddedLiveSurfaceAppeared)
+                .onDisappear(perform: handleEmbeddedLiveSurfaceDisappeared)
+        }
         .onReceive(recorder.$liveSnapshot) { snapshot in
             guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
@@ -253,6 +260,9 @@ struct RecordView: View {
         }
         .onChange(of: plannedIntent?.preparedRoute, initial: true) { _, route in
             onPreActivityRouteChange?(route)
+        }
+        .onChange(of: wantsEmbeddedLivePresentation, initial: true) { _, shouldPresent in
+            coordinateEmbeddedLivePresentation(shouldPresent)
         }
         .onAppear {
             onPreActivityPhotoChange?(preActivityPhoto)
@@ -309,6 +319,8 @@ struct RecordView: View {
         }
         .onDisappear {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
+            embeddedLivePresentationTask?.cancel()
+            embeddedLivePresentationTask = nil
         }
         .overlay(alignment: .topLeading) {
             if isVisible,
@@ -499,9 +511,90 @@ struct RecordView: View {
 
     private var embeddedLivePresentation: Binding<Bool> {
         Binding(
-            get: { (showCamera || pendingActivity != nil) && isVisible },
-            set: { _ in }
+            get: { embeddedLivePresentationRequested && isVisible },
+            set: { isPresented in
+                embeddedLivePresentationRequested = isPresented
+            }
         )
+    }
+
+    private var wantsEmbeddedLivePresentation: Bool {
+        isEmbeddedInToday && isVisible && (showCamera || pendingActivity != nil)
+    }
+
+    private func coordinateEmbeddedLivePresentation(_ shouldPresent: Bool) {
+        embeddedLivePresentationTask?.cancel()
+        embeddedLivePresentationTask = nil
+
+        guard shouldPresent else {
+            embeddedLivePresentationRequested = false
+            embeddedLiveSurfacePresented = false
+            embeddedLivePresentationAttempt = 0
+            return
+        }
+
+        guard !embeddedLiveSurfacePresented else { return }
+
+        embeddedLivePresentationRequested = false
+        embeddedLivePresentationAttempt = 0
+        embeddedLivePresentationTask = Task { @MainActor in
+            // Recovery can be discovered while Today's tab and navigation controllers are
+            // still entering the window. Wait for that first presentation turn, then verify
+            // the cover actually appeared instead of leaving the embedded surface hidden.
+            do {
+                try await Task.sleep(for: .milliseconds(180))
+            } catch {
+                return
+            }
+
+            for attempt in 1...4 {
+                guard wantsEmbeddedLivePresentation, !embeddedLiveSurfacePresented else { return }
+                embeddedLivePresentationAttempt = attempt
+                embeddedLivePresentationRequested = true
+
+                do {
+                    try await Task.sleep(for: .milliseconds(700))
+                } catch {
+                    return
+                }
+
+                guard wantsEmbeddedLivePresentation, !embeddedLiveSurfacePresented else { return }
+                embeddedLivePresentationRequested = false
+
+                guard attempt < 4 else {
+                    trackRecoveryPresentationIfNeeded(result: "failed")
+                    return
+                }
+
+                do {
+                    try await Task.sleep(for: .milliseconds(120))
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func handleEmbeddedLiveSurfaceAppeared() {
+        embeddedLiveSurfacePresented = true
+        embeddedLivePresentationTask?.cancel()
+        embeddedLivePresentationTask = nil
+        trackRecoveryPresentationIfNeeded(result: "success")
+    }
+
+    private func handleEmbeddedLiveSurfaceDisappeared() {
+        embeddedLiveSurfacePresented = false
+        guard wantsEmbeddedLivePresentation else { return }
+        coordinateEmbeddedLivePresentation(true)
+    }
+
+    private func trackRecoveryPresentationIfNeeded(result: String) {
+        guard recorder.recoveredSession, !didTrackRecoveryPresentation else { return }
+        didTrackRecoveryPresentation = true
+        track(.init(.activityRecoveryPresentation, properties: [
+            .result: .string(result),
+            .countBucket: .string(ProductAnalyticsBucket.count(max(1, embeddedLivePresentationAttempt)))
+        ]))
     }
 
     private var activityFullscreenSurface: some View {
