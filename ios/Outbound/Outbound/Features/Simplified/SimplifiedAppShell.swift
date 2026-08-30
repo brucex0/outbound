@@ -2957,211 +2957,22 @@ private struct SimplifiedProfileView: View {
     let onTrainingProfileUpdated: (TrainingProfileDTO) -> Void
 
     var body: some View {
-        Form {
-            Section {
-                NavigationLink {
-                    SimplifiedProfileEditorView(
-                        initialProfile: profile,
-                        onProfileUpdated: onProfileUpdated,
-                        onTrainingProfileUpdated: onTrainingProfileUpdated
-                    )
-                } label: {
-                    Label(
-                        String(localized: "profile.public_details", defaultValue: "Name, photo, and bio"),
-                        systemImage: "person.crop.circle"
-                    )
-                }
-                NavigationLink {
-                    TrainingProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
-                } label: {
-                    Label(
-                        String(localized: "profile.training_details", defaultValue: "Training details"),
-                        systemImage: "figure.run"
-                    )
-                }
-                NavigationLink {
-                    CompanionMemoryView()
-                } label: {
-                    Label("What Plainstride knows", systemImage: "brain.head.profile")
-                }
-            } footer: {
-                Text(String(
-                    localized: "profile.details.footer",
-                    defaultValue: "Manage what others see and the private details Plainstride uses to personalize your training."
-                ))
-            }
-        }
-        .navigationTitle("Profile")
+        SimplifiedProfileEditorView(
+            initialProfile: profile,
+            onProfileUpdated: onProfileUpdated,
+            onTrainingProfileUpdated: onTrainingProfileUpdated
+        )
         .task {
             await analyticsManager?.track(.init(.featureExposed, properties: [
-                .feature: .string("me_profile_hub"),
+                .feature: .string("me_profile_editor"),
             ]))
         }
     }
 }
 
-private struct TrainingProfileEditorView: View {
-    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
-    let onProfileUpdated: (TrainingProfileDTO) -> Void
-    @State private var preservedSexAtBirth: TrainingProfileSex?
-    @State private var hasBirthDate = false
-    @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
-    @State private var heightText = ""
-    @State private var weightText = ""
-    @State private var isLoading = true
-    @State private var isSaving = false
-    @State private var toast: ProfileToast?
-
-    var body: some View {
-        Form {
-            Section {
-                Text("These optional details help Plainstride personalize training load, recovery advice, and estimates. They stay private and are never shown in Together.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Add birthday", isOn: $hasBirthDate)
-                if hasBirthDate {
-                    DatePicker("Birthday", selection: $birthDate, in: oldestBirthDate...latestBirthDate, displayedComponents: .date)
-                }
-            } header: {
-                Text("About you")
-            } footer: {
-                Text(String(
-                    localized: "profile.training_details.birthday_footer",
-                    defaultValue: "Birthday is stored instead of age so your details stay accurate over time."
-                ))
-            }
-
-            Section {
-                TextField(heightLabel, text: $heightText)
-                    .keyboardType(.decimalPad)
-                TextField(weightLabel, text: $weightText)
-                    .keyboardType(.decimalPad)
-            } header: {
-                Text("Body measurements")
-            } footer: {
-                Text("Leave a field blank to remove it. You can update these values whenever they change.")
-            }
-        }
-        .navigationTitle(String(localized: "profile.training_details", defaultValue: "Training details"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
-                    .disabled(isLoading || isSaving || !measurementsAreValid)
-            }
-        }
-        .overlay(alignment: .top) {
-            if let toast {
-                ProfileToastView(toast: toast)
-                    .padding(.horizontal, OutboundSpacing.screen)
-                    .padding(.top, OutboundSpacing.compact)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .animation(.snappy, value: toast)
-        .task(id: toast?.id) {
-            guard toast != nil else { return }
-            try? await Task.sleep(for: .seconds(2.2))
-            guard !Task.isCancelled else { return }
-            toast = nil
-        }
-        .task { await load() }
-    }
-
-    private var usesMetric: Bool { measurementPreferences.unitSystem == .metric }
-    private var heightLabel: String { usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)") }
-    private var weightLabel: String { usesMetric ? String(localized: "Weight (kg)") : String(localized: "Weight (lb)") }
-    private var oldestBirthDate: Date { Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast }
-    private var latestBirthDate: Date { Date() }
-
-    private var measurementsAreValid: Bool {
-        let heightValid = parsedMeasurement(heightText)
-            .map { usesMetric ? (90...250).contains($0) : (35...98.5).contains($0) }
-            ?? heightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let weightValid = parsedMeasurement(weightText)
-            .map { usesMetric ? (25...350).contains($0) : (55...772).contains($0) }
-            ?? weightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return heightValid && weightValid
-    }
-
-    private func load() async {
-        defer { isLoading = false }
-        do {
-            apply(try await APIClient.shared.fetchTrainingProfile())
-        } catch {
-            showToast(String(
-                localized: "profile.training_details.load_error",
-                defaultValue: "Training details could not be loaded."
-            ), style: .error)
-        }
-    }
-
-    private func save() async {
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            let formatter = Self.birthDateFormatter
-            let request = TrainingProfileUpdateDTO(
-                sexAtBirth: preservedSexAtBirth,
-                birthDate: hasBirthDate ? formatter.string(from: birthDate) : nil,
-                heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
-                weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
-            )
-            let profile = try await APIClient.shared.updateTrainingProfile(request)
-            apply(profile)
-            onProfileUpdated(profile)
-            showToast(String(
-                localized: "profile.training_details.saved",
-                defaultValue: "Training details saved"
-            ), style: .success)
-        } catch {
-            showToast(String(
-                localized: "profile.training_details.save_error",
-                defaultValue: "Could not save training details. Try again."
-            ), style: .error)
-        }
-    }
-
-    private func showToast(_ text: String, style: ProfileToast.Style) {
-        toast = ProfileToast(text: text, style: style)
-    }
-
-    private func apply(_ profile: TrainingProfileDTO) {
-        preservedSexAtBirth = profile.sexAtBirth
-        if let value = profile.birthDate, let date = Self.birthDateFormatter.date(from: value) {
-            birthDate = date
-            hasBirthDate = true
-        } else {
-            hasBirthDate = false
-        }
-        heightText = formatted(profile.heightCentimeters.map { usesMetric ? $0 : $0 / 2.54 })
-        weightText = formatted(profile.weightKilograms.map { usesMetric ? $0 : $0 / 0.45359237 })
-    }
-
-    private func parsedMeasurement(_ text: String) -> Double? {
-        Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
-    }
-
-    private func formatted(_ value: Double?) -> String {
-        guard let value else { return "" }
-        return value.formatted(.number.precision(.fractionLength(0...1)))
-    }
-
-    private static let birthDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
-}
-
 private struct SimplifiedProfileEditorView: View {
     @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     var onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
     var onTrainingProfileUpdated: ((TrainingProfileDTO) -> Void)? = nil
     @State private var displayName = ""
@@ -3178,6 +2989,10 @@ private struct SimplifiedProfileEditorView: View {
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var sexAtBirth: TrainingProfileSex?
+    @State private var hasBirthDate = false
+    @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
+    @State private var heightText = ""
+    @State private var weightText = ""
     @State private var preservedTrainingProfile: TrainingProfileDTO?
     @State private var toast: ProfileToast?
 
@@ -3251,6 +3066,39 @@ private struct SimplifiedProfileEditorView: View {
                 ))
             }
             Section {
+                Text("These optional details help Plainstride personalize training load, recovery advice, and estimates. They stay private and are never shown in Together.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Toggle("Add birthday", isOn: $hasBirthDate)
+                if hasBirthDate {
+                    DatePicker(
+                        "Birthday",
+                        selection: $birthDate,
+                        in: oldestBirthDate...latestBirthDate,
+                        displayedComponents: .date
+                    )
+                }
+            } header: {
+                Text(String(localized: "profile.training_details", defaultValue: "Training details"))
+            } footer: {
+                Text(String(
+                    localized: "profile.training_details.birthday_footer",
+                    defaultValue: "Birthday is stored instead of age so your details stay accurate over time."
+                ))
+            }
+            .disabled(preservedTrainingProfile == nil)
+            Section {
+                TextField(heightLabel, text: $heightText)
+                    .keyboardType(.decimalPad)
+                TextField(weightLabel, text: $weightText)
+                    .keyboardType(.decimalPad)
+            } header: {
+                Text("Body measurements")
+            } footer: {
+                Text("Leave a field blank to remove it. You can update these values whenever they change.")
+            }
+            .disabled(preservedTrainingProfile == nil)
+            Section {
                 if isEditingContactDetails || savedContactEmail.isEmpty {
                     TextField("Email", text: $contactEmail)
                         .textInputAutocapitalization(.never)
@@ -3279,13 +3127,24 @@ private struct SimplifiedProfileEditorView: View {
             } footer: {
                 Text("These profile details do not change how you sign in.")
             }
+            Section {
+                NavigationLink {
+                    CompanionMemoryView()
+                } label: {
+                    Label("What Plainstride knows", systemImage: "brain.head.profile")
+                }
+            }
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
-                    .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(
+                        isSaving
+                            || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || !measurementsAreValid
+                    )
             }
         }
         .overlay(alignment: .top) {
@@ -3330,12 +3189,11 @@ private struct SimplifiedProfileEditorView: View {
         }
         do {
             let trainingProfile = try await APIClient.shared.fetchTrainingProfile()
-            preservedTrainingProfile = trainingProfile
-            sexAtBirth = trainingProfile.sexAtBirth
+            applyTrainingProfile(trainingProfile)
         } catch {
             showToast(String(
-                localized: "profile.health_details.load_error",
-                defaultValue: "Health details could not be loaded."
+                localized: "profile.training_details.load_error",
+                defaultValue: "Training details could not be loaded."
             ), style: .error)
         }
     }
@@ -3345,15 +3203,9 @@ private struct SimplifiedProfileEditorView: View {
         defer { isSaving = false }
         do {
             if let preservedTrainingProfile,
-               sexAtBirth != preservedTrainingProfile.sexAtBirth {
-                let trainingProfile = try await APIClient.shared.updateTrainingProfile(TrainingProfileUpdateDTO(
-                    sexAtBirth: sexAtBirth,
-                    birthDate: preservedTrainingProfile.birthDate,
-                    heightCentimeters: preservedTrainingProfile.heightCentimeters,
-                    weightKilograms: preservedTrainingProfile.weightKilograms
-                ))
-                self.preservedTrainingProfile = trainingProfile
-                sexAtBirth = trainingProfile.sexAtBirth
+               hasTrainingProfileChanges(from: preservedTrainingProfile) {
+                let trainingProfile = try await APIClient.shared.updateTrainingProfile(trainingProfileRequest)
+                applyTrainingProfile(trainingProfile)
                 onTrainingProfileUpdated?(trainingProfile)
             }
             let profile = try await APIClient.shared.updateMyProfile(
@@ -3382,6 +3234,74 @@ private struct SimplifiedProfileEditorView: View {
 
     private var hasSavedContactDetails: Bool {
         !savedContactEmail.isEmpty || !savedContactPhone.isEmpty
+    }
+
+    private var usesMetric: Bool {
+        measurementPreferences.unitSystem == .metric
+    }
+
+    private var heightLabel: String {
+        usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)")
+    }
+
+    private var weightLabel: String {
+        usesMetric ? String(localized: "Weight (kg)") : String(localized: "Weight (lb)")
+    }
+
+    private var oldestBirthDate: Date {
+        Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast
+    }
+
+    private var latestBirthDate: Date {
+        Date()
+    }
+
+    private var measurementsAreValid: Bool {
+        let heightValid = parsedMeasurement(heightText)
+            .map { usesMetric ? (90...250).contains($0) : (35...98.5).contains($0) }
+            ?? heightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let weightValid = parsedMeasurement(weightText)
+            .map { usesMetric ? (25...350).contains($0) : (55...772).contains($0) }
+            ?? weightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return heightValid && weightValid
+    }
+
+    private var trainingProfileRequest: TrainingProfileUpdateDTO {
+        TrainingProfileUpdateDTO(
+            sexAtBirth: sexAtBirth,
+            birthDate: hasBirthDate ? Self.birthDateFormatter.string(from: birthDate) : nil,
+            heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
+            weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
+        )
+    }
+
+    private func hasTrainingProfileChanges(from profile: TrainingProfileDTO) -> Bool {
+        sexAtBirth != profile.sexAtBirth
+            || (hasBirthDate ? Self.birthDateFormatter.string(from: birthDate) : nil) != profile.birthDate
+            || heightText != formatted(profile.heightCentimeters.map { usesMetric ? $0 : $0 / 2.54 })
+            || weightText != formatted(profile.weightKilograms.map { usesMetric ? $0 : $0 / 0.45359237 })
+    }
+
+    private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
+        preservedTrainingProfile = profile
+        sexAtBirth = profile.sexAtBirth
+        if let value = profile.birthDate, let date = Self.birthDateFormatter.date(from: value) {
+            birthDate = date
+            hasBirthDate = true
+        } else {
+            hasBirthDate = false
+        }
+        heightText = formatted(profile.heightCentimeters.map { usesMetric ? $0 : $0 / 2.54 })
+        weightText = formatted(profile.weightKilograms.map { usesMetric ? $0 : $0 / 0.45359237 })
+    }
+
+    private func parsedMeasurement(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func formatted(_ value: Double?) -> String {
+        guard let value else { return "" }
+        return value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
     private func uploadAvatar(from item: PhotosPickerItem) async {
@@ -3427,6 +3347,15 @@ private struct SimplifiedProfileEditorView: View {
         let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         return resized.jpegData(compressionQuality: 0.82)
     }
+
+    private static let birthDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 private struct ProfileToast: Identifiable, Equatable {
