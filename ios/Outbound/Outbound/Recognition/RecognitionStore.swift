@@ -5,6 +5,15 @@ import SwiftUI
 enum RecognitionFamily: String, Codable, CaseIterable {
     case showedUp
     case momentum
+
+    var title: String {
+        switch self {
+        case .showedUp:
+            String(localized: "recognition.family.showed_up", defaultValue: "Showed Up")
+        case .momentum:
+            String(localized: "recognition.family.momentum", defaultValue: "Momentum")
+        }
+    }
 }
 
 enum RecognitionBadgeID: String, Codable, CaseIterable, Identifiable {
@@ -309,42 +318,122 @@ final class RecognitionStore: ObservableObject {
     static func definition(for badgeID: RecognitionBadgeID) -> RecognitionDefinition {
         switch badgeID {
         case .firstStep:
-            return RecognitionDefinition(id: badgeID, family: .showedUp, title: "First Step", symbolName: "figure.walk.motion", shareEligible: false, priority: 70)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .showedUp,
+                title: String(localized: "recognition.badge.first_step.title", defaultValue: "First Step"),
+                symbolName: "figure.walk.motion",
+                shareEligible: false,
+                priority: 70
+            )
         case .shortCounts:
-            return RecognitionDefinition(id: badgeID, family: .showedUp, title: "Short Counts", symbolName: "bolt.heart.fill", shareEligible: false, priority: 65)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .showedUp,
+                title: String(localized: "recognition.badge.short_counts.title", defaultValue: "Short Counts"),
+                symbolName: "bolt.heart.fill",
+                shareEligible: false,
+                priority: 65
+            )
         case .backInMotion:
-            return RecognitionDefinition(id: badgeID, family: .showedUp, title: "Back In Motion", symbolName: "arrow.clockwise.heart", shareEligible: true, priority: 100)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .showedUp,
+                title: String(localized: "recognition.badge.back_in_motion.title", defaultValue: "Back In Motion"),
+                symbolName: "arrow.clockwise.heart",
+                shareEligible: true,
+                priority: 100
+            )
         case .weekClosedWell:
-            return RecognitionDefinition(id: badgeID, family: .showedUp, title: "Week Closed Well", symbolName: "calendar.badge.checkmark", shareEligible: false, priority: 60)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .showedUp,
+                title: String(localized: "recognition.badge.week_closed_well.title", defaultValue: "Week Closed Well"),
+                symbolName: "calendar.badge.checkmark",
+                shareEligible: false,
+                priority: 60
+            )
         case .threeThisWeek:
-            return RecognitionDefinition(id: badgeID, family: .momentum, title: "Three This Week", symbolName: "target", shareEligible: true, priority: 90)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.three_this_week.title", defaultValue: "Three This Week"),
+                symbolName: "target",
+                shareEligible: true,
+                priority: 90
+            )
         case .keptItEasy:
-            return RecognitionDefinition(id: badgeID, family: .momentum, title: "Kept It Easy", symbolName: "leaf.fill", shareEligible: false, priority: 75)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.kept_it_easy.title", defaultValue: "Kept It Easy"),
+                symbolName: "leaf.fill",
+                shareEligible: false,
+                priority: 75
+            )
         case .finishedWhatYouStarted:
-            return RecognitionDefinition(id: badgeID, family: .momentum, title: "Finished What You Started", symbolName: "checkmark.seal.fill", shareEligible: false, priority: 80)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.finished_what_you_started.title", defaultValue: "Finished What You Started"),
+                symbolName: "checkmark.seal.fill",
+                shareEligible: false,
+                priority: 80
+            )
         case .steadyReturn:
-            return RecognitionDefinition(id: badgeID, family: .momentum, title: "Steady Return", symbolName: "waveform.path.ecg", shareEligible: false, priority: 72)
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.steady_return.title", defaultValue: "Steady Return"),
+                symbolName: "waveform.path.ecg",
+                shareEligible: false,
+                priority: 72
+            )
         }
     }
 
     static func guideLine(for badgeID: RecognitionBadgeID) -> String {
         switch badgeID {
         case .firstStep:
-            return "You turned the first session into something real."
+            return String(
+                localized: "recognition.badge.first_step.detail",
+                defaultValue: "You turned the first session into something real."
+            )
         case .shortCounts:
-            return "You didn't wait for a bigger window. You used the one you had."
+            return String(
+                localized: "recognition.badge.short_counts.detail",
+                defaultValue: "You didn't wait for a bigger window. You used the one you had."
+            )
         case .backInMotion:
-            return "You came back before it felt perfect. That's real momentum."
+            return String(
+                localized: "recognition.badge.back_in_motion.detail",
+                defaultValue: "You came back before it felt perfect. That's real momentum."
+            )
         case .weekClosedWell:
-            return "You gave the week a clean finish instead of letting it drift."
+            return String(
+                localized: "recognition.badge.week_closed_well.detail",
+                defaultValue: "You gave the week a clean finish instead of letting it drift."
+            )
         case .threeThisWeek:
-            return "You followed through on the week you were trying to build."
+            return String(
+                localized: "recognition.badge.three_this_week.detail",
+                defaultValue: "You followed through on the week you were trying to build."
+            )
         case .keptItEasy:
-            return "You kept the effort honest. That kind of restraint builds trust."
+            return String(
+                localized: "recognition.badge.kept_it_easy.detail",
+                defaultValue: "You kept the effort honest. That kind of restraint builds trust."
+            )
         case .finishedWhatYouStarted:
-            return "You kept the pattern alive long enough for it to feel like rhythm."
+            return String(
+                localized: "recognition.badge.finished_what_you_started.detail",
+                defaultValue: "You kept the pattern alive long enough for it to feel like rhythm."
+            )
         case .steadyReturn:
-            return "This isn't a one-off anymore. You're building your way back."
+            return String(
+                localized: "recognition.badge.steady_return.detail",
+                defaultValue: "This isn't a one-off anymore. You're building your way back."
+            )
         }
     }
 }
@@ -413,6 +502,136 @@ struct RecognitionOrb: View {
                     .foregroundStyle(.white)
             }
             .shadow(color: .orange.opacity(0.28), radius: 8, y: 3)
+    }
+}
+
+struct RecognitionAwardRow: View {
+    let award: RecognitionAward
+    let preview: RecognitionPreview
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            RecognitionOrb(preview: preview, size: 42)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(preview.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(earnedDate)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(preview.guideLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var earnedDate: String {
+        let formattedDate = award.earnedAt.formatted(date: .abbreviated, time: .omitted)
+        return String.localizedStringWithFormat(
+            String(localized: "recognition.earned_on.format", defaultValue: "Earned %@"),
+            formattedDate
+        )
+    }
+}
+
+struct RecognitionEmptyState: View {
+    var compact = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .frame(width: compact ? 40 : 46, height: compact ? 40 : 46)
+                .background(Color.orange.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(String(
+                    localized: "recognition.empty.title",
+                    defaultValue: "Your first moment is waiting"
+                ))
+                .font(.subheadline.weight(.semibold))
+
+                Text(String(
+                    localized: "recognition.empty.detail",
+                    defaultValue: "Save an activity and Plainstride will notice the effort that mattered."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct RecognitionHistoryView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var recognitionStore: RecognitionStore
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                Text(String(
+                    localized: "recognition.history.intro",
+                    defaultValue: "Plainstride notices beginnings, comebacks, and momentum—not points or streaks."
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+
+                if recognitionStore.awards.isEmpty {
+                    OutboundCard {
+                        RecognitionEmptyState()
+                    }
+                } else {
+                    ForEach(earnedFamilies, id: \.self) { family in
+                        OutboundCard {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                                Text(family.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .textCase(.uppercase)
+
+                                ForEach(Array(awards(for: family).enumerated()), id: \.element.id) { index, award in
+                                    if index > 0 {
+                                        Divider()
+                                    }
+                                    RecognitionAwardRow(
+                                        award: award,
+                                        preview: recognitionStore.preview(for: award.badgeID)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(String(localized: "recognition.title", defaultValue: "Recognition"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("me_recognition_history"),
+            ]))
+        }
+    }
+
+    private var earnedFamilies: [RecognitionFamily] {
+        RecognitionFamily.allCases.filter { !awards(for: $0).isEmpty }
+    }
+
+    private func awards(for family: RecognitionFamily) -> [RecognitionAward] {
+        recognitionStore.awards.filter { RecognitionStore.definition(for: $0.badgeID).family == family }
     }
 }
 

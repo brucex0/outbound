@@ -234,9 +234,9 @@ Share behavior:
 
 ### 4. Profile / History
 
-Defer a full badge cabinet for V1, but keep a simple `Recognition` list in mind for later.
+Me now includes a lightweight `Recognition` section beneath weekly progress. It shows the two most recent earned moments with their companion framing and earned dates, plus an `All` destination grouped by family. When nothing has been earned yet, it uses an encouraging first-moment state instead of exposing locked badges.
 
-When added, it should:
+The profile/history surface:
 - group by family
 - show guide copy and earn date
 - avoid making unearned badges feel like a wall of failure

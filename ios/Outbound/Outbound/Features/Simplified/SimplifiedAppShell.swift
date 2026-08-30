@@ -2300,6 +2300,7 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
@@ -2421,6 +2422,7 @@ private struct SimplifiedMeView: View {
                             AIExplanationView(text: weekGuideLine)
                         }
                     }
+                    recognitionSection
                     if showsCycleAwareGuidance {
                         OutboundCard {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
@@ -2624,6 +2626,9 @@ private struct SimplifiedMeView: View {
     }
 
     private func loadMeData() async {
+        await analyticsManager?.track(.init(.featureExposed, properties: [
+            .feature: .string("me_recognition_section"),
+        ]))
         async let profileLoad: Void = loadProfile()
         async let trainingProfileLoad: Void = loadTrainingProfile()
         async let connectionsLoad: Void = loadConnectionsIfNeeded()
@@ -2753,6 +2758,55 @@ private struct SimplifiedMeView: View {
     private var currentWeekActivities: [SavedActivity] {
         guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return [] }
         return activityStore.activities.filter { interval.contains($0.startedAt) }
+    }
+    private var recognitionSection: some View {
+        OutboundCard {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(localized: "recognition.title", defaultValue: "Recognition"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                        Text(String(
+                            localized: "recognition.me.subtitle",
+                            defaultValue: "Milestones your companion noticed"
+                        ))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if !recognitionStore.awards.isEmpty {
+                        NavigationLink {
+                            RecognitionHistoryView()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(String(localized: "recognition.all", defaultValue: "All"))
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                }
+
+                if recognitionStore.awards.isEmpty {
+                    RecognitionEmptyState(compact: true)
+                } else {
+                    ForEach(Array(recognitionStore.awards.prefix(2).enumerated()), id: \.element.id) { index, award in
+                        if index > 0 {
+                            Divider()
+                        }
+                        RecognitionAwardRow(
+                            award: award,
+                            preview: recognitionStore.preview(for: award.badgeID)
+                        )
+                    }
+                }
+            }
+        }
     }
     private func meStat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading) { Text(value).font(.headline.monospacedDigit()); Text(label).font(.caption).foregroundStyle(.secondary) }
