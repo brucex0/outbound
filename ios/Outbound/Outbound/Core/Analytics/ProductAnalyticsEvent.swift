@@ -31,6 +31,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityRecordingQuality = "activity_recording_quality"
     case activityFeedLoaded = "activity_feed_loaded"
     case activityRecoveryPresentation = "activity_recovery_presentation"
+    case activityPhotoRecovery = "activity_photo_recovery"
     case liveActivityReconciled = "live_activity_reconciled"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case connectionsOpened = "connections_opened"
@@ -184,6 +185,7 @@ enum ProductAnalyticsSchema {
         .activityRecordingQuality: [.sourceType, .countBucket, .result],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .activityRecoveryPresentation: [.result, .countBucket],
+        .activityPhotoRecovery: [.countBucket, .preRunPhotoAdded],
         .liveActivityReconciled: [.result],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .connectionsOpened: [.entrySource],

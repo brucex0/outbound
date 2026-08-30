@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import UIKit
 
 struct ActiveSessionJournal {
     let startedAt: Date
@@ -115,6 +116,134 @@ enum ActiveSessionTrackJournal {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Outbound", isDirectory: true)
             .appendingPathComponent("active-session-track.jsonl")
+    }
+}
+
+@MainActor
+enum ActiveSessionPhotoJournal {
+    static func load() -> [(UIImage, PhotoMetadata)] {
+        loadEntries().compactMap { entry in
+            let imageURL = directoryURL.appendingPathComponent(entry.fileName)
+            guard let image = UIImage(contentsOfFile: imageURL.path) else { return nil }
+            return (image, entry.metadata)
+        }
+    }
+
+    static func append(_ photo: (UIImage, PhotoMetadata)) {
+        let entry = Entry(metadata: photo.1)
+        let imageURL = directoryURL.appendingPathComponent(entry.fileName)
+        guard let imageData = photo.0.jpegData(compressionQuality: 0.9) else { return }
+
+        do {
+            try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            try imageData.write(to: imageURL, options: .atomic)
+            var entries = loadEntries()
+            entries.append(entry)
+            try save(entries)
+        } catch {
+            try? FileManager.default.removeItem(at: imageURL)
+        }
+    }
+
+    static func replace(with photos: [(UIImage, PhotoMetadata)]) {
+        clear()
+        photos.forEach(append)
+    }
+
+    static func removePreActivityPhotos() {
+        let entries = loadEntries()
+        let removedEntries = entries.filter { $0.captureContext == .preActivity }
+        guard !removedEntries.isEmpty else { return }
+        let retainedEntries = entries.filter { $0.captureContext != .preActivity }
+
+        if retainedEntries.isEmpty {
+            clear()
+            return
+        }
+
+        do {
+            try save(retainedEntries)
+            for entry in removedEntries {
+                try? FileManager.default.removeItem(
+                    at: directoryURL.appendingPathComponent(entry.fileName)
+                )
+            }
+        } catch {
+            return
+        }
+    }
+
+    static func clear() {
+        try? FileManager.default.removeItem(at: directoryURL)
+    }
+
+    private static func loadEntries() -> [Entry] {
+        guard let data = try? Data(contentsOf: manifestURL),
+              let manifest = try? JSONDecoder().decode(Manifest.self, from: data)
+        else { return [] }
+        return manifest.photos
+    }
+
+    private static func save(_ entries: [Entry]) throws {
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(Manifest(photos: entries))
+        try data.write(to: manifestURL, options: .atomic)
+    }
+
+    private static var directoryURL: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("Outbound", isDirectory: true)
+            .appendingPathComponent("active-session-photos", isDirectory: true)
+    }
+
+    private static var manifestURL: URL {
+        directoryURL.appendingPathComponent("manifest.json")
+    }
+
+    private struct Manifest: Codable {
+        let photos: [Entry]
+    }
+
+    private struct Entry: Codable {
+        let id: UUID
+        let takenAt: Date
+        let paceAtShot: Double?
+        let hrAtShot: Int?
+        let distAtShot: Double
+        let latitude: Double?
+        let longitude: Double?
+        let captureContext: PhotoCaptureContext
+
+        init(metadata: PhotoMetadata) {
+            id = UUID()
+            takenAt = metadata.takenAt
+            paceAtShot = metadata.paceAtShot
+            hrAtShot = metadata.hrAtShot
+            distAtShot = metadata.distAtShot
+            latitude = metadata.coordinate?.latitude
+            longitude = metadata.coordinate?.longitude
+            captureContext = metadata.captureContext
+        }
+
+        var fileName: String {
+            "photo-\(id.uuidString).jpg"
+        }
+
+        var metadata: PhotoMetadata {
+            let coordinate = latitude.flatMap { latitude in
+                longitude.map { longitude in
+                    CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                }
+            }
+            return PhotoMetadata(
+                takenAt: takenAt,
+                paceAtShot: paceAtShot,
+                hrAtShot: hrAtShot,
+                distAtShot: distAtShot,
+                coordinate: coordinate,
+                captureContext: captureContext
+            )
+        }
     }
 }
 

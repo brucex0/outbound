@@ -136,6 +136,7 @@ struct RecordView: View {
     @State private var showsMusicDiscoveryTip = false
     @State private var didPresentMusicDiscoveryTip = false
     @State private var didTrackRecoveryPresentation = false
+    @State private var didRestoreSessionPhotos = false
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -268,6 +269,7 @@ struct RecordView: View {
             onLiveSurfaceVisibilityChange?(isVisible)
         }
         .onAppear {
+            restoreInterruptedPhotosIfNeeded()
             onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
             workoutPresence.sync(with: recorder.state)
@@ -600,7 +602,9 @@ struct RecordView: View {
                     onResume: resumeRecording,
                     onFinish: finishRecording
                 ) { image, meta in
-                    capturedPhotos.append((image, meta))
+                    let photo = (image, meta)
+                    capturedPhotos.append(photo)
+                    ActiveSessionPhotoJournal.append(photo)
                     track(.init(.photoCaptured, properties: [
                         .sourceType: .string("in_activity"),
                         .locationAttached: .boolean(meta.coordinate != nil)
@@ -793,6 +797,7 @@ struct RecordView: View {
     }
 
     private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
+        ActiveSessionPhotoJournal.replace(with: capturedPhotos)
         pendingActivity = nil
         activePage = preferredSessionPage
         activeIntent = plannedIntent
@@ -1122,6 +1127,7 @@ struct RecordView: View {
         cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
         capturedPhotos = []
+        ActiveSessionPhotoJournal.clear()
         onPreActivityPhotoChange?(nil)
         activeIntent = nil
         plannedIntent = nil
@@ -2679,10 +2685,24 @@ struct RecordView: View {
         capturedPhotos.last(where: { $0.1.captureContext == .preActivity })?.0
     }
 
+    private func restoreInterruptedPhotosIfNeeded() {
+        guard recorder.recoveredSession, !didRestoreSessionPhotos else { return }
+        didRestoreSessionPhotos = true
+        let restoredPhotos = ActiveSessionPhotoJournal.load()
+        guard !restoredPhotos.isEmpty else { return }
+        capturedPhotos = restoredPhotos
+        track(.init(.activityPhotoRecovery, properties: [
+            .countBucket: .string(ProductAnalyticsBucket.count(restoredPhotos.count)),
+            .preRunPhotoAdded: .boolean(
+                restoredPhotos.contains { $0.1.captureContext == .preActivity }
+            )
+        ]))
+    }
+
     private func replacePreActivityPhoto(with image: UIImage) {
         removePreActivityPhoto()
         let coordinate = recorder.locationManager.location?.coordinate
-        capturedPhotos.append((
+        let photo = (
             image,
             PhotoMetadata(
                 takenAt: Date(),
@@ -2692,7 +2712,9 @@ struct RecordView: View {
                 coordinate: coordinate,
                 captureContext: .preActivity
             )
-        ))
+        )
+        capturedPhotos.append(photo)
+        ActiveSessionPhotoJournal.append(photo)
         track(.init(.photoCaptured, properties: [
             .sourceType: .string("pre_activity"),
             .locationAttached: .boolean(coordinate != nil)
@@ -2702,6 +2724,7 @@ struct RecordView: View {
 
     private func removePreActivityPhoto() {
         capturedPhotos.removeAll { $0.1.captureContext == .preActivity }
+        ActiveSessionPhotoJournal.removePreActivityPhotos()
         onPreActivityPhotoChange?(nil)
     }
 

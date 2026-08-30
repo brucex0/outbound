@@ -90,6 +90,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Edge-to-edge countdown and live backgrounds keep their top controls below the device status area.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
 - Interrupted-session recovery opens the paused live surface directly.
+- Setup and live photos survive interrupted-session recovery and remain available on the finish page.
 - Cold-launch recovery renders the retained live surface directly, without a child modal or disabled fallback layer.
 - Repeated force-kill/relaunch recovery leaves exactly one app-owned Live Activity card for the recovered session.
 - Goal-specific live metrics, pause/resume, finish confirmation, and expanded-map return all work without console warnings or errors.
