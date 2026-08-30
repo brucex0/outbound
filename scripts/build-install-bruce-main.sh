@@ -23,6 +23,7 @@ launch_after_install=false
 enable_social=false
 enable_test_personas=false
 enable_analytics_debug=false
+enable_simulated_run=false
 target_simulator=false
 local_development_host="${OUTBOUND_LOCAL_HOST:-}"
 
@@ -45,7 +46,7 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--simulator] [--build-only] [--launch] [--analytics-debug] [--with-test-personas] [--with-social|--without-social]
+Usage: $0 [--simulator] [--build-only] [--launch] [--simulated-run] [--analytics-debug] [--with-test-personas] [--with-social|--without-social]
 
 Build and install Outbound on Bruce main or an iOS Simulator.
 
@@ -54,6 +55,8 @@ Options:
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
   --analytics-debug Enable Firebase Analytics DebugView for the launched app.
+                    Requires --launch.
+  --simulated-run   Preselect the DEBUG-only Redmond Harvest route simulator.
                     Requires --launch.
   --with-test-personas
                     Route a launched Debug app to the local API and enable its
@@ -254,6 +257,9 @@ while [[ $# -gt 0 ]]; do
     --analytics-debug)
       enable_analytics_debug=true
       ;;
+    --simulated-run)
+      enable_simulated_run=true
+      ;;
     --with-social)
       enable_social=true
       ;;
@@ -280,6 +286,11 @@ fi
 
 if [[ "$enable_analytics_debug" == true && "$launch_after_install" != true ]]; then
   echo "--analytics-debug requires --launch." >&2
+  exit 2
+fi
+
+if [[ "$enable_simulated_run" == true && "$launch_after_install" != true ]]; then
+  echo "--simulated-run requires --launch." >&2
   exit 2
 fi
 
@@ -333,6 +344,9 @@ if [[ "$enable_test_personas" == true ]]; then
 fi
 if [[ "$enable_analytics_debug" == true ]]; then
   log "Analytics: Firebase DebugView enabled"
+fi
+if [[ "$enable_simulated_run" == true ]]; then
+  log "Run simulation: Redmond Harvest route preselected"
 fi
 if [[ "$build_only" == true ]]; then
   log "Mode: build only"
@@ -432,6 +446,9 @@ if [[ "$launch_after_install" == true ]]; then
       -OutboundLocalAPIHost "$local_development_host"
       -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
     )
+  fi
+  if [[ "$enable_simulated_run" == true ]]; then
+    app_launch_args+=(-OutboundSimulatedHarvestRun)
   fi
 
   if [[ "$target_simulator" == true ]]; then

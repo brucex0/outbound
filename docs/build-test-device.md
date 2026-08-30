@@ -104,6 +104,24 @@ To exercise the same lifecycle manually on `Bruce main` while using the Firebase
 
 Launching the app normally afterward, including with `./scripts/build-install-bruce-main.sh --launch`, omits the seed flag. The flag does not replace or bypass first-party authentication on a physical device.
 
+### Interactive Redmond Run Simulation
+
+Use the DEBUG-only simulator to manually verify evolving map rendering, Route Guidance, and the real live voice-guide pipeline without moving the phone:
+
+```sh
+./scripts/build-install-bruce-main.sh --launch --simulated-run
+```
+
+Add `--simulator` to run it in an iPhone Simulator. The launch flag preselects the Redmond Harvest route on Today; it does not bypass authentication or start recording automatically.
+
+1. Confirm Voice Guide is enabled, then tap Start and let the normal spoken countdown finish.
+2. In the Run Simulation overlay, change the simulated running speed with minus/plus.
+3. Use Play to advance continuously. Select 1×, 10×, or 60× to control simulated-time acceleration, or use `+1m` and `+5m` for deterministic jumps.
+4. Watch the orange recorded trail, current-position marker, route progress, pace, distance, and guide message update from the same recorder snapshots used by a real outdoor run.
+5. Pause/Resume with the normal session controls. When finished, choose Discard activity so the synthetic workout is not saved or synchronized.
+
+Without the launch flag, the same simulator is available in a Debug build from the activity setup's More > Testing > Simulated Harvest Run toggle. Release builds do not compile the simulator or its controls. The supplied GPX contains one return-leg discontinuity (`47.7900`); the fixture corrects it to the matching outbound latitude (`47.6900`). The resulting supplied geometry is approximately 18.1 km, even though the source name describes a half marathon.
+
 Run the automated local server E2E test with one seeded persona. The runner starts the local API and embedded PostgreSQL, resets deterministic seed data, obtains a first-party session from the debug-only endpoint, then verifies authenticated account, activity, and social API state:
 
 ```sh

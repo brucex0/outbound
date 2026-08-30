@@ -39,6 +39,8 @@ Configure launch options from the dock:
 
 The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
+Debug builds also expose a manual run simulator under More > Testing. Enabling it preselects the supplied Redmond Harvest route and replaces live Core Location fixes with progressive synthetic locations after the normal countdown. The live overlay can adjust running speed, pause/play simulated time at 1×, 10×, or 60×, and jump forward by one or five minutes. Synthetic fixes continue through `ActivityRecorder`, Route Guidance, `LiveMapView`, and `VirtualGuide`; the simulator does not use the static metric overrides from the seeded 10K UI fixture and does not write an interrupted-session recovery journal. The source GPX return-leg latitude `47.7900` is treated as an obvious discontinuity and corrected to `47.6900`, matching the outbound point.
+
 The top-left cancel action exists only during the countdown. Once recording begins, the live camera/map surface is non-dismissible and remains full-screen until Finish hands off to post-run Save or Discard. The retained recorder renders this surface directly above Today while the shell hides its navigation, tab, and assistant chrome; it does not depend on presenting a child modal from inside the retained tab hierarchy. An interrupted session therefore restores paused into the same live surface rather than behind Today. Relaunch recovery adopts the surviving ActivityKit card for that session and immediately removes duplicate app-owned cards, so repeated force-kill/relaunch cycles still leave exactly one Live Activity.
 
 Primary live metrics follow the selected mode:

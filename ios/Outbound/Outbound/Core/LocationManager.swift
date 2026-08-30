@@ -65,6 +65,8 @@ final class LocationManager: NSObject, ObservableObject {
     private var testDistanceMeters: Double?
     private var testElevationGainMeters: Double?
     private var testCurrentPaceSecsPerKm: Double?
+    private var isSimulatingLocations = false
+    private var simulatedSpeedMetersPerSecond: Double?
 #endif
 
     override init() {
@@ -98,6 +100,8 @@ final class LocationManager: NSObject, ObservableObject {
     func startTracking(activityType: ActivityType = .running) {
 #if DEBUG
         clearTestOverrides()
+        isSimulatingLocations = false
+        simulatedSpeedMetersPerSecond = nil
 #endif
         trackPoints = []
         trackCoordinates = []
@@ -125,6 +129,9 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func startTrackingIfPermitted() {
+#if DEBUG
+        guard !isSimulatingLocations else { return }
+#endif
         guard wantsTracking else { return }
         manager.startUpdatingLocation()
     }
@@ -142,10 +149,18 @@ final class LocationManager: NSObject, ObservableObject {
         wantsTracking = false
         trackingStartedAt = nil
         manager.stopUpdatingLocation()
+#if DEBUG
+        isSimulatingLocations = false
+        simulatedSpeedMetersPerSecond = nil
+#endif
         return trackPoints
     }
 
     func restoreTracking(from points: [CLLocation], activityType: ActivityType = .running) {
+#if DEBUG
+        isSimulatingLocations = false
+        simulatedSpeedMetersPerSecond = nil
+#endif
         configureValidation(for: activityType)
         trackPoints = points
         trackCoordinates = points.map(\.coordinate)
@@ -185,6 +200,11 @@ final class LocationManager: NSObject, ObservableObject {
     var currentPaceSecsPerKm: Double? {
 #if DEBUG
         if let testCurrentPaceSecsPerKm { return testCurrentPaceSecsPerKm }
+        if isSimulatingLocations,
+           let simulatedSpeedMetersPerSecond,
+           simulatedSpeedMetersPerSecond > 0 {
+            return 1_000 / simulatedSpeedMetersPerSecond
+        }
 #endif
         guard trackPoints.count > 5 else { return nil }
         let recent = Array(trackPoints.suffix(10))
@@ -210,12 +230,53 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
 #if DEBUG
+    func startSimulatedTracking(activityType: ActivityType = .running) {
+        manager.stopUpdatingLocation()
+        clearTestOverrides()
+        isSimulatingLocations = true
+        simulatedSpeedMetersPerSecond = nil
+        trackPoints = []
+        trackCoordinates = []
+        accumulatedDistanceMeters = 0
+        elevationAccumulator.reset()
+        receivedBatchCount = 0
+        maximumBatchSize = 0
+        acceptedTrackPointCount = 0
+        rejectedLocationCount = 0
+        location = nil
+        trackingStartedAt = Date()
+        wantsTracking = true
+        configureValidation(for: activityType)
+    }
+
+    func ingestSimulatedLocation(_ newLocation: CLLocation) {
+        guard wantsTracking, isSimulatingLocations else { return }
+        guard trackPoints.last.map({ newLocation.timestamp > $0.timestamp }) ?? true else {
+            rejectedLocationCount += 1
+            return
+        }
+
+        receivedBatchCount += 1
+        maximumBatchSize = max(maximumBatchSize, 1)
+        if let previous = trackPoints.last {
+            accumulatedDistanceMeters += previous.distance(from: newLocation)
+        }
+        trackPoints.append(newLocation)
+        trackCoordinates.append(newLocation.coordinate)
+        elevationAccumulator.ingest(newLocation)
+        acceptedTrackPointCount += 1
+        simulatedSpeedMetersPerSecond = newLocation.speed > 0 ? newLocation.speed : nil
+        location = newLocation
+    }
+
     func seedLiveRunForUITest(
         distanceMeters: Double,
         elevationGainMeters: Double,
         currentPaceSecsPerKm: Double,
         trackPoints: [CLLocation]
     ) {
+        isSimulatingLocations = false
+        simulatedSpeedMetersPerSecond = nil
         testDistanceMeters = distanceMeters
         testElevationGainMeters = elevationGainMeters
         testCurrentPaceSecsPerKm = currentPaceSecsPerKm
@@ -237,6 +298,9 @@ extension LocationManager: CLLocationManagerDelegate {
         guard !locations.isEmpty else { return }
         Task { @MainActor in
             self.wantsOneShotLocation = false
+#if DEBUG
+            guard !self.isSimulatingLocations else { return }
+#endif
             if self.wantsTracking {
                 self.receivedBatchCount += 1
                 self.maximumBatchSize = max(self.maximumBatchSize, locations.count)

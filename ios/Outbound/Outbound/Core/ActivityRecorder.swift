@@ -39,6 +39,9 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
     @Published private(set) var recoveredActivityType: ActivityType?
     @Published private(set) var routeGuidanceSnapshot: RouteGuidanceSnapshot?
+#if DEBUG
+    @Published private(set) var runSimulationState: RunSimulationState?
+#endif
     let routeGuidanceEvents = PassthroughSubject<RouteGuidanceEvent, Never>()
 
     let locationManager: LocationManager
@@ -58,6 +61,10 @@ final class ActivityRecorder: ObservableObject {
     private var activityType: ActivityType = .running
     private var routeGuidance: ActiveRouteGuidanceJournal?
     private var routeGuidanceEngine: RouteGuidanceEngine?
+#if DEBUG
+    private var runSimulationSampler: RunSimulationRouteSampler?
+    private var runSimulationClock: AnyCancellable?
+#endif
 
     private var autoPauseSpeedThresholdMetersPerSecond: Double {
         switch activityType {
@@ -89,6 +96,9 @@ final class ActivityRecorder: ObservableObject {
         activityType: ActivityType = .running,
         routeGuidance: ActiveRouteGuidanceJournal? = nil
     ) {
+#if DEBUG
+        resetRunSimulation()
+#endif
         timer?.cancel()
         ActiveSessionJournal.clear()
         lastJournaledTrackPointCount = 0
@@ -124,6 +134,9 @@ final class ActivityRecorder: ObservableObject {
 
     func pause(autoTriggered: Bool = false) {
         guard state == .active else { return }
+#if DEBUG
+        stopRunSimulationClock()
+#endif
         updateSessionMetrics(now: Date())
         state = .paused
         autoPaused = autoTriggered
@@ -149,12 +162,18 @@ final class ActivityRecorder: ObservableObject {
         locationManager.resumeTracking()
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
+#if DEBUG
+        guard runSimulationState == nil else { return }
+#endif
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
     }
 
     func finish() -> ActivitySummary {
+#if DEBUG
+        stopRunSimulationClock()
+#endif
         updateSessionMetrics(now: Date())
         state = .idle
         autoPaused = false
@@ -185,10 +204,181 @@ final class ActivityRecorder: ObservableObject {
         routeGuidanceEngine = nil
         routeGuidanceSnapshot = nil
         ActiveSessionJournal.clear()
+#if DEBUG
+        resetRunSimulation()
+#endif
         return summary
     }
 
 #if DEBUG
+    var isSimulatingRun: Bool {
+        runSimulationState != nil
+    }
+
+    var runSimulationSpeedBucket: String {
+        guard let speed = runSimulationState?.speedKilometersPerHour else { return "unavailable" }
+        return switch speed {
+        case ..<8: "under_8kph"
+        case ..<12: "8_12kph"
+        default: "12kph_plus"
+        }
+    }
+
+    func startRunSimulation(
+        activityType: ActivityType = .running,
+        routeGuidance: ActiveRouteGuidanceJournal,
+        route: PreparedRoute,
+        speedKilometersPerHour: Double = 10
+    ) {
+        guard let sampler = RunSimulationRouteSampler(route: route) else { return }
+
+        timer?.cancel()
+        resetRunSimulation()
+        ActiveSessionJournal.clear()
+        lastJournaledTrackPointCount = 0
+        let now = Date()
+        state = .active
+        autoPaused = false
+        autoPauseCandidateStart = nil
+        autoResumeCandidateStart = nil
+        startDate = now
+        currentSegmentStartDate = nil
+        accumulatedActiveDuration = 0
+        self.activityType = activityType
+        self.routeGuidance = routeGuidance
+        routeGuidanceEngine = RouteGuidanceEngine(
+            route: routeGuidance.route,
+            recoverySeed: routeGuidance.recoverySeed
+        )
+        routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
+        recoveredRouteGuidance = nil
+        recoveredActivityType = nil
+        elapsedSeconds = 0
+        distanceMeters = 0
+        elevationGainMeters = 0
+        currentPace = nil
+        heartRate = nil
+        heartRateSamples.removeAll()
+        runSimulationSampler = sampler
+        runSimulationState = RunSimulationState(
+            speedKilometersPerHour: max(4, min(24, speedKilometersPerHour)),
+            timeRate: 10,
+            isClockRunning: false,
+            elapsedSeconds: 0,
+            distanceMeters: 0,
+            routeDistanceMeters: sampler.totalDistanceMeters
+        )
+        locationManager.startSimulatedTracking(activityType: activityType)
+        if let initialLocation = sampler.location(
+            at: 0,
+            speedMetersPerSecond: runSimulationState?.speedMetersPerSecond ?? 0,
+            timestamp: now
+        ) {
+            locationManager.ingestSimulatedLocation(initialLocation)
+        } else {
+            liveSnapshot = makeSnapshot()
+        }
+    }
+
+    func toggleRunSimulationClock() {
+        guard let simulation = runSimulationState,
+              state == .active,
+              !simulation.isComplete
+        else { return }
+
+        if simulation.isClockRunning {
+            stopRunSimulationClock()
+            return
+        }
+
+        var updated = simulation
+        updated.isClockRunning = true
+        runSimulationState = updated
+        startRunSimulationClock(rate: updated.timeRate)
+    }
+
+    func setRunSimulationTimeRate(_ rate: Int) {
+        guard [1, 10, 60].contains(rate), var simulation = runSimulationState else { return }
+        let wasRunning = simulation.isClockRunning
+        simulation.timeRate = rate
+        runSimulationState = simulation
+        if wasRunning {
+            startRunSimulationClock(rate: rate)
+        }
+    }
+
+    func adjustRunSimulationSpeed(byKilometersPerHour delta: Double) {
+        guard var simulation = runSimulationState else { return }
+        simulation.speedKilometersPerHour = max(
+            4,
+            min(24, simulation.speedKilometersPerHour + delta)
+        )
+        runSimulationState = simulation
+    }
+
+    func advanceRunSimulation(by seconds: Int) {
+        guard seconds > 0,
+              state == .active,
+              let sampler = runSimulationSampler,
+              var simulation = runSimulationState,
+              !simulation.isComplete,
+              let startDate
+        else { return }
+
+        var remainingSeconds = seconds
+        while remainingSeconds > 0, !simulation.isComplete {
+            let stepSeconds = 1
+            simulation.elapsedSeconds += stepSeconds
+            simulation.distanceMeters = min(
+                simulation.routeDistanceMeters,
+                simulation.distanceMeters
+                    + (simulation.speedMetersPerSecond * Double(stepSeconds))
+            )
+            runSimulationState = simulation
+
+            if let location = sampler.location(
+                at: simulation.distanceMeters,
+                speedMetersPerSecond: simulation.speedMetersPerSecond,
+                timestamp: startDate.addingTimeInterval(TimeInterval(simulation.elapsedSeconds))
+            ) {
+                locationManager.ingestSimulatedLocation(location)
+            }
+            remainingSeconds -= stepSeconds
+        }
+
+        if simulation.isComplete {
+            stopRunSimulationClock()
+        }
+    }
+
+    private func startRunSimulationClock(rate: Int) {
+        runSimulationClock?.cancel()
+        runSimulationClock = Timer.publish(
+            every: 1.0 / Double(rate),
+            on: .main,
+            in: .common
+        )
+        .autoconnect()
+        .sink { [weak self] _ in
+            self?.advanceRunSimulation(by: 1)
+        }
+    }
+
+    private func stopRunSimulationClock() {
+        runSimulationClock?.cancel()
+        runSimulationClock = nil
+        guard var simulation = runSimulationState, simulation.isClockRunning else { return }
+        simulation.isClockRunning = false
+        runSimulationState = simulation
+    }
+
+    private func resetRunSimulation() {
+        runSimulationClock?.cancel()
+        runSimulationClock = nil
+        runSimulationSampler = nil
+        runSimulationState = nil
+    }
+
     func seedLiveRunForUITest(
         elapsedSeconds: Int = 2_753,
         distanceMeters: Double = 7_820,
@@ -197,6 +387,7 @@ final class ActivityRecorder: ObservableObject {
         heartRate: Int = 152
     ) {
         timer?.cancel()
+        resetRunSimulation()
         let now = Date()
         let route = Self.seeded10KRoute(endingAt: now)
         locationManager.seedLiveRunForUITest(
@@ -305,6 +496,9 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func evaluateAutoPauseCandidate(now: Date) {
+#if DEBUG
+        guard runSimulationState == nil else { return }
+#endif
         guard Double(currentElapsedSeconds(at: now)) >= autoPauseWarmupSeconds else {
             resetAutoPauseCandidate()
             return
@@ -327,6 +521,9 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func evaluateAutoResumeCandidate(now: Date) {
+#if DEBUG
+        guard runSimulationState == nil else { return }
+#endif
         guard let speed = locationManager.currentSpeedMetersPerSecond else {
             resetAutoResumeCandidate()
             return
@@ -406,6 +603,9 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func persistJournal(force: Bool = false) {
+#if DEBUG
+        guard runSimulationState == nil else { return }
+#endif
         guard state != .idle, let startDate else { return }
         let now = Date()
         if !force, let lastJournalSaveAt, now.timeIntervalSince(lastJournalSaveAt) < 10 { return }
@@ -429,6 +629,11 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func currentElapsedSeconds(at now: Date) -> Int {
+#if DEBUG
+        if let runSimulationState {
+            return runSimulationState.elapsedSeconds
+        }
+#endif
         switch state {
         case .idle:
             return 0

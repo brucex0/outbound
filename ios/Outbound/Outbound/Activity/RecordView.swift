@@ -138,6 +138,10 @@ struct RecordView: View {
     @State private var didTrackRecoveryPresentation = false
     @State private var didRestoreSessionPhotos = false
     @State private var isCapturingSessionPhoto = false
+#if DEBUG
+    @State private var isRunSimulationEnabled = false
+    @State private var didConfigureRequestedRunSimulation = false
+#endif
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -244,6 +248,9 @@ struct RecordView: View {
         }
         .onChange(of: isVisible, initial: true) { wasVisible, isNowVisible in
             seedLiveRunForUITestIfRequested()
+#if DEBUG
+            configureRequestedRunSimulationIfNeeded()
+#endif
             guard !wasVisible, isNowVisible else { return }
             presentMusicDiscoveryTipIfNeeded()
         }
@@ -273,6 +280,9 @@ struct RecordView: View {
             restoreInterruptedPhotosIfNeeded()
             onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
+#if DEBUG
+            configureRequestedRunSimulationIfNeeded()
+#endif
             workoutPresence.sync(with: recorder.state)
             if recorder.state == .idle {
                 recorder.locationManager.requestCurrentLocation()
@@ -639,6 +649,22 @@ struct RecordView: View {
                 ActivityStartCountdownOverlay(step: countdownStep, reduceMotion: reduceMotion)
                     .transition(.opacity)
             }
+
+#if DEBUG
+            if recorder.isSimulatingRun, countdownStep == nil {
+                VStack {
+                    RunSimulationControls(
+                        recorder: recorder,
+                        onControlUsed: trackRunSimulationControl
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.top, 62)
+
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+#endif
         }
         .background(Color(.systemBackground))
         .toolbar(.hidden, for: .tabBar)
@@ -799,12 +825,65 @@ struct RecordView: View {
 #endif
     }
 
+#if DEBUG
+    private func configureRequestedRunSimulationIfNeeded() {
+        guard isVisible,
+              !didConfigureRequestedRunSimulation,
+              !ProcessInfo.processInfo.arguments.contains("-OutboundUITestLive10K"),
+              ProcessInfo.processInfo.arguments.contains(HarvestHalfMarathonSimulation.launchArgument)
+        else { return }
+
+        didConfigureRequestedRunSimulation = true
+        configureHarvestRunSimulation(enabled: true, tracksChange: false)
+    }
+
+    private func configureHarvestRunSimulation(
+        enabled: Bool,
+        tracksChange: Bool = true
+    ) {
+        guard recorder.state == .idle else { return }
+        isRunSimulationEnabled = enabled
+
+        if enabled {
+            selectedWorkoutChoice = .sport(.run)
+            selectedGoalMode = .freestyle
+            manualActivityGoal = .freestyle
+            plannedWorkoutIntent = nil
+            plannedIntent = .freestyleRun
+            intentBeforeSelectedRoute = nil
+            isIndoorSession = false
+            applyRoute(HarvestHalfMarathonSimulation.route)
+        } else if plannedIntent?.preparedRoute?.id == HarvestHalfMarathonSimulation.routeID {
+            applyRoute(nil)
+        }
+
+        guard tracksChange else { return }
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("run_simulation"),
+            .selectionType: .string(enabled ? "enabled" : "disabled")
+        ]))
+    }
+
+    private func trackRunSimulationControl(_ control: String, _ selection: String) {
+        track(.init(.activitySimulationControlUsed, properties: [
+            .control: .string(control),
+            .selectionType: .string(selection)
+        ]))
+    }
+#endif
+
     private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
         ActiveSessionPhotoJournal.replace(with: capturedPhotos)
         pendingActivity = nil
         activePage = preferredSessionPage
         activeIntent = plannedIntent
+#if DEBUG
+        if !isRunSimulationEnabled {
+            recorder.locationManager.requestPermission()
+        }
+#else
         recorder.locationManager.requestPermission()
+#endif
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
             with: guideStore.profile,
@@ -869,10 +948,7 @@ struct RecordView: View {
         let routeGuidance = activeIntent?.preparedRoute.map {
             ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
         }
-        recorder.start(
-            activityType: activeIntent?.resolvedActivityType ?? .running,
-            routeGuidance: routeGuidance
-        )
+        startRecorder(routeGuidance: routeGuidance)
         recordStartedGoalMode()
         if let route = activeIntent?.preparedRoute {
             track(.init(.routeNavigationStarted, properties: [
@@ -892,6 +968,32 @@ struct RecordView: View {
         Task {
             await musicStore.beginWorkoutPlaybackIfNeeded()
         }
+    }
+
+    private func startRecorder(routeGuidance: ActiveRouteGuidanceJournal?) {
+#if DEBUG
+        if isRunSimulationEnabled,
+           let routeGuidance,
+           routeGuidance.route.id == HarvestHalfMarathonSimulation.routeID {
+            recorder.startRunSimulation(
+                activityType: .running,
+                routeGuidance: routeGuidance,
+                route: routeGuidance.route
+            )
+            track(.init(.activitySimulationStarted, properties: [
+                .sourceType: .string("harvest_half"),
+                .distanceBucket: .string(ProductAnalyticsBucket.distance(
+                    meters: recorder.runSimulationState?.routeDistanceMeters ?? 0
+                )),
+                .selectionType: .string(recorder.runSimulationSpeedBucket)
+            ]))
+            return
+        }
+#endif
+        recorder.start(
+            activityType: activeIntent?.resolvedActivityType ?? .running,
+            routeGuidance: routeGuidance
+        )
     }
 
     private func updateLiveActivity(
@@ -1146,6 +1248,9 @@ struct RecordView: View {
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
         selectedGuidanceChallenge = .off
+#if DEBUG
+        isRunSimulationEnabled = false
+#endif
     }
 
     private var preferredSessionPage: SessionPage {
@@ -2147,6 +2252,29 @@ struct RecordView: View {
 
     private var moreSetupSheet: some View {
         List {
+#if DEBUG
+            Section(String(localized: "run.simulation.testing.section", defaultValue: "Testing")) {
+                Toggle(isOn: Binding(
+                    get: { isRunSimulationEnabled },
+                    set: { configureHarvestRunSimulation(enabled: $0) }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label(
+                            String(localized: "run.simulation.setup.title", defaultValue: "Simulated Harvest Run"),
+                            systemImage: "figure.run.circle"
+                        )
+                        Text(String(
+                            localized: "run.simulation.setup.detail",
+                            defaultValue: "Use the Redmond route with adjustable speed and time. No GPS movement is required."
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(.orange)
+                .disabled(recorder.state != .idle)
+            }
+#endif
             Section(String(localized: "guide.challenge.section.title", defaultValue: "Optional live challenge")) {
                 ForEach(LiveGuidanceChallenge.allCases) { challenge in
                     Button {
@@ -3430,6 +3558,11 @@ struct RecordView: View {
     }
 
     private func removeSelectedRoute(_ route: PreparedRoute) {
+#if DEBUG
+        if route.id == HarvestHalfMarathonSimulation.routeID {
+            isRunSimulationEnabled = false
+        }
+#endif
         applyRoute(nil)
         track(.init(.routeRemoved, properties: [.sourceType: .string(route.source.rawValue)]))
     }
@@ -3462,6 +3595,11 @@ struct RecordView: View {
     }
 
     private func applyRoute(_ route: PreparedRoute?) {
+#if DEBUG
+        if route?.id != HarvestHalfMarathonSimulation.routeID {
+            isRunSimulationEnabled = false
+        }
+#endif
         let currentIntent = plannedIntent ?? .freestyleRun
         if let route {
             if currentIntent.preparedRoute == nil {
