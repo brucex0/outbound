@@ -23,7 +23,10 @@ struct MainTabView: View {
     @State private var selectedAppTab: SimplifiedAppTab = .today
     @State private var activityStartRequest = 0
     @State private var preActivityPhotoRequest = 0
+    @State private var routeSelectionRequest = 0
+    @State private var routeRemovalRequest = 0
     @State private var preActivityPhoto: UIImage?
+    @State private var preActivityRoute: PreparedRoute?
     @State private var launchGoalMode: SessionGoalMode = .planned
     @State private var customizedTodayIntent: SessionIntent?
 
@@ -79,6 +82,7 @@ struct MainTabView: View {
                   activeLaunch?.intent != intent
             else { return }
             activeLaunch = RecordLaunch(intent: intent)
+            preActivityRoute = intent?.preparedRoute
             isActivityVisible = true
         }
         .onChange(of: onboardingIdentity) { _, _ in
@@ -150,13 +154,20 @@ struct MainTabView: View {
             customizedTodayIntent: $customizedTodayIntent,
             activityLaunchSurface: activityLaunchSurface,
             launchGoalMode: launchGoalMode,
-            showsPreActivityPhotoAction: isActivityVisible,
+            showsActivityOverflowMenu: isActivityVisible,
             preActivityPhoto: preActivityPhoto,
+            preActivityRoute: preActivityRoute,
             onContextualStart: {
                 activityStartRequest += 1
             },
             onPreActivityPhotoAction: {
                 preActivityPhotoRequest += 1
+            },
+            onRouteSelectionAction: {
+                routeSelectionRequest += 1
+            },
+            onRouteRemovalAction: {
+                routeRemovalRequest += 1
             }
         ) { intent in
             presentActivity(intent: intent)
@@ -171,8 +182,11 @@ struct MainTabView: View {
                 isEmbeddedInToday: true,
                 startRequest: activityStartRequest,
                 preActivityPhotoRequest: preActivityPhotoRequest,
+                routeSelectionRequest: routeSelectionRequest,
+                routeRemovalRequest: routeRemovalRequest,
                 onGoalModeChange: { launchGoalMode = $0 },
                 onPreActivityPhotoChange: { preActivityPhoto = $0 },
+                onPreActivityRouteChange: { preActivityRoute = $0 },
                 onCloseRequest: handleActivityClose,
                 onSessionStateChange: { activitySessionState = $0 },
                 onElapsedTimeChange: { activityElapsedSeconds = $0 }
@@ -191,6 +205,7 @@ struct MainTabView: View {
 
         selectedAppTab = .today
         activeLaunch = RecordLaunch(intent: intent)
+        preActivityRoute = intent?.preparedRoute
         activitySessionState = .idle
         activityElapsedSeconds = 0
         isActivityVisible = true
@@ -201,10 +216,13 @@ struct MainTabView: View {
         activitySessionState = .idle
         activityElapsedSeconds = 0
         if selectedAppTab == .today {
-            activeLaunch = RecordLaunch(intent: defaultTodayIntent)
+            let intent = defaultTodayIntent
+            activeLaunch = RecordLaunch(intent: intent)
+            preActivityRoute = intent?.preparedRoute
             isActivityVisible = true
         } else {
             activeLaunch = nil
+            preActivityRoute = nil
             isActivityVisible = false
         }
     }
@@ -217,7 +235,9 @@ struct MainTabView: View {
 
     private func prepareTodayLaunchIfNeeded() {
         guard selectedAppTab == .today, activeLaunch == nil else { return }
-        activeLaunch = RecordLaunch(intent: defaultTodayIntent)
+        let intent = defaultTodayIntent
+        activeLaunch = RecordLaunch(intent: intent)
+        preActivityRoute = intent?.preparedRoute
         isActivityVisible = true
     }
 
@@ -237,7 +257,9 @@ struct MainTabView: View {
 
     private func restoreInterruptedActivityIfNeeded() {
         guard activeLaunch == nil, let journal = ActiveSessionJournal.load() else { return }
-        activeLaunch = RecordLaunch(intent: recoveredIntent(from: journal))
+        let intent = recoveredIntent(from: journal)
+        activeLaunch = RecordLaunch(intent: intent)
+        preActivityRoute = intent?.preparedRoute
         isActivityVisible = true
     }
 

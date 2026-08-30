@@ -36,10 +36,13 @@ struct SimplifiedAppShell: View {
     @Binding var customizedTodayIntent: SessionIntent?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
-    let showsPreActivityPhotoAction: Bool
+    let showsActivityOverflowMenu: Bool
     let preActivityPhoto: UIImage?
+    let preActivityRoute: PreparedRoute?
     let onContextualStart: () -> Void
     let onPreActivityPhotoAction: () -> Void
+    let onRouteSelectionAction: () -> Void
+    let onRouteRemovalAction: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
     @State private var selectedRouteName: String?
@@ -59,6 +62,12 @@ struct SimplifiedAppShell: View {
                 selectedRouteName: $selectedRouteName,
                 activityLaunchSurface: activityLaunchSurface,
                 launchGoalMode: launchGoalMode,
+                showsActivityOverflowMenu: showsActivityOverflowMenu,
+                preActivityPhoto: preActivityPhoto,
+                preActivityRoute: preActivityRoute,
+                onPreActivityPhotoAction: onPreActivityPhotoAction,
+                onRouteSelectionAction: onRouteSelectionAction,
+                onRouteRemovalAction: onRouteRemovalAction,
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
@@ -88,12 +97,6 @@ struct SimplifiedAppShell: View {
                 assistantLaunchButton
 
                 Spacer(minLength: 0)
-
-                if selection == .today,
-                   activitySessionState == .idle,
-                   showsPreActivityPhotoAction {
-                    preActivityPhotoLaunchButton
-                }
             }
             .padding(.horizontal, 18)
             .padding(.bottom, 40)
@@ -165,6 +168,9 @@ struct SimplifiedAppShell: View {
             ))
             communityRouteStore.consumeLaunch()
         }
+        .onChange(of: preActivityRoute) { _, route in
+            selectedRouteName = route?.name
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
@@ -203,46 +209,6 @@ struct SimplifiedAppShell: View {
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "Open assistant"))
         .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-    }
-
-    private var preActivityPhotoLaunchButton: some View {
-        Button(action: onPreActivityPhotoAction) {
-            ZStack(alignment: .bottomTrailing) {
-                if let preActivityPhoto {
-                    Image(uiImage: preActivityPhoto)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 48, height: 48)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
-
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.white)
-                        .frame(width: 17, height: 17)
-                        .background(Color.green, in: Circle())
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .offset(x: 2, y: 2)
-                } else {
-                    Image(systemName: "camera.fill")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(theme.actionColor.gradient, in: Circle())
-                        .overlay {
-                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                        }
-                }
-            }
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(String(localized: "record.photo.control", defaultValue: "Photo"))
-        .accessibilityValue(
-            preActivityPhoto == nil
-                ? String(localized: "record.photo.not_added", defaultValue: "No photo added")
-                : String(localized: "record.photo.added", defaultValue: "Photo added")
-        )
     }
 
     private func selectTabWithoutAnimation(_ tab: SimplifiedAppTab) {
@@ -537,6 +503,12 @@ private struct SimplifiedTodayView: View {
     @Binding var selectedRouteName: String?
     let activityLaunchSurface: AnyView
     let launchGoalMode: SessionGoalMode
+    let showsActivityOverflowMenu: Bool
+    let preActivityPhoto: UIImage?
+    let preActivityRoute: PreparedRoute?
+    let onPreActivityPhotoAction: () -> Void
+    let onRouteSelectionAction: () -> Void
+    let onRouteRemovalAction: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @StateObject private var launchLocationManager = LocationManager()
     @State private var showsCompanionExplanation = false
@@ -565,12 +537,13 @@ private struct SimplifiedTodayView: View {
                         OutboundPalette.background
                         ActivityLaunchMap(
                             locationManager: launchLocationManager,
-                            route: activeRunIntent.preparedRoute,
+                            route: preActivityRoute,
                             attributionBottomInset: mapAttributionBottomInset
                         )
                         .clipped()
 
-                        if launchGoalMode == .planned || activitySessionState != .idle {
+                        if preActivityRoute == nil
+                            && (launchGoalMode == .planned || activitySessionState != .idle) {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, ActivityLaunchLayout.peerCardGap)
@@ -633,6 +606,11 @@ private struct SimplifiedTodayView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
+                }
+                if showsActivityOverflowMenu, activitySessionState == .idle {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        activityOverflowMenu
+                    }
                 }
             }
             .onAppear {
@@ -810,6 +788,81 @@ private struct SimplifiedTodayView: View {
         replacementPlanRecommendation = nil
         selectedPlanRecommendation = nil
         showsPlanPicker = false
+    }
+
+    private var activityOverflowMenu: some View {
+        Menu {
+            Button(action: onPreActivityPhotoAction) {
+                Label(
+                    preActivityPhoto == nil
+                        ? String(localized: "record.photo.take", defaultValue: "Take photo")
+                        : String(localized: "record.photo.view", defaultValue: "View photo"),
+                    systemImage: preActivityPhoto == nil ? "camera.fill" : "photo.fill"
+                )
+            }
+
+            Button(action: onRouteSelectionAction) {
+                Label(
+                    preActivityRoute == nil
+                        ? String(localized: "record.route.find", defaultValue: "Find a route")
+                        : String(localized: "record.route.change", defaultValue: "Change route"),
+                    systemImage: "map.fill"
+                )
+            }
+
+            if preActivityRoute != nil {
+                Divider()
+                Button(role: .destructive, action: onRouteRemovalAction) {
+                    Label(
+                        String(localized: "record.route.remove", defaultValue: "Remove route"),
+                        systemImage: "map.fill"
+                    )
+                }
+            }
+        } label: {
+            activityOverflowLabel
+        }
+        .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
+        .accessibilityValue(activityOverflowAccessibilityValue)
+    }
+
+    @ViewBuilder
+    private var activityOverflowLabel: some View {
+        if let preActivityPhoto {
+            ZStack(alignment: .bottomTrailing) {
+                Image(uiImage: preActivityPhoto)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 34, height: 34)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(theme.actionColor, lineWidth: 2))
+
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 8, weight: .black))
+                    .foregroundStyle(.primary)
+                    .frame(width: 16, height: 16)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
+                    .offset(x: 3, y: 3)
+            }
+            .frame(width: 38, height: 38)
+        } else {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3.weight(.semibold))
+        }
+    }
+
+    private var activityOverflowAccessibilityValue: String {
+        switch (preActivityPhoto != nil, preActivityRoute != nil) {
+        case (true, true):
+            return String(localized: "record.more_actions.photo_route_selected", defaultValue: "Photo and route selected")
+        case (true, false):
+            return String(localized: "record.photo.added", defaultValue: "Photo added")
+        case (false, true):
+            return String(localized: "record.route.selected", defaultValue: "Route selected")
+        case (false, false):
+            return String(localized: "record.more_actions.none_selected", defaultValue: "No photo or route selected")
+        }
     }
 
     private var canPresentThemeTip: Bool {
@@ -3379,10 +3432,13 @@ private extension RunnerConfidence {
         customizedTodayIntent: .constant(nil),
         activityLaunchSurface: AnyView(EmptyView()),
         launchGoalMode: .planned,
-        showsPreActivityPhotoAction: true,
+        showsActivityOverflowMenu: true,
         preActivityPhoto: nil,
+        preActivityRoute: nil,
         onContextualStart: {},
         onPreActivityPhotoAction: {},
+        onRouteSelectionAction: {},
+        onRouteRemovalAction: {},
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())

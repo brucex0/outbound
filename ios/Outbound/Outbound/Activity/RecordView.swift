@@ -140,9 +140,12 @@ struct RecordView: View {
     private let isEmbeddedInToday: Bool
     private let startRequest: Int
     private let preActivityPhotoRequest: Int
+    private let routeSelectionRequest: Int
+    private let routeRemovalRequest: Int
     private let shouldApplySmartGoalDefault: Bool
     private let onGoalModeChange: ((SessionGoalMode) -> Void)?
     private let onPreActivityPhotoChange: ((UIImage?) -> Void)?
+    private let onPreActivityRouteChange: ((PreparedRoute?) -> Void)?
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
     private let onElapsedTimeChange: ((Int) -> Void)?
@@ -153,8 +156,11 @@ struct RecordView: View {
         isEmbeddedInToday: Bool = false,
         startRequest: Int = 0,
         preActivityPhotoRequest: Int = 0,
+        routeSelectionRequest: Int = 0,
+        routeRemovalRequest: Int = 0,
         onGoalModeChange: ((SessionGoalMode) -> Void)? = nil,
         onPreActivityPhotoChange: ((UIImage?) -> Void)? = nil,
+        onPreActivityRouteChange: ((PreparedRoute?) -> Void)? = nil,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil
@@ -173,8 +179,11 @@ struct RecordView: View {
         self.isEmbeddedInToday = isEmbeddedInToday
         self.startRequest = startRequest
         self.preActivityPhotoRequest = preActivityPhotoRequest
+        self.routeSelectionRequest = routeSelectionRequest
+        self.routeRemovalRequest = routeRemovalRequest
         self.onGoalModeChange = onGoalModeChange
         self.onPreActivityPhotoChange = onPreActivityPhotoChange
+        self.onPreActivityRouteChange = onPreActivityRouteChange
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -233,8 +242,17 @@ struct RecordView: View {
         .onChange(of: preActivityPhotoRequest) { _, _ in
             handlePreActivityPhotoRequest()
         }
+        .onChange(of: routeSelectionRequest) { _, _ in
+            handleRouteSelectionRequest()
+        }
+        .onChange(of: routeRemovalRequest) { _, _ in
+            handleRouteRemovalRequest()
+        }
         .onChange(of: selectedGoalMode, initial: true) { _, mode in
             onGoalModeChange?(mode)
+        }
+        .onChange(of: plannedIntent?.preparedRoute, initial: true) { _, route in
+            onPreActivityRouteChange?(route)
         }
         .onAppear {
             onPreActivityPhotoChange?(preActivityPhoto)
@@ -1155,7 +1173,7 @@ struct RecordView: View {
                 Color.clear
                     .allowsHitTesting(false)
 
-                if showsLaunchGoalCard {
+                if showsLaunchGoalCard || plannedIntent?.preparedRoute != nil {
                     VStack(spacing: 10) {
                         if connectivityStore.isOffline {
                             OfflineStatusBanner(compact: true)
@@ -1164,10 +1182,18 @@ struct RecordView: View {
 
                         Spacer(minLength: 72)
 
-                        launchGoalCard
-                            .padding(.horizontal, 18)
-                            .padding(.bottom, 12)
-                            .reportsMapAttributionOcclusionHeight()
+                        VStack(spacing: 10) {
+                            if let route = plannedIntent?.preparedRoute {
+                                launchRoutePreviewCard(route)
+                            }
+
+                            if showsLaunchGoalCard {
+                                launchGoalCard
+                            }
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 12)
+                        .reportsMapAttributionOcclusionHeight()
                     }
                 }
             }
@@ -1257,6 +1283,53 @@ struct RecordView: View {
             compactGoalChooser
                 .presentationCompactAdaptation(.popover)
         }
+    }
+
+    private func launchRoutePreviewCard(_ route: PreparedRoute) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "map.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(theme.actionColor.gradient, in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(route.name)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(routeDistanceLabel(route))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 6)
+
+            Button(String(localized: "common.change", defaultValue: "Change")) {
+                openRouteLibrary()
+            }
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(.borderless)
+
+            Button(role: .destructive) {
+                removeSelectedRoute(route)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 32, height: 32)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(theme.actionColor.opacity(0.2), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
     }
 
     private var launchDock: some View {
@@ -1735,6 +1808,27 @@ struct RecordView: View {
               !showCamera
         else { return }
         handlePreActivityPhotoAction()
+    }
+
+    private func handleRouteSelectionRequest() {
+        guard isEmbeddedInToday,
+              isVisible,
+              pendingActivity == nil,
+              recorder.state == .idle,
+              !showCamera
+        else { return }
+        openRouteLibrary()
+    }
+
+    private func handleRouteRemovalRequest() {
+        guard isEmbeddedInToday,
+              isVisible,
+              pendingActivity == nil,
+              recorder.state == .idle,
+              !showCamera,
+              let route = plannedIntent?.preparedRoute
+        else { return }
+        removeSelectedRoute(route)
     }
 
     private func launchUtilityButton(
@@ -3643,6 +3737,16 @@ struct ActivityLaunchMap: View {
         return RouteWorkingGeometry.displayPoints(route.directedPoints).map(\.locationCoordinate)
     }
 
+    private var routeCameraKey: String? {
+        route.map { "\($0.id):\($0.direction.rawValue)" }
+    }
+
+    private var routeEndpointsOverlap: Bool {
+        guard let start = routeCoordinates.first, let finish = routeCoordinates.last else { return false }
+        return CLLocation(latitude: start.latitude, longitude: start.longitude)
+            .distance(from: CLLocation(latitude: finish.latitude, longitude: finish.longitude)) <= 20
+    }
+
     var body: some View {
         Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
             if routeCoordinates.count > 1 {
@@ -3653,11 +3757,30 @@ struct ActivityLaunchMap: View {
             }
 
             if let start = routeCoordinates.first {
-                Annotation(String(localized: "route.guidance.map.start", defaultValue: "Route start"), coordinate: start) {
-                    Circle()
-                        .fill(theme.accentColor)
-                        .frame(width: 14, height: 14)
-                        .overlay(Circle().stroke(.white, lineWidth: 3))
+                Annotation(
+                    routeEndpointsOverlap
+                        ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
+                        : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
+                    coordinate: start
+                ) {
+                    Image(systemName: routeEndpointsOverlap ? "flag.checkered" : "figure.run")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(routeEndpointsOverlap ? theme.actionColor : Color.green, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .shadow(radius: 3)
+                }
+            }
+
+            if let finish = routeCoordinates.last, !routeEndpointsOverlap {
+                Annotation(String(localized: "route.guidance.map.finish", defaultValue: "Route finish"), coordinate: finish) {
+                    Image(systemName: "flag.checkered")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(theme.actionColor, in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
                         .shadow(radius: 3)
                 }
             }
@@ -3666,7 +3789,7 @@ struct ActivityLaunchMap: View {
         }
         .safeAreaPadding(.bottom, max(attributionBottomInset, 0))
         .onAppear { frameRouteIfNeeded() }
-        .onChange(of: route?.id) { _, _ in frameRouteIfNeeded() }
+        .onChange(of: routeCameraKey) { _, _ in frameRouteIfNeeded() }
     }
 
     private func frameRouteIfNeeded() {
