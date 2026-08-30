@@ -27,7 +27,7 @@ Localization covers every user-facing surface, including accessibility, system p
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
 - Built-in training-plan templates persist semantic `training_plan.title.*` keys. The iOS client resolves those keys through `Localizable.xcstrings`; plan analytics and selection continue to use the stable template ID, never a localized title.
 - Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
-- Speech recognition, reviewed server-generated coaching packs, command hints, and deterministic activity parsing support English, Spanish, and Mandarin. Pack entries are keyed by canonical locale and product voice profile; provider voice names never enter the app catalog.
+- Speech recognition, reviewed server-generated coaching packs, command hints, and deterministic activity parsing support English, Spanish, and Mandarin. Pack entries are keyed by canonical locale and product voice profile. Settings presents stable human product names and female/male groupings; provider identifiers remain private to the backend adapter.
 
 The catalogs are product-authored translations and still require native-speaker release review, as described below. User-authored content remains unchanged.
 

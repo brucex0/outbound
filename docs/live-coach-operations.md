@@ -8,7 +8,7 @@ Plainstride uses two Alibaba Model Studio APIs in the same Singapore workspace. 
 
 The configured workspace is `ws-i638drcm5lthrc29` (account `1093525`). Dynamic cues use `https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`; fixed TTS uses the same host at `/api/v1`. Both the deploy and local generation scripts use these endpoints by default. Cloud Run and authenticated local generation are configured to share the Secret Manager entry `outbound-alibaba-ai-api-key`; the credential value is not stored in the repository.
 
-The backend owns the following provider map. The iOS app and public APIs see only the Plainstride profile ID and localized product name.
+The backend owns the following provider map. The iOS app and public APIs see the Plainstride profile ID, stable human product name, style description, and female/male presentation; provider mapping remains backend-owned.
 
 | Product voice | Product style | Alibaba voice | Presentation | `en` | `es` | `zh-Hans` |
 | --- | --- | --- | --- | --- | --- | --- |

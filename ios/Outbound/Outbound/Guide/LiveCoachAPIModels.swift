@@ -86,6 +86,7 @@ struct LiveCoachCatalogDTO: Codable, Equatable {
         let displayName: String
         let description: String
         let style: String
+        let presentation: GuideVoicePresentation
         let previewAssetId: String
     }
 }

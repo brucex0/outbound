@@ -14,6 +14,7 @@ export type CoachPersonaDefinition = {
 export type VoiceProfileDefinition = {
   id: VoiceProfileId;
   style: "warm" | "gentle" | "composed" | "bright" | "driven" | "easygoing";
+  presentation: "female" | "male";
   supportedLocales: SupportedAILocale[];
   localized: Record<SupportedAILocale, { displayName: string; description: string }>;
 };
@@ -83,61 +84,67 @@ export const VOICE_PROFILES: VoiceProfileDefinition[] = [
   {
     id: "plainstride_warm_1",
     style: "warm",
+    presentation: "female",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Warm", description: "Bright, friendly, and naturally encouraging." },
-      es: { displayName: "Cálida", description: "Luminosa, cercana y alentadora con naturalidad." },
-      "zh-Hans": { displayName: "温暖", description: "明亮亲切，自然而有鼓励感。" },
+      en: { displayName: "Cherry", description: "Bright, friendly, and naturally encouraging." },
+      es: { displayName: "Cherry", description: "Luminosa, cercana y alentadora con naturalidad." },
+      "zh-Hans": { displayName: "Cherry", description: "明亮亲切，自然而有鼓励感。" },
     },
   },
   {
     id: "plainstride_gentle_1",
     style: "gentle",
+    presentation: "female",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Gentle", description: "Soft, calm, and reassuring." },
-      es: { displayName: "Suave", description: "Suave, tranquila y reconfortante." },
-      "zh-Hans": { displayName: "轻柔", description: "轻柔平静，让人安心。" },
+      en: { displayName: "Serena", description: "Soft, calm, and reassuring." },
+      es: { displayName: "Serena", description: "Suave, tranquila y reconfortante." },
+      "zh-Hans": { displayName: "Serena", description: "轻柔平静，让人安心。" },
     },
   },
   {
     id: "plainstride_composed_1",
     style: "composed",
+    presentation: "female",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Composed", description: "Thoughtful, balanced, and clear." },
-      es: { displayName: "Serena", description: "Reflexiva, equilibrada y clara." },
-      "zh-Hans": { displayName: "沉稳", description: "理性从容，表达清楚。" },
+      en: { displayName: "Maia", description: "Thoughtful, balanced, and clear." },
+      es: { displayName: "Maia", description: "Reflexiva, equilibrada y clara." },
+      "zh-Hans": { displayName: "Maia", description: "理性从容，表达清楚。" },
     },
   },
   {
     id: "plainstride_clear_1",
     style: "bright",
+    presentation: "male",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Bright", description: "Warm, energetic, and easy to hear while moving." },
-      es: { displayName: "Enérgica", description: "Cálida, enérgica y fácil de seguir en movimiento." },
-      "zh-Hans": { displayName: "明快", description: "温暖有活力，运动中也容易听清。" },
+      en: { displayName: "Ethan", description: "Warm, energetic, and easy to hear while moving." },
+      es: { displayName: "Ethan", description: "Cálida, enérgica y fácil de seguir en movimiento." },
+      "zh-Hans": { displayName: "Ethan", description: "温暖有活力，运动中也容易听清。" },
     },
   },
   {
     id: "plainstride_driven_1",
     style: "driven",
+    presentation: "male",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Driven", description: "Rhythmic and motivating for harder efforts." },
-      es: { displayName: "Intensa", description: "Rítmica y motivadora para los esfuerzos exigentes." },
-      "zh-Hans": { displayName: "激励", description: "节奏有力，适合更具挑战的训练。" },
+      en: { displayName: "Moon", description: "Rhythmic and motivating for harder efforts." },
+      es: { displayName: "Moon", description: "Rítmica y motivadora para los esfuerzos exigentes." },
+      "zh-Hans": { displayName: "Moon", description: "节奏有力，适合更具挑战的训练。" },
     },
   },
   {
     id: "plainstride_easygoing_1",
     style: "easygoing",
+    presentation: "male",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Easygoing", description: "Friendly, casual, and low-pressure." },
-      es: { displayName: "Relajada", description: "Cercana, informal y sin presión." },
-      "zh-Hans": { displayName: "随和", description: "友好随和，没有压力感。" },
+      en: { displayName: "Kai", description: "Friendly, casual, and low-pressure." },
+      es: { displayName: "Kai", description: "Cercana, informal y sin presión." },
+      "zh-Hans": { displayName: "Kai", description: "友好随和，没有压力感。" },
     },
   },
 ];
@@ -180,6 +187,7 @@ export function publicLiveCoachCatalog(config: LiveCoachFeatureConfig, locale: S
       displayName: voice.localized[locale].displayName,
       description: voice.localized[locale].description,
       style: voice.style,
+      presentation: voice.presentation,
       previewAssetId: "voice.preview",
     })),
   };

@@ -92,11 +92,26 @@ enum NudgeFrequency: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum GuideVoicePresentation: String, Codable, CaseIterable, Identifiable {
+    case female
+    case male
+
+    var id: String { rawValue }
+
+    var sectionTitle: String {
+        switch self {
+        case .female: String(localized: "guide.voice.female.section.title", defaultValue: "Female voices")
+        case .male: String(localized: "guide.voice.male.section.title", defaultValue: "Male voices")
+        }
+    }
+}
+
 struct GuideVoice: Codable, Hashable, Identifiable {
     let id: String
     let displayName: String
     let description: String
     let style: String
+    let presentation: GuideVoicePresentation
     let previewAssetID: String
 
     var locale: String { AppLanguage.currentIdentifier }
@@ -109,44 +124,50 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         [
             GuideVoice(
                 id: "plainstride_warm_1",
-                displayName: String(localized: "guide.voice.warm.name", defaultValue: "Warm"),
+                displayName: String(localized: "guide.voice.warm.name", defaultValue: "Cherry"),
                 description: String(localized: "guide.voice.warm.detail", defaultValue: "Bright, friendly, and naturally encouraging."),
                 style: "warm",
+                presentation: .female,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
                 id: "plainstride_gentle_1",
-                displayName: String(localized: "guide.voice.gentle.name", defaultValue: "Gentle"),
+                displayName: String(localized: "guide.voice.gentle.name", defaultValue: "Serena"),
                 description: String(localized: "guide.voice.gentle.detail", defaultValue: "Soft, calm, and reassuring."),
                 style: "gentle",
+                presentation: .female,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
                 id: "plainstride_composed_1",
-                displayName: String(localized: "guide.voice.composed.name", defaultValue: "Composed"),
+                displayName: String(localized: "guide.voice.composed.name", defaultValue: "Maia"),
                 description: String(localized: "guide.voice.composed.detail", defaultValue: "Thoughtful, balanced, and clear."),
                 style: "composed",
+                presentation: .female,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
                 id: "plainstride_clear_1",
-                displayName: String(localized: "guide.voice.bright.name", defaultValue: "Bright"),
+                displayName: String(localized: "guide.voice.bright.name", defaultValue: "Ethan"),
                 description: String(localized: "guide.voice.bright.detail", defaultValue: "Warm, energetic, and easy to hear while moving."),
                 style: "bright",
+                presentation: .male,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
                 id: "plainstride_driven_1",
-                displayName: String(localized: "guide.voice.driven.name", defaultValue: "Driven"),
+                displayName: String(localized: "guide.voice.driven.name", defaultValue: "Moon"),
                 description: String(localized: "guide.voice.driven.detail", defaultValue: "Rhythmic and motivating for harder efforts."),
                 style: "driven",
+                presentation: .male,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
                 id: "plainstride_easygoing_1",
-                displayName: String(localized: "guide.voice.easygoing.name", defaultValue: "Easygoing"),
+                displayName: String(localized: "guide.voice.easygoing.name", defaultValue: "Kai"),
                 description: String(localized: "guide.voice.easygoing.detail", defaultValue: "Friendly, casual, and low-pressure."),
                 style: "easygoing",
+                presentation: .male,
                 previewAssetID: "voice.preview"
             )
         ]
@@ -237,6 +258,7 @@ extension GuideTemplate {
                 displayName: $0.displayName,
                 description: $0.description,
                 style: $0.style,
+                presentation: $0.presentation,
                 previewAssetID: $0.previewAssetId
             )
         }
