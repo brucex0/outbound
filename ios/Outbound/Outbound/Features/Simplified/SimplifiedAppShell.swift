@@ -2765,7 +2765,11 @@ private struct SimplifiedProfileView: View {
         Form {
             Section {
                 NavigationLink {
-                    SimplifiedProfileEditorView(initialProfile: profile, onProfileUpdated: onProfileUpdated)
+                    SimplifiedProfileEditorView(
+                        initialProfile: profile,
+                        onProfileUpdated: onProfileUpdated,
+                        onTrainingProfileUpdated: onTrainingProfileUpdated
+                    )
                 } label: {
                     Label(
                         String(localized: "profile.public_details", defaultValue: "Name, photo, and bio"),
@@ -2779,11 +2783,6 @@ private struct SimplifiedProfileView: View {
                         String(localized: "profile.training_details", defaultValue: "Training details"),
                         systemImage: "figure.run"
                     )
-                }
-                NavigationLink {
-                    HealthProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
-                } label: {
-                    Label("Health & body", systemImage: "heart.text.clipboard")
                 }
                 NavigationLink {
                     CompanionMemoryView()
@@ -2966,108 +2965,10 @@ private struct TrainingProfileEditorView: View {
     }()
 }
 
-private struct HealthProfileEditorView: View {
-    let onProfileUpdated: (TrainingProfileDTO) -> Void
-    @State private var sexAtBirth: TrainingProfileSex?
-    @State private var preservedProfile: TrainingProfileDTO?
-    @State private var isLoading = true
-    @State private var isSaving = false
-    @State private var toast: ProfileToast?
-
-    var body: some View {
-        Form {
-            Section {
-                Text(String(
-                    localized: "profile.health_details.privacy",
-                    defaultValue: "Sex assigned at birth is optional. Plainstride uses it only to show relevant private health features and never shares it in Together."
-                ))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-
-            Section("Health & body") {
-                Picker("Sex assigned at birth", selection: $sexAtBirth) {
-                    Text("Not provided").tag(nil as TrainingProfileSex?)
-                    ForEach(TrainingProfileSex.allCases) { value in
-                        Text(value.title).tag(value as TrainingProfileSex?)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Health & body")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
-                    .disabled(isLoading || isSaving || preservedProfile == nil)
-            }
-        }
-        .overlay(alignment: .top) {
-            if let toast {
-                ProfileToastView(toast: toast)
-                    .padding(.horizontal, OutboundSpacing.screen)
-                    .padding(.top, OutboundSpacing.compact)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .animation(.snappy, value: toast)
-        .task(id: toast?.id) {
-            guard toast != nil else { return }
-            try? await Task.sleep(for: .seconds(2.2))
-            guard !Task.isCancelled else { return }
-            toast = nil
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        defer { isLoading = false }
-        do {
-            let profile = try await APIClient.shared.fetchTrainingProfile()
-            preservedProfile = profile
-            sexAtBirth = profile.sexAtBirth
-        } catch {
-            showToast(String(
-                localized: "profile.health_details.load_error",
-                defaultValue: "Health details could not be loaded."
-            ), style: .error)
-        }
-    }
-
-    private func save() async {
-        guard let preservedProfile else { return }
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            let profile = try await APIClient.shared.updateTrainingProfile(TrainingProfileUpdateDTO(
-                sexAtBirth: sexAtBirth,
-                birthDate: preservedProfile.birthDate,
-                heightCentimeters: preservedProfile.heightCentimeters,
-                weightKilograms: preservedProfile.weightKilograms
-            ))
-            self.preservedProfile = profile
-            sexAtBirth = profile.sexAtBirth
-            onProfileUpdated(profile)
-            showToast(String(
-                localized: "profile.health_details.saved",
-                defaultValue: "Health details saved"
-            ), style: .success)
-        } catch {
-            showToast(String(
-                localized: "profile.health_details.save_error",
-                defaultValue: "Could not save health details. Try again."
-            ), style: .error)
-        }
-    }
-
-    private func showToast(_ text: String, style: ProfileToast.Style) {
-        toast = ProfileToast(text: text, style: style)
-    }
-}
-
 private struct SimplifiedProfileEditorView: View {
     @EnvironmentObject private var authStore: AuthStore
     var onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
+    var onTrainingProfileUpdated: ((TrainingProfileDTO) -> Void)? = nil
     @State private var displayName = ""
     @State private var bio = ""
     @State private var contactEmail = ""
@@ -3081,13 +2982,17 @@ private struct SimplifiedProfileEditorView: View {
     @State private var isUploadingAvatar = false
     @State private var isLoading = true
     @State private var isSaving = false
+    @State private var sexAtBirth: TrainingProfileSex?
+    @State private var preservedTrainingProfile: TrainingProfileDTO?
     @State private var toast: ProfileToast?
 
     init(
         initialProfile: AppUserProfileDTO? = nil,
-        onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
+        onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil,
+        onTrainingProfileUpdated: ((TrainingProfileDTO) -> Void)? = nil
     ) {
         self.onProfileUpdated = onProfileUpdated
+        self.onTrainingProfileUpdated = onTrainingProfileUpdated
         _displayName = State(initialValue: initialProfile?.displayName ?? "")
         _bio = State(initialValue: initialProfile?.bio ?? "")
         _contactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
@@ -3133,6 +3038,22 @@ private struct SimplifiedProfileEditorView: View {
                 Text("About you")
             } footer: {
                 Text("Your name and bio may appear to people you connect with in Together.")
+            }
+            Section {
+                Picker("Sex assigned at birth", selection: $sexAtBirth) {
+                    Text("Not provided").tag(nil as TrainingProfileSex?)
+                    ForEach(TrainingProfileSex.allCases) { value in
+                        Text(value.title).tag(value as TrainingProfileSex?)
+                    }
+                }
+                .disabled(preservedTrainingProfile == nil)
+            } header: {
+                Text("Private")
+            } footer: {
+                Text(String(
+                    localized: "profile.health_details.privacy",
+                    defaultValue: "Sex assigned at birth is optional. Plainstride uses it only to show relevant private health features and never shares it in Together."
+                ))
             }
             Section {
                 if isEditingContactDetails || savedContactEmail.isEmpty {
@@ -3212,12 +3133,34 @@ private struct SimplifiedProfileEditorView: View {
             displayName = authStore.currentLoginLabel ?? ""
             showToast(String(localized: "Profile could not be loaded."), style: .error)
         }
+        do {
+            let trainingProfile = try await APIClient.shared.fetchTrainingProfile()
+            preservedTrainingProfile = trainingProfile
+            sexAtBirth = trainingProfile.sexAtBirth
+        } catch {
+            showToast(String(
+                localized: "profile.health_details.load_error",
+                defaultValue: "Health details could not be loaded."
+            ), style: .error)
+        }
     }
 
     private func save() async {
         isSaving = true
         defer { isSaving = false }
         do {
+            if let preservedTrainingProfile,
+               sexAtBirth != preservedTrainingProfile.sexAtBirth {
+                let trainingProfile = try await APIClient.shared.updateTrainingProfile(TrainingProfileUpdateDTO(
+                    sexAtBirth: sexAtBirth,
+                    birthDate: preservedTrainingProfile.birthDate,
+                    heightCentimeters: preservedTrainingProfile.heightCentimeters,
+                    weightKilograms: preservedTrainingProfile.weightKilograms
+                ))
+                self.preservedTrainingProfile = trainingProfile
+                sexAtBirth = trainingProfile.sexAtBirth
+                onTrainingProfileUpdated?(trainingProfile)
+            }
             let profile = try await APIClient.shared.updateMyProfile(
                 AppUserProfileUpdateDTO(
                     displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
