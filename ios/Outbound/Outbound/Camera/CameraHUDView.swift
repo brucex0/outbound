@@ -718,7 +718,7 @@ struct SessionStatusCard: View {
 
     @ViewBuilder
     private var extraCountdownStrip: some View {
-        if currentStepProgress != nil || displayIntent.routeName?.isEmpty == false {
+        if currentStepProgress != nil || secondaryRouteName != nil {
             HStack(spacing: 8) {
                 if let stepProgress = currentStepProgress {
                     SessionStepCountdown(
@@ -732,7 +732,7 @@ struct SessionStatusCard: View {
                     )
                 }
 
-                if let routeName = displayIntent.routeName, !routeName.isEmpty {
+                if let routeName = secondaryRouteName {
                     SessionMiniCountdown(symbolName: "map.fill", text: routeName, tint: theme.accentColor)
                 }
             }
@@ -856,7 +856,19 @@ struct SessionStatusCard: View {
     }
 
     private var activityTitle: String {
-        displayIntent.title
+        if displayIntent.preparedRoute != nil,
+           !displayIntent.activityGoal.isFreestyle {
+            return displayIntent.activityGoal.title(for: displayIntent.sport)
+        }
+        return displayIntent.title
+    }
+
+    private var secondaryRouteName: String? {
+        guard let routeName = displayIntent.routeName,
+              !routeName.isEmpty,
+              routeName != activityTitle
+        else { return nil }
+        return routeName
     }
 
     private var displayedElapsedText: String {

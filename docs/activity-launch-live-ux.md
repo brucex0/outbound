@@ -91,3 +91,4 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Interrupted-session recovery opens the paused live surface directly.
 - Repeated force-kill/relaunch recovery leaves exactly one app-owned Live Activity card for the recovered session.
 - Goal-specific live metrics, pause/resume, finish confirmation, and expanded-map return all work without console warnings or errors.
+- A live session with both a target and a route keeps the target as its header and shows the route once in the secondary route row; freestyle route sessions use the route as the header without duplicating it.
