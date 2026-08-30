@@ -541,14 +541,12 @@ struct RecognitionAwardRow: View {
 }
 
 struct RecognitionEmptyState: View {
-    var compact = false
-
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "sparkles")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.orange)
-                .frame(width: compact ? 40 : 46, height: compact ? 40 : 46)
+                .frame(width: 46, height: 46)
                 .background(Color.orange.opacity(0.12), in: Circle())
                 .accessibilityHidden(true)
 

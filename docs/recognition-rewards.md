@@ -234,7 +234,7 @@ Share behavior:
 
 ### 4. Profile / History
 
-Me now includes a lightweight `Recognition` section beneath weekly progress. It shows the two most recent earned moments with their companion framing and earned dates, plus an `All` destination grouped by family. When nothing has been earned yet, it uses an encouraging first-moment state instead of exposing locked badges.
+Me now includes a compact `Milestones` section beneath weekly progress. It shows up to four recent earned badge icons and a trailing disclosure arrow; tapping the card opens the full Recognition destination grouped by family. When nothing has been earned yet, one neutral sparkles icon keeps the row lightweight without exposing locked badges.
 
 The profile/history surface:
 - group by family

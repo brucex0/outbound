@@ -2774,53 +2774,47 @@ private struct SimplifiedMeView: View {
         return activityStore.activities.filter { interval.contains($0.startedAt) }
     }
     private var recognitionSection: some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(String(localized: "recognition.title", defaultValue: "Recognition"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
-                        Text(String(
-                            localized: "recognition.me.subtitle",
-                            defaultValue: "Milestones your companion noticed"
-                        ))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    }
+        NavigationLink {
+            RecognitionHistoryView()
+        } label: {
+            OutboundCard {
+                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                    Text(String(localized: "recognition.me.title", defaultValue: "Milestones"))
+                        .font(.headline)
 
-                    Spacer()
-
-                    if !recognitionStore.awards.isEmpty {
-                        NavigationLink {
-                            RecognitionHistoryView()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(String(localized: "recognition.all", defaultValue: "All"))
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
+                    HStack(spacing: 8) {
+                        if recognitionStore.awards.isEmpty {
+                            Image(systemName: "sparkles")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.orange)
+                                .frame(width: 40, height: 40)
+                                .background(Color.orange.opacity(0.12), in: Circle())
+                                .accessibilityLabel(String(
+                                    localized: "recognition.me.empty.accessibility",
+                                    defaultValue: "No milestones yet"
+                                ))
+                        } else {
+                            ForEach(recognitionStore.awards.prefix(4)) { award in
+                                let preview = recognitionStore.preview(for: award.badgeID)
+                                RecognitionOrb(preview: preview, size: 40)
+                                    .accessibilityElement()
+                                    .accessibilityLabel(preview.title)
                             }
-                            .font(.subheadline.weight(.semibold))
                         }
-                    }
-                }
 
-                if recognitionStore.awards.isEmpty {
-                    RecognitionEmptyState(compact: true)
-                } else {
-                    ForEach(Array(recognitionStore.awards.prefix(2).enumerated()), id: \.element.id) { index, award in
-                        if index > 0 {
-                            Divider()
-                        }
-                        RecognitionAwardRow(
-                            award: award,
-                            preview: recognitionStore.preview(for: award.badgeID)
-                        )
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.primary.opacity(0.06), in: Circle())
+                            .accessibilityHidden(true)
                     }
                 }
             }
         }
+        .buttonStyle(.plain)
     }
     private func meStat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading) { Text(value).font(.headline.monospacedDigit()); Text(label).font(.caption).foregroundStyle(.secondary) }
