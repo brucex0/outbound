@@ -147,6 +147,8 @@ final class ActivityRecorder: ObservableObject {
         if !autoTriggered {
             timer?.cancel()
             locationManager.pauseTracking()
+        } else {
+            locationManager.beginAutoPauseProbing()
         }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
@@ -154,12 +156,13 @@ final class ActivityRecorder: ObservableObject {
 
     func resume() {
         guard state == .paused else { return }
+        let wasAutoPaused = autoPaused
         state = .active
         autoPaused = false
         autoPauseCandidateStart = nil
         autoResumeCandidateStart = nil
         currentSegmentStartDate = Date()
-        locationManager.resumeTracking()
+        locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
 #if DEBUG
@@ -179,18 +182,38 @@ final class ActivityRecorder: ObservableObject {
         autoPaused = false
         autoPauseCandidateStart = nil
         timer?.cancel()
-        let track = locationManager.stopTracking()
+        let stoppedTrack = locationManager.stopTracking()
+        let reconciledTrack = LocationTrackPostProcessor.reconcile(
+            segments: stoppedTrack.segments,
+            plannedRoute: routeGuidance?.route
+        )
+        let finalDistanceMeters = stoppedTrack.preservesLiveMetrics
+            ? stoppedTrack.liveDistanceMeters
+            : reconciledTrack.distanceMeters
+                + stoppedTrack.motionSupplementDistanceMeters
+                + stoppedTrack.motionTailDistanceMeters
+        let finalElevationGainMeters = stoppedTrack.preservesLiveMetrics
+            ? elevationGainMeters
+            : reconciledTrack.elevationGainMeters
+        locationManager.recordFinalReconciliation(
+            liveDistanceMeters: stoppedTrack.liveDistanceMeters,
+            finalDistanceMeters: finalDistanceMeters,
+            routeMatchResult: reconciledTrack.routeMatchResult
+        )
+        distanceMeters = finalDistanceMeters
+        elevationGainMeters = finalElevationGainMeters
         let finishedRouteGuidance = routeGuidanceSnapshot
         let summary = ActivitySummary(
             startedAt: startDate ?? Date(),
             endedAt: Date(),
             durationSecs: elapsedSeconds,
-            distanceM: distanceMeters,
-            avgPace: distanceMeters > 0 ? Double(elapsedSeconds) / (distanceMeters / 1000) : nil,
-            elevationGainM: elevationGainMeters,
+            distanceM: finalDistanceMeters,
+            avgPace: finalDistanceMeters > 0 ? Double(elapsedSeconds) / (finalDistanceMeters / 1000) : nil,
+            elevationGainM: finalElevationGainMeters,
             healthMetrics: healthMetricsSummary(),
             routeGuidance: finishedRouteGuidance,
-            trackPoints: track
+            trackPoints: reconciledTrack.points,
+            trackSegmentStartIndices: reconciledTrack.segmentStartIndices
         )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
@@ -560,13 +583,20 @@ final class ActivityRecorder: ObservableObject {
     private func restoreJournalIfPresent() {
         guard let journal = ActiveSessionJournal.load() else { return }
         let points = journal.trackPoints.map(\.location)
+        let segmentStarts = Set(journal.trackPoints.indices.filter {
+            journal.trackPoints[$0].startsNewSegment
+        })
         lastJournaledTrackPointCount = journal.trackPoints.count
         startDate = journal.startedAt
         accumulatedActiveDuration = TimeInterval(journal.elapsedSeconds)
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
         activityType = journal.activityType ?? .running
-        locationManager.restoreTracking(from: points, activityType: activityType)
+        locationManager.restoreTracking(
+            from: points,
+            segmentStartIndices: segmentStarts,
+            activityType: activityType
+        )
         distanceMeters = locationManager.totalDistanceMeters
         elevationGainMeters = locationManager.elevationGainMeters
         currentPace = locationManager.currentPaceSecsPerKm
@@ -614,8 +644,9 @@ final class ActivityRecorder: ObservableObject {
         if trackPoints.count < lastJournaledTrackPointCount {
             lastJournaledTrackPointCount = 0
         }
-        let newTrackPoints = trackPoints.dropFirst(lastJournaledTrackPointCount)
-            .map(JournalTrackPoint.init)
+        let newTrackPoints = locationManager.journalTrackPoints(
+            startingAt: lastJournaledTrackPointCount
+        )
         if ActiveSessionTrackJournal.append(newTrackPoints) {
             lastJournaledTrackPointCount = trackPoints.count
         }
@@ -724,6 +755,23 @@ struct ActivitySummary {
     let healthMetrics: ActivityHealthMetrics?
     let routeGuidance: RouteGuidanceSnapshot?
     let trackPoints: [CLLocation]
+    let trackSegmentStartIndices: Set<Int>
+
+    nonisolated var trackSegments: [[CLLocation]] {
+        guard !trackPoints.isEmpty else { return [] }
+        var result: [[CLLocation]] = []
+        var current: [CLLocation] = []
+        let starts = trackSegmentStartIndices.isEmpty ? Set([0]) : trackSegmentStartIndices
+        for index in trackPoints.indices {
+            if starts.contains(index), !current.isEmpty {
+                result.append(current)
+                current = []
+            }
+            current.append(trackPoints[index])
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
+    }
 
     init(
         startedAt: Date,
@@ -734,7 +782,8 @@ struct ActivitySummary {
         elevationGainM: Double = 0,
         healthMetrics: ActivityHealthMetrics? = nil,
         routeGuidance: RouteGuidanceSnapshot? = nil,
-        trackPoints: [CLLocation]
+        trackPoints: [CLLocation],
+        trackSegmentStartIndices: Set<Int> = []
     ) {
         self.startedAt = startedAt
         self.endedAt = endedAt
@@ -745,5 +794,6 @@ struct ActivitySummary {
         self.healthMetrics = healthMetrics
         self.routeGuidance = routeGuidance
         self.trackPoints = trackPoints
+        self.trackSegmentStartIndices = trackSegmentStartIndices
     }
 }

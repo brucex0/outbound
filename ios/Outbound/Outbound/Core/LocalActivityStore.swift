@@ -143,7 +143,7 @@ private nonisolated enum LocalActivityStore {
             heartRateZones: heartRateZones,
             activityEventID: activityEventID,
             followedRoute: followedRoute,
-            route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackPoints)),
+            route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackSegments)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
                 clientActivityId: activityId.uuidString,
@@ -401,6 +401,20 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
 
     var routePoints: [SavedRoutePoint] { route?.points ?? [] }
     var routeCoordinates: [CLLocationCoordinate2D] { routePoints.map(\.coordinate) }
+    var routeCoordinateSegments: [[CLLocationCoordinate2D]] {
+        guard !routePoints.isEmpty else { return [] }
+        var result: [[CLLocationCoordinate2D]] = []
+        var current: [CLLocationCoordinate2D] = []
+        for point in routePoints {
+            if point.startsNewSegment, !current.isEmpty {
+                result.append(current)
+                current = []
+            }
+            current.append(point.coordinate)
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
+    }
     var hasRoute: Bool { routePoints.count > 1 }
 
     // Backward-compatible decoder for activities saved before title/guideNudge existed
@@ -656,27 +670,31 @@ nonisolated struct SavedRoutePoint: Codable, Hashable {
     let longitude: Double
     let altitude: Double?
     let verticalAccuracy: Double?
+    let startsNewSegment: Bool
 
     nonisolated init(
         timestamp: Date,
         latitude: Double,
         longitude: Double,
         altitude: Double?,
-        verticalAccuracy: Double?
+        verticalAccuracy: Double?,
+        startsNewSegment: Bool = false
     ) {
         self.timestamp = timestamp
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
         self.verticalAccuracy = verticalAccuracy
+        self.startsNewSegment = startsNewSegment
     }
 
-    nonisolated init(location: CLLocation) {
+    nonisolated init(location: CLLocation, startsNewSegment: Bool = false) {
         timestamp = location.timestamp
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
         altitude = location.altitude
         verticalAccuracy = location.verticalAccuracy >= 0 ? location.verticalAccuracy : nil
+        self.startsNewSegment = startsNewSegment
     }
 
     nonisolated init(trackPoint: SavedTrackPoint) {
@@ -685,6 +703,7 @@ nonisolated struct SavedRoutePoint: Codable, Hashable {
         longitude = trackPoint.longitude
         altitude = trackPoint.altitude
         verticalAccuracy = nil
+        startsNewSegment = false
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -692,7 +711,22 @@ nonisolated struct SavedRoutePoint: Codable, Hashable {
     }
 
     static func simplified(from locations: [CLLocation]) -> [SavedRoutePoint] {
-        guard locations.count > 2 else { return locations.map(Self.init) }
+        simplifiedSegment(locations, startsNewSegment: true)
+    }
+
+    static func simplified(from segments: [[CLLocation]]) -> [SavedRoutePoint] {
+        segments.flatMap { simplifiedSegment($0, startsNewSegment: true) }
+    }
+
+    private static func simplifiedSegment(
+        _ locations: [CLLocation],
+        startsNewSegment: Bool
+    ) -> [SavedRoutePoint] {
+        guard locations.count > 2 else {
+            return locations.enumerated().map {
+                SavedRoutePoint(location: $0.element, startsNewSegment: startsNewSegment && $0.offset == 0)
+            }
+        }
 
         var keptIndices = [0]
         var lastKeptIndex = 0
@@ -718,7 +752,26 @@ nonisolated struct SavedRoutePoint: Codable, Hashable {
             keptIndices.append(locations.count - 1)
         }
 
-        return keptIndices.map { SavedRoutePoint(location: locations[$0]) }
+        return keptIndices.enumerated().map {
+            SavedRoutePoint(
+                location: locations[$0.element],
+                startsNewSegment: startsNewSegment && $0.offset == 0
+            )
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case timestamp, latitude, longitude, altitude, verticalAccuracy, startsNewSegment
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        latitude = try container.decode(Double.self, forKey: .latitude)
+        longitude = try container.decode(Double.self, forKey: .longitude)
+        altitude = try container.decodeIfPresent(Double.self, forKey: .altitude)
+        verticalAccuracy = try container.decodeIfPresent(Double.self, forKey: .verticalAccuracy)
+        startsNewSegment = try container.decodeIfPresent(Bool.self, forKey: .startsNewSegment) ?? false
     }
 
     private static func isMeaningfulTurn(previous: CLLocation, current: CLLocation, next: CLLocation) -> Bool {
@@ -800,16 +853,20 @@ nonisolated enum RouteFileExporter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let points = activity.routePoints.map { point -> String in
-            var lines = [
-                "      <trkpt lat=\"\(point.latitude)\" lon=\"\(point.longitude)\">"
-            ]
-            if let altitude = point.altitude {
-                lines.append("        <ele>\(altitude)</ele>")
-            }
-            lines.append("        <time>\(formatter.string(from: point.timestamp))</time>")
-            lines.append("      </trkpt>")
-            return lines.joined(separator: "\n")
+        let routeSegments = Self.routePointSegments(activity.routePoints)
+        let segments = routeSegments.map { segment -> String in
+            let points = segment.map { point -> String in
+                var lines = [
+                    "      <trkpt lat=\"\(point.latitude)\" lon=\"\(point.longitude)\">"
+                ]
+                if let altitude = point.altitude {
+                    lines.append("        <ele>\(altitude)</ele>")
+                }
+                lines.append("        <time>\(formatter.string(from: point.timestamp))</time>")
+                lines.append("      </trkpt>")
+                return lines.joined(separator: "\n")
+            }.joined(separator: "\n")
+            return "    <trkseg>\n\(points)\n    </trkseg>"
         }.joined(separator: "\n")
 
         return """
@@ -821,9 +878,7 @@ nonisolated enum RouteFileExporter {
           </metadata>
           <trk>
             <name>\(escapedXML(activity.title))</name>
-            <trkseg>
-        \(points)
-            </trkseg>
+        \(segments)
           </trk>
         </gpx>
         """
@@ -846,21 +901,39 @@ nonisolated enum RouteFileExporter {
             properties["avgHeartRate"] = averageHeartRate
         }
 
+        let coordinateSegments = routePointSegments(activity.routePoints).map { segment in
+            segment.map { point in
+                if let altitude = point.altitude {
+                    return [point.longitude, point.latitude, altitude]
+                }
+                return [point.longitude, point.latitude]
+            }
+        }
+        let geometry: [String: Any] = coordinateSegments.count > 1
+            ? ["type": "MultiLineString", "coordinates": coordinateSegments]
+            : ["type": "LineString", "coordinates": coordinateSegments.first ?? []]
         let payload: [String: Any] = [
             "type": "Feature",
             "properties": properties,
-            "geometry": [
-                "type": "LineString",
-                "coordinates": activity.routePoints.map { point in
-                    if let altitude = point.altitude {
-                        return [point.longitude, point.latitude, altitude]
-                    }
-                    return [point.longitude, point.latitude]
-                }
-            ]
+            "geometry": geometry
         ]
 
         return try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    private static func routePointSegments(_ points: [SavedRoutePoint]) -> [[SavedRoutePoint]] {
+        guard !points.isEmpty else { return [] }
+        var segments: [[SavedRoutePoint]] = []
+        var current: [SavedRoutePoint] = []
+        for point in points {
+            if point.startsNewSegment, !current.isEmpty {
+                segments.append(current)
+                current = []
+            }
+            current.append(point)
+        }
+        if !current.isEmpty { segments.append(current) }
+        return segments
     }
 
     private static func sanitizedFileName(for activity: SavedActivity, format: RouteExportFormat) -> String {

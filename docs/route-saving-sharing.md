@@ -30,7 +30,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 - Activity timestamps, pauses, photos, and other private activity metadata never enter the community-route response.
 - The server owns public route geometry, summary metrics, ownership, lifecycle, visibility, and aggregate popularity.
 - Local iOS state is a cache plus durable device-local imported-route state, not the source of truth for published routes.
-- GPX and GeoJSON are generated or parsed at the boundary; verbose export text is not the canonical stored form.
+- GPX and GeoJSON are generated or parsed at the boundary; verbose export text is not the canonical stored form. Activity exports preserve pause/resume gaps as multiple GPX track segments or GeoJSON `MultiLineString` members.
 - Canonical imported and community geometry is never simplified in storage. Bounded display and navigation working copies may be simplified after preparation, with endpoints preserved.
 
 ## Privacy And Safety
@@ -86,7 +86,7 @@ Nearby search initially uses indexed start coordinates and a bounded latitude/lo
 
 ## Import Validation
 
-- Accept GPX track/route points and GeoJSON LineString geometry.
+- Accept GPX track/route points and GeoJSON `LineString` or `MultiLineString` geometry. Prepared guidance remains one ordered route, so imported multi-line members are consumed in file order.
 - Reject invalid coordinates, unsupported geometry, and files with fewer than two valid points.
 - Reject files larger than 12 MiB or routes with more than 50,000 canonical points before unbounded parsing or rendering.
 - Keep at most 100 imported routes and 250,000 imported canonical points on one device. A new import is rejected with actionable feedback when that aggregate budget is full; existing imports are never silently evicted.

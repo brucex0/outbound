@@ -273,7 +273,8 @@ private struct ShareStat: View {
 
 private enum ActivityShareMapSnapshotRenderer {
     static func snapshot(for activity: SavedActivity, size: CGSize) async throws -> UIImage {
-        let coordinates = activity.routeCoordinates
+        let coordinateSegments = activity.routeCoordinateSegments
+        let coordinates = coordinateSegments.flatMap { $0 }
         guard coordinates.count > 1 else { throw ActivityShareCardError.renderFailed }
 
         let options = MKMapSnapshotter.Options()
@@ -285,7 +286,7 @@ private enum ActivityShareMapSnapshotRenderer {
         options.mapRect = mapRect(for: coordinates, size: size)
 
         let snapshot = try await MKMapSnapshotter(options: options).start()
-        return drawRoute(coordinates, on: snapshot)
+        return drawRoute(coordinateSegments, on: snapshot)
     }
 
     private static func mapRect(for coordinates: [CLLocationCoordinate2D], size: CGSize) -> MKMapRect {
@@ -315,7 +316,11 @@ private enum ActivityShareMapSnapshotRenderer {
         return rect.insetBy(dx: -rect.width * 0.18, dy: -rect.height * 0.22)
     }
 
-    private static func drawRoute(_ coordinates: [CLLocationCoordinate2D], on snapshot: MKMapSnapshotter.Snapshot) -> UIImage {
+    private static func drawRoute(
+        _ segments: [[CLLocationCoordinate2D]],
+        on snapshot: MKMapSnapshotter.Snapshot
+    ) -> UIImage {
+        let coordinates = segments.flatMap { $0 }
         let renderer = UIGraphicsImageRenderer(size: snapshot.image.size)
         return renderer.image { context in
             snapshot.image.draw(at: .zero)
@@ -323,9 +328,11 @@ private enum ActivityShareMapSnapshotRenderer {
             let path = UIBezierPath()
             path.lineCapStyle = .round
             path.lineJoinStyle = .round
-            path.move(to: snapshot.point(for: coordinates[0]))
-            for coordinate in coordinates.dropFirst() {
-                path.addLine(to: snapshot.point(for: coordinate))
+            for segment in segments where !segment.isEmpty {
+                path.move(to: snapshot.point(for: segment[0]))
+                for coordinate in segment.dropFirst() {
+                    path.addLine(to: snapshot.point(for: coordinate))
+                }
             }
 
             UIColor.black.withAlphaComponent(0.28).setStroke()

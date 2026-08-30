@@ -278,6 +278,29 @@
           }
         }
       }
+    },
+    "WorkoutRoute" : {
+      "comment" : "Temporary precise-location purpose shown when starting an outdoor workout.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precise Location improves your workout route, distance, and pace accuracy."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La ubicación precisa mejora la exactitud de la ruta, la distancia y el ritmo de tu entrenamiento."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "精确位置可提高训练路线、距离和配速记录的准确性。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

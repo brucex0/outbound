@@ -53,6 +53,11 @@
 
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Plainstride uses your approximate location for local running conditions and precise location when tracking a run.</string>
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>WorkoutRoute</key>
+        <string>Precise Location improves your workout route, distance, and pace accuracy.</string>
+    </dict>
 
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Plainstride tracks your route during activities, even in the background.</string>

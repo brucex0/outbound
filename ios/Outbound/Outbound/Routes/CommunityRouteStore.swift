@@ -619,7 +619,22 @@ enum RouteFileImporter {
     private static func geoJSONPoints(_ data: Data) throws -> [RouteCoordinate] {
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let geometry = (object?["type"] as? String) == "Feature" ? object?["geometry"] as? [String: Any] : object
-        guard geometry?["type"] as? String == "LineString", let coordinates = geometry?["coordinates"] as? [[Any]] else { throw RouteImportError.invalid }
+        let geometryType = geometry?["type"] as? String
+        let coordinates: [[Any]]
+        switch geometryType {
+        case "LineString":
+            guard let line = geometry?["coordinates"] as? [[Any]] else {
+                throw RouteImportError.invalid
+            }
+            coordinates = line
+        case "MultiLineString":
+            guard let lines = geometry?["coordinates"] as? [[[Any]]],
+                  lines.allSatisfy({ $0.count >= 2 })
+            else { throw RouteImportError.invalid }
+            coordinates = lines.flatMap { $0 }
+        default:
+            throw RouteImportError.invalid
+        }
         guard coordinates.count <= maximumPointCount else { throw RouteImportError.tooLarge }
         return try coordinates.map { value in
             guard value.count >= 2,

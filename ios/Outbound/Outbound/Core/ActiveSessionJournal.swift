@@ -298,18 +298,24 @@ struct JournalTrackPoint: Codable {
     let horizontalAccuracy: Double
     let verticalAccuracy: Double
     let course: Double
+    let courseAccuracy: Double
     let speed: Double
+    let speedAccuracy: Double
     let timestamp: Date
+    let startsNewSegment: Bool
 
-    init(_ location: CLLocation) {
+    init(_ location: CLLocation, startsNewSegment: Bool = false) {
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
         altitude = location.altitude
         horizontalAccuracy = location.horizontalAccuracy
         verticalAccuracy = location.verticalAccuracy
         course = location.course
+        courseAccuracy = location.courseAccuracy
         speed = location.speed
+        speedAccuracy = location.speedAccuracy
         timestamp = location.timestamp
+        self.startsNewSegment = startsNewSegment
     }
 
     var location: CLLocation {
@@ -319,8 +325,30 @@ struct JournalTrackPoint: Codable {
             horizontalAccuracy: horizontalAccuracy,
             verticalAccuracy: verticalAccuracy,
             course: course,
+            courseAccuracy: courseAccuracy,
             speed: speed,
+            speedAccuracy: speedAccuracy,
             timestamp: timestamp
         )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case latitude, longitude, altitude, horizontalAccuracy, verticalAccuracy
+        case course, courseAccuracy, speed, speedAccuracy, timestamp, startsNewSegment
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        latitude = try container.decode(Double.self, forKey: .latitude)
+        longitude = try container.decode(Double.self, forKey: .longitude)
+        altitude = try container.decode(Double.self, forKey: .altitude)
+        horizontalAccuracy = try container.decode(Double.self, forKey: .horizontalAccuracy)
+        verticalAccuracy = try container.decode(Double.self, forKey: .verticalAccuracy)
+        course = try container.decode(Double.self, forKey: .course)
+        courseAccuracy = try container.decodeIfPresent(Double.self, forKey: .courseAccuracy) ?? -1
+        speed = try container.decode(Double.self, forKey: .speed)
+        speedAccuracy = try container.decodeIfPresent(Double.self, forKey: .speedAccuracy) ?? -1
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        startsNewSegment = try container.decodeIfPresent(Bool.self, forKey: .startsNewSegment) ?? false
     }
 }

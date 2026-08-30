@@ -66,6 +66,10 @@ struct ActivityDetailView: View {
         currentActivity.routeCoordinates
     }
 
+    private var routeCoordinateSegments: [[CLLocationCoordinate2D]] {
+        currentActivity.routeCoordinateSegments
+    }
+
     private var routePublicationActivityID: String? {
         if let explicitRoutePublicationActivityID { return explicitRoutePublicationActivityID }
         guard usesStoredActivity else { return nil }
@@ -269,6 +273,7 @@ struct ActivityDetailView: View {
     private func backgroundMedia(bottomInset: CGFloat) -> some View {
         ActivityRouteMapView(
             routeCoordinates: routeCoordinates,
+            routeCoordinateSegments: routeCoordinateSegments,
             paceSegments: paceSegments,
             photos: currentActivity.photos,
             bottomInset: bottomInset,
@@ -1115,6 +1120,7 @@ private struct ActivityPhotoLightbox: View {
 
 private struct ActivityRouteMapView: View {
     let routeCoordinates: [CLLocationCoordinate2D]
+    let routeCoordinateSegments: [[CLLocationCoordinate2D]]
     let paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)]
     let photos: [SavedPhoto]
     let bottomInset: CGFloat
@@ -1126,6 +1132,7 @@ private struct ActivityRouteMapView: View {
             if routeCoordinates.count > 1 {
                 ActivityRouteMapRepresentable(
                     routeCoordinates: routeCoordinates,
+                    routeCoordinateSegments: routeCoordinateSegments,
                     paceSegments: paceSegments,
                     photos: photos,
                     bottomInset: bottomInset,
@@ -1151,6 +1158,7 @@ private struct ActivityRouteMapView: View {
 
 private struct ActivityRouteMapRepresentable: UIViewRepresentable {
     let routeCoordinates: [CLLocationCoordinate2D]
+    let routeCoordinateSegments: [[CLLocationCoordinate2D]]
     let paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)]
     let photos: [SavedPhoto]
     let bottomInset: CGFloat
@@ -1170,6 +1178,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.routeCoordinates = routeCoordinates
+        context.coordinator.routeCoordinateSegments = routeCoordinateSegments
         context.coordinator.paceSegments = paceSegments
         context.coordinator.photos = photos
         context.coordinator.bottomInset = bottomInset
@@ -1184,6 +1193,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var routeCoordinates: [CLLocationCoordinate2D] = []
+        var routeCoordinateSegments: [[CLLocationCoordinate2D]] = []
         var paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)] = []
         var photos: [SavedPhoto] = []
         var bottomInset: CGFloat = 0
@@ -1199,7 +1209,8 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         private var previousSelectedPhotoID: UUID?
 
         func refresh(_ mapView: MKMapView) {
-            let routeSignature = "\(routeCoordinates.count)-\(routeCoordinates.first?.latitude ?? 0)-\(routeCoordinates.last?.longitude ?? 0)-\(isRouteProminent)"
+            let segmentSignature = routeCoordinateSegments.map(\.count).map(String.init).joined(separator: ",")
+            let routeSignature = "\(routeCoordinates.count)-\(segmentSignature)-\(routeCoordinates.first?.latitude ?? 0)-\(routeCoordinates.last?.longitude ?? 0)-\(isRouteProminent)"
             if routeSignature != previousRouteSignature {
                 mapView.removeOverlays(mapView.overlays)
                 addRouteOverlays(to: mapView)
@@ -1282,6 +1293,21 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
 
         private func addRouteOverlays(to mapView: MKMapView) {
             guard routeCoordinates.count > 1 else { return }
+
+            if routeCoordinateSegments.count > 1 {
+                for coordinates in routeCoordinateSegments where coordinates.count > 1 {
+                    let shadow = ActivityRoutePolyline(coordinates: coordinates, count: coordinates.count)
+                    shadow.strokeColor = UIColor.black.withAlphaComponent(0.18)
+                    shadow.lineWidth = isRouteProminent ? 8 : 6
+                    mapView.addOverlay(shadow, level: .aboveRoads)
+
+                    let route = ActivityRoutePolyline(coordinates: coordinates, count: coordinates.count)
+                    route.strokeColor = .systemOrange
+                    route.lineWidth = isRouteProminent ? 5 : 4
+                    mapView.addOverlay(route, level: .aboveRoads)
+                }
+                return
+            }
 
             let shadow = ActivityRoutePolyline(coordinates: routeCoordinates, count: routeCoordinates.count)
             shadow.strokeColor = UIColor.black.withAlphaComponent(0.18)

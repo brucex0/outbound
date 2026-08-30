@@ -148,6 +148,13 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case latencyBucket = "latency_bucket"
     case missingDisplayName = "missing_display_name"
     case missingEmail = "missing_email"
+    case locationQuality = "location_quality"
+    case precisionMode = "precision_mode"
+    case filterRatioBucket = "filter_ratio_bucket"
+    case distanceCorrectionBucket = "distance_correction_bucket"
+    case segmentCountBucket = "segment_count_bucket"
+    case motionBridgeUsed = "motion_bridge_used"
+    case routeMatchResult = "route_match_result"
 }
 
 struct ProductAnalyticsEvent: Sendable, Equatable {
@@ -185,7 +192,11 @@ enum ProductAnalyticsSchema {
         .activityDeleted: [.sourceType, .countBucket],
         .activitySyncCompleted: [.sourceType, .routeSelected],
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
-        .activityRecordingQuality: [.sourceType, .countBucket, .result],
+        .activityRecordingQuality: [
+            .sourceType, .countBucket, .result, .locationQuality, .precisionMode,
+            .filterRatioBucket, .distanceCorrectionBucket, .segmentCountBucket,
+            .motionBridgeUsed, .routeMatchResult
+        ],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .activityRecoveryPresentation: [.result, .countBucket],
         .activityPhotoRecovery: [.countBucket, .preRunPhotoAdded],
@@ -318,6 +329,28 @@ enum ProductAnalyticsBucket {
         case 10..<50: "10_49"
         case 50..<200: "50_199"
         default: "200_plus"
+        }
+    }
+
+    static func locationFilterRatio(accepted: Int, rejected: Int, stationary: Int) -> String {
+        let total = accepted + rejected + stationary
+        guard total > 0 else { return "none" }
+        let ratio = Double(rejected + stationary) / Double(total)
+        return switch ratio {
+        case ..<0.05: "under_5"
+        case ..<0.20: "5_19"
+        case ..<0.50: "20_49"
+        default: "50_plus"
+        }
+    }
+
+    static func distanceCorrection(percent: Double) -> String {
+        return switch max(0, percent) {
+        case 0: "none"
+        case ..<1: "under_1"
+        case ..<3: "1_2"
+        case ..<10: "3_9"
+        default: "10_plus"
         }
     }
 

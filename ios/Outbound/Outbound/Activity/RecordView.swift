@@ -646,7 +646,11 @@ struct RecordView: View {
             .ignoresSafeArea()
 
             if let countdownStep {
-                ActivityStartCountdownOverlay(step: countdownStep, reduceMotion: reduceMotion)
+                ActivityStartCountdownOverlay(
+                    step: countdownStep,
+                    reduceMotion: reduceMotion,
+                    signalQuality: recorder.locationManager.signalQuality
+                )
                     .transition(.opacity)
             }
 
@@ -879,10 +883,14 @@ struct RecordView: View {
         activeIntent = plannedIntent
 #if DEBUG
         if !isRunSimulationEnabled {
-            recorder.locationManager.requestPermission()
+            recorder.locationManager.prepareForRecording(
+                activityType: activeIntent?.resolvedActivityType ?? .running
+            )
         }
 #else
-        recorder.locationManager.requestPermission()
+        recorder.locationManager.prepareForRecording(
+            activityType: activeIntent?.resolvedActivityType ?? .running
+        )
 #endif
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
@@ -1018,6 +1026,9 @@ struct RecordView: View {
         countdownTask?.cancel()
         countdownTask = nil
         countdownStep = nil
+        if recorder.state == .idle {
+            recorder.locationManager.cancelPreparation()
+        }
         guide.deactivate()
         activeIntent = nil
         if returnToSetup {
@@ -1042,7 +1053,22 @@ struct RecordView: View {
             .countBucket: .string(ProductAnalyticsBucket.locationPointCount(
                 locationDiagnostics.acceptedTrackPointCount
             )),
-            .result: .string(locationDiagnostics.result)
+            .result: .string(locationDiagnostics.result),
+            .locationQuality: .string(locationDiagnostics.signalQuality.rawValue),
+            .precisionMode: .string(locationDiagnostics.precisionMode),
+            .filterRatioBucket: .string(ProductAnalyticsBucket.locationFilterRatio(
+                accepted: locationDiagnostics.acceptedTrackPointCount,
+                rejected: locationDiagnostics.rejectedLocationCount,
+                stationary: locationDiagnostics.stationaryLocationCount
+            )),
+            .distanceCorrectionBucket: .string(ProductAnalyticsBucket.distanceCorrection(
+                percent: locationDiagnostics.finalDistanceCorrectionPercent
+            )),
+            .segmentCountBucket: .string(ProductAnalyticsBucket.count(
+                locationDiagnostics.segmentCount
+            )),
+            .motionBridgeUsed: .boolean(locationDiagnostics.motionAssistedDistanceMeters > 0),
+            .routeMatchResult: .string(locationDiagnostics.routeMatchResult)
         ]))
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
@@ -4212,7 +4238,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
         case .one:
             return "1"
         case .go:
-            return "Go"
+            return String(localized: "record.countdown.go", defaultValue: "Go")
         }
     }
 
@@ -4225,7 +4251,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
         case .one:
             return "1"
         case .go:
-            return "Go"
+            return String(localized: "record.countdown.go", defaultValue: "Go")
         }
     }
 
@@ -4238,7 +4264,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
         case .one:
             return "1"
         case .go:
-            return "Go"
+            return String(localized: "record.countdown.go", defaultValue: "Go")
         }
     }
 
@@ -4260,6 +4286,7 @@ private enum ActivityStartCountdownStep: CaseIterable, Equatable {
 private struct ActivityStartCountdownOverlay: View {
     let step: ActivityStartCountdownStep
     let reduceMotion: Bool
+    let signalQuality: LocationSignalQuality
 
     var body: some View {
         ZStack {
@@ -4295,13 +4322,51 @@ private struct ActivityStartCountdownOverlay: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(1)
+
+                Label(gpsStatusText, systemImage: gpsStatusIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(gpsStatusColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.black.opacity(0.28), in: Capsule())
             }
             .padding(.horizontal, 28)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(step.accessibilityText)
+            .accessibilityValue(gpsStatusText)
         }
         .allowsHitTesting(true)
         .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.24), value: step)
+    }
+
+    private var gpsStatusText: String {
+        switch signalQuality {
+        case .excellent, .good:
+            String(localized: "record.gps.ready", defaultValue: "GPS ready")
+        case .fair:
+            String(localized: "record.gps.improving", defaultValue: "Improving GPS signal")
+        case .poor, .unavailable:
+            String(localized: "record.gps.acquiring", defaultValue: "Acquiring GPS")
+        case .reduced:
+            String(localized: "record.gps.precise_off", defaultValue: "Precise Location is off")
+        }
+    }
+
+    private var gpsStatusIcon: String {
+        switch signalQuality {
+        case .excellent, .good: "location.fill"
+        case .fair: "location"
+        case .poor, .unavailable: "location.slash"
+        case .reduced: "location.circle"
+        }
+    }
+
+    private var gpsStatusColor: Color {
+        switch signalQuality {
+        case .excellent, .good: .green
+        case .fair: .yellow
+        case .poor, .unavailable, .reduced: .orange
+        }
     }
 }
 

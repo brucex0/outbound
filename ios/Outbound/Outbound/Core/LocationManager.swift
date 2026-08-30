@@ -1,11 +1,19 @@
-import CoreLocation
 import Combine
+import CoreLocation
+import CoreMotion
 
 struct LocationRecordingDiagnostics: Equatable {
     let receivedBatchCount: Int
     let maximumBatchSize: Int
     let acceptedTrackPointCount: Int
     let rejectedLocationCount: Int
+    let stationaryLocationCount: Int
+    let segmentCount: Int
+    let motionAssistedDistanceMeters: Double
+    let finalDistanceCorrectionPercent: Double
+    let routeMatchResult: String
+    let signalQuality: LocationSignalQuality
+    let accuracyAuthorization: CLAccuracyAuthorization
 
     var deliveryMode: String {
         if receivedBatchCount == 0 { return "no_updates" }
@@ -14,53 +22,72 @@ struct LocationRecordingDiagnostics: Equatable {
 
     var result: String {
         if acceptedTrackPointCount == 0 { return "no_usable_points" }
-        return rejectedLocationCount == 0 ? "all_accepted" : "some_filtered"
+        return rejectedLocationCount == 0 && stationaryLocationCount == 0
+            ? "all_accepted"
+            : "some_filtered"
     }
+
+    var precisionMode: String {
+        accuracyAuthorization == .fullAccuracy ? "full" : "reduced"
+    }
+}
+
+struct StoppedLocationTrack {
+    let segments: [[CLLocation]]
+    let liveDistanceMeters: Double
+    let motionSupplementDistanceMeters: Double
+    let motionTailDistanceMeters: Double
+    let preservesLiveMetrics: Bool
 }
 
 @MainActor
 final class LocationManager: NSObject, ObservableObject {
     @Published var location: CLLocation?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published private(set) var accuracyAuthorization: CLAccuracyAuthorization = .fullAccuracy
+    @Published private(set) var signalQuality: LocationSignalQuality = .unavailable
     @Published var trackPoints: [CLLocation] = []
     @Published private(set) var trackCoordinates: [CLLocationCoordinate2D] = []
 
-    private var maximumValidSpeedMetersPerSecond: Double = 10
-    private let maximumValidLocationAccuracyMeters: Double = 40
-    private let minimumValidPaceDistanceMeters: Double = 20
-    private let minimumValidPaceDurationSeconds: TimeInterval = 5
-    private let minimumValidPaceSecsPerKm: Double = 150
-    private let maximumValidPaceSecsPerKm: Double = 1500
+    private let maximumPublishedLocationAccuracyMeters: Double = 80
+    private let minimumValidPaceDistanceMeters: Double = 25
+    private let minimumValidPaceDurationSeconds: TimeInterval = 8
+    private let paceWindowSeconds: TimeInterval = 30
     private let maximumPreStartLocationAgeSeconds: TimeInterval = 3
-
-    var currentSpeedMetersPerSecond: Double? {
-        guard let location = location else { return nil }
-        if location.speed >= 0 {
-            return location.speed <= maximumValidSpeedMetersPerSecond ? location.speed : nil
-        }
-
-        guard let previous = trackPoints.last else { return nil }
-        let duration = location.timestamp.timeIntervalSince(previous.timestamp)
-        if duration == 0 {
-            let age = Date().timeIntervalSince(location.timestamp)
-            return age >= 10 ? 0 : nil
-        }
-
-        let distance = previous.distance(from: location)
-        let impliedSpeed = distance / duration
-        return impliedSpeed <= maximumValidSpeedMetersPerSecond ? impliedSpeed : nil
-    }
+    private let maximumFutureLocationSeconds: TimeInterval = 5
+    private let maximumPreparationLocationAgeSeconds: TimeInterval = 8
+    private let motionGapThresholdSeconds: TimeInterval = 8
 
     private let manager = CLLocationManager()
+    private let pedometer = CMPedometer()
+    private var activityType: ActivityType = .running
+    private var filter = LocationTrackFilter(activityType: .running)
+    private var probeFilter = LocationTrackFilter(activityType: .running)
     private var wantsTracking = false
+    private var wantsPreparation = false
     private var wantsOneShotLocation = false
+    private var isAutoPauseProbing = false
+    private var requiresNewSegment = false
     private var trackingStartedAt: Date?
+    private var preparedLocation: CLLocation?
+    private var probeLocations: [CLLocation] = []
+    private var segmentStartIndices = Set<Int>()
     private var accumulatedDistanceMeters: Double = 0
     private var elevationAccumulator = ElevationGainCalculator.StreamingRangeAccumulator()
+    private var currentMotionSpeed: Double?
+    private var previousMotionLocation: CLLocation?
     private var receivedBatchCount = 0
     private var maximumBatchSize = 0
     private var acceptedTrackPointCount = 0
     private var rejectedLocationCount = 0
+    private var stationaryLocationCount = 0
+    private var motionAssistedDistanceMeters: Double = 0
+    private var finalDistanceCorrectionPercent: Double = 0
+    private var routeMatchResult = "not_available"
+    private var pedometerDistanceMeters: Double = 0
+    private var pedometerDistanceAtLastTrackPoint: Double = 0
+    private var pedometerDistanceAtProbeStart: Double = 0
+    private var lastAcceptedDeliveryAt: Date?
 #if DEBUG
     private var testDistanceMeters: Double?
     private var testElevationGainMeters: Double?
@@ -73,10 +100,28 @@ final class LocationManager: NSObject, ObservableObject {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = 1  // meters
+        manager.distanceFilter = 1
         manager.activityType = .fitness
         manager.allowsBackgroundLocationUpdates = true
         manager.pausesLocationUpdatesAutomatically = false
+        authorizationStatus = manager.authorizationStatus
+        accuracyAuthorization = manager.accuracyAuthorization
+        updateSignalQuality(using: nil)
+    }
+
+    var trackCoordinateSegments: [[CLLocationCoordinate2D]] {
+        locationSegments.map { $0.map(\.coordinate) }
+    }
+
+    var locationSegments: [[CLLocation]] {
+        Self.segments(from: trackPoints, starts: segmentStartIndices)
+    }
+
+    var currentSpeedMetersPerSecond: Double? {
+#if DEBUG
+        if isSimulatingLocations { return simulatedSpeedMetersPerSecond }
+#endif
+        return currentMotionSpeed
     }
 
     func requestPermission() {
@@ -97,29 +142,67 @@ final class LocationManager: NSObject, ObservableObject {
         }
     }
 
+    /// Starts high-accuracy acquisition during the visible countdown so the
+    /// first recorded point can use a warm, recent fix.
+    func prepareForRecording(activityType: ActivityType) {
+#if DEBUG
+        guard !isSimulatingLocations else { return }
+#endif
+        self.activityType = activityType
+        configureFilters(for: activityType)
+        wantsPreparation = true
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            requestPermission()
+        case .authorizedAlways, .authorizedWhenInUse:
+            requestTemporaryFullAccuracyIfNeeded()
+            manager.startUpdatingLocation()
+        case .denied, .restricted:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    func cancelPreparation() {
+        wantsPreparation = false
+        preparedLocation = nil
+        guard !wantsTracking else { return }
+        manager.stopUpdatingLocation()
+    }
+
     func startTracking(activityType: ActivityType = .running) {
 #if DEBUG
         clearTestOverrides()
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
-        trackPoints = []
-        trackCoordinates = []
-        accumulatedDistanceMeters = 0
-        elevationAccumulator.reset()
-        receivedBatchCount = 0
-        maximumBatchSize = 0
-        acceptedTrackPointCount = 0
-        rejectedLocationCount = 0
-        location = nil
+        let warmLocation = preparedLocation.flatMap { candidate in
+            let age = abs(Date().timeIntervalSince(candidate.timestamp))
+            return age <= maximumPreparationLocationAgeSeconds && candidate.horizontalAccuracy <= 30
+                ? candidate
+                : nil
+        }
+        self.activityType = activityType
+        configureFilters(for: activityType)
+        resetRecordingState(preserving: warmLocation)
         trackingStartedAt = Date()
         wantsTracking = true
-        configureValidation(for: activityType)
+        wantsPreparation = false
+        preparedLocation = nil
+        startPedometerIfAvailable()
+
+        if let warmLocation {
+            beginSegment(with: warmLocation)
+            location = warmLocation
+            updateSignalQuality(using: warmLocation)
+        }
 
         switch manager.authorizationStatus {
         case .notDetermined:
             requestPermission()
         case .authorizedAlways, .authorizedWhenInUse:
+            requestTemporaryFullAccuracyIfNeeded()
             manager.startUpdatingLocation()
         case .denied, .restricted:
             break
@@ -132,45 +215,102 @@ final class LocationManager: NSObject, ObservableObject {
 #if DEBUG
         guard !isSimulatingLocations else { return }
 #endif
-        guard wantsTracking else { return }
+        guard wantsTracking || wantsPreparation else { return }
         manager.startUpdatingLocation()
     }
 
     func pauseTracking() {
         guard wantsTracking else { return }
         manager.stopUpdatingLocation()
+        stopPedometer()
+        requiresNewSegment = true
+        currentMotionSpeed = nil
     }
 
-    func resumeTracking() {
+    func beginAutoPauseProbing() {
+        guard wantsTracking, !isAutoPauseProbing else { return }
+        isAutoPauseProbing = true
+        probeLocations = []
+        probeFilter = LocationTrackFilter(activityType: activityType)
+        probeFilter.reset()
+        pedometerDistanceAtProbeStart = pedometerDistanceMeters
+        currentMotionSpeed = 0
+    }
+
+    func resumeTracking(fromAutoPause: Bool = false) {
+        guard wantsTracking else { return }
+        if fromAutoPause {
+            promoteAutoPauseProbe()
+        } else {
+            requiresNewSegment = true
+            filter.reset()
+            pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+            startPedometerIfAvailable()
+        }
+        isAutoPauseProbing = false
+        probeLocations = []
         startTrackingIfPermitted()
     }
 
-    func stopTracking() -> [CLLocation] {
+    func stopTracking() -> StoppedLocationTrack {
+        let motionTail = pendingMotionGapDistance
+        let liveDistance = totalDistanceMeters
+#if DEBUG
+        let preservesLiveMetrics = testDistanceMeters != nil
+#else
+        let preservesLiveMetrics = false
+#endif
+        let result = StoppedLocationTrack(
+            segments: locationSegments,
+            liveDistanceMeters: liveDistance,
+            motionSupplementDistanceMeters: motionAssistedDistanceMeters,
+            motionTailDistanceMeters: motionTail,
+            preservesLiveMetrics: preservesLiveMetrics
+        )
+        motionAssistedDistanceMeters += motionTail
         wantsTracking = false
+        wantsPreparation = false
+        isAutoPauseProbing = false
         trackingStartedAt = nil
         manager.stopUpdatingLocation()
+        stopPedometer()
 #if DEBUG
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
-        return trackPoints
+        return result
     }
 
-    func restoreTracking(from points: [CLLocation], activityType: ActivityType = .running) {
+    func restoreTracking(
+        from points: [CLLocation],
+        segmentStartIndices restoredSegmentStarts: Set<Int> = [],
+        activityType: ActivityType = .running
+    ) {
 #if DEBUG
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
-        configureValidation(for: activityType)
+        self.activityType = activityType
+        configureFilters(for: activityType)
         trackPoints = points
         trackCoordinates = points.map(\.coordinate)
-        accumulatedDistanceMeters = zip(points, points.dropFirst())
-            .reduce(0) { $0 + $1.0.distance(from: $1.1) }
+        segmentStartIndices = restoredSegmentStarts.isEmpty && !points.isEmpty
+            ? [0]
+            : restoredSegmentStarts
+        accumulatedDistanceMeters = locationSegments.reduce(0) { total, segment in
+            total + zip(segment, segment.dropFirst()).reduce(0) { $0 + $1.0.distance(from: $1.1) }
+        }
         elevationAccumulator.reset()
-        for point in points { elevationAccumulator.ingest(point) }
+        for segment in locationSegments {
+            elevationAccumulator.startNewSegment()
+            for point in segment { elevationAccumulator.ingest(point) }
+        }
         location = points.last
+        updateSignalQuality(using: points.last)
         trackingStartedAt = Date()
         wantsTracking = true
+        requiresNewSegment = true
+        filter.reset()
         manager.stopUpdatingLocation()
     }
 
@@ -178,14 +318,14 @@ final class LocationManager: NSObject, ObservableObject {
 #if DEBUG
         if let testDistanceMeters { return testDistanceMeters }
 #endif
-        return accumulatedDistanceMeters
+        return accumulatedDistanceMeters + pendingMotionGapDistance
     }
 
     var elevationGainMeters: Double {
 #if DEBUG
         if let testElevationGainMeters { return testElevationGainMeters }
 #endif
-        return elevationAccumulator.rangeMeters
+        return elevationAccumulator.gainMeters
     }
 
     var recordingDiagnostics: LocationRecordingDiagnostics {
@@ -193,7 +333,14 @@ final class LocationManager: NSObject, ObservableObject {
             receivedBatchCount: receivedBatchCount,
             maximumBatchSize: maximumBatchSize,
             acceptedTrackPointCount: acceptedTrackPointCount,
-            rejectedLocationCount: rejectedLocationCount
+            rejectedLocationCount: rejectedLocationCount,
+            stationaryLocationCount: stationaryLocationCount,
+            segmentCount: locationSegments.count,
+            motionAssistedDistanceMeters: motionAssistedDistanceMeters,
+            finalDistanceCorrectionPercent: finalDistanceCorrectionPercent,
+            routeMatchResult: routeMatchResult,
+            signalQuality: signalQuality,
+            accuracyAuthorization: accuracyAuthorization
         )
     }
 
@@ -206,27 +353,296 @@ final class LocationManager: NSObject, ObservableObject {
             return 1_000 / simulatedSpeedMetersPerSecond
         }
 #endif
-        guard trackPoints.count > 5 else { return nil }
-        let recent = Array(trackPoints.suffix(10))
-        let dist = zip(recent, recent.dropFirst()).reduce(0.0) { $0 + $1.0.distance(from: $1.1) }
-        guard dist >= minimumValidPaceDistanceMeters else { return nil }
-        let time = recent.last!.timestamp.timeIntervalSince(recent.first!.timestamp)
-        guard time >= minimumValidPaceDurationSeconds else { return nil }
+        guard let segment = locationSegments.last, segment.count > 2 else { return nil }
+        let latestTimestamp = segment.last!.timestamp
+        let recent = segment.drop { latestTimestamp.timeIntervalSince($0.timestamp) > paceWindowSeconds }
+        guard recent.count > 2, let first = recent.first, let last = recent.last else { return nil }
+        let distance = zip(recent, recent.dropFirst()).reduce(0.0) {
+            $0 + $1.0.distance(from: $1.1)
+        }
+        let duration = last.timestamp.timeIntervalSince(first.timestamp)
+        guard distance >= minimumValidPaceDistanceMeters,
+              duration >= minimumValidPaceDurationSeconds
+        else { return nil }
 
-        let pace = (time / dist) * 1000
-        let minimumPace = maximumValidSpeedMetersPerSecond > 10 ? 35 : minimumValidPaceSecsPerKm
-        let maximumPace = maximumValidSpeedMetersPerSecond < 10 ? 3_600 : maximumValidPaceSecsPerKm
-        guard pace >= minimumPace, pace <= maximumPace else { return nil }
-        return pace
+        let pace = duration / distance * 1_000
+        let bounds: ClosedRange<Double> = switch activityType {
+        case .cycling: 35...3_600
+        case .walking, .hiking: 150...3_600
+        case .running: 150...1_500
+        case .swimming: 150...3_600
+        }
+        return bounds.contains(pace) ? pace : nil
     }
 
-    private func configureValidation(for activityType: ActivityType) {
-        maximumValidSpeedMetersPerSecond = switch activityType {
-        case .cycling: 25
-        case .walking, .hiking: 7
-        case .running: 10
-        case .swimming: 5
+    func recordFinalReconciliation(
+        liveDistanceMeters: Double,
+        finalDistanceMeters: Double,
+        routeMatchResult: String
+    ) {
+        if liveDistanceMeters > 0 {
+            finalDistanceCorrectionPercent = min(
+                100,
+                abs(finalDistanceMeters - liveDistanceMeters) / liveDistanceMeters * 100
+            )
+        } else {
+            finalDistanceCorrectionPercent = 0
         }
+        self.routeMatchResult = routeMatchResult
+    }
+
+    func journalTrackPoints(startingAt index: Int) -> [JournalTrackPoint] {
+        guard trackPoints.indices.contains(index) || index == trackPoints.count else { return [] }
+        return trackPoints.indices.dropFirst(index).map { pointIndex in
+            JournalTrackPoint(
+                trackPoints[pointIndex],
+                startsNewSegment: segmentStartIndices.contains(pointIndex)
+            )
+        }
+    }
+
+    private var pendingMotionGapDistance: Double {
+        guard wantsTracking,
+              !isAutoPauseProbing,
+              supportsPedometerDistance,
+              let lastAcceptedDeliveryAt,
+              Date().timeIntervalSince(lastAcceptedDeliveryAt) >= motionGapThresholdSeconds
+        else { return 0 }
+        return max(0, pedometerDistanceMeters - pedometerDistanceAtLastTrackPoint)
+    }
+
+    private var supportsPedometerDistance: Bool {
+        CMPedometer.isDistanceAvailable()
+            && [.running, .walking, .hiking].contains(activityType)
+    }
+
+    private func resetRecordingState(preserving warmLocation: CLLocation?) {
+        trackPoints = []
+        trackCoordinates = []
+        segmentStartIndices = []
+        accumulatedDistanceMeters = 0
+        elevationAccumulator.reset()
+        receivedBatchCount = 0
+        maximumBatchSize = 0
+        acceptedTrackPointCount = 0
+        rejectedLocationCount = 0
+        stationaryLocationCount = 0
+        motionAssistedDistanceMeters = 0
+        finalDistanceCorrectionPercent = 0
+        routeMatchResult = "not_available"
+        pedometerDistanceMeters = 0
+        pedometerDistanceAtLastTrackPoint = 0
+        previousMotionLocation = nil
+        currentMotionSpeed = nil
+        lastAcceptedDeliveryAt = nil
+        isAutoPauseProbing = false
+        requiresNewSegment = false
+        probeLocations = []
+        filter.reset(with: warmLocation)
+        location = warmLocation
+    }
+
+    private func configureFilters(for activityType: ActivityType) {
+        filter = LocationTrackFilter(activityType: activityType)
+        probeFilter = LocationTrackFilter(activityType: activityType)
+    }
+
+    private func requestTemporaryFullAccuracyIfNeeded() {
+        accuracyAuthorization = manager.accuracyAuthorization
+        guard wantsTracking || wantsPreparation,
+              manager.accuracyAuthorization == .reducedAccuracy
+        else { return }
+        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "WorkoutRoute")
+    }
+
+    private func startPedometerIfAvailable() {
+        guard supportsPedometerDistance else { return }
+        pedometer.stopUpdates()
+        pedometerDistanceMeters = 0
+        pedometerDistanceAtLastTrackPoint = 0
+        pedometer.startUpdates(from: Date()) { [weak self] data, _ in
+            guard let distance = data?.distance?.doubleValue else { return }
+            Task { @MainActor in
+                self?.pedometerDistanceMeters = max(0, distance)
+            }
+        }
+    }
+
+    private func stopPedometer() {
+        pedometer.stopUpdates()
+    }
+
+    private func promoteAutoPauseProbe() {
+        guard !probeLocations.isEmpty else {
+            requiresNewSegment = true
+            filter.reset()
+            pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+            return
+        }
+        requiresNewSegment = true
+        filter.reset()
+        let priorSegmentCount = locationSegments.count
+        for location in probeLocations {
+            appendRecordedLocation(location, distanceIncrement: nil, allowsMotionBridge: false)
+        }
+        let probeMotionDistance = max(0, pedometerDistanceMeters - pedometerDistanceAtProbeStart)
+        let promotedDistance = locationSegments.count > priorSegmentCount
+            ? locationSegments.last.map { segment in
+                zip(segment, segment.dropFirst()).reduce(0) { $0 + $1.0.distance(from: $1.1) }
+            } ?? 0
+            : 0
+        if probeMotionDistance > promotedDistance {
+            let supplement = probeMotionDistance - promotedDistance
+            accumulatedDistanceMeters += supplement
+            motionAssistedDistanceMeters += supplement
+        }
+        filter.reset(with: probeLocations.last)
+        pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+    }
+
+    private func beginSegment(with location: CLLocation) {
+        requiresNewSegment = true
+        filter.reset(with: location)
+        appendRecordedLocation(location, distanceIncrement: 0, allowsMotionBridge: false)
+    }
+
+    private func handleLocation(_ newLocation: CLLocation, allowsMotionBridge: Bool) {
+        updateSignalQuality(using: newLocation)
+        guard isPublishable(newLocation) else {
+            if wantsTracking { rejectedLocationCount += 1 }
+            return
+        }
+
+        currentMotionSpeed = motionSpeed(for: newLocation)
+        previousMotionLocation = newLocation
+        location = newLocation
+
+        if wantsPreparation && !wantsTracking {
+            if preparedLocation == nil
+                || newLocation.horizontalAccuracy < preparedLocation!.horizontalAccuracy
+                || newLocation.timestamp > preparedLocation!.timestamp.addingTimeInterval(2) {
+                preparedLocation = newLocation
+            }
+            return
+        }
+        guard wantsTracking else { return }
+
+        if isAutoPauseProbing {
+            let output = probeFilter.ingest(newLocation)
+            currentMotionSpeed = output.estimatedSpeedMetersPerSecond ?? currentMotionSpeed
+            if output.decision == .recorded, let filtered = output.filteredLocation {
+                probeLocations.append(filtered)
+            }
+            return
+        }
+
+        if requiresNewSegment {
+            filter.reset()
+        }
+        let output = filter.ingest(newLocation)
+        currentMotionSpeed = output.estimatedSpeedMetersPerSecond ?? currentMotionSpeed
+        switch output.decision {
+        case .recorded:
+            guard let filtered = output.filteredLocation else { return }
+            appendRecordedLocation(
+                filtered,
+                distanceIncrement: output.distanceIncrementMeters,
+                allowsMotionBridge: allowsMotionBridge
+            )
+        case .stationary:
+            stationaryLocationCount += 1
+        case .rejected:
+            rejectedLocationCount += 1
+        }
+    }
+
+    private func appendRecordedLocation(
+        _ newLocation: CLLocation,
+        distanceIncrement: Double?,
+        allowsMotionBridge: Bool
+    ) {
+        var increment = distanceIncrement ?? trackPoints.last.map { $0.distance(from: newLocation) } ?? 0
+        if requiresNewSegment || trackPoints.isEmpty {
+            if !trackPoints.isEmpty { elevationAccumulator.startNewSegment() }
+            segmentStartIndices.insert(trackPoints.count)
+            increment = 0
+            requiresNewSegment = false
+        } else if allowsMotionBridge,
+                  let previous = trackPoints.last,
+                  newLocation.timestamp.timeIntervalSince(previous.timestamp) >= motionGapThresholdSeconds {
+            let pedometerDistance = max(0, pedometerDistanceMeters - pedometerDistanceAtLastTrackPoint)
+            if pedometerDistance > increment {
+                motionAssistedDistanceMeters += pedometerDistance - increment
+                increment = pedometerDistance
+            }
+        }
+
+        accumulatedDistanceMeters += max(0, increment)
+        trackPoints.append(newLocation)
+        trackCoordinates.append(newLocation.coordinate)
+        elevationAccumulator.ingest(newLocation)
+        acceptedTrackPointCount += 1
+        pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+        lastAcceptedDeliveryAt = Date()
+    }
+
+    private func motionSpeed(for current: CLLocation) -> Double? {
+        let maximum = LocationFilterConfiguration(activityType: activityType).maximumSpeedMetersPerSecond
+        if current.speed >= 0,
+           current.speedAccuracy >= 0,
+           current.speedAccuracy <= 3,
+           current.speed <= maximum {
+            return current.speed
+        }
+        guard let previousMotionLocation else { return nil }
+        let duration = current.timestamp.timeIntervalSince(previousMotionLocation.timestamp)
+        guard duration > 0 else { return nil }
+        let uncertainty = hypot(
+            max(0, current.horizontalAccuracy),
+            max(0, previousMotionLocation.horizontalAccuracy)
+        )
+        let distance = max(0, previousMotionLocation.distance(from: current) - uncertainty * 0.5)
+        let speed = distance / duration
+        return speed <= maximum ? speed : nil
+    }
+
+    private func isPublishable(_ location: CLLocation) -> Bool {
+        guard location.coordinate.latitude.isFinite,
+              location.coordinate.longitude.isFinite,
+              abs(location.coordinate.latitude) <= 90,
+              abs(location.coordinate.longitude) <= 180,
+              location.horizontalAccuracy >= 0,
+              location.horizontalAccuracy <= maximumPublishedLocationAccuracyMeters,
+              location.timestamp.timeIntervalSinceNow <= maximumFutureLocationSeconds
+        else { return false }
+        guard wantsTracking, let trackingStartedAt else { return true }
+        return location.timestamp >= trackingStartedAt.addingTimeInterval(-maximumPreStartLocationAgeSeconds)
+    }
+
+    private func updateSignalQuality(using location: CLLocation?) {
+        accuracyAuthorization = manager.accuracyAuthorization
+        signalQuality = LocationSignalQuality.classify(
+            location,
+            accuracyAuthorization: accuracyAuthorization
+        )
+    }
+
+    private static func segments(
+        from points: [CLLocation],
+        starts: Set<Int>
+    ) -> [[CLLocation]] {
+        guard !points.isEmpty else { return [] }
+        var result: [[CLLocation]] = []
+        var current: [CLLocation] = []
+        for index in points.indices {
+            if starts.contains(index), !current.isEmpty {
+                result.append(current)
+                current = []
+            }
+            current.append(points[index])
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
     }
 
 #if DEBUG
@@ -235,18 +651,12 @@ final class LocationManager: NSObject, ObservableObject {
         clearTestOverrides()
         isSimulatingLocations = true
         simulatedSpeedMetersPerSecond = nil
-        trackPoints = []
-        trackCoordinates = []
-        accumulatedDistanceMeters = 0
-        elevationAccumulator.reset()
-        receivedBatchCount = 0
-        maximumBatchSize = 0
-        acceptedTrackPointCount = 0
-        rejectedLocationCount = 0
-        location = nil
+        self.activityType = activityType
+        configureFilters(for: activityType)
+        resetRecordingState(preserving: nil)
         trackingStartedAt = Date()
         wantsTracking = true
-        configureValidation(for: activityType)
+        signalQuality = .excellent
     }
 
     func ingestSimulatedLocation(_ newLocation: CLLocation) {
@@ -255,17 +665,17 @@ final class LocationManager: NSObject, ObservableObject {
             rejectedLocationCount += 1
             return
         }
-
         receivedBatchCount += 1
         maximumBatchSize = max(maximumBatchSize, 1)
-        if let previous = trackPoints.last {
-            accumulatedDistanceMeters += previous.distance(from: newLocation)
-        }
-        trackPoints.append(newLocation)
-        trackCoordinates.append(newLocation.coordinate)
-        elevationAccumulator.ingest(newLocation)
-        acceptedTrackPointCount += 1
         simulatedSpeedMetersPerSecond = newLocation.speed > 0 ? newLocation.speed : nil
+        let output = filter.ingest(newLocation)
+        if output.decision == .recorded, let filtered = output.filteredLocation {
+            appendRecordedLocation(
+                filtered,
+                distanceIncrement: output.distanceIncrementMeters,
+                allowsMotionBridge: false
+            )
+        }
         location = newLocation
     }
 
@@ -282,7 +692,9 @@ final class LocationManager: NSObject, ObservableObject {
         testCurrentPaceSecsPerKm = currentPaceSecsPerKm
         self.trackPoints = trackPoints
         trackCoordinates = trackPoints.map(\.coordinate)
+        segmentStartIndices = trackPoints.isEmpty ? [] : [0]
         location = trackPoints.last
+        signalQuality = .excellent
     }
 
     private func clearTestOverrides() {
@@ -305,78 +717,30 @@ extension LocationManager: CLLocationManagerDelegate {
                 self.receivedBatchCount += 1
                 self.maximumBatchSize = max(self.maximumBatchSize, locations.count)
             }
-
-            var latestAcceptedLocation: CLLocation?
-            for location in locations {
-                guard self.shouldAcceptLocationUpdate(location) else {
-                    if self.wantsTracking { self.rejectedLocationCount += 1 }
-                    continue
-                }
-                if self.wantsTracking {
-                    guard self.shouldAppendTrackPoint(location) else {
-                        self.rejectedLocationCount += 1
-                        continue
-                    }
-                    if let previous = self.trackPoints.last {
-                        self.accumulatedDistanceMeters += previous.distance(from: location)
-                    }
-                    self.trackPoints.append(location)
-                    self.trackCoordinates.append(location.coordinate)
-                    self.elevationAccumulator.ingest(location)
-                    self.acceptedTrackPointCount += 1
-                }
-                latestAcceptedLocation = location
-            }
-
-            // Publishing once after the chronological batch is fully ingested keeps
-            // downstream metrics consistent while retaining every background fix.
-            if let latestAcceptedLocation {
-                self.location = latestAcceptedLocation
+            for (index, location) in locations.enumerated() {
+                self.handleLocation(
+                    location,
+                    allowsMotionBridge: locations.count == 1 || index == locations.count - 1
+                )
             }
         }
-    }
-
-    private func shouldAcceptLocationUpdate(_ location: CLLocation) -> Bool {
-        guard location.horizontalAccuracy >= 0,
-              location.horizontalAccuracy <= maximumValidLocationAccuracyMeters else {
-            return false
-        }
-
-        guard wantsTracking, let trackingStartedAt else {
-            return true
-        }
-
-        return location.timestamp >= trackingStartedAt.addingTimeInterval(-maximumPreStartLocationAgeSeconds)
-    }
-
-    private func shouldAppendTrackPoint(_ location: CLLocation) -> Bool {
-        if location.speed >= 0,
-           location.speed > maximumValidSpeedMetersPerSecond {
-            return false
-        }
-
-        if let previous = trackPoints.last {
-            let interval = location.timestamp.timeIntervalSince(previous.timestamp)
-            guard interval > 0 else { return false }
-            let distance = previous.distance(from: location)
-            let impliedSpeed = distance / interval
-            return impliedSpeed <= maximumValidSpeedMetersPerSecond
-        }
-
-        return true
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             self.authorizationStatus = manager.authorizationStatus
+            self.accuracyAuthorization = manager.accuracyAuthorization
+            self.updateSignalQuality(using: self.location)
             switch manager.authorizationStatus {
             case .authorizedAlways, .authorizedWhenInUse:
+                self.requestTemporaryFullAccuracyIfNeeded()
                 self.startTrackingIfPermitted()
-                if self.wantsOneShotLocation && !self.wantsTracking {
+                if self.wantsOneShotLocation && !self.wantsTracking && !self.wantsPreparation {
                     manager.requestLocation()
                 }
             case .denied, .restricted:
                 self.wantsTracking = false
+                self.wantsPreparation = false
             case .notDetermined:
                 break
             @unknown default:
@@ -388,6 +752,7 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             self.wantsOneShotLocation = false
+            if self.location == nil { self.signalQuality = .unavailable }
         }
     }
 }

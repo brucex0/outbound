@@ -310,8 +310,10 @@ struct PostRunSummaryView: View {
 
     private var routeMap: some View {
         Map(position: .constant(routeMapPosition)) {
-            MapPolyline(coordinates: summary.trackPoints.map(\.coordinate))
-                .stroke(.orange, lineWidth: 4)
+            ForEach(Array(summary.trackSegments.enumerated()), id: \.offset) { _, segment in
+                MapPolyline(coordinates: segment.map(\.coordinate))
+                    .stroke(.orange, lineWidth: 4)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .disabled(true)

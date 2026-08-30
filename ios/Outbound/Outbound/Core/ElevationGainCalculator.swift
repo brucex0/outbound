@@ -13,11 +13,30 @@ enum ElevationGainCalculator {
         private var altitudeWindow: [Double] = []
         private var minimumFilteredAltitude: Double?
         private var maximumFilteredAltitude: Double?
+        private var climbFloorAltitude: Double?
+        private var climbPeakAltitude: Double?
+        private var committedGainMeters: Double = 0
 
         private(set) var rangeMeters: Double = 0
+        private(set) var gainMeters: Double = 0
 
         mutating func reset() {
             self = StreamingRangeAccumulator()
+        }
+
+        mutating func startNewSegment() {
+            let activeClimb = max(
+                0,
+                (climbPeakAltitude ?? 0) - (climbFloorAltitude ?? 0)
+            )
+            if activeClimb >= 2.5 {
+                committedGainMeters += activeClimb
+            }
+            previousAcceptedLocation = nil
+            altitudeWindow = []
+            climbFloorAltitude = nil
+            climbPeakAltitude = nil
+            gainMeters = committedGainMeters
         }
 
         mutating func ingest(_ location: CLLocation) {
@@ -42,7 +61,44 @@ enum ElevationGainCalculator {
             minimumFilteredAltitude = min(minimumFilteredAltitude ?? filteredAltitude, filteredAltitude)
             maximumFilteredAltitude = max(maximumFilteredAltitude ?? filteredAltitude, filteredAltitude)
             rangeMeters = max(0, (maximumFilteredAltitude ?? 0) - (minimumFilteredAltitude ?? 0))
+            ingestFilteredAltitude(filteredAltitude)
         }
+
+        private mutating func ingestFilteredAltitude(_ altitude: Double) {
+            let minimumClimbMeters = 2.5
+            guard let floor = climbFloorAltitude,
+                  let peak = climbPeakAltitude
+            else {
+                climbFloorAltitude = altitude
+                climbPeakAltitude = altitude
+                return
+            }
+
+            if altitude > peak {
+                climbPeakAltitude = altitude
+            } else if peak - altitude >= minimumClimbMeters {
+                let completedClimb = peak - floor
+                if completedClimb >= minimumClimbMeters {
+                    committedGainMeters += completedClimb
+                }
+                climbFloorAltitude = altitude
+                climbPeakAltitude = altitude
+            } else if altitude < floor {
+                climbFloorAltitude = altitude
+                climbPeakAltitude = max(peak, altitude)
+            }
+
+            let activeClimb = max(0, (climbPeakAltitude ?? altitude) - (climbFloorAltitude ?? altitude))
+            gainMeters = committedGainMeters + (activeClimb >= minimumClimbMeters ? activeClimb : 0)
+        }
+    }
+
+    static func sanitizedElevationGainMeters(from locations: [CLLocation]) -> Double {
+        var accumulator = StreamingRangeAccumulator()
+        for location in locations {
+            accumulator.ingest(location)
+        }
+        return accumulator.gainMeters
     }
 
     static func sanitizedElevationRangeMeters(from locations: [CLLocation]) -> Double {

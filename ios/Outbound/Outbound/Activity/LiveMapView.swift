@@ -71,11 +71,13 @@ struct LiveMapView: View {
                             .shadow(radius: 4)
                     }
                 }
-                if trailCoordinates.count > 1 {
-                    MapPolyline(coordinates: trailCoordinates)
-                        .stroke(.black.opacity(0.2), lineWidth: 8)
-                    MapPolyline(coordinates: trailCoordinates)
-                        .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                ForEach(Array(trailCoordinateSegments.enumerated()), id: \.offset) { _, segment in
+                    if segment.count > 1 {
+                        MapPolyline(coordinates: segment)
+                            .stroke(.black.opacity(0.2), lineWidth: 8)
+                        MapPolyline(coordinates: segment)
+                            .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                    }
                 }
                 if let currentCoordinate {
                     Annotation("Current Position", coordinate: currentCoordinate) {
@@ -285,6 +287,10 @@ struct LiveMapView: View {
         locationManager.trackCoordinates
     }
 
+    private var trailCoordinateSegments: [[CLLocationCoordinate2D]] {
+        locationManager.trackCoordinateSegments
+    }
+
     private var plannedRouteCoordinates: [CLLocationCoordinate2D] {
         if !recorder.routeGuidanceCoordinates.isEmpty {
             return recorder.routeGuidanceCoordinates
@@ -356,7 +362,7 @@ struct LiveMapView: View {
     }
 
     private var currentCoordinate: CLLocationCoordinate2D? {
-        trailCoordinates.last
+        locationManager.location?.coordinate ?? trailCoordinates.last
     }
 
     private var rightControlRail: some View {
