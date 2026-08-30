@@ -29,15 +29,19 @@ struct MainTabView: View {
     @State private var preActivityRoute: PreparedRoute?
     @State private var launchGoalMode: SessionGoalMode = .planned
     @State private var customizedTodayIntent: SessionIntent?
+    @State private var isActivityFullscreenVisible = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             currentContent
         }
         .background(Color(.systemGroupedBackground))
-        .feedbackReporter(isShakeDisabled: activitySessionState != .idle, currentPage: feedbackPage)
+        .feedbackReporter(
+            isShakeDisabled: activitySessionState != .idle || isActivityFullscreenVisible,
+            currentPage: feedbackPage
+        )
         .overlay(alignment: .top) {
-            if selectedAppTab != .today || !isActivityVisible {
+            if !isActivityFullscreenVisible && (selectedAppTab != .today || !isActivityVisible) {
                 GlobalConnectivityBanner()
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -149,6 +153,7 @@ struct MainTabView: View {
         SimplifiedAppShell(
             selection: $selectedAppTab,
             activitySessionState: activitySessionState,
+            isActivityFullscreenVisible: isActivityFullscreenVisible,
             activityElapsedSeconds: activityElapsedSeconds,
             activeSport: activeLaunch?.intent?.sport,
             feedbackPage: $feedbackPage,
@@ -190,7 +195,14 @@ struct MainTabView: View {
                 onPreActivityRouteChange: { preActivityRoute = $0 },
                 onCloseRequest: handleActivityClose,
                 onSessionStateChange: { activitySessionState = $0 },
-                onElapsedTimeChange: { activityElapsedSeconds = $0 }
+                onElapsedTimeChange: { activityElapsedSeconds = $0 },
+                onLiveSurfaceVisibilityChange: { isVisible in
+                    isActivityFullscreenVisible = isVisible
+                    if isVisible {
+                        selectedAppTab = .today
+                        isActivityVisible = true
+                    }
+                }
             )
             .id(launch.id))
         }
@@ -214,6 +226,7 @@ struct MainTabView: View {
 
     private func handleActivityClose(shouldKeepAlive: Bool) {
         guard !shouldKeepAlive else { return }
+        isActivityFullscreenVisible = false
         activitySessionState = .idle
         activityElapsedSeconds = 0
         if selectedAppTab == .today {

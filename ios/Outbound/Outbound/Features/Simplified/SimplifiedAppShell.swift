@@ -30,6 +30,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     @Binding var selection: SimplifiedAppTab
     let activitySessionState: ActivitySessionPortalState
+    let isActivityFullscreenVisible: Bool
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var feedbackPage: String
@@ -56,6 +57,7 @@ struct SimplifiedAppShell: View {
             SimplifiedTodayView(
                 isSelected: selection == .today,
                 activitySessionState: activitySessionState,
+                isActivityFullscreenVisible: isActivityFullscreenVisible,
                 activityElapsedSeconds: activityElapsedSeconds,
                 activeSport: activeSport,
                 customizedRunIntent: $customizedTodayIntent,
@@ -82,7 +84,9 @@ struct SimplifiedAppShell: View {
         .background {
             NativeContextualTabBarBridge(
                 selectedTab: selection,
-                showsStart: selection == .today && activitySessionState == .idle,
+                showsStart: selection == .today
+                    && activitySessionState == .idle
+                    && !isActivityFullscreenVisible,
                 actionColor: theme.actionColor,
                 onSelect: selectTabWithoutAnimation,
                 onStart: onContextualStart
@@ -93,13 +97,15 @@ struct SimplifiedAppShell: View {
             feedbackPage = tab.feedbackPageName
         }
         .overlay(alignment: .bottom) {
-            HStack {
-                assistantLaunchButton
+            if !isActivityFullscreenVisible {
+                HStack {
+                    assistantLaunchButton
 
-                Spacer(minLength: 0)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 40)
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 40)
         }
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
@@ -174,6 +180,11 @@ struct SimplifiedAppShell: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
+            }
+        }
+        .onChange(of: isActivityFullscreenVisible) { _, isVisible in
+            if isVisible {
+                showsAssistant = false
             }
         }
     }
@@ -506,6 +517,7 @@ private struct SimplifiedTodayView: View {
     @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
+    let isActivityFullscreenVisible: Bool
     let activityElapsedSeconds: Int
     let activeSport: SportType?
     @Binding var customizedRunIntent: SessionIntent?
@@ -569,6 +581,7 @@ private struct SimplifiedTodayView: View {
                 activityLaunchSurface
                     .opacity(isSelected ? 1 : 0)
                     .allowsHitTesting(isSelected)
+                    .zIndex(isActivityFullscreenVisible ? 10 : 0)
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
                 mapAttributionBottomInset = height
@@ -578,7 +591,8 @@ private struct SimplifiedTodayView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar(.visible, for: .navigationBar)
+            .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
+            .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .tabBar)
             .toolbar {
                 if canPresentThemeTip || showsThemeTip {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -3513,6 +3527,7 @@ private extension RunnerConfidence {
     SimplifiedAppShell(
         selection: .constant(.today),
         activitySessionState: .idle,
+        isActivityFullscreenVisible: false,
         activityElapsedSeconds: 0,
         activeSport: nil,
         feedbackPage: .constant("Today"),
