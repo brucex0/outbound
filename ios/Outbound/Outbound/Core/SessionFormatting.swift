@@ -8,8 +8,17 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
 
     var title: String {
         switch self {
-        case .metric: return String(localized: "measurement.system.metric", defaultValue: "Metric")
-        case .imperial: return String(localized: "measurement.system.imperial", defaultValue: "Imperial")
+        case .metric: return String(localized: "measurement.system.metric", defaultValue: "Metric (km)")
+        case .imperial: return String(localized: "measurement.system.imperial", defaultValue: "Imperial (mi)")
+        }
+    }
+
+    static func deviceDefault(locale: Locale = .autoupdatingCurrent) -> MeasurementUnitSystem {
+        switch locale.measurementSystem {
+        case .us, .uk:
+            return .imperial
+        default:
+            return .metric
         }
     }
 
@@ -104,6 +113,85 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
         "\(elevationValueString(meters: meters)) \(elevationUnit)"
     }
 
+    func spokenDistanceString(meters: Double, language: AppLanguage = .current) -> String {
+        let clampedMeters = max(0, meters)
+        switch self {
+        case .metric:
+            if clampedMeters < 995 {
+                let value = Int(clampedMeters.rounded())
+                switch language {
+                case .english: return value == 1 ? "1 meter" : "\(value) meters"
+                case .spanish: return value == 1 ? "1 metro" : "\(value) metros"
+                case .simplifiedChinese: return "\(value) 米"
+                }
+            }
+            return spokenLongDistance(
+                value: clampedMeters / 1_000,
+                singular: ("kilometer", "kilómetro", "公里"),
+                plural: ("kilometers", "kilómetros", "公里"),
+                language: language
+            )
+        case .imperial:
+            let feet = clampedMeters * 3.28084
+            if clampedMeters < 160.9344 {
+                let value = Int(feet.rounded())
+                switch language {
+                case .english: return value == 1 ? "1 foot" : "\(value) feet"
+                case .spanish: return value == 1 ? "1 pie" : "\(value) pies"
+                case .simplifiedChinese: return "\(value) 英尺"
+                }
+            }
+            return spokenLongDistance(
+                value: clampedMeters / 1_609.344,
+                singular: ("mile", "milla", "英里"),
+                plural: ("miles", "millas", "英里"),
+                language: language
+            )
+        }
+    }
+
+    func spokenPaceString(secondsPerKilometer: Double, language: AppLanguage = .current) -> String {
+        let secondsPerUnit = self == .metric
+            ? secondsPerKilometer
+            : secondsPerKilometer * 1.609344
+        let minutes = Int(secondsPerUnit) / 60
+        let seconds = Int(secondsPerUnit) % 60
+        switch (language, self) {
+        case (.english, .metric):
+            return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per kilometer"
+        case (.english, .imperial):
+            return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per mile"
+        case (.spanish, .metric):
+            return "\(minutes) \(minutes == 1 ? "minuto" : "minutos") \(seconds) \(seconds == 1 ? "segundo" : "segundos") por kilómetro"
+        case (.spanish, .imperial):
+            return "\(minutes) \(minutes == 1 ? "minuto" : "minutos") \(seconds) \(seconds == 1 ? "segundo" : "segundos") por milla"
+        case (.simplifiedChinese, .metric):
+            return "每公里 \(minutes) 分 \(seconds) 秒"
+        case (.simplifiedChinese, .imperial):
+            return "每英里 \(minutes) 分 \(seconds) 秒"
+        }
+    }
+
+    private func spokenLongDistance(
+        value: Double,
+        singular: (String, String, String),
+        plural: (String, String, String),
+        language: AppLanguage
+    ) -> String {
+        let roundedHundredths = (value * 100).rounded() / 100
+        let roundedWhole = roundedHundredths.rounded()
+        let isWhole = abs(roundedHundredths - roundedWhole) < 0.005
+        let valueText = isWhole
+            ? String(Int(roundedWhole))
+            : roundedHundredths.formatted(.number.locale(.autoupdatingCurrent).precision(.fractionLength(0...2)))
+        let isSingular = isWhole && Int(roundedWhole) == 1
+        switch language {
+        case .english: return "\(valueText) \(isSingular ? singular.0 : plural.0)"
+        case .spanish: return "\(valueText) \(isSingular ? singular.1 : plural.1)"
+        case .simplifiedChinese: return "\(valueText) \(singular.2)"
+        }
+    }
+
     private func decimalString(_ value: Double, fractionDigits: Int) -> String {
         value.formatted(
             .number
@@ -111,6 +199,33 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
                 .precision(.fractionLength(fractionDigits))
                 .grouping(.automatic)
         )
+    }
+}
+
+enum TemperatureUnit: String, CaseIterable, Codable, Identifiable {
+    case celsius
+    case fahrenheit
+
+    var id: String { rawValue }
+
+    var symbol: String {
+        switch self {
+        case .celsius: "°C"
+        case .fahrenheit: "°F"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .celsius:
+            String(localized: "measurement.temperature.celsius", defaultValue: "Celsius (°C)")
+        case .fahrenheit:
+            String(localized: "measurement.temperature.fahrenheit", defaultValue: "Fahrenheit (°F)")
+        }
+    }
+
+    static func deviceDefault(locale: Locale = .autoupdatingCurrent) -> TemperatureUnit {
+        locale.measurementSystem == .us ? .fahrenheit : .celsius
     }
 }
 
@@ -131,52 +246,13 @@ extension Double {
         return String(format: "%d:%02d %@", minutes, seconds, unitSuffix)
     }
 
-    var spokenPaceString: String {
-        let minutes = Int(self) / 60
-        let seconds = Int(self) % 60
-        switch AppLanguage.current {
-        case .english:
-            return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds) \(seconds == 1 ? "second" : "seconds") per kilometer"
-        case .spanish:
-            return "\(minutes) \(minutes == 1 ? "minuto" : "minutos") \(seconds) \(seconds == 1 ? "segundo" : "segundos") por kilómetro"
-        case .simplifiedChinese:
-            return "每公里 \(minutes) 分 \(seconds) 秒"
-        }
-    }
-
-    var spokenDistanceString: String {
-        let distanceMeters = max(0, self)
-        let meters = Int(distanceMeters.rounded())
-
-        if distanceMeters < 995 {
-            switch AppLanguage.current {
-            case .english: return meters == 1 ? "1 meter" : "\(meters) meters"
-            case .spanish: return meters == 1 ? "1 metro" : "\(meters) metros"
-            case .simplifiedChinese: return "\(meters) 米"
-            }
-        }
-
-        let roundedHundredths = ((distanceMeters / 1000) * 100).rounded() / 100
-        let roundedWhole = roundedHundredths.rounded()
-        if abs(roundedHundredths - roundedWhole) < 0.005 {
-            let wholeKilometers = Int(roundedWhole)
-            switch AppLanguage.current {
-            case .english: return wholeKilometers == 1 ? "1 kilometer" : "\(wholeKilometers) kilometers"
-            case .spanish: return wholeKilometers == 1 ? "1 kilómetro" : "\(wholeKilometers) kilómetros"
-            case .simplifiedChinese: return "\(wholeKilometers) 公里"
-            }
-        }
-        let value = roundedHundredths.formatted(.number.locale(.autoupdatingCurrent).precision(.fractionLength(2)))
-        switch AppLanguage.current {
-        case .english: return "\(value) kilometers"
-        case .spanish: return "\(value) kilómetros"
-        case .simplifiedChinese: return "\(value) 公里"
-        }
-    }
 }
 
 extension String {
-    func correctingPrematureCurrentDistanceClaims(currentDistanceMeters: Double) -> String {
+    func correctingPrematureCurrentDistanceClaims(
+        currentDistanceMeters: Double,
+        unitSystem: MeasurementUnitSystem = .metric
+    ) -> String {
         let currentMeters = max(0, currentDistanceMeters)
         var corrected = self
 
@@ -198,7 +274,7 @@ extension String {
 
                 let claimedMeters = value * numericPattern.multiplier
                 guard claimedMeters > currentMeters + 25 else { return nil }
-                return "\(currentMeters.spokenDistanceString) \(corrected[suffixRange])"
+                return "\(unitSystem.spokenDistanceString(meters: currentMeters)) \(corrected[suffixRange])"
             }
         }
 
@@ -215,7 +291,7 @@ extension String {
                 guard let suffixRange = Range(match.range(at: 1), in: corrected) else {
                     return nil
                 }
-                return "\(currentMeters.spokenDistanceString) \(corrected[suffixRange])"
+                return "\(unitSystem.spokenDistanceString(meters: currentMeters)) \(corrected[suffixRange])"
             }
         }
 

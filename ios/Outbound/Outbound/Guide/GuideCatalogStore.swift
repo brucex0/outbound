@@ -120,6 +120,14 @@ final class GuideCatalogStore: ObservableObject {
         saveSelection()
     }
 
+    func applySyncedSelection(_ syncedSelection: GuideSelection) {
+        selection = syncedSelection
+        normalizeSelection()
+        defaults.set(selection.theme.rawValue, forKey: Self.themeKey)
+        saveSelection()
+        updateAudioPackSelection()
+    }
+
     func suppressedMomentTypes(for contract: CoachingContract) -> Set<LiveGuidanceMomentType> {
         guard contract == .responsive else { return [] }
         return Set(learningState.moments.compactMap { rawType, evidence in

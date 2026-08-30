@@ -26,6 +26,7 @@ const createSessionSchema = z.object({
   coachPersonaId: z.enum(["plainstride_supportive_v1", "plainstride_focused_v1", "plainstride_calm_v1"]),
   voiceProfileId: z.enum(VOICE_PROFILE_IDS),
   coachingContract: z.enum(["quiet", "responsive", "coach_me"]),
+  measurementUnitSystem: z.enum(["metric", "imperial"]),
   sessionIntent: z.object({
     activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),
     goalType: z.enum(["workout", "distance", "time", "freestyle"]),

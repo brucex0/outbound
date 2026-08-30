@@ -37,6 +37,7 @@ struct OutboundApp: App {
     @StateObject private var appearancePreferences = AppearancePreferences()
     @StateObject private var pushNotifications = PushNotificationCoordinator.shared
     @StateObject private var communityRouteStore = CommunityRouteStore()
+    @StateObject private var userPreferencesSyncStore = UserPreferencesSyncStore()
 
     init() {
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
@@ -114,6 +115,16 @@ struct OutboundApp: App {
                 .environmentObject(pushNotifications)
                 .environmentObject(communityRouteStore)
                 .task {
+                    if let userID = authStore.user?.id {
+                        await userPreferencesSyncStore.start(
+                            userID: userID,
+                            measurementPreferences: measurementPreferences,
+                            appearancePreferences: appearancePreferences,
+                            guideCatalog: guideCatalogStore,
+                            gearStore: gearStore,
+                            musicStore: musicStore
+                        )
+                    }
                     await guideStore.syncIfNeeded()
                     await activityStore.syncPendingActivitiesIfNeeded()
                     await healthAuthorizationStore.refresh()
@@ -126,6 +137,7 @@ struct OutboundApp: App {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     Task {
+                        await userPreferencesSyncStore.refresh()
                         await activityStore.syncPendingActivitiesIfNeeded()
                         await pushNotifications.activate()
                     }
@@ -182,7 +194,7 @@ struct OutboundApp: App {
     }
 }
 
-enum AppearanceMode: String, CaseIterable, Identifiable {
+enum AppearanceMode: String, CaseIterable, Codable, Identifiable {
     case system
     case light
     case dark
@@ -229,13 +241,24 @@ final class MeasurementPreferences: ObservableObject {
         }
     }
 
+    @Published var temperatureUnit: TemperatureUnit {
+        didSet {
+            defaults.set(temperatureUnit.rawValue, forKey: temperatureUnitKey)
+        }
+    }
+
     private let defaults: UserDefaults
     private let unitSystemKey = "measurement_unit_system_v1"
+    private let temperatureUnitKey = "temperature_unit_v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let storedValue = defaults.string(forKey: unitSystemKey)
-        unitSystem = storedValue.flatMap(MeasurementUnitSystem.init(rawValue:)) ?? .metric
+        unitSystem = storedValue.flatMap(MeasurementUnitSystem.init(rawValue:))
+            ?? MeasurementUnitSystem.deviceDefault()
+        temperatureUnit = defaults.string(forKey: temperatureUnitKey)
+            .flatMap(TemperatureUnit.init(rawValue:))
+            ?? TemperatureUnit.deviceDefault()
     }
 }
 

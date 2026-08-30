@@ -29,6 +29,7 @@ model User {
   authSessions                AuthSession[]
   activeWorkoutPresence       ActiveWorkoutPresence?
   guideProfile                GuideProfile?
+  preferences                 UserPreferences?
   trainingGoals               TrainingGoal[]
   trainingPlans               TrainingPlan[]
   plannedWorkouts             PlannedWorkout[]
@@ -87,6 +88,16 @@ model User {
   @@index([normalizedPhone])
   @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_displayName_trgm_idx")
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_username_trgm_idx")
+}
+
+model UserPreferences {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  schemaVersion Int  @default(1)
+  data          Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model AuthIdentity {

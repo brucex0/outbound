@@ -62,7 +62,8 @@ protocol SessionAnalysisProvider: AnyObject {
         profile: GuideProfile?,
         persona: GuidePersona?,
         sessionIntent: SessionIntent?,
-        companionBrief: CompanionSessionBriefDTO?
+        companionBrief: CompanionSessionBriefDTO?,
+        unitSystem: MeasurementUnitSystem
     )
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult
     func endSession(report: LiveGuidanceSessionReport?)

@@ -104,6 +104,7 @@ struct CreateLiveCoachSessionRequest: Encodable {
     let coachPersonaId: String
     let voiceProfileId: String
     let coachingContract: String
+    let measurementUnitSystem: String
     let sessionIntent: SessionIntentDTO
     let appDistributionHint = "global"
 

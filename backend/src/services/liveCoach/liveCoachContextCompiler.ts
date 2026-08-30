@@ -10,7 +10,8 @@ const maximumEstimatedTokens = 1_250;
 export async function compileLiveCoachContext(
   prisma: PrismaClient,
   userId: string,
-  workoutId?: string
+  workoutId: string | undefined,
+  measurementUnitSystem: "metric" | "imperial"
 ): Promise<CompiledLiveCoachSessionContext> {
   const brief = await buildSessionBrief(prisma, userId, workoutId);
   if (workoutId && !brief.workout) {
@@ -18,6 +19,7 @@ export async function compileLiveCoachContext(
   }
   const context: LiveCoachCompiledContext = {
     version: 1,
+    measurementUnitSystem,
     runnerModelVersion: brief.runnerModelVersion,
     workout: brief.workout ? {
       title: clip(brief.workout.title, 80),

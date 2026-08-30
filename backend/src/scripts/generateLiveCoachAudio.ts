@@ -204,9 +204,9 @@ for (const voiceProfileId of voiceProfileIds) {
             voiceProfileId,
             providerVoice: resolved.route.providerVoice,
             semanticMoment: entry.cueKey,
-            stableInstructions: stableLiveCoachInstructions(locale),
+            stableInstructions: stableLiveCoachInstructions(locale, "metric"),
             compiledContext: {
-              version: 1, runnerModelVersion: "fixed-asset", workout: null, readiness: null,
+              version: 1, measurementUnitSystem: "metric", runnerModelVersion: "fixed-asset", workout: null, readiness: null,
               guidancePriorities: [], cuePreferences: [], safetyRequiresFixedOnly: false,
             },
             liveState: { elapsedSeconds: 0, distanceMeters: 0, routeGuidanceActive: false },

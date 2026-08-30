@@ -67,6 +67,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var persona: GuidePersona?
     private var sessionIntent: SessionIntent?
     private var companionBrief: CompanionSessionBriefDTO?
+    private var unitSystem: MeasurementUnitSystem = .metric
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
     private var lastProgressAnnouncementElapsedSeconds: Int?
@@ -126,6 +127,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         persona: GuidePersona? = nil,
         sessionIntent: SessionIntent? = nil,
         companionBrief: CompanionSessionBriefDTO? = nil,
+        unitSystem: MeasurementUnitSystem = .metric,
         challenge: LiveGuidanceChallenge = .off,
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
@@ -133,6 +135,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.persona = persona
         self.sessionIntent = sessionIntent
         self.companionBrief = companionBrief
+        self.unitSystem = unitSystem
         isActive = true
         snapshotHistory = []
         lastProgressAnnouncementElapsedSeconds = nil
@@ -152,7 +155,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         routeSpeechQuietUntil = nil
         pendingMoment = nil
         queuedMoments = []
-        lastNudge = sessionIntent.map { Self.initialNudge(for: $0) } ?? ""
+        lastNudge = sessionIntent.map { Self.initialNudge(for: $0, unitSystem: unitSystem) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
         sessionReport = LiveGuidanceSessionReport(
@@ -169,7 +172,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             profile: profile,
             persona: persona,
             sessionIntent: sessionIntent,
-            companionBrief: companionBrief
+            companionBrief: companionBrief,
+            unitSystem: unitSystem
         )
     }
 
@@ -361,7 +365,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             return
         }
         let message = analysis.message.correctingPrematureCurrentDistanceClaims(
-            currentDistanceMeters: snapshot.distanceMeters
+            currentDistanceMeters: snapshot.distanceMeters,
+            unitSystem: unitSystem
         )
         guard !message.isEmpty, analysis.shouldSpeak else {
             if pendingMoment == nil { advancePendingMoment() }
@@ -587,11 +592,13 @@ final class VirtualGuide: NSObject, ObservableObject {
 
         let progress = snapshot.distanceMeters / targetDistance
         let remaining = targetDistance - snapshot.distanceMeters
-        let lastUnitMeters = preferredLastDistanceUnitMeters(for: targetDistance)
+        let lastUnitMeters = preferredLastDistanceUnitMeters
+        let shortDistanceMeters = unitSystem == .metric ? 100.0 : 160.9344
+        let mediumDistanceMeters = unitSystem == .metric ? 300.0 : 402.336
         let candidates: [(GoalMilestone, Bool)] = [
             (.distanceComplete, progress >= 1),
-            (.distance100MetersRemaining, targetDistance > 400 && remaining > 0 && remaining <= 100),
-            (.distance300MetersRemaining, targetDistance > 600 && remaining > 100 && remaining <= 300),
+            (.distance100MetersRemaining, targetDistance > shortDistanceMeters * 4 && remaining > 0 && remaining <= shortDistanceMeters),
+            (.distance300MetersRemaining, targetDistance > mediumDistanceMeters * 2 && remaining > shortDistanceMeters && remaining <= mediumDistanceMeters),
             (.distanceLastUnit, targetDistance > lastUnitMeters * 1.5 && remaining > 0 && remaining <= lastUnitMeters),
             (.distanceTwoThirds, progress >= 2.0 / 3.0),
             (.distanceHalfway, progress >= 0.5),
@@ -628,9 +635,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         for milestone: GoalMilestone,
         snapshot: ActiveSessionSnapshot
     ) -> String {
-        let lastUnitName = isMileBasedDistanceGoal(sessionIntent?.resolvedTargetDistanceMeters ?? 0)
-            ? "mile"
-            : "kilometer"
+        let lastUnitName = unitSystem == .imperial ? "mile" : "kilometer"
         let message = switch milestone {
         case .distanceOneThird:
             "One third of your distance goal done. Keep it smooth."
@@ -641,9 +646,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         case .distanceLastUnit:
             "Last \(lastUnitName) of the distance goal. Stay tall."
         case .distance300MetersRemaining:
-            "300 meters to go."
+            "\(unitSystem.spokenDistanceString(meters: unitSystem == .metric ? 300 : 402.336)) to go."
         case .distance100MetersRemaining:
-            "100 meters to go."
+            "\(unitSystem.spokenDistanceString(meters: unitSystem == .metric ? 100 : 160.9344)) to go."
         case .distanceComplete:
             "Distance goal covered. Ease through the finish."
         case .durationOneThird:
@@ -761,18 +766,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         )
     }
 
-    private func preferredLastDistanceUnitMeters(for targetDistance: Double) -> Double {
-        if isMileBasedDistanceGoal(targetDistance) {
-            return 1_609.344
-        }
-
-        return 1_000
-    }
-
-    private func isMileBasedDistanceGoal(_ targetDistance: Double) -> Bool {
-        let miles = targetDistance / 1_609.344
-        let roundedMiles = miles.rounded()
-        return roundedMiles >= 2 && abs(miles - roundedMiles) < 0.03
+    private var preferredLastDistanceUnitMeters: Double {
+        unitSystem == .imperial ? 1_609.344 : 1_000
     }
 
     private func hasReliableDistanceProgress(_ snapshot: ActiveSessionSnapshot) -> Bool {
@@ -800,7 +795,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         var parts: [String] = []
 
         if snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters {
-            parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
+            parts.append("\(unitSystem.spokenDistanceString(meters: snapshot.distanceMeters)).")
         }
 
         if snapshot.elapsedSeconds >= 60 {
@@ -808,7 +803,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
 
         if let pace {
-            parts.append("\(paceLabel) \(pace.spokenPaceString).")
+            parts.append("\(paceLabel) \(unitSystem.spokenPaceString(secondsPerKilometer: pace)).")
         } else {
             parts.append(paceSettlingAnnouncement)
         }
@@ -859,7 +854,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private func keyProgressSummary(for snapshot: ActiveSessionSnapshot) -> String {
         var parts: [String] = []
         if snapshot.distanceMeters >= minimumProgressAnnouncementDistanceMeters {
-            parts.append("\(snapshot.distanceMeters.spokenDistanceString).")
+            parts.append("\(unitSystem.spokenDistanceString(meters: snapshot.distanceMeters)).")
         }
         if snapshot.elapsedSeconds >= 60 {
             parts.append("\(snapshot.elapsedSeconds.conversationalDurationString).")
@@ -888,9 +883,9 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func averagePaceAnnouncement(_ pace: Double) -> String {
         switch AppLanguage.current {
-        case .english: "Average pace \(pace.spokenPaceString)."
-        case .spanish: "Ritmo medio \(pace.spokenPaceString)."
-        case .simplifiedChinese: "平均配速 \(pace.spokenPaceString)。"
+        case .english: "Average pace \(unitSystem.spokenPaceString(secondsPerKilometer: pace))."
+        case .spanish: "Ritmo medio \(unitSystem.spokenPaceString(secondsPerKilometer: pace))."
+        case .simplifiedChinese: "平均配速 \(unitSystem.spokenPaceString(secondsPerKilometer: pace))。"
         }
     }
 
@@ -961,9 +956,9 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var currentProgressDistanceIntervalMeters: Double {
         switch persona?.template.sport ?? .run {
         case .run, .walk, .hike, .swim:
-            1_000
+            unitSystem == .imperial ? 1_609.344 : 1_000
         case .bike:
-            5_000
+            unitSystem == .imperial ? 8_046.72 : 5_000
         }
     }
 
@@ -981,11 +976,14 @@ final class VirtualGuide: NSObject, ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func initialNudge(for intent: SessionIntent) -> String {
+    private static func initialNudge(
+        for intent: SessionIntent,
+        unitSystem: MeasurementUnitSystem
+    ) -> String {
         var parts = [intent.guideLine]
 
         if let targetDistance = intent.resolvedTargetDistanceMeters {
-            parts.append("Goal: \(spokenDistance(targetDistance)).")
+            parts.append("Goal: \(unitSystem.spokenDistanceString(meters: targetDistance)).")
         } else if let targetDuration = intent.resolvedTargetDurationSeconds {
             parts.append("Goal: \(spokenDuration(targetDuration)).")
         } else if let routeName = intent.routeName, !routeName.isEmpty {
@@ -993,10 +991,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
 
         return parts.joined(separator: " ")
-    }
-
-    private static func spokenDistance(_ meters: Double) -> String {
-        meters.spokenDistanceString
     }
 
     private static func spokenDuration(_ seconds: Int) -> String {

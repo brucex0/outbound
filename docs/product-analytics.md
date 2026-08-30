@@ -36,6 +36,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
 - Opening the Me profile hub emits `feature_exposed` with the bounded feature value `me_profile_hub`; profile fields, training details, and companion memory are never included.
 - Showing Social's accepted-connection preview emits `feature_exposed` with the bounded feature value `social_connections_section`; opening the full list from that section emits `connections_opened` with `entry_source = social_home_preview`. Neither event includes connection identities, presence, names, or counts.
+- Explicit unit changes emit `preference_changed` with only the bounded preference kind (`measurement_unit_system` or `temperature_unit`) and semantic choice. The event excludes locale identifiers, gear/music details, and the preference snapshot.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 

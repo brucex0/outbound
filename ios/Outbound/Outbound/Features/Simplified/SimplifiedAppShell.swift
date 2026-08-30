@@ -1904,12 +1904,12 @@ struct GlobalConditionsButton: View {
                         if let placeName = snapshot.placeName {
                             Text(placeName)
                         }
-                        Text(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem))
+                        Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
                             .monospacedDigit()
                     }
                     HStack(spacing: 3) {
                         Image(systemName: snapshot.symbolName)
-                        Text(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem))
+                        Text(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit))
                             .monospacedDigit()
                     }
                 }
@@ -1927,6 +1927,7 @@ struct GlobalConditionsButton: View {
                 snapshot: weatherStore.snapshot,
                 errorMessage: weatherStore.errorMessage,
                 unitSystem: measurementPreferences.unitSystem,
+                temperatureUnit: measurementPreferences.temperatureUnit,
                 onRefresh: { weatherStore.refresh(force: true) }
             )
             .presentationDetents([.medium])
@@ -1936,7 +1937,7 @@ struct GlobalConditionsButton: View {
     private var accessibilityLabel: String {
         guard let snapshot = weatherStore.snapshot else { return String(localized: "Local conditions") }
         let place = snapshot.placeName ?? String(localized: "your area")
-        return String(localized: "Local conditions in \(place), \(snapshot.temperatureLabel(unitSystem: measurementPreferences.unitSystem)), \(snapshot.headline)")
+        return String(localized: "Local conditions in \(place), \(snapshot.temperatureLabel(unit: measurementPreferences.temperatureUnit)), \(snapshot.headline)")
     }
 }
 
@@ -1945,6 +1946,7 @@ private struct WeatherDetailSheet: View {
     let snapshot: RunningWeatherSnapshot?
     let errorMessage: String?
     let unitSystem: MeasurementUnitSystem
+    let temperatureUnit: TemperatureUnit
     let onRefresh: () -> Void
 
     var body: some View {
@@ -2011,7 +2013,7 @@ private struct WeatherDetailSheet: View {
 
     private func conditionLine(_ snapshot: RunningWeatherSnapshot) -> String {
         let precipitation = Int((snapshot.precipitationChance * 100).rounded())
-        return String(localized: "\(snapshot.temperatureLabel(unitSystem: unitSystem)) · Wind \(snapshot.windLabel(unitSystem: unitSystem)) · \(precipitation)% rain")
+        return String(localized: "\(snapshot.temperatureLabel(unit: temperatureUnit)) · Wind \(snapshot.windLabel(unitSystem: unitSystem)) · \(precipitation)% rain")
     }
 }
 
@@ -2602,6 +2604,7 @@ private struct SimplifiedMeView: View {
 }
 
 private struct SimplifiedSettingsView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var appearancePreferences: AppearancePreferences
     @EnvironmentObject private var authStore: AuthStore
@@ -2664,8 +2667,17 @@ private struct SimplifiedSettingsView: View {
                 }
             }
             Section("Units") {
-                Picker("Measurement", selection: $measurementPreferences.unitSystem) {
+                Picker("Measurement", selection: Binding(
+                    get: { measurementPreferences.unitSystem },
+                    set: { setMeasurementUnitSystem($0) }
+                )) {
                     ForEach(MeasurementUnitSystem.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                Picker("Temperature", selection: Binding(
+                    get: { measurementPreferences.temperatureUnit },
+                    set: { setTemperatureUnit($0) }
+                )) {
+                    ForEach(TemperatureUnit.allCases) { Text($0.title).tag($0) }
                 }
             }
             if effectiveSexIsMale == false {
@@ -2751,6 +2763,27 @@ private struct SimplifiedSettingsView: View {
             return trainingProfileSex == .male
         }
         return onboardingStore.completedProfile?.bodyProfile.sex == .male
+    }
+
+    private func setMeasurementUnitSystem(_ unitSystem: MeasurementUnitSystem) {
+        guard measurementPreferences.unitSystem != unitSystem else { return }
+        measurementPreferences.unitSystem = unitSystem
+        trackPreferenceChange(type: "measurement_unit_system", selection: unitSystem.rawValue)
+    }
+
+    private func setTemperatureUnit(_ unit: TemperatureUnit) {
+        guard measurementPreferences.temperatureUnit != unit else { return }
+        measurementPreferences.temperatureUnit = unit
+        trackPreferenceChange(type: "temperature_unit", selection: unit.rawValue)
+    }
+
+    private func trackPreferenceChange(type: String, selection: String) {
+        Task {
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string(type),
+                .selectionType: .string(selection),
+            ]))
+        }
     }
 
     private var appVersion: String {

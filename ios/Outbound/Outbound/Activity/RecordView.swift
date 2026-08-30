@@ -703,6 +703,7 @@ struct RecordView: View {
             with: guideStore.profile,
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
+            unitSystem: measurementPreferences.unitSystem,
             challenge: .off,
             suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
                 for: guideCatalog.selection.coachingContract
@@ -758,6 +759,7 @@ struct RecordView: View {
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             companionBrief: companionBrief,
+            unitSystem: measurementPreferences.unitSystem,
             challenge: selectedGuidanceChallenge,
             suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
                 for: guideCatalog.selection.coachingContract

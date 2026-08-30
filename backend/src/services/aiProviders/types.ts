@@ -62,6 +62,7 @@ export type LiveCoachLiveState = {
 
 export type LiveCoachCompiledContext = {
   version: 1;
+  measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
   workout: {
     title: string;

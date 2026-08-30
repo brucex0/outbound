@@ -34,7 +34,12 @@ export class LiveCoachSessionService {
       throw new AIProviderError("not_eligible", "The selected coach and voice combination is unavailable.");
     }
 
-    const compiled = await compileLiveCoachContext(this.prisma, userId, input.workoutId);
+    const compiled = await compileLiveCoachContext(
+      this.prisma,
+      userId,
+      input.workoutId,
+      input.measurementUnitSystem
+    );
     const access = await new DatabaseLiveCoachEntitlementResolver(this.prisma).resolve(userId, new Date(), feature);
     const requestedMode = effectiveModeForUser(feature, userId);
     let effectiveMode = requestedMode === "dynamic" && access.allowed && !compiled.context.safetyRequiresFixedOnly

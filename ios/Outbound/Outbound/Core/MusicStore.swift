@@ -13,8 +13,12 @@ final class MusicStore: ObservableObject {
     @Published private(set) var selectedCustomItems: [MusicSearchResult] = []
     @Published private(set) var isMusicDisabled: Bool
     @Published private(set) var searchingCategories: Set<MusicSearchCategory> = []
-    @Published var repeatsQueue = true
-    @Published var shufflesQueue = false
+    @Published var repeatsQueue: Bool {
+        didSet { defaults.set(repeatsQueue, forKey: repeatsQueueKey) }
+    }
+    @Published var shufflesQueue: Bool {
+        didSet { defaults.set(shufflesQueue, forKey: shufflesQueueKey) }
+    }
     @Published var selectedQuickPickID: String?
     @Published private(set) var isRefreshing = false
     @Published private(set) var isLoadingQuickPicks = false
@@ -26,6 +30,8 @@ final class MusicStore: ObservableObject {
     private let selectedQuickPickKey = "music_selected_quick_pick_v1"
     private let selectedCustomItemsKey = "music_selected_custom_items_v1"
     private let musicDisabledKey = "music_disabled_v1"
+    private let repeatsQueueKey = "music_repeats_queue_v1"
+    private let shufflesQueueKey = "music_shuffles_queue_v1"
     private let workoutPlaybackOwnedKey = "music_workout_playback_owned_v1"
     private let workoutPlaybackShouldResumeKey = "music_workout_playback_should_resume_v1"
     private let workoutQuickPickKey = "music_workout_quick_pick_v1"
@@ -42,6 +48,8 @@ final class MusicStore: ObservableObject {
     ) {
         self.service = service ?? MusicServiceFactory.makeDefault()
         self.defaults = defaults
+        repeatsQueue = defaults.object(forKey: repeatsQueueKey) as? Bool ?? true
+        shufflesQueue = defaults.object(forKey: shufflesQueueKey) as? Bool ?? false
         snapshot = self.service.currentSnapshot
         playback = self.service.currentPlayback
         isMusicDisabled = defaults.bool(forKey: musicDisabledKey)
@@ -206,6 +214,27 @@ final class MusicStore: ObservableObject {
         didChooseMusicForCurrentSetup = true
         pendingWorkoutPlayback = false
         clearWorkoutPlaybackRecoveryState()
+        persistMusicDisabled()
+        persistSelectedQuickPick()
+        persistSelectedCustomItems()
+    }
+
+    var persistedPreferences: MusicPreferencesSnapshot {
+        MusicPreferencesSnapshot(
+            selectedQuickPickId: selectedQuickPickID,
+            selectedCustomItems: selectedCustomItems,
+            isDisabled: isMusicDisabled,
+            repeatsQueue: repeatsQueue,
+            shufflesQueue: shufflesQueue
+        )
+    }
+
+    func applySyncedPreferences(_ preferences: MusicPreferencesSnapshot) {
+        selectedQuickPickID = preferences.isDisabled ? nil : preferences.selectedQuickPickId
+        selectedCustomItems = preferences.isDisabled ? [] : preferences.selectedCustomItems
+        isMusicDisabled = preferences.isDisabled
+        repeatsQueue = preferences.repeatsQueue
+        shufflesQueue = preferences.shufflesQueue
         persistMusicDisabled()
         persistSelectedQuickPick()
         persistSelectedCustomItems()
@@ -496,6 +525,14 @@ final class MusicStore: ObservableObject {
 
         return details.joined(separator: " | ")
     }
+}
+
+struct MusicPreferencesSnapshot: Codable, Equatable {
+    let selectedQuickPickId: String?
+    let selectedCustomItems: [MusicSearchResult]
+    let isDisabled: Bool
+    let repeatsQueue: Bool
+    let shufflesQueue: Bool
 }
 
 enum MusicConnectionState: Equatable {

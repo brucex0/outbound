@@ -208,6 +208,14 @@ final class GearStore: ObservableObject {
         defaultShoeID = item.id
     }
 
+    func applySyncedPreferences(shoes: [GearItem], defaultShoeID: UUID?) {
+        self.shoes = shoes
+        self.defaultShoeID = defaultShoeID.flatMap { selectedID in
+            shoes.contains(where: { $0.id == selectedID }) ? selectedID : nil
+        }
+        persist()
+    }
+
     func attachment(for item: GearItem?) -> ActivityGearAttachment? {
         guard let item else { return nil }
         return ActivityGearAttachment(shoeID: item.id, shoeName: item.displayName)

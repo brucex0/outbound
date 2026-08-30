@@ -462,6 +462,14 @@ final class APIClient {
         try await patch("/auth/me", body: request)
     }
 
+    func fetchUserPreferences() async throws -> UserPreferencesResponseDTO {
+        try await get("/auth/me/preferences")
+    }
+
+    func updateUserPreferences(_ preferences: UserPreferencesSnapshotDTO) async throws -> UserPreferencesResponseDTO {
+        try await put("/auth/me/preferences", body: preferences)
+    }
+
     func uploadMyAvatar(jpegData: Data) async throws -> AppUserProfileDTO {
         try await patch(
             "/auth/me/avatar",

@@ -33,6 +33,7 @@ export type CreateLiveCoachSessionInput = {
   coachPersonaId: string;
   voiceProfileId: string;
   coachingContract: CoachingContract;
+  measurementUnitSystem: "metric" | "imperial";
   sessionIntent: { activityType: "running" | "walking" | "cycling" | "hiking" | "swimming"; goalType: "workout" | "distance" | "time" | "freestyle" };
   appDistributionHint?: "global";
 };

@@ -27,6 +27,8 @@ Localization covers every user-facing surface, including accessibility, system p
 - Training-plan and personalization caches are tagged with their generation locale and ignored after an app-language change.
 - Built-in training-plan templates persist semantic `training_plan.title.*` keys. The iOS client resolves those keys through `Localizable.xcstrings`; plan analytics and selection continue to use the stable template ID, never a localized title.
 - Custom decimal formatting follows the active locale while metric/imperial selection remains independent.
+- On first launch, distance and temperature preferences derive from the device measurement system. They remain independently selectable so mixed systems such as miles with Celsius are supported, persist locally and to the authenticated account, and restore on another device. Weather always shows an explicit `°C` or `°F` suffix.
+- On-device and server-generated live coaching receive the selected distance system and express progress and pace in the same kilometers/per-kilometer or miles/per-mile units shown on screen.
 - Speech recognition, reviewed server-generated coaching packs, command hints, and deterministic activity parsing support English, Spanish, and Mandarin. Pack entries are keyed by canonical locale and product voice profile. Settings presents stable human product names and female/male groupings; provider identifiers remain private to the backend adapter.
 
 The catalogs are product-authored translations and still require native-speaker release review, as described below. User-authored content remains unchanged.
@@ -103,6 +105,7 @@ Visual localization does not automatically localize voice behavior.
 - Route audible companion announcements through the server-generated audio player. Settings lists only server-approved Plainstride voice profiles compatible with the current locale; previews come from the reviewed pack. When language changes, refresh the catalog and pack for the new canonical locale. Missing, invalid, stale, or untranslated audio is silent or uses a reviewed same-locale fallback—never Apple speech or an English-only fallback.
 - Localize App Intent titles, parameter labels, dialogs, shortcuts phrases, and invocation examples.
 - Keep spoken measurement units consistent with the user's measurement preference.
+- Treat the server preference snapshot as the cross-device source of truth after sign-in; local persistence keeps settings responsive and provides the initial snapshot only when the account has none.
 
 Unsupported recognition or synthesis must degrade visibly and safely; it must not reinterpret a command using English-only assumptions.
 

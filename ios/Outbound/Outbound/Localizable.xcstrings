@@ -8483,19 +8483,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Imperial"
+            "value" : "Imperial (mi)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Imperial"
+            "value" : "Imperial (mi)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "英制"
+            "value" : "英制（英里）"
           }
         }
       }
@@ -8505,19 +8505,79 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metric"
+            "value" : "Metric (km)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Métrico"
+            "value" : "Métrico (km)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "公制"
+            "value" : "公制（公里）"
+          }
+        }
+      }
+    },
+    "measurement.temperature.celsius" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Celsius (°C)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Celsius (°C)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "摄氏度（°C）"
+          }
+        }
+      }
+    },
+    "measurement.temperature.fahrenheit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fahrenheit (°F)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fahrenheit (°F)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "华氏度（°F）"
+          }
+        }
+      }
+    },
+    "Temperature" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatura"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "温度"
           }
         }
       }

@@ -102,6 +102,7 @@ Responsibilities:
 - issue 15-minute access tokens and atomically rotate opaque 30-day refresh tokens
 - provide authenticated `me` endpoints
 - delete the authenticated user's relational data and revoke Apple authorization through a recently reauthorized `DELETE /v1/auth/me`
+- persist the versioned account preference snapshot exposed by `GET`/`PUT /v1/auth/me/preferences`, including measurement and temperature units, coaching/voice configuration, appearance/theme, gear defaults, music choices, and activity-setup defaults
 
 Rules:
 
@@ -109,6 +110,7 @@ Rules:
 - derive current user from verified token
 - support local-only app mode by letting the client skip backend sync entirely when not signed in with Firebase
 - keep user-owned relations cascade-safe so account deletion removes associated activities, plans, personalization, safety, and social records
+- validate preference snapshots at the API boundary and keep provider authorization or transient playback/session state out of the snapshot
 
 ### Activities
 

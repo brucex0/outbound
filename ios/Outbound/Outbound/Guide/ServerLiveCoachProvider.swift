@@ -11,9 +11,15 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         profile: GuideProfile?,
         persona: GuidePersona?,
         sessionIntent: SessionIntent?,
-        companionBrief: CompanionSessionBriefDTO?
+        companionBrief: CompanionSessionBriefDTO?,
+        unitSystem: MeasurementUnitSystem
     ) {
-        controller.begin(persona: persona, intent: sessionIntent, companionBrief: companionBrief)
+        controller.begin(
+            persona: persona,
+            intent: sessionIntent,
+            companionBrief: companionBrief,
+            unitSystem: unitSystem
+        )
     }
 
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult {

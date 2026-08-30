@@ -51,7 +51,8 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Shared/OutboundLiveActivityAttributes.swift`: shared ActivityKit attributes/content-state model compiled into both the app target and the widget extension.
 - `Core/LocationManager.swift`: CoreLocation wrapper. Requests when-in-use permission, tracks locations with best navigation accuracy, preserves every valid chronological fix when Core Location delivers a deferred/background batch, maintains distance and a filtered elevation range incrementally, applies activity-appropriate speed validation, computes recent pace, supports background location updates, and can temporarily stop/resume GPS updates during a paused activity.
 - `Core/ActiveSessionSnapshot.swift`: lightweight real-time snapshot passed to the guide.
-- `Core/SessionFormatting.swift`: shared formatting helpers for pace and elapsed seconds.
+- `Core/SessionFormatting.swift`: shared locale-aware formatting helpers for displayed and spoken distance, elevation, pace, temperature, and elapsed time. Distance and temperature have independent device-derived defaults and explicit user selections.
+- `Core/UserPreferencesSyncStore.swift`: local-first, account-backed preference coordinator. On sign-in it restores the server snapshot, uploads the local snapshot for accounts without one, debounces later changes, and retries after a failed refresh/upload. The snapshot covers units, voice/live-guidance selection and enablement, appearance/theme, shoes/default shoe, durable music choices, and preferred activity setup controls; health-cycle details and transient provider/playback state stay out of it.
 
 ## Camera
 

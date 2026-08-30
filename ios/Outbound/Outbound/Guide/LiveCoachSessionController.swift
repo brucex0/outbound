@@ -13,7 +13,12 @@ final class LiveCoachSessionController {
         session?.access.reason ?? LiveCoachFeatureState.shared.configuration?.access.reason ?? .featureDisabled
     }
 
-    func begin(persona: GuidePersona?, intent: SessionIntent?, companionBrief: CompanionSessionBriefDTO?) {
+    func begin(
+        persona: GuidePersona?,
+        intent: SessionIntent?,
+        companionBrief: CompanionSessionBriefDTO?,
+        unitSystem: MeasurementUnitSystem
+    ) {
         end(report: nil)
         guard let persona else { return }
         let request = CreateLiveCoachSessionRequest(
@@ -23,6 +28,7 @@ final class LiveCoachSessionController {
             coachPersonaId: persona.template.id,
             voiceProfileId: persona.voice.id,
             coachingContract: persona.coachingContract.rawValue,
+            measurementUnitSystem: unitSystem.rawValue,
             sessionIntent: .init(
                 activityType: activityType(for: intent?.sport ?? persona.template.sport),
                 goalType: goalType(for: intent)

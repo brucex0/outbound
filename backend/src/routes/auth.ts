@@ -14,10 +14,58 @@ import { deleteAvatar, saveAvatar, signedAvatarURL } from "../services/avatarSto
 import { deleteUserActivityPhotos } from "../services/activityPhotoStorage.js";
 import { verifyAppleIdentityToken, revokeAppleAuthorization } from "../services/appleAuth.js";
 import { issueSession, rotateSession, revokeRefreshToken, revokeSession } from "../services/authSessions.js";
+import { Prisma } from "@prisma/client";
 
 const router = new Hono<AppEnv>();
 
 const sessionClient = z.object({ platform: z.enum(["ios", "android", "web"]), deviceLabel: z.string().trim().max(100).nullish() });
+
+const gearItemSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.literal("shoe"),
+  purpose: z.enum(["dailyTrainer", "race", "trail", "recovery"]),
+  name: z.string().max(100),
+  brand: z.string().max(100),
+  model: z.string().max(100),
+  startedAt: z.string().datetime({ offset: true }),
+  retiredAt: z.string().datetime({ offset: true }).nullable(),
+  distanceLimitM: z.number().finite().min(0).max(2_000_000),
+  notes: z.string().max(500),
+}).strict();
+
+const musicSelectionSchema = z.object({
+  id: z.string().min(1).max(200),
+  title: z.string().max(200),
+  subtitle: z.string().max(300),
+  category: z.enum(["songs", "albums", "playlists"]),
+}).strict();
+
+const preferencesSchema = z.object({
+  schemaVersion: z.literal(1),
+  measurementUnitSystem: z.enum(["metric", "imperial"]),
+  temperatureUnit: z.enum(["celsius", "fahrenheit"]),
+  voiceGuideEnabled: z.boolean(),
+  appearanceMode: z.enum(["system", "light", "dark"]),
+  guideSelection: z.object({
+    coachPersonaId: z.string().min(1).max(100),
+    voiceProfileId: z.string().min(1).max(100),
+    theme: z.enum(["victoryGold", "indigo", "ocean", "forest", "rose", "aurora", "electricLime", "neonPulse"]),
+    intensity: z.enum(["calm", "balanced", "driven"]),
+    nudgeFrequency: z.enum(["low", "normal", "high"]),
+    coachingContract: z.enum(["quiet", "responsive", "coach_me"]),
+  }).strict(),
+  shoes: z.array(gearItemSchema).max(50),
+  defaultShoeId: z.string().uuid().nullable(),
+  music: z.object({
+    selectedQuickPickId: z.string().min(1).max(200).nullable(),
+    selectedCustomItems: z.array(musicSelectionSchema).max(100),
+    isDisabled: z.boolean(),
+    repeatsQueue: z.boolean(),
+    shufflesQueue: z.boolean(),
+  }).strict(),
+  preferredSessionPage: z.enum(["map", "camera"]),
+  preferredLaunchGoalMode: z.string().max(32).nullable(),
+}).strict();
 
 router.post("/apple", zValidator("json", sessionClient.extend({
   identityToken: z.string().min(1), authorizationCode: z.string().min(1), rawNonce: z.string().min(16).max(256),
@@ -127,6 +175,50 @@ router.get("/me", async (c) => {
   }
   return c.json(userWithProfile);
 });
+
+router.get("/me/preferences", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+  const preferences = await getPrismaClient().userPreferences.findUnique({
+    where: { userId: user.id },
+  });
+  return c.json({
+    contractVersion: 1,
+    preferences: preferences?.data ?? null,
+    updatedAt: preferences?.updatedAt.toISOString() ?? null,
+  });
+});
+
+router.put(
+  "/me/preferences",
+  zValidator("json", preferencesSchema),
+  async (c) => {
+    const unavailable = requireDatabase(c);
+    if (unavailable) return unavailable;
+    const user = await getAuthenticatedAppUser(c);
+    if (!user) return c.json({ error: "Authentication required." }, 401);
+    const data = c.req.valid("json");
+    const preferences = await getPrismaClient().userPreferences.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        schemaVersion: data.schemaVersion,
+        data: data as Prisma.InputJsonValue,
+      },
+      update: {
+        schemaVersion: data.schemaVersion,
+        data: data as Prisma.InputJsonValue,
+      },
+    });
+    return c.json({
+      contractVersion: 1,
+      preferences: preferences.data,
+      updatedAt: preferences.updatedAt.toISOString(),
+    });
+  }
+);
 
 router.patch(
   "/me",

@@ -28,12 +28,12 @@ struct RunningWeatherSnapshot: Codable, Equatable {
         Date().timeIntervalSince(fetchedAt) < 30 * 60
     }
 
-    func temperatureLabel(unitSystem: MeasurementUnitSystem) -> String {
+    func temperatureLabel(unit: TemperatureUnit) -> String {
         let measurement = Measurement(value: temperatureCelsius, unit: UnitTemperature.celsius)
-        let value = unitSystem == .imperial
+        let value = unit == .fahrenheit
             ? measurement.converted(to: .fahrenheit).value
             : measurement.value
-        return "\(Int(value.rounded()))°"
+        return "\(Int(value.rounded()))\(unit.symbol)"
     }
 
     func windLabel(unitSystem: MeasurementUnitSystem) -> String {

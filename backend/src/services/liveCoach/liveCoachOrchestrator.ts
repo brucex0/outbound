@@ -133,7 +133,10 @@ export class LiveCoachOrchestrator {
         voiceProfileId: session.voiceProfileId as VoiceProfileId,
         providerVoice: session.route.providerVoice,
         semanticMoment: input.moment,
-        stableInstructions: stableLiveCoachInstructions(session.locale),
+        stableInstructions: stableLiveCoachInstructions(
+          session.locale,
+          session.compiledContext.measurementUnitSystem
+        ),
         compiledContext: session.compiledContext,
         liveState: input.liveState,
         recentCueSummaries: liveCoachCueRepository.recentCueSummariesForSession(session.id),
