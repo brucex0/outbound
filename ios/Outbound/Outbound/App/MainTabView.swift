@@ -56,6 +56,7 @@ struct MainTabView: View {
             .environmentObject(trainingPlanStore)
             .environmentObject(healthAuthorizationStore)
             .environmentObject(healthImportStore)
+            .environmentObject(measurementPreferences)
             .interactiveDismissDisabled()
         }
         .sheet(isPresented: $healthImportStore.isReviewPresented) {

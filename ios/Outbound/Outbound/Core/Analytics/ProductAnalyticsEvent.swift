@@ -83,6 +83,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case pushNotificationOpened = "push_notification_opened"
     case onboardingIdentityPromptViewed = "onboarding_identity_prompt_viewed"
     case onboardingIdentityCompleted = "onboarding_identity_completed"
+    case onboardingTrainingProfileViewed = "onboarding_training_profile_viewed"
+    case onboardingTrainingProfileCompleted = "onboarding_training_profile_completed"
     case authenticationSessionRecovered = "authentication_session_recovered"
     case healthConnectionRequested = "health_connection_requested"
     case healthConnectionCompleted = "health_connection_completed"
@@ -232,6 +234,8 @@ enum ProductAnalyticsSchema {
         .pushNotificationOpened: [.sourceType, .selectionType],
         .onboardingIdentityPromptViewed: [.missingDisplayName, .missingEmail],
         .onboardingIdentityCompleted: [.missingDisplayName, .missingEmail],
+        .onboardingTrainingProfileViewed: [],
+        .onboardingTrainingProfileCompleted: [.result, .sourceType],
         .authenticationSessionRecovered: [.result],
         .healthConnectionRequested: [],
         .healthConnectionCompleted: [.result],

@@ -21,7 +21,7 @@ New authenticated users should reach a concrete success state in about 90 second
 7. Optionally invite a person or find a club.
 8. Land on Today with the first session ready.
 
-The flow should avoid feature tours, early permission prompts, mandatory essays, body-profile intake, and empty-dashboard handoffs. AI should prove its value through the generated week and explanation rather than through a chatbot-centric setup.
+The flow should avoid feature tours, early permission prompts, mandatory essays, mandatory body-profile intake, and empty-dashboard handoffs. AI should prove its value through the generated week and explanation rather than through a chatbot-centric setup.
 
 ## Target Flow
 
@@ -50,40 +50,41 @@ Before goal intake, show a short identity step only when Apple did not provide a
    - Ask preferred long-run day only when relevant.
    - Offer one optional context field for injury, illness, travel, or schedule constraints.
 
-5. First week
+5. First week, editable understanding, and calibration
    - Show the three-session week, total time, and one precise AI explanation.
    - Offer easier, different days, or Ask adjustments.
    - Do not add another plan-confirmation screen after the editable understanding and first-week preview.
-
-6. Editable understanding and calibration
    - Show a compact summary of goal, realistic schedule, starting baseline, and material constraints.
    - Label runner-provided facts separately from starting estimates and allow section-level edits.
    - Explain that the first 7-10 days use three normal training runs to tune effort, endurance, and recovery.
    - Do not require an all-out fitness test. Offer recent race/imported benchmark input only as an optional experienced-runner path.
-   - Make the calibration explanation skippable; it must not block Today.
+   - Keep the explanation on the same final review screen instead of making calibration another read-only step.
 
-7. Optional social connection
+6. Optional social connection
    - Ask `Who helps you get out?`
    - Offer invite someone, find a club, or do this later.
    - Explain that health details are not shared.
 
-8. Apple Health personalization
-   - After the intake and calibration explanation, offer an optional Apple Health connection before creating the first plan.
+7. Optional private training details and Apple Health
+   - After the goal, baseline, and realistic-week intake, offer one clearly skippable screen before the final review.
+   - Let runners add any combination of birthday, height, weight, and sex assigned at birth manually; no field is required.
+   - Explain that birthday is stored instead of a static age so it remains accurate.
+   - Offer Apple Health on the same screen as a faster alternative to manual entry, not as another onboarding page.
    - Request access only after the user taps Connect Apple Health.
    - Use up to eight weeks of running workouts to refine starting frequency and comfortable duration.
    - Save available birthday, biological sex, height, and weight to the private training profile.
    - Exclude workouts created by Plainstride and let the user continue without connecting.
 
-9. Today
+8. Today
    - Land on the real Today surface with the quote, first workout, and Start action.
    - Keep the onboarding recommendation visually continuous with the product.
    - Show small `Run 1 of 3` calibration progress without making Today feel like an assessment dashboard.
 
-The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`.
+The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`. It remains visual direction; the five-step ordering in this document and `SimplifiedOnboardingFlow.swift` is canonical.
 
 ## Permission Timing
 
-- Apple Health: optional after intake and calibration, immediately before first-plan creation.
+- Apple Health: optional on the private training-details screen after core intake, before the combined final review and first-plan creation.
 - Location and motion: when the first outdoor run starts.
 - Notifications: after the user accepts the plan.
 - Camera and photos: on first use.
@@ -94,11 +95,11 @@ Do not request multiple system permissions during initial signup.
 
 ## Deferred Profile Inputs
 
-Age, height, weight, body profile, guide face, guide voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. They should not block the first useful plan.
+Guide face, guide voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. Private training details remain editable under Me when the optional onboarding screen is skipped or needs an update. They never block the first useful plan.
 
 ## Current Implementation
 
-The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a six-step implementation of goal, baseline, realistic week, editable understanding, calibration, and optional Apple Health personalization, preceded by the conditional identity step described above. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
+The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, optional private training details, and one combined understanding/calibration review, preceded by the conditional identity step described above. The optional training-details step supports manual entry, Apple Health, or one-tap skip. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
 
 Settings includes a DEBUG-only replay action that restarts the simplified onboarding flow without signing out.
 
