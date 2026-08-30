@@ -137,6 +137,20 @@ The iOS progress director sends periodic `progress` moments through the same dyn
 
 Never skip the fixed-only burn-in. If dynamic latency, cost, policy, or provider health degrades, redeploy `fixed_only` to stop new Alibaba calls while keeping reviewed audio available.
 
+## Founding Access And Three-Run Trial
+
+Production uses `LIVE_COACH_ACCESS_MODE=founding_trial` with a founding limit of 1,000 accounts and a three-run trial for later accounts.
+
+| Account | Dynamic access |
+| --- | --- |
+| One of the oldest 1,000 accounts | A durable `live_coach_dynamic` promotion entitlement with no expiration. |
+| Later account with fewer than three consumed trials | Dynamic access for the current guided run; analytics reports the existing bounded `open_beta` reason for compatibility with shipped clients. |
+| Later account after three consumed trials | Dynamic generation is unavailable with `entitlement_required`; fixed guidance remains available and no in-run paywall appears. |
+
+A trial reservation is created only for a session that is otherwise eligible for dynamic coaching. It becomes consumed when that session receives its first successful dynamic cue. Canceled starts, Quiet guidance, safety-forced fixed sessions, expired sessions with no dynamic success, and provider failures release the reservation and do not consume a trial. Concurrent sessions cannot reserve past the configured limit. The first-1,000 promotion is persisted in `FeatureEntitlement`; lifetime trial counters use `FeatureUsagePeriod` key `three_run_trial_v1`.
+
+Use unlimited `open_beta` only as a deliberate temporary or development override. Do not switch to `subscription_required` until the verified StoreKit/server entitlement flow and compatible client paywall are ready.
+
 ## Current Release Gate
 
 For the EN/ZH pilot, do not enable `fixed_only` until all 312 in-scope assets have been generated, approved, signed, uploaded, exposed through immutable HTTPS URLs, and protected by the server locale gate. A complete three-locale release still requires all 468 assets. Do not set global mode to `dynamic`, even at 0%, until the Alibaba API key is in Secret Manager and startup validation passes with the workspace endpoint, approved model, complete six-voice map, and published pack.

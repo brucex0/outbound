@@ -23,7 +23,7 @@ Cross-checking the handoff against the repository produced these necessary adjus
 - Rechecks both the global dynamic mode and deterministic rollout cohort on every cue, applies authenticated-user plus per-session rate limits, and permits at most one provider generation per session at a time.
 - Signs the provider-neutral manifest with ES256, binds it to the expected catalog version, declares compatible product personas, verifies every reviewed WAV again at publication, and makes immutable asset publication safely resumable.
 - Implemented generation and publication tooling, but intentionally did not fabricate or commit audio. Human listening approval, immutable upload, CDN URLs, and the bundled minimal pack remain required before enabling server audio.
-- `subscription_required` remains fail-closed until a verified StoreKit/server entitlement flow is explicitly marked ready. Open beta is the only enabled V1 access policy.
+- `subscription_required` remains fail-closed until a verified StoreKit/server entitlement flow is explicitly marked ready. Production now uses `founding_trial`: the oldest 1,000 accounts receive a durable promotion and later accounts receive three successfully exercised dynamic-coaching runs before fixed-only fallback. Unlimited `open_beta` remains an explicit operational override.
 
 The Alibaba key shared during implementation was not written to source, documentation, shell commands, logs, or generated artifacts. Rotate it before provisioning Secret Manager because chat is not an approved secret channel.
 
@@ -46,7 +46,7 @@ Build one provider-neutral backend boundary that:
 - supports multiple product-owned coach personas and multiple acoustic voice profiles without exposing provider voice IDs;
 - obtains the dynamic coaching utterance and its audio in one provider request when the selected provider supports that capability;
 - serves fixed cues as pre-generated server assets, with no runtime AI call;
-- grants dynamic coaching to everyone during an open beta while enforcing a backend entitlement seam that can later require a subscription;
+- grants the oldest 1,000 accounts permanent founding access and later accounts three successfully exercised trial runs while preserving a backend entitlement seam for subscriptions;
 - keeps the new server-audio architecture behind a validated operational mode with a fast dynamic-generation kill switch;
 - pins the selected route for the full workout so the runner does not hear a different voice mid-session;
 - bounds cost, latency, privacy exposure, and cue frequency before any provider call;
@@ -139,7 +139,9 @@ The backend is the authority for whether the new architecture can run. Start wit
 
 ```text
 LIVE_COACH_SERVER_AUDIO_MODE=disabled|fixed_only|dynamic
-LIVE_COACH_ACCESS_MODE=open_beta|subscription_required
+LIVE_COACH_ACCESS_MODE=open_beta|founding_trial|subscription_required
+LIVE_COACH_FOUNDING_USER_LIMIT=1000
+LIVE_COACH_TRIAL_RUN_LIMIT=3
 LIVE_COACH_CONFIG_VERSION=1
 LIVE_COACH_ALLOWED_MARKETS=global
 LIVE_COACH_ENABLED_PERSONAS=plainstride_supportive_v1,plainstride_focused_v1
@@ -764,7 +766,7 @@ model FeatureUsagePeriod {
 }
 ```
 
-Adjust relations to the actual Prisma `User` model. `FeatureEntitlement` stores only durable, backend-verified grants; the `open_beta` policy is computed and does not create a fake grant for every user. Store only a hash or opaque reference for an external transaction, never raw receipts or signed payloads. `FeatureUsagePeriod` is optional until a cross-session/monthly quota is enabled, but the access interface must support it from the start.
+Adjust relations to the actual Prisma `User` model. `FeatureEntitlement` stores durable backend grants, including the founding promotion; unlimited `open_beta` remains computed and does not create a fake grant for every user. Store only a hash or opaque reference for an external transaction, never raw receipts or signed payloads. `FeatureUsagePeriod` owns the later-account lifetime three-run trial and can also support a future cross-session/monthly quota.
 
 Treat provider/model/voice as internal operational data. Do not persist transcript, audio, prompt, exact telemetry, or provider response body in `LiveCoachCue`. Use an in-process short TTL cache for V1 idempotent response replay; if Cloud Run concurrency or multiple instances make duplicate cost measurable, move only the short-lived encrypted result and in-flight lock to an appropriate shared cache.
 
@@ -798,7 +800,7 @@ interface LiveCoachEntitlementResolver {
 }
 ```
 
-V1 uses `LIVE_COACH_ACCESS_MODE=open_beta`; every authenticated user receives an ephemeral `allowed: true, reason: open_beta` decision, subject to operational mode and abuse/cost limits. There is no paywall UI and no database entitlement row for this automatic grant.
+Production uses `LIVE_COACH_ACCESS_MODE=founding_trial`. The oldest 1,000 accounts receive a durable `promotion` entitlement; account order is determined by `User.createdAt` with `User.id` as the stable tie-breaker. Later accounts receive three lifetime trial runs. A run reserves capacity when its eligible dynamic session is created and consumes one trial only after its first successful dynamic cue. Canceled, expired-without-success, Quiet, safety-fixed, and provider-failed sessions release the reservation. Trial accounting uses `FeatureUsagePeriod` key `three_run_trial_v1`, preventing concurrent sessions from exceeding the limit. After the trial, dynamic access returns `entitlement_required`, reviewed fixed guidance continues, and no paywall appears mid-run. Unlimited `open_beta` remains available only as an explicit development or temporary operational override.
 
 Future monetization changes the backend mode to `subscription_required` only after the purchase flow and server verifier are deployed. iOS uses StoreKit 2 for localized product display, purchase, restore, and immediate UI state, then sends the App Store-signed transaction representation to a dedicated backend sync endpoint. The backend verifies the signed transaction and current subscription state, binds it to the authenticated Plainstride account, and writes/revokes a durable capability grant. Apple documents that StoreKit transactions and App Store Server API transaction/subscription results are App Store-signed JWS data; use the current official [StoreKit Transaction](https://developer.apple.com/documentation/storekit/transaction), [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi), and [App Store Server Notifications](https://developer.apple.com/documentation/AppStoreServerNotifications/receiving-app-store-server-notifications) guidance when implementing this later phase.
 
@@ -958,7 +960,7 @@ Health checks must not call the model on every application `/health` request.
 
 - Context is compiled once with stable ordering, a hash, and an enforced budget.
 - Guide profile/settings persistence uses stable coach-persona and voice-profile IDs; provider voice IDs never enter the user profile.
-- `open_beta` grants every authenticated user dynamic access without fake persisted grants.
+- `founding_trial` persists a promotion for the oldest 1,000 accounts, atomically limits later accounts to three successfully exercised trial runs, and preserves unlimited `open_beta` only as an explicit override.
 - Session ownership, config mode, entitlement, idempotent creation, expiration, usage reservations, and cue quotas are enforced transactionally.
 - Cue rows contain only operational metadata, never content or exact telemetry.
 
@@ -1164,7 +1166,7 @@ Do not implement or expose the paywall during the free launch. Complete this pha
 - config mode fail-closed behavior and per-cue dynamic kill-switch recheck;
 - deterministic 0/partial/100-percent rollout with fixed-only behavior outside the cohort;
 - coach-persona/voice compatibility and catalog filtering;
-- `open_beta`, entitlement-required, promotion, subscription, and quota decisions;
+- unlimited open-beta, founding promotion, three-run trial, entitlement-required, subscription, and quota decisions;
 - idempotent quota reservation/finalization/release;
 - Alibaba stream parsing and sanitized errors;
 - audio format/size/duration validation;
@@ -1198,7 +1200,7 @@ Run the backend TypeScript build and an iOS build-only compile check. Then verif
 4. trigger a dynamic semantic moment and confirm one Alibaba call returns matching text/audio;
 5. set `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and confirm no new Alibaba calls occur while fixed cues continue;
 6. set the mode to `disabled` and confirm neither server AI nor Apple speech runs;
-7. use `LIVE_COACH_ACCESS_MODE=open_beta` and confirm every authenticated user is allowed subject to quotas;
+7. use `LIVE_COACH_ACCESS_MODE=founding_trial` and confirm the oldest 1,000 accounts receive promotion access, later accounts consume only successful dynamic runs, and the fourth run receives fixed guidance;
 8. simulate an entitlement-required decision and confirm fixed guidance continues and no paywall appears mid-run;
 9. confirm music ducks and resumes;
 10. trigger route caution during coaching and confirm priority/cancellation;
@@ -1217,7 +1219,7 @@ Run the backend TypeScript build and an iOS build-only compile check. Then verif
 5. Land iOS provider-neutral session/cue client and audio player behind its build capability flag.
 6. Remove Apple/Foundation/debug provider paths and the old `/analyze` route in the same release boundary; do not ship a mixed voice fallback.
 7. Enable `fixed_only` for device testing and validate config rollback before allowing AI traffic.
-8. Enable `dynamic` for an internal cohort with Alibaba pinned to one dated model and voice mapping. Keep access mode `open_beta`.
+8. Enable `dynamic` for an internal cohort with Alibaba pinned to one dated model and voice mapping. Use `founding_trial` in production; reserve unlimited `open_beta` for deliberate temporary validation.
 9. Measure p50/p95 latency, invalid/stale/fallback rate, cue frequency, and estimated cost by locale, persona, and voice profile.
 10. Tune request deadlines and cue limits through server policy, then gradually expand the dynamic cohort. The emergency dynamic kill switch remains effective for existing sessions.
 11. Before charging, complete the deferred StoreKit/server-verification phase, ship a localized paywall/restore path, enforce a minimum client version, and validate subscription lifecycle events. Only then switch access mode to `subscription_required`.
@@ -1236,7 +1238,7 @@ The implementation is complete only when:
 - coach persona and acoustic voice are separate stable product selections, with every exposed combination supported by dynamic routing and a reviewed fixed fallback pack;
 - the selected route is pinned for the workout and failure uses a cached generated pack;
 - the backend architecture defaults to `disabled`, supports `fixed_only`/`dynamic`, fails closed on invalid configuration, and rechecks the emergency dynamic kill switch for every cue;
-- free launch uses the backend `open_beta` access policy for all authenticated users, and no client flag can bypass entitlement/quota decisions;
+- free launch permanently grandfathers the oldest 1,000 accounts and atomically limits later accounts to three successfully exercised dynamic runs; no client flag can bypass entitlement or trial decisions;
 - future paid mode has a documented server-verified capability-grant path and cannot remove fixed safety/workout audio;
 - live-coach routes require auth, ownership, bounded schemas, idempotency, quotas, and deadlines;
 - server context is authoritative, compact, deterministic, privacy-filtered, and compiled once per session;

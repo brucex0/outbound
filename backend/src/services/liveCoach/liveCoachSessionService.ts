@@ -5,7 +5,11 @@ import { buildAIProviderRegistry } from "../aiProviders/registry.js";
 import { resolveAIRoute } from "../aiProviders/router.js";
 import type { ResolvedAIRoute, SupportedAILocale } from "../aiProviders/types.js";
 import { compileLiveCoachContext } from "./liveCoachContextCompiler.js";
-import { DatabaseLiveCoachEntitlementResolver } from "./liveCoachAccessPolicy.js";
+import {
+  DatabaseLiveCoachEntitlementResolver,
+  LIVE_COACH_CAPABILITY,
+  LIVE_COACH_TRIAL_PERIOD_KEY,
+} from "./liveCoachAccessPolicy.js";
 import { findCoachPersona, findVoiceProfile } from "./liveCoachCatalog.js";
 import { effectiveModeForUser, isLiveCoachLocaleEnabled, loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { CreateLiveCoachSessionInput, LiveCoachAccessDecision, LiveCoachSessionSnapshot } from "./liveCoachTypes.js";
@@ -40,9 +44,13 @@ export class LiveCoachSessionService {
       input.workoutId,
       input.measurementUnitSystem
     );
-    const access = await new DatabaseLiveCoachEntitlementResolver(this.prisma).resolve(userId, new Date(), feature);
+    const accessResolver = new DatabaseLiveCoachEntitlementResolver(this.prisma);
+    let access = await accessResolver.resolve(userId, new Date(), feature);
     const requestedMode = effectiveModeForUser(feature, userId);
-    let effectiveMode = requestedMode === "dynamic" && access.allowed && !compiled.context.safetyRequiresFixedOnly
+    let effectiveMode = requestedMode === "dynamic"
+        && access.allowed
+        && input.coachingContract !== "quiet"
+        && !compiled.context.safetyRequiresFixedOnly
       ? "dynamic" as const
       : "fixed_only" as const;
     let route: ResolvedAIRoute | null = null;
@@ -60,6 +68,21 @@ export class LiveCoachSessionService {
         }, providerConfig.routePolicyVersion).route;
       } catch {
         effectiveMode = "fixed_only";
+      }
+    }
+
+    let trialReserved = false;
+    if (effectiveMode === "dynamic" && feature.accessMode === "founding_trial" && access.reason === "open_beta") {
+      trialReserved = await accessResolver.reserveTrialRun(userId, feature);
+      if (!trialReserved) {
+        access = {
+          capability: "live_coach_dynamic",
+          allowed: false,
+          reason: "entitlement_required",
+          paywallAvailable: false,
+        };
+        effectiveMode = "fixed_only";
+        route = null;
       }
     }
 
@@ -95,6 +118,7 @@ export class LiveCoachSessionService {
         expiresAt,
       }});
     } catch (error) {
+      if (trialReserved) await accessResolver.releaseTrialRun(userId).catch(() => undefined);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         session = await this.prisma.liveCoachSession.findUniqueOrThrow({
           where: { userId_clientSessionId: { userId, clientSessionId: input.clientSessionId } },
@@ -115,11 +139,31 @@ export class LiveCoachSessionService {
     return snapshotFromRow(session);
   }
 
-  async end(userId: string, sessionId: string): Promise<void> {
+  async end(userId: string, sessionId: string, outcome: "completed" | "discarded" | "interrupted"): Promise<void> {
     const session = await this.prisma.liveCoachSession.findFirst({ where: { id: sessionId, userId } });
     if (!session) throw new AIProviderError("not_eligible", "Live-coach session was not found.");
-    if (session.status === "ended") return;
-    await this.prisma.liveCoachSession.update({ where: { id: session.id }, data: { status: "ended", endedAt: new Date() } });
+    if (session.status !== "active") return;
+    await this.prisma.$transaction(async (tx) => {
+      const ended = await tx.liveCoachSession.updateMany({
+        where: { id: session.id, status: "active" },
+        data: { status: outcome, endedAt: new Date() },
+      });
+      if (ended.count === 0
+          || session.accessReason !== "open_beta"
+          || session.effectiveAudioMode !== "dynamic") return;
+      await tx.featureUsagePeriod.updateMany({
+        where: {
+          userId,
+          capability: LIVE_COACH_CAPABILITY,
+          periodKey: LIVE_COACH_TRIAL_PERIOD_KEY,
+          reservedCount: { gt: 0 },
+        },
+        data: {
+          reservedCount: { decrement: 1 },
+          ...(session.dynamicCueCount > 0 ? { successfulCount: { increment: 1 } } : {}),
+        },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   private createResponse(
@@ -169,6 +213,7 @@ function snapshotFromRow(session: LiveCoachSession): LiveCoachSessionSnapshot {
     personaVersion: session.personaVersion,
     voiceProfileId: session.voiceProfileId,
     coachingContract: session.coachingContract as LiveCoachSessionSnapshot["coachingContract"],
+    accessReason: session.accessReason as LiveCoachSessionSnapshot["accessReason"],
     effectiveMode: session.effectiveAudioMode as LiveCoachSessionSnapshot["effectiveMode"],
     compiledContext: session.compiledContext as unknown as LiveCoachSessionSnapshot["compiledContext"],
     contextHash: session.contextHash,

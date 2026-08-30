@@ -85,6 +85,7 @@ export type LiveCoachSessionSnapshot = {
   personaVersion: number;
   voiceProfileId: string;
   coachingContract: CoachingContract;
+  accessReason: LiveCoachAccessReason;
   effectiveMode: LiveCoachMode;
   compiledContext: LiveCoachCompiledContext;
   contextHash: string;

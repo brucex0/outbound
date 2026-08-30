@@ -133,7 +133,9 @@ Notes:
 
 The deploy script defaults live coaching to `disabled`, enables only `en` and `zh-Hans` for the fixed-audio pilot, wires Alibaba routing to workspace `ws-i638drcm5lthrc29`, and keeps dynamic rollout at zero. Once provisioned, it binds `ALIBABA_AI_API_KEY` from Secret Manager entry `outbound-alibaba-ai-api-key`. Because server audio remains disabled, a code deploy cannot begin AI traffic by itself.
 
-The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, and Alibaba endpoint identity/region. The approved dated model and six product-to-provider voice mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for the current mapping and increment `LIVE_COACH_CONFIG_VERSION` when a fresh rollout cohort assignment is intended.
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, Alibaba endpoint identity/region, founding-user limit, and trial-run limit. The approved dated model and six product-to-provider voice mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for the current mapping and increment `LIVE_COACH_CONFIG_VERSION` when a fresh rollout cohort assignment is intended.
+
+Production dynamic access uses `LIVE_COACH_ACCESS_MODE=founding_trial`, `LIVE_COACH_FOUNDING_USER_LIMIT=1000`, and `LIVE_COACH_TRIAL_RUN_LIMIT=3`. The oldest 1,000 accounts receive a durable promotion grant when first evaluated. Later accounts reserve a trial when a dynamic session starts, consume it only after the first successful dynamic cue in that session, and release it on cancellation, expiration, provider failure, or a session that never receives dynamic audio. After three consumed trials, dynamic generation returns `entitlement_required` while reviewed fixed guidance continues. `open_beta` remains an explicit unlimited development/temporary-operations mode.
 
 Operational sequence:
 
@@ -167,6 +169,9 @@ ALIBABA_AI_API_KEY_SECRET=outbound-alibaba-ai-api-key \
 ALIBABA_AI_ENABLED=true \
 ALIBABA_AI_BASE_URL='https://WORKSPACE_ID.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' \
 LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
+LIVE_COACH_ACCESS_MODE=founding_trial \
+LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
+LIVE_COACH_TRIAL_RUN_LIMIT=3 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
 LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-28.1/manifest.json' \
 LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-28.1/assets' \

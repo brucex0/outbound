@@ -67,7 +67,10 @@ export class LiveCoachOrchestrator {
       });
     }
 
-    const access = await new DatabaseLiveCoachEntitlementResolver(this.prisma).resolve(userId, new Date(), config);
+    const accessResolver = new DatabaseLiveCoachEntitlementResolver(this.prisma);
+    const access = config.accessMode === "founding_trial" && session.accessReason === "open_beta"
+      ? { capability: "live_coach_dynamic" as const, allowed: true, reason: "open_beta" as const, paywallAvailable: false }
+      : await accessResolver.resolve(userId, new Date(), config);
     if (!access.allowed) {
       await this.recordFixedCue(session.id, input, session.contextHash, access.reason === "entitlement_required" ? "entitlement_required" : "unavailable");
       return fixedFallbackEnvelope({
@@ -179,6 +182,10 @@ export class LiveCoachOrchestrator {
         inputTokenBucket: countBucket(result.usage.inputTokens),
         outputAudioBucket: byteBucket(result.audio.byteLength),
       });
+      if (session.accessReason === "open_beta"
+          && session.dynamicCueCount === 0) {
+        await accessResolver.finalizeTrialRun(userId);
+      }
       return envelope;
     } catch (error) {
       const providerError = sanitizedProviderError(error);

@@ -5,7 +5,7 @@ import { SUPPORTED_AI_LOCALES, VOICE_PROFILE_IDS, type CoachPersonaId, type Supp
 
 export const LIVE_COACH_MODES = ["disabled", "fixed_only", "dynamic"] as const;
 export type LiveCoachMode = (typeof LIVE_COACH_MODES)[number];
-export type LiveCoachAccessMode = "open_beta" | "subscription_required";
+export type LiveCoachAccessMode = "open_beta" | "founding_trial" | "subscription_required";
 
 export type LiveCoachFeatureConfig = {
   mode: LiveCoachMode;
@@ -17,6 +17,8 @@ export type LiveCoachFeatureConfig = {
   enabledPersonaIds: CoachPersonaId[];
   enabledVoiceProfileIds: VoiceProfileId[];
   dynamicRolloutPercent: number;
+  foundingUserLimit: number;
+  trialRunLimit: number;
   dynamicCueLimitResponsive: number;
   dynamicCueLimitCoachMe: number;
   cueValidityMilliseconds: number;
@@ -37,7 +39,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
   const mode = enumValue(env.LIVE_COACH_SERVER_AUDIO_MODE, LIVE_COACH_MODES, "disabled");
   const accessMode = enumValue(
     env.LIVE_COACH_ACCESS_MODE,
-    ["open_beta", "subscription_required"] as const,
+    ["open_beta", "founding_trial", "subscription_required"] as const,
     "open_beta"
   );
   return {
@@ -60,6 +62,8 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
       "plainstride_easygoing_1",
     ]) as VoiceProfileId[],
     dynamicRolloutPercent: boundedInteger(env.LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT, 0, 0, 100),
+    foundingUserLimit: boundedInteger(env.LIVE_COACH_FOUNDING_USER_LIMIT, 1_000, 1, 1_000_000),
+    trialRunLimit: boundedInteger(env.LIVE_COACH_TRIAL_RUN_LIMIT, 3, 1, 100),
     dynamicCueLimitResponsive: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE, 8, 0, 30),
     dynamicCueLimitCoachMe: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME, 15, 0, 30),
     cueValidityMilliseconds: boundedInteger(env.LIVE_COACH_CUE_VALIDITY_MILLISECONDS, 5_000, 1_000, 10_000),

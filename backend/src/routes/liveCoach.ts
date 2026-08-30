@@ -132,7 +132,7 @@ router.post("/sessions/:sessionId/end", zValidator("json", endSchema), async (c)
   const appUser = await getAuthenticatedAppUser(c);
   if (!appUser) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
   const sessionId = c.req.param("sessionId");
-  await new LiveCoachSessionService(getPrismaClient()).end(appUser.id, sessionId);
+  await new LiveCoachSessionService(getPrismaClient()).end(appUser.id, sessionId, c.req.valid("json").outcome);
   liveCoachCueRepository.abortSession(sessionId);
   return c.json({ contractVersion: 1, ended: true });
 });
