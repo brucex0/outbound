@@ -187,6 +187,10 @@ final class CommunityRouteStore: ObservableObject {
     private let maximumCachedCommunityPointCount = 100_000
     private let maximumImportedRoutes = 100
     private let maximumImportedPointCount = 250_000
+    private let automaticLoadMinimumInterval: TimeInterval = 30
+    private var lastAutomaticDiscoveryLoadAt: Date?
+    private var lastAutomaticMineLoadAt: Date?
+    private var loadingOperationCount = 0
 
     init(fileManager: FileManager = .default) {
         let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -261,12 +265,34 @@ final class CommunityRouteStore: ObservableObject {
         }
     }
 
+    @discardableResult
+    func startAutomaticDiscoveryLoadIfNeeded(now: Date = Date()) -> Bool {
+        guard shouldBeginAutomaticLoad(lastLoadAt: lastAutomaticDiscoveryLoadAt, now: now) else {
+            return false
+        }
+        lastAutomaticDiscoveryLoadAt = now
+        Task { await refreshDiscovery() }
+        return true
+    }
+
+    @discardableResult
+    func startAutomaticMineLoadIfNeeded(now: Date = Date()) -> Bool {
+        guard shouldBeginAutomaticLoad(lastLoadAt: lastAutomaticMineLoadAt, now: now) else {
+            return false
+        }
+        lastAutomaticMineLoadAt = now
+        Task { await refreshMine() }
+        return true
+    }
+
     func refreshDiscovery(query: String = "") async {
-        isLoading = true
-        defer { isLoading = false }
+        beginLoading()
+        defer { endLoading() }
         do {
             discovered = try await APIClient.shared.fetchCommunityRoutes(query: query).routes
+            clearError()
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = String(localized: "Routes could not be loaded. Try again.")
         }
     }
@@ -274,8 +300,8 @@ final class CommunityRouteStore: ObservableObject {
     func search(_ query: String) async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { await refreshDiscovery(); return }
-        isLoading = true
-        defer { isLoading = false }
+        beginLoading()
+        defer { endLoading() }
         do {
             let named = try await APIClient.shared.fetchCommunityRoutes(query: trimmed).routes
             let placemarks = try? await CLGeocoder().geocodeAddressString(trimmed)
@@ -291,22 +317,33 @@ final class CommunityRouteStore: ObservableObject {
             discovered = (named + nearby).reduce(into: []) { result, route in
                 if !result.contains(where: { $0.id == route.id }) { result.append(route) }
             }
+            clearError()
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = String(localized: "Routes could not be loaded. Try again.")
         }
     }
 
     func refreshMine() async {
-        do { mine = try await APIClient.shared.fetchMyRoutes().routes }
-        catch { errorMessage = String(localized: "Your routes could not be loaded.") }
+        beginLoading()
+        defer { endLoading() }
+        do {
+            mine = try await APIClient.shared.fetchMyRoutes().routes
+            clearError()
+        } catch {
+            guard !Task.isCancelled else { return }
+            errorMessage = String(localized: "Your routes could not be loaded.")
+        }
     }
 
     func refreshNearby(location: CLLocation) async {
-        isLoading = true
-        defer { isLoading = false }
+        beginLoading()
+        defer { endLoading() }
         do {
             discovered = try await APIClient.shared.fetchNearbyRoutes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude).routes
+            clearError()
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = String(localized: "Nearby routes could not be loaded.")
         }
     }
@@ -431,6 +468,31 @@ final class CommunityRouteStore: ObservableObject {
 
     func launch(_ route: PreparedRoute) { pendingLaunch = route }
     func consumeLaunch() { pendingLaunch = nil }
+
+    private func shouldBeginAutomaticLoad(lastLoadAt: Date?, now: Date) -> Bool {
+        guard let lastLoadAt else { return true }
+        return now.timeIntervalSince(lastLoadAt) >= automaticLoadMinimumInterval
+    }
+
+    private func beginLoading() {
+        loadingOperationCount += 1
+        if loadingOperationCount == 1 {
+            isLoading = true
+        }
+    }
+
+    private func endLoading() {
+        loadingOperationCount = max(0, loadingOperationCount - 1)
+        if loadingOperationCount == 0 {
+            isLoading = false
+        }
+    }
+
+    private func clearError() {
+        if errorMessage != nil {
+            errorMessage = nil
+        }
+    }
 
     private func persistImportedRoutes(_ routes: [PreparedRoute]) -> Bool {
         do {

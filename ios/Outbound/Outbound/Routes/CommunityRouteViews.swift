@@ -132,12 +132,14 @@ struct CommunityRouteLibraryView: View {
             prompt: Text(String(localized: "route.library.search.prompt", defaultValue: "Route or location"))
         )
         .onSubmit(of: .search) { Task { await store.search(query) } }
-        .task {
+        .onAppear {
             if mode == .mine {
-                await store.refreshMine()
+                store.startAutomaticMineLoadIfNeeded()
             } else {
-                if onSelect != nil { locator.requestLocation() }
-                await store.refreshDiscovery()
+                let didStartLoad = store.startAutomaticDiscoveryLoadIfNeeded()
+                if didStartLoad, onSelect != nil {
+                    locator.requestLocation()
+                }
             }
         }
         .onChange(of: locator.location) { _, location in guard let location else { return }; Task { await store.refreshNearby(location: location) } }
@@ -168,7 +170,17 @@ struct CommunityRouteLibraryView: View {
                 }
             }
         }
-        .overlay(alignment: .top) { if let message = store.errorMessage { RouteToast(message: message).onTapGesture { store.errorMessage = nil } } }
+        .overlay(alignment: .top) {
+            if let message = store.errorMessage {
+                RouteToast(message: message)
+                    .onTapGesture { store.errorMessage = nil }
+                    .task(id: message) {
+                        try? await Task.sleep(for: .seconds(4))
+                        guard store.errorMessage == message else { return }
+                        withAnimation { store.errorMessage = nil }
+                    }
+            }
+        }
     }
 
     @ViewBuilder

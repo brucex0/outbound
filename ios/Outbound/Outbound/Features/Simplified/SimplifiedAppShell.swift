@@ -482,6 +482,12 @@ private extension Collection {
     }
 }
 
+private enum ActivityOverflowAction {
+    case photo
+    case route
+    case removeRoute
+}
+
 private struct SimplifiedTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
@@ -807,7 +813,7 @@ private struct SimplifiedTodayView: View {
     private var activityOverflowMenu: some View {
         Menu {
             Button {
-                performActivityOverflowAction(onPreActivityPhotoAction)
+                performActivityOverflowAction(.photo)
             } label: {
                 Label(
                     preActivityPhoto == nil
@@ -818,7 +824,7 @@ private struct SimplifiedTodayView: View {
             }
 
             Button {
-                performActivityOverflowAction(onRouteSelectionAction)
+                performActivityOverflowAction(.route)
             } label: {
                 Label(
                     preActivityRoute == nil
@@ -831,7 +837,7 @@ private struct SimplifiedTodayView: View {
             if preActivityRoute != nil {
                 Divider()
                 Button(role: .destructive) {
-                    performActivityOverflowAction(onRouteRemovalAction)
+                    performActivityOverflowAction(.removeRoute)
                 } label: {
                     Label(
                         String(localized: "record.route.remove", defaultValue: "Remove route"),
@@ -935,9 +941,32 @@ private struct SimplifiedTodayView: View {
         showsActivityOverflowTip = false
     }
 
-    private func performActivityOverflowAction(_ action: () -> Void) {
+    private func performActivityOverflowAction(_ action: ActivityOverflowAction) {
+        let waitsForTipDismissal = showsActivityOverflowTip
         dismissActivityOverflowTip(permanently: true)
-        action()
+        guard waitsForTipDismissal else {
+            executeActivityOverflowAction(action)
+            return
+        }
+        Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+            executeActivityOverflowAction(action)
+        }
+    }
+
+    private func executeActivityOverflowAction(_ action: ActivityOverflowAction) {
+        switch action {
+        case .photo:
+            onPreActivityPhotoAction()
+        case .route:
+            onRouteSelectionAction()
+        case .removeRoute:
+            onRouteRemovalAction()
+        }
     }
 
     private var canPresentThemeTip: Bool {
