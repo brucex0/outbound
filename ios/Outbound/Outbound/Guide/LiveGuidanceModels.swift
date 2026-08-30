@@ -71,6 +71,7 @@ enum LiveGuidanceChallenge: String, Codable, CaseIterable, Identifiable {
 }
 
 enum LiveGuidanceMomentType: String, Codable, CaseIterable, Hashable {
+    case progress
     case fastStart = "fast_start"
     case paceDrift = "pace_drift"
     case rhythmRecovery = "rhythm_recovery"

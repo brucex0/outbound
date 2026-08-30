@@ -150,6 +150,9 @@ export class AlibabaLiveCoachProvider implements LiveCoachAIProvider {
 }
 
 function providerPayload(input: LiveCoachGenerationInput): object {
+  const output = input.semanticMoment === "progress"
+    ? "Return and speak exactly one short progress sentence. Include current elapsed time, distance, and pace whenever each value is available. Do not include markdown or labels."
+    : "Return and speak exactly one short coaching sentence. Do not include markdown or labels.";
   return {
     task: "live_coach_cue",
     locale: input.locale,
@@ -158,7 +161,7 @@ function providerPayload(input: LiveCoachGenerationInput): object {
     liveState: input.liveState,
     recentCueSummaries: input.recentCueSummaries.slice(-3),
     maximumSpokenWordsEquivalent: input.maximumSpokenWordsEquivalent,
-    output: "Return and speak exactly one short coaching sentence. Do not include markdown or labels.",
+    output,
   };
 }
 

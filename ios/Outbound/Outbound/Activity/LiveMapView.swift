@@ -18,6 +18,7 @@ struct LiveMapView: View {
     let onStart: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
+    let isFinishEnabled: Bool
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
@@ -187,7 +188,8 @@ struct LiveMapView: View {
                         onStart: onStart,
                         onPause: pauseActivity,
                         onResume: onResume,
-                        onFinish: onFinish
+                        onFinish: onFinish,
+                        isFinishEnabled: isFinishEnabled
                     )
                     .background {
                         GeometryReader { proxy in

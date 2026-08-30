@@ -4,6 +4,7 @@ import { urgencyForMoment } from "./liveCoachCuePolicy.js";
 
 const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string; text: string }>> = {
   en: {
+    progress: { key: "progress.steady", text: "Keep the effort smooth and steady." },
     fast_start: { key: "coach.settle", text: "Settle the effort and find a sustainable rhythm." },
     pace_drift: { key: "coach.restore_rhythm", text: "Relax your shoulders and gently find your rhythm again." },
     rhythm_recovery: { key: "coach.rhythm_recovered", text: "That adjustment worked. You found the rhythm again." },
@@ -13,6 +14,7 @@ const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string;
     challenge_complete: { key: "challenge.complete", text: "Challenge complete. Settle back into your run." },
   },
   es: {
+    progress: { key: "progress.steady", text: "Mantén un esfuerzo fluido y constante." },
     fast_start: { key: "coach.settle", text: "Baja un poco el esfuerzo y encuentra un ritmo sostenible." },
     pace_drift: { key: "coach.restore_rhythm", text: "Relaja los hombros y recupera el ritmo poco a poco." },
     rhythm_recovery: { key: "coach.rhythm_recovered", text: "Ese ajuste funcionó. Recuperaste el ritmo." },
@@ -22,6 +24,7 @@ const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string;
     challenge_complete: { key: "challenge.complete", text: "Reto completado. Vuelve a tu ritmo de carrera." },
   },
   "zh-Hans": {
+    progress: { key: "progress.steady", text: "保持顺畅稳定的强度。" },
     fast_start: { key: "coach.settle", text: "稍微收住强度，找到可持续的节奏。" },
     pace_drift: { key: "coach.restore_rhythm", text: "放松肩膀，慢慢找回刚才的节奏。" },
     rhythm_recovery: { key: "coach.rhythm_recovered", text: "刚才的调整有效，你已经找回节奏了。" },

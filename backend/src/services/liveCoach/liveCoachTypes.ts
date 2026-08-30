@@ -2,6 +2,7 @@ import type { LiveCoachCompiledContext, LiveCoachLiveState, ResolvedAIRoute, Sup
 import type { LiveCoachMode } from "./liveCoachFeatureConfig.js";
 
 export const LIVE_COACH_MOMENTS = [
+  "progress",
   "fast_start",
   "pace_drift",
   "rhythm_recovery",

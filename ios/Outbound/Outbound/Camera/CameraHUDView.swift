@@ -22,6 +22,7 @@ struct CameraHUDView: View {
     let onStart: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
+    let onCaptureStateChange: (Bool) -> Void
     let onCapture: (UIImage, PhotoMetadata) -> Void
 
     @StateObject private var camera = CameraController()
@@ -35,6 +36,7 @@ struct CameraHUDView: View {
     @State private var shutterFrame: CGRect = .zero
     @State private var photoStackFrame: CGRect = .zero
     @State private var statusCardHeight: CGFloat = 132
+    @State private var isCapturingPhoto = false
 
     private let coordinateSpaceName = "CameraHUDCoordinateSpace"
 
@@ -94,7 +96,8 @@ struct CameraHUDView: View {
                         onStart: onStart,
                         onPause: pauseActivity,
                         onResume: onResume,
-                        onFinish: onFinish
+                        onFinish: onFinish,
+                        isFinishEnabled: !isCapturingPhoto
                     )
                     .background {
                         GeometryReader { proxy in
@@ -220,6 +223,8 @@ struct CameraHUDView: View {
             ShutterButton {
                 capturePhoto()
             }
+            .disabled(isCapturingPhoto)
+            .opacity(isCapturingPhoto ? 0.6 : 1)
             .readFrame(in: coordinateSpaceName, key: ShutterFramePreferenceKey.self)
         }
     }
@@ -258,19 +263,30 @@ struct CameraHUDView: View {
     }
 
     private func capturePhoto() {
+        guard !isCapturingPhoto else { return }
+        isCapturingPhoto = true
+        onCaptureStateChange(true)
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-OutboundUseSampleCameraPhoto") {
             handleCapturedPhoto(UITestSampleCameraPhoto.make(index: capturedPhotoCount + 1))
+            finishPhotoCapture()
             return
         }
         #endif
 
         camera.capturePhoto { image in
             DispatchQueue.main.async {
-                guard let image else { return }
-                handleCapturedPhoto(image)
+                if let image {
+                    handleCapturedPhoto(image)
+                }
+                finishPhotoCapture()
             }
         }
+    }
+
+    private func finishPhotoCapture() {
+        isCapturingPhoto = false
+        onCaptureStateChange(false)
     }
 
     private func handleCapturedPhoto(_ image: UIImage) {
@@ -579,6 +595,7 @@ struct SessionStatusCard: View {
     let onPause: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
+    let isFinishEnabled: Bool
 
     var body: some View {
         Group {
@@ -639,6 +656,8 @@ struct SessionStatusCard: View {
             Image(systemName: "stop.fill")
                 .font(.callout.weight(.bold))
         }
+        .disabled(!isFinishEnabled)
+        .opacity(isFinishEnabled ? 1 : 0.55)
         .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: 40))
         .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
     }
@@ -670,6 +689,8 @@ struct SessionStatusCard: View {
                 Button(action: onFinish) {
                     Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
                 }
+                .disabled(!isFinishEnabled)
+                .opacity(isFinishEnabled ? 1 : 0.55)
                 .buttonStyle(SessionMiniCapsuleButtonStyle(background: theme.actionColor, foreground: .white))
             }
 

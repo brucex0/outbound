@@ -53,7 +53,7 @@ function appendSSEEvent(event: string, chunks: AlibabaStreamChunk[]): void {
 function parseChunks(chunks: AlibabaStreamChunk[]): ParsedAlibabaStream {
   const contentParts: string[] = [];
   const transcriptParts: string[] = [];
-  const audioParts: Uint8Array[] = [];
+  const audioBase64Parts: string[] = [];
   let usage: AlibabaStreamUsage = {};
   let providerRequestId: string | undefined;
   for (const chunk of chunks) {
@@ -66,18 +66,17 @@ function parseChunks(chunks: AlibabaStreamChunk[]): ParsedAlibabaStream {
       if (content) contentParts.push(content);
       if (typeof output.audio?.transcript === "string") transcriptParts.push(output.audio.transcript);
       if (typeof output.audio?.data === "string" && output.audio.data) {
-        try {
-          audioParts.push(Buffer.from(output.audio.data, "base64"));
-        } catch {
-          throw new AIProviderError("invalid_provider_output", "Provider returned invalid audio data.");
-        }
+        audioBase64Parts.push(output.audio.data);
       }
     }
   }
-  if (audioParts.length === 0) throw new AIProviderError("invalid_provider_output", "Provider returned no audio modality.");
+  if (audioBase64Parts.length === 0) throw new AIProviderError("invalid_provider_output", "Provider returned no audio modality.");
   const transcript = (transcriptParts.length > 0 ? transcriptParts : contentParts).join("").trim();
   if (!transcript) throw new AIProviderError("invalid_provider_output", "Provider returned no transcript.");
-  const providerAudio = Buffer.concat(audioParts);
+  // Alibaba streams one Base64 value across multiple SSE chunks. Chunk boundaries
+  // are not guaranteed to align to Base64 quartets, so decoding each chunk loses
+  // bytes at the boundary and produces malformed PCM. Assemble first, decode once.
+  const providerAudio = Buffer.from(audioBase64Parts.join(""), "base64");
   const audio = isWav(providerAudio) ? providerAudio : pcm16Mono24KToWav(providerAudio);
   return { transcript, audio, usage, providerRequestId };
 }

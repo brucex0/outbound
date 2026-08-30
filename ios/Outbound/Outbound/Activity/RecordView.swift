@@ -137,6 +137,7 @@ struct RecordView: View {
     @State private var didPresentMusicDiscoveryTip = false
     @State private var didTrackRecoveryPresentation = false
     @State private var didRestoreSessionPhotos = false
+    @State private var isCapturingSessionPhoto = false
 
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -600,7 +601,8 @@ struct RecordView: View {
                     activePage: $activePage,
                     onStart: startRecording,
                     onResume: resumeRecording,
-                    onFinish: finishRecording
+                    onFinish: finishRecording,
+                    onCaptureStateChange: { isCapturingSessionPhoto = $0 }
                 ) { image, meta in
                     let photo = (image, meta)
                     capturedPhotos.append(photo)
@@ -624,7 +626,8 @@ struct RecordView: View {
                     activePage: $activePage,
                     onStart: startRecording,
                     onResume: resumeRecording,
-                    onFinish: finishRecording
+                    onFinish: finishRecording,
+                    isFinishEnabled: !isCapturingSessionPhoto
                 )
                 .tag(SessionPage.map)
                 .ignoresSafeArea()
@@ -925,6 +928,7 @@ struct RecordView: View {
     }
 
     private func finishRecording() {
+        guard !isCapturingSessionPhoto else { return }
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
         let guidanceReport = guide.finalizedSessionReport()
@@ -1127,6 +1131,7 @@ struct RecordView: View {
         cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
         capturedPhotos = []
+        isCapturingSessionPhoto = false
         ActiveSessionPhotoJournal.clear()
         onPreActivityPhotoChange?(nil)
         activeIntent = nil

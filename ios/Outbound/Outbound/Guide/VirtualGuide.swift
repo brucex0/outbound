@@ -456,6 +456,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func role(for type: LiveGuidanceMomentType) -> GuidanceMomentRole {
         switch type {
+        case .progress: .progress
         case .fastStart, .paceDrift: .paceAdjustment
         case .rhythmRecovery, .challengeStart, .challengeComplete: .hype
         case .segmentTransition: .segment
@@ -495,15 +496,22 @@ final class VirtualGuide: NSObject, ObservableObject {
             guard isFinishCue || canAnnounceProgress(at: snapshot.elapsedSeconds) else { return }
             guard isFinishCue || canSpeakProgressUpdate(at: snapshot.elapsedSeconds) else { return }
 
-            if speakPriorityIfNeeded(
-                goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot),
-                isPriority: isFinishCue,
-                fixedCueKey: Self.fixedCueKey(for: goalMilestone)
-            ) {
+            let announcement = goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot)
+            if isFinishCue {
+                guard speakPriorityIfNeeded(
+                    announcement,
+                    isPriority: true,
+                    fixedCueKey: Self.fixedCueKey(for: goalMilestone)
+                ) else { return }
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
                 lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
                 rememberGuideSpeech(at: snapshot.elapsedSeconds)
+            } else {
+                spokenGoalMilestones.insert(goalMilestone)
+                rememberProgressMilestones(for: snapshot)
+                lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+                requestProgressAnalysis(for: snapshot, localAnnouncement: announcement)
             }
             return
         }
@@ -537,18 +545,36 @@ final class VirtualGuide: NSObject, ObservableObject {
             && nextDistanceMilestone > 0
             && Int((Double(nextDistanceMilestone) * distanceIntervalMeters).rounded()) % 5_000 == 0
 
-        if speak(
-            progressAnnouncement(
-                for: snapshot,
-                pace: checkpointPace,
-                includesAveragePace: includesAveragePace
-            ),
-            role: .progress,
-            fixedCueKey: "progress.steady"
-        ) {
-            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-            rememberGuideSpeech(at: snapshot.elapsedSeconds)
+        let announcement = progressAnnouncement(
+            for: snapshot,
+            pace: checkpointPace,
+            includesAveragePace: includesAveragePace
+        )
+        lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+        requestProgressAnalysis(for: snapshot, localAnnouncement: announcement)
+    }
+
+    private func requestProgressAnalysis(
+        for snapshot: ActiveSessionSnapshot,
+        localAnnouncement: String
+    ) {
+        lastNudge = localAnnouncement
+        let moment = DetectedLiveGuidanceMoment(
+            type: .progress,
+            detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+            preferredMessage: localAnnouncement
+        )
+        guidanceEventHandler?(.momentDetected(
+            type: .progress,
+            contract: persona?.coachingContract ?? .responsive
+        ))
+        if pendingMoment == nil {
+            pendingMoment = moment
+        } else if pendingMoment?.type != .progress,
+                  !queuedMoments.contains(where: { $0.type == .progress }) {
+            queuedMoments.append(moment)
         }
+        processPendingMoment(using: snapshot)
     }
 
     private func canAnnounceProgress(at elapsedSeconds: Int) -> Bool {

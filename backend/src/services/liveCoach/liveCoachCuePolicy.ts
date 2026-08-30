@@ -1,7 +1,7 @@
 import type { LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { LiveCoachMoment, RequestLiveCoachCueInput } from "./liveCoachTypes.js";
 
-const dynamicMoments = new Set<LiveCoachMoment>(["fast_start", "pace_drift", "finish_opportunity"]);
+const dynamicMoments = new Set<LiveCoachMoment>(["progress", "fast_start", "pace_drift", "finish_opportunity"]);
 
 export function cuePolicyDecision(input: RequestLiveCoachCueInput, config: LiveCoachFeatureConfig): {
   dynamicEligible: boolean;
@@ -15,6 +15,8 @@ export function cuePolicyDecision(input: RequestLiveCoachCueInput, config: LiveC
 
 export function urgencyForMoment(moment: LiveCoachMoment): "steady" | "opportunity" | "caution" {
   switch (moment) {
+    case "progress":
+      return "steady";
     case "fast_start":
     case "pace_drift":
     case "finish_opportunity":

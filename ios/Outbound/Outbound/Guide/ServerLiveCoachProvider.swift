@@ -220,6 +220,8 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
 
     private static func urgency(for moment: LiveGuidanceMomentType) -> SessionAnalysisUrgency {
         switch moment {
+        case .progress:
+            .steady
         case .fastStart, .paceDrift, .segmentTransition, .finishOpportunity, .challengeStart:
             .opportunity
         case .rhythmRecovery, .challengeComplete:
@@ -233,6 +235,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
     ) -> (key: String, text: String) {
         let key: String
         switch moment {
+        case .progress: key = "progress.steady"
         case .fastStart: key = "coach.settle"
         case .paceDrift: key = "coach.restore_rhythm"
         case .rhythmRecovery: key = "coach.rhythm_recovered"
@@ -243,6 +246,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         }
         let texts: [String: [String: String]] = [
             AppLanguage.english.rawValue: [
+                "progress.steady": "Keep the effort smooth and steady.",
                 "coach.settle": "Settle the effort and find a sustainable rhythm.",
                 "coach.restore_rhythm": "Relax your shoulders and gently find your rhythm again.",
                 "coach.rhythm_recovered": "That adjustment worked. You found the rhythm again.",
@@ -252,6 +256,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
                 "challenge.complete": "Challenge complete. Settle back into your run."
             ],
             AppLanguage.spanish.rawValue: [
+                "progress.steady": "Mantén un esfuerzo fluido y constante.",
                 "coach.settle": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.",
                 "coach.restore_rhythm": "Relaja los hombros y recupera el ritmo poco a poco.",
                 "coach.rhythm_recovered": "Ese ajuste funcionó. Recuperaste el ritmo.",
@@ -261,6 +266,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
                 "challenge.complete": "Reto completado. Vuelve a tu ritmo de carrera."
             ],
             AppLanguage.simplifiedChinese.rawValue: [
+                "progress.steady": "保持顺畅稳定的强度。",
                 "coach.settle": "稍微收住强度，找到可持续的节奏。",
                 "coach.restore_rhythm": "放松肩膀，慢慢找回刚才的节奏。",
                 "coach.rhythm_recovered": "刚才的调整有效，你已经找回节奏了。",

@@ -133,6 +133,8 @@ The two rollout controls answer different questions:
 
 “Begin dynamic rollout from 0%” therefore means arm and validate the production dynamic path without exposing a runner or incurring runtime generation cost. After health and rollback checks, raise the percentage in small steps such as 1, 5, 25, and 100. Increment `LIVE_COACH_CONFIG_VERSION` only when a fresh cohort assignment is intended.
 
+The iOS progress director sends periodic `progress` moments through the same dynamic route so generated cues can speak the currently available elapsed time, distance, and pace. Alibaba splits one Base64 audio value across SSE events; the backend must concatenate those strings before decoding the complete PCM payload. Decoding each event independently corrupts chunk boundaries and forces every otherwise-valid dynamic cue to the fixed fallback.
+
 Never skip the fixed-only burn-in. If dynamic latency, cost, policy, or provider health degrades, redeploy `fixed_only` to stop new Alibaba calls while keeping reviewed audio available.
 
 ## Current Release Gate
