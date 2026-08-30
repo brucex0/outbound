@@ -765,13 +765,19 @@ final class TogetherStore: ObservableObject {
     private func replaceConnection(_ connection: SocialConnectionDTO, status: String, direction: String) {
         connections = connections.map {
             $0.id == connection.id
-                ? SocialConnectionDTO(id: $0.id, status: status, direction: direction, person: $0.person)
+                ? SocialConnectionDTO(
+                    id: $0.id,
+                    status: status,
+                    direction: direction,
+                    person: $0.person,
+                    isInActiveWorkout: status == "accepted" ? $0.isInActiveWorkout : false
+                )
                 : $0
         }
     }
 
     private static let uiTestConnections = [
-        SocialConnectionDTO(id: "ui-connection-maya", status: "accepted", direction: "incoming", person: SocialPersonDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil)),
+        SocialConnectionDTO(id: "ui-connection-maya", status: "accepted", direction: "incoming", person: SocialPersonDTO(id: "ui-maya", username: "maya", displayName: "Maya Chen", avatarUrl: nil), isInActiveWorkout: true),
         SocialConnectionDTO(id: "ui-connection-leo", status: "pending", direction: "incoming", person: SocialPersonDTO(id: "ui-leo", username: "leo.runs", displayName: "Leo Martinez", avatarUrl: nil)),
         SocialConnectionDTO(id: "ui-connection-priya", status: "pending", direction: "outgoing", person: SocialPersonDTO(id: "ui-priya", username: "priya.trails", displayName: "Priya Shah", avatarUrl: nil)),
     ]

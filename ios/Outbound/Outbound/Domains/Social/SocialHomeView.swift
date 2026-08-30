@@ -19,7 +19,13 @@ struct SocialHomeView: View {
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.hasLoadedConnections
-            && socialStore.connections.filter { $0.status == "accepted" }.count < 3
+            && acceptedConnections.isEmpty
+    }
+
+    private var acceptedConnections: [SocialConnectionDTO] {
+        socialStore.connections
+            .filter { $0.status == "accepted" }
+            .sorted(by: SocialConnectionDTO.previewOrder)
     }
 
     private var syncedActivityIDs: [String] {
@@ -44,6 +50,8 @@ struct SocialHomeView: View {
 
                     if shouldShowConnectionPrompt {
                         connectionGrowthCard
+                    } else if !acceptedConnections.isEmpty {
+                        connectionsSection
                     }
 
                     if let milestone = socialRecognitionStore.highlight {
@@ -64,24 +72,6 @@ struct SocialHomeView: View {
                     GlobalConditionsButton()
 
                     Menu {
-                        Button {
-                            isCreateActivityEventPresented = true
-                        } label: {
-                            Label("Plan a run", systemImage: "calendar.badge.plus")
-                        }
-
-                        NavigationLink {
-                            SocialActivityDiscoveryView()
-                        } label: {
-                            Label("Discover activities", systemImage: "safari")
-                        }
-
-                        NavigationLink {
-                            SocialConnectionsView()
-                        } label: {
-                            Label("Connections", systemImage: "person.2")
-                        }
-
                         NavigationLink {
                             SocialGroupsView()
                         } label: {
@@ -115,16 +105,23 @@ struct SocialHomeView: View {
                 _ = await (homeRefresh, connectionsRefresh)
             }
             .task {
-                if !socialStore.hasLoadedConnections {
-                    await socialStore.refreshConnections()
-                }
-                await socialStore.refreshNotifications()
+                async let connectionsRefresh: Void = socialStore.refreshConnections()
+                async let notificationsRefresh: Void = socialStore.refreshNotifications()
+                _ = await (connectionsRefresh, notificationsRefresh)
             }
             .onChange(of: shouldShowConnectionPrompt, initial: true) { _, showsPrompt in
                 guard showsPrompt else { return }
                 Task {
                     await analyticsManager?.track(.init(.featureExposed, properties: [
                         .feature: .string("social_connection_growth_prompt"),
+                    ]))
+                }
+            }
+            .onChange(of: acceptedConnections.isEmpty, initial: true) { _, isEmpty in
+                guard socialStore.hasLoadedConnections, !isEmpty else { return }
+                Task {
+                    await analyticsManager?.track(.init(.featureExposed, properties: [
+                        .feature: .string("social_connections_section"),
                     ]))
                 }
             }
@@ -221,9 +218,7 @@ struct SocialHomeView: View {
                 Text("Connect with a few friends to make your activity feed and run plans more useful.")
                     .font(.subheadline)
                 HStack {
-                    NavigationLink {
-                        SocialConnectionsView()
-                    } label: {
+                    Button(action: openConnections) {
                         Label("Find people", systemImage: "person.badge.plus")
                     }
                     .buttonStyle(.borderedProminent)
@@ -236,6 +231,65 @@ struct SocialHomeView: View {
                     .buttonStyle(.bordered)
                 }
             }
+        }
+    }
+
+    private var connectionsSection: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            HStack {
+                Text("Connections").socialSectionLabel()
+                Spacer()
+                Button("All", action: openConnections)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(OutboundPalette.companion)
+            }
+
+            OutboundCard {
+                ScrollView(.horizontal) {
+                    HStack(spacing: OutboundSpacing.standard) {
+                        ForEach(acceptedConnections.prefix(8)) { connection in
+                            SocialProfileLink(
+                                person: connection.person,
+                                entrySource: "social_connections_section"
+                            ) {
+                                VStack(spacing: 6) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        SocialAvatar(
+                                            name: connection.person.displayName,
+                                            avatarURL: connection.person.avatarUrl
+                                        )
+                                        if connection.isInActiveWorkout == true {
+                                            Circle()
+                                                .fill(.green)
+                                                .frame(width: 12, height: 12)
+                                                .overlay {
+                                                    Circle().stroke(OutboundPalette.surface, lineWidth: 2)
+                                                }
+                                        }
+                                    }
+                                    Text(connection.firstName)
+                                        .font(.caption)
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                        .frame(width: 58)
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityValue(connection.isInActiveWorkout == true ? String(localized: "Workout in progress") : "")
+                            }
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+    }
+
+    private func openConnections() {
+        showsConnections = true
+        Task {
+            await analyticsManager?.track(.init(.connectionsOpened, properties: [
+                .entrySource: .string("social_home_preview"),
+            ]))
         }
     }
 
@@ -1403,7 +1457,9 @@ struct SocialConnectionsView: View {
     }
 
     private var acceptedConnections: [SocialConnectionDTO] {
-        socialStore.connections.filter { $0.status == "accepted" }
+        socialStore.connections
+            .filter { $0.status == "accepted" }
+            .sorted(by: SocialConnectionDTO.previewOrder)
     }
 
     var body: some View {

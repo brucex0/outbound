@@ -77,6 +77,7 @@ struct RecordView: View {
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
+    @StateObject private var workoutPresence = WorkoutPresenceController()
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = false
     @AppStorage("preferred_launch_goal_mode_v1") private var preferredLaunchGoalModeRawValue = ""
@@ -215,6 +216,7 @@ struct RecordView: View {
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
             trackRecordingStateTransition(to: state)
+            workoutPresence.sync(with: state)
         }
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
@@ -235,6 +237,7 @@ struct RecordView: View {
         .onAppear {
             onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
+            workoutPresence.sync(with: recorder.state)
             if recorder.state == .idle {
                 recorder.locationManager.requestCurrentLocation()
             }
@@ -260,6 +263,7 @@ struct RecordView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 guideCatalog.refreshInstalledVoices()
+                workoutPresence.sync(with: recorder.state)
             }
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }

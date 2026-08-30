@@ -1427,6 +1427,23 @@
         }
       }
     },
+    "Workout in progress" : {
+      "comment" : "Accessibility status for a connection who currently has an active workout recording.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrenando"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运动"
+          }
+        }
+      }
+    },
     "Active plan" : {
       "localizations" : {
         "es" : {

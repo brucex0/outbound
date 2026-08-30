@@ -37,6 +37,42 @@ struct SocialConnectionDTO: Codable, Identifiable, Sendable {
     let status: String
     let direction: String
     let person: SocialPersonDTO
+    let isInActiveWorkout: Bool?
+
+    init(
+        id: String,
+        status: String,
+        direction: String,
+        person: SocialPersonDTO,
+        isInActiveWorkout: Bool? = nil
+    ) {
+        self.id = id
+        self.status = status
+        self.direction = direction
+        self.person = person
+        self.isInActiveWorkout = isInActiveWorkout
+    }
+
+    nonisolated var firstName: String {
+        person.displayName
+            .components(separatedBy: .whitespacesAndNewlines)
+            .first(where: { !$0.isEmpty }) ?? person.displayName
+    }
+
+    nonisolated static func previewOrder(_ lhs: Self, _ rhs: Self) -> Bool {
+        if (lhs.isInActiveWorkout == true) != (rhs.isInActiveWorkout == true) {
+            return lhs.isInActiveWorkout == true
+        }
+        let firstNameOrder = lhs.firstName.localizedStandardCompare(rhs.firstName)
+        if firstNameOrder != .orderedSame {
+            return firstNameOrder == .orderedAscending
+        }
+        let displayNameOrder = lhs.person.displayName.localizedStandardCompare(rhs.person.displayName)
+        if displayNameOrder != .orderedSame {
+            return displayNameOrder == .orderedAscending
+        }
+        return lhs.id < rhs.id
+    }
 }
 
 struct SocialConnectionsResponseDTO: Codable, Sendable {
@@ -59,6 +95,10 @@ struct SocialPeopleSearchResponseDTO: Codable, Sendable {
 
 struct SocialConnectionRequestDTO: Codable, Sendable {
     let userId: String
+}
+
+struct WorkoutPresenceRequestDTO: Encodable, Sendable {
+    let clientSessionId: UUID
 }
 
 struct SocialConnectionMutationDTO: Codable, Sendable {

@@ -15,6 +15,7 @@ const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
 const socialConnectionsPageSize = 20;
 const socialPeopleSearchLimit = 20;
+const workoutPresenceTTLms = 3 * 60 * 1000;
 const reactionSchema = z.object({ type: z.enum(["fire", "clap", "heart", "strong"]) });
 const commentSchema = z.object({ body: z.string().trim().min(1).max(500) });
 const reportSchema = z.object({
@@ -33,9 +34,40 @@ const createActivityEventSchema = z.object({
 const invitationBatchSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(50) });
 const linkActivityEventSchema = z.object({ activityId: z.string().min(1) });
 const attendanceModeSchema = z.object({ attendanceMode: z.enum(["in_person", "virtual"]) });
+const workoutPresenceSchema = z.object({ clientSessionId: z.string().uuid() }).strict();
 
 router.get("/home", socialHome);
 router.get("/together", socialHome);
+
+router.put("/workout-presence", zValidator("json", workoutPresenceSchema), async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const { clientSessionId } = c.req.valid("json");
+  await getPrismaClient().activeWorkoutPresence.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      clientSessionId,
+      expiresAt: new Date(Date.now() + workoutPresenceTTLms),
+    },
+    update: {
+      clientSessionId,
+      expiresAt: new Date(Date.now() + workoutPresenceTTLms),
+    },
+  });
+  return c.json({ ok: true });
+});
+
+router.delete("/workout-presence/:clientSessionId", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const parsedID = z.string().uuid().safeParse(c.req.param("clientSessionId"));
+  if (!parsedID.success) return c.json({ error: "Invalid workout session ID." }, 400);
+  await getPrismaClient().activeWorkoutPresence.deleteMany({
+    where: { userId: user.id, clientSessionId: parsedID.data },
+  });
+  return c.json({ ok: true });
+});
 
 async function socialHome(c: Context<AppEnv>) {
   const user = await requireSocialUser(c);
@@ -177,12 +209,26 @@ router.get("/connections", async (c) => {
     take: socialConnectionsPageSize + 1,
   });
   const page = connections.slice(0, socialConnectionsPageSize);
+  const now = new Date();
+  const acceptedPersonIDs = page
+    .filter((connection) => connection.status === "accepted")
+    .map((connection) => connection.requesterId === user.id ? connection.addresseeId : connection.requesterId);
+  const activeWorkoutPresences = acceptedPersonIDs.length > 0
+    ? await getPrismaClient().activeWorkoutPresence.findMany({
+        where: {
+          userId: { in: acceptedPersonIDs },
+          expiresAt: { gt: now },
+        },
+        select: { userId: true },
+      })
+    : [];
+  const activeUserIDs = new Set(activeWorkoutPresences.map((presence) => presence.userId));
   const lastConnection = page.at(-1);
   const nextCursor = connections.length > socialConnectionsPageSize && lastConnection
     ? encodeFeedCursor(lastConnection.updatedAt, lastConnection.id)
     : null;
   return c.json({
-    connections: page.map((connection) => connectionPayload(connection, user.id)),
+    connections: page.map((connection) => connectionPayload(connection, user.id, activeUserIDs)),
     nextCursor,
   });
 });
@@ -931,13 +977,16 @@ function connectionPayload(
     addressee: { id: string; username: string; displayName: string; avatarUrl: string | null };
   },
   userId: string,
+  activeUserIDs: Set<string> = new Set(),
 ) {
   const isOutgoing = connection.requesterId === userId;
+  const person = isOutgoing ? connection.addressee : connection.requester;
   return {
     id: connection.id,
     status: connection.status,
     direction: isOutgoing ? "outgoing" : "incoming",
-    person: isOutgoing ? connection.addressee : connection.requester,
+    person,
+    isInActiveWorkout: connection.status === "accepted" && activeUserIDs.has(person.id),
   };
 }
 

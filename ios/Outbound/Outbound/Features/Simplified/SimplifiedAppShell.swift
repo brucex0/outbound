@@ -2480,7 +2480,12 @@ private struct SimplifiedMeView: View {
     }
 
     private var connectionPreview: [SocialConnectionDTO] {
-        Array(socialStore.connections.lazy.filter { $0.status == "accepted" }.prefix(4))
+        Array(
+            socialStore.connections
+                .filter { $0.status == "accepted" }
+                .sorted(by: SocialConnectionDTO.previewOrder)
+                .prefix(4)
+        )
     }
 
     private var connectionsPreview: some View {

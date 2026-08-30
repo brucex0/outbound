@@ -35,6 +35,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Push tap routing emits `push_notification_opened` with only the share-safe notification type and coarse destination; it never sends notification, actor, connection, activity, or device identifiers.
 - Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
 - Opening the Me profile hub emits `feature_exposed` with the bounded feature value `me_profile_hub`; profile fields, training details, and companion memory are never included.
+- Showing Social's accepted-connection preview emits `feature_exposed` with the bounded feature value `social_connections_section`; opening the full list from that section emits `connections_opened` with `entry_source = social_home_preview`. Neither event includes connection identities, presence, names, or counts.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 

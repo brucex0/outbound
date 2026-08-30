@@ -297,6 +297,17 @@ final class APIClient {
         try await delete("/social/connections/\(id)")
     }
 
+    func refreshWorkoutPresence(clientSessionID: UUID) async throws -> SocialConnectionMutationDTO {
+        try await put(
+            "/social/workout-presence",
+            body: WorkoutPresenceRequestDTO(clientSessionId: clientSessionID)
+        )
+    }
+
+    func endWorkoutPresence(clientSessionID: UUID) async throws -> SocialConnectionMutationDTO {
+        try await delete("/social/workout-presence/\(clientSessionID.uuidString.lowercased())")
+    }
+
     func createTogetherInvitation(runID: String, recipientUserID: String? = nil) async throws -> TogetherInvitationResponseDTO {
         try await post("/social/activity-events/\(runID)/invitations", body: TogetherInvitationRequestDTO(recipientUserId: recipientUserID))
     }
