@@ -16,7 +16,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 ## Discovery UX
 
 - Today exposes `Explore routes` beside the primary workout and Quick Start actions.
-- Activity setup opens the route picker directly so a route can be combined with a freestyle or planned workout. The picker performs one bounded automatic discovery refresh per presentation window, then requests location and refreshes nearby routes without overlapping repeated loads. It supports direct row selection, lets the selected row be tapped again to remove the route, keeps the choice pending until confirmation, and closes after applying the choice. `Close` leaves the activity unchanged.
+- Activity setup opens the route picker directly so a route can be combined with a freestyle or planned workout. Each route-library scope permits at most one automatic initial load per app session: the setup picker requests one nearby load, standalone discovery loads the community list, and My Routes loads the saved list. SwiftUI reconstruction never starts another request. Pull to refresh, search, and `Find routes near me` are explicit refresh actions. The picker supports direct row selection, lets the selected row be tapped again to remove the route, keeps the choice pending until confirmation, and closes after applying the choice. `Close` leaves the activity unchanged.
 - Social's community menu links to route discovery and Social may show nearby/popular route cards.
 - Me exposes `My Routes`, containing routes owned or bookmarked by the runner.
 - Discovery supports nearby results, text/location search, current map area, distance, elevation, activity type, and route shape as the dataset grows.
@@ -97,6 +97,7 @@ Nearby search initially uses indexed start coordinates and a bounded latitude/lo
 ## Analytics And Privacy
 
 - Route Guidance events use only route source, intended direction, coarse distance/progress buckets, and outcome.
+- Explicit pull to refresh emits only the bounded route-library source (`discovery`, `nearby`, `search`, or `mine`) and success/failure; it never includes a query, route identity, or location.
 - Start, 25/50/75/100% progress, deviation/rejoin, wrong-way, arrival, recovery, and saved completion are typed product events.
 - Route IDs, names, coordinates, geometry, and exact progress distances never enter general product analytics.
 

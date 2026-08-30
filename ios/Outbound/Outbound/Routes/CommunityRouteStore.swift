@@ -187,9 +187,9 @@ final class CommunityRouteStore: ObservableObject {
     private let maximumCachedCommunityPointCount = 100_000
     private let maximumImportedRoutes = 100
     private let maximumImportedPointCount = 250_000
-    private let automaticLoadMinimumInterval: TimeInterval = 30
-    private var lastAutomaticDiscoveryLoadAt: Date?
-    private var lastAutomaticMineLoadAt: Date?
+    private var hasBegunAutomaticDiscoveryLoad = false
+    private var hasBegunAutomaticNearbyLoad = false
+    private var hasBegunAutomaticMineLoad = false
     private var loadingOperationCount = 0
 
     init(fileManager: FileManager = .default) {
@@ -266,40 +266,45 @@ final class CommunityRouteStore: ObservableObject {
     }
 
     @discardableResult
-    func startAutomaticDiscoveryLoadIfNeeded(now: Date = Date()) -> Bool {
-        guard shouldBeginAutomaticLoad(lastLoadAt: lastAutomaticDiscoveryLoadAt, now: now) else {
-            return false
-        }
-        lastAutomaticDiscoveryLoadAt = now
-        Task { await refreshDiscovery() }
+    func beginAutomaticDiscoveryLoadIfNeeded() -> Bool {
+        guard !hasBegunAutomaticDiscoveryLoad else { return false }
+        hasBegunAutomaticDiscoveryLoad = true
         return true
     }
 
     @discardableResult
-    func startAutomaticMineLoadIfNeeded(now: Date = Date()) -> Bool {
-        guard shouldBeginAutomaticLoad(lastLoadAt: lastAutomaticMineLoadAt, now: now) else {
-            return false
-        }
-        lastAutomaticMineLoadAt = now
-        Task { await refreshMine() }
+    func beginAutomaticNearbyLoadIfNeeded() -> Bool {
+        guard !hasBegunAutomaticNearbyLoad else { return false }
+        hasBegunAutomaticNearbyLoad = true
         return true
     }
 
-    func refreshDiscovery(query: String = "") async {
+    @discardableResult
+    func beginAutomaticMineLoadIfNeeded() -> Bool {
+        guard !hasBegunAutomaticMineLoad else { return false }
+        hasBegunAutomaticMineLoad = true
+        return true
+    }
+
+    @discardableResult
+    func refreshDiscovery(query: String = "") async -> Bool {
         beginLoading()
         defer { endLoading() }
         do {
             discovered = try await APIClient.shared.fetchCommunityRoutes(query: query).routes
             clearError()
+            return true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = String(localized: "Routes could not be loaded. Try again.")
+            return false
         }
     }
 
-    func search(_ query: String) async {
+    @discardableResult
+    func search(_ query: String) async -> Bool {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { await refreshDiscovery(); return }
+        guard !trimmed.isEmpty else { return await refreshDiscovery() }
         beginLoading()
         defer { endLoading() }
         do {
@@ -318,33 +323,41 @@ final class CommunityRouteStore: ObservableObject {
                 if !result.contains(where: { $0.id == route.id }) { result.append(route) }
             }
             clearError()
+            return true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = String(localized: "Routes could not be loaded. Try again.")
+            return false
         }
     }
 
-    func refreshMine() async {
+    @discardableResult
+    func refreshMine() async -> Bool {
         beginLoading()
         defer { endLoading() }
         do {
             mine = try await APIClient.shared.fetchMyRoutes().routes
             clearError()
+            return true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = String(localized: "Your routes could not be loaded.")
+            return false
         }
     }
 
-    func refreshNearby(location: CLLocation) async {
+    @discardableResult
+    func refreshNearby(location: CLLocation) async -> Bool {
         beginLoading()
         defer { endLoading() }
         do {
             discovered = try await APIClient.shared.fetchNearbyRoutes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude).routes
             clearError()
+            return true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = String(localized: "Nearby routes could not be loaded.")
+            return false
         }
     }
 
@@ -468,11 +481,6 @@ final class CommunityRouteStore: ObservableObject {
 
     func launch(_ route: PreparedRoute) { pendingLaunch = route }
     func consumeLaunch() { pendingLaunch = nil }
-
-    private func shouldBeginAutomaticLoad(lastLoadAt: Date?, now: Date) -> Bool {
-        guard let lastLoadAt else { return true }
-        return now.timeIntervalSince(lastLoadAt) >= automaticLoadMinimumInterval
-    }
 
     private func beginLoading() {
         loadingOperationCount += 1

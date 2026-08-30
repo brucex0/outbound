@@ -8,6 +8,7 @@ enum CommunityRouteLibraryMode { case discover, mine }
 
 struct CommunityRouteLibraryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
     @StateObject private var locator = RouteDiscoveryLocator()
     @State private var query = ""
@@ -134,14 +135,17 @@ struct CommunityRouteLibraryView: View {
         .onSubmit(of: .search) { Task { await store.search(query) } }
         .onAppear {
             if mode == .mine {
-                store.startAutomaticMineLoadIfNeeded()
+                guard store.beginAutomaticMineLoadIfNeeded() else { return }
+                Task { await store.refreshMine() }
+            } else if onSelect != nil {
+                guard store.beginAutomaticNearbyLoadIfNeeded() else { return }
+                locator.requestLocation()
             } else {
-                let didStartLoad = store.startAutomaticDiscoveryLoadIfNeeded()
-                if didStartLoad, onSelect != nil {
-                    locator.requestLocation()
-                }
+                guard store.beginAutomaticDiscoveryLoadIfNeeded() else { return }
+                Task { await store.refreshDiscovery() }
             }
         }
+        .refreshable { await refreshVisibleRoutes() }
         .onChange(of: locator.location) { _, location in guard let location else { return }; Task { await store.refreshNearby(location: location) } }
         .fileImporter(isPresented: $importsFile, allowedContentTypes: [.xml, .json, .data]) { result in
             do {
@@ -181,6 +185,31 @@ struct CommunityRouteLibraryView: View {
                     }
             }
         }
+    }
+
+    private func refreshVisibleRoutes() async {
+        let source: String
+        let succeeded: Bool
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if mode == .mine {
+            source = "mine"
+            succeeded = await store.refreshMine()
+        } else if !trimmedQuery.isEmpty {
+            source = "search"
+            succeeded = await store.search(trimmedQuery)
+        } else if let location = locator.location {
+            source = "nearby"
+            succeeded = await store.refreshNearby(location: location)
+        } else {
+            source = "discovery"
+            succeeded = await store.refreshDiscovery()
+        }
+
+        await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
+            .sourceType: .string(source),
+            .result: .string(succeeded ? "success" : "failed"),
+        ]))
     }
 
     @ViewBuilder

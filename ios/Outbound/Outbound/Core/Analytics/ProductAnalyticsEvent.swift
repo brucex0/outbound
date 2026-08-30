@@ -46,6 +46,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case musicControlUsed = "music_control_used"
     case musicOperationFailed = "music_operation_failed"
     case routeLibraryOpened = "route_library_opened"
+    case routeLibraryRefreshed = "route_library_refreshed"
     case routeSelected = "route_selected"
     case routeRemoved = "route_removed"
     case routePublishStarted = "route_publish_started"
@@ -197,6 +198,7 @@ enum ProductAnalyticsSchema {
         .musicControlUsed: [.control],
         .musicOperationFailed: [.errorCategory],
         .routeLibraryOpened: [],
+        .routeLibraryRefreshed: [.sourceType, .result],
         .routeSelected: [.sourceType, .distanceBucket],
         .routeRemoved: [.sourceType],
         .routePublishStarted: [.entrySource],
