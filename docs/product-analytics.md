@@ -34,6 +34,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Live Guidance model experiments also emit only coarse provider source (`remote` or `local`) and result (`success` or `fallback`); model IDs and prompts are excluded.
 - Push tap routing emits `push_notification_opened` with only the share-safe notification type and coarse destination; it never sends notification, actor, connection, activity, or device identifiers.
 - Product events currently flow to Firebase when configured and to the no-op diagnostic provider otherwise. The no-op provider logs only event names and parameter counts, never payload values.
+- Opening the Me profile hub emits `feature_exposed` with the bounded feature value `me_profile_hub`; profile fields, training details, and companion memory are never included.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 

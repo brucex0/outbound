@@ -2162,7 +2162,11 @@ private struct SimplifiedMeView: View {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     NavigationLink {
-                        SimplifiedProfileEditorView(initialProfile: profile) { profile = $0 }
+                        SimplifiedProfileView(
+                            profile: profile,
+                            onProfileUpdated: { profile = $0 },
+                            onTrainingProfileUpdated: applyTrainingProfile
+                        )
                     } label: {
                         OutboundCard {
                             HStack(spacing: 14) {
@@ -2379,9 +2383,7 @@ private struct SimplifiedMeView: View {
                     GlobalConditionsButton()
                     NavigationLink {
                         SimplifiedSettingsView(
-                            profile: profile,
-                            trainingProfileSex: $trainingProfileSex,
-                            onProfileUpdated: { profile = $0 }
+                            trainingProfileSex: $trainingProfileSex
                         )
                     } label: {
                         Image(systemName: "gearshape")
@@ -2444,9 +2446,7 @@ private struct SimplifiedMeView: View {
                 ActivityHistoryView()
             case .settings:
                 SimplifiedSettingsView(
-                    profile: profile,
-                    trainingProfileSex: $trainingProfileSex,
-                    onProfileUpdated: { profile = $0 }
+                    trainingProfileSex: $trainingProfileSex
                 )
             case .appearance:
                 ThemeChooserView()
@@ -2552,6 +2552,10 @@ private struct SimplifiedMeView: View {
         showsCycleAwareCheckIn = false
     }
 
+    private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
+        applyTrainingProfileSex(profile.sexAtBirth)
+    }
+
     private var showsCycleAwareGuidance: Bool {
         effectiveSexIsMale == false
     }
@@ -2599,9 +2603,7 @@ private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
-    let profile: AppUserProfileDTO?
     @Binding var trainingProfileSex: TrainingProfileSex?
-    let onProfileUpdated: (AppUserProfileDTO) -> Void
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
 
@@ -2618,22 +2620,6 @@ private struct SimplifiedSettingsView: View {
                 }
                 Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                     confirmsSignOut = true
-                }
-            }
-            Section("Profile") {
-                NavigationLink {
-                    BioSettingsView(
-                        profile: profile,
-                        onProfileUpdated: onProfileUpdated,
-                        onTrainingProfileUpdated: applyTrainingProfile
-                    )
-                } label: {
-                    Label("Bio", systemImage: "person.crop.circle")
-                }
-                NavigationLink {
-                    CompanionMemoryView()
-                } label: {
-                    Label("What Plainstride knows", systemImage: "brain.head.profile")
                 }
             }
             Section("Live Guidance") {
@@ -2762,13 +2748,6 @@ private struct SimplifiedSettingsView: View {
         return onboardingStore.completedProfile?.bodyProfile.sex == .male
     }
 
-    private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
-        trainingProfileSex = profile.sexAtBirth
-        if profile.sexAtBirth == .male {
-            cycleAwareStore.isEnabled = false
-        }
-    }
-
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
@@ -2776,7 +2755,8 @@ private struct SimplifiedSettingsView: View {
     }
 }
 
-private struct BioSettingsView: View {
+private struct SimplifiedProfileView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     let profile: AppUserProfileDTO?
     let onProfileUpdated: (AppUserProfileDTO) -> Void
     let onTrainingProfileUpdated: (TrainingProfileDTO) -> Void
@@ -2784,24 +2764,52 @@ private struct BioSettingsView: View {
     var body: some View {
         Form {
             Section {
-                NavigationLink("Name, photo, and bio") {
+                NavigationLink {
                     SimplifiedProfileEditorView(initialProfile: profile, onProfileUpdated: onProfileUpdated)
+                } label: {
+                    Label(
+                        String(localized: "profile.public_details", defaultValue: "Name, photo, and bio"),
+                        systemImage: "person.crop.circle"
+                    )
                 }
-                NavigationLink("Training details") {
+                NavigationLink {
                     TrainingProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
+                } label: {
+                    Label(
+                        String(localized: "profile.training_details", defaultValue: "Training details"),
+                        systemImage: "figure.run"
+                    )
+                }
+                NavigationLink {
+                    HealthProfileEditorView(onProfileUpdated: onTrainingProfileUpdated)
+                } label: {
+                    Label("Health & body", systemImage: "heart.text.clipboard")
+                }
+                NavigationLink {
+                    CompanionMemoryView()
+                } label: {
+                    Label("What Plainstride knows", systemImage: "brain.head.profile")
                 }
             } footer: {
-                Text("Your public bio and private personalization details live together here.")
+                Text(String(
+                    localized: "profile.details.footer",
+                    defaultValue: "Manage what others see and the private details Plainstride uses to personalize your training."
+                ))
             }
         }
-        .navigationTitle("Bio")
+        .navigationTitle("Profile")
+        .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("me_profile_hub"),
+            ]))
+        }
     }
 }
 
 private struct TrainingProfileEditorView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let onProfileUpdated: (TrainingProfileDTO) -> Void
-    @State private var sexAtBirth: TrainingProfileSex?
+    @State private var preservedSexAtBirth: TrainingProfileSex?
     @State private var hasBirthDate = false
     @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     @State private var heightText = ""
@@ -2819,12 +2827,6 @@ private struct TrainingProfileEditorView: View {
             }
 
             Section {
-                Picker("Sex assigned at birth", selection: $sexAtBirth) {
-                    Text("Not provided").tag(nil as TrainingProfileSex?)
-                    ForEach(TrainingProfileSex.allCases) { value in
-                        Text(value.title).tag(value as TrainingProfileSex?)
-                    }
-                }
                 Toggle("Add birthday", isOn: $hasBirthDate)
                 if hasBirthDate {
                     DatePicker("Birthday", selection: $birthDate, in: oldestBirthDate...latestBirthDate, displayedComponents: .date)
@@ -2832,7 +2834,10 @@ private struct TrainingProfileEditorView: View {
             } header: {
                 Text("About you")
             } footer: {
-                Text("Birthday is stored instead of age so your training profile stays accurate over time.")
+                Text(String(
+                    localized: "profile.training_details.birthday_footer",
+                    defaultValue: "Birthday is stored instead of age so your details stay accurate over time."
+                ))
             }
 
             Section {
@@ -2846,7 +2851,7 @@ private struct TrainingProfileEditorView: View {
                 Text("Leave a field blank to remove it. You can update these values whenever they change.")
             }
         }
-        .navigationTitle("Training profile")
+        .navigationTitle(String(localized: "profile.training_details", defaultValue: "Training details"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -2893,7 +2898,10 @@ private struct TrainingProfileEditorView: View {
         do {
             apply(try await APIClient.shared.fetchTrainingProfile())
         } catch {
-            showToast(String(localized: "Training profile could not be loaded."), style: .error)
+            showToast(String(
+                localized: "profile.training_details.load_error",
+                defaultValue: "Training details could not be loaded."
+            ), style: .error)
         }
     }
 
@@ -2903,7 +2911,7 @@ private struct TrainingProfileEditorView: View {
         do {
             let formatter = Self.birthDateFormatter
             let request = TrainingProfileUpdateDTO(
-                sexAtBirth: sexAtBirth,
+                sexAtBirth: preservedSexAtBirth,
                 birthDate: hasBirthDate ? formatter.string(from: birthDate) : nil,
                 heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
                 weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
@@ -2911,9 +2919,15 @@ private struct TrainingProfileEditorView: View {
             let profile = try await APIClient.shared.updateTrainingProfile(request)
             apply(profile)
             onProfileUpdated(profile)
-            showToast(String(localized: "Training profile saved"), style: .success)
+            showToast(String(
+                localized: "profile.training_details.saved",
+                defaultValue: "Training details saved"
+            ), style: .success)
         } catch {
-            showToast(String(localized: "Could not save training profile. Try again."), style: .error)
+            showToast(String(
+                localized: "profile.training_details.save_error",
+                defaultValue: "Could not save training details. Try again."
+            ), style: .error)
         }
     }
 
@@ -2922,7 +2936,7 @@ private struct TrainingProfileEditorView: View {
     }
 
     private func apply(_ profile: TrainingProfileDTO) {
-        sexAtBirth = profile.sexAtBirth
+        preservedSexAtBirth = profile.sexAtBirth
         if let value = profile.birthDate, let date = Self.birthDateFormatter.date(from: value) {
             birthDate = date
             hasBirthDate = true
@@ -2950,6 +2964,105 @@ private struct TrainingProfileEditorView: View {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+}
+
+private struct HealthProfileEditorView: View {
+    let onProfileUpdated: (TrainingProfileDTO) -> Void
+    @State private var sexAtBirth: TrainingProfileSex?
+    @State private var preservedProfile: TrainingProfileDTO?
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var toast: ProfileToast?
+
+    var body: some View {
+        Form {
+            Section {
+                Text(String(
+                    localized: "profile.health_details.privacy",
+                    defaultValue: "Sex assigned at birth is optional. Plainstride uses it only to show relevant private health features and never shares it in Together."
+                ))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+
+            Section("Health & body") {
+                Picker("Sex assigned at birth", selection: $sexAtBirth) {
+                    Text("Not provided").tag(nil as TrainingProfileSex?)
+                    ForEach(TrainingProfileSex.allCases) { value in
+                        Text(value.title).tag(value as TrainingProfileSex?)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Health & body")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
+                    .disabled(isLoading || isSaving || preservedProfile == nil)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let toast {
+                ProfileToastView(toast: toast)
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.top, OutboundSpacing.compact)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: toast)
+        .task(id: toast?.id) {
+            guard toast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            toast = nil
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        defer { isLoading = false }
+        do {
+            let profile = try await APIClient.shared.fetchTrainingProfile()
+            preservedProfile = profile
+            sexAtBirth = profile.sexAtBirth
+        } catch {
+            showToast(String(
+                localized: "profile.health_details.load_error",
+                defaultValue: "Health details could not be loaded."
+            ), style: .error)
+        }
+    }
+
+    private func save() async {
+        guard let preservedProfile else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let profile = try await APIClient.shared.updateTrainingProfile(TrainingProfileUpdateDTO(
+                sexAtBirth: sexAtBirth,
+                birthDate: preservedProfile.birthDate,
+                heightCentimeters: preservedProfile.heightCentimeters,
+                weightKilograms: preservedProfile.weightKilograms
+            ))
+            self.preservedProfile = profile
+            sexAtBirth = profile.sexAtBirth
+            onProfileUpdated(profile)
+            showToast(String(
+                localized: "profile.health_details.saved",
+                defaultValue: "Health details saved"
+            ), style: .success)
+        } catch {
+            showToast(String(
+                localized: "profile.health_details.save_error",
+                defaultValue: "Could not save health details. Try again."
+            ), style: .error)
+        }
+    }
+
+    private func showToast(_ text: String, style: ProfileToast.Style) {
+        toast = ProfileToast(text: text, style: style)
+    }
 }
 
 private struct SimplifiedProfileEditorView: View {
