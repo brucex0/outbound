@@ -113,6 +113,14 @@ For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the a
 
 Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after human review.
 
+When the approved EN/ZH pack is already published and only the backend voice catalog or display metadata changed, redeploy it with:
+
+```sh
+./scripts/redeploy-live-coach-voices.sh
+```
+
+The wrapper verifies the published manifest, preserves the `fixed_only` EN/ZH pilot and 0% dynamic rollout, delegates the build and Cloud Run deployment to `deploy-backend-gcloud.sh`, and checks service health. Use the general backend deploy script directly for an intentional rollout-mode, locale, catalog-version, or asset-location change.
+
 ## Rollout Meaning
 
 The two rollout controls answer different questions:
