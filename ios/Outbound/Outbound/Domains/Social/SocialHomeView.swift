@@ -1617,12 +1617,6 @@ struct SocialConnectionsView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
-                        isSearchFocused = true
-                    } label: {
-                        Label("Find people", systemImage: "magnifyingglass")
-                    }
-
-                    Button {
                         Task { await inviteByLink() }
                     } label: {
                         Label("Invite by link", systemImage: "square.and.arrow.up")
