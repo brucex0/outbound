@@ -26,8 +26,8 @@ On 2026-08-30 PDT, a synthetic smoke execution using the production container im
 
 ## Current Production Deployment
 
-- Revision: `outbound-api-tts1500`
-- Image digest: `sha256:4906fa1397e18140092e89ccf481e150c85ed93b218f95703f626843e958a726`
+- Revision: `outbound-api-voicepack830`
+- Image digest: `sha256:7de1a00889be61699c975215f8db2a05b94629d92088f176e990020701cbe4f1`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
@@ -35,7 +35,7 @@ On 2026-08-30 PDT, a synthetic smoke execution using the production container im
 - Planner: enabled, `gemini-3.1-pro-preview`, Vertex `global`
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
-- Fixed pack: signed `2026-08-28.1-en-zh` manifest; 312 approved assets are published, while the active two-voice subset uses 104
+- Fixed pack: signed `2026-08-30.1` manifest; 204 two-voice assets are published, while the enabled EN/ZH subset uses 136
 - Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
 
 The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
@@ -106,16 +106,16 @@ The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catal
 Each cue has product-authored English, Spanish, and Simplified Chinese text. The complete pack is:
 
 ```text
-34 cues × 3 locales × 2 active Google voices = 204 reviewed WAV files
+34 cues × 3 locales × 2 active Google voices = 204 published WAV files
 ```
 
 Catalog `2026-08-30.1` adds eight purpose-built cues for early pacing, faster/slower target correction, pace instability, pace drift, recovery effort, climb entry, and crest recovery. It does not force these meanings through the older generic settle/restore scripts. Confirmations and workout controls still share an existing cue only where the script expresses the semantic event exactly. The fixed transcript must match the selected catalog entry exactly; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
 
 ```text
-34 cues × 2 enabled locales × 2 active Google voices = 136 EN/ZH successor files
+34 cues × 2 enabled locales × 2 active Google voices = 136 active EN/ZH files
 ```
 
-Spanish remains gated; a complete three-locale successor adds 68 Spanish files for 204 total.
+Spanish remains gated; its 68 files are published in the same manifest but are not offered by the server.
 
 Print the catalog without an API call:
 
@@ -164,19 +164,21 @@ The active signing key ID is `live-coach-audio-2026-v1`.
 - The private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key` and must never enter source, logs, chat, or persistent Cloud Run environment values.
 - iOS verifies the ES256 manifest signature and each WAV SHA-256 before replacing its last-known-good pack.
 
-The initial fixed-only pilot is deliberately limited to English and Simplified Chinese:
+The prior fixed-only pilot was deliberately limited to English and Simplified Chinese:
 
 - Pilot catalog: `2026-08-28.1-en-zh`
 - Public bucket: `outbound-494602-live-coach-audio`
 - Approved matrix: 26 cues × 2 locales × 6 voices = 312 WAV files
-- Active runtime subset: 26 cues × 2 locales × 2 enabled voices = 104 WAV files
+- Former active runtime subset: 26 cues × 2 locales × 2 enabled voices = 104 WAV files
 - Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
 
-This remains the currently published fallback pack until a successor is reviewed and explicitly released. The active two-voice `2026-08-30.1` successor requires 136 approved WAVs for EN/ZH or 204 for all three locales. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
+The pilot remains published as a rollback artifact but is no longer configured. Production uses the signed `2026-08-30.1` manifest: 34 cues × 3 locales × 2 voices = 204 assets, with 136 EN/ZH assets enabled. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
 
-For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. Do not add Spanish to the allowlist until all 68 Spanish assets in the two-voice successor are reviewed, approved, signed, and published.
+For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The 68 Spanish assets are signed and published, but enabling Spanish still requires explicit product approval and listening QA.
 
-Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after human review.
+On 2026-08-30 the owner explicitly directed publication with bulk approval of all 204 generated entries. The manifest therefore records every entry as approved, but bulk approval is not evidence that every rendition received listening QA; do not treat this release as precedent for skipping the review screen.
+
+Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after approval.
 
 Publish a successor only after every in-scope entry is approved:
 
@@ -188,6 +190,14 @@ npm run live-coach:publish-audio -- \
 ```
 
 Configure immutable HTTPS URLs with `LIVE_COACH_AUDIO_MANIFEST_URL` and `LIVE_COACH_AUDIO_ASSET_BASE_URL`, then set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`. Startup fails closed when the pack, URLs, enabled voices/locales, or provider route is incomplete.
+
+After publication, activate the pack with the guarded wrapper from the repository root:
+
+```sh
+./scripts/redeploy-live-coach-voices.sh
+```
+
+The wrapper verifies the ES256 signature against the iOS public-key map, then checks the version, approval state, exact catalog transcripts, enabled locale/voice matrix, WAV metadata, and HTTPS asset URLs. It deploys with no traffic, checks the tagged candidate, and only then moves production traffic. Its defaults retain the production dynamic rollout, Gemini planner, founding/trial access, one warm instance, and 1.5-second provider deadline.
 
 ## Rollout Meaning
 
@@ -217,4 +227,4 @@ A trial is consumed only after the first successful dynamic cue. Canceled starts
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
-The currently published `2026-08-28.1-en-zh` pilot remains the fallback pack. Do not point production at the `2026-08-30.1` successor until all 136 active EN/ZH assets are generated through Google, approved, signed, uploaded, exposed through immutable HTTPS URLs, and protected by the locale gate. A complete active two-voice, three-locale successor requires 204 assets.
+Production now points at `2026-08-30.1`. All 204 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 136 English/Simplified-Chinese assets and keeps the 68 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved pack plus the representative real-device latency benchmark above.

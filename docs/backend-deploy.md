@@ -149,6 +149,8 @@ Operational sequence:
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
 7. Deploy `fixed_only`, verify device playback and rollback, apply the Prisma schema, then deploy `dynamic` plus the planner with a 0% rollout. Measure real-device first audio before explicitly raising the percentage.
 
+For a replacement pack after the rollout configuration has already been approved, run `./scripts/redeploy-live-coach-voices.sh`. Unlike the minimal-cost general deploy defaults, this guarded wrapper preserves the current production live-coach settings, validates the published manifest contents, deploys a no-traffic candidate, probes that exact revision, and shifts traffic only after it is healthy.
+
 Representative deploy environment (placeholders only):
 
 ```sh
