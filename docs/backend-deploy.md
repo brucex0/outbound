@@ -132,9 +132,9 @@ Notes:
 
 ## Live Coaching Audio Rollout
 
-The deploy script defaults live coaching to `disabled`, enables `en` and `zh-Hans` for the fixed-audio pilot, enables the Google Cloud TTS route, exposes one female and one male product voice, and keeps dynamic rollout at zero. Google authenticates through the attached Cloud Run runtime service account; no TTS API-key secret is bound. Because server audio remains disabled, a code deploy cannot begin TTS traffic by itself.
+The deploy script defaults live coaching to `disabled`, the planner to disabled, `en` and `zh-Hans` for the fixed-audio pilot, the Google Cloud TTS route enabled, one female and one male product voice, and dynamic rollout at zero. Google TTS and Vertex AI authenticate through the attached Cloud Run runtime service account. A code deploy therefore cannot begin planner/TTS traffic by itself.
 
-The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, Google endpoint identity/region, founding-user limit, and trial-run limit. The approved Chirp 3 HD product-to-provider mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for operations and `docs/live-coach-data-boundaries.md` for the exact provider payload.
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, 900 ms live provider deadline, route-policy version, Google endpoint identity/region, founding-user limit/trial-run limit, and gated Gemini planner model/project/location/deadline. The approved Chirp 3 HD mappings live inside the backend adapter. See `docs/live-coach-operations.md` for operations and `docs/live-coach-data-boundaries.md` for the exact Gemini/TTS payloads.
 
 Production dynamic access uses `LIVE_COACH_ACCESS_MODE=founding_trial`, `LIVE_COACH_FOUNDING_USER_LIMIT=1000`, and `LIVE_COACH_TRIAL_RUN_LIMIT=3`. The oldest 1,000 accounts receive a durable promotion grant when first evaluated. Later accounts reserve a trial when a dynamic session starts, consume it only after the first successful dynamic cue in that session, and release it on cancellation, expiration, provider failure, or a session that never receives dynamic audio. After three consumed trials, dynamic generation returns `entitlement_required` while reviewed fixed guidance continues. `open_beta` remains an explicit unlimited development/temporary-operations mode.
 
@@ -146,7 +146,7 @@ Operational sequence:
 4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 156 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
 5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
-7. Deploy `fixed_only`, verify device playback and rollback, then deploy `dynamic` with a 0% rollout before raising the deterministic percentage.
+7. Deploy `fixed_only`, verify device playback and rollback, apply the Prisma schema, then deploy `dynamic` plus the planner with a 0% rollout. Measure real-device first audio before explicitly raising the percentage.
 
 Representative deploy environment (placeholders only):
 
@@ -158,13 +158,19 @@ LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
 LIVE_COACH_ACCESS_MODE=founding_trial \
 LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
 LIVE_COACH_TRIAL_RUN_LIMIT=3 \
+LIVE_COACH_PLANNER_ENABLED=true \
+GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview \
+GEMINI_VERTEX_PROJECT_ID=outbound-494602 \
+GEMINI_VERTEX_LOCATION=global \
+GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000 \
+LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS=900 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
 LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-30.1-en-zh/manifest.json' \
 LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-30.1-en-zh/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 
-Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing secret/model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only`. Use `disabled` when server audio itself must be unavailable; the iOS app never re-enables Apple speech.
+Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing planner project/key, missing TTS model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and `LIVE_COACH_PLANNER_ENABLED=false`. Use `disabled` when server audio itself must be unavailable; iOS retains exact-text `AVSpeechSynthesizer` only as the 850 ms/offline last resort.
 
 Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-2026-v1` and the Secret Manager ES256 private PEM supplied to `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY` without logging it. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last-known-good or bundled pack untouched.
 
@@ -351,6 +357,6 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - Activity history sync requires the nullable `Activity.clientData`, `clientUpdatedAt`, `deletedAt`, and `updatedAt` fields. After deploying this change, run the pinned schema job before distributing the matching iOS build. Existing activity rows are restored through the route's legacy-field adapter and are upgraded to lossless client snapshots the next time a device with a local copy synchronizes.
 - Activity photo sync requires the current `Photo` columns and uniqueness constraints. Deploy the API and run the pinned schema job before distributing the matching iOS build. Uploads are idempotent by `(activityId, clientPhotoId)`; the iOS client keeps local JPEGs, retries missing uploads at launch/foreground, and downloads authenticated copies when restoring history on another device.
 - The coherent companion schema adds evidence, belief, episode, conversation, context-manifest, situational-signal, action, and outcome tables. Deploy the service image and execute the pinned `outbound-db-push` job before enabling `/v1/companion` clients against that revision.
-- Live coaching adds session, metadata-only cue, entitlement, and usage-period tables and replaces the legacy guide persona/voice columns with stable product IDs. Run the pinned schema job with the documented pre-publish data-loss acceptance before enabling `/v1/live-coach`; no compatibility migration for pre-launch guide rows is maintained.
+- Live coaching adds session, metadata-only cue, entitlement, and usage-period tables; each session now requires compiled-context v2 plus guidance-plan/hash and planner status/model/prompt-version fields. Run the pinned schema job before enabling the planner or distributing the matching iOS build; no compatibility migration for pre-launch live-coach rows is maintained.
 - Social workout presence adds `ActiveWorkoutPresence`. Deploy the API and run the pinned schema job before distributing the matching iOS build; the connection list treats missing or expired presence as inactive, so stale sessions fail closed.
 - Cross-device settings add the one-to-one `UserPreferences` row and authenticated `GET`/`PUT /v1/auth/me/preferences`. Deploy the API and execute the pinned schema job before distributing the matching iOS build so a first client upload cannot reach a runtime with the old Prisma schema.

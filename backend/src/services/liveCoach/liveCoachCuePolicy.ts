@@ -3,14 +3,16 @@ import type { LiveCoachMoment, RequestLiveCoachCueInput } from "./liveCoachTypes
 
 const dynamicMoments = new Set<LiveCoachMoment>([
   "progress",
-  "fast_start",
   "early_overpace",
   "pace_above_target",
   "pace_below_target",
   "pace_instability",
+  "target_locked",
   "pace_drift",
   "rhythm_recovery",
   "recovery_too_hard",
+  "unexpected_stop",
+  "resume_after_break",
   "climb_start",
   "crest_recovery",
   "segment_transition",

@@ -26,6 +26,14 @@ export type LiveCoachFeatureConfig = {
   audioManifestUrl: string;
   audioAssetBaseUrl: string;
   deploymentRegion: string;
+  planner: {
+    enabled: boolean;
+    model: string;
+    projectId: string;
+    location: string;
+    apiKey: string;
+    deadlineMilliseconds: number;
+  };
 };
 
 const knownPersonaIds: CoachPersonaId[] = [
@@ -63,10 +71,20 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     dynamicCueLimitResponsive: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE, 8, 0, 30),
     dynamicCueLimitCoachMe: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME, 15, 0, 30),
     cueValidityMilliseconds: boundedInteger(env.LIVE_COACH_CUE_VALIDITY_MILLISECONDS, 5_000, 1_000, 10_000),
-    providerDeadlineMilliseconds: boundedInteger(env.LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS, 4_000, 500, 10_000),
+    providerDeadlineMilliseconds: boundedInteger(env.LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS, 900, 500, 10_000),
     audioManifestUrl: trimmed(env.LIVE_COACH_AUDIO_MANIFEST_URL),
     audioAssetBaseUrl: trimmed(env.LIVE_COACH_AUDIO_ASSET_BASE_URL).replace(/\/+$/, ""),
     deploymentRegion: trimmed(env.PLAINSTRIDE_DEPLOYMENT_REGION) || "us-central1",
+    planner: {
+      enabled: env.LIVE_COACH_PLANNER_ENABLED === "true",
+      model: trimmed(env.GEMINI_LIVE_COACH_PLANNER_MODEL) || "gemini-3.1-pro-preview",
+      projectId: trimmed(env.GEMINI_VERTEX_PROJECT_ID)
+        || trimmed(env.GOOGLE_CLOUD_PROJECT)
+        || trimmed(env.GCLOUD_PROJECT),
+      location: trimmed(env.GEMINI_VERTEX_LOCATION) || "global",
+      apiKey: trimmed(env.GEMINI_API_KEY),
+      deadlineMilliseconds: boundedInteger(env.GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS, 20_000, 2_000, 60_000),
+    },
   };
 }
 
@@ -126,6 +144,12 @@ export function assertLiveCoachConfiguration(env: NodeJS.ProcessEnv = process.en
           );
         }
       }
+    }
+    if (feature.planner.enabled && !feature.planner.apiKey && !feature.planner.projectId) {
+      throw new AIProviderError(
+        "not_configured",
+        "Gemini live-coach planning requires GEMINI_API_KEY or GEMINI_VERTEX_PROJECT_ID/GOOGLE_CLOUD_PROJECT."
+      );
     }
   }
 }

@@ -210,6 +210,11 @@ model LiveCoachSession {
   compiledContext     Json
   contextHash         String
   contextVersion      Int
+  guidancePlan        Json
+  guidancePlanHash    String
+  plannerStatus       String
+  plannerModel        String?
+  plannerPromptVersion  String
   dynamicCueLimit     Int
   dynamicCueCount     Int       @default(0)
   expiresAt           DateTime

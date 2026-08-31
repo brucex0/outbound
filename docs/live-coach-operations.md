@@ -4,19 +4,21 @@ Open this when generating or publishing live-coach audio, changing the Google TT
 
 ## Current Architecture
 
-Live coaching uses Google Cloud Text-to-Speech for both runtime exact-text cues and reviewed fixed-pack generation. The live path is:
+Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
 
-1. iOS detects a semantic moment and sends bounded live state to Plainstride.
-2. The backend selects a product-authored exact sentence. For `progress`, it deterministically formats rounded distance, elapsed time, and pace.
-3. Google TTS receives only the exact sentence, selected voice, language, and 24 kHz `LINEAR16` settings.
-4. The backend validates the complete mono PCM WAV and returns it as Base64 JSON.
-5. iOS plays it if it is still timely; otherwise it uses the reviewed fixed pack.
+1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. Gemini returns a strict-JSON phase-aware phrase plan.
+2. iOS keeps semantic detection and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
+3. Google TTS receives only the finalized sentence, selected voice, language, and 24 kHz PCM settings.
+4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
+5. Generated plans prewarm up to eight likely WAV phrases in the background. The whole device request, including the wait for response metadata, is raced against an 850 ms deadline. If cloud audio loses that race, iOS cancels it and immediately uses the planned cache, reviewed local pack, or on-device system speech.
 
-There is no live-coach LLM call and no end-to-end audio stream or TTS WebSocket in this version. A cue response contains a complete WAV. The existing coarse `live_guidance_provider_result` latency buckets measure whether this is usable; do not assume the route is under one second until a deployed device-to-server-to-device benchmark proves it.
+There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
 ### Current Latency Evidence
 
-On 2026-08-30, five direct warm-client requests from the development Mac to the regional Google endpoint for the same eight-word preview sentence completed in 790–1,270 ms, with a 1,017 ms median. A separate request through the implemented adapter returned the exact sentence, a 3,480 ms WAV, and 167,084 audio bytes in 1,031 ms. These figures exclude iPhone-to-Cloud-Run and Cloud-Run-to-iPhone time, so this full-WAV route does **not** currently satisfy the sub-second end-to-end product gate. Keep dynamic rollout at zero until a faster delivery design or provider proves the actual device round trip.
+On 2026-08-30, the former complete-WAV route measured 790–1,270 ms for direct warm synthesis, with a 1,017 ms median, before iPhone/Cloud Run transport. That evidence rejected the complete-WAV design; it is not evidence for the streaming implementation. Do not claim the new path meets the gate until a real iPhone records device-request-to-first-playable-audio below one second at representative percentiles. The 850 ms device fallback guarantees a timely local attempt even when cloud audio does not meet that gate.
+
+For a real-device benchmark, install a DEBUG build against the candidate Cloud Run revision, start the run simulator, and trigger at least 30 uncached semantic cues across cold and warm connections. Capture `device_to_first_audio_ms` from the device console. This timer starts before the authenticated HTTP request and stops when the first PCM frame reaches iOS. Report median, p90, p95, cloud-audio success rate, planned-cache rate, and the fraction that crossed into the 850 ms local fallback. Do not log transcripts, plan/context payloads, exact metrics, or identifiers.
 
 ## Approved Google Route And Voices
 
@@ -24,7 +26,8 @@ On 2026-08-30, five direct warm-client requests from the development Mac to the 
 - Model family: Chirp 3 HD
 - Regional endpoint: `us-texttospeech.googleapis.com`
 - Authentication: Application Default Credentials from the Cloud Run runtime service account
-- Audio: WAV, PCM signed 16-bit little-endian, 24 kHz, mono
+- Live audio: headerless PCM signed 16-bit little-endian, 24 kHz, mono
+- Prewarm/fixed assets: WAV with the same PCM format
 
 The app exposes one provider-neutral female option and one male option. Google identifiers remain backend-only.
 
@@ -45,12 +48,17 @@ GOOGLE_CLOUD_TTS_API_ENDPOINT=us-texttospeech.googleapis.com
 GOOGLE_CLOUD_TTS_ENDPOINT_KEY=google-cloud-tts-us
 GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION=us
 GOOGLE_CLOUD_TTS_MODEL=chirp3-hd
+LIVE_COACH_PLANNER_ENABLED=true
+GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview
+GEMINI_VERTEX_PROJECT_ID=outbound-494602
+GEMINI_VERTEX_LOCATION=global
+GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000
 ALIBABA_AI_ENABLED=false
 ```
 
 `GOOGLE_CLOUD_TTS_VOICE_MAP` is an emergency/experiment JSON override. Normally use the approved map in `backend/src/services/aiProviders/google/approvedLiveCoachConfiguration.ts`.
 
-Enable `texttospeech.googleapis.com` in project `outbound-494602` before deployment. Cloud Run uses `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com`; no TTS secret binding is required.
+Enable `texttospeech.googleapis.com` and Vertex AI in project `outbound-494602` before deployment. Cloud Run uses `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com` for both; no mobile OAuth plist or TTS key is used. Keep `LIVE_COACH_PLANNER_ENABLED=false` until the data-boundary/privacy review and schema deployment are complete.
 
 For local generation, establish ADC outside the repository:
 
@@ -141,9 +149,9 @@ Configure immutable HTTPS URLs with `LIVE_COACH_AUDIO_MANIFEST_URL` and `LIVE_CO
 | --- | --- |
 | `mode=fixed_only` | Every eligible runner uses reviewed, downloaded audio; no runtime Google TTS request. |
 | `mode=dynamic`, `percent=0` | Provider/auth/config validation is armed, but every runner remains fixed-only. |
-| `mode=dynamic`, `percent=N` | The deterministic cohort receives exact-text Google TTS cues; everyone else uses the fixed pack. |
+| `mode=dynamic`, `percent=N` | The deterministic cohort receives one Gemini start plan plus planned-cache/streaming Google TTS cues; everyone else uses the fixed pack. |
 
-Use `fixed_only` for the first pack/cache/playback burn-in. Then arm `dynamic` at 0%, run a real Cloud Run/device latency benchmark, and increase 1, 5, 25, then 100 only if success/fallback and latency buckets meet the product gate. Increment `LIVE_COACH_CONFIG_VERSION` only when a fresh cohort assignment is intended.
+Use `fixed_only` for pack/cache/playback burn-in. Then arm the planner and `dynamic` at 0%, run a real Cloud Run/device first-audio benchmark, and explicitly set 100% only when the owner accepts the measured results. `founding_trial` grants the oldest 1,000 accounts permanently and gives later accounts three runs. Increment `LIVE_COACH_CONFIG_VERSION` only when a fresh cohort assignment is intended.
 
 To stop runtime TTS cost immediately while keeping spoken guidance available, redeploy `fixed_only`. Use `disabled` only when server audio itself must be unavailable.
 
@@ -168,3 +176,4 @@ Do not enable the English/Chinese fixed pack until all 104 files are generated, 
 - the published two-voice fixed pack passes on-device fallback checks;
 - a real device-to-Cloud-Run-to-device benchmark shows acceptable end-to-end latency;
 - provider-result success, fallback, and latency buckets are visible.
+- device-request-to-first-audio telemetry is visible and the on-device fallback speaks exact progress rather than `progress.steady`.

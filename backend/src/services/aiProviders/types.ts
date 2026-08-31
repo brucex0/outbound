@@ -59,21 +59,79 @@ export type LiveCoachLiveState = {
 };
 
 export type LiveCoachCompiledContext = {
-  version: 1;
+  version: 2;
   measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
+  locale: SupportedAILocale;
+  activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
+  goalType: "workout" | "distance" | "time" | "freestyle";
+  bio: {
+    biography: string | null;
+    ageYears: number | null;
+    sexAtBirth: string | null;
+    heightCentimeters: number | null;
+    weightKilograms: number | null;
+    goalSummary: string | null;
+    scheduleSummary: string | null;
+    comfortableDurationMinutes: number | null;
+    recentSessionsPerWeek: number | null;
+    targetSessionsPerWeek: number | null;
+    preferredLongRunDay: string | null;
+    guidanceDetail: string | null;
+    constraints: unknown;
+  };
+  coachingProfile: {
+    fitnessLevel: string | null;
+    weeklyVolumeKilometers: number | null;
+    preferredPaceSecondsPerKilometer: number | null;
+    strengths: string[];
+    weaknesses: string[];
+    goals: unknown;
+    records: unknown;
+    recentMemorySummary: unknown;
+  };
   workout: {
     title: string;
     purpose: string;
     durationSeconds: number;
     intensityTarget: unknown;
     prescription: unknown;
+    blocks: unknown[];
+  } | null;
+  clientWorkout: {
+    title: string;
+    detail: string;
+    guideLine: string;
+    targetDistanceMeters: number | null;
+    targetDurationSeconds: number | null;
+    steps: unknown[];
+    route: unknown | null;
   } | null;
   readiness: {
     choice: string;
     energy: number | null;
     soreness: number | null;
+    sleepQuality: number | null;
+    stress: number | null;
+    motivation: number | null;
+    illnessOrPain: boolean;
+    notes: string | null;
   } | null;
+  surveySummary: string[];
+  runnerInsights: string[];
+  runnerBeliefs: string[];
+  recentTraining: {
+    sevenDayActivities: unknown[];
+    sevenDaySummary: unknown;
+    twentyEightDaySummary: unknown;
+    recentWorkoutFeedback: unknown[];
+  };
+  environment: {
+    timeZoneIdentifier: string | null;
+    indoor: boolean;
+    approximateLocation: unknown | null;
+    weather: unknown | null;
+  };
   guidancePriorities: string[];
   cuePreferences: string[];
   safetyRequiresFixedOnly: boolean;
@@ -109,6 +167,17 @@ export type LiveCoachProviderResult = {
   providerRequestId?: string;
 };
 
+export type LiveCoachProviderAudioStream = {
+  transcript: string;
+  audioEncoding: {
+    container: "raw";
+    codec: "pcm_s16le";
+    sampleRateHz: 24_000;
+    channels: 1;
+  };
+  chunks: AsyncIterable<Uint8Array>;
+};
+
 export interface LiveCoachAIProvider {
   readonly key: AIProviderKey;
   readonly endpointKey: string;
@@ -116,6 +185,7 @@ export interface LiveCoachAIProvider {
   capabilities(): ProviderCapabilities;
   resolveVoice(voiceProfileId: VoiceProfileId, locale: SupportedAILocale): string | null;
   generateCue(input: LiveCoachGenerationInput, signal: AbortSignal): Promise<LiveCoachProviderResult>;
+  streamCue?(input: LiveCoachGenerationInput, signal: AbortSignal): Promise<LiveCoachProviderAudioStream>;
 }
 
 export type AIRouteFacts = {

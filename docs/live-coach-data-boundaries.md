@@ -1,111 +1,112 @@
 # Live Coach Data Boundaries
 
-Open this when changing live-coach context, adding an AI or speech provider, reviewing privacy, or answering what leaves the device/backend.
+Open this when changing live-coach context, planner or speech providers, privacy behavior, or the data sent off device.
 
-## Current Decision
+## Current Architecture
 
-Live coaching does **not** call an LLM during a workout. The server chooses a product-authored exact coaching sentence or deterministically formats a progress sentence, then sends only that sentence and speech settings to Google Cloud Text-to-Speech.
-
-The prior Alibaba combined text-and-audio path could send context to a conversational model for every dynamic cue. The current orchestrator always supplies an exact transcript, so that combined LLM path is no longer used even if Alibaba is re-enabled as a TTS fallback.
-
-## Data Flow
+Gemini plans the workout once when the live-coach session starts. It does not run in the per-cue path. During the workout, the iPhone detects a semantic event, chooses an exact phrase from the signed-in runner's stored plan, and asks Plainstride to synthesize that phrase. Progress announcements are deterministic exact distance/time/pace sentences.
 
 ```text
-iPhone moment detector
-  -> Plainstride API (authenticated live state)
-  -> server-authored exact sentence
-  -> Google Cloud TTS (sentence + voice/audio settings only)
-  -> complete validated WAV response
-  -> iPhone playback or reviewed fixed-pack fallback
+iPhone session context
+  -> authenticated Plainstride session creation
+  -> bounded backend context compiler
+  -> Gemini 3.1 Pro preview (one strict-JSON plan)
+  -> plan returned to iPhone
+
+iPhone moment detector + phrase ID + bounded live state
+  -> authenticated Plainstride HTTP/2 request
+  -> Google Cloud TTS gRPC streamingSynthesize(exact sentence)
+  -> framed raw PCM HTTP response
+  -> AVAudioEngine playback
+  -> 850 ms reviewed-pack/on-device speech fallback
 ```
 
-This remains a request/response path. The API returns one complete Base64-encoded WAV; it does not maintain a TTS WebSocket to the phone.
+There is no device-to-Google credential and no TTS WebSocket. The device keeps one ordinary HTTP/2 response open only for the duration of a cue; the backend keeps one Google gRPC stream open for that same cue.
 
 ## Device To Plainstride At Session Start
 
-The authenticated session-creation request contains:
+The authenticated request contains:
 
 - opaque client session ID and optional internal workout ID;
-- locale and metric/imperial preference;
-- selected product coach persona and product voice profile IDs;
-- coaching contract (`quiet`, `responsive`, or `coach_me`);
-- activity type and goal type.
+- locale, metric/imperial preference, activity type, and goal type;
+- product coach persona, product voice profile, and coaching contract;
+- client workout title, detail, guide line, target duration/distance, typed phases, resolved pace targets, and route summary;
+- route name/shape/direction, calculated distance/elevation gain, and approximate start coordinate/altitude when a route was selected;
+- time-zone identifier, indoor flag, approximate place/coordinate/altitude, and the latest WeatherKit condition, temperature, apparent temperature, wind, precipitation chance, impact, headline, guidance, and best window.
 
-The backend uses the authenticated account ID to compile a bounded context and stores it on `LiveCoachSession`:
+The client never sends an account/user ID. Plainstride derives identity from the access token.
 
-- selected workout title, purpose, planned duration, intensity target, and prescription;
-- latest readiness choice, energy, and soreness;
-- up to three derived guidance priorities;
-- up to three cue preferences;
-- measurement system and runner-model version;
-- a safety-only boolean that forces fixed guidance when illness or pain was reported.
+## Plainstride Context Compiler
 
-This compiled context stays inside Plainstride in the implemented Google TTS path.
+The backend adds only data for the authenticated runner and bounds every list/string before calling Gemini:
+
+- bio/survey: biography, age, sex at birth, height, weight, goal/schedule summaries, comfortable duration, recent/target frequency, preferred long-run day, guidance-detail preference, and declared constraints;
+- coaching profile: fitness level, weekly volume, preferred pace, strengths, weaknesses, goals, records, and bounded recent memory summary;
+- authoritative planned workout, blocks, and steps when present;
+- latest readiness, including energy, soreness, sleep, stress, motivation, illness/pain, and bounded notes;
+- derived survey summary, runner insights, confirmed/hypothesis beliefs, guidance priorities, and cue preferences;
+- up to 50 activities from the prior 28 days, a seven-day detail/aggregate, 28-day aggregate/baseline, and up to 12 recent workout-feedback records;
+- fresh situational signals and the client environment/weather described above.
+
+The compiler omits name, username, email, login-provider IDs, access tokens, device IDs, contacts, photos, raw route geometry, raw GPS track, and user/session/cue IDs. Coordinates are rounded to two decimal places before serialization. Serialized context is capped at an estimated 20,000 tokens and stored with a SHA-256 hash.
+
+## Plainstride To Gemini
+
+Gemini receives:
+
+- task and supported semantic-moment enum;
+- the bounded compiled context above;
+- selected coach-persona instructions in the system instruction;
+- a strict JSON response schema.
+
+The configured model is `gemini-3.1-pro-preview` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, and one to three exact short phrases for every supported moment, optionally specialized by workout phase. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
+
+Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only.
+
+Vertex AI uses the Cloud Run runtime identity. `GEMINI_API_KEY` is supported for controlled non-Vertex environments but must never enter the app or repository.
 
 ## Device To Plainstride For Each Cue
 
-Each cue request contains:
+Each request contains:
 
-- opaque cue request ID and semantic moment;
-- detection elapsed time and validity window;
-- current elapsed time and distance;
+- opaque cue request ID, semantic moment, detection time, validity window, and selected server-issued phrase ID (not arbitrary text);
+- elapsed time and distance;
 - current, rolling, and target pace when available;
-- workout segment index and phase when available;
-- whether route guidance is active.
+- grade, workout segment index/phase, and route-guidance-active flag when available.
 
-Route geometry, GPS coordinates, place names, heart-rate samples, photos, contacts, account name, email, and provider login identifiers are not part of the cue request.
+The server resolves the phrase ID against the session's stored plan. Progress is formatted server-side from bounded live state. The device cannot ask the server to synthesize arbitrary text.
 
 ## Plainstride To Google Cloud TTS
 
-Google Cloud TTS receives only:
+Google TTS receives only:
 
 - the finalized exact sentence;
 - Google voice name and language code;
-- `LINEAR16`, 24 kHz audio configuration;
-- normal Google Cloud authentication/project metadata added by Application Default Credentials.
+- PCM signed 16-bit little-endian, 24 kHz, mono settings;
+- Google Cloud authentication/project metadata added by Application Default Credentials.
 
-For periodic progress moments, the sentence can contain the runner's rounded distance, elapsed time, and pace because those values must be spoken. Google receives them only as words in that finalized sentence, not as a structured runner profile or live-state object.
+For progress cues, the sentence contains rounded distance, elapsed time, and pace as spoken words. Google does not receive the compiled context, semantic event, phrase ID, profile, structured telemetry, coordinates, route, or Plainstride identifiers.
 
-Google Cloud TTS does **not** receive:
+The backend forwards Google audio chunks in a length-prefixed response with metadata, PCM, completion, and error frame types. It never exposes Google credentials to iOS.
 
-- the compiled workout/readiness/profile context;
-- semantic-moment metadata or recent cue history;
-- user, session, workout, or cue identifiers;
-- GPS coordinates or route data;
-- the app's Google OAuth client plist.
+## Planned Audio And Fallback
 
-The Cloud Run runtime service account authenticates the request. Do not ship a Google Cloud API key or service-account credential in the iOS app.
+- After a generated plan arrives, iOS prewarms at most eight likely phrases through an authenticated phrase-ID endpoint. The server resolves the ID and returns a complete WAV; arbitrary text is not accepted.
+- Planned WAVs are content-addressed by plan hash, voice profile, and phrase ID in the iOS cache and expire after 24 hours.
+- Live raw PCM begins playback as chunks arrive. The initial server response and subsequent audio stream share one 850 ms deadline measured from device request start. If no first audio arrives by then, iOS cancels the request and uses the reviewed local pack or `AVSpeechSynthesizer`; progress uses the already-finalized exact local distance/time/pace sentence.
+- No Apple Foundation Model is used in this architecture. The on-device component selects phrases and provides the timeliness fallback; it does not invent coaching advice.
 
-## LLM Data
+## Storage, Logs, And Analytics
 
-The implemented live-coach path sends **no data to an LLM**. `APP_AI_KEY`, `APP_AI_BASE_URL`, and `APP_AI_MODEL` continue to support other app AI features, but live coaching does not use them.
-
-If a pre-workout LLM planner is approved later, its allowlisted payload should be limited to:
-
-- locale and measurement system;
-- activity type and goal type;
-- selected coach persona instructions;
-- the bounded workout fields listed above;
-- readiness choice, energy, and soreness;
-- up to three derived guidance priorities and cue preferences;
-- the finite list of semantic coaching events for which exact phrases are requested.
-
-It should never include account or device identifiers, name, email, raw notes, raw activity history, coordinates, route geometry, photos, contacts, or live telemetry. Enabling that planner requires an explicit provider decision, privacy review, retention review, and a separate configuration gate; documenting the payload does not authorize or enable the transfer.
-
-## Storage And Logging
-
-- `LiveCoachSession` stores the bounded compiled context, its SHA-256 hash, route metadata, selected product voice/persona, access reason, and coarse usage counts.
-- `LiveCoachCue` stores the semantic moment, source/result category, context hash, coarse latency bucket, optional coarse token bucket, and coarse output-audio byte bucket.
-- Dynamic transcript text and audio bytes are returned to the device but are not written to `LiveCoachCue`.
-- Provider request bodies, exact progress metrics, transcripts, and audio must not be written to application logs or product analytics.
-- Product analytics remains provider-neutral and records only bounded source/result/access/audio-mode values and coarse latency.
+- `LiveCoachSession` stores the bounded compiled context/hash/version, complete guidance plan/hash, planner status/model/prompt version, pinned TTS route, access reason, and coarse usage counts.
+- `LiveCoachCue` stores moment, source/result category, context hash, and coarse latency/token/audio-size buckets. It does not store transcript or audio.
+- Application logs and product analytics must not contain planner request bodies, profile/location fields, exact metrics, prompts, phrases, transcripts, audio, or identifiers.
+- Product analytics records provider-neutral categories only. `live_guidance_audio_first_byte` measures device-request-to-first-audio with the existing coarse buckets.
 
 ## Change Checklist
 
-Before adding a new live-coach field or provider:
-
-1. Decide whether the field is required on device, Plainstride backend, TTS, or a separately approved planner.
-2. Keep TTS limited to exact text and synthesis settings.
-3. Update this document and the provider allowlist in the same change.
-4. Confirm logs and analytics still exclude raw health, profile, location, transcript, and exact metric values.
-5. Re-review App Store privacy disclosures and provider retention terms before production rollout.
+1. Add fields to this allowlist and the bounded compiler together.
+2. Keep cue TTS limited to a server-resolved exact sentence and synthesis settings.
+3. Confirm planner text cannot disclose private context in spoken output.
+4. Confirm logs/analytics still exclude raw context, transcript, audio, identifiers, and exact telemetry.
+5. Re-review App Store privacy disclosures and current Google retention/region terms before production rollout.

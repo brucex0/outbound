@@ -23,6 +23,9 @@ struct RunningWeatherSnapshot: Codable, Equatable {
     let headline: String
     let guidance: String?
     let bestWindow: String?
+    let approximateLatitude: Double?
+    let approximateLongitude: Double?
+    let approximateAltitudeMeters: Double?
 
     var isFresh: Bool {
         Date().timeIntervalSince(fetchedAt) < 30 * 60
@@ -133,7 +136,7 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
             let weather = try await weatherRequest
             let placemarks = try? await placeRequest
             let place = placemarks?.first?.locality ?? placemarks?.first?.administrativeArea
-            let normalized = Self.normalize(weather: weather, placeName: place)
+            let normalized = Self.normalize(weather: weather, placeName: place, location: location)
             snapshot = normalized
             defaults.set(try? JSONEncoder().encode(normalized), forKey: snapshotKey)
             defaults.removeObject(forKey: diagnosticKey)
@@ -161,7 +164,7 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
         return "type=\(String(reflecting: type(of: error))) domain=\(nsError.domain) code=\(nsError.code) localizedDescription=\(nsError.localizedDescription) debug=\(String(reflecting: error))"
     }
 
-    private static func normalize(weather: Weather, placeName: String?) -> RunningWeatherSnapshot {
+    private static func normalize(weather: Weather, placeName: String?, location: CLLocation) -> RunningWeatherSnapshot {
         let current = weather.currentWeather
         let now = Date()
         let upcoming = weather.hourlyForecast.filter { hour in
@@ -219,8 +222,15 @@ final class SituationalWeatherStore: NSObject, ObservableObject {
             impact: impact,
             headline: headline,
             guidance: guidance,
-            bestWindow: bestRunningWindow(in: Array(upcoming), now: now)
+            bestWindow: bestRunningWindow(in: Array(upcoming), now: now),
+            approximateLatitude: roundedCoordinate(location.coordinate.latitude),
+            approximateLongitude: roundedCoordinate(location.coordinate.longitude),
+            approximateAltitudeMeters: location.altitude.rounded()
         )
+    }
+
+    private static func roundedCoordinate(_ value: Double) -> Double {
+        (value * 100).rounded() / 100
     }
 
     private static func bestRunningWindow(in hours: [HourWeather], now: Date) -> String? {

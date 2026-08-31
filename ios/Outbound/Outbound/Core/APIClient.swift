@@ -138,6 +138,105 @@ final class APIClient {
         try await post("/live-coach/sessions/\(sessionID)/cues", body: request)
     }
 
+    func streamLiveCoachCue(
+        sessionID: String,
+        request: LiveCoachCueRequest
+    ) async throws -> LiveCoachCueStreamResponse {
+        let requestStartedAt = Date()
+        var req = URLRequest(url: url(for: "/live-coach/sessions/\(sessionID)/cues/stream"))
+        req.httpMethod = "POST"
+        configureLocale(on: &req)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/vnd.plainstride.live-coach-stream", forHTTPHeaderField: "Accept")
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try encoder.encode(request)
+        let (bytes, response) = try await authenticatedBytes(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw APIError.http(
+                statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1,
+                message: "Live-coach audio stream request failed.",
+                code: "stream_request_failed"
+            )
+        }
+        guard http.value(forHTTPHeaderField: "Content-Type")?.lowercased()
+            .contains("application/vnd.plainstride.live-coach-stream") == true else {
+            throw APIError.http(statusCode: http.statusCode, message: "Invalid live-coach stream response.", code: "invalid_stream")
+        }
+
+        let reader = LiveCoachStreamFrameReader(iterator: bytes.makeAsyncIterator())
+        guard let metadataFrame = try await reader.nextFrame(), metadataFrame.type == 1 else {
+            throw APIError.http(statusCode: http.statusCode, message: "Live-coach stream metadata is missing.", code: "invalid_stream")
+        }
+        let metadata = try decoder.decode(LiveCoachCueStreamMetadata.self, from: metadataFrame.payload)
+        guard metadata.audio != nil else {
+            return LiveCoachCueStreamResponse(metadata: metadata, audioStream: nil, cachedAudioData: nil)
+        }
+
+        let relay = LiveCoachFirstAudioRelay()
+        let chunks = AsyncThrowingStream<Data, Error> { continuation in
+            let task = Task {
+                do {
+                    while let frame = try await reader.nextFrame() {
+                        switch frame.type {
+                        case 2:
+                            relay.reportFirstAudio(at: Date())
+                            continuation.yield(frame.payload)
+                        case 3:
+                            continuation.finish()
+                            return
+                        case 4:
+                            throw APIError.http(
+                                statusCode: 502,
+                                message: "Live-coach audio stream was interrupted.",
+                                code: "stream_interrupted"
+                            )
+                        default:
+                            throw APIError.http(statusCode: 502, message: "Invalid live-coach stream frame.", code: "invalid_stream")
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+        return LiveCoachCueStreamResponse(
+            metadata: metadata,
+            audioStream: LiveCoachPCMStream(
+                chunks: chunks,
+                requestStartedAt: requestStartedAt,
+                relay: relay
+            ),
+            cachedAudioData: nil
+        )
+    }
+
+    func fetchLiveCoachPhraseAudio(sessionID: String, phraseID: String) async throws -> Data {
+        var req = URLRequest(url: url(for: "/live-coach/sessions/\(sessionID)/phrases/\(phraseID)/audio"))
+        req.httpMethod = "POST"
+        configureLocale(on: &req)
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await authenticatedData(for: req)
+        try validate(response: response, data: data)
+        guard (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")?
+            .lowercased().contains("audio/wav") == true else {
+            throw APIError.http(statusCode: 502, message: "Invalid planned coaching audio.", code: "invalid_audio")
+        }
+        return data
+    }
+
+    func recordLiveCoachCachedCue(sessionID: String, request: LiveCoachCueRequest) async throws {
+        let _: LiveCoachCachedCueAck = try await post(
+            "/live-coach/sessions/\(sessionID)/cues/cached",
+            body: request
+        )
+    }
+
     func endLiveCoachSession(sessionID: String, request: EndLiveCoachSessionRequest) async throws -> EndLiveCoachSessionResponse {
         try await post("/live-coach/sessions/\(sessionID)/end", body: request)
     }
@@ -668,6 +767,19 @@ final class APIClient {
         return try await URLSession.shared.data(for: replay)
     }
 
+    private func authenticatedBytes(
+        for request: URLRequest
+    ) async throws -> (URLSession.AsyncBytes, URLResponse) {
+        let first = try await URLSession.shared.bytes(for: request)
+        guard (first.1 as? HTTPURLResponse)?.statusCode == 401,
+              let replacement = try await SessionCoordinator.shared.refreshAfterUnauthorized(
+                rejectedAccessToken: request.bearerToken
+              ) else { return first }
+        var replay = request
+        replay.setValue("Bearer \(replacement)", forHTTPHeaderField: "Authorization")
+        return try await URLSession.shared.bytes(for: replay)
+    }
+
     private func configureLocale(on request: inout URLRequest) {
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "Accept-Language")
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "X-Plainstride-Locale")
@@ -738,6 +850,58 @@ extension Error {
 private struct APIErrorPayload: Decodable {
     let error: String
     let code: String?
+}
+
+private struct LiveCoachCachedCueAck: Decodable {
+    let contractVersion: Int
+    let recorded: Bool
+}
+
+private struct LiveCoachStreamFrame {
+    let type: UInt8
+    let payload: Data
+}
+
+private actor LiveCoachStreamFrameReader {
+    private var iterator: URLSession.AsyncBytes.Iterator
+    private var buffer = Data()
+
+    init(iterator: URLSession.AsyncBytes.Iterator) {
+        self.iterator = iterator
+    }
+
+    func nextFrame() async throws -> LiveCoachStreamFrame? {
+        while buffer.count < 5 {
+            guard let byte = try await nextByte() else {
+                if buffer.isEmpty { return nil }
+                throw APIError.http(statusCode: 502, message: "Truncated live-coach stream header.", code: "invalid_stream")
+            }
+            buffer.append(byte)
+        }
+        let length = Int(buffer[1]) << 24
+            | Int(buffer[2]) << 16
+            | Int(buffer[3]) << 8
+            | Int(buffer[4])
+        guard (0...512 * 1_024).contains(length) else {
+            throw APIError.http(statusCode: 502, message: "Live-coach stream frame is too large.", code: "invalid_stream")
+        }
+        while buffer.count < 5 + length {
+            guard let byte = try await nextByte() else {
+                throw APIError.http(statusCode: 502, message: "Truncated live-coach stream payload.", code: "invalid_stream")
+            }
+            buffer.append(byte)
+        }
+        let frame = LiveCoachStreamFrame(type: buffer[0], payload: Data(buffer[5..<(5 + length)]))
+        buffer.removeSubrange(0..<(5 + length))
+        return frame
+    }
+
+    private func nextByte() async throws -> UInt8? {
+        var localIterator = iterator
+        let value = try await localIterator.next()
+        iterator = localIterator
+        return value
+    }
 }
 
 private extension URLRequest {

@@ -14,6 +14,7 @@ struct SessionAnalysisRequest {
     let sessionIntent: SessionIntent?
     let companionBrief: CompanionSessionBriefDTO?
     let momentType: LiveGuidanceMomentType?
+    let preferredMessage: String?
     let routeGuidanceActive: Bool
 
     init(
@@ -24,6 +25,7 @@ struct SessionAnalysisRequest {
         sessionIntent: SessionIntent? = nil,
         companionBrief: CompanionSessionBriefDTO? = nil,
         momentType: LiveGuidanceMomentType? = nil,
+        preferredMessage: String? = nil,
         routeGuidanceActive: Bool = false
     ) {
         self.profile = profile
@@ -33,6 +35,7 @@ struct SessionAnalysisRequest {
         self.sessionIntent = sessionIntent
         self.companionBrief = companionBrief
         self.momentType = momentType
+        self.preferredMessage = preferredMessage
         self.routeGuidanceActive = routeGuidanceActive
     }
 }
@@ -51,19 +54,23 @@ struct SessionAnalysisResult: Equatable {
     let latencyBucket: LiveCoachLatencyBucket
     let fixedCueKey: String?
     let audioData: Data?
+    let audioStream: LiveCoachPCMStream?
 }
 
 @MainActor
 protocol SessionAnalysisProvider: AnyObject {
     var identifier: String { get }
     var displayName: String { get }
+    var progressPolicy: LiveCoachProgressPolicyDTO? { get }
 
     func beginSession(
         profile: GuideProfile?,
         persona: GuidePersona?,
         sessionIntent: SessionIntent?,
         companionBrief: CompanionSessionBriefDTO?,
-        unitSystem: MeasurementUnitSystem
+        unitSystem: MeasurementUnitSystem,
+        weatherSnapshot: RunningWeatherSnapshot?,
+        isIndoor: Bool
     )
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult
     func endSession(report: LiveGuidanceSessionReport?)

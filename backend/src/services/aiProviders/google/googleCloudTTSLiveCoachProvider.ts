@@ -8,6 +8,7 @@ import {
   LIVE_COACH_DYNAMIC_AUDIO_MAX_DURATION_MILLISECONDS,
   type LiveCoachAIProvider,
   type LiveCoachGenerationInput,
+  type LiveCoachProviderAudioStream,
   type ProviderCapabilities,
   type SupportedAILocale,
   type VoiceProfileId,
@@ -82,6 +83,71 @@ export class GoogleCloudTTSLiveCoachProvider implements LiveCoachAIProvider {
       throw googleProviderError(error, input.deadline, signal);
     }
   }
+
+  async streamCue(input: LiveCoachGenerationInput, signal: AbortSignal): Promise<LiveCoachProviderAudioStream> {
+    if (!this.config.enabled) {
+      throw new AIProviderError("not_configured", "Google Cloud TTS is not configured.");
+    }
+    const transcript = normalizeTranscript(input.exactTranscript ?? "");
+    validateTranscript(transcript, input);
+    if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+    const timeout = Math.max(1, input.deadline.getTime() - Date.now());
+    const call = this.client.streamingSynthesize({ timeout, retry: null });
+    const cancel = () => call.cancel();
+    signal.addEventListener("abort", cancel, { once: true });
+
+    call.write({
+      streamingConfig: {
+        voice: {
+          languageCode: googleLanguageCode(input.locale),
+          name: input.providerVoice,
+        },
+        streamingAudioConfig: {
+          audioEncoding: "PCM",
+          sampleRateHertz: LIVE_COACH_AUDIO_ENCODING.sampleRateHz,
+          speakingRate: 1,
+        },
+      },
+    });
+    call.write({ input: { text: transcript } });
+    call.end();
+
+    const source = call as unknown as AsyncIterable<{ audioContent?: string | Uint8Array | null }>;
+    const endpointKey = this.endpointKey;
+    const chunks = (async function* () {
+      let byteCount = 0;
+      let receivedAudio = false;
+      try {
+        for await (const response of source) {
+          if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+          const chunk = optionalAudioBytes(response.audioContent);
+          if (!chunk) continue;
+          byteCount += chunk.byteLength;
+          if (byteCount > 384 * 1024) {
+            call.cancel();
+            throw new AIProviderError("invalid_provider_output", "Google Cloud TTS streamed too much audio.");
+          }
+          receivedAudio = true;
+          yield chunk;
+        }
+        if (!receivedAudio) {
+          throw new AIProviderError("invalid_provider_output", "Google Cloud TTS returned no streaming audio.");
+        }
+        recordRouteSuccess("google_cloud_tts", endpointKey);
+      } catch (error) {
+        recordRouteFailure("google_cloud_tts", endpointKey);
+        throw googleProviderError(error, input.deadline, signal);
+      } finally {
+        signal.removeEventListener("abort", cancel);
+      }
+    })();
+
+    return {
+      transcript,
+      audioEncoding: { container: "raw", codec: "pcm_s16le", sampleRateHz: 24_000, channels: 1 },
+      chunks,
+    };
+  }
 }
 
 function googleLanguageCode(locale: SupportedAILocale): string {
@@ -94,6 +160,12 @@ function audioBytes(value: string | Uint8Array | null | undefined): Uint8Array {
   if (typeof value === "string" && value) return new Uint8Array(Buffer.from(value, "base64"));
   if (value instanceof Uint8Array && value.byteLength > 0) return value;
   throw new AIProviderError("invalid_provider_output", "Google Cloud TTS returned no audio.");
+}
+
+function optionalAudioBytes(value: string | Uint8Array | null | undefined): Uint8Array | null {
+  if (typeof value === "string" && value) return new Uint8Array(Buffer.from(value, "base64"));
+  if (value instanceof Uint8Array && value.byteLength > 0) return value;
+  return null;
 }
 
 function validateTranscript(transcript: string, input: LiveCoachGenerationInput): void {

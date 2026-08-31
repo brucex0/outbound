@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { stream } from "hono/streaming";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { AppEnv } from "../types/hono.js";
@@ -13,10 +14,61 @@ import { liveCoachCueRepository } from "../services/liveCoach/liveCoachCueReposi
 import { loadLiveCoachFeatureConfig, effectiveModeForUser, isLiveCoachLocaleEnabled } from "../services/liveCoach/liveCoachFeatureConfig.js";
 import { LiveCoachOrchestrator } from "../services/liveCoach/liveCoachOrchestrator.js";
 import { LiveCoachSessionService } from "../services/liveCoach/liveCoachSessionService.js";
+import { LiveCoachStreamingService } from "../services/liveCoach/liveCoachStreamingService.js";
+import { LiveCoachPhraseService } from "../services/liveCoach/liveCoachPhraseService.js";
+import { LIVE_COACH_STREAM_CONTENT_TYPE, liveCoachStreamFrame } from "../services/liveCoach/liveCoachStreamProtocol.js";
 import { LIVE_COACH_MOMENTS } from "../services/liveCoach/liveCoachTypes.js";
 
 const router = new Hono<AppEnv>();
 const identifier = z.string().uuid();
+
+const clientWorkoutSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  detail: z.string().trim().max(400),
+  guideLine: z.string().trim().max(400),
+  targetDistanceMeters: z.number().finite().min(0).max(1_000_000).optional(),
+  targetDurationSeconds: z.number().finite().min(0).max(24 * 60 * 60).optional(),
+  steps: z.array(z.object({
+    label: z.string().trim().min(1).max(100),
+    durationSeconds: z.number().finite().min(0).max(24 * 60 * 60),
+    detail: z.string().trim().max(240).optional(),
+    phase: z.enum(["warmup", "easy", "work", "recovery", "walk", "cooldown", "open"]).optional(),
+    targetPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
+  }).strict()).max(80),
+  route: z.object({
+    name: z.string().trim().max(120).optional(),
+    shape: z.string().trim().max(40).optional(),
+    direction: z.enum(["forward", "reverse"]).optional(),
+    distanceMeters: z.number().finite().min(0).max(1_000_000).optional(),
+    elevationGainMeters: z.number().finite().min(0).max(100_000).optional(),
+    approximateStartLatitude: z.number().finite().min(-90).max(90).optional(),
+    approximateStartLongitude: z.number().finite().min(-180).max(180).optional(),
+    approximateStartAltitudeMeters: z.number().finite().min(-500).max(10_000).optional(),
+  }).strict().optional(),
+}).strict();
+
+const environmentSchema = z.object({
+  timeZoneIdentifier: z.string().trim().max(100).optional(),
+  indoor: z.boolean(),
+  approximateLocation: z.object({
+    placeName: z.string().trim().max(120).optional(),
+    latitude: z.number().finite().min(-90).max(90).optional(),
+    longitude: z.number().finite().min(-180).max(180).optional(),
+    altitudeMeters: z.number().finite().min(-500).max(10_000).optional(),
+  }).strict().optional(),
+  weather: z.object({
+    observedAt: z.string().datetime(),
+    condition: z.string().trim().min(1).max(100),
+    temperatureCelsius: z.number().finite().min(-100).max(100),
+    apparentTemperatureCelsius: z.number().finite().min(-100).max(100),
+    windKilometersPerHour: z.number().finite().min(0).max(500),
+    precipitationChance: z.number().finite().min(0).max(1),
+    impact: z.enum(["none", "advisory", "caution", "unsafe"]),
+    headline: z.string().trim().max(180),
+    guidance: z.string().trim().max(300).optional(),
+    bestWindow: z.string().trim().max(160).optional(),
+  }).strict().optional(),
+}).strict();
 
 const createSessionSchema = z.object({
   contractVersion: z.literal(1),
@@ -31,6 +83,8 @@ const createSessionSchema = z.object({
     activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),
     goalType: z.enum(["workout", "distance", "time", "freestyle"]),
   }).strict(),
+  clientWorkout: clientWorkoutSchema.optional(),
+  environment: environmentSchema.optional(),
   appDistributionHint: z.literal("global").optional(),
 }).strict();
 
@@ -52,6 +106,7 @@ const cueSchema = z.object({
   moment: z.enum(LIVE_COACH_MOMENTS),
   detectedAtElapsedSeconds: z.number().int().min(0).max(24 * 60 * 60),
   validForMilliseconds: z.number().int().min(1_000).max(10_000),
+  selectedPhraseId: z.string().trim().min(1).max(120).optional(),
   liveState: liveStateSchema,
 }).strict();
 
@@ -66,7 +121,7 @@ const endSchema = z.object({
 
 router.use("*", async (c, next) => {
   const contentLength = Number(c.req.header("Content-Length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > 16 * 1024) {
+  if (Number.isFinite(contentLength) && contentLength > 64 * 1024) {
     return c.json({ error: "Live-coach request body is too large.", code: "invalid_request" }, 413);
   }
   await next();
@@ -125,6 +180,76 @@ router.post("/sessions/:sessionId/cues", zValidator("json", cueSchema), async (c
     c.req.raw.signal
   );
   return c.json(response);
+});
+
+router.post("/sessions/:sessionId/cues/stream", zValidator("json", cueSchema), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  const prepared = await new LiveCoachStreamingService(getPrismaClient()).prepare(
+    appUser.id,
+    c.req.param("sessionId"),
+    c.req.valid("json"),
+    c.req.raw.signal
+  );
+  c.header("Content-Type", LIVE_COACH_STREAM_CONTENT_TYPE);
+  c.header("Cache-Control", "no-store, no-transform");
+  c.header("X-Accel-Buffering", "no");
+  return stream(c, async (body) => {
+    await body.write(liveCoachStreamFrame(1, prepared.metadata));
+    let byteCount = 0;
+    let firstAudioAt: number | undefined;
+    try {
+      for await (const chunk of prepared.chunks) {
+        if (firstAudioAt == null) firstAudioAt = Date.now();
+        byteCount += chunk.byteLength;
+        await body.write(liveCoachStreamFrame(2, chunk));
+      }
+      await body.write(liveCoachStreamFrame(3, {
+        byteCount,
+        firstAudioAtUnixMilliseconds: firstAudioAt,
+        serverCompletedAtUnixMilliseconds: Date.now(),
+      }));
+    } catch {
+      await body.write(liveCoachStreamFrame(4, {
+        code: "stream_interrupted",
+        firstAudioAtUnixMilliseconds: firstAudioAt,
+        serverFailedAtUnixMilliseconds: Date.now(),
+      }));
+    }
+  });
+});
+
+router.post("/sessions/:sessionId/phrases/:phraseId/audio", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  const phraseId = z.string().trim().min(1).max(120).parse(c.req.param("phraseId"));
+  const result = await new LiveCoachPhraseService(getPrismaClient()).synthesize(
+    appUser.id,
+    c.req.param("sessionId"),
+    phraseId,
+    c.req.raw.signal
+  );
+  c.header("Content-Type", "audio/wav");
+  c.header("Cache-Control", "private, max-age=14400");
+  c.header("X-Content-Type-Options", "nosniff");
+  return c.body(Uint8Array.from(result.audio).buffer);
+});
+
+router.post("/sessions/:sessionId/cues/cached", zValidator("json", cueSchema), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const appUser = await getAuthenticatedAppUser(c);
+  if (!appUser) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  await new LiveCoachPhraseService(getPrismaClient()).recordCachedUse(
+    appUser.id,
+    c.req.param("sessionId"),
+    c.req.valid("json")
+  );
+  return c.json({ contractVersion: 1, recorded: true });
 });
 
 router.post("/sessions/:sessionId/end", zValidator("json", endSchema), async (c) => {

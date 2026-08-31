@@ -3,12 +3,8 @@ import type { LiveCoachLiveState, SupportedAILocale } from "../aiProviders/types
 import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import type { LiveCoachMoment } from "./liveCoachTypes.js";
 
-const authoredVariants: Record<SupportedAILocale, Record<Exclude<LiveCoachMoment, "progress">, string[]>> = {
+const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoachMoment, "progress">, string[]>>> = {
   en: {
-    fast_start: [
-      "Ease the effort slightly and settle into a rhythm you can hold.",
-      "Let the pace come back gently, then lock into a smooth rhythm.",
-    ],
     pace_drift: [
       "Relax your shoulders, quicken the rhythm slightly, and rebuild smoothly.",
       "Reset your posture and bring the pace back one calm step at a time.",
@@ -35,10 +31,6 @@ const authoredVariants: Record<SupportedAILocale, Record<Exclude<LiveCoachMoment
     ],
   },
   es: {
-    fast_start: [
-      "Baja un poco el esfuerzo y encuentra un ritmo que puedas mantener.",
-      "Reduce suavemente el ritmo y estabilízate con calma.",
-    ],
     pace_drift: [
       "Relaja los hombros, ajusta la cadencia y recupera el ritmo con calma.",
       "Corrige la postura y vuelve al ritmo poco a poco.",
@@ -65,10 +57,6 @@ const authoredVariants: Record<SupportedAILocale, Record<Exclude<LiveCoachMoment
     ],
   },
   "zh-Hans": {
-    fast_start: [
-      "稍微收住强度，找到能稳定保持的节奏。",
-      "平稳放慢一点，然后锁定顺畅的节奏。",
-    ],
     pace_drift: [
       "放松肩膀，稍微加快步频，平稳找回节奏。",
       "调整姿势，一点一点把配速带回来。",
@@ -106,10 +94,16 @@ export function transcriptForLiveCoachCue(input: {
   if (input.moment === "progress") {
     return progressTranscript(input.locale, input.liveState, input.measurementUnitSystem);
   }
-  const variants = authoredVariants[input.locale][input.moment];
+  const variants = authoredVariants[input.locale][input.moment] ?? defaultVariants[input.locale];
   const index = createHash("sha256").update(input.cueRequestId).digest().readUInt32BE(0) % variants.length;
   return validateLiveCoachOutput(variants[index]);
 }
+
+const defaultVariants: Record<SupportedAILocale, string[]> = {
+  en: ["Keep the effort controlled and stay with a smooth rhythm."],
+  es: ["Mantén el esfuerzo controlado y sigue con un ritmo fluido."],
+  "zh-Hans": ["保持强度可控，继续维持顺畅的节奏。"],
+};
 
 function progressTranscript(
   locale: SupportedAILocale,
