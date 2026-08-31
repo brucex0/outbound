@@ -26,8 +26,8 @@ On 2026-08-30 PDT, a synthetic smoke execution using the production container im
 
 ## Current Production Deployment
 
-- Revision: `outbound-api-plannedtts2`
-- Image digest: `sha256:5ef02b1c0d94178e541c168f2c09c4e7ca93310a2268d602a39a2cebffdf4dca`
+- Revision: `outbound-api-tts1500`
+- Image digest: `sha256:4906fa1397e18140092e89ccf481e150c85ed93b218f95703f626843e958a726`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
