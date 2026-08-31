@@ -12,6 +12,8 @@ Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech 
 4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
 5. Generated plans prewarm up to eight likely WAV phrases in the background. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the planned cache, reviewed local pack, or on-device system speech.
 
+iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
+
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
 ### Current Latency Evidence

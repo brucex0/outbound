@@ -247,7 +247,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
             memcpy(channel, source, data.count)
         }
         scheduledPCMBufferCount += 1
-        playerNode.scheduleBuffer(buffer) { [weak self] in
+        playerNode.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.scheduledPCMBufferCount = max(0, self.scheduledPCMBufferCount - 1)
