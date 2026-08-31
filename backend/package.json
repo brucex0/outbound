@@ -20,13 +20,15 @@
     "live-coach:publish-audio": "npm run build && node dist/scripts/publishLiveCoachAudio.js"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2",
     "@anthropic-ai/sdk": "^0.30.0",
+    "@google-cloud/text-to-speech": "^7.0.0",
+    "@google/genai": "^2.19.0",
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.1",
     "@prisma/client": "^5.22.0",
     "firebase-admin": "^12.7.0",
     "hono": "^4.6.0",
+    "node-fetch": "^3.3.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -22,7 +22,7 @@ export const LIVE_COACH_MOMENTS = [
 ] as const;
 export type LiveCoachMoment = (typeof LIVE_COACH_MOMENTS)[number];
 export type CoachingContract = "quiet" | "responsive" | "coach_me";
-export type LiveCoachCueSource = "dynamic_generation" | "fixed_pack" | "cached_fallback";
+export type LiveCoachCueSource = "dynamic_generation" | "planned_cache" | "fixed_pack" | "cached_fallback";
 export type LiveCoachCueResult =
   | "success"
   | "offline"
@@ -45,7 +45,79 @@ export type CreateLiveCoachSessionInput = {
   coachingContract: CoachingContract;
   measurementUnitSystem: "metric" | "imperial";
   sessionIntent: { activityType: "running" | "walking" | "cycling" | "hiking" | "swimming"; goalType: "workout" | "distance" | "time" | "freestyle" };
+  clientWorkout?: LiveCoachClientWorkout;
+  environment?: LiveCoachEnvironmentInput;
   appDistributionHint?: "global";
+};
+
+export type LiveCoachClientWorkout = {
+  title: string;
+  detail: string;
+  guideLine: string;
+  targetDistanceMeters?: number;
+  targetDurationSeconds?: number;
+  steps: Array<{
+    label: string;
+    durationSeconds: number;
+    detail?: string;
+    phase?: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
+    targetPaceSecondsPerKilometer?: number;
+  }>;
+  route?: {
+    name?: string;
+    shape?: string;
+    direction?: "forward" | "reverse";
+    distanceMeters?: number;
+    elevationGainMeters?: number;
+    approximateStartLatitude?: number;
+    approximateStartLongitude?: number;
+    approximateStartAltitudeMeters?: number;
+  };
+};
+
+export type LiveCoachEnvironmentInput = {
+  timeZoneIdentifier?: string;
+  indoor: boolean;
+  approximateLocation?: {
+    placeName?: string;
+    latitude?: number;
+    longitude?: number;
+    altitudeMeters?: number;
+  };
+  weather?: {
+    observedAt: string;
+    condition: string;
+    temperatureCelsius: number;
+    apparentTemperatureCelsius: number;
+    windKilometersPerHour: number;
+    precipitationChance: number;
+    impact: "none" | "advisory" | "caution" | "unsafe";
+    headline: string;
+    guidance?: string;
+    bestWindow?: string;
+  };
+};
+
+export type LiveCoachGuidancePhase = "any" | "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
+export type LiveCoachGuidancePlanCue = {
+  id: string;
+  moment: LiveCoachMoment;
+  phases: LiveCoachGuidancePhase[];
+  priority: "steady" | "opportunity" | "caution";
+  cooldownSeconds: number;
+  phrases: Array<{ id: string; text: string }>;
+};
+export type LiveCoachGuidancePlan = {
+  contractVersion: 1;
+  planVersion: string;
+  locale: SupportedAILocale;
+  summary: string;
+  progressPolicy: {
+    announceEverySeconds: number;
+    announceEveryMeters: number;
+    includePace: boolean;
+  };
+  cues: LiveCoachGuidancePlanCue[];
 };
 
 export type RequestLiveCoachCueInput = {
@@ -54,6 +126,7 @@ export type RequestLiveCoachCueInput = {
   moment: LiveCoachMoment;
   detectedAtElapsedSeconds: number;
   validForMilliseconds: number;
+  selectedPhraseId?: string;
   liveState: LiveCoachLiveState;
 };
 
@@ -98,6 +171,11 @@ export type LiveCoachSessionSnapshot = {
   effectiveMode: LiveCoachMode;
   compiledContext: LiveCoachCompiledContext;
   contextHash: string;
+  guidancePlan: LiveCoachGuidancePlan;
+  guidancePlanHash: string;
+  plannerStatus: "generated" | "fallback";
+  plannerModel: string | null;
+  plannerPromptVersion: string;
   dynamicCueLimit: number;
   dynamicCueCount: number;
   expiresAt: Date;

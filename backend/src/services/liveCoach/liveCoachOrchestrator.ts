@@ -8,8 +8,10 @@ import { findCoachPersona } from "./liveCoachCatalog.js";
 import { cuePolicyDecision, urgencyForMoment } from "./liveCoachCuePolicy.js";
 import { liveCoachCueRepository } from "./liveCoachCueRepository.js";
 import { fixedFallbackEnvelope } from "./liveCoachFallback.js";
+import { transcriptForLiveCoachCue } from "./liveCoachGuidanceText.js";
 import { effectiveModeForUser, loadLiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import { stableLiveCoachInstructions } from "./liveCoachPrompt.js";
+import { phraseForPlan } from "./liveCoachGuidancePlanner.js";
 import { LiveCoachSessionService } from "./liveCoachSessionService.js";
 import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import type { LiveCoachCueEnvelope, LiveCoachCueResult, RequestLiveCoachCueInput } from "./liveCoachTypes.js";
@@ -128,6 +130,15 @@ export class LiveCoachOrchestrator {
     const startedAt = Date.now();
     const cueExpiresAt = new Date(startedAt + input.validForMilliseconds);
     try {
+      const exactTranscript = input.moment === "progress"
+        ? transcriptForLiveCoachCue({
+            locale: session.locale,
+            moment: input.moment,
+            liveState: input.liveState,
+            cueRequestId: input.cueRequestId,
+            measurementUnitSystem: session.compiledContext.measurementUnitSystem,
+          })
+        : selectedPlanTranscript(session, input);
       const result = await provider.generateCue({
         requestId: input.cueRequestId,
         locale: session.locale,
@@ -143,7 +154,8 @@ export class LiveCoachOrchestrator {
         compiledContext: session.compiledContext,
         liveState: input.liveState,
         recentCueSummaries: liveCoachCueRepository.recentCueSummariesForSession(session.id),
-        maximumSpokenWordsEquivalent: 18,
+        maximumSpokenWordsEquivalent: 36,
+        exactTranscript,
         deadline: new Date(startedAt + Math.min(config.providerDeadlineMilliseconds, input.validForMilliseconds)),
       }, signal);
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -290,6 +302,21 @@ export class LiveCoachOrchestrator {
       }),
     ]);
   }
+}
+
+function selectedPlanTranscript(
+  session: Awaited<ReturnType<LiveCoachSessionService["ownedActiveSession"]>>,
+  input: RequestLiveCoachCueInput
+): string {
+  const phase = input.liveState.workoutSegmentPhase;
+  const selected = input.selectedPhraseId
+    ? phraseForPlan(session.guidancePlan, input.selectedPhraseId, input.moment, phase)
+    : null;
+  const first = session.guidancePlan.cues.find((cue) => cue.moment === input.moment
+    && (!phase || cue.phases.includes("any") || cue.phases.includes(phase)))?.phrases[0]?.text;
+  const transcript = selected ?? first;
+  if (!transcript) throw new AIProviderError("invalid_provider_output", "The selected coaching phrase is not in the session plan.");
+  return transcript;
 }
 
 function pinnedProvider(providerKey: string, endpointKey: string, model: string): LiveCoachAIProvider | null {

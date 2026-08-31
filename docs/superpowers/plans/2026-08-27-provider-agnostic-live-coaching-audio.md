@@ -4,9 +4,21 @@
 
 **Initial provider:** Alibaba Cloud Model Studio / Qwen
 
+**Current provider:** Google Cloud Text-to-Speech / Chirp 3 HD; see `docs/live-coach-operations.md`
+
 **Primary outcome:** Every audible coaching cue is server-generated audio. The iOS app never uses an Apple system voice, chooses a vendor/model, or calls an AI vendor directly.
 
 This document is written for an implementation agent. Complete the tasks in order, keep each commit reviewable, and update this plan when implementation reveals a materially different constraint. Follow `AGENTS.md`: do not run the test suite unless the user explicitly requests it; use build-only checks and the manual acceptance matrix for normal verification.
+
+## Provider reconciliation — 2026-08-30
+
+The original Alibaba implementation below is retained as historical design context. The current code and operational source of truth now differ:
+
+- Google Cloud TTS is the preferred audio provider, authenticated through the Cloud Run runtime service account; Alibaba is disabled by default.
+- The product exposes one female and one male voice, reducing the three-locale fixed pack from 468 to 156 WAV files.
+- The backend supplies an exact product-authored sentence for every runtime TTS request. Periodic progress sentences deterministically include rounded distance, elapsed time, and pace.
+- Superseded by the current start-planner architecture: live coaching calls Gemini once at session start with the bounded context documented in `docs/live-coach-data-boundaries.md`; per-cue Google TTS still receives exact text only.
+- A direct full-WAV Google benchmark did not reliably meet the sub-second target, so dynamic rollout remains gated pending an end-to-end device benchmark or faster delivery design.
 
 ## Implementation reconciliation — 2026-08-28
 
@@ -17,7 +29,7 @@ Cross-checking the handoff against the repository produced these necessary adjus
 - Added the Prisma models to `schema.prisma` and the existing `prisma db push` deployment path; this repo does not maintain a Prisma migrations directory.
 - Changed `GuideProfile` to stable `coachPersonaId` and `voiceProfileId` fields and fixed `GET /v1/guide/profile` to return the app-shaped versioned payload instead of a raw Prisma row.
 - Preserved `VirtualGuide` moment detection, cooldowns, route arbitration, and outcome evaluation. Its output edge now accepts only validated server WAV bytes or reviewed fixed-pack assets. Arbitrary legacy stat/route strings with no reviewed asset are silent rather than invoking device speech.
-- Removed the old `/v1/live-coach/analyze`, debug client model selection, on-device Foundation Model coaching provider, rule-based speech provider, Apple voice picker/help, and `AVSpeechSynthesizer` path in the same cutover.
+- Removed the old `/v1/live-coach/analyze`, debug client model selection, and on-device Foundation Model coaching provider. The current implementation later restored `AVSpeechSynthesizer` strictly as an 850 ms exact-text fallback, not as a coaching model.
 - Pinned Alibaba's workspace-compatible base URL independently from the deployed model and product-to-provider voice map. The regional workspace ID and API key are deployment inputs, never app/catalog fields.
 - Kept the operational mode defaulted to `disabled`. `fixed_only` or `dynamic` fails startup unless an immutable HTTPS pack is marked reviewed/published; `dynamic` additionally requires the Alibaba Secret Manager binding, approved deployed model, and complete voice mapping for all enabled product voices/locales.
 - Rechecks both the global dynamic mode and deterministic rollout cohort on every cue, applies authenticated-user plus per-session rate limits, and permits at most one provider generation per session at a time.
@@ -1229,7 +1241,7 @@ Run the backend TypeScript build and an iOS build-only compile check. Then verif
 
 The implementation is complete only when:
 
-- the iOS app has no live-coaching dependency on Apple system speech or an on-device model;
+- the iOS app has no live-coaching dependency on an on-device model; Apple system speech is the last-resort exact-text fallback after the 850 ms cloud-audio deadline;
 - all fixed and dynamic audible cues are server-generated audio;
 - fixed cues require no runtime AI call;
 - dynamic wording and audio use one Alibaba request where supported;

@@ -129,6 +129,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         sessionIntent: SessionIntent? = nil,
         companionBrief: CompanionSessionBriefDTO? = nil,
         unitSystem: MeasurementUnitSystem = .metric,
+        weatherSnapshot: RunningWeatherSnapshot? = nil,
+        isIndoor: Bool = false,
         challenge: LiveGuidanceChallenge = .off,
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
@@ -174,7 +176,9 @@ final class VirtualGuide: NSObject, ObservableObject {
             persona: persona,
             sessionIntent: sessionIntent,
             companionBrief: companionBrief,
-            unitSystem: unitSystem
+            unitSystem: unitSystem,
+            weatherSnapshot: weatherSnapshot,
+            isIndoor: isIndoor
         )
     }
 
@@ -349,6 +353,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             sessionIntent: sessionIntent,
             companionBrief: companionBrief,
             momentType: moment.type,
+            preferredMessage: moment.preferredMessage,
             routeGuidanceActive: routeSpeechQuietUntil.map { Date() < $0 } ?? false
         )
         isAnalyzing = true
@@ -441,7 +446,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             urgency: analysis.urgency,
             role: role(for: moment.type),
             fixedCueKey: analysis.fixedCueKey,
-            audioData: analysis.audioData
+            audioData: analysis.audioData,
+            audioStream: analysis.audioStream
         ) {
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
             recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
@@ -963,7 +969,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         urgency: SessionAnalysisUrgency = .steady,
         role: GuidanceMomentRole? = nil,
         fixedCueKey: String? = nil,
-        audioData: Data? = nil
+        audioData: Data? = nil,
+        audioStream: LiveCoachPCMStream? = nil
     ) -> Bool {
         let announcement = spokenText(for: text)
         if speechEnabled, audioPlayer.isSpeaking {
@@ -976,20 +983,35 @@ final class VirtualGuide: NSObject, ObservableObject {
             rememberSpokenRole(role)
         }
         guard speechEnabled else { return true }
-        if let audioData {
+        if let audioStream {
+            audioStream.setFirstAudioHandler { [weak self] firstAudioAt in
+                #if DEBUG
+                let milliseconds = Int((firstAudioAt.timeIntervalSince(audioStream.requestStartedAt) * 1_000).rounded())
+                print("[LiveCoach] device_to_first_audio_ms=\(milliseconds)")
+                #endif
+                Task { @MainActor in
+                    self?.guidanceEventHandler?(.audioFirstByte(
+                        source: .dynamicGeneration,
+                        latency: LiveCoachLatencyBucket(seconds: firstAudioAt.timeIntervalSince(audioStream.requestStartedAt))
+                    ))
+                }
+            }
+            return audioPlayer.play(
+                audioStream,
+                fallbackData: audioData,
+                fallbackText: announcement,
+                interrupt: urgency == .caution
+            )
+        } else if let audioData {
             return audioPlayer.play(audioData, interrupt: urgency == .caution)
         }
-        Task { @MainActor [weak self] in
-            guard let self,
-                  let data = await GuideAudioPackStore.shared.audioData(
-                    for: fixedCueKey ?? "",
-                    transcript: announcement
-                  ),
-                  self.speechEnabled
-            else { return }
-            _ = self.audioPlayer.play(data, interrupt: urgency == .caution)
+        if let data = GuideAudioPackStore.shared.localAudioData(
+            for: fixedCueKey ?? "",
+            transcript: announcement
+        ) {
+            return audioPlayer.play(data, interrupt: urgency == .caution)
         }
-        return true
+        return audioPlayer.speakOnDevice(announcement, interrupt: urgency == .caution)
     }
 
     private func canSpeakGuideMoment(
@@ -1018,11 +1040,14 @@ final class VirtualGuide: NSObject, ObservableObject {
     }
 
     private var currentProgressIntervalSeconds: Int {
-        persona?.nudgeFrequency.progressAnnouncementIntervalSeconds ?? 180
+        provider.progressPolicy?.announceEverySeconds
+            ?? persona?.nudgeFrequency.progressAnnouncementIntervalSeconds
+            ?? 180
     }
 
     private var currentProgressDistanceIntervalMeters: Double {
-        switch persona?.template.sport ?? .run {
+        if let planned = provider.progressPolicy?.announceEveryMeters { return planned }
+        return switch persona?.template.sport ?? .run {
         case .run, .walk, .hike, .swim:
             unitSystem == .imperial ? 1_609.344 : 1_000
         case .bike:

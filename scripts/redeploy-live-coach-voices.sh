@@ -13,7 +13,7 @@ reachable, builds the backend, deploys it to Cloud Run, and checks /health.
 
 Environment overrides:
   PROJECT_ID                       default: outbound-494602
-  LIVE_COACH_CATALOG_VERSION       default: 2026-08-28.1-en-zh
+  LIVE_COACH_CATALOG_VERSION       default: 2026-08-30.1-en-zh
   LIVE_COACH_AUDIO_BUCKET          default: PROJECT_ID-live-coach-audio
   LIVE_COACH_ENABLED_LOCALES       default: en,zh-Hans
   LIVE_COACH_AUDIO_PUBLIC_BASE_URL default: Google Cloud Storage public URL
@@ -27,7 +27,7 @@ USAGE
 fi
 
 PROJECT_ID="${PROJECT_ID:-outbound-494602}"
-LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-08-28.1-en-zh}"
+LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-08-30.1-en-zh}"
 LIVE_COACH_AUDIO_BUCKET="${LIVE_COACH_AUDIO_BUCKET:-$PROJECT_ID-live-coach-audio}"
 LIVE_COACH_AUDIO_PUBLIC_BASE_URL="${LIVE_COACH_AUDIO_PUBLIC_BASE_URL:-https://storage.googleapis.com/$LIVE_COACH_AUDIO_BUCKET}"
 LIVE_COACH_ENABLED_LOCALES="${LIVE_COACH_ENABLED_LOCALES:-en,zh-Hans}"

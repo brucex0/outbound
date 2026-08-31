@@ -5,6 +5,10 @@ import {
   APPROVED_ALIBABA_FIXED_AUDIO_MODEL,
   APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
 } from "./alibaba/approvedLiveCoachConfiguration.js";
+import {
+  APPROVED_GOOGLE_CLOUD_TTS_MODEL,
+  APPROVED_GOOGLE_CLOUD_TTS_VOICE_MAP,
+} from "./google/approvedLiveCoachConfiguration.js";
 
 export type AlibabaProviderConfig = {
   enabled: boolean;
@@ -18,8 +22,18 @@ export type AlibabaProviderConfig = {
   voiceMap: Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>>;
 };
 
+export type GoogleCloudTTSProviderConfig = {
+  enabled: boolean;
+  apiEndpoint: string;
+  endpointKey: string;
+  deploymentRegion: string;
+  model: string;
+  voiceMap: Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>>;
+};
+
 export type AIProviderConfiguration = {
   routePolicyVersion: string;
+  googleCloudTTS: GoogleCloudTTSProviderConfig;
   alibaba: AlibabaProviderConfig;
 };
 
@@ -27,6 +41,16 @@ export function loadAIProviderConfiguration(env: NodeJS.ProcessEnv = process.env
   const baseUrl = trimTrailingSlash(env.ALIBABA_AI_BASE_URL);
   return {
     routePolicyVersion: trimmed(env.AI_ROUTE_POLICY_VERSION) || "1",
+    googleCloudTTS: {
+      enabled: env.GOOGLE_CLOUD_TTS_ENABLED === "true",
+      apiEndpoint: trimmed(env.GOOGLE_CLOUD_TTS_API_ENDPOINT) || "us-texttospeech.googleapis.com",
+      endpointKey: trimmed(env.GOOGLE_CLOUD_TTS_ENDPOINT_KEY) || "google-cloud-tts-us",
+      deploymentRegion: trimmed(env.GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION) || "us",
+      model: trimmed(env.GOOGLE_CLOUD_TTS_MODEL) || APPROVED_GOOGLE_CLOUD_TTS_MODEL,
+      voiceMap: env.GOOGLE_CLOUD_TTS_VOICE_MAP?.trim()
+        ? parseVoiceMap(env.GOOGLE_CLOUD_TTS_VOICE_MAP, "GOOGLE_CLOUD_TTS_VOICE_MAP")
+        : APPROVED_GOOGLE_CLOUD_TTS_VOICE_MAP,
+    },
     alibaba: {
       enabled: env.ALIBABA_AI_ENABLED === "true",
       apiKey: trimmed(env.ALIBABA_AI_API_KEY),
@@ -37,29 +61,41 @@ export function loadAIProviderConfiguration(env: NodeJS.ProcessEnv = process.env
       model: trimmed(env.ALIBABA_LIVE_COACH_MODEL) || APPROVED_ALIBABA_DYNAMIC_LIVE_COACH_MODEL,
       fixedAudioModel: trimmed(env.ALIBABA_FIXED_AUDIO_MODEL) || APPROVED_ALIBABA_FIXED_AUDIO_MODEL,
       voiceMap: env.ALIBABA_LIVE_COACH_VOICE_MAP?.trim()
-        ? parseVoiceMap(env.ALIBABA_LIVE_COACH_VOICE_MAP)
+        ? parseVoiceMap(env.ALIBABA_LIVE_COACH_VOICE_MAP, "ALIBABA_LIVE_COACH_VOICE_MAP")
         : APPROVED_ALIBABA_LIVE_COACH_VOICE_MAP,
     },
   };
 }
 
 export function assertAIProviderConfiguration(config: AIProviderConfiguration): void {
-  if (!config.alibaba.enabled) return;
-  const missing = [
-    ["ALIBABA_AI_API_KEY", config.alibaba.apiKey],
-    ["ALIBABA_AI_BASE_URL", config.alibaba.baseUrl],
-    ["ALIBABA_TTS_BASE_URL", config.alibaba.fixedAudioBaseUrl],
-    ["ALIBABA_LIVE_COACH_MODEL", config.alibaba.model],
-    ["ALIBABA_FIXED_AUDIO_MODEL", config.alibaba.fixedAudioModel],
-  ].filter(([, value]) => !value).map(([name]) => name);
-  if (missing.length > 0) {
-    throw new AIProviderError("not_configured", `Alibaba AI configuration is missing: ${missing.join(", ")}.`);
+  if (config.googleCloudTTS.enabled) {
+    if (!config.googleCloudTTS.apiEndpoint || !config.googleCloudTTS.model) {
+      throw new AIProviderError("not_configured", "Google Cloud TTS endpoint and model are required when it is enabled.");
+    }
+    if (!/^[a-z0-9.-]+\.googleapis\.com$/i.test(config.googleCloudTTS.apiEndpoint)) {
+      throw new AIProviderError("not_configured", "GOOGLE_CLOUD_TTS_API_ENDPOINT must be a googleapis.com host name.");
+    }
+    if (Object.keys(config.googleCloudTTS.voiceMap).length === 0) {
+      throw new AIProviderError("not_configured", "GOOGLE_CLOUD_TTS_VOICE_MAP is required when Google Cloud TTS is enabled.");
+    }
   }
-  if (Object.keys(config.alibaba.voiceMap).length === 0) {
-    throw new AIProviderError("not_configured", "ALIBABA_LIVE_COACH_VOICE_MAP is required when Alibaba AI is enabled.");
+  if (config.alibaba.enabled) {
+    const missing = [
+      ["ALIBABA_AI_API_KEY", config.alibaba.apiKey],
+      ["ALIBABA_AI_BASE_URL", config.alibaba.baseUrl],
+      ["ALIBABA_TTS_BASE_URL", config.alibaba.fixedAudioBaseUrl],
+      ["ALIBABA_LIVE_COACH_MODEL", config.alibaba.model],
+      ["ALIBABA_FIXED_AUDIO_MODEL", config.alibaba.fixedAudioModel],
+    ].filter(([, value]) => !value).map(([name]) => name);
+    if (missing.length > 0) {
+      throw new AIProviderError("not_configured", `Alibaba AI configuration is missing: ${missing.join(", ")}.`);
+    }
+    if (Object.keys(config.alibaba.voiceMap).length === 0) {
+      throw new AIProviderError("not_configured", "ALIBABA_LIVE_COACH_VOICE_MAP is required when Alibaba AI is enabled.");
+    }
+    assertHTTPSURL(config.alibaba.baseUrl, "ALIBABA_AI_BASE_URL");
+    assertHTTPSURL(config.alibaba.fixedAudioBaseUrl, "ALIBABA_TTS_BASE_URL");
   }
-  assertHTTPSURL(config.alibaba.baseUrl, "ALIBABA_AI_BASE_URL");
-  assertHTTPSURL(config.alibaba.fixedAudioBaseUrl, "ALIBABA_TTS_BASE_URL");
 }
 
 function assertHTTPSURL(value: string, name: string): void {
@@ -83,8 +119,11 @@ function inferredTTSBaseUrl(baseUrl: string): string {
   }
 }
 
-function parseVoiceMap(value: string | undefined): AlibabaProviderConfig["voiceMap"] {
-  if (!value?.trim()) return {} as AlibabaProviderConfig["voiceMap"];
+function parseVoiceMap(
+  value: string | undefined,
+  environmentName: string
+): Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>> {
+  if (!value?.trim()) return {} as Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>>;
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!isRecord(parsed)) throw new Error("not an object");
@@ -101,9 +140,9 @@ function parseVoiceMap(value: string | undefined): AlibabaProviderConfig["voiceM
       }
       if (Object.keys(normalized).length > 0) result[profileId] = normalized;
     }
-    return result as AlibabaProviderConfig["voiceMap"];
+    return result as Record<VoiceProfileId, Partial<Record<SupportedAILocale, string>>>;
   } catch {
-    throw new AIProviderError("not_configured", "ALIBABA_LIVE_COACH_VOICE_MAP must be valid provider voice JSON.");
+    throw new AIProviderError("not_configured", `${environmentName} must be valid provider voice JSON.`);
   }
 }
 

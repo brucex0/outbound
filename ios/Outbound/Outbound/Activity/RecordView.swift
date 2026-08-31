@@ -74,6 +74,7 @@ struct RecordView: View {
     @EnvironmentObject var socialStore: TogetherStore
     @EnvironmentObject var connectivityStore: ConnectivityStore
     @EnvironmentObject var communityRouteStore: CommunityRouteStore
+    @EnvironmentObject var weatherStore: SituationalWeatherStore
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -791,6 +792,8 @@ struct RecordView: View {
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             unitSystem: measurementPreferences.unitSystem,
+            weatherSnapshot: weatherStore.snapshot,
+            isIndoor: isIndoorSession,
             challenge: .off,
             suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
                 for: guideCatalog.selection.coachingContract
@@ -905,6 +908,8 @@ struct RecordView: View {
             sessionIntent: activeIntent,
             companionBrief: companionBrief,
             unitSystem: measurementPreferences.unitSystem,
+            weatherSnapshot: weatherStore.snapshot,
+            isIndoor: isIndoorSession,
             challenge: selectedGuidanceChallenge,
             suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
                 for: guideCatalog.selection.coachingContract
@@ -2502,6 +2507,11 @@ struct RecordView: View {
                 .result: .string(result.rawValue),
                 .audioMode: .string(mode.rawValue),
                 .accessReason: .string(accessReason.rawValue),
+                .latencyBucket: .string(latency.rawValue)
+            ]))
+        case .audioFirstByte(let source, let latency):
+            track(.init(.liveGuidanceAudioFirstByte, properties: [
+                .sourceType: .string(source.rawValue),
                 .latencyBucket: .string(latency.rawValue)
             ]))
         }

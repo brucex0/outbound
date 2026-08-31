@@ -181,6 +181,9 @@ Current API shape:
 - `GET /v1/live-coach/catalog`
 - `POST /v1/live-coach/sessions`
 - `POST /v1/live-coach/sessions/:sessionId/cues`
+- `POST /v1/live-coach/sessions/:sessionId/cues/stream`
+- `POST /v1/live-coach/sessions/:sessionId/cues/cached`
+- `POST /v1/live-coach/sessions/:sessionId/phrases/:phraseId/audio`
 - `POST /v1/live-coach/sessions/:sessionId/end`
 
 `src/services/aiProviders/` owns generic routing, capabilities, health, validation, and the Alibaba adapter. `src/services/liveCoach/` owns product catalog, access, context, cue policy, fallbacks, session persistence, and orchestration. Routes must not import vendor types. Configuration defaults to `disabled`; enabled modes fail startup unless the reviewed pack and required provider configuration are complete.

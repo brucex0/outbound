@@ -75,6 +75,28 @@ final class GuideAudioPackStore {
 
     func audioData(for cueKey: String, transcript: String? = nil) async -> Data? {
         guard let entry = matchingEntry(cueKey: cueKey, transcript: transcript) else { return nil }
+        if let local = localAudioData(for: entry) { return local }
+        guard let url = entry.url else { return nil }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
+                  data.count <= 512 * 1024,
+                  checksum(data) == entry.sha256
+            else { return nil }
+            try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+            try data.write(to: cacheURL(for: entry.sha256), options: .atomic)
+            return data
+        } catch {
+            return nil
+        }
+    }
+
+    func localAudioData(for cueKey: String, transcript: String? = nil) -> Data? {
+        guard let entry = matchingEntry(cueKey: cueKey, transcript: transcript) else { return nil }
+        return localAudioData(for: entry)
+    }
+
+    private func localAudioData(for entry: Entry) -> Data? {
         let cachedURL = cacheURL(for: entry.sha256)
         if let data = try? Data(contentsOf: cachedURL), checksum(data) == entry.sha256 {
             return data
@@ -86,22 +108,10 @@ final class GuideAudioPackStore {
                subdirectory: "LiveCoachAudio"
            ),
            let data = try? Data(contentsOf: resourceURL),
-           checksum(data) == entry.sha256 {
+            checksum(data) == entry.sha256 {
             return data
         }
-        guard let url = entry.url else { return nil }
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true,
-                  data.count <= 512 * 1024,
-                  checksum(data) == entry.sha256
-            else { return nil }
-            try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-            try data.write(to: cachedURL, options: .atomic)
-            return data
-        } catch {
-            return nil
-        }
+        return nil
     }
 
     private func matchingEntry(cueKey: String, transcript: String?) -> Entry? {

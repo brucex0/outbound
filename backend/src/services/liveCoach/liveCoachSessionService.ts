@@ -12,6 +12,7 @@ import {
 } from "./liveCoachAccessPolicy.js";
 import { findCoachPersona, findVoiceProfile } from "./liveCoachCatalog.js";
 import { effectiveModeForUser, isLiveCoachLocaleEnabled, loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
+import { generateLiveCoachGuidancePlan } from "./liveCoachGuidancePlanner.js";
 import type { CreateLiveCoachSessionInput, LiveCoachAccessDecision, LiveCoachSessionSnapshot } from "./liveCoachTypes.js";
 
 export class LiveCoachSessionService {
@@ -41,8 +42,7 @@ export class LiveCoachSessionService {
     const compiled = await compileLiveCoachContext(
       this.prisma,
       userId,
-      input.workoutId,
-      input.measurementUnitSystem
+      input
     );
     const accessResolver = new DatabaseLiveCoachEntitlementResolver(this.prisma);
     let access = await accessResolver.resolve(userId, new Date(), feature);
@@ -62,7 +62,7 @@ export class LiveCoachSessionService {
           market: "global",
           locale: input.locale,
           voiceProfileId: voice.id,
-          requiredCapabilities: ["audio_output", "combined_text_audio"],
+          requiredCapabilities: ["audio_output"],
           deploymentRegion: feature.deploymentRegion,
           latencyClass: "interactive",
         }, providerConfig.routePolicyVersion).route;
@@ -90,6 +90,10 @@ export class LiveCoachSessionService {
       ? feature.dynamicCueLimitCoachMe
       : input.coachingContract === "responsive" ? feature.dynamicCueLimitResponsive : 0;
     const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1_000);
+    const planned = await generateLiveCoachGuidancePlan(compiled.context, persona.id, {
+      ...feature,
+      planner: { ...feature.planner, enabled: feature.planner.enabled && effectiveMode === "dynamic" },
+    });
     let session: LiveCoachSession;
     try {
       session = await this.prisma.liveCoachSession.create({ data: {
@@ -113,7 +117,12 @@ export class LiveCoachSessionService {
         routePolicyVersion: route?.routePolicyVersion,
         compiledContext: compiled.context as unknown as Prisma.InputJsonValue,
         contextHash: compiled.contextHash,
-        contextVersion: 1,
+        contextVersion: 2,
+        guidancePlan: planned.plan as unknown as Prisma.InputJsonValue,
+        guidancePlanHash: planned.planHash,
+        plannerStatus: planned.status,
+        plannerModel: planned.model,
+        plannerPromptVersion: planned.promptVersion,
         dynamicCueLimit,
         expiresAt,
       }});
@@ -192,6 +201,13 @@ export class LiveCoachSessionService {
         cueValidityMilliseconds: feature.cueValidityMilliseconds,
         maximumDynamicCues: session.dynamicCueLimit,
       },
+      guidancePlan: session.guidancePlan,
+      guidancePlanHash: session.guidancePlanHash,
+      planner: {
+        status: session.plannerStatus,
+        model: session.plannerModel,
+        promptVersion: session.plannerPromptVersion,
+      },
     };
   }
 }
@@ -217,6 +233,11 @@ function snapshotFromRow(session: LiveCoachSession): LiveCoachSessionSnapshot {
     effectiveMode: session.effectiveAudioMode as LiveCoachSessionSnapshot["effectiveMode"],
     compiledContext: session.compiledContext as unknown as LiveCoachSessionSnapshot["compiledContext"],
     contextHash: session.contextHash,
+    guidancePlan: session.guidancePlan as unknown as LiveCoachSessionSnapshot["guidancePlan"],
+    guidancePlanHash: session.guidancePlanHash,
+    plannerStatus: session.plannerStatus as LiveCoachSessionSnapshot["plannerStatus"],
+    plannerModel: session.plannerModel,
+    plannerPromptVersion: session.plannerPromptVersion,
     dynamicCueLimit: session.dynamicCueLimit,
     dynamicCueCount: session.dynamicCueCount,
     expiresAt: session.expiresAt,

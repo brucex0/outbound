@@ -10,6 +10,7 @@ export class LiveCoachCueRepository {
   private readonly sessionAbortControllers = new Map<string, Set<AbortController>>();
   private readonly activeGeneration = new Map<string, string>();
   private readonly sessionRateBuckets = new Map<string, RateBucket>();
+  private readonly sessionPrefetchBuckets = new Map<string, RateBucket>();
 
   allowSessionRequest(sessionId: string, now = Date.now()): boolean {
     this.sweep(now);
@@ -19,6 +20,16 @@ export class LiveCoachCueRepository {
       : { count: current.count + 1, resetAt: current.resetAt };
     this.sessionRateBuckets.set(sessionId, bucket);
     return bucket.count <= 20;
+  }
+
+  allowSessionPrefetch(sessionId: string, now = Date.now()): boolean {
+    this.sweep(now);
+    const current = this.sessionPrefetchBuckets.get(sessionId);
+    const bucket = !current || current.resetAt <= now
+      ? { count: 1, resetAt: now + 4 * 60 * 60 * 1_000 }
+      : { count: current.count + 1, resetAt: current.resetAt };
+    this.sessionPrefetchBuckets.set(sessionId, bucket);
+    return bucket.count <= 8;
   }
 
   tryBeginGeneration(sessionId: string, cueRequestId: string): boolean {
@@ -77,6 +88,7 @@ export class LiveCoachCueRepository {
     this.recentSummaries.delete(sessionId);
     this.activeGeneration.delete(sessionId);
     this.sessionRateBuckets.delete(sessionId);
+    this.sessionPrefetchBuckets.delete(sessionId);
     for (const key of this.completed.keys()) {
       if (key.startsWith(`${sessionId}:`)) this.completed.delete(key);
     }
@@ -88,6 +100,9 @@ export class LiveCoachCueRepository {
     }
     for (const [sessionId, bucket] of this.sessionRateBuckets) {
       if (bucket.resetAt <= now) this.sessionRateBuckets.delete(sessionId);
+    }
+    for (const [sessionId, bucket] of this.sessionPrefetchBuckets) {
+      if (bucket.resetAt <= now) this.sessionPrefetchBuckets.delete(sessionId);
     }
   }
 }

@@ -6,19 +6,25 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
     let displayName = "Plainstride Live Coach"
 
     private let controller = LiveCoachSessionController()
+    var progressPolicy: LiveCoachProgressPolicyDTO? { controller.progressPolicy }
 
     func beginSession(
         profile: GuideProfile?,
         persona: GuidePersona?,
         sessionIntent: SessionIntent?,
         companionBrief: CompanionSessionBriefDTO?,
-        unitSystem: MeasurementUnitSystem
+        unitSystem: MeasurementUnitSystem,
+        weatherSnapshot: RunningWeatherSnapshot?,
+        isIndoor: Bool
     ) {
         controller.begin(
+            profile: profile,
             persona: persona,
             intent: sessionIntent,
             companionBrief: companionBrief,
-            unitSystem: unitSystem
+            unitSystem: unitSystem,
+            weatherSnapshot: weatherSnapshot,
+            isIndoor: isIndoor
         )
     }
 
@@ -26,6 +32,31 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         guard let moment = request.momentType else {
             return silentResult(source: .cachedFallback, result: .invalid, latency: .underOneSecond)
         }
+
+        let startedAt = Date()
+        return try await LiveCoachAnalysisRace().run(
+            deadlineNanoseconds: 850_000_000,
+            operation: { @MainActor [weak self] in
+                guard let self else { throw CancellationError() }
+                return try await self.analyzeServer(request, moment: moment, startedAt: startedAt)
+            },
+            fallback: { @MainActor [weak self] in
+                guard let self else { throw CancellationError() }
+                return self.immediateFallback(
+                    for: moment,
+                    preferredMessage: request.preferredMessage,
+                    result: .timeout,
+                    latency: LiveCoachLatencyBucket(seconds: Date().timeIntervalSince(startedAt))
+                )
+            }
+        )
+    }
+
+    private func analyzeServer(
+        _ request: SessionAnalysisRequest,
+        moment: LiveGuidanceMomentType,
+        startedAt: Date
+    ) async throws -> SessionAnalysisResult {
 
         let segment = workoutSegment(request.sessionIntent, elapsedSeconds: request.snapshot.elapsedSeconds)
         let athleteReferencePace = athleteReferencePace(request.profile)
@@ -45,6 +76,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             moment: moment.rawValue,
             detectedAtElapsedSeconds: request.snapshot.elapsedSeconds,
             validForMilliseconds: 5_000,
+            selectedPhraseId: nil,
             liveState: .init(
                 elapsedSeconds: request.snapshot.elapsedSeconds,
                 distanceMeters: request.snapshot.distanceMeters,
@@ -58,51 +90,52 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             )
         )
 
-        let startedAt = Date()
         do {
-            let response = try await controller.requestCue(cueRequest)
+            let response = try await controller.requestCueStream(cueRequest)
+            let metadata = response.metadata
             let latency = LiveCoachLatencyBucket(seconds: Date().timeIntervalSince(startedAt))
-            guard response.expiresAt > Date() else {
-                return silentResult(source: response.source, result: .stale, latency: latency)
+            guard metadata.expiresAt > Date() else {
+                return silentResult(source: metadata.source, result: .stale, latency: latency)
             }
-            let audioData: Data?
-            if let audio = response.audio,
-               audio.contentType == "audio/wav",
-               let decoded = Data(base64Encoded: audio.base64),
-               Self.looksLikeBoundedWAV(decoded) {
-                audioData = decoded
-            } else if let fixedCueKey = response.fixedCueKey {
-                audioData = await GuideAudioPackStore.shared.audioData(
-                    for: fixedCueKey,
-                    transcript: response.transcript
-                )
+            let fallback = Self.fallback(for: moment, language: AppLanguage.current)
+            let localProgressText = moment == .progress ? request.preferredMessage : nil
+            let message = metadata.source == .dynamicGeneration
+                ? metadata.transcript
+                : localProgressText ?? metadata.transcript
+            let fallbackKey = localProgressText == nil ? metadata.fixedCueKey ?? fallback.key : nil
+            let fallbackAudio: Data? = if let cached = response.cachedAudioData {
+                cached
+            } else if let fallbackKey {
+                GuideAudioPackStore.shared.localAudioData(for: fallbackKey, transcript: message)
             } else {
-                audioData = nil
+                nil
             }
-            guard response.expiresAt > Date() else {
-                return silentResult(source: response.source, result: .stale, latency: latency)
+            guard metadata.expiresAt > Date() else {
+                return silentResult(source: metadata.source, result: .stale, latency: latency)
             }
             return SessionAnalysisResult(
-                message: response.transcript,
-                urgency: SessionAnalysisUrgency(rawValue: response.urgency) ?? .steady,
-                shouldSpeak: audioData != nil,
-                generatedAt: response.generatedAt,
-                expiresAt: response.expiresAt,
+                message: message,
+                urgency: SessionAnalysisUrgency(rawValue: metadata.urgency) ?? .steady,
+                shouldSpeak: !message.isEmpty,
+                generatedAt: metadata.generatedAt,
+                expiresAt: metadata.expiresAt,
                 providerID: identifier,
-                source: response.source,
-                result: response.result,
+                source: metadata.source,
+                result: metadata.result,
                 effectiveMode: controller.effectiveMode,
                 accessReason: controller.accessReason,
                 latencyBucket: latency,
-                fixedCueKey: response.fixedCueKey,
-                audioData: audioData
+                fixedCueKey: fallbackKey,
+                audioData: fallbackAudio,
+                audioStream: response.audioStream
             )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             if Task.isCancelled { throw CancellationError() }
-            return await cachedFallback(
+            return immediateFallback(
                 for: moment,
+                preferredMessage: request.preferredMessage,
                 result: .unavailable,
                 latency: LiveCoachLatencyBucket(seconds: Date().timeIntervalSince(startedAt))
             )
@@ -113,17 +146,22 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         controller.end(report: report)
     }
 
-    private func cachedFallback(
+    private func immediateFallback(
         for moment: LiveGuidanceMomentType,
+        preferredMessage: String?,
         result: LiveCoachCueResult,
         latency: LiveCoachLatencyBucket
-    ) async -> SessionAnalysisResult {
+    ) -> SessionAnalysisResult {
         let fallback = Self.fallback(for: moment, language: AppLanguage.current)
-        let audioData = await GuideAudioPackStore.shared.audioData(for: fallback.key, transcript: fallback.text)
+        let message = preferredMessage ?? fallback.text
+        let fixedCueKey = preferredMessage == nil ? fallback.key : nil
+        let audioData = fixedCueKey.flatMap {
+            GuideAudioPackStore.shared.localAudioData(for: $0, transcript: message)
+        }
         return SessionAnalysisResult(
-            message: fallback.text,
+            message: message,
             urgency: Self.urgency(for: moment),
-            shouldSpeak: audioData != nil,
+            shouldSpeak: !message.isEmpty,
             generatedAt: Date(),
             expiresAt: Date().addingTimeInterval(5),
             providerID: identifier,
@@ -132,8 +170,9 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             effectiveMode: controller.effectiveMode,
             accessReason: controller.accessReason,
             latencyBucket: latency,
-            fixedCueKey: fallback.key,
-            audioData: audioData
+            fixedCueKey: fixedCueKey,
+            audioData: audioData,
+            audioStream: nil
         )
     }
 
@@ -155,7 +194,8 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             accessReason: controller.accessReason,
             latencyBucket: latency,
             fixedCueKey: nil,
-            audioData: nil
+            audioData: nil,
+            audioStream: nil
         )
     }
 
@@ -281,7 +321,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             offset = payloadOffset + chunkSize + chunkSize % 2
         }
         let durationMilliseconds = Double(audioByteCount) / 48_000 * 1_000
-        return formatIsValid && audioByteCount > 0 && durationMilliseconds <= 4_500
+        return formatIsValid && audioByteCount > 0 && durationMilliseconds <= 8_000
     }
 
     private static func littleEndian16(_ data: Data, _ offset: Int) -> Int {
@@ -396,5 +436,61 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             ]
         ]
         return (key, texts[language.rawValue]?[key] ?? texts[AppLanguage.english.rawValue]![key]!)
+    }
+}
+
+@MainActor
+private final class LiveCoachAnalysisRace {
+    private var continuation: CheckedContinuation<SessionAnalysisResult, Error>?
+    private var operationTask: Task<Void, Never>?
+    private var deadlineTask: Task<Void, Never>?
+
+    func run(
+        deadlineNanoseconds: UInt64,
+        operation: @escaping @MainActor () async throws -> SessionAnalysisResult,
+        fallback: @escaping @MainActor () throws -> SessionAnalysisResult
+    ) async throws -> SessionAnalysisResult {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                guard !Task.isCancelled else {
+                    self.resolve(.failure(CancellationError()))
+                    return
+                }
+                operationTask = Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        self.resolve(.success(try await operation()))
+                    } catch {
+                        self.resolve(.failure(error))
+                    }
+                }
+                deadlineTask = Task { @MainActor [weak self] in
+                    do {
+                        try await Task.sleep(nanoseconds: deadlineNanoseconds)
+                        guard let self else { return }
+                        self.resolve(.success(try fallback()))
+                    } catch is CancellationError {
+                        return
+                    } catch {
+                        self?.resolve(.failure(error))
+                    }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.resolve(.failure(CancellationError()))
+            }
+        }
+    }
+
+    private func resolve(_ result: Result<SessionAnalysisResult, Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        operationTask?.cancel()
+        deadlineTask?.cancel()
+        operationTask = nil
+        deadlineTask = nil
+        continuation.resume(with: result)
     }
 }
