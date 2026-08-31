@@ -426,6 +426,25 @@ enum TrainingPlanWorkoutStepKind: String, Codable, Hashable {
     case crossTrain
     case cooldown
     case race
+
+    var sessionCoachingTarget: SessionCoachingTarget {
+        switch self {
+        case .warmup:
+            .warmup
+        case .run, .steady:
+            .easy
+        case .tempo, .interval, .race:
+            .work
+        case .recovery:
+            .recovery
+        case .walk:
+            .walk
+        case .cooldown:
+            .cooldown
+        case .crossTrain:
+            .open
+        }
+    }
 }
 
 struct TrainingPlanWorkoutStep: Identifiable, Codable, Hashable {
@@ -491,7 +510,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
                 id: $0.id,
                 label: $0.label,
                 durationSeconds: $0.durationSeconds,
-                detail: $0.detail
+                detail: $0.detail,
+                coachingTarget: $0.kind.sessionCoachingTarget
             )
         }
     }

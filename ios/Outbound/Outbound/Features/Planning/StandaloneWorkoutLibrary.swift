@@ -14,6 +14,7 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
     let steps: [SessionIntentStep]
+    let coachingTarget: SessionCoachingTarget?
 
     var intent: SessionIntent {
         SessionIntent(
@@ -21,7 +22,8 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
             guideLine: guideLine, startLabel: startLabel,
             targetDistanceMeters: targetDistanceMeters,
             targetDurationSeconds: targetDurationSeconds,
-            workoutSteps: steps
+            workoutSteps: steps,
+            coachingTarget: coachingTarget
         )
     }
 }

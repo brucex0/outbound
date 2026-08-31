@@ -4,8 +4,15 @@ import type { LiveCoachMoment, RequestLiveCoachCueInput } from "./liveCoachTypes
 const dynamicMoments = new Set<LiveCoachMoment>([
   "progress",
   "fast_start",
+  "early_overpace",
+  "pace_above_target",
+  "pace_below_target",
+  "pace_instability",
   "pace_drift",
   "rhythm_recovery",
+  "recovery_too_hard",
+  "climb_start",
+  "crest_recovery",
   "segment_transition",
   "finish_opportunity",
   "challenge_start",
@@ -26,8 +33,14 @@ export function urgencyForMoment(moment: LiveCoachMoment): "steady" | "opportuni
   switch (moment) {
     case "progress":
       return "steady";
-    case "fast_start":
+    case "early_overpace":
+    case "pace_above_target":
+    case "pace_below_target":
+    case "pace_instability":
     case "pace_drift":
+    case "recovery_too_hard":
+    case "climb_start":
+    case "crest_recovery":
     case "finish_opportunity":
     case "segment_transition":
     case "challenge_start":

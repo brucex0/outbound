@@ -181,6 +181,7 @@ extension SessionIntent {
                 preparedRoute: preparedRoute,
                 activityTypeOverride: activityTypeOverride,
                 workoutSteps: workoutSteps,
+                coachingTarget: coachingTarget,
                 activityEvent: activityEvent
             )
         }
@@ -198,6 +199,7 @@ extension SessionIntent {
             preparedRoute: preparedRoute,
             activityTypeOverride: activityTypeOverride,
             workoutSteps: workoutSteps,
+            coachingTarget: coachingTarget,
             activityEvent: activityEvent
         )
     }

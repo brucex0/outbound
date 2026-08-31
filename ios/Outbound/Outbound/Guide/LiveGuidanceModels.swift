@@ -72,9 +72,18 @@ enum LiveGuidanceChallenge: String, Codable, CaseIterable, Identifiable {
 
 enum LiveGuidanceMomentType: String, Codable, CaseIterable, Hashable {
     case progress
-    case fastStart = "fast_start"
+    case earlyOverpace = "early_overpace"
+    case paceAboveTarget = "pace_above_target"
+    case paceBelowTarget = "pace_below_target"
+    case paceInstability = "pace_instability"
+    case targetLocked = "target_locked"
     case paceDrift = "pace_drift"
     case rhythmRecovery = "rhythm_recovery"
+    case recoveryTooHard = "recovery_too_hard"
+    case unexpectedStop = "unexpected_stop"
+    case resumeAfterBreak = "resume_after_break"
+    case climbStart = "climb_start"
+    case crestRecovery = "crest_recovery"
     case segmentTransition = "segment_transition"
     case finishOpportunity = "finish_opportunity"
     case challengeStart = "challenge_start"
@@ -210,8 +219,11 @@ final class LiveGuidanceDirector {
     private var history: [ActiveSessionSnapshot] = []
     private var records: [LiveGuidanceCueRecord] = []
     private var emittedOneShotMoments: Set<LiveGuidanceMomentType> = []
+    private var emittedSegmentMoments: Set<String> = []
     private var lastMomentElapsedSeconds: Int?
     private var lastDriftElapsedSeconds: Int?
+    private var lastInstabilityElapsedSeconds: Int?
+    private var isOnClimb = false
     private var challengeStartedAtElapsedSeconds: Int?
     private var challengeStartQueued = false
     private var challengeCompleted = false
@@ -227,8 +239,11 @@ final class LiveGuidanceDirector {
         history = []
         records = []
         emittedOneShotMoments = []
+        emittedSegmentMoments = []
         lastMomentElapsedSeconds = nil
         lastDriftElapsedSeconds = nil
+        lastInstabilityElapsedSeconds = nil
+        isOnClimb = false
         challengeStartedAtElapsedSeconds = nil
         challengeStartQueued = false
         challengeCompleted = false
@@ -264,9 +279,44 @@ final class LiveGuidanceDirector {
             return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
         }
 
-        let moment = fastStartMoment(snapshot: snapshot, profile: profile)
+        let athleteReferencePace = athleteReferencePace(from: profile)
+        let activeSegment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
+        let gradePercent = rollingGradePercent(through: snapshot.elapsedSeconds)
+        let moment = terrainMoment(
+            snapshot: snapshot,
+            intent: intent,
+            gradePercent: gradePercent
+        )
+            ?? earlyOverpaceMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                athleteReferencePace: athleteReferencePace,
+                gradePercent: gradePercent
+            )
+            ?? targetDeviationMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                athleteReferencePace: athleteReferencePace,
+                gradePercent: gradePercent
+            )
             ?? finishOpportunityMoment(snapshot: snapshot, intent: intent)
-            ?? paceDriftMoment(snapshot: snapshot)
+            ?? paceDriftMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                gradePercent: gradePercent
+            )
+            ?? paceInstabilityMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                athleteReferencePace: athleteReferencePace,
+                gradePercent: gradePercent
+            )
+            ?? targetLockedMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                athleteReferencePace: athleteReferencePace,
+                gradePercent: gradePercent
+            )
 
         if moment != nil {
             lastMomentElapsedSeconds = snapshot.elapsedSeconds
@@ -312,31 +362,96 @@ final class LiveGuidanceDirector {
         )
     }
 
-    private func fastStartMoment(
+    private func earlyOverpaceMoment(
         snapshot: ActiveSessionSnapshot,
-        profile: GuideProfile?
+        activeSegment: ActiveSessionCoachingSegment?,
+        athleteReferencePace: Double?,
+        gradePercent: Double?
     ) -> DetectedLiveGuidanceMoment? {
-        guard !suppressedMomentTypes.contains(.fastStart),
-              !emittedOneShotMoments.contains(.fastStart),
+        let target: Double?
+        if let activeSegment {
+            target = resolvedPaceTarget(
+                for: activeSegment,
+                athleteReferencePace: athleteReferencePace
+            )
+        } else {
+            target = athleteReferencePace
+        }
+        guard !suppressedMomentTypes.contains(.earlyOverpace),
+              !emittedOneShotMoments.contains(.earlyOverpace),
               (75...240).contains(snapshot.elapsedSeconds),
-              let target = profile?.athlete.preferredPaceSecs,
+              !isMeaningfulGrade(gradePercent),
+              let target,
               let recent = averagePace(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
         else { return nil }
 
-        let threshold = contract == .coachMe ? 15.0 : 25.0
+        let configuredTolerance = activeSegment?.target.pace?.fasterToleranceSeconds
+        let threshold = configuredTolerance ?? (contract == .coachMe ? 15.0 : 25.0)
         guard target - recent >= threshold else { return nil }
-        emittedOneShotMoments.insert(.fastStart)
+        emittedOneShotMoments.insert(.earlyOverpace)
         return DetectedLiveGuidanceMoment(
-            type: .fastStart,
+            type: .earlyOverpace,
             detectedAtElapsedSeconds: snapshot.elapsedSeconds,
             baselinePaceSecondsPerKilometer: recent,
             targetPaceSecondsPerKilometer: target
         )
     }
 
-    private func paceDriftMoment(snapshot: ActiveSessionSnapshot) -> DetectedLiveGuidanceMoment? {
+    private func targetDeviationMoment(
+        snapshot: ActiveSessionSnapshot,
+        activeSegment: ActiveSessionCoachingSegment?,
+        athleteReferencePace: Double?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard let activeSegment,
+              activeSegment.elapsedSeconds >= 45,
+              !isMeaningfulGrade(gradePercent),
+              let paceTarget = activeSegment.target.pace,
+              let target = paceTarget.resolvedTarget(athleteReferencePace: athleteReferencePace),
+              let recent = averagePace(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
+        else { return nil }
+
+        let isRecovery = activeSegment.target.phase == .recovery
+            || activeSegment.target.phase == .warmup
+            || activeSegment.target.phase == .cooldown
+        let aboveType: LiveGuidanceMomentType = isRecovery ? .recoveryTooHard : .paceAboveTarget
+        if !suppressedMomentTypes.contains(aboveType),
+           !hasEmitted(aboveType, in: activeSegment),
+           target - recent >= paceTarget.fasterToleranceSeconds {
+            markEmitted(aboveType, in: activeSegment)
+            return DetectedLiveGuidanceMoment(
+                type: aboveType,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                baselinePaceSecondsPerKilometer: recent,
+                targetPaceSecondsPerKilometer: target
+            )
+        }
+
+        if let slowerTolerance = paceTarget.slowerToleranceSeconds,
+           !suppressedMomentTypes.contains(.paceBelowTarget),
+           !hasEmitted(.paceBelowTarget, in: activeSegment),
+           recent - target >= slowerTolerance {
+            markEmitted(.paceBelowTarget, in: activeSegment)
+            return DetectedLiveGuidanceMoment(
+                type: .paceBelowTarget,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                baselinePaceSecondsPerKilometer: recent,
+                targetPaceSecondsPerKilometer: target
+            )
+        }
+        return nil
+    }
+
+    private func paceDriftMoment(
+        snapshot: ActiveSessionSnapshot,
+        activeSegment: ActiveSessionCoachingSegment?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
         guard !suppressedMomentTypes.contains(.paceDrift),
               snapshot.elapsedSeconds >= 300,
+              activeSegment?.target.phase != .work,
+              activeSegment?.target.phase != .recovery,
+              !isMeaningfulGrade(gradePercent),
               lastDriftElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 600 }) ?? true,
               let earlier = averagePace(from: snapshot.elapsedSeconds - 100, through: snapshot.elapsedSeconds - 45),
               let recent = averagePace(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
@@ -351,6 +466,99 @@ final class LiveGuidanceDirector {
             baselinePaceSecondsPerKilometer: recent,
             targetPaceSecondsPerKilometer: earlier
         )
+    }
+
+    private func paceInstabilityMoment(
+        snapshot: ActiveSessionSnapshot,
+        activeSegment: ActiveSessionCoachingSegment?,
+        athleteReferencePace: Double?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard !suppressedMomentTypes.contains(.paceInstability),
+              let activeSegment,
+              activeSegment.elapsedSeconds >= 120,
+              !isMeaningfulGrade(gradePercent),
+              lastInstabilityElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 600 }) ?? true,
+              let target = resolvedPaceTarget(
+                for: activeSegment,
+                athleteReferencePace: athleteReferencePace
+              )
+        else { return nil }
+
+        let values = paceValues(from: snapshot.elapsedSeconds - 90, through: snapshot.elapsedSeconds)
+        guard values.count >= 8 else { return nil }
+        let sorted = values.sorted()
+        let spread = percentile(0.9, in: sorted) - percentile(0.1, in: sorted)
+        guard spread >= max(60, target * 0.15) else { return nil }
+        lastInstabilityElapsedSeconds = snapshot.elapsedSeconds
+        return DetectedLiveGuidanceMoment(
+            type: .paceInstability,
+            detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+            baselinePaceSecondsPerKilometer: values.reduce(0, +) / Double(values.count),
+            targetPaceSecondsPerKilometer: target
+        )
+    }
+
+    private func targetLockedMoment(
+        snapshot: ActiveSessionSnapshot,
+        activeSegment: ActiveSessionCoachingSegment?,
+        athleteReferencePace: Double?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard !suppressedMomentTypes.contains(.targetLocked),
+              let activeSegment,
+              activeSegment.target.recognizesTargetLock,
+              activeSegment.elapsedSeconds >= 90,
+              !hasEmitted(.targetLocked, in: activeSegment),
+              !isMeaningfulGrade(gradePercent),
+              let target = resolvedPaceTarget(
+                for: activeSegment,
+                athleteReferencePace: athleteReferencePace
+              )
+        else { return nil }
+
+        let values = paceValues(from: snapshot.elapsedSeconds - 60, through: snapshot.elapsedSeconds)
+        guard values.count >= 8 else { return nil }
+        let average = values.reduce(0, +) / Double(values.count)
+        let sorted = values.sorted()
+        guard abs(average - target) <= 12,
+              percentile(0.9, in: sorted) - percentile(0.1, in: sorted) <= 25
+        else { return nil }
+        markEmitted(.targetLocked, in: activeSegment)
+        return DetectedLiveGuidanceMoment(
+            type: .targetLocked,
+            detectedAtElapsedSeconds: snapshot.elapsedSeconds
+        )
+    }
+
+    private func terrainMoment(
+        snapshot: ActiveSessionSnapshot,
+        intent: SessionIntent?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard intent?.resolvedActivityType == .running,
+              snapshot.elapsedSeconds >= 90,
+              let gradePercent
+        else { return nil }
+
+        if !isOnClimb, gradePercent >= 3.5 {
+            isOnClimb = true
+            guard !suppressedMomentTypes.contains(.climbStart) else { return nil }
+            return DetectedLiveGuidanceMoment(
+                type: .climbStart,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds
+            )
+        }
+
+        if isOnClimb, gradePercent <= 1.25 {
+            isOnClimb = false
+            guard !suppressedMomentTypes.contains(.crestRecovery) else { return nil }
+            return DetectedLiveGuidanceMoment(
+                type: .crestRecovery,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds
+            )
+        }
+        return nil
     }
 
     private func finishOpportunityMoment(
@@ -436,7 +644,8 @@ final class LiveGuidanceDirector {
 
             if outcome.isHelpfulResult,
                recoveryMoment == nil,
-               record.momentType == .fastStart || record.momentType == .paceDrift {
+               [.earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceDrift, .recoveryTooHard]
+                .contains(record.momentType) {
                 recoveryMoment = DetectedLiveGuidanceMoment(
                     type: .rhythmRecovery,
                     detectedAtElapsedSeconds: snapshot.elapsedSeconds,
@@ -449,12 +658,121 @@ final class LiveGuidanceDirector {
     }
 
     private func averagePace(from start: Int, through end: Int) -> Double? {
-        let values = history
-            .filter { $0.elapsedSeconds >= start && $0.elapsedSeconds <= end }
-            .compactMap(\.currentPaceSecsPerKm)
-            .filter { $0.isFinite && $0 > 0 }
+        let values = paceValues(from: start, through: end)
         guard values.count >= 4 else { return nil }
         return values.reduce(0, +) / Double(values.count)
+    }
+
+    private func paceValues(from start: Int, through end: Int) -> [Double] {
+        history
+            .filter { $0.elapsedSeconds >= start && $0.elapsedSeconds <= end }
+            .compactMap(\.currentPaceSecsPerKm)
+            .filter { $0.isFinite && (60...3_600).contains($0) }
+    }
+
+    private func athleteReferencePace(from profile: GuideProfile?) -> Double? {
+        if let preferred = profile?.athlete.preferredPaceSecs,
+           preferred.isFinite,
+           (60...3_600).contains(preferred) {
+            return preferred
+        }
+        let values = profile?.memorySnapshot.recentActivities
+            .map(\.avgPaceSecs)
+            .filter { $0.isFinite && (60...3_600).contains($0) }
+            .sorted() ?? []
+        guard !values.isEmpty else { return nil }
+        let middle = values.count / 2
+        return values.count.isMultiple(of: 2)
+            ? (values[middle - 1] + values[middle]) / 2
+            : values[middle]
+    }
+
+    private func resolvedPaceTarget(
+        for segment: ActiveSessionCoachingSegment,
+        athleteReferencePace: Double?
+    ) -> Double? {
+        segment.target.pace?.resolvedTarget(athleteReferencePace: athleteReferencePace)
+    }
+
+    private func hasEmitted(
+        _ type: LiveGuidanceMomentType,
+        in segment: ActiveSessionCoachingSegment
+    ) -> Bool {
+        emittedSegmentMoments.contains("\(type.rawValue)|\(segment.id)")
+    }
+
+    private func markEmitted(
+        _ type: LiveGuidanceMomentType,
+        in segment: ActiveSessionCoachingSegment
+    ) {
+        emittedSegmentMoments.insert("\(type.rawValue)|\(segment.id)")
+    }
+
+    private func percentile(_ fraction: Double, in sortedValues: [Double]) -> Double {
+        guard let first = sortedValues.first else { return 0 }
+        let index = min(sortedValues.count - 1, max(0, Int((Double(sortedValues.count - 1) * fraction).rounded())))
+        return sortedValues.indices.contains(index) ? sortedValues[index] : first
+    }
+
+    private func isMeaningfulGrade(_ gradePercent: Double?) -> Bool {
+        guard let gradePercent else { return false }
+        return abs(gradePercent) >= 2.5
+    }
+
+    private func rollingGradePercent(through elapsedSeconds: Int) -> Double? {
+        let locations = history
+            .filter { $0.elapsedSeconds >= elapsedSeconds - 45 && $0.elapsedSeconds <= elapsedSeconds }
+            .compactMap(\.location)
+            .filter {
+                $0.horizontalAccuracyMeters >= 0
+                    && $0.horizontalAccuracyMeters <= 25
+                    && $0.verticalAccuracyMeters >= 0
+                    && $0.verticalAccuracyMeters <= 10
+            }
+        guard locations.count >= 6 else { return nil }
+        let endpointCount = min(3, locations.count / 2)
+        let startLocations = Array(locations.prefix(endpointCount))
+        let endLocations = Array(locations.suffix(endpointCount))
+        let start = averagedLocation(startLocations)
+        let end = averagedLocation(endLocations)
+        let horizontalMeters = haversineDistanceMeters(
+            latitudeA: start.latitude,
+            longitudeA: start.longitude,
+            latitudeB: end.latitude,
+            longitudeB: end.longitude
+        )
+        guard horizontalMeters >= 45 else { return nil }
+        let grade = (end.altitude - start.altitude) / horizontalMeters * 100
+        guard grade.isFinite, abs(grade) <= 40 else { return nil }
+        return grade
+    }
+
+    private func averagedLocation(
+        _ locations: [SessionLocation]
+    ) -> (latitude: Double, longitude: Double, altitude: Double) {
+        let divisor = Double(locations.count)
+        return (
+            locations.reduce(0) { $0 + $1.latitude } / divisor,
+            locations.reduce(0) { $0 + $1.longitude } / divisor,
+            locations.reduce(0) { $0 + $1.altitudeMeters } / divisor
+        )
+    }
+
+    private func haversineDistanceMeters(
+        latitudeA: Double,
+        longitudeA: Double,
+        latitudeB: Double,
+        longitudeB: Double
+    ) -> Double {
+        let degreesToRadians = Double.pi / 180
+        let latitudeDelta = (latitudeB - latitudeA) * degreesToRadians
+        let longitudeDelta = (longitudeB - longitudeA) * degreesToRadians
+        let firstLatitude = latitudeA * degreesToRadians
+        let secondLatitude = latitudeB * degreesToRadians
+        let value = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
+            + cos(firstLatitude) * cos(secondLatitude)
+            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return 6_371_000 * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
     }
 
     private func isInFinishWindow(

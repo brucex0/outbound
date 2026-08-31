@@ -240,6 +240,12 @@ struct RecordView: View {
         }
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
+            guide.handleRecordingStateTransition(
+                from: previousRecorderState,
+                to: state,
+                autoPaused: recorder.autoPaused,
+                snapshot: recorder.liveSnapshot
+            )
             trackRecordingStateTransition(to: state)
             workoutPresence.sync(with: state)
         }
@@ -3656,6 +3662,7 @@ struct RecordView: View {
                 preparedRoute: restoredBase.preparedRoute,
                 activityTypeOverride: restoredBase.activityTypeOverride,
                 workoutSteps: restoredBase.workoutSteps,
+                coachingTarget: restoredBase.coachingTarget,
                 activityEvent: restoredBase.activityEvent
             )
             intentBeforeSelectedRoute = nil
@@ -3688,6 +3695,7 @@ struct RecordView: View {
             preparedRoute: route,
             activityTypeOverride: route.activityType,
             workoutSteps: preservesBaseStructure ? baseIntent.workoutSteps : [],
+            coachingTarget: preservesBaseStructure ? baseIntent.coachingTarget : nil,
             activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
         )
     }
@@ -3740,6 +3748,7 @@ struct RecordView: View {
             preparedRoute: directedRoute,
             activityTypeOverride: directedRoute.activityType ?? currentIntent.activityTypeOverride,
             workoutSteps: currentIntent.workoutSteps,
+            coachingTarget: currentIntent.coachingTarget,
             activityEvent: currentIntent.activityEvent
         )
         track(.init(.activityConfigurationChanged, properties: [

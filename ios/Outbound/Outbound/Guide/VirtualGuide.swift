@@ -18,6 +18,7 @@ private enum GuidanceMomentRole {
     case hype
     case paceAdjustment
     case segment
+    case breakStatus
     case finish
     case caution
 }
@@ -227,6 +228,43 @@ final class VirtualGuide: NSObject, ObservableObject {
             }
         }
         processPendingMoment(using: snapshot)
+    }
+
+    func handleRecordingStateTransition(
+        from previousState: RecordingState,
+        to state: RecordingState,
+        autoPaused: Bool,
+        snapshot: ActiveSessionSnapshot
+    ) {
+        guard isActive, autoPaused else { return }
+        let momentType: LiveGuidanceMomentType
+        let message: String
+        let cueKey: String
+        switch (previousState, state) {
+        case (.active, .paused):
+            momentType = .unexpectedStop
+            message = String(localized: "live_guidance.auto_pause", defaultValue: "Workout paused.")
+            cueKey = "workout.pause"
+        case (.paused, .active):
+            momentType = .resumeAfterBreak
+            message = String(localized: "live_guidance.auto_resume", defaultValue: "Workout resumed.")
+            cueKey = "workout.resume"
+        default:
+            return
+        }
+
+        guidanceEventHandler?(.momentDetected(
+            type: momentType,
+            contract: persona?.coachingContract ?? .responsive
+        ))
+        guard speak(message, urgency: .caution, role: .breakStatus, fixedCueKey: cueKey) else { return }
+        rememberGuideSpeech(at: snapshot.elapsedSeconds)
+        _ = momentDirector.recordSystemCue(type: momentType, elapsedSeconds: snapshot.elapsedSeconds)
+        sessionReport = momentDirector.report(finalizing: false)
+        guidanceEventHandler?(.cueSpoken(
+            type: momentType,
+            contract: persona?.coachingContract ?? .responsive
+        ))
     }
 
     func announceStartCountdown(_ texts: [String]) {
@@ -457,8 +495,12 @@ final class VirtualGuide: NSObject, ObservableObject {
     private func role(for type: LiveGuidanceMomentType) -> GuidanceMomentRole {
         switch type {
         case .progress: .progress
-        case .fastStart, .paceDrift: .paceAdjustment
-        case .rhythmRecovery, .challengeStart, .challengeComplete: .hype
+        case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
+             .paceDrift, .recoveryTooHard: .paceAdjustment
+        case .targetLocked, .rhythmRecovery, .crestRecovery,
+             .challengeStart, .challengeComplete: .hype
+        case .unexpectedStop, .resumeAfterBreak: .breakStatus
+        case .climbStart: .form
         case .segmentTransition: .segment
         case .finishOpportunity: .finish
         }
