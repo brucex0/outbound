@@ -8,6 +8,7 @@ struct ActiveSessionJournal {
     let wasPaused: Bool
     let activityType: ActivityType?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
+    let recoveryStage: ActiveSessionRecoveryStage
     let trackPoints: [JournalTrackPoint]
 
     init(
@@ -16,6 +17,7 @@ struct ActiveSessionJournal {
         wasPaused: Bool,
         activityType: ActivityType?,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
+        recoveryStage: ActiveSessionRecoveryStage = .recording,
         trackPoints: [JournalTrackPoint] = []
     ) {
         self.startedAt = startedAt
@@ -23,6 +25,7 @@ struct ActiveSessionJournal {
         self.wasPaused = wasPaused
         self.activityType = activityType
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
+        self.recoveryStage = recoveryStage
         self.trackPoints = trackPoints
     }
 
@@ -35,6 +38,7 @@ struct ActiveSessionJournal {
             wasPaused: metadata.wasPaused,
             activityType: metadata.activityType,
             routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
+            recoveryStage: metadata.recoveryStage ?? .recording,
             trackPoints: ActiveSessionTrackJournal.load()
         )
     }
@@ -45,7 +49,8 @@ struct ActiveSessionJournal {
             elapsedSeconds: elapsedSeconds,
             wasPaused: wasPaused,
             activityType: activityType,
-            routeGuidanceRecoverySeed: routeGuidanceRecoverySeed
+            routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
+            recoveryStage: recoveryStage
         )
         guard let data = try? JSONEncoder().encode(metadata) else { return }
         let directory = Self.fileURL.deletingLastPathComponent()
@@ -71,7 +76,13 @@ struct ActiveSessionJournal {
         let wasPaused: Bool
         let activityType: ActivityType?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
+        let recoveryStage: ActiveSessionRecoveryStage?
     }
+}
+
+enum ActiveSessionRecoveryStage: String, Codable {
+    case recording
+    case awaitingSave
 }
 
 enum ActiveSessionTrackJournal {

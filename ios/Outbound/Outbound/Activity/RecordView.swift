@@ -539,6 +539,7 @@ struct RecordView: View {
         didTrackRecoveryPresentation = true
         track(.init(.activityRecoveryPresentation, properties: [
             .result: .string(result),
+            .sourceType: .string("recording"),
             .countBucket: .string(ProductAnalyticsBucket.count(1))
         ]))
     }
@@ -784,6 +785,16 @@ struct RecordView: View {
             )
         }
         activeIntent = plannedIntent
+        if recorder.recoveredAwaitingSave {
+            didTrackRecoveryPresentation = true
+            track(.init(.activityRecoveryPresentation, properties: [
+                .result: .string("success"),
+                .sourceType: .string("awaiting_save"),
+                .countBucket: .string(ProductAnalyticsBucket.count(1))
+            ]))
+            finishRecording(recoveredAfterFinish: true)
+            return
+        }
         activePage = preferredSessionPage
         showCamera = true
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
@@ -1052,35 +1063,41 @@ struct RecordView: View {
     }
 
     private func finishRecording() {
+        finishRecording(recoveredAfterFinish: false)
+    }
+
+    private func finishRecording(recoveredAfterFinish: Bool) {
         guard !isCapturingSessionPhoto else { return }
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
         let guidanceReport = guide.finalizedSessionReport()
-        guideCatalog.recordGuidanceReport(guidanceReport)
-        track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
-        let locationDiagnostics = recorder.locationManager.recordingDiagnostics
-        track(.init(.activityRecordingQuality, properties: [
-            .sourceType: .string(locationDiagnostics.deliveryMode),
-            .countBucket: .string(ProductAnalyticsBucket.locationPointCount(
-                locationDiagnostics.acceptedTrackPointCount
-            )),
-            .result: .string(locationDiagnostics.result),
-            .locationQuality: .string(locationDiagnostics.signalQuality.rawValue),
-            .precisionMode: .string(locationDiagnostics.precisionMode),
-            .filterRatioBucket: .string(ProductAnalyticsBucket.locationFilterRatio(
-                accepted: locationDiagnostics.acceptedTrackPointCount,
-                rejected: locationDiagnostics.rejectedLocationCount,
-                stationary: locationDiagnostics.stationaryLocationCount
-            )),
-            .distanceCorrectionBucket: .string(ProductAnalyticsBucket.distanceCorrection(
-                percent: locationDiagnostics.finalDistanceCorrectionPercent
-            )),
-            .segmentCountBucket: .string(ProductAnalyticsBucket.count(
-                locationDiagnostics.segmentCount
-            )),
-            .motionBridgeUsed: .boolean(locationDiagnostics.motionAssistedDistanceMeters > 0),
-            .routeMatchResult: .string(locationDiagnostics.routeMatchResult)
-        ]))
+        if !recoveredAfterFinish {
+            guideCatalog.recordGuidanceReport(guidanceReport)
+            track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
+            let locationDiagnostics = recorder.locationManager.recordingDiagnostics
+            track(.init(.activityRecordingQuality, properties: [
+                .sourceType: .string(locationDiagnostics.deliveryMode),
+                .countBucket: .string(ProductAnalyticsBucket.locationPointCount(
+                    locationDiagnostics.acceptedTrackPointCount
+                )),
+                .result: .string(locationDiagnostics.result),
+                .locationQuality: .string(locationDiagnostics.signalQuality.rawValue),
+                .precisionMode: .string(locationDiagnostics.precisionMode),
+                .filterRatioBucket: .string(ProductAnalyticsBucket.locationFilterRatio(
+                    accepted: locationDiagnostics.acceptedTrackPointCount,
+                    rejected: locationDiagnostics.rejectedLocationCount,
+                    stationary: locationDiagnostics.stationaryLocationCount
+                )),
+                .distanceCorrectionBucket: .string(ProductAnalyticsBucket.distanceCorrection(
+                    percent: locationDiagnostics.finalDistanceCorrectionPercent
+                )),
+                .segmentCountBucket: .string(ProductAnalyticsBucket.count(
+                    locationDiagnostics.segmentCount
+                )),
+                .motionBridgeUsed: .boolean(locationDiagnostics.motionAssistedDistanceMeters > 0),
+                .routeMatchResult: .string(locationDiagnostics.routeMatchResult)
+            ]))
+        }
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
         liveShareStore.end()
         liveGroupStore.finishActivity()
@@ -1174,6 +1191,7 @@ struct RecordView: View {
         ) else {
             return false
         }
+        clearSessionRecoveryArtifacts()
         var savedProperties = outcomeProperties(for: activity.summary)
         savedProperties[.goalType] = .string(analyticsGoalType)
         savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))
@@ -1271,7 +1289,7 @@ struct RecordView: View {
         pendingActivity = nil
         capturedPhotos = []
         isCapturingSessionPhoto = false
-        ActiveSessionPhotoJournal.clear()
+        clearSessionRecoveryArtifacts()
         onPreActivityPhotoChange?(nil)
         activeIntent = nil
         plannedIntent = nil
@@ -1288,6 +1306,11 @@ struct RecordView: View {
 #if DEBUG
         isRunSimulationEnabled = false
 #endif
+    }
+
+    private func clearSessionRecoveryArtifacts() {
+        ActiveSessionJournal.clear()
+        ActiveSessionPhotoJournal.clear()
     }
 
     private var preferredSessionPage: SessionPage {

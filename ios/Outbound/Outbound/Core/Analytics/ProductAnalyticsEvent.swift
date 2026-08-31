@@ -200,7 +200,7 @@ enum ProductAnalyticsSchema {
             .motionBridgeUsed, .routeMatchResult
         ],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
-        .activityRecoveryPresentation: [.result, .countBucket],
+        .activityRecoveryPresentation: [.result, .sourceType, .countBucket],
         .activityPhotoRecovery: [.countBucket, .preRunPhotoAdded],
         .activitySimulationStarted: [.sourceType, .distanceBucket, .selectionType],
         .activitySimulationControlUsed: [.control, .selectionType],

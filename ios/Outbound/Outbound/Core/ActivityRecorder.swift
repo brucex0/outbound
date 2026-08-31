@@ -36,6 +36,7 @@ final class ActivityRecorder: ObservableObject {
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
     @Published private(set) var recoveredSession = false
+    @Published private(set) var recoveredAwaitingSave = false
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
     @Published private(set) var recoveredActivityType: ActivityType?
     @Published private(set) var routeGuidanceSnapshot: RouteGuidanceSnapshot?
@@ -102,6 +103,7 @@ final class ActivityRecorder: ObservableObject {
         timer?.cancel()
         ActiveSessionJournal.clear()
         lastJournaledTrackPointCount = 0
+        recoveredAwaitingSave = false
         let now = Date()
         state = .active
         autoPaused = false
@@ -178,6 +180,9 @@ final class ActivityRecorder: ObservableObject {
         stopRunSimulationClock()
 #endif
         updateSessionMetrics(now: Date())
+        // Finishing only commits the runner to the post-run review. Keep the
+        // recovery journal durable until that review is saved or discarded.
+        persistJournal(force: true, recoveryStage: .awaitingSave)
         state = .idle
         autoPaused = false
         autoPauseCandidateStart = nil
@@ -221,12 +226,12 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = 0
         heartRateSamples.removeAll()
         recoveredSession = false
+        recoveredAwaitingSave = false
         recoveredRouteGuidance = nil
         recoveredActivityType = nil
         routeGuidance = nil
         routeGuidanceEngine = nil
         routeGuidanceSnapshot = nil
-        ActiveSessionJournal.clear()
 #if DEBUG
         resetRunSimulation()
 #endif
@@ -602,6 +607,7 @@ final class ActivityRecorder: ObservableObject {
         currentPace = locationManager.currentPaceSecsPerKm
         state = .paused
         recoveredSession = true
+        recoveredAwaitingSave = journal.recoveryStage == .awaitingSave
         recoveredActivityType = activityType
         routeGuidance = ActiveRouteGuidanceJournal.load(recoverySeed: journal.routeGuidanceRecoverySeed)
         recoveredRouteGuidance = routeGuidance
@@ -632,7 +638,10 @@ final class ActivityRecorder: ObservableObject {
         }
     }
 
-    private func persistJournal(force: Bool = false) {
+    private func persistJournal(
+        force: Bool = false,
+        recoveryStage: ActiveSessionRecoveryStage = .recording
+    ) {
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
@@ -655,7 +664,8 @@ final class ActivityRecorder: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
             activityType: activityType,
-            routeGuidanceRecoverySeed: routeGuidance?.recoverySeed
+            routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
+            recoveryStage: recoveryStage
         ).save()
     }
 
