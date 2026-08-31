@@ -73,6 +73,7 @@ Enable these before the first deploy:
 - `billingbudgets.googleapis.com`
 - `containeranalysis.googleapis.com`
 - `texttospeech.googleapis.com`
+- `aiplatform.googleapis.com`
 
 ## Current DB Connection
 
@@ -107,7 +108,7 @@ Useful overrides:
 - `RUN_HEALTH_CHECK=0`
 - `ALLOW_DIRTY_BACKEND=1`
 
-The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, scale-to-zero enabled, and a one-instance ceiling, then prints the service URL and checks `/health`. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed. These are the pre-release minimal-cost defaults; raise the minimum and maximum through the documented overrides when public-release traffic requires it.
+The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, scale-to-zero enabled, and a one-instance ceiling, then prints the service URL and checks `/health`. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed. These remain the minimal-cost script defaults. Production live coaching currently overrides them with `CLOUD_RUN_MIN_INSTANCES=1` and `CLOUD_RUN_MAX_INSTANCES=3` so one server is warm for the sub-second audio path.
 
 Raw command equivalent:
 
@@ -278,6 +279,8 @@ $HOME/google-cloud-sdk/bin/gcloud run jobs update outbound-db-push \
 ```
 
 Before executing the schema job, update it to the same image digest as the latest ready `outbound-api` revision. A stale job image can report success while applying an older Prisma schema. The job should run `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes. `db:push` skips Prisma Client generation because the immutable runtime image already contains the generated client and runs as a non-root user.
+
+The 2026-08-30 planner migration intentionally deleted only the 27 legacy `LiveCoachSession` rows and their `LiveCoachCue` children before adding the required plan columns. Accounts, entitlements, trial usage, activities, workout plans, and all other product data were preserved.
 
 After that, confirm the service and schema job contain `valueFrom.secretKeyRef`, not plaintext `value` entries.
 

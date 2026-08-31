@@ -20,6 +20,24 @@ On 2026-08-30, the former complete-WAV route measured 790–1,270 ms for direct 
 
 For a real-device benchmark, install a DEBUG build against the candidate Cloud Run revision, start the run simulator, and trigger at least 30 uncached semantic cues across cold and warm connections. Capture `device_to_first_audio_ms` from the device console. This timer starts before the authenticated HTTP request and stops when the first PCM frame reaches iOS. Report median, p90, p95, cloud-audio success rate, planned-cache rate, and the fraction that crossed into the 850 ms local fallback. Do not log transcripts, plan/context payloads, exact metrics, or identifiers.
 
+On 2026-08-30 PDT, a synthetic smoke execution using the production container image and `outbound-api-runtime` identity measured 485 ms from the Cloud Run process starting `streamingSynthesize` to its first PCM chunk, with 111,360 audio bytes returned. The same execution received valid strict JSON from `gemini-3.1-pro-preview` in 4,198 ms. This verifies provider availability, runtime IAM, model access, and streaming audio, but it excludes iPhone transport and the live API route and is therefore not the end-to-end device result.
+
+## Current Production Deployment
+
+- Revision: `outbound-api-plannedtts1`
+- Image digest: `sha256:4de7618dd20ef5647de83f48230878042b9d8df2749c493fbdca34ee91f12e37`
+- Traffic: 100%
+- Scaling: minimum 1 warm instance, maximum 3
+- Audio mode/rollout: `dynamic`, 100%, config version `2`
+- Access: `founding_trial`, first 1,000 accounts, three later trial runs
+- Planner: enabled, `gemini-3.1-pro-preview`, Vertex `global`
+- TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
+- Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
+- Fixed pack: signed `2026-08-28.1-en-zh` manifest; 312 approved assets are published, while the active two-voice subset uses 104
+- Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
+
+The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
+
 ## Approved Google Route And Voices
 
 - API: Google Cloud Text-to-Speech
