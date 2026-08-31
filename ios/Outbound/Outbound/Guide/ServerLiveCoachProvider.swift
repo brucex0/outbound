@@ -28,6 +28,18 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         }
 
         let segment = workoutSegment(request.sessionIntent, elapsedSeconds: request.snapshot.elapsedSeconds)
+        let athleteReferencePace = athleteReferencePace(request.profile)
+        let activeCoachingSegment = request.sessionIntent?.activeCoachingSegment(
+            at: request.snapshot.elapsedSeconds
+        )
+        let targetPace: Double?
+        if let activeCoachingSegment {
+            targetPace = activeCoachingSegment.target.pace?.resolvedTarget(
+                athleteReferencePace: athleteReferencePace
+            )
+        } else {
+            targetPace = athleteReferencePace
+        }
         let cueRequest = LiveCoachCueRequest(
             cueRequestId: UUID(),
             moment: moment.rawValue,
@@ -38,7 +50,8 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
                 distanceMeters: request.snapshot.distanceMeters,
                 currentPaceSecondsPerKilometer: validPace(request.snapshot.currentPaceSecsPerKm),
                 rollingPaceSecondsPerKilometer: rollingPace(request.recentSnapshots),
-                targetPaceSecondsPerKilometer: validPace(request.profile?.athlete.preferredPaceSecs),
+                targetPaceSecondsPerKilometer: targetPace,
+                gradePercent: rollingGrade(request.recentSnapshots),
                 workoutSegmentIndex: segment?.index,
                 workoutSegmentPhase: segment?.phase,
                 routeGuidanceActive: request.routeGuidanceActive
@@ -159,25 +172,89 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         return values.reduce(0, +) / Double(values.count)
     }
 
+    private func athleteReferencePace(_ profile: GuideProfile?) -> Double? {
+        if let preferred = validPace(profile?.athlete.preferredPaceSecs) {
+            return preferred
+        }
+        let values = profile?.memorySnapshot.recentActivities
+            .compactMap { validPace($0.avgPaceSecs) }
+            .sorted() ?? []
+        guard !values.isEmpty else { return nil }
+        let middle = values.count / 2
+        return values.count.isMultiple(of: 2)
+            ? (values[middle - 1] + values[middle]) / 2
+            : values[middle]
+    }
+
+    private func rollingGrade(_ snapshots: [ActiveSessionSnapshot]) -> Double? {
+        guard let endElapsed = snapshots.last?.elapsedSeconds else { return nil }
+        let locations = snapshots
+            .filter { $0.elapsedSeconds >= endElapsed - 45 }
+            .compactMap(\.location)
+            .filter {
+                $0.horizontalAccuracyMeters >= 0
+                    && $0.horizontalAccuracyMeters <= 25
+                    && $0.verticalAccuracyMeters >= 0
+                    && $0.verticalAccuracyMeters <= 10
+            }
+        guard locations.count >= 6 else { return nil }
+        let count = min(3, locations.count / 2)
+        let start = averagedLocation(Array(locations.prefix(count)))
+        let end = averagedLocation(Array(locations.suffix(count)))
+        let distance = haversineDistance(
+            latitudeA: start.latitude,
+            longitudeA: start.longitude,
+            latitudeB: end.latitude,
+            longitudeB: end.longitude
+        )
+        guard distance >= 45 else { return nil }
+        let grade = (end.altitude - start.altitude) / distance * 100
+        return grade.isFinite && abs(grade) <= 40 ? grade : nil
+    }
+
+    private func averagedLocation(
+        _ locations: [SessionLocation]
+    ) -> (latitude: Double, longitude: Double, altitude: Double) {
+        let divisor = Double(locations.count)
+        return (
+            locations.reduce(0) { $0 + $1.latitude } / divisor,
+            locations.reduce(0) { $0 + $1.longitude } / divisor,
+            locations.reduce(0) { $0 + $1.altitudeMeters } / divisor
+        )
+    }
+
+    private func haversineDistance(
+        latitudeA: Double,
+        longitudeA: Double,
+        latitudeB: Double,
+        longitudeB: Double
+    ) -> Double {
+        let radians = Double.pi / 180
+        let latitudeDelta = (latitudeB - latitudeA) * radians
+        let longitudeDelta = (longitudeB - longitudeA) * radians
+        let firstLatitude = latitudeA * radians
+        let secondLatitude = latitudeB * radians
+        let value = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
+            + cos(firstLatitude) * cos(secondLatitude)
+            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return 6_371_000 * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
+    }
+
     private func workoutSegment(
         _ intent: SessionIntent?,
         elapsedSeconds: Int
-    ) -> (index: Int, phase: String)? {
+    ) -> (index: Int?, phase: String)? {
         let steps = intent?.workoutSteps.filter { $0.durationSeconds > 0 } ?? []
-        guard !steps.isEmpty else { return nil }
+        guard !steps.isEmpty else {
+            return intent?.coachingTarget.map { (nil, $0.phase.rawValue) }
+        }
         var boundary = 0
         for (index, step) in steps.enumerated() {
             boundary += step.durationSeconds
             guard elapsedSeconds < boundary else { continue }
-            let label = "\(step.label) \(step.detail ?? "")".lowercased()
-            let phase: String
-            if label.contains("warm") { phase = "warmup" }
-            else if label.contains("recover") || label.contains("rest") || label.contains("easy") { phase = "recovery" }
-            else if label.contains("cool") { phase = "cooldown" }
-            else { phase = "work" }
-            return (index, phase)
+            return step.coachingTarget.map { (index, $0.phase.rawValue) }
         }
-        return (steps.count - 1, "cooldown")
+        return steps.last?.coachingTarget.map { (steps.count - 1, $0.phase.rawValue) }
     }
 
     private static func looksLikeBoundedWAV(_ data: Data) -> Bool {
@@ -220,12 +297,15 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
 
     private static func urgency(for moment: LiveGuidanceMomentType) -> SessionAnalysisUrgency {
         switch moment {
-        case .progress:
+        case .progress, .targetLocked, .rhythmRecovery, .resumeAfterBreak,
+             .crestRecovery, .challengeComplete:
             .steady
-        case .fastStart, .paceDrift, .segmentTransition, .finishOpportunity, .challengeStart:
+        case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
+             .paceDrift, .recoveryTooHard, .climbStart, .segmentTransition,
+             .finishOpportunity, .challengeStart:
             .opportunity
-        case .rhythmRecovery, .challengeComplete:
-            .steady
+        case .unexpectedStop:
+            .caution
         }
     }
 
@@ -236,9 +316,12 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         let key: String
         switch moment {
         case .progress: key = "progress.steady"
-        case .fastStart: key = "coach.settle"
-        case .paceDrift: key = "coach.restore_rhythm"
-        case .rhythmRecovery: key = "coach.rhythm_recovered"
+        case .earlyOverpace, .paceAboveTarget, .recoveryTooHard, .climbStart: key = "coach.settle"
+        case .paceBelowTarget, .paceInstability, .paceDrift: key = "coach.restore_rhythm"
+        case .targetLocked: key = "progress.steady"
+        case .rhythmRecovery, .crestRecovery: key = "coach.rhythm_recovered"
+        case .unexpectedStop: key = "workout.pause"
+        case .resumeAfterBreak: key = "workout.resume"
         case .segmentTransition: key = "workout.segment_start"
         case .finishOpportunity: key = "coach.strong_finish"
         case .challengeStart: key = "challenge.start"
@@ -246,33 +329,39 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         }
         let texts: [String: [String: String]] = [
             AppLanguage.english.rawValue: [
-                "progress.steady": "Keep the effort smooth and steady.",
+                "progress.steady": "Keep this steady rhythm.",
                 "coach.settle": "Settle the effort and find a sustainable rhythm.",
                 "coach.restore_rhythm": "Relax your shoulders and gently find your rhythm again.",
                 "coach.rhythm_recovered": "That adjustment worked. You found the rhythm again.",
+                "workout.pause": "Workout paused.",
+                "workout.resume": "Workout resumed.",
                 "workout.segment_start": "New segment. Settle into the target before you press.",
                 "coach.strong_finish": "Stay composed and let the effort rise gradually.",
                 "challenge.start": "Challenge starts now. Build the pace smoothly.",
                 "challenge.complete": "Challenge complete. Settle back into your run."
             ],
             AppLanguage.spanish.rawValue: [
-                "progress.steady": "Mantén un esfuerzo fluido y constante.",
+                "progress.steady": "Mantén este ritmo estable.",
                 "coach.settle": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.",
                 "coach.restore_rhythm": "Relaja los hombros y recupera el ritmo poco a poco.",
                 "coach.rhythm_recovered": "Ese ajuste funcionó. Recuperaste el ritmo.",
+                "workout.pause": "Entrenamiento en pausa.",
+                "workout.resume": "Entrenamiento reanudado.",
                 "workout.segment_start": "Nuevo segmento. Encuentra el objetivo antes de apretar.",
                 "coach.strong_finish": "Mantén la calma y aumenta el esfuerzo gradualmente.",
                 "challenge.start": "Empieza el reto. Aumenta el ritmo con suavidad.",
                 "challenge.complete": "Reto completado. Vuelve a tu ritmo de carrera."
             ],
             AppLanguage.simplifiedChinese.rawValue: [
-                "progress.steady": "保持顺畅稳定的强度。",
+                "progress.steady": "保持现在的稳定节奏。",
                 "coach.settle": "稍微收住强度，找到可持续的节奏。",
                 "coach.restore_rhythm": "放松肩膀，慢慢找回刚才的节奏。",
-                "coach.rhythm_recovered": "刚才的调整有效，你已经找回节奏了。",
+                "coach.rhythm_recovered": "调整有效，你已经找回节奏了。",
+                "workout.pause": "训练已暂停。",
+                "workout.resume": "重启训练。",
                 "workout.segment_start": "进入新阶段，先稳定到目标强度，再逐步发力。",
-                "coach.strong_finish": "保持从容，让强度逐步提升。",
-                "challenge.start": "挑战开始，平稳地提起速度。",
+                "coach.strong_finish": "保持从容，逐步提升强度。",
+                "challenge.start": "挑战开始，平稳加速。",
                 "challenge.complete": "挑战完成，回到原来的跑步节奏。"
             ]
         ]

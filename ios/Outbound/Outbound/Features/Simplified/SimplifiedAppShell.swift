@@ -1469,9 +1469,9 @@ private struct SimplifiedTodayView: View {
             startLabel: String(localized: "Start workout"),
             targetDurationSeconds: 30 * 60,
             workoutSteps: [
-                SessionIntentStep(id: "warmup", label: String(localized: "Warm-up"), durationSeconds: 5 * 60, detail: String(localized: "Very easy")),
-                SessionIntentStep(id: "relaxed", label: String(localized: "Relaxed"), durationSeconds: 20 * 60, detail: String(localized: "Conversational effort")),
-                SessionIntentStep(id: "cooldown", label: String(localized: "Cool-down"), durationSeconds: 5 * 60, detail: String(localized: "Ease down")),
+                SessionIntentStep(id: "warmup", label: String(localized: "Warm-up"), durationSeconds: 5 * 60, detail: String(localized: "Very easy"), coachingTarget: .warmup),
+                SessionIntentStep(id: "relaxed", label: String(localized: "Relaxed"), durationSeconds: 20 * 60, detail: String(localized: "Conversational effort"), coachingTarget: .easy),
+                SessionIntentStep(id: "cooldown", label: String(localized: "Cool-down"), durationSeconds: 5 * 60, detail: String(localized: "Ease down"), coachingTarget: .cooldown),
             ]
         )
     }

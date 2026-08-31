@@ -55,8 +55,9 @@ export type LiveCoachLiveState = {
   currentPaceSecondsPerKilometer?: number;
   rollingPaceSecondsPerKilometer?: number;
   targetPaceSecondsPerKilometer?: number;
+  gradePercent?: number;
   workoutSegmentIndex?: number;
-  workoutSegmentPhase?: "warmup" | "work" | "recovery" | "cooldown";
+  workoutSegmentPhase?: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
   routeGuidanceActive: boolean;
 };
 

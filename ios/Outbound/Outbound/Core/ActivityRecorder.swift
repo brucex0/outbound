@@ -138,8 +138,8 @@ final class ActivityRecorder: ObservableObject {
         stopRunSimulationClock()
 #endif
         updateSessionMetrics(now: Date())
-        state = .paused
         autoPaused = autoTriggered
+        state = .paused
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
         currentSegmentStartDate = nil
         autoPauseCandidateStart = nil

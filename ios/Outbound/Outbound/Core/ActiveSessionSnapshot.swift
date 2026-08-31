@@ -29,11 +29,141 @@ struct ActiveSessionSnapshot: Equatable {
     }
 }
 
+enum SessionCoachingPhase: String, Codable, Hashable {
+    case warmup
+    case easy
+    case work
+    case recovery
+    case walk
+    case cooldown
+    case open
+}
+
+enum SessionPaceReference: String, Codable, Hashable {
+    case athleteReference = "athlete_reference"
+    case absolute
+}
+
+struct SessionPaceTarget: Codable, Hashable {
+    let reference: SessionPaceReference
+    let targetSecondsPerKilometer: Double?
+    let athleteReferenceOffsetSeconds: Double
+    let fasterToleranceSeconds: Double
+    let slowerToleranceSeconds: Double?
+
+    init(
+        reference: SessionPaceReference,
+        targetSecondsPerKilometer: Double? = nil,
+        athleteReferenceOffsetSeconds: Double = 0,
+        fasterToleranceSeconds: Double,
+        slowerToleranceSeconds: Double? = nil
+    ) {
+        self.reference = reference
+        self.targetSecondsPerKilometer = targetSecondsPerKilometer
+        self.athleteReferenceOffsetSeconds = athleteReferenceOffsetSeconds
+        self.fasterToleranceSeconds = fasterToleranceSeconds
+        self.slowerToleranceSeconds = slowerToleranceSeconds
+    }
+
+    func resolvedTarget(athleteReferencePace: Double?) -> Double? {
+        let value: Double?
+        switch reference {
+        case .athleteReference:
+            value = athleteReferencePace.map { $0 + athleteReferenceOffsetSeconds }
+        case .absolute:
+            value = targetSecondsPerKilometer
+        }
+        guard let value, value.isFinite, (60...3_600).contains(value) else { return nil }
+        return value
+    }
+}
+
+struct SessionCoachingTarget: Codable, Hashable {
+    let phase: SessionCoachingPhase
+    let pace: SessionPaceTarget?
+    let recognizesTargetLock: Bool
+
+    init(
+        phase: SessionCoachingPhase,
+        pace: SessionPaceTarget? = nil,
+        recognizesTargetLock: Bool = false
+    ) {
+        self.phase = phase
+        self.pace = pace
+        self.recognizesTargetLock = recognizesTargetLock
+    }
+
+    static let warmup = SessionCoachingTarget(
+        phase: .warmup,
+        pace: SessionPaceTarget(
+            reference: .athleteReference,
+            athleteReferenceOffsetSeconds: 30,
+            fasterToleranceSeconds: 20
+        )
+    )
+
+    static let easy = SessionCoachingTarget(
+        phase: .easy,
+        pace: SessionPaceTarget(
+            reference: .athleteReference,
+            fasterToleranceSeconds: 20,
+            slowerToleranceSeconds: 35
+        ),
+        recognizesTargetLock: true
+    )
+
+    static let work = SessionCoachingTarget(phase: .work)
+
+    static let recovery = SessionCoachingTarget(
+        phase: .recovery,
+        pace: SessionPaceTarget(
+            reference: .athleteReference,
+            athleteReferenceOffsetSeconds: 45,
+            fasterToleranceSeconds: 25
+        )
+    )
+
+    static let walk = SessionCoachingTarget(phase: .walk)
+
+    static let cooldown = SessionCoachingTarget(
+        phase: .cooldown,
+        pace: SessionPaceTarget(
+            reference: .athleteReference,
+            athleteReferenceOffsetSeconds: 60,
+            fasterToleranceSeconds: 30
+        )
+    )
+
+    static let open = SessionCoachingTarget(phase: .open)
+}
+
 struct SessionIntentStep: Identifiable, Hashable, Codable {
     let id: String
     let label: String
     let durationSeconds: Int
     let detail: String?
+    let coachingTarget: SessionCoachingTarget?
+
+    init(
+        id: String,
+        label: String,
+        durationSeconds: Int,
+        detail: String?,
+        coachingTarget: SessionCoachingTarget? = nil
+    ) {
+        self.id = id
+        self.label = label
+        self.durationSeconds = durationSeconds
+        self.detail = detail
+        self.coachingTarget = coachingTarget
+    }
+}
+
+struct ActiveSessionCoachingSegment: Hashable {
+    let id: String
+    let target: SessionCoachingTarget
+    let elapsedSeconds: Int
+    let durationSeconds: Int?
 }
 
 struct SessionIntent: Identifiable, Hashable {
@@ -50,6 +180,7 @@ struct SessionIntent: Identifiable, Hashable {
     let preparedRoute: PreparedRoute?
     let activityTypeOverride: ActivityType?
     let workoutSteps: [SessionIntentStep]
+    let coachingTarget: SessionCoachingTarget?
     let activityEvent: ActivityEventLaunchContext?
 
     init(
@@ -66,6 +197,7 @@ struct SessionIntent: Identifiable, Hashable {
         preparedRoute: PreparedRoute? = nil,
         activityTypeOverride: ActivityType? = nil,
         workoutSteps: [SessionIntentStep] = [],
+        coachingTarget: SessionCoachingTarget? = nil,
         activityEvent: ActivityEventLaunchContext? = nil
     ) {
         self.id = id
@@ -81,6 +213,7 @@ struct SessionIntent: Identifiable, Hashable {
         self.preparedRoute = preparedRoute
         self.activityTypeOverride = activityTypeOverride
         self.workoutSteps = workoutSteps
+        self.coachingTarget = coachingTarget
         self.activityEvent = activityEvent
     }
 
@@ -113,6 +246,40 @@ struct SessionIntent: Identifiable, Hashable {
             || resolvedTargetCalories != nil
             || routeName != nil
             || !workoutSteps.isEmpty
+    }
+
+    func activeCoachingSegment(at elapsedSeconds: Int) -> ActiveSessionCoachingSegment? {
+        let timedSteps = workoutSteps.filter { $0.durationSeconds > 0 }
+        var boundary = 0
+        for step in timedSteps {
+            let start = boundary
+            boundary += step.durationSeconds
+            guard elapsedSeconds < boundary else { continue }
+            guard let target = step.coachingTarget else { return nil }
+            return ActiveSessionCoachingSegment(
+                id: step.id,
+                target: target,
+                elapsedSeconds: max(0, elapsedSeconds - start),
+                durationSeconds: step.durationSeconds
+            )
+        }
+
+        if let last = timedSteps.last, let target = last.coachingTarget {
+            return ActiveSessionCoachingSegment(
+                id: last.id,
+                target: target,
+                elapsedSeconds: max(0, elapsedSeconds - max(0, boundary - last.durationSeconds)),
+                durationSeconds: last.durationSeconds
+            )
+        }
+
+        guard let coachingTarget else { return nil }
+        return ActiveSessionCoachingSegment(
+            id: "session",
+            target: coachingTarget,
+            elapsedSeconds: max(0, elapsedSeconds),
+            durationSeconds: resolvedTargetDurationSeconds
+        )
     }
 
     static let freestyleRun = SessionIntent(
@@ -191,6 +358,7 @@ struct SessionLocation: Equatable {
     let longitude: Double
     let altitudeMeters: Double
     let horizontalAccuracyMeters: Double
+    let verticalAccuracyMeters: Double
     let speedMetersPerSecond: Double?
     let courseDegrees: Double?
 
@@ -199,6 +367,7 @@ struct SessionLocation: Equatable {
         longitude = location.coordinate.longitude
         altitudeMeters = location.altitude
         horizontalAccuracyMeters = location.horizontalAccuracy
+        verticalAccuracyMeters = location.verticalAccuracy
         speedMetersPerSecond = location.speed >= 0 ? location.speed : nil
         courseDegrees = location.course >= 0 ? location.course : nil
     }

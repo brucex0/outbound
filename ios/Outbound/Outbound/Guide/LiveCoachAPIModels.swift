@@ -145,6 +145,7 @@ struct LiveCoachCueRequest: Encodable {
         let currentPaceSecondsPerKilometer: Double?
         let rollingPaceSecondsPerKilometer: Double?
         let targetPaceSecondsPerKilometer: Double?
+        let gradePercent: Double?
         let workoutSegmentIndex: Int?
         let workoutSegmentPhase: String?
         let routeGuidanceActive: Bool

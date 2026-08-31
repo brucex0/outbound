@@ -1,7 +1,18 @@
 import type { LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { LiveCoachMoment, RequestLiveCoachCueInput } from "./liveCoachTypes.js";
 
-const dynamicMoments = new Set<LiveCoachMoment>(["progress", "fast_start", "pace_drift", "finish_opportunity"]);
+const dynamicMoments = new Set<LiveCoachMoment>([
+  "progress",
+  "early_overpace",
+  "pace_above_target",
+  "pace_below_target",
+  "pace_instability",
+  "pace_drift",
+  "recovery_too_hard",
+  "climb_start",
+  "crest_recovery",
+  "finish_opportunity",
+]);
 
 export function cuePolicyDecision(input: RequestLiveCoachCueInput, config: LiveCoachFeatureConfig): {
   dynamicEligible: boolean;
@@ -17,8 +28,14 @@ export function urgencyForMoment(moment: LiveCoachMoment): "steady" | "opportuni
   switch (moment) {
     case "progress":
       return "steady";
-    case "fast_start":
+    case "early_overpace":
+    case "pace_above_target":
+    case "pace_below_target":
+    case "pace_instability":
     case "pace_drift":
+    case "recovery_too_hard":
+    case "climb_start":
+    case "crest_recovery":
     case "finish_opportunity":
     case "segment_transition":
     case "challenge_start":

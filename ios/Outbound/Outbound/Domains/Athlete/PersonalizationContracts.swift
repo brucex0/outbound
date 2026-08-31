@@ -50,15 +50,22 @@ struct CalibrationWorkoutDTO: Codable, Identifiable, Equatable, Sendable {
             guideLine: purpose,
             startLabel: String(localized: "Start workout"),
             targetDurationSeconds: durationSeconds,
-            workoutSteps: steps.map {
+            workoutSteps: steps.enumerated().map { index, step in
                 SessionIntentStep(
-                    id: $0.id,
-                    label: $0.label,
-                    durationSeconds: $0.durationSeconds,
-                    detail: $0.detail
+                    id: step.id,
+                    label: step.label,
+                    durationSeconds: step.durationSeconds,
+                    detail: step.detail,
+                    coachingTarget: coachingTarget(for: index)
                 )
             }
         )
+    }
+
+    private func coachingTarget(for index: Int) -> SessionCoachingTarget {
+        if index == 0 { return .warmup }
+        if index == steps.count - 1 { return .cooldown }
+        return kind == .easyPickups ? .work : .easy
     }
 
     private var durationLabel: String {

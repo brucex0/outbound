@@ -43,6 +43,8 @@ Each cue has product-authored English, Spanish, and Simplified Chinese text. The
 26 cues × 3 locales × 6 voices = 468 reviewed WAV files
 ```
 
+The canonical semantic moment list is larger than this audio inventory. Current pace-band, break, and terrain moments reuse conservative reviewed keys such as `coach.settle`, `coach.restore_rhythm`, `coach.rhythm_recovered`, `progress.steady`, `workout.pause`, and `workout.resume`. The fixed transcript must still match the selected catalog entry exactly. See `docs/live-coaching-moments.md` for the semantic-to-audio map. Do not add unique offline wording without generating, reviewing, signing, publishing, and rolling out a new catalog version.
+
 Print every key and all three scripts without making an API call:
 
 ```sh

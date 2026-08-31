@@ -40,8 +40,9 @@ const liveStateSchema = z.object({
   currentPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
   rollingPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
   targetPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
+  gradePercent: z.number().finite().min(-40).max(40).optional(),
   workoutSegmentIndex: z.number().int().min(0).max(200).optional(),
-  workoutSegmentPhase: z.enum(["warmup", "work", "recovery", "cooldown"]).optional(),
+  workoutSegmentPhase: z.enum(["warmup", "easy", "work", "recovery", "walk", "cooldown", "open"]).optional(),
   routeGuidanceActive: z.boolean(),
 }).strict();
 
