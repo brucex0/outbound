@@ -142,7 +142,7 @@ Operational sequence:
 1. Store the active key in Secret Manager as `outbound-alibaba-ai-api-key` and grant only the Cloud Run runtime identity access.
 2. The scripts default to the configured workspace-specific Singapore endpoints. Dynamic cues use `qwen3-omni-flash-2025-12-01`; fixed assets use `qwen3-tts-instruct-flash-2026-01-26` through the workspace `/api/v1` endpoint and the complete instruction-capable six-voice `en`/`es`/`zh-Hans` map. Use deployment overrides only for a separately reviewed change.
 3. Validate one request with `./scripts/generate-live-coach-audio.sh --smoke`.
-4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 468 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
+4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 612 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
 5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
 7. Deploy `fixed_only`, verify device playback and rollback, then deploy `dynamic` with a 0% rollout before raising the deterministic percentage.
@@ -173,8 +173,8 @@ LIVE_COACH_ACCESS_MODE=founding_trial \
 LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
 LIVE_COACH_TRIAL_RUN_LIMIT=3 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
-LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-28.1/manifest.json' \
-LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-28.1/assets' \
+LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-30.1/manifest.json' \
+LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-30.1/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 

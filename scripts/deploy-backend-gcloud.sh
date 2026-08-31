@@ -27,7 +27,7 @@ Environment overrides:
   LIVE_COACH_SERVER_AUDIO_MODE default: disabled
   LIVE_COACH_ACCESS_MODE       default: open_beta (production uses founding_trial)
   LIVE_COACH_CONFIG_VERSION    default: 1
-  LIVE_COACH_CATALOG_VERSION   default: 2026-08-28.1
+  LIVE_COACH_CATALOG_VERSION   default: 2026-08-30.1
   LIVE_COACH_ENABLED_LOCALES   default: en,zh-Hans
   LIVE_COACH_ENABLED_PERSONAS  default: supportive,focused product IDs
   LIVE_COACH_ENABLED_VOICE_PROFILES default: approved six product voice IDs
@@ -86,7 +86,7 @@ CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-1}"
 LIVE_COACH_SERVER_AUDIO_MODE="${LIVE_COACH_SERVER_AUDIO_MODE:-disabled}"
 LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-open_beta}"
 LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-1}"
-LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-08-28.1}"
+LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-08-30.1}"
 LIVE_COACH_ENABLED_LOCALES="${LIVE_COACH_ENABLED_LOCALES:-en,zh-Hans}"
 LIVE_COACH_ENABLED_PERSONAS="${LIVE_COACH_ENABLED_PERSONAS:-plainstride_supportive_v1,plainstride_focused_v1}"
 LIVE_COACH_ENABLED_VOICE_PROFILES="${LIVE_COACH_ENABLED_VOICE_PROFILES:-plainstride_warm_1,plainstride_gentle_1,plainstride_composed_1,plainstride_clear_1,plainstride_driven_1,plainstride_easygoing_1}"

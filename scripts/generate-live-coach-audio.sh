@@ -57,7 +57,7 @@ export ALIBABA_AI_ENABLED=true
 cd "$ROOT_DIR/backend"
 if [[ "$SMOKE" == "1" ]]; then
   npm run live-coach:generate-audio -- \
-    --catalog-version 2026-08-28.1 \
+    --catalog-version 2026-08-30.1 \
     --provider alibaba \
     --voice-profile plainstride_warm_1 \
     --locale en \
@@ -66,4 +66,4 @@ if [[ "$SMOKE" == "1" ]]; then
     "$@"
   exit 0
 fi
-npm run live-coach:generate-audio -- --catalog-version 2026-08-28.1 --provider alibaba "$@"
+npm run live-coach:generate-audio -- --catalog-version 2026-08-30.1 --provider alibaba "$@"

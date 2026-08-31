@@ -46,7 +46,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     mode,
     accessMode,
     configVersion: trimmed(env.LIVE_COACH_CONFIG_VERSION) || "1",
-    catalogVersion: trimmed(env.LIVE_COACH_CATALOG_VERSION) || "2026-08-28.1",
+    catalogVersion: trimmed(env.LIVE_COACH_CATALOG_VERSION) || "2026-08-30.1",
     allowedMarkets: ["global"],
     enabledLocales: csv(env.LIVE_COACH_ENABLED_LOCALES, [...SUPPORTED_AI_LOCALES]) as SupportedAILocale[],
     enabledPersonaIds: csv(env.LIVE_COACH_ENABLED_PERSONAS, [

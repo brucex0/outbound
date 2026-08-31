@@ -316,12 +316,18 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         let key: String
         switch moment {
         case .progress: key = "progress.steady"
-        case .earlyOverpace, .paceAboveTarget, .recoveryTooHard, .climbStart: key = "coach.settle"
-        case .paceBelowTarget, .paceInstability, .paceDrift: key = "coach.restore_rhythm"
+        case .earlyOverpace: key = "coach.early_settle"
+        case .paceAboveTarget: key = "coach.ease_to_target"
+        case .paceBelowTarget: key = "coach.lift_to_target"
+        case .paceInstability: key = "coach.smooth_pace"
         case .targetLocked: key = "progress.steady"
-        case .rhythmRecovery, .crestRecovery: key = "coach.rhythm_recovered"
+        case .paceDrift: key = "coach.rebuild_rhythm"
+        case .rhythmRecovery: key = "coach.rhythm_recovered"
+        case .recoveryTooHard: key = "coach.recovery_easy"
         case .unexpectedStop: key = "workout.pause"
         case .resumeAfterBreak: key = "workout.resume"
+        case .climbStart: key = "coach.climb_by_effort"
+        case .crestRecovery: key = "coach.crest_reset"
         case .segmentTransition: key = "workout.segment_start"
         case .finishOpportunity: key = "coach.strong_finish"
         case .challengeStart: key = "challenge.start"
@@ -330,6 +336,14 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         let texts: [String: [String: String]] = [
             AppLanguage.english.rawValue: [
                 "progress.steady": "Keep this steady rhythm.",
+                "coach.early_settle": "Ease off a touch. Let your body settle into the run.",
+                "coach.ease_to_target": "You're running faster than the target. Ease the pace down gradually.",
+                "coach.lift_to_target": "You're running slower than the target. Lift the pace gradually and stay relaxed.",
+                "coach.smooth_pace": "Smooth the effort. Let the pace settle before you adjust again.",
+                "coach.rebuild_rhythm": "Reset your posture and gently bring the rhythm back.",
+                "coach.recovery_easy": "Make this recovery easy. Let your breathing and legs settle.",
+                "coach.climb_by_effort": "Shorten your stride and run the climb by effort, not pace.",
+                "coach.crest_reset": "The climb is easing. Reset your form before you build again.",
                 "coach.settle": "Settle the effort and find a sustainable rhythm.",
                 "coach.restore_rhythm": "Relax your shoulders and gently find your rhythm again.",
                 "coach.rhythm_recovered": "That adjustment worked. You found the rhythm again.",
@@ -342,6 +356,14 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             ],
             AppLanguage.spanish.rawValue: [
                 "progress.steady": "Mantén este ritmo estable.",
+                "coach.early_settle": "Afloja un poco y entra en ritmo sin prisas.",
+                "coach.ease_to_target": "Vas más rápido que el ritmo objetivo. Baja gradualmente y mantén el control.",
+                "coach.lift_to_target": "Vas más lento que el ritmo objetivo. Aumenta poco a poco sin perder la relajación.",
+                "coach.smooth_pace": "Suaviza el esfuerzo. Deja que el ritmo se estabilice antes de volver a ajustarlo.",
+                "coach.rebuild_rhythm": "Recoloca la postura y recupera el ritmo poco a poco.",
+                "coach.recovery_easy": "Haz que esta recuperación sea suave. Deja que se calmen la respiración y las piernas.",
+                "coach.climb_by_effort": "Acorta la zancada y sube por sensaciones, no por ritmo.",
+                "coach.crest_reset": "La subida afloja. Recompón la postura antes de volver a apretar.",
                 "coach.settle": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.",
                 "coach.restore_rhythm": "Relaja los hombros y recupera el ritmo poco a poco.",
                 "coach.rhythm_recovered": "Ese ajuste funcionó. Recuperaste el ritmo.",
@@ -354,6 +376,14 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             ],
             AppLanguage.simplifiedChinese.rawValue: [
                 "progress.steady": "保持现在的稳定节奏。",
+                "coach.early_settle": "稍微收一点，别着急，让身体慢慢进入节奏。",
+                "coach.ease_to_target": "现在快于目标配速，逐步放慢，保持从容。",
+                "coach.lift_to_target": "现在慢于目标配速，放松地逐步提速。",
+                "coach.smooth_pace": "先稳住强度，让配速稳定下来再调整。",
+                "coach.rebuild_rhythm": "调整一下跑姿，放松地把节奏带回来。",
+                "coach.recovery_easy": "恢复段再轻松一点，让呼吸和双腿缓下来。",
+                "coach.climb_by_effort": "上坡缩短步幅，按体感控制强度，别追配速。",
+                "coach.crest_reset": "坡度缓下来了，先调整跑姿，再逐步发力。",
                 "coach.settle": "稍微收住强度，找到可持续的节奏。",
                 "coach.restore_rhythm": "放松肩膀，慢慢找回刚才的节奏。",
                 "coach.rhythm_recovered": "调整有效，你已经找回节奏了。",

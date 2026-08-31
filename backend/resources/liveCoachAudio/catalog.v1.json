@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "2026-08-28.1",
+  "catalogVersion": "2026-08-30.1",
   "entries": [
     { "cueKey": "countdown.three", "scriptStyleId": "standard", "texts": { "en": "Three.", "es": "Tres.", "zh-Hans": "三。" } },
     { "cueKey": "countdown.two", "scriptStyleId": "standard", "texts": { "en": "Two.", "es": "Dos.", "zh-Hans": "二。" } },
@@ -19,6 +19,14 @@
     { "cueKey": "progress.two_thirds", "scriptStyleId": "standard", "texts": { "en": "Two thirds complete. Stay composed.", "es": "Has completado dos tercios. Mantén la calma.", "zh-Hans": "已完成三分之二，继续保持从容。" } },
     { "cueKey": "progress.finish_soon", "scriptStyleId": "standard", "texts": { "en": "The finish is close. Stay composed.", "es": "La meta está cerca. Mantén la calma.", "zh-Hans": "终点快到了，保持从容。" } },
     { "cueKey": "progress.steady", "scriptStyleId": "standard", "texts": { "en": "Keep this steady rhythm.", "es": "Mantén este ritmo estable.", "zh-Hans": "保持现在的稳定节奏。" } },
+    { "cueKey": "coach.early_settle", "scriptStyleId": "standard", "texts": { "en": "Ease off a touch. Let your body settle into the run.", "es": "Afloja un poco y entra en ritmo sin prisas.", "zh-Hans": "稍微收一点，别着急，让身体慢慢进入节奏。" } },
+    { "cueKey": "coach.ease_to_target", "scriptStyleId": "standard", "texts": { "en": "You're running faster than the target. Ease the pace down gradually.", "es": "Vas más rápido que el ritmo objetivo. Baja gradualmente y mantén el control.", "zh-Hans": "现在快于目标配速，逐步放慢，保持从容。" } },
+    { "cueKey": "coach.lift_to_target", "scriptStyleId": "standard", "texts": { "en": "You're running slower than the target. Lift the pace gradually and stay relaxed.", "es": "Vas más lento que el ritmo objetivo. Aumenta poco a poco sin perder la relajación.", "zh-Hans": "现在慢于目标配速，放松地逐步提速。" } },
+    { "cueKey": "coach.smooth_pace", "scriptStyleId": "standard", "texts": { "en": "Smooth the effort. Let the pace settle before you adjust again.", "es": "Suaviza el esfuerzo. Deja que el ritmo se estabilice antes de volver a ajustarlo.", "zh-Hans": "先稳住强度，让配速稳定下来再调整。" } },
+    { "cueKey": "coach.rebuild_rhythm", "scriptStyleId": "standard", "texts": { "en": "Reset your posture and gently bring the rhythm back.", "es": "Recoloca la postura y recupera el ritmo poco a poco.", "zh-Hans": "调整一下跑姿，放松地把节奏带回来。" } },
+    { "cueKey": "coach.recovery_easy", "scriptStyleId": "standard", "texts": { "en": "Make this recovery easy. Let your breathing and legs settle.", "es": "Haz que esta recuperación sea suave. Deja que se calmen la respiración y las piernas.", "zh-Hans": "恢复段再轻松一点，让呼吸和双腿缓下来。" } },
+    { "cueKey": "coach.climb_by_effort", "scriptStyleId": "standard", "texts": { "en": "Shorten your stride and run the climb by effort, not pace.", "es": "Acorta la zancada y sube por sensaciones, no por ritmo.", "zh-Hans": "上坡缩短步幅，按体感控制强度，别追配速。" } },
+    { "cueKey": "coach.crest_reset", "scriptStyleId": "standard", "texts": { "en": "The climb is easing. Reset your form before you build again.", "es": "La subida afloja. Recompón la postura antes de volver a apretar.", "zh-Hans": "坡度缓下来了，先调整跑姿，再逐步发力。" } },
     { "cueKey": "coach.settle", "scriptStyleId": "standard", "texts": { "en": "Settle the effort and find a sustainable rhythm.", "es": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.", "zh-Hans": "稍微收住强度，找到可持续的节奏。" } },
     { "cueKey": "coach.restore_rhythm", "scriptStyleId": "standard", "texts": { "en": "Relax your shoulders and gently find your rhythm again.", "es": "Relaja los hombros y recupera el ritmo poco a poco.", "zh-Hans": "放松肩膀，慢慢找回刚才的节奏。" } },
     { "cueKey": "coach.rhythm_recovered", "scriptStyleId": "standard", "texts": { "en": "That adjustment worked. You found the rhythm again.", "es": "Ese ajuste funcionó. Recuperaste el ritmo.", "zh-Hans": "调整有效，你已经找回节奏了。" } },

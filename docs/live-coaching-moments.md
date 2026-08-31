@@ -81,21 +81,27 @@ Route guidance has priority over ordinary coaching. A live route cue also forces
 
 ## Fixed Audio Compatibility
 
-The expanded semantic taxonomy deliberately reuses the reviewed 26-cue pack. The semantic event remains specific even when its offline wording is conservative.
+Catalog `2026-08-30.1` gives each correction a script that preserves its coaching meaning. Existing cues are reused only when they are already an exact fit, such as steady target confirmation, measured rhythm recovery, pause/resume, segment transitions, finishes, and challenges.
 
 | Semantic moments | Reviewed fallback key |
 | --- | --- |
 | `progress`, `target_locked` | `progress.steady` |
-| `early_overpace`, `pace_above_target`, `recovery_too_hard`, `climb_start` | `coach.settle` |
-| `pace_below_target`, `pace_instability`, `pace_drift` | `coach.restore_rhythm` |
-| `rhythm_recovery`, `crest_recovery` | `coach.rhythm_recovered` |
+| `early_overpace` | `coach.early_settle` |
+| `pace_above_target` | `coach.ease_to_target` |
+| `pace_below_target` | `coach.lift_to_target` |
+| `pace_instability` | `coach.smooth_pace` |
+| `pace_drift` | `coach.rebuild_rhythm` |
+| `rhythm_recovery` | `coach.rhythm_recovered` |
+| `recovery_too_hard` | `coach.recovery_easy` |
 | `unexpected_stop` | `workout.pause` |
 | `resume_after_break` | `workout.resume` |
+| `climb_start` | `coach.climb_by_effort` |
+| `crest_recovery` | `coach.crest_reset` |
 | `segment_transition` | `workout.segment_start` |
 | `finish_opportunity` | `coach.strong_finish` |
 | `challenge_start`, `challenge_complete` | `challenge.start`, `challenge.complete` |
 
-The transcript must exactly match the catalog entry when a fixed key is used. Unique fixed wording for a new moment requires a catalog update, full locale review, audio generation, manifest publication, and catalog-version rollout; see `docs/live-coach-operations.md`.
+The transcript must exactly match the catalog entry when a fixed key is used. A catalog update and audio generation do not publish or deploy the cue: every new locale/voice rendition still requires human review, signed manifest publication, and an explicit catalog-version rollout; see `docs/live-coach-operations.md`.
 
 ## Candidate Taxonomy By Coaching Job
 

@@ -25,7 +25,7 @@ Recheck the [Qwen-Omni model documentation](https://www.alibabacloud.com/help/en
 
 ## Fixed Pack Inventory
 
-The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-08-28.1` contains 26 semantic cues:
+The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-08-30.1` contains 34 semantic cues:
 
 | Group | Cue keys |
 | --- | --- |
@@ -33,17 +33,17 @@ The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catal
 | Workout control | `workout.pause`, `workout.resume`, `workout.segment_start`, `workout.complete` |
 | Route and safety | `route.advisory`, `route.caution`, `route.wrong_way`, `route.rejoin`, `route.arrival` |
 | Progress | `progress.one_third`, `progress.halfway`, `progress.two_thirds`, `progress.finish_soon`, `progress.steady` |
-| Coaching fallback | `coach.settle`, `coach.restore_rhythm`, `coach.rhythm_recovered`, `coach.strong_finish` |
+| Coaching fallback | `coach.early_settle`, `coach.ease_to_target`, `coach.lift_to_target`, `coach.smooth_pace`, `coach.rebuild_rhythm`, `coach.recovery_easy`, `coach.climb_by_effort`, `coach.crest_reset`, `coach.settle`, `coach.restore_rhythm`, `coach.rhythm_recovered`, `coach.strong_finish` |
 | Challenges | `challenge.start`, `challenge.complete` |
 | Availability and preview | `fallback.unavailable`, `voice.preview` |
 
 Each cue has product-authored English, Spanish, and Simplified Chinese text. The complete pack is:
 
 ```text
-26 cues × 3 locales × 6 voices = 468 reviewed WAV files
+34 cues × 3 locales × 6 voices = 612 reviewed WAV files
 ```
 
-The canonical semantic moment list is larger than this audio inventory. Current pace-band, break, and terrain moments reuse conservative reviewed keys such as `coach.settle`, `coach.restore_rhythm`, `coach.rhythm_recovered`, `progress.steady`, `workout.pause`, and `workout.resume`. The fixed transcript must still match the selected catalog entry exactly. See `docs/live-coaching-moments.md` for the semantic-to-audio map. Do not add unique offline wording without generating, reviewing, signing, publishing, and rolling out a new catalog version.
+Catalog `2026-08-30.1` adds eight purpose-built cues for early pacing, faster/slower target correction, pace instability, pace drift, recovery effort, climb entry, and crest recovery. It does not force these meanings through the older generic settle/restore scripts. Confirmations and workout controls still share an existing cue only where the script expresses the semantic event exactly. The fixed transcript must match the selected catalog entry exactly; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
 
 Print every key and all three scripts without making an API call:
 
@@ -64,7 +64,7 @@ The local script first uses `ALIBABA_AI_API_KEY` or `DASHSCOPE_API_KEY`. If neit
 
 Fixed generation sends the exact transcript separately from an English delivery instruction. The instruction includes the semantic situation, cue-specific pacing and tone direction, the selected product voice style, outdoor-listening context, and checksum-matched rejection feedback. Alibaba returns a short-lived audio URL; the adapter downloads and validates the resulting 24 kHz mono PCM WAV before storage. Dynamic Omni responses continue to use Base64-encoded audio chunks that the adapter wraps in a standard WAV container.
 
-The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-28.1/` and writes `review-manifest.json`. The directory is gitignored. Each uncached asset gets up to three attempts when Alibaba times out, is unavailable, or returns invalid output. A rerun validates and reuses existing WAVs, so an interrupted 468-file generation safely resumes without paying for completed assets again. The content hash includes the fixed TTS model, so a model change cannot silently reuse an older model's rendition.
+The script downloads content-addressed WAVs to `backend/.local/live-coach-review/2026-08-30.1/` and writes `review-manifest.json`. The directory is gitignored. Each uncached asset gets up to three attempts when Alibaba times out, is unavailable, or returns invalid output. A rerun validates and reuses existing WAVs, so an interrupted 612-file generation safely resumes without paying for completed assets again. The content hash includes the fixed TTS model, so a model change cannot silently reuse an older model's rendition.
 
 Generation does not approve or publish audio. Listen to every file and set `approved` to `true` only for an exact, correctly pronounced, naturally paced rendition. Regenerate any rejected entry before publication.
 
@@ -111,7 +111,11 @@ The initial fixed-only pilot is deliberately limited to English and Simplified C
 - Approved matrix: 26 cues × 2 locales × 6 voices = 312 WAV files
 - Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
 
-For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The existing `audio_mode` and `access_reason` analytics fields therefore record the locale gate without adding a separate event or collecting locale as a new analytics property. Do not add Spanish to the allowlist until all 156 current Spanish assets are reviewed, approved, signed, and published in a complete successor catalog.
+This remains the currently published pack until a successor is reviewed and explicitly released. The `2026-08-30.1` successor requires 408 approved WAVs for the same EN/ZH scope, or 612 for all three locales. Existing approved files can be reused only when their cue transcript, locale, voice, model, and audio checksum still match; all 144 renditions for the eight new cues require review.
+
+Current local review state for `2026-08-30.1`: generation and file validation are complete; 282 approvals carried forward and 330 renditions remain unapproved. The pending set is 144 new-cue renditions, 30 older EN/ZH renditions whose current checksum differs from the approved file, and 156 older Spanish renditions. The EN/ZH successor therefore has 126 reviews remaining. Treat the gitignored review manifest and review screen as the live source for this count.
+
+For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The existing `audio_mode` and `access_reason` analytics fields therefore record the locale gate without adding a separate event or collecting locale as a new analytics property. Do not add Spanish to the allowlist until all 204 Spanish assets in the successor catalog are reviewed, approved, signed, and published.
 
 Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after human review.
 
@@ -155,4 +159,4 @@ Use unlimited `open_beta` only as a deliberate temporary or development override
 
 ## Current Release Gate
 
-For the EN/ZH pilot, do not enable `fixed_only` until all 312 in-scope assets have been generated, approved, signed, uploaded, exposed through immutable HTTPS URLs, and protected by the server locale gate. A complete three-locale release still requires all 468 assets. Do not set global mode to `dynamic`, even at 0%, until the Alibaba API key is in Secret Manager and startup validation passes with the workspace endpoint, approved model, complete six-voice map, and published pack.
+The currently published EN/ZH pilot remains valid at 312 approved assets for catalog `2026-08-28.1-en-zh`. Do not point production at the `2026-08-30.1` successor until all 408 EN/ZH assets are generated, approved, signed, uploaded, exposed through immutable HTTPS URLs, and protected by the server locale gate. A complete three-locale successor requires all 612 assets. Do not set global mode to `dynamic`, even at 0%, until the Alibaba API key is in Secret Manager and startup validation passes with the workspace endpoint, approved model, complete six-voice map, and published pack.

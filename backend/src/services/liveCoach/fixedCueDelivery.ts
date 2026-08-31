@@ -79,6 +79,38 @@ const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
     situation: "The runner is on target and should maintain the current rhythm.",
     delivery: "Reassuring, even, and low-pressure, as confirmation rather than correction.",
   },
+  "coach.early_settle": {
+    situation: "The runner's opening pace is persistently faster than their personalized sustainable target.",
+    delivery: "Patient and calming. Make the small early adjustment feel preventative, easy, and free of criticism.",
+  },
+  "coach.ease_to_target": {
+    situation: "The runner is moving faster than the active workout target and should gradually return to its range.",
+    delivery: "Clear and measured, with gentle emphasis on gradual control rather than an abrupt slowdown.",
+  },
+  "coach.lift_to_target": {
+    situation: "The runner is moving slower than the active workout target and can gradually return to its range.",
+    delivery: "Encouraging and relaxed. Invite a controlled lift without urgency, strain, or judgment.",
+  },
+  "coach.smooth_pace": {
+    situation: "The runner's recent pace is unusually variable and needs time to stabilize before another adjustment.",
+    delivery: "Steady and grounding, with an unhurried pause after the first sentence. Do not sound corrective or impatient.",
+  },
+  "coach.rebuild_rhythm": {
+    situation: "The runner has gradually slowed relative to their own earlier sustainable rhythm.",
+    delivery: "Supportive and practical. Make the posture reset distinct, then guide the rhythm back without pressure.",
+  },
+  "coach.recovery_easy": {
+    situation: "The runner is pushing a warmup, recovery, or cooldown segment harder than its intended easy effort.",
+    delivery: "Soft, permissive, and visibly calmer than a work-interval cue. Make easing off feel purposeful.",
+  },
+  "coach.climb_by_effort": {
+    situation: "The runner has entered a sustained climb where flat-ground pace is no longer the right effort guide.",
+    delivery: "Practical and composed. Give the stride cue clearly, then emphasize effort over pace without sounding urgent.",
+  },
+  "coach.crest_reset": {
+    situation: "A sustained climb has eased and the runner should reset form before increasing effort again.",
+    delivery: "Reassuring and transitional. Let the first sentence release tension, then keep the rebuild advice patient.",
+  },
   "coach.settle": {
     situation: "The runner should reduce strain and find a sustainable effort.",
     delivery: "Grounded, calming, and unhurried. Make the adjustment feel achievable, not like criticism.",
