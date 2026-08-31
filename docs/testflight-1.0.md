@@ -8,7 +8,7 @@ Open this for the first internal or external TestFlight upload. Product behavior
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.0`
-- Build: `32`
+- Build: `33`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -53,8 +53,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- Simplify Me milestones section
-- Recover activity photos after interruption
+- Remove live coach cue caps
+- Avoid clipping streamed coach audio
+- Extend live coach audio deadline
+- Merge Google streaming live coaching
+- Implement planned streaming live coaching
+- Plus 10 more fixes and improvements
 
 ### How to Report Feedback
 
@@ -168,6 +172,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.0 (32)`, validate, and upload from Xcode Organizer.
+- Archive `1.0 (33)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
