@@ -2514,6 +2514,10 @@ struct RecordView: View {
                 .sourceType: .string(source.rawValue),
                 .latencyBucket: .string(latency.rawValue)
             ]))
+        case .audioPlaybackRoute(let route):
+            track(.init(.liveGuidanceAudioPlaybackRoute, properties: [
+                .sourceType: .string(route.rawValue)
+            ]))
         }
     }
 

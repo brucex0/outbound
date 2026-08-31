@@ -10,7 +10,7 @@ Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech 
 2. iOS keeps semantic detection and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
 3. Google TTS receives only the finalized sentence, selected voice, language, and 24 kHz PCM settings.
 4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
-5. Generated plans prewarm up to eight likely WAV phrases in the background. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the planned cache, reviewed local pack, or on-device system speech.
+5. Generated plans prewarm up to eight likely WAV phrases in the background. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the planned cache, reviewed local pack, or session-pinned on-device system voice.
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 
@@ -23,6 +23,8 @@ On 2026-08-30, the former complete-WAV route measured 790–1,270 ms for direct 
 For a real-device benchmark, install a DEBUG build against the candidate Cloud Run revision, start the run simulator, and trigger at least 30 uncached semantic cues across cold and warm connections. Capture `device_to_first_audio_ms` from the device console. This timer starts before the authenticated HTTP request and stops when the first PCM frame reaches iOS. Report median, p90, p95, cloud-audio success rate, planned-cache rate, and the fraction that crossed into the 1.5 second local fallback. Do not log transcripts, plan/context payloads, exact metrics, or identifiers.
 
 On 2026-08-30 PDT, a synthetic smoke execution using the production container image and `outbound-api-runtime` identity measured 485 ms from the Cloud Run process starting `streamingSynthesize` to its first PCM chunk, with 111,360 audio bytes returned. The same execution received valid strict JSON from `gemini-3.1-pro-preview` in 4,198 ms. This verifies provider availability, runtime IAM, model access, and streaming audio, but it excludes iPhone transport and the live API route and is therefore not the end-to-end device result.
+
+Later that day, a simulated Responsive session showed why request duration must be separated from fallback cause. Earlier streamed responses completed in 0.64–1.64 seconds, while the final two periodic stats calls returned metadata-only responses in 31 ms and 38 ms because the obsolete eight-cue quota rejected them before TTS. This was not a TTS timeout. Per-workout cue quotas have been removed: access is counted in eligible workout sessions, while semantic cooldowns and request-rate controls continue to govern cadence.
 
 ## Current Production Deployment
 
@@ -39,6 +41,8 @@ On 2026-08-30 PDT, a synthetic smoke execution using the production container im
 - Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
 
 The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
+
+There is no per-workout cue allowance. Once a workout has dynamic access, both coaching interventions and periodic distance/time/pace announcements remain eligible for the full session. If cloud or recorded audio is unavailable, iOS resolves and pins a same-language system voice matching the selected female/male product presentation at session start; it never substitutes the opposite presentation mid-session.
 
 ## Approved Google Route And Voices
 
@@ -221,7 +225,7 @@ Production uses `LIVE_COACH_ACCESS_MODE=founding_trial`, a founding limit of 1,0
 | Later account with fewer than three consumed trials | Dynamic access for the current guided run. |
 | Later account after three consumed trials | `entitlement_required`; reviewed fixed guidance remains available. |
 
-A trial is consumed only after the first successful dynamic cue. Canceled starts, Quiet guidance, safety-forced fixed sessions, expired sessions without a dynamic success, and provider failures do not consume a run.
+A trial is consumed only after the first successful dynamic cue in that workout, then the rest of that workout remains uncapped. Canceled starts, Quiet guidance, safety-forced fixed sessions, expired sessions without a dynamic success, and provider failures do not consume a run.
 
 ## Release Gate
 

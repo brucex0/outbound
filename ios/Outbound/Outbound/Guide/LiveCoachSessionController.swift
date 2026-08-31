@@ -6,7 +6,6 @@ final class LiveCoachSessionController {
     private var createTask: Task<CreateLiveCoachSessionResponse, Error>?
     private var session: CreateLiveCoachSessionResponse?
     private var phraseUseCounts: [String: Int] = [:]
-    private var localDynamicCueCount = 0
     private var prewarmTask: Task<Void, Never>?
     private var voiceProfileID = ""
 
@@ -31,7 +30,6 @@ final class LiveCoachSessionController {
     ) {
         end(report: nil)
         phraseUseCounts = [:]
-        localDynamicCueCount = 0
         guard let persona else { return }
         voiceProfileID = persona.voice.id
         let request = CreateLiveCoachSessionRequest(
@@ -76,8 +74,7 @@ final class LiveCoachSessionController {
                 moment: request.moment,
                 phase: request.liveState.workoutSegmentPhase
             )
-        if localDynamicCueCount < active.limits.maximumDynamicCues,
-           let selectedPhraseID,
+        if let selectedPhraseID,
            let cached = await GuidePlannedAudioCache.shared.audioData(
                 planHash: active.guidancePlanHash,
                 voiceProfileID: voiceProfileID,
@@ -99,7 +96,6 @@ final class LiveCoachSessionController {
                     request: cachedRequest
                 )
             }
-            localDynamicCueCount += 1
             return LiveCoachCueStreamResponse(
                 metadata: .init(
                     contractVersion: 1,
@@ -128,9 +124,6 @@ final class LiveCoachSessionController {
             liveState: request.liveState
         )
         let response = try await APIClient.shared.streamLiveCoachCue(sessionID: active.sessionId, request: boundedRequest)
-        if response.metadata.source == .dynamicGeneration && response.metadata.result == .success {
-            localDynamicCueCount += 1
-        }
         return response
     }
 

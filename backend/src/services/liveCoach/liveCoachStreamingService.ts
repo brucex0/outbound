@@ -178,14 +178,21 @@ export class LiveCoachStreamingService {
       }
       if (firstAudioAt == null) throw new AIProviderError("invalid_provider_output", "The provider returned no audio.");
       liveCoachCueRepository.appendCueSummary(session.id, transcript);
-      await this.prisma.liveCoachCue.update({
-        where: { sessionId_cueRequestId: { sessionId: session.id, cueRequestId: input.cueRequestId } },
-        data: {
-          resultCategory: "success",
-          latencyBucket: latencyBucket(firstAudioAt - startedAt),
-          outputAudioBucket: byteBucket(byteCount),
-        },
-      });
+      await this.prisma.$transaction([
+        this.prisma.liveCoachCue.update({
+          where: { sessionId_cueRequestId: { sessionId: session.id, cueRequestId: input.cueRequestId } },
+          data: {
+            resultCategory: "success",
+            latencyBucket: latencyBucket(firstAudioAt - startedAt),
+            outputAudioBucket: byteBucket(byteCount),
+          },
+        }),
+        // This legacy field is now a per-session success marker, not a cue counter.
+        this.prisma.liveCoachSession.update({
+          where: { id: session.id },
+          data: { dynamicCueCount: 1 },
+        }),
+      ]);
       if (session.accessReason === "open_beta" && session.dynamicCueCount === 0) {
         await accessResolver.finalizeTrialRun(userId);
       }
@@ -202,26 +209,13 @@ export class LiveCoachStreamingService {
     session: LiveCoachSessionSnapshot,
     input: RequestLiveCoachCueInput,
     maximumValidityMilliseconds: number
-  ): Promise<"reserved" | "quota_exhausted" | "unavailable"> {
+  ): Promise<"reserved" | "unavailable"> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const existing = await tx.liveCoachCue.findUnique({
           where: { sessionId_cueRequestId: { sessionId: session.id, cueRequestId: input.cueRequestId } },
         });
         if (existing) return "unavailable" as const;
-        const current = await tx.liveCoachSession.findUniqueOrThrow({ where: { id: session.id } });
-        if (current.dynamicCueCount >= current.dynamicCueLimit) {
-          await tx.liveCoachCue.create({ data: {
-            sessionId: session.id,
-            cueRequestId: input.cueRequestId,
-            moment: input.moment,
-            source: "cached_fallback",
-            resultCategory: "quota_exhausted",
-            contextHash: session.contextHash,
-            expiresAt: new Date(Date.now() + Math.min(input.validForMilliseconds, maximumValidityMilliseconds)),
-          } });
-          return "quota_exhausted" as const;
-        }
         await tx.liveCoachCue.create({ data: {
           sessionId: session.id,
           cueRequestId: input.cueRequestId,
@@ -231,7 +225,6 @@ export class LiveCoachStreamingService {
           contextHash: session.contextHash,
           expiresAt: new Date(Date.now() + Math.min(input.validForMilliseconds, maximumValidityMilliseconds)),
         } });
-        await tx.liveCoachSession.update({ where: { id: session.id }, data: { dynamicCueCount: { increment: 1 } } });
         return "reserved" as const;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
@@ -262,13 +255,10 @@ export class LiveCoachStreamingService {
   }
 
   private async releaseReservation(sessionId: string, cueRequestId: string, resultCategory: string): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.liveCoachCue.update({
-        where: { sessionId_cueRequestId: { sessionId, cueRequestId } },
-        data: { source: "cached_fallback", resultCategory },
-      }),
-      this.prisma.liveCoachSession.update({ where: { id: sessionId }, data: { dynamicCueCount: { decrement: 1 } } }),
-    ]);
+    await this.prisma.liveCoachCue.update({
+      where: { sessionId_cueRequestId: { sessionId, cueRequestId } },
+      data: { source: "cached_fallback", resultCategory },
+    });
   }
 }
 

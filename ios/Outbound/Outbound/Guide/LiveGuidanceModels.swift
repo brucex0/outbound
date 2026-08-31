@@ -180,6 +180,7 @@ enum LiveGuidanceTelemetryEvent: Equatable {
         latency: LiveCoachLatencyBucket
     )
     case audioFirstByte(source: LiveCoachCueSource, latency: LiveCoachLatencyBucket)
+    case audioPlaybackRoute(route: GuideAudioPlaybackRoute)
 }
 
 struct DetectedLiveGuidanceMoment: Equatable {

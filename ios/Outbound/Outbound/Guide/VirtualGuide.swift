@@ -114,6 +114,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         audioPlayer.eventHandler = { [weak self] event in
             self?.speechEventHandler?(event)
         }
+        audioPlayer.playbackRouteHandler = { [weak self] route in
+            self?.guidanceEventHandler?(.audioPlaybackRoute(route: route))
+        }
     }
 
     func setSpeechEnabled(_ isEnabled: Bool) {
@@ -139,6 +142,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.sessionIntent = sessionIntent
         self.companionBrief = companionBrief
         self.unitSystem = unitSystem
+        audioPlayer.pinOnDeviceVoice(presentation: persona?.voice.presentation)
         isActive = true
         snapshotHistory = []
         lastProgressAnnouncementElapsedSeconds = nil
@@ -192,6 +196,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         isAnalyzing = false
         provider.endSession(report: sessionReport)
         audioPlayer.stopSpeaking(at: .immediate)
+        audioPlayer.pinOnDeviceVoice(presentation: nil)
     }
 
     func finalizedSessionReport() -> LiveGuidanceSessionReport {

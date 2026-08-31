@@ -15,6 +15,10 @@ import { effectiveModeForUser, isLiveCoachLocaleEnabled, loadLiveCoachFeatureCon
 import { generateLiveCoachGuidancePlan } from "./liveCoachGuidancePlanner.js";
 import type { CreateLiveCoachSessionInput, LiveCoachAccessDecision, LiveCoachSessionSnapshot } from "./liveCoachTypes.js";
 
+// Retained only for older clients whose response contract requires a numeric limit.
+// Server and current clients do not enforce a per-workout cue quota.
+const UNLIMITED_DYNAMIC_CUE_COMPATIBILITY_LIMIT = 1_000_000;
+
 export class LiveCoachSessionService {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -86,9 +90,6 @@ export class LiveCoachSessionService {
       }
     }
 
-    const dynamicCueLimit = input.coachingContract === "coach_me"
-      ? feature.dynamicCueLimitCoachMe
-      : input.coachingContract === "responsive" ? feature.dynamicCueLimitResponsive : 0;
     const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1_000);
     const planned = await generateLiveCoachGuidancePlan(compiled.context, persona.id, {
       ...feature,
@@ -123,7 +124,7 @@ export class LiveCoachSessionService {
         plannerStatus: planned.status,
         plannerModel: planned.model,
         plannerPromptVersion: planned.promptVersion,
-        dynamicCueLimit,
+        dynamicCueLimit: UNLIMITED_DYNAMIC_CUE_COMPATIBILITY_LIMIT,
         expiresAt,
       }});
     } catch (error) {
@@ -199,7 +200,7 @@ export class LiveCoachSessionService {
       },
       limits: {
         cueValidityMilliseconds: feature.cueValidityMilliseconds,
-        maximumDynamicCues: session.dynamicCueLimit,
+        maximumDynamicCues: UNLIMITED_DYNAMIC_CUE_COMPATIBILITY_LIMIT,
       },
       guidancePlan: session.guidancePlan,
       guidancePlanHash: session.guidancePlanHash,

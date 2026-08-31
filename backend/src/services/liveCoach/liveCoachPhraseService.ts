@@ -83,7 +83,6 @@ export class LiveCoachPhraseService {
     if (!transcript) throw new AIProviderError("not_eligible", "The planned cached phrase is invalid.");
     const created = await this.prisma.$transaction(async (tx) => {
       const current = await tx.liveCoachSession.findUniqueOrThrow({ where: { id: sessionId } });
-      if (current.dynamicCueCount >= current.dynamicCueLimit) return false;
       const existing = await tx.liveCoachCue.findUnique({
         where: { sessionId_cueRequestId: { sessionId, cueRequestId: input.cueRequestId } },
       });
@@ -99,7 +98,8 @@ export class LiveCoachPhraseService {
         outputAudioBucket: "device_cache",
         expiresAt: new Date(Date.now() + input.validForMilliseconds),
       } });
-      await tx.liveCoachSession.update({ where: { id: sessionId }, data: { dynamicCueCount: { increment: 1 } } });
+      // This legacy field is now a per-session success marker, not a cue counter.
+      await tx.liveCoachSession.update({ where: { id: sessionId }, data: { dynamicCueCount: 1 } });
       return current.dynamicCueCount === 0;
     });
     if (created && session.accessReason === "open_beta") {

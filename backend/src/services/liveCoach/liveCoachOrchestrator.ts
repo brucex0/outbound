@@ -84,7 +84,12 @@ export class LiveCoachOrchestrator {
       });
     }
 
-    const reservation = await this.reserveDynamicCue(session.id, input, session.contextHash, config.cueValidityMilliseconds);
+    const reservation = await this.reserveDynamicCue(
+      session.id,
+      input,
+      session.contextHash,
+      config.cueValidityMilliseconds
+    );
     if (reservation === "duplicate") {
       return fixedFallbackEnvelope({
         cueRequestId: input.cueRequestId,
@@ -94,16 +99,6 @@ export class LiveCoachOrchestrator {
         result: "unavailable",
       });
     }
-    if (reservation === "quota_exhausted") {
-      return fixedFallbackEnvelope({
-        cueRequestId: input.cueRequestId,
-        moment: input.moment,
-        locale: session.locale,
-        validForMilliseconds: input.validForMilliseconds,
-        result: "quota_exhausted",
-      });
-    }
-
     const provider = pinnedProvider(session.route.providerKey, session.route.providerEndpointKey, session.route.providerModel);
     const persona = findCoachPersona(session.coachPersonaId);
     if (!provider || !persona) {
@@ -220,26 +215,13 @@ export class LiveCoachOrchestrator {
     input: RequestLiveCoachCueInput,
     contextHash: string,
     maximumValidityMilliseconds: number
-  ): Promise<"reserved" | "duplicate" | "quota_exhausted"> {
+  ): Promise<"reserved" | "duplicate"> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const existing = await tx.liveCoachCue.findUnique({
           where: { sessionId_cueRequestId: { sessionId, cueRequestId: input.cueRequestId } },
         });
         if (existing) return "duplicate" as const;
-        const session = await tx.liveCoachSession.findUniqueOrThrow({ where: { id: sessionId } });
-        if (session.dynamicCueCount >= session.dynamicCueLimit) {
-          await tx.liveCoachCue.create({ data: {
-            sessionId,
-            cueRequestId: input.cueRequestId,
-            moment: input.moment,
-            source: "cached_fallback",
-            resultCategory: "quota_exhausted",
-            contextHash,
-            expiresAt: new Date(Date.now() + Math.min(input.validForMilliseconds, maximumValidityMilliseconds)),
-          }});
-          return "quota_exhausted" as const;
-        }
         await tx.liveCoachCue.create({ data: {
           sessionId,
           cueRequestId: input.cueRequestId,
@@ -249,7 +231,6 @@ export class LiveCoachOrchestrator {
           contextHash,
           expiresAt: new Date(Date.now() + Math.min(input.validForMilliseconds, maximumValidityMilliseconds)),
         }});
-        await tx.liveCoachSession.update({ where: { id: sessionId }, data: { dynamicCueCount: { increment: 1 } } });
         return "reserved" as const;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
@@ -284,23 +265,24 @@ export class LiveCoachOrchestrator {
     cueRequestId: string,
     data: { resultCategory: string; latencyBucket: string; inputTokenBucket?: string; outputAudioBucket: string }
   ): Promise<void> {
-    await this.prisma.liveCoachCue.update({
-      where: { sessionId_cueRequestId: { sessionId, cueRequestId } },
-      data,
-    });
-  }
-
-  private async releaseReservation(sessionId: string, cueRequestId: string, resultCategory: string): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.liveCoachCue.update({
         where: { sessionId_cueRequestId: { sessionId, cueRequestId } },
-        data: { source: "cached_fallback", resultCategory },
+        data,
       }),
+      // This legacy field is now a per-session success marker, not a cue counter.
       this.prisma.liveCoachSession.update({
         where: { id: sessionId },
-        data: { dynamicCueCount: { decrement: 1 } },
+        data: { dynamicCueCount: 1 },
       }),
     ]);
+  }
+
+  private async releaseReservation(sessionId: string, cueRequestId: string, resultCategory: string): Promise<void> {
+    await this.prisma.liveCoachCue.update({
+      where: { sessionId_cueRequestId: { sessionId, cueRequestId } },
+      data: { source: "cached_fallback", resultCategory },
+    });
   }
 }
 

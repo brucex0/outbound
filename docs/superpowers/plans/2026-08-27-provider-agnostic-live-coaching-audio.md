@@ -159,15 +159,13 @@ LIVE_COACH_ALLOWED_MARKETS=global
 LIVE_COACH_ENABLED_PERSONAS=plainstride_supportive_v1,plainstride_focused_v1
 LIVE_COACH_ENABLED_VOICE_PROFILES=plainstride_warm_1,plainstride_gentle_1,plainstride_composed_1,plainstride_clear_1,plainstride_driven_1,plainstride_easygoing_1
 LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT=0
-LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE=8
-LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME=15
 ```
 
 Mode semantics:
 
 - `disabled`: do not create server-audio sessions or make AI calls. The app may show non-audio guidance; it must not fall back to Apple speech.
 - `fixed_only`: allow published server-generated packs and bundled fallback audio, but make no runtime AI calls.
-- `dynamic`: allow dynamic generation after entitlement, quota, route, health, safety, and cost gates; fixed audio remains the fallback.
+- `dynamic`: allow dynamic generation after session entitlement, route, health, safety, and cost gates; fixed audio remains the fallback. Eligible workouts are not capped by cue count.
 
 Default every new deployment and developer environment to `disabled`. Production enablement is an explicit deploy configuration change. Invalid or incomplete configuration fails closed: `dynamic` cannot start without a provider route, voice mappings, published fallback packs, and required secrets.
 
