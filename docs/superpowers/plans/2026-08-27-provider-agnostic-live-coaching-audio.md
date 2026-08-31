@@ -4,9 +4,21 @@
 
 **Initial provider:** Alibaba Cloud Model Studio / Qwen
 
+**Current provider:** Google Cloud Text-to-Speech / Chirp 3 HD; see `docs/live-coach-operations.md`
+
 **Primary outcome:** Every audible coaching cue is server-generated audio. The iOS app never uses an Apple system voice, chooses a vendor/model, or calls an AI vendor directly.
 
 This document is written for an implementation agent. Complete the tasks in order, keep each commit reviewable, and update this plan when implementation reveals a materially different constraint. Follow `AGENTS.md`: do not run the test suite unless the user explicitly requests it; use build-only checks and the manual acceptance matrix for normal verification.
+
+## Provider reconciliation — 2026-08-30
+
+The original Alibaba implementation below is retained as historical design context. The current code and operational source of truth now differ:
+
+- Google Cloud TTS is the preferred audio provider, authenticated through the Cloud Run runtime service account; Alibaba is disabled by default.
+- The product exposes one female and one male voice, reducing the three-locale fixed pack from 468 to 156 WAV files.
+- The backend supplies an exact product-authored sentence for every runtime TTS request. Periodic progress sentences deterministically include rounded distance, elapsed time, and pace.
+- Live coaching does not call an LLM or send compiled workout/readiness/profile context to Google. The exact boundary is documented in `docs/live-coach-data-boundaries.md`.
+- A direct full-WAV Google benchmark did not reliably meet the sub-second target, so dynamic rollout remains gated pending an end-to-end device benchmark or faster delivery design.
 
 ## Implementation reconciliation — 2026-08-28
 

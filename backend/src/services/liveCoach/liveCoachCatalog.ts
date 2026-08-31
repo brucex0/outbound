@@ -27,11 +27,7 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     defaultVoiceProfileId: "plainstride_warm_1",
     allowedVoiceProfileIds: [
       "plainstride_warm_1",
-      "plainstride_gentle_1",
-      "plainstride_composed_1",
       "plainstride_clear_1",
-      "plainstride_driven_1",
-      "plainstride_easygoing_1",
     ],
     fixedScriptStyleId: "standard",
     localized: {
@@ -47,11 +43,7 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     defaultVoiceProfileId: "plainstride_clear_1",
     allowedVoiceProfileIds: [
       "plainstride_clear_1",
-      "plainstride_driven_1",
-      "plainstride_composed_1",
       "plainstride_warm_1",
-      "plainstride_gentle_1",
-      "plainstride_easygoing_1",
     ],
     fixedScriptStyleId: "standard",
     localized: {
@@ -64,12 +56,10 @@ export const COACH_PERSONAS: CoachPersonaDefinition[] = [
     id: "plainstride_calm_v1",
     instructionVersion: 1,
     instructions: "Sound quiet, reassuring, and unhurried. Favor breathing, relaxation, and composure. Never add urgency unless the product marks a caution.",
-    defaultVoiceProfileId: "plainstride_gentle_1",
+    defaultVoiceProfileId: "plainstride_warm_1",
     allowedVoiceProfileIds: [
-      "plainstride_gentle_1",
-      "plainstride_composed_1",
-      "plainstride_easygoing_1",
       "plainstride_warm_1",
+      "plainstride_clear_1",
     ],
     fixedScriptStyleId: "calm",
     localized: {
@@ -87,31 +77,9 @@ export const VOICE_PROFILES: VoiceProfileDefinition[] = [
     presentation: "female",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Cherry", description: "Bright, friendly, and naturally encouraging." },
-      es: { displayName: "Cherry", description: "Luminosa, cercana y alentadora con naturalidad." },
-      "zh-Hans": { displayName: "Cherry", description: "明亮亲切，自然而有鼓励感。" },
-    },
-  },
-  {
-    id: "plainstride_gentle_1",
-    style: "gentle",
-    presentation: "female",
-    supportedLocales: ["en", "es", "zh-Hans"],
-    localized: {
-      en: { displayName: "Serena", description: "Soft, calm, and reassuring." },
-      es: { displayName: "Serena", description: "Suave, tranquila y reconfortante." },
-      "zh-Hans": { displayName: "Serena", description: "轻柔平静，让人安心。" },
-    },
-  },
-  {
-    id: "plainstride_composed_1",
-    style: "composed",
-    presentation: "female",
-    supportedLocales: ["en", "es", "zh-Hans"],
-    localized: {
-      en: { displayName: "Maia", description: "Thoughtful, balanced, and clear." },
-      es: { displayName: "Maia", description: "Reflexiva, equilibrada y clara." },
-      "zh-Hans": { displayName: "Maia", description: "理性从容，表达清楚。" },
+      en: { displayName: "Female", description: "Warm, clear, and encouraging while you move." },
+      es: { displayName: "Voz femenina", description: "Cálida, clara y alentadora mientras te mueves." },
+      "zh-Hans": { displayName: "女声", description: "温暖清晰，在运动中自然地给予鼓励。" },
     },
   },
   {
@@ -120,31 +88,9 @@ export const VOICE_PROFILES: VoiceProfileDefinition[] = [
     presentation: "male",
     supportedLocales: ["en", "es", "zh-Hans"],
     localized: {
-      en: { displayName: "Ethan", description: "Warm, energetic, and easy to hear while moving." },
-      es: { displayName: "Ethan", description: "Cálida, enérgica y fácil de seguir en movimiento." },
-      "zh-Hans": { displayName: "Ethan", description: "温暖有活力，运动中也容易听清。" },
-    },
-  },
-  {
-    id: "plainstride_driven_1",
-    style: "driven",
-    presentation: "male",
-    supportedLocales: ["en", "es", "zh-Hans"],
-    localized: {
-      en: { displayName: "Moon", description: "Rhythmic and motivating for harder efforts." },
-      es: { displayName: "Moon", description: "Rítmica y motivadora para los esfuerzos exigentes." },
-      "zh-Hans": { displayName: "Moon", description: "节奏有力，适合更具挑战的训练。" },
-    },
-  },
-  {
-    id: "plainstride_easygoing_1",
-    style: "easygoing",
-    presentation: "male",
-    supportedLocales: ["en", "es", "zh-Hans"],
-    localized: {
-      en: { displayName: "Kai", description: "Friendly, casual, and low-pressure." },
-      es: { displayName: "Kai", description: "Cercana, informal y sin presión." },
-      "zh-Hans": { displayName: "Kai", description: "友好随和，没有压力感。" },
+      en: { displayName: "Male", description: "Direct, steady, and easy to hear while you move." },
+      es: { displayName: "Voz masculina", description: "Directa, estable y fácil de seguir mientras te mueves." },
+      "zh-Hans": { displayName: "男声", description: "直接沉稳，在运动中也容易听清。" },
     },
   },
 ];

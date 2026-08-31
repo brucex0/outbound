@@ -72,6 +72,7 @@ Enable these before the first deploy:
 - `monitoring.googleapis.com`
 - `billingbudgets.googleapis.com`
 - `containeranalysis.googleapis.com`
+- `texttospeech.googleapis.com`
 
 ## Current DB Connection
 
@@ -131,50 +132,35 @@ Notes:
 
 ## Live Coaching Audio Rollout
 
-The deploy script defaults live coaching to `disabled`, enables only `en` and `zh-Hans` for the fixed-audio pilot, wires Alibaba routing to workspace `ws-i638drcm5lthrc29`, and keeps dynamic rollout at zero. Once provisioned, it binds `ALIBABA_AI_API_KEY` from Secret Manager entry `outbound-alibaba-ai-api-key`. Because server audio remains disabled, a code deploy cannot begin AI traffic by itself.
+The deploy script defaults live coaching to `disabled`, enables `en` and `zh-Hans` for the fixed-audio pilot, enables the Google Cloud TTS route, exposes one female and one male product voice, and keeps dynamic rollout at zero. Google authenticates through the attached Cloud Run runtime service account; no TTS API-key secret is bound. Because server audio remains disabled, a code deploy cannot begin TTS traffic by itself.
 
-The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, Alibaba endpoint identity/region, founding-user limit, and trial-run limit. The approved dated model and six product-to-provider voice mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for the current mapping and increment `LIVE_COACH_CONFIG_VERSION` when a fresh rollout cohort assignment is intended.
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, cue validity/provider deadline, route-policy version, Google endpoint identity/region, founding-user limit, and trial-run limit. The approved Chirp 3 HD product-to-provider mappings live inside the backend adapter; deployment values are explicit emergency/experiment overrides. See `docs/live-coach-operations.md` for operations and `docs/live-coach-data-boundaries.md` for the exact provider payload.
 
 Production dynamic access uses `LIVE_COACH_ACCESS_MODE=founding_trial`, `LIVE_COACH_FOUNDING_USER_LIMIT=1000`, and `LIVE_COACH_TRIAL_RUN_LIMIT=3`. The oldest 1,000 accounts receive a durable promotion grant when first evaluated. Later accounts reserve a trial when a dynamic session starts, consume it only after the first successful dynamic cue in that session, and release it on cancellation, expiration, provider failure, or a session that never receives dynamic audio. After three consumed trials, dynamic generation returns `entitlement_required` while reviewed fixed guidance continues. `open_beta` remains an explicit unlimited development/temporary-operations mode.
 
 Operational sequence:
 
-1. Store the active key in Secret Manager as `outbound-alibaba-ai-api-key` and grant only the Cloud Run runtime identity access.
-2. The scripts default to the configured workspace-specific Singapore endpoints. Dynamic cues use `qwen3-omni-flash-2025-12-01`; fixed assets use `qwen3-tts-instruct-flash-2026-01-26` through the workspace `/api/v1` endpoint and the complete instruction-capable six-voice `en`/`es`/`zh-Hans` map. Use deployment overrides only for a separately reviewed change.
+1. Enable `texttospeech.googleapis.com` in `outbound-494602` and confirm the Cloud Run runtime identity can consume it.
+2. For local generation, authenticate ADC with `gcloud auth application-default login` and set the quota project to `outbound-494602`.
 3. Validate one request with `./scripts/generate-live-coach-audio.sh --smoke`.
-4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 468 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
+4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 156 content-addressed review assets with `./scripts/generate-live-coach-audio.sh`.
 5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
 7. Deploy `fixed_only`, verify device playback and rollback, then deploy `dynamic` with a 0% rollout before raising the deterministic percentage.
 
-Create the secret container, add the replacement key from a protected file, and grant the runtime identity access without putting the key in the command line:
-
-```sh
-$HOME/google-cloud-sdk/bin/gcloud secrets create outbound-alibaba-ai-api-key \
-  --project=outbound-494602 \
-  --replication-policy=automatic
-$HOME/google-cloud-sdk/bin/gcloud secrets versions add outbound-alibaba-ai-api-key \
-  --project=outbound-494602 \
-  --data-file=/secure/path/alibaba-live-coach-api-key.txt
-$HOME/google-cloud-sdk/bin/gcloud secrets add-iam-policy-binding outbound-alibaba-ai-api-key \
-  --project=outbound-494602 \
-  --member='serviceAccount:outbound-api-runtime@outbound-494602.iam.gserviceaccount.com' \
-  --role='roles/secretmanager.secretAccessor'
-```
-
 Representative deploy environment (placeholders only):
 
 ```sh
-ALIBABA_AI_API_KEY_SECRET=outbound-alibaba-ai-api-key \
-ALIBABA_AI_ENABLED=true \
-ALIBABA_AI_BASE_URL='https://WORKSPACE_ID.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' \
+GOOGLE_CLOUD_TTS_ENABLED=true \
+GOOGLE_CLOUD_TTS_API_ENDPOINT=us-texttospeech.googleapis.com \
+ALIBABA_AI_ENABLED=false \
 LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
 LIVE_COACH_ACCESS_MODE=founding_trial \
 LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
 LIVE_COACH_TRIAL_RUN_LIMIT=3 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
-LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-28.1/manifest.json' \
-LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-28.1/assets' \
+LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-30.1-en-zh/manifest.json' \
+LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-30.1-en-zh/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 
@@ -190,14 +176,13 @@ Local stack startup generates an ephemeral ES256 access-token key pair in memory
 
 Never set `AUTH_ENABLE_DEBUG_PERSONAS` in production; startup deliberately fails if it is true. Local development uses the explicitly committed `backend/config/dev-auth-*.pem` fixture key, which must never be deployed.
 
-`DATABASE_URL`, `APP_AI_KEY`, `RESEND_API_KEY`, and `ALIBABA_AI_API_KEY` are Secret Manager references on Cloud Run. Never reintroduce their values as ordinary environment variables. Set `FEEDBACK_EMAIL_FROM` to a sender on a verified mail-provider domain; `FEEDBACK_EMAIL_TO` is optional and defaults to the private product-feedback inbox.
+`DATABASE_URL`, `APP_AI_KEY`, and `RESEND_API_KEY` are Secret Manager references on Cloud Run. Google Cloud TTS uses the runtime service identity instead of a stored API key. Never reintroduce secret values as ordinary environment variables. Set `FEEDBACK_EMAIL_FROM` to a sender on a verified mail-provider domain; `FEEDBACK_EMAIL_TO` is optional and defaults to the private product-feedback inbox.
 
 Recommended secrets:
 
 - `outbound-database-url`
 - `outbound-app-ai-key`
 - `outbound-resend-api-key`
-- `outbound-alibaba-ai-api-key`
 
 Provision first-party production authentication in one pass after downloading
 the Apple `.p8` key:
@@ -290,7 +275,7 @@ Before executing the schema job, update it to the same image digest as the lates
 
 After that, confirm the service and schema job contain `valueFrom.secretKeyRef`, not plaintext `value` entries.
 
-Provider-side AI-key rotation is separate from Secret Manager migration: create a replacement key in the relevant AI provider, add it as a new Secret Manager version, verify the service, then revoke the old provider key. Assistant and Alibaba live-coach keys use separate secrets.
+Provider-side AI-key rotation is separate from Secret Manager migration: create a replacement key in the relevant AI provider, add it as a new Secret Manager version, verify the service, then revoke the old provider key. The assistant uses its own secret; Google Cloud TTS uses the Cloud Run runtime identity and has no provider key to rotate.
 
 ## Launch Operations
 

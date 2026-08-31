@@ -1,7 +1,16 @@
 import type { LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { LiveCoachMoment, RequestLiveCoachCueInput } from "./liveCoachTypes.js";
 
-const dynamicMoments = new Set<LiveCoachMoment>(["progress", "fast_start", "pace_drift", "finish_opportunity"]);
+const dynamicMoments = new Set<LiveCoachMoment>([
+  "progress",
+  "fast_start",
+  "pace_drift",
+  "rhythm_recovery",
+  "segment_transition",
+  "finish_opportunity",
+  "challenge_start",
+  "challenge_complete",
+]);
 
 export function cuePolicyDecision(input: RequestLiveCoachCueInput, config: LiveCoachFeatureConfig): {
   dynamicEligible: boolean;

@@ -12,7 +12,7 @@ import {
 } from "../services/liveCoach/audioReviewFeedback.js";
 
 const args = parseArgs(process.argv.slice(2));
-const manifestPath = path.resolve(process.cwd(), args.reviewManifest ?? ".local/live-coach-review/2026-08-28.1/review-manifest.json");
+const manifestPath = path.resolve(process.cwd(), args.reviewManifest ?? ".local/live-coach-review/2026-08-30.1/review-manifest.json");
 const audioDirectory = path.dirname(manifestPath);
 const progressPath = path.join(audioDirectory, "review-progress.json");
 let manifest = audioPackManifestSchema.parse(JSON.parse(await readFile(manifestPath, "utf8")));

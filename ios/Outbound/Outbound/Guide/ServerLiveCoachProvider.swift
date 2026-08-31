@@ -204,7 +204,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             offset = payloadOffset + chunkSize + chunkSize % 2
         }
         let durationMilliseconds = Double(audioByteCount) / 48_000 * 1_000
-        return formatIsValid && audioByteCount > 0 && durationMilliseconds <= 4_500
+        return formatIsValid && audioByteCount > 0 && durationMilliseconds <= 8_000
     }
 
     private static func littleEndian16(_ data: Data, _ offset: Int) -> Int {

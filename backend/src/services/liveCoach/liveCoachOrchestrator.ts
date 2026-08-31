@@ -8,6 +8,7 @@ import { findCoachPersona } from "./liveCoachCatalog.js";
 import { cuePolicyDecision, urgencyForMoment } from "./liveCoachCuePolicy.js";
 import { liveCoachCueRepository } from "./liveCoachCueRepository.js";
 import { fixedFallbackEnvelope } from "./liveCoachFallback.js";
+import { transcriptForLiveCoachCue } from "./liveCoachGuidanceText.js";
 import { effectiveModeForUser, loadLiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import { stableLiveCoachInstructions } from "./liveCoachPrompt.js";
 import { LiveCoachSessionService } from "./liveCoachSessionService.js";
@@ -128,6 +129,13 @@ export class LiveCoachOrchestrator {
     const startedAt = Date.now();
     const cueExpiresAt = new Date(startedAt + input.validForMilliseconds);
     try {
+      const exactTranscript = transcriptForLiveCoachCue({
+        locale: session.locale,
+        moment: input.moment,
+        liveState: input.liveState,
+        cueRequestId: input.cueRequestId,
+        measurementUnitSystem: session.compiledContext.measurementUnitSystem,
+      });
       const result = await provider.generateCue({
         requestId: input.cueRequestId,
         locale: session.locale,
@@ -143,7 +151,8 @@ export class LiveCoachOrchestrator {
         compiledContext: session.compiledContext,
         liveState: input.liveState,
         recentCueSummaries: liveCoachCueRepository.recentCueSummariesForSession(session.id),
-        maximumSpokenWordsEquivalent: 18,
+        maximumSpokenWordsEquivalent: 36,
+        exactTranscript,
         deadline: new Date(startedAt + Math.min(config.providerDeadlineMilliseconds, input.validForMilliseconds)),
       }, signal);
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");

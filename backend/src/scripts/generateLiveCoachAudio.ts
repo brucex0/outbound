@@ -33,7 +33,10 @@ const GENERATION_MAX_ATTEMPTS = 3;
 const GENERATION_RETRY_DELAY_MILLISECONDS = 1_000;
 
 const args = parseArgs(process.argv.slice(2));
-if (args.provider !== "alibaba") throw new Error(`Unsupported live-coach provider: ${args.provider}.`);
+const providerKey = args.provider === "google" ? "google_cloud_tts" : args.provider;
+if (!["google_cloud_tts", "alibaba"].includes(providerKey)) {
+  throw new Error(`Unsupported live-coach provider: ${args.provider}.`);
+}
 const catalogPath = path.resolve(process.cwd(), "resources/liveCoachAudio/catalog.v1.json");
 const source = JSON.parse(await readFile(catalogPath, "utf8")) as SourceCatalog;
 if (args.catalogVersion && args.catalogVersion !== source.catalogVersion) {
@@ -49,7 +52,9 @@ const outputDirectory = path.resolve(process.cwd(), args.output ?? `.local/live-
 await mkdir(outputDirectory, { recursive: true });
 const existingManifest = await loadExistingManifest(path.join(outputDirectory, "review-manifest.json"));
 const reviewProgress = await loadReviewProgress(path.join(outputDirectory, "review-progress.json"), source.catalogVersion);
-const registry = buildAIProviderRegistry(providerConfig);
+const registry = buildAIProviderRegistry(providerConfig).filter((provider) => provider.key === providerKey);
+const selectedProvider = registry[0];
+if (!selectedProvider) throw new Error(`Live-coach provider is not enabled: ${providerKey}.`);
 const manifest: AudioPackManifest = {
   contractVersion: 1,
   catalogVersion: source.catalogVersion,
@@ -61,15 +66,15 @@ const manifest: AudioPackManifest = {
 
 const voiceProfileIds = args.voiceProfileId
   ? [args.voiceProfileId]
-  : Object.keys(providerConfig.alibaba.voiceMap) as VoiceProfileId[];
+  : [...VOICE_PROFILE_IDS];
 const locales = args.locale
   ? [args.locale]
   : ["en", "es", "zh-Hans"] as SupportedAILocale[];
 const entries = args.cueKey
   ? source.entries.filter((entry) => entry.cueKey === args.cueKey)
   : source.entries;
-if (args.voiceProfileId && !providerConfig.alibaba.voiceMap[args.voiceProfileId]) {
-  throw new Error(`Voice profile is not configured for Alibaba: ${args.voiceProfileId}.`);
+if (args.voiceProfileId && !locales.some((locale) => selectedProvider.resolveVoice(args.voiceProfileId!, locale))) {
+  throw new Error(`Voice profile is not configured for ${providerKey}: ${args.voiceProfileId}.`);
 }
 if (entries.length === 0) {
   throw new Error(`Unknown live-coach cue: ${args.cueKey}.`);
@@ -113,14 +118,15 @@ for (const voiceProfileId of voiceProfileIds) {
         market: "global",
         locale,
         voiceProfileId,
-        requiredCapabilities: ["audio_output", "combined_text_audio"],
-        deploymentRegion: providerConfig.alibaba.deploymentRegion,
+        requiredCapabilities: ["audio_output"],
+        deploymentRegion: providerKey === "google_cloud_tts"
+          ? providerConfig.googleCloudTTS.deploymentRegion
+          : providerConfig.alibaba.deploymentRegion,
         latencyClass: "offline",
       }, providerConfig.routePolicyVersion);
       const hash = createHash("sha256").update(JSON.stringify({
         text: text.trim(), locale, voiceProfileId, scriptStyleId: entry.scriptStyleId,
         audio: "wav-pcm_s16le-24000-mono", route: resolved.route,
-        fixedAudioModel: providerConfig.alibaba.fixedAudioModel,
       })).digest("hex");
       const fileName = `${hash}.wav`;
       const filePath = path.join(outputDirectory, fileName);
@@ -190,7 +196,7 @@ for (const voiceProfileId of voiceProfileIds) {
 
       async function generateAudio(): Promise<Buffer> {
         console.log(`[${assetIndex}/${totalAssetCount}] generating ${voiceProfileId}/${locale}/${entry.cueKey}`);
-        if (rejectionReason) console.log(`  applying rejection feedback: ${rejectionReason.code}`);
+        if (rejectionReason) console.log(`  regenerating after rejection: ${rejectionReason.code}`);
         const result = await generateWithRetry(
           () => resolved.provider.generateCue({
             requestId: crypto.randomUUID(),
@@ -239,7 +245,7 @@ function parseArgs(values: string[]) {
     force: boolean;
     rejected: boolean;
   } = {
-    provider: "alibaba",
+    provider: "google_cloud_tts",
     list: false,
     force: false,
     rejected: false,

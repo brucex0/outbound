@@ -62,7 +62,7 @@ export class LiveCoachSessionService {
           market: "global",
           locale: input.locale,
           voiceProfileId: voice.id,
-          requiredCapabilities: ["audio_output", "combined_text_audio"],
+          requiredCapabilities: ["audio_output"],
           deploymentRegion: feature.deploymentRegion,
           latencyClass: "interactive",
         }, providerConfig.routePolicyVersion).route;

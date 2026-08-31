@@ -124,49 +124,17 @@ struct GuideVoice: Codable, Hashable, Identifiable {
         [
             GuideVoice(
                 id: "plainstride_warm_1",
-                displayName: String(localized: "guide.voice.warm.name", defaultValue: "Cherry"),
-                description: String(localized: "guide.voice.warm.detail", defaultValue: "Bright, friendly, and naturally encouraging."),
+                displayName: String(localized: "guide.voice.warm.name", defaultValue: "Female"),
+                description: String(localized: "guide.voice.warm.detail", defaultValue: "Warm, clear, and encouraging while you move."),
                 style: "warm",
                 presentation: .female,
                 previewAssetID: "voice.preview"
             ),
             GuideVoice(
-                id: "plainstride_gentle_1",
-                displayName: String(localized: "guide.voice.gentle.name", defaultValue: "Serena"),
-                description: String(localized: "guide.voice.gentle.detail", defaultValue: "Soft, calm, and reassuring."),
-                style: "gentle",
-                presentation: .female,
-                previewAssetID: "voice.preview"
-            ),
-            GuideVoice(
-                id: "plainstride_composed_1",
-                displayName: String(localized: "guide.voice.composed.name", defaultValue: "Maia"),
-                description: String(localized: "guide.voice.composed.detail", defaultValue: "Thoughtful, balanced, and clear."),
-                style: "composed",
-                presentation: .female,
-                previewAssetID: "voice.preview"
-            ),
-            GuideVoice(
                 id: "plainstride_clear_1",
-                displayName: String(localized: "guide.voice.bright.name", defaultValue: "Ethan"),
-                description: String(localized: "guide.voice.bright.detail", defaultValue: "Warm, energetic, and easy to hear while moving."),
+                displayName: String(localized: "guide.voice.bright.name", defaultValue: "Male"),
+                description: String(localized: "guide.voice.bright.detail", defaultValue: "Direct, steady, and easy to hear while you move."),
                 style: "bright",
-                presentation: .male,
-                previewAssetID: "voice.preview"
-            ),
-            GuideVoice(
-                id: "plainstride_driven_1",
-                displayName: String(localized: "guide.voice.driven.name", defaultValue: "Moon"),
-                description: String(localized: "guide.voice.driven.detail", defaultValue: "Rhythmic and motivating for harder efforts."),
-                style: "driven",
-                presentation: .male,
-                previewAssetID: "voice.preview"
-            ),
-            GuideVoice(
-                id: "plainstride_easygoing_1",
-                displayName: String(localized: "guide.voice.easygoing.name", defaultValue: "Kai"),
-                description: String(localized: "guide.voice.easygoing.detail", defaultValue: "Friendly, casual, and low-pressure."),
-                style: "easygoing",
                 presentation: .male,
                 previewAssetID: "voice.preview"
             )
@@ -231,21 +199,9 @@ extension GuideTemplate {
                 sport: .run,
                 displayName: String(localized: "guide.persona.calm.name", defaultValue: "Calm"),
                 tagline: String(localized: "guide.persona.calm.detail", defaultValue: "Low-key guidance centered on breathing, rhythm, and composure."),
-                defaultVoiceId: "plainstride_gentle_1",
-                allowedVoiceIds: [
-                    "plainstride_gentle_1",
-                    "plainstride_composed_1",
-                    "plainstride_easygoing_1",
-                    "plainstride_warm_1"
-                ],
-                voiceOptions: voices.filter {
-                    [
-                        "plainstride_gentle_1",
-                        "plainstride_composed_1",
-                        "plainstride_easygoing_1",
-                        "plainstride_warm_1"
-                    ].contains($0.id)
-                },
+                defaultVoiceId: "plainstride_warm_1",
+                allowedVoiceIds: voices.map(\.id),
+                voiceOptions: voices,
                 fixedScriptStyleId: "calm"
             )
         ]

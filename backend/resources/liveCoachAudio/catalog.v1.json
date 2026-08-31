@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "2026-08-28.1",
+  "catalogVersion": "2026-08-30.1",
   "entries": [
     { "cueKey": "countdown.three", "scriptStyleId": "standard", "texts": { "en": "Three.", "es": "Tres.", "zh-Hans": "三。" } },
     { "cueKey": "countdown.two", "scriptStyleId": "standard", "texts": { "en": "Two.", "es": "Dos.", "zh-Hans": "二。" } },

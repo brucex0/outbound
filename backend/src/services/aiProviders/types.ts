@@ -1,7 +1,7 @@
 export const SUPPORTED_AI_LOCALES = ["en", "es", "zh-Hans"] as const;
 export type SupportedAILocale = (typeof SUPPORTED_AI_LOCALES)[number];
 
-export type AIProviderKey = "alibaba" | "gemini";
+export type AIProviderKey = "alibaba" | "google_cloud_tts" | "gemini";
 export type AIMarket = "global" | "mainland_china";
 export type AIRequestKind =
   | "live_coach_dynamic"
@@ -24,14 +24,11 @@ export const LIVE_COACH_AUDIO_ENCODING: AudioEncoding = {
 };
 
 export const LIVE_COACH_FIXED_AUDIO_MAX_DURATION_MILLISECONDS = 8_000;
+export const LIVE_COACH_DYNAMIC_AUDIO_MAX_DURATION_MILLISECONDS = 8_000;
 
 export const VOICE_PROFILE_IDS = [
   "plainstride_warm_1",
-  "plainstride_gentle_1",
-  "plainstride_composed_1",
   "plainstride_clear_1",
-  "plainstride_driven_1",
-  "plainstride_easygoing_1",
 ] as const;
 export type VoiceProfileId = (typeof VOICE_PROFILE_IDS)[number];
 export type CoachPersonaId =
