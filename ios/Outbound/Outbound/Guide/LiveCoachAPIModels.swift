@@ -1,5 +1,10 @@
 import Foundation
 
+enum LiveCoachAudioTiming {
+    static let cloudAudioDeadlineSeconds: TimeInterval = 1.5
+    static let cloudAudioDeadlineNanoseconds: UInt64 = 1_500_000_000
+}
+
 enum LiveCoachAudioMode: String, Codable, Equatable {
     case disabled
     case fixedOnly = "fixed_only"

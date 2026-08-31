@@ -135,7 +135,7 @@ Notes:
 
 The deploy script defaults live coaching to `disabled`, the planner to disabled, `en` and `zh-Hans` for the fixed-audio pilot, the Google Cloud TTS route enabled, one female and one male product voice, and dynamic rollout at zero. Google TTS and Vertex AI authenticate through the attached Cloud Run runtime service account. A code deploy therefore cannot begin planner/TTS traffic by itself.
 
-The same script forwards the enabled persona/voice allowlists, per-contract cue limits, 900 ms live provider deadline, route-policy version, Google endpoint identity/region, founding-user limit/trial-run limit, and gated Gemini planner model/project/location/deadline. The approved Chirp 3 HD mappings live inside the backend adapter. See `docs/live-coach-operations.md` for operations and `docs/live-coach-data-boundaries.md` for the exact Gemini/TTS payloads.
+The same script forwards the enabled persona/voice allowlists, per-contract cue limits, 1.5 second live provider deadline, route-policy version, Google endpoint identity/region, founding-user limit/trial-run limit, and gated Gemini planner model/project/location/deadline. The approved Chirp 3 HD mappings live inside the backend adapter. See `docs/live-coach-operations.md` for operations and `docs/live-coach-data-boundaries.md` for the exact Gemini/TTS payloads.
 
 Production dynamic access uses `LIVE_COACH_ACCESS_MODE=founding_trial`, `LIVE_COACH_FOUNDING_USER_LIMIT=1000`, and `LIVE_COACH_TRIAL_RUN_LIMIT=3`. The oldest 1,000 accounts receive a durable promotion grant when first evaluated. Later accounts reserve a trial when a dynamic session starts, consume it only after the first successful dynamic cue in that session, and release it on cancellation, expiration, provider failure, or a session that never receives dynamic audio. After three consumed trials, dynamic generation returns `entitlement_required` while reviewed fixed guidance continues. `open_beta` remains an explicit unlimited development/temporary-operations mode.
 
@@ -164,14 +164,14 @@ GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview \
 GEMINI_VERTEX_PROJECT_ID=outbound-494602 \
 GEMINI_VERTEX_LOCATION=global \
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000 \
-LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS=900 \
+LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS=1500 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
 LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-30.1/manifest.json' \
 LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-30.1/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 
-Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing planner project/key, missing TTS model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and `LIVE_COACH_PLANNER_ENABLED=false`. Use `disabled` when server audio itself must be unavailable; iOS retains exact-text `AVSpeechSynthesizer` only as the 850 ms/offline last resort.
+Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing planner project/key, missing TTS model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and `LIVE_COACH_PLANNER_ENABLED=false`. Use `disabled` when server audio itself must be unavailable; iOS retains exact-text `AVSpeechSynthesizer` only as the 1.5 second/offline last resort.
 
 Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-2026-v1` and the Secret Manager ES256 private PEM supplied to `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY` without logging it. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last-known-good or bundled pack untouched.
 

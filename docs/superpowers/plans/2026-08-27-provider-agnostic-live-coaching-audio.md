@@ -29,7 +29,7 @@ Cross-checking the handoff against the repository produced these necessary adjus
 - Added the Prisma models to `schema.prisma` and the existing `prisma db push` deployment path; this repo does not maintain a Prisma migrations directory.
 - Changed `GuideProfile` to stable `coachPersonaId` and `voiceProfileId` fields and fixed `GET /v1/guide/profile` to return the app-shaped versioned payload instead of a raw Prisma row.
 - Preserved `VirtualGuide` moment detection, cooldowns, route arbitration, and outcome evaluation. Its output edge now accepts only validated server WAV bytes or reviewed fixed-pack assets. Arbitrary legacy stat/route strings with no reviewed asset are silent rather than invoking device speech.
-- Removed the old `/v1/live-coach/analyze`, debug client model selection, and on-device Foundation Model coaching provider. The current implementation later restored `AVSpeechSynthesizer` strictly as an 850 ms exact-text fallback, not as a coaching model.
+- Removed the old `/v1/live-coach/analyze`, debug client model selection, and on-device Foundation Model coaching provider. The current implementation later restored `AVSpeechSynthesizer` strictly as a 1.5 second exact-text fallback, not as a coaching model.
 - Pinned Alibaba's workspace-compatible base URL independently from the deployed model and product-to-provider voice map. The regional workspace ID and API key are deployment inputs, never app/catalog fields.
 - Kept the operational mode defaulted to `disabled`. `fixed_only` or `dynamic` fails startup unless an immutable HTTPS pack is marked reviewed/published; `dynamic` additionally requires the Alibaba Secret Manager binding, approved deployed model, and complete voice mapping for all enabled product voices/locales.
 - Rechecks both the global dynamic mode and deterministic rollout cohort on every cue, applies authenticated-user plus per-session rate limits, and permits at most one provider generation per session at a time.
@@ -1241,7 +1241,7 @@ Run the backend TypeScript build and an iOS build-only compile check. Then verif
 
 The implementation is complete only when:
 
-- the iOS app has no live-coaching dependency on an on-device model; Apple system speech is the last-resort exact-text fallback after the 850 ms cloud-audio deadline;
+- the iOS app has no live-coaching dependency on an on-device model; Apple system speech is the last-resort exact-text fallback after the 1.5 second cloud-audio deadline;
 - all fixed and dynamic audible cues are server-generated audio;
 - fixed cues require no runtime AI call;
 - dynamic wording and audio use one Alibaba request where supported;

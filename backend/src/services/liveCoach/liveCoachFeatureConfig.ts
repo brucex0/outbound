@@ -71,7 +71,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     dynamicCueLimitResponsive: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_RESPONSIVE, 8, 0, 30),
     dynamicCueLimitCoachMe: boundedInteger(env.LIVE_COACH_DYNAMIC_CUE_LIMIT_COACH_ME, 15, 0, 30),
     cueValidityMilliseconds: boundedInteger(env.LIVE_COACH_CUE_VALIDITY_MILLISECONDS, 5_000, 1_000, 10_000),
-    providerDeadlineMilliseconds: boundedInteger(env.LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS, 900, 500, 10_000),
+    providerDeadlineMilliseconds: boundedInteger(env.LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS, 1_500, 500, 10_000),
     audioManifestUrl: trimmed(env.LIVE_COACH_AUDIO_MANIFEST_URL),
     audioAssetBaseUrl: trimmed(env.LIVE_COACH_AUDIO_ASSET_BASE_URL).replace(/\/+$/, ""),
     deploymentRegion: trimmed(env.PLAINSTRIDE_DEPLOYMENT_REGION) || "us-central1",

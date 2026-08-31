@@ -71,7 +71,11 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
             didEmitStart = false
             isSpeaking = true
 
-            let remaining = max(0, 0.85 - Date().timeIntervalSince(stream.requestStartedAt))
+            let remaining = max(
+                0,
+                LiveCoachAudioTiming.cloudAudioDeadlineSeconds
+                    - Date().timeIntervalSince(stream.requestStartedAt)
+            )
             deadlineTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
                 guard !Task.isCancelled else { return }

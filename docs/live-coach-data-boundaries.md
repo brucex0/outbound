@@ -18,7 +18,7 @@ iPhone moment detector + phrase ID + bounded live state
   -> Google Cloud TTS gRPC streamingSynthesize(exact sentence)
   -> framed raw PCM HTTP response
   -> AVAudioEngine playback
-  -> 850 ms reviewed-pack/on-device speech fallback
+  -> 1.5 s reviewed-pack/on-device speech fallback
 ```
 
 There is no device-to-Google credential and no TTS WebSocket. The device keeps one ordinary HTTP/2 response open only for the duration of a cue; the backend keeps one Google gRPC stream open for that same cue.
@@ -93,7 +93,7 @@ The backend forwards Google audio chunks in a length-prefixed response with meta
 
 - After a generated plan arrives, iOS prewarms at most eight likely phrases through an authenticated phrase-ID endpoint. The server resolves the ID and returns a complete WAV; arbitrary text is not accepted.
 - Planned WAVs are content-addressed by plan hash, voice profile, and phrase ID in the iOS cache and expire after 24 hours.
-- Live raw PCM begins playback as chunks arrive. The initial server response and subsequent audio stream share one 850 ms deadline measured from device request start. If no first audio arrives by then, iOS cancels the request and uses the reviewed local pack or `AVSpeechSynthesizer`; progress uses the already-finalized exact local distance/time/pace sentence.
+- Live raw PCM begins playback as chunks arrive. The initial server response and subsequent audio stream share one 1.5 second deadline measured from device request start. If no first audio arrives by then, iOS cancels the request and uses the reviewed local pack or `AVSpeechSynthesizer`; progress uses the already-finalized exact local distance/time/pace sentence.
 - No Apple Foundation Model is used in this architecture. The on-device component selects phrases and provides the timeliness fallback; it does not invent coaching advice.
 
 ## Storage, Logs, And Analytics

@@ -35,7 +35,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
 
         let startedAt = Date()
         return try await LiveCoachAnalysisRace().run(
-            deadlineNanoseconds: 850_000_000,
+            deadlineNanoseconds: LiveCoachAudioTiming.cloudAudioDeadlineNanoseconds,
             operation: { @MainActor [weak self] in
                 guard let self else { throw CancellationError() }
                 return try await self.analyzeServer(request, moment: moment, startedAt: startedAt)
