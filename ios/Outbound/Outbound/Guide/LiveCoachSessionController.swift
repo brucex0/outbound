@@ -55,6 +55,9 @@ final class LiveCoachSessionController {
                 from: response.audioPack.manifestUrl,
                 expectedCatalogVersion: response.audioPack.manifestVersion
             )
+            await GuideAudioPackStore.shared.preloadAudio(
+                for: GuideAudioPackStore.sessionControlCueKeys
+            )
             prewarmTask = Task { [weak self] in
                 await self?.prewarmPlan(response)
             }

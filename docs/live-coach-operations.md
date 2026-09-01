@@ -14,6 +14,8 @@ Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech 
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 
+At live-session activation, iOS preloads the selected voice's reviewed `workout.pause` and `workout.resume` clips. Auto-pause can begin soon after countdown, so these controls cannot rely on a prior cue having opportunistically populated the fixed-pack cache. If the network and last-known-good cache are both unavailable, the session-pinned same-language device voice remains the final fallback.
+
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
 ### Current Latency Evidence

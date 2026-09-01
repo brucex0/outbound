@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class GuideAudioPackStore {
     static let shared = GuideAudioPackStore()
+    static let sessionControlCueKeys = ["workout.pause", "workout.resume"]
 
     private struct Manifest: Decodable {
         let contractVersion: Int
@@ -88,6 +89,13 @@ final class GuideAudioPackStore {
             return data
         } catch {
             return nil
+        }
+    }
+
+    func preloadAudio(for cueKeys: [String]) async {
+        for cueKey in cueKeys where !Task.isCancelled {
+            guard localAudioData(for: cueKey) == nil else { continue }
+            _ = await audioData(for: cueKey)
         }
     }
 

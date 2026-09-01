@@ -71,6 +71,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var unitSystem: MeasurementUnitSystem = .metric
     private var snapshotHistory: [ActiveSessionSnapshot] = []
     private var analysisTask: Task<Void, Never>?
+    private var sessionControlAudioPreloadTask: Task<Void, Never>?
     private var lastProgressAnnouncementElapsedSeconds: Int?
     private var lastProgressTimeMilestone = 0
     private var lastProgressDistanceMilestone = 0
@@ -137,6 +138,12 @@ final class VirtualGuide: NSObject, ObservableObject {
         challenge: LiveGuidanceChallenge = .off,
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
+        sessionControlAudioPreloadTask?.cancel()
+        sessionControlAudioPreloadTask = Task {
+            await GuideAudioPackStore.shared.preloadAudio(
+                for: GuideAudioPackStore.sessionControlCueKeys
+            )
+        }
         self.profile = profile
         self.persona = persona
         self.sessionIntent = sessionIntent
@@ -188,6 +195,8 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     func deactivate() {
         isActive = false
+        sessionControlAudioPreloadTask?.cancel()
+        sessionControlAudioPreloadTask = nil
         persona = nil
         sessionIntent = nil
         companionBrief = nil
