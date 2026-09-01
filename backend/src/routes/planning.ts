@@ -24,7 +24,7 @@ const router = new Hono<AppEnv>();
 router.get("/standalone-workouts", async (c) => {
   const user = await requirePlanningUser(c);
   if (user instanceof Response) return user;
-  return c.json({ version: 1, workouts: standaloneWorkoutCatalog });
+  return c.json(standaloneWorkoutCatalog);
 });
 
 const goalSchema = z.object({

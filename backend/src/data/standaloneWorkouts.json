@@ -1,0 +1,1068 @@
+{
+  "version": 2,
+  "locale": "en",
+  "measurementSystem": "metric",
+  "editorialPolicy": {
+    "authorship": "All workout names, summaries, and guide instructions are original Plainstride editorial content. External sources inform distances, pacing principles, warm-up and cooldown structure, and long-run preparation; their prose is not reproduced.",
+    "medicalScope": "The catalog provides general fitness guidance, not diagnosis or medical treatment. Every workout tells the runner to stop for pain or symptoms that feel unsafe.",
+    "longDistanceScope": "The half-marathon and marathon entries guide an already-prepared runner through the distance. They are not substitutes for a progressive training plan, event support, a safe route, or a practiced hydration and fueling plan."
+  },
+  "effortScale": {
+    "type": "rpe_1_10",
+    "anchors": [
+      {
+        "value": 2,
+        "label": "Very easy",
+        "description": "Relaxed walking or jogging with effortless conversation."
+      },
+      {
+        "value": 4,
+        "label": "Easy",
+        "description": "Comfortable, conversational running that feels sustainable."
+      },
+      {
+        "value": 6,
+        "label": "Steady",
+        "description": "Purposeful and controlled; speaking in short sentences is still possible."
+      },
+      {
+        "value": 7,
+        "label": "Comfortably hard",
+        "description": "Focused work that can be held for a limited block without straining."
+      },
+      {
+        "value": 8,
+        "label": "Fast and controlled",
+        "description": "Hard running with sound form and enough control to repeat the effort."
+      },
+      {
+        "value": 10,
+        "label": "Maximum",
+        "description": "All-out effort; not prescribed by this catalog."
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "world-athletics-1500",
+      "publisher": "World Athletics",
+      "title": "1500 Metres",
+      "url": "https://worldathletics.org/disciplines/middle-distance/1500-metres",
+      "usage": "Reference for the official distance and the principle of controlled early pacing followed by a late build."
+    },
+    {
+      "id": "world-athletics-5000",
+      "publisher": "World Athletics",
+      "title": "5000 Metres",
+      "url": "https://worldathletics.org/disciplines/middlelong/5000-metres",
+      "usage": "Reference for 5K pacing phases and the balance of speed and endurance."
+    },
+    {
+      "id": "world-athletics-10000",
+      "publisher": "World Athletics",
+      "title": "10,000 Metres",
+      "url": "https://worldathletics.org/disciplines/running-event/10000-metres",
+      "usage": "Reference for even early pacing, conserving energy, and building through the final portion."
+    },
+    {
+      "id": "world-athletics-half-marathon",
+      "publisher": "World Athletics",
+      "title": "Half Marathon",
+      "url": "https://worldathletics.org/disciplines/road-running-event/half-marathon",
+      "usage": "Reference for the official 21.0975 km distance, manageable pacing, and dividing the event into smaller sections."
+    },
+    {
+      "id": "world-athletics-speed",
+      "publisher": "World Athletics",
+      "title": "The benefits and limits of speed training for endurance runners",
+      "url": "https://worldathletics.org/personal-best/performance/speed-training-endurance-runners-benefits-limits",
+      "usage": "Reference for repeat-based speed work, recoveries, conservative introduction, and easy recovery after a hard session."
+    },
+    {
+      "id": "world-athletics-marathon-pacing",
+      "publisher": "World Athletics",
+      "title": "Marathon Mathematics",
+      "url": "https://worldathletics.org/spikes/news/barry-smyth-recreational-runner-analysis",
+      "usage": "Reference for patient opening kilometres and the value of even marathon pacing."
+    },
+    {
+      "id": "nhs-couch-to-5k",
+      "publisher": "NHS",
+      "title": "Couch to 5K running plan",
+      "url": "https://www.nhs.uk/better-health/get-active/get-running-with-couch-to-5k/couch-to-5k-running-plan/",
+      "usage": "Reference for beginner run-walk intervals and five-minute walking warm-up and cooldown periods."
+    },
+    {
+      "id": "london-marathon-hydration",
+      "publisher": "London Marathon Events",
+      "title": "Thirsty for better runs? Here's your complete hydration guide",
+      "url": "https://www.londonmarathonevents.co.uk/london-marathon-events/training/thirsty-better-runs-heres-your-complete-hydration-guide",
+      "usage": "Reference for practicing an individualized hydration plan and avoiding drastic event-day changes or overdrinking."
+    },
+    {
+      "id": "london-marathon-fueling",
+      "publisher": "London Marathon Events",
+      "title": "Need more energy? How to perfect your fuelling and hydration during training",
+      "url": "https://www.londonmarathonevents.co.uk/london-marathon/article/need-more-energy-how-perfect-your-fuelling-and-hydration-during-training",
+      "usage": "Reference for practicing long-distance fueling in training and using familiar products on event day."
+    }
+  ],
+  "workouts": [
+    {
+      "id": "standalone-guided-1500m",
+      "title": "Guided 1.5K",
+      "subtitle": "A short, focused effort that builds toward a strong final 300 metres.",
+      "durationLabel": "1.5 km · Fast and controlled",
+      "systemImage": "figure.run.circle.fill",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 1.5 km · controlled hard effort",
+      "guideLine": "Find control before speed, hold your form through the middle, then build into the finish.",
+      "startLabel": "Start Guided 1.5K",
+      "targetDistanceMeters": 1500,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "work",
+        "recognizesTargetLock": false
+      },
+      "prerequisites": [
+        "Be comfortable running continuously for at least 15 minutes.",
+        "Complete an easy warm-up before starting this distance effort.",
+        "Choose a flat, uninterrupted route or a track."
+      ],
+      "guideInstructions": {
+        "objective": "Run an evenly controlled 1500 metres and reserve the hardest sustainable effort for the closing segment.",
+        "beforeStart": [
+          "Warm up with easy running, then add a few relaxed accelerations.",
+          "Choose an effort you can control for the full distance; this is not an all-out sprint."
+        ],
+        "segments": [
+          {
+            "id": "guided-1500m-settle",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 300 },
+            "effort": { "rpeMin": 6, "rpeMax": 7, "feel": "Quick but contained" },
+            "instruction": "Accelerate smoothly, settle your breathing, and avoid spending the first minute chasing pace.",
+            "cue": "Quick and calm. Leave room to build.",
+            "fallback": "If the start already feels strained, ease back immediately and rebuild your rhythm."
+          },
+          {
+            "id": "guided-1500m-hold",
+            "trigger": { "type": "distance", "startMeters": 300, "endMeters": 1100 },
+            "effort": { "rpeMin": 7, "rpeMax": 8, "feel": "Hard, rhythmic, and repeatable" },
+            "instruction": "Hold a tall posture, relaxed shoulders, and an even rhythm through the longest section.",
+            "cue": "Stay tall. Hold the rhythm.",
+            "fallback": "Shorten your stride slightly rather than forcing the pace."
+          },
+          {
+            "id": "guided-1500m-build",
+            "trigger": { "type": "distance", "startMeters": 1100, "endMeters": 1300 },
+            "effort": { "rpeMin": 8, "rpeMax": 8, "feel": "Hard with control" },
+            "instruction": "Begin a gradual build while keeping your arms compact and your stride underneath you.",
+            "cue": "Start the build. Smooth first, faster second.",
+            "fallback": "If form is fading, hold the current effort instead of accelerating."
+          },
+          {
+            "id": "guided-1500m-finish",
+            "trigger": { "type": "distance", "startMeters": 1300, "endMeters": 1500 },
+            "effort": { "rpeMin": 8, "rpeMax": 9, "feel": "Strongest sustainable finish" },
+            "instruction": "Lift your cadence and commit to the line without tightening your face or shoulders.",
+            "cue": "Two hundred to go. Fast feet, relaxed shoulders.",
+            "fallback": "Keep the best form you can and carry the effort steadily to the finish."
+          }
+        ],
+        "finish": [
+          "Keep moving easily for several minutes after the distance ends.",
+          "Note whether the opening pace left enough control for the final 300 metres."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-1500"]
+    },
+    {
+      "id": "standalone-guided-3k",
+      "title": "Guided 3K",
+      "subtitle": "Three focused kilometres with a patient start and progressive finish.",
+      "durationLabel": "3 km · Controlled",
+      "systemImage": "3.circle.fill",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 3 km · steady-to-hard effort",
+      "guideLine": "Let the first kilometre come to you, lock into the middle, and build only when control is secure.",
+      "startLabel": "Start Guided 3K",
+      "targetDistanceMeters": 3000,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "work",
+        "recognizesTargetLock": false
+      },
+      "prerequisites": [
+        "Be comfortable running continuously for at least 20 minutes.",
+        "Complete an easy warm-up before starting a hard 3K effort."
+      ],
+      "guideInstructions": {
+        "objective": "Complete 3K with even mechanics and a controlled negative progression rather than an aggressive start.",
+        "beforeStart": [
+          "Warm up until easy running feels fluid.",
+          "Decide whether today is a steady benchmark or a harder time trial and keep the opening effort consistent with that choice."
+        ],
+        "segments": [
+          {
+            "id": "guided-3k-settle",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 500 },
+            "effort": { "rpeMin": 6, "rpeMax": 7, "feel": "Purposeful and contained" },
+            "instruction": "Settle into efficient steps and let other runners or early pace changes go.",
+            "cue": "Settle first. The work comes later.",
+            "fallback": "Back off until breathing and form feel coordinated."
+          },
+          {
+            "id": "guided-3k-rhythm",
+            "trigger": { "type": "distance", "startMeters": 500, "endMeters": 2000 },
+            "effort": { "rpeMin": 7, "rpeMax": 8, "feel": "Firm, even rhythm" },
+            "instruction": "Keep your gaze forward, arms quiet, and pace even through the central kilometre and a half.",
+            "cue": "One rhythm. Relax into the work.",
+            "fallback": "Reduce pace slightly and protect form if the effort spikes early."
+          },
+          {
+            "id": "guided-3k-build",
+            "trigger": { "type": "distance", "startMeters": 2000, "endMeters": 2600 },
+            "effort": { "rpeMin": 8, "rpeMax": 8, "feel": "Hard and deliberate" },
+            "instruction": "Increase pressure gradually without reaching for a longer stride.",
+            "cue": "One kilometre left. Build with cadence.",
+            "fallback": "Hold the current rhythm if a build would compromise form."
+          },
+          {
+            "id": "guided-3k-finish",
+            "trigger": { "type": "distance", "startMeters": 2600, "endMeters": 3000 },
+            "effort": { "rpeMin": 8, "rpeMax": 9, "feel": "Strong finish" },
+            "instruction": "Commit to the final 400 metres and keep your shoulders loose as cadence rises.",
+            "cue": "Four hundred to go. Commit and stay relaxed.",
+            "fallback": "Run strongly to the line at the best sustainable effort available today."
+          }
+        ],
+        "finish": [
+          "Jog or walk easily until breathing settles.",
+          "Record whether the second half felt as controlled as the first."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-1500", "world-athletics-5000"]
+    },
+    {
+      "id": "standalone-guided-5k",
+      "title": "Guided 5K",
+      "subtitle": "A steady 5K with patient pacing and distance-based focus cues.",
+      "durationLabel": "5 km · Steady",
+      "systemImage": "5.circle.fill",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 5 km · steady effort",
+      "guideLine": "Settle in early, stay smooth through the middle, and finish with control.",
+      "startLabel": "Start Guided 5K",
+      "targetDistanceMeters": 5000,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "easy",
+        "pace": {
+          "reference": "athlete_reference",
+          "athleteReferenceOffsetSeconds": 0,
+          "fasterToleranceSeconds": 20,
+          "slowerToleranceSeconds": 35
+        },
+        "recognizesTargetLock": true
+      },
+      "prerequisites": [
+        "Be ready to cover 5K continuously or with planned walk breaks.",
+        "Use a safe route and choose an effort appropriate for today's conditions."
+      ],
+      "guideInstructions": {
+        "objective": "Cover 5K at a sustainable effort, using the final kilometre to finish stronger only when the first four remain controlled.",
+        "beforeStart": [
+          "Decide whether this is an easy completion run, a steady benchmark, or a race effort.",
+          "Begin more conservatively than your first impulse."
+        ],
+        "segments": [
+          {
+            "id": "guided-5k-first-k",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 1000 },
+            "effort": { "rpeMin": 4, "rpeMax": 6, "feel": "Patient and controlled" },
+            "instruction": "Use the first kilometre to settle breathing, cadence, and posture.",
+            "cue": "Patient first kilometre. Find your rhythm.",
+            "fallback": "Slow down or add a brief walk break before effort becomes strained."
+          },
+          {
+            "id": "guided-5k-middle",
+            "trigger": { "type": "distance", "startMeters": 1000, "endMeters": 3500 },
+            "effort": { "rpeMin": 5, "rpeMax": 7, "feel": "Steady and repeatable" },
+            "instruction": "Hold the effort you chose, scan for relaxed shoulders, and avoid unnecessary surges.",
+            "cue": "Smooth through the middle. One steady gear.",
+            "fallback": "Choose a pace you could maintain for another kilometre beyond the finish."
+          },
+          {
+            "id": "guided-5k-commit",
+            "trigger": { "type": "distance", "startMeters": 3500, "endMeters": 4500 },
+            "effort": { "rpeMin": 6, "rpeMax": 8, "feel": "Focused and controlled" },
+            "instruction": "If you still feel composed, gradually increase pressure; otherwise keep the same steady effort.",
+            "cue": "One and a half to go. Build only if you own the pace.",
+            "fallback": "Maintain rather than accelerate if breathing or form is deteriorating."
+          },
+          {
+            "id": "guided-5k-finish",
+            "trigger": { "type": "distance", "startMeters": 4500, "endMeters": 5000 },
+            "effort": { "rpeMin": 7, "rpeMax": 9, "feel": "Strongest sustainable finish" },
+            "instruction": "Lift cadence, keep your face and hands relaxed, and run through the distance target.",
+            "cue": "Five hundred left. Strong form to the line.",
+            "fallback": "Hold a proud, steady finish without sprinting."
+          }
+        ],
+        "finish": [
+          "Walk or jog easily for a few minutes.",
+          "Save one note about pacing: too quick, even, or room to build."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-5000", "world-athletics-10000"]
+    },
+    {
+      "id": "standalone-guided-10k",
+      "title": "Guided 10K",
+      "subtitle": "Patient pacing and progressive focus across ten kilometres.",
+      "durationLabel": "10 km · Endurance",
+      "systemImage": "10.circle.fill",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 10 km · aerobic effort",
+      "guideLine": "Keep the first half patient and let your rhythm carry you home.",
+      "startLabel": "Start Guided 10K",
+      "targetDistanceMeters": 10000,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "easy",
+        "pace": {
+          "reference": "athlete_reference",
+          "athleteReferenceOffsetSeconds": 0,
+          "fasterToleranceSeconds": 20,
+          "slowerToleranceSeconds": 35
+        },
+        "recognizesTargetLock": true
+      },
+      "prerequisites": [
+        "Be prepared to cover 10K continuously or with planned walk breaks.",
+        "Choose a safe route and account for heat, hills, and available water."
+      ],
+      "guideInstructions": {
+        "objective": "Cover 10K with even effort, avoiding early surges and preserving enough control to run the final two kilometres well.",
+        "beforeStart": [
+          "Pick an effort that matches today's purpose and conditions.",
+          "Use familiar hydration if conditions or duration call for it; do not experiment during a goal effort."
+        ],
+        "segments": [
+          {
+            "id": "guided-10k-open",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 2000 },
+            "effort": { "rpeMin": 4, "rpeMax": 6, "feel": "Patient and aerobic" },
+            "instruction": "Start below the effort you expect to hold later and let your body warm into the distance.",
+            "cue": "Two patient kilometres. Save the work for later.",
+            "fallback": "Ease off or add an early walk break if breathing rises too quickly."
+          },
+          {
+            "id": "guided-10k-cruise",
+            "trigger": { "type": "distance", "startMeters": 2000, "endMeters": 7000 },
+            "effort": { "rpeMin": 5, "rpeMax": 7, "feel": "Even, economical rhythm" },
+            "instruction": "Hold an economical pace, check posture periodically, and take the route one kilometre at a time.",
+            "cue": "Cruise the middle. Quiet arms, steady feet.",
+            "fallback": "Reduce effort until you can speak a short sentence without gasping."
+          },
+          {
+            "id": "guided-10k-focus",
+            "trigger": { "type": "distance", "startMeters": 7000, "endMeters": 9000 },
+            "effort": { "rpeMin": 6, "rpeMax": 8, "feel": "Focused and purposeful" },
+            "instruction": "Stay present as fatigue grows; build gently only if pace and form remain under control.",
+            "cue": "Three kilometres left. Focus, do not force.",
+            "fallback": "Hold steady or use a short walk reset rather than letting form unravel."
+          },
+          {
+            "id": "guided-10k-close",
+            "trigger": { "type": "distance", "startMeters": 9000, "endMeters": 10000 },
+            "effort": { "rpeMin": 7, "rpeMax": 9, "feel": "Strong controlled close" },
+            "instruction": "Use the final kilometre progressively: first hold form, then lift cadence toward the finish.",
+            "cue": "One kilometre. Build in control and finish proud.",
+            "fallback": "Keep the current effort and run evenly through the line."
+          }
+        ],
+        "finish": [
+          "Walk or jog until your breathing has clearly settled.",
+          "Compare the feel of the first two and final two kilometres before judging the result."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-10000", "london-marathon-hydration"]
+    },
+    {
+      "id": "standalone-guided-half-marathon",
+      "title": "Guided Half Marathon",
+      "subtitle": "A prepared runner's 21.1K guide with patient pacing and familiar fueling.",
+      "durationLabel": "21.1 km · Endurance",
+      "systemImage": "flag.checkered",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 21.1 km · prepared endurance effort",
+      "guideLine": "Break the distance into calm sections, follow your practiced fueling plan, and protect the first half.",
+      "startLabel": "Start Guided Half Marathon",
+      "targetDistanceMeters": 21097.5,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "easy",
+        "pace": {
+          "reference": "athlete_reference",
+          "athleteReferenceOffsetSeconds": 0,
+          "fasterToleranceSeconds": 20,
+          "slowerToleranceSeconds": 35
+        },
+        "recognizesTargetLock": true
+      },
+      "prerequisites": [
+        "Use only after progressive training has prepared you for the distance.",
+        "Have a safe route or supported event, emergency contact plan, and appropriate weather conditions.",
+        "Carry or locate water and fuel, and use only a strategy already practiced in training."
+      ],
+      "guideInstructions": {
+        "objective": "Help a prepared runner complete 21.0975K with restrained early effort, even middle kilometres, and a finish based on actual readiness.",
+        "beforeStart": [
+          "Confirm the route, conditions, water access, and practiced fueling plan before starting.",
+          "Set an effort ceiling for the first 10K and commit not to chase early pace."
+        ],
+        "segments": [
+          {
+            "id": "guided-half-settle",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 3000 },
+            "effort": { "rpeMin": 4, "rpeMax": 5, "feel": "Deliberately restrained" },
+            "instruction": "Let the field or watch go if needed; establish relaxed breathing and an economical stride.",
+            "cue": "Three patient kilometres. Protect the day.",
+            "fallback": "Slow down early; small corrections now are cheaper than large corrections later."
+          },
+          {
+            "id": "guided-half-rhythm",
+            "trigger": { "type": "distance", "startMeters": 3000, "endMeters": 10000 },
+            "effort": { "rpeMin": 5, "rpeMax": 6, "feel": "Comfortably sustainable" },
+            "instruction": "Lock into a repeatable rhythm and follow your practiced hydration and fueling timing.",
+            "cue": "Settle and fuel as practiced. Nothing new today.",
+            "fallback": "Walk briefly at an aid point or reduce pace if fueling, heat, or hills raise the effort."
+          },
+          {
+            "id": "guided-half-commit",
+            "trigger": { "type": "distance", "startMeters": 10000, "endMeters": 16000 },
+            "effort": { "rpeMin": 6, "rpeMax": 7, "feel": "Steady concentration" },
+            "instruction": "Run kilometre to kilometre, keep fueling familiar, and make posture the priority when fatigue appears.",
+            "cue": "Past halfway. Keep the rhythm honest and simple.",
+            "fallback": "Shift to a planned run-walk pattern before fatigue becomes a crisis."
+          },
+          {
+            "id": "guided-half-late",
+            "trigger": { "type": "distance", "startMeters": 16000, "endMeters": 20000 },
+            "effort": { "rpeMin": 6, "rpeMax": 8, "feel": "Focused late-race work" },
+            "instruction": "Hold effort on hills and into wind; build only if breathing, form, and fueling all remain stable.",
+            "cue": "Five kilometres left. Focus first, build second.",
+            "fallback": "Maintain or add short walk breaks; finishing safely is the priority."
+          },
+          {
+            "id": "guided-half-finish",
+            "trigger": { "type": "distance", "startMeters": 20000, "endMeters": 21097.5 },
+            "effort": { "rpeMin": 7, "rpeMax": 9, "feel": "Best safe finish available" },
+            "instruction": "Run the final 1.1K with compact form and increase effort only as the finish becomes certain.",
+            "cue": "Final 1.1K. Strong, compact, and all the way through.",
+            "fallback": "Keep moving safely at the best sustainable effort available."
+          }
+        ],
+        "finish": [
+          "Keep walking after the finish and begin your practiced recovery routine.",
+          "Do not make immediate training decisions; review pacing and fueling after recovery."
+        ],
+        "stopConditions": [
+          "Stop and use event or emergency support for chest discomfort, faintness, confusion, severe shortness of breath, loss of coordination, or any symptom that feels unsafe.",
+          "Stop for sharp or worsening pain rather than trying to finish through it."
+        ]
+      },
+      "sourceRefs": ["world-athletics-half-marathon", "london-marathon-hydration", "london-marathon-fueling"]
+    },
+    {
+      "id": "standalone-guided-marathon",
+      "title": "Guided Marathon",
+      "subtitle": "A prepared runner's 42.2K guide for even pacing, familiar fuel, and safe decisions.",
+      "durationLabel": "42.2 km · Endurance",
+      "systemImage": "medal.fill",
+      "sport": "run",
+      "category": "guided_distance",
+      "detail": "Run · 42.2 km · prepared marathon effort",
+      "guideLine": "Start slower than excitement suggests, follow the plan you practiced, and make patient decisions deep into the distance.",
+      "startLabel": "Start Guided Marathon",
+      "targetDistanceMeters": 42195,
+      "steps": [],
+      "coachingTarget": {
+        "phase": "easy",
+        "pace": {
+          "reference": "athlete_reference",
+          "athleteReferenceOffsetSeconds": 0,
+          "fasterToleranceSeconds": 20,
+          "slowerToleranceSeconds": 35
+        },
+        "recognizesTargetLock": true
+      },
+      "prerequisites": [
+        "Use only after a progressive marathon build has prepared you for 42.195K.",
+        "Use a supported event or a thoroughly planned safe route with emergency support and reliable location sharing.",
+        "Carry or locate water and fuel, and use only hydration, fueling, footwear, and gear already practiced in long runs.",
+        "Check weather and event medical guidance before starting."
+      ],
+      "guideInstructions": {
+        "objective": "Help a prepared runner complete 42.195K through even pacing, practiced fueling, and conservative choices when conditions or symptoms change.",
+        "beforeStart": [
+          "Confirm route support, weather, emergency contacts, location sharing, aid access, and your practiced fuel and hydration plan.",
+          "Commit to a conservative first 10K and to adjusting effort for heat, hills, wind, or unexpected symptoms."
+        ],
+        "segments": [
+          {
+            "id": "guided-marathon-open",
+            "trigger": { "type": "distance", "startMeters": 0, "endMeters": 5000 },
+            "effort": { "rpeMin": 3, "rpeMax": 5, "feel": "Almost too easy" },
+            "instruction": "Let excitement pass through without turning it into pace; establish calm breathing and clear space around you.",
+            "cue": "Five protected kilometres. Easy is the assignment.",
+            "fallback": "Slow down immediately if the start does not feel restrained."
+          },
+          {
+            "id": "guided-marathon-settle",
+            "trigger": { "type": "distance", "startMeters": 5000, "endMeters": 15000 },
+            "effort": { "rpeMin": 4, "rpeMax": 5, "feel": "Economical and routine" },
+            "instruction": "Settle into repeatable mechanics and begin the exact fueling and hydration routine practiced in training.",
+            "cue": "Make it routine. Easy rhythm, familiar fuel.",
+            "fallback": "Use aid-station walk breaks or reduce pace before small issues compound."
+          },
+          {
+            "id": "guided-marathon-middle",
+            "trigger": { "type": "distance", "startMeters": 15000, "endMeters": 30000 },
+            "effort": { "rpeMin": 5, "rpeMax": 6, "feel": "Steady patience" },
+            "instruction": "Take the course in small sections, keep fueling familiar, and resist any urge to race before 30K.",
+            "cue": "Patient through thirty. Keep stacking calm kilometres.",
+            "fallback": "Adjust for heat, hills, stomach issues, or rising effort; the original pace is no longer the goal if conditions have changed."
+          },
+          {
+            "id": "guided-marathon-late",
+            "trigger": { "type": "distance", "startMeters": 30000, "endMeters": 37000 },
+            "effort": { "rpeMin": 6, "rpeMax": 8, "feel": "Deep, controlled work" },
+            "instruction": "Focus on posture, compact steps, and the next landmark; hold effort rather than forcing pace.",
+            "cue": "This is the work. Short horizon, steady form.",
+            "fallback": "Adopt a deliberate run-walk pattern and use course support before the situation becomes unsafe."
+          },
+          {
+            "id": "guided-marathon-close",
+            "trigger": { "type": "distance", "startMeters": 37000, "endMeters": 42195 },
+            "effort": { "rpeMin": 7, "rpeMax": 9, "feel": "Best safe effort available" },
+            "instruction": "Keep decisions simple: form, direction, aid, next kilometre. Increase effort only when your condition is stable and the finish is close.",
+            "cue": "Five kilometres left. Stay safe, stay compact, keep moving forward.",
+            "fallback": "Walk, stop at aid, or end the attempt if symptoms or conditions make continuing unsafe."
+          }
+        ],
+        "finish": [
+          "Keep walking through the finish area and accept support if you feel unwell or unsteady.",
+          "Begin the recovery routine you prepared, and delay analysis until you are warm, fed, hydrated, and settled."
+        ],
+        "stopConditions": [
+          "Stop and use event or emergency support for chest discomfort, faintness, confusion, severe shortness of breath, loss of coordination, or any symptom that feels unsafe.",
+          "Stop for sharp or worsening pain rather than trying to finish through it.",
+          "Stop when weather, route conditions, loss of supplies, or loss of support makes continuing unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-marathon-pacing", "london-marathon-hydration", "london-marathon-fueling"]
+    },
+    {
+      "id": "standalone-beginner-run-walk",
+      "title": "First Run-Walk",
+      "subtitle": "Short running intervals with generous walking recoveries.",
+      "durationLabel": "29 min · Run-walk",
+      "systemImage": "figure.walk.motion",
+      "sport": "run",
+      "category": "walk_run",
+      "detail": "Run · 29 min · beginner intervals",
+      "guideLine": "Keep every run gentle, use the full walk recovery, and finish feeling that you could do more.",
+      "startLabel": "Start First Run-Walk",
+      "targetDurationSeconds": 1710,
+      "steps": [
+        { "id": "first-run-walk-warmup", "label": "Warm-up walk", "durationSeconds": 300, "detail": "Walk easily and let your body warm up", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-1", "label": "Gentle run 1", "durationSeconds": 60, "detail": "Easy jogging, not a sprint", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-1", "label": "Walk 1", "durationSeconds": 90, "detail": "Recover fully", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-2", "label": "Gentle run 2", "durationSeconds": 60, "detail": "Match the first easy effort", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-2", "label": "Walk 2", "durationSeconds": 90, "detail": "Relax your breathing", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-3", "label": "Gentle run 3", "durationSeconds": 60, "detail": "Small, comfortable steps", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-3", "label": "Walk 3", "durationSeconds": 90, "detail": "Use all of the recovery", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-4", "label": "Gentle run 4", "durationSeconds": 60, "detail": "Stay relaxed", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-4", "label": "Walk 4", "durationSeconds": 90, "detail": "Let your breathing settle", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-5", "label": "Gentle run 5", "durationSeconds": 60, "detail": "Keep the effort easy", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-5", "label": "Walk 5", "durationSeconds": 90, "detail": "No need to rush", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-6", "label": "Gentle run 6", "durationSeconds": 60, "detail": "Light feet and relaxed hands", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-6", "label": "Walk 6", "durationSeconds": 90, "detail": "Recover fully", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-run-7", "label": "Gentle run 7", "durationSeconds": 60, "detail": "Same calm effort", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-walk-7", "label": "Walk 7", "durationSeconds": 90, "detail": "Settle before the final run", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-final-run", "label": "Final gentle run", "durationSeconds": 60, "detail": "Finish with control", "coachingTarget": { "phase": "easy", "recognizesTargetLock": false } },
+        { "id": "first-run-walk-cooldown", "label": "Cooldown walk", "durationSeconds": 300, "detail": "Walk easily until breathing settles", "coachingTarget": { "phase": "cooldown", "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Choose a flat, safe route where switching between running and walking is easy.",
+        "Keep the run portions gentle; speed is not the goal."
+      ],
+      "guideInstructions": {
+        "objective": "Introduce running through eight one-minute easy efforts separated by full walking recoveries.",
+        "beforeStart": [
+          "Wear comfortable shoes and choose a route that lets you stop safely.",
+          "Plan to repeat this workout on another day rather than making it harder today."
+        ],
+        "segments": [
+          {
+            "id": "first-run-walk-guide-warmup",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 300 },
+            "effort": { "rpeMin": 2, "rpeMax": 3, "feel": "Easy walking" },
+            "instruction": "Walk naturally and let your breathing and joints warm gradually.",
+            "cue": "Easy walk. No rush to run.",
+            "fallback": "Continue walking if your body does not feel ready to jog."
+          },
+          {
+            "id": "first-run-walk-guide-intervals",
+            "trigger": { "type": "elapsed_time", "startSeconds": 300, "endSeconds": 1410 },
+            "effort": { "rpeMin": 3, "rpeMax": 5, "feel": "Gentle jog, full walking recovery" },
+            "instruction": "Jog each minute gently, then use the entire ninety-second walk to recover.",
+            "cue": "Easy run, easier walk. Repeat with control.",
+            "fallback": "Walk any run interval or end the running portion early; completing every repeat is optional."
+          },
+          {
+            "id": "first-run-walk-guide-cooldown",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1410, "endSeconds": 1710 },
+            "effort": { "rpeMin": 1, "rpeMax": 2, "feel": "Relaxed walking" },
+            "instruction": "Walk easily until breathing settles and finish without rushing.",
+            "cue": "You did the work. Walk it down gently.",
+            "fallback": "Stop in a safe place if walking is uncomfortable."
+          }
+        ],
+        "finish": [
+          "Finish feeling capable of doing a little more.",
+          "Take at least one recovery day before repeating if this was a new effort."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["nhs-couch-to-5k"]
+    },
+    {
+      "id": "standalone-easy-30",
+      "title": "Easy 30",
+      "subtitle": "Thirty conversational minutes with a gentle start and finish.",
+      "durationLabel": "30 min · Easy",
+      "systemImage": "leaf.fill",
+      "sport": "run",
+      "category": "easy",
+      "detail": "Run · 30 min · conversational effort",
+      "guideLine": "Let pace be the outcome, not the target; keep the whole run conversational.",
+      "startLabel": "Start Easy 30",
+      "targetDurationSeconds": 1800,
+      "steps": [
+        { "id": "easy-30-warmup", "label": "Gentle start", "durationSeconds": 300, "detail": "Very easy running or brisk walking", "coachingTarget": { "phase": "warmup", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 30, "fasterToleranceSeconds": 20 }, "recognizesTargetLock": false } },
+        { "id": "easy-30-main", "label": "Easy running", "durationSeconds": 1200, "detail": "Comfortable conversation effort", "coachingTarget": { "phase": "easy", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 0, "fasterToleranceSeconds": 20, "slowerToleranceSeconds": 35 }, "recognizesTargetLock": true } },
+        { "id": "easy-30-cooldown", "label": "Ease down", "durationSeconds": 300, "detail": "Easy jog or walk", "coachingTarget": { "phase": "cooldown", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 60, "fasterToleranceSeconds": 30 }, "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "No pace target is required; walking is always an acceptable adjustment."
+      ],
+      "guideInstructions": {
+        "objective": "Accumulate thirty low-stress aerobic minutes while reinforcing relaxed, repeatable running.",
+        "beforeStart": [
+          "Choose a route that makes it easy to keep effort low.",
+          "Leave pace alerts off unless they help you slow down."
+        ],
+        "segments": [
+          {
+            "id": "easy-30-guide-start",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 300 },
+            "effort": { "rpeMin": 2, "rpeMax": 3, "feel": "Very easy" },
+            "instruction": "Begin slower than your eventual easy rhythm and let your stride loosen naturally.",
+            "cue": "Start softer than you think you need.",
+            "fallback": "Walk until your body feels ready to jog."
+          },
+          {
+            "id": "easy-30-guide-main",
+            "trigger": { "type": "elapsed_time", "startSeconds": 300, "endSeconds": 1500 },
+            "effort": { "rpeMin": 3, "rpeMax": 4, "feel": "Conversational and sustainable" },
+            "instruction": "Run at a pace that allows full-sentence conversation and relaxed shoulders.",
+            "cue": "Easy enough to repeat tomorrow.",
+            "fallback": "Slow down or insert a walk break until conversation feels easy again."
+          },
+          {
+            "id": "easy-30-guide-finish",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1500, "endSeconds": 1800 },
+            "effort": { "rpeMin": 1, "rpeMax": 3, "feel": "Easing down" },
+            "instruction": "Reduce pace gradually and finish calmer than the middle of the run.",
+            "cue": "Ease it down. No finish-line surge.",
+            "fallback": "Walk the final minutes."
+          }
+        ],
+        "finish": [
+          "You should finish with energy in reserve.",
+          "If the run felt harder than conversational, log that rather than forcing the easy label."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["nhs-couch-to-5k"]
+    },
+    {
+      "id": "standalone-recovery-20",
+      "title": "Recovery 20",
+      "subtitle": "A short reset with permission to jog, walk, or mix both.",
+      "durationLabel": "20 min · Recovery",
+      "systemImage": "wind",
+      "sport": "run",
+      "category": "recovery",
+      "detail": "Run or walk · 20 min · very easy",
+      "guideLine": "Make recovery the goal: move gently, ignore pace, and finish fresher than you started.",
+      "startLabel": "Start Recovery 20",
+      "targetDurationSeconds": 1200,
+      "steps": [
+        { "id": "recovery-20-walk", "label": "Settle in", "durationSeconds": 300, "detail": "Relaxed walk or shuffle", "coachingTarget": { "phase": "walk", "recognizesTargetLock": false } },
+        { "id": "recovery-20-main", "label": "Gentle movement", "durationSeconds": 600, "detail": "Easy jog, walk, or a mix", "coachingTarget": { "phase": "recovery", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 45, "fasterToleranceSeconds": 25 }, "recognizesTargetLock": false } },
+        { "id": "recovery-20-finish", "label": "Walk it down", "durationSeconds": 300, "detail": "Relaxed walking", "coachingTarget": { "phase": "cooldown", "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Use recovery movement only when gentle activity feels appropriate; rest is a valid alternative."
+      ],
+      "guideInstructions": {
+        "objective": "Use gentle movement as a readiness check and finish without adding meaningful training stress.",
+        "beforeStart": [
+          "Choose rest instead if walking already feels painful or unusually difficult.",
+          "Remove pace and distance expectations."
+        ],
+        "segments": [
+          {
+            "id": "recovery-20-guide-start",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 300 },
+            "effort": { "rpeMin": 1, "rpeMax": 2, "feel": "Effortless movement" },
+            "instruction": "Walk and notice whether your body loosens, stays the same, or feels worse.",
+            "cue": "Check in. Recovery is the whole job.",
+            "fallback": "End the session if movement increases pain or fatigue."
+          },
+          {
+            "id": "recovery-20-guide-main",
+            "trigger": { "type": "elapsed_time", "startSeconds": 300, "endSeconds": 900 },
+            "effort": { "rpeMin": 2, "rpeMax": 3, "feel": "Very easy jog or walk" },
+            "instruction": "Jog only if it feels smoother than walking; switch freely between both.",
+            "cue": "Gentle enough to feel restorative.",
+            "fallback": "Walk or stop; there is nothing to complete at the expense of recovery."
+          },
+          {
+            "id": "recovery-20-guide-finish",
+            "trigger": { "type": "elapsed_time", "startSeconds": 900, "endSeconds": 1200 },
+            "effort": { "rpeMin": 1, "rpeMax": 2, "feel": "Relaxed walking" },
+            "instruction": "Walk easily and finish as soon as you feel settled.",
+            "cue": "Bring it down and keep the recovery win.",
+            "fallback": "Stop early in a safe place."
+          }
+        ],
+        "finish": [
+          "You should feel the same or better than when you began.",
+          "If you feel worse, prioritize rest and reconsider the next hard session."
+        ],
+        "stopConditions": [
+          "Stop if movement increases pain, changes your gait, or produces dizziness, chest discomfort, confusion, or any symptom that feels unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-speed"]
+    },
+    {
+      "id": "standalone-speed-run",
+      "title": "Speed Run",
+      "subtitle": "Four controlled two-minute repeats with complete guidance.",
+      "durationLabel": "30 min · Intervals",
+      "systemImage": "hare.fill",
+      "sport": "run",
+      "category": "speed",
+      "detail": "Run · 30 min · 4 × 2 min fast",
+      "guideLine": "Run each fast repeat with control and use every recovery.",
+      "startLabel": "Start Speed Run",
+      "targetDurationSeconds": 1800,
+      "steps": [
+        { "id": "standalone-speed-warmup", "label": "Easy warm-up", "durationSeconds": 480, "detail": "Relaxed conversational running", "coachingTarget": { "phase": "warmup", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 30, "fasterToleranceSeconds": 20 }, "recognizesTargetLock": false } },
+        { "id": "standalone-speed-fast-1", "label": "Fast repeat 1", "durationSeconds": 120, "detail": "Quick and controlled", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "standalone-speed-recover-1", "label": "Easy recovery 1", "durationSeconds": 120, "detail": "Jog or walk until settled", "coachingTarget": { "phase": "recovery", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 45, "fasterToleranceSeconds": 25 }, "recognizesTargetLock": false } },
+        { "id": "standalone-speed-fast-2", "label": "Fast repeat 2", "durationSeconds": 120, "detail": "Match the first repeat", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "standalone-speed-recover-2", "label": "Easy recovery 2", "durationSeconds": 120, "detail": "Let your breathing come down", "coachingTarget": { "phase": "recovery", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 45, "fasterToleranceSeconds": 25 }, "recognizesTargetLock": false } },
+        { "id": "standalone-speed-fast-3", "label": "Fast repeat 3", "durationSeconds": 120, "detail": "Stay tall and relaxed", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "standalone-speed-recover-3", "label": "Easy recovery 3", "durationSeconds": 120, "detail": "Easy jog or walk", "coachingTarget": { "phase": "recovery", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 45, "fasterToleranceSeconds": 25 }, "recognizesTargetLock": false } },
+        { "id": "standalone-speed-fast-4", "label": "Fast repeat 4", "durationSeconds": 120, "detail": "Finish fast, not strained", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "standalone-speed-cooldown", "label": "Cooldown", "durationSeconds": 480, "detail": "Easy running or walking", "coachingTarget": { "phase": "cooldown", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 60, "fasterToleranceSeconds": 30 }, "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Be comfortable running easily for at least 30 minutes.",
+        "Avoid placing this next to another hard workout; allow easy recovery afterward."
+      ],
+      "guideInstructions": {
+        "objective": "Complete four consistent two-minute fast repeats with enough control that the final repeat matches the first.",
+        "beforeStart": [
+          "Choose a flat, interruption-free route or track.",
+          "Fast means controlled hard running, not sprinting."
+        ],
+        "segments": [
+          {
+            "id": "speed-run-guide-warmup",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 480 },
+            "effort": { "rpeMin": 2, "rpeMax": 4, "feel": "Easy and gradually warmer" },
+            "instruction": "Run easily and let cadence rise naturally near the end without forcing pace.",
+            "cue": "Warm first. Speed comes after eight minutes.",
+            "fallback": "Extend the easy running or convert the workout to Easy 30 if you do not feel ready."
+          },
+          {
+            "id": "speed-run-guide-work",
+            "trigger": { "type": "elapsed_time", "startSeconds": 480, "endSeconds": 1320 },
+            "effort": { "rpeMin": 7, "rpeMax": 8, "feel": "Fast, repeatable efforts with easy recoveries" },
+            "instruction": "Run each work block at the fastest pace you can repeat evenly; jog or walk every recovery until breathing settles.",
+            "cue": "Fast and repeatable. Recovery is part of the workout.",
+            "fallback": "Slow the next repeat, shorten it, or skip it if form or control does not return."
+          },
+          {
+            "id": "speed-run-guide-cooldown",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1320, "endSeconds": 1800 },
+            "effort": { "rpeMin": 1, "rpeMax": 3, "feel": "Easy running or walking" },
+            "instruction": "Reduce effort immediately and keep moving gently until breathing settles.",
+            "cue": "The fast work is done. Bring everything down.",
+            "fallback": "Walk the full cooldown."
+          }
+        ],
+        "finish": [
+          "The fourth fast repeat should look and feel similar to the first.",
+          "Follow with easy training or recovery rather than another hard session."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe.",
+          "End the fast work if your form breaks down or you cannot regain control during recovery."
+        ]
+      },
+      "sourceRefs": ["world-athletics-speed"]
+    },
+    {
+      "id": "standalone-tempo-35",
+      "title": "Tempo 35",
+      "subtitle": "A single controlled fifteen-minute tempo between easy running.",
+      "durationLabel": "35 min · Tempo",
+      "systemImage": "gauge.with.dots.needle.67percent",
+      "sport": "run",
+      "category": "tempo",
+      "detail": "Run · 35 min · 15 min controlled tempo",
+      "guideLine": "Let comfortably hard stay comfortable enough to hold; finish the tempo with the same form you started.",
+      "startLabel": "Start Tempo 35",
+      "targetDurationSeconds": 2100,
+      "steps": [
+        { "id": "tempo-35-warmup", "label": "Easy warm-up", "durationSeconds": 600, "detail": "Conversational running", "coachingTarget": { "phase": "warmup", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 30, "fasterToleranceSeconds": 20 }, "recognizesTargetLock": false } },
+        { "id": "tempo-35-main", "label": "Controlled tempo", "durationSeconds": 900, "detail": "Comfortably hard; short phrases, never straining", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "tempo-35-cooldown", "label": "Easy cooldown", "durationSeconds": 600, "detail": "Easy jog or walk", "coachingTarget": { "phase": "cooldown", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 60, "fasterToleranceSeconds": 30 }, "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Be comfortable running easily for at least 35 minutes.",
+        "Choose a route with few stops so the tempo block can remain even."
+      ],
+      "guideInstructions": {
+        "objective": "Hold fifteen minutes of comfortably hard running without drifting into a race effort.",
+        "beforeStart": [
+          "Choose effort by feel rather than a pace that ignores terrain or weather.",
+          "Tempo should finish controlled, not depleted."
+        ],
+        "segments": [
+          {
+            "id": "tempo-35-guide-warmup",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 600 },
+            "effort": { "rpeMin": 2, "rpeMax": 4, "feel": "Easy and conversational" },
+            "instruction": "Warm gradually and wait for the timed transition before increasing effort.",
+            "cue": "Ten easy minutes. Save the tempo.",
+            "fallback": "Stay easy for the whole run if you do not feel ready after ten minutes."
+          },
+          {
+            "id": "tempo-35-guide-main",
+            "trigger": { "type": "elapsed_time", "startSeconds": 600, "endSeconds": 1500 },
+            "effort": { "rpeMin": 6, "rpeMax": 7, "feel": "Comfortably hard and even" },
+            "instruction": "Lift to an effort where short phrases are possible, then hold without surging.",
+            "cue": "Firm and even. Fifteen minutes, not a time trial.",
+            "fallback": "Reduce to steady running if breathing becomes ragged or pace keeps fading."
+          },
+          {
+            "id": "tempo-35-guide-cooldown",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1500, "endSeconds": 2100 },
+            "effort": { "rpeMin": 1, "rpeMax": 3, "feel": "Easy recovery" },
+            "instruction": "Drop effort immediately and jog or walk until calm.",
+            "cue": "Tempo complete. Easy all the way home.",
+            "fallback": "Walk if easy jogging does not feel restorative."
+          }
+        ],
+        "finish": [
+          "The tempo should feel like work you could have continued briefly.",
+          "Allow easy recovery before the next quality workout."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe.",
+          "End the tempo block if controlled breathing and sound form cannot be restored by slowing down."
+        ]
+      },
+      "sourceRefs": ["world-athletics-speed", "world-athletics-10000"]
+    },
+    {
+      "id": "standalone-fartlek-pyramid",
+      "title": "Fartlek Pyramid",
+      "subtitle": "One-, two-, and three-minute surges that rise and fall in a playful pyramid.",
+      "durationLabel": "33 min · Fartlek",
+      "systemImage": "waveform.path.ecg",
+      "sport": "run",
+      "category": "fartlek",
+      "detail": "Run · 33 min · 1-2-3-2-1 min surges",
+      "guideLine": "Change effort, not form; every surge should leave you ready for the next one.",
+      "startLabel": "Start Fartlek Pyramid",
+      "targetDurationSeconds": 1980,
+      "steps": [
+        { "id": "fartlek-warmup", "label": "Easy warm-up", "durationSeconds": 480, "detail": "Conversational running", "coachingTarget": { "phase": "warmup", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 30, "fasterToleranceSeconds": 20 }, "recognizesTargetLock": false } },
+        { "id": "fartlek-fast-1", "label": "Fast 1 min", "durationSeconds": 60, "detail": "Quick and relaxed", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "fartlek-easy-1", "label": "Easy 1 min", "durationSeconds": 60, "detail": "Jog gently", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "fartlek-fast-2", "label": "Fast 2 min", "durationSeconds": 120, "detail": "Controlled speed", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "fartlek-easy-2", "label": "Easy 2 min", "durationSeconds": 120, "detail": "Recover fully", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "fartlek-fast-3", "label": "Fast 3 min", "durationSeconds": 180, "detail": "Strong but sustainable", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "fartlek-easy-3", "label": "Easy 2 min", "durationSeconds": 120, "detail": "Let breathing settle", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "fartlek-fast-4", "label": "Fast 2 min", "durationSeconds": 120, "detail": "Smooth and slightly quicker", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "fartlek-easy-4", "label": "Easy 2 min", "durationSeconds": 120, "detail": "Recover fully", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "fartlek-fast-5", "label": "Fast 1 min", "durationSeconds": 60, "detail": "Fast feet, relaxed upper body", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "fartlek-easy-5", "label": "Easy 1 min", "durationSeconds": 60, "detail": "Ease down", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "fartlek-cooldown", "label": "Cooldown", "durationSeconds": 480, "detail": "Easy jog or walk", "coachingTarget": { "phase": "cooldown", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 60, "fasterToleranceSeconds": 30 }, "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Be comfortable running easily for at least 30 minutes.",
+        "Use terrain where changes of effort are safe and do not require sprinting through crossings."
+      ],
+      "guideInstructions": {
+        "objective": "Practice controlled changes of effort through a symmetrical 1-2-3-2-1 minute pyramid.",
+        "beforeStart": [
+          "Choose effort by feel and terrain rather than chasing identical pace on every surge.",
+          "The three-minute surge should be strong but sustainable, not the fastest."
+        ],
+        "segments": [
+          {
+            "id": "fartlek-guide-warmup",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 480 },
+            "effort": { "rpeMin": 2, "rpeMax": 4, "feel": "Easy running" },
+            "instruction": "Warm up gradually and identify safe landmarks for the faster blocks.",
+            "cue": "Easy first. Read the route ahead.",
+            "fallback": "Keep the entire workout easy if the route or body does not feel ready."
+          },
+          {
+            "id": "fartlek-guide-pyramid",
+            "trigger": { "type": "elapsed_time", "startSeconds": 480, "endSeconds": 1500 },
+            "effort": { "rpeMin": 6, "rpeMax": 8, "feel": "Playful controlled surges" },
+            "instruction": "Let short surges be quicker and long surges more measured; make every recovery genuinely easy.",
+            "cue": "Change gears, keep the same relaxed form.",
+            "fallback": "Reduce the next surge or skip it if the recovery does not restore control."
+          },
+          {
+            "id": "fartlek-guide-cooldown",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1500, "endSeconds": 1980 },
+            "effort": { "rpeMin": 1, "rpeMax": 3, "feel": "Easy cooldown" },
+            "instruction": "Run or walk easily with no final surge.",
+            "cue": "Pyramid complete. Float it home.",
+            "fallback": "Walk the cooldown."
+          }
+        ],
+        "finish": [
+          "The final one-minute surge should feel crisp, not desperate.",
+          "Allow easy recovery before another quality session."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe.",
+          "End the surges if form becomes uncontrolled or the route becomes unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-speed"]
+    },
+    {
+      "id": "standalone-hill-six",
+      "title": "Hill Six",
+      "subtitle": "Six short uphill efforts with full easy recoveries.",
+      "durationLabel": "32 min · Hills",
+      "systemImage": "mountain.2.fill",
+      "sport": "run",
+      "category": "hill",
+      "detail": "Run · 32 min · 6 × 45 sec uphill",
+      "guideLine": "Run tall into the hill, recover all the way down, and keep every repeat technically clean.",
+      "startLabel": "Start Hill Six",
+      "targetDurationSeconds": 1920,
+      "steps": [
+        { "id": "hill-six-warmup", "label": "Easy warm-up", "durationSeconds": 600, "detail": "Easy running toward a moderate hill", "coachingTarget": { "phase": "warmup", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 30, "fasterToleranceSeconds": 20 }, "recognizesTargetLock": false } },
+        { "id": "hill-six-up-1", "label": "Uphill 1", "durationSeconds": 45, "detail": "Strong, tall, controlled", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-1", "label": "Easy recovery 1", "durationSeconds": 75, "detail": "Walk or jog back safely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-up-2", "label": "Uphill 2", "durationSeconds": 45, "detail": "Compact steps", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-2", "label": "Easy recovery 2", "durationSeconds": 75, "detail": "Walk or jog back safely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-up-3", "label": "Uphill 3", "durationSeconds": 45, "detail": "Drive arms without tensing", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-3", "label": "Easy recovery 3", "durationSeconds": 75, "detail": "Recover completely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-up-4", "label": "Uphill 4", "durationSeconds": 45, "detail": "Match the first three", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-4", "label": "Easy recovery 4", "durationSeconds": 75, "detail": "Walk or jog back safely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-up-5", "label": "Uphill 5", "durationSeconds": 45, "detail": "Fast feet and tall hips", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-5", "label": "Easy recovery 5", "durationSeconds": 75, "detail": "Recover completely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-up-6", "label": "Uphill 6", "durationSeconds": 45, "detail": "Strong, not all-out", "coachingTarget": { "phase": "work", "recognizesTargetLock": false } },
+        { "id": "hill-six-down-6", "label": "Easy recovery 6", "durationSeconds": 75, "detail": "Walk or jog back safely", "coachingTarget": { "phase": "recovery", "recognizesTargetLock": false } },
+        { "id": "hill-six-cooldown", "label": "Cooldown", "durationSeconds": 600, "detail": "Easy running or walking", "coachingTarget": { "phase": "cooldown", "pace": { "reference": "athlete_reference", "athleteReferenceOffsetSeconds": 60, "fasterToleranceSeconds": 30 }, "recognizesTargetLock": false } }
+      ],
+      "prerequisites": [
+        "Be comfortable running easily for at least 30 minutes.",
+        "Choose a moderate hill with safe footing, good visibility, and a safe recovery route."
+      ],
+      "guideInstructions": {
+        "objective": "Build strength and technique with six consistent 45-second uphill efforts and complete recoveries.",
+        "beforeStart": [
+          "Inspect the hill and recovery path before the first repeat.",
+          "Run by effort; uphill pace is not comparable to flat pace."
+        ],
+        "segments": [
+          {
+            "id": "hill-six-guide-warmup",
+            "trigger": { "type": "elapsed_time", "startSeconds": 0, "endSeconds": 600 },
+            "effort": { "rpeMin": 2, "rpeMax": 4, "feel": "Easy warm-up" },
+            "instruction": "Run easily and confirm that the hill and footing are safe.",
+            "cue": "Warm up and inspect the hill.",
+            "fallback": "Choose flat easy running if conditions are unsafe."
+          },
+          {
+            "id": "hill-six-guide-repeats",
+            "trigger": { "type": "elapsed_time", "startSeconds": 600, "endSeconds": 1320 },
+            "effort": { "rpeMin": 7, "rpeMax": 8, "feel": "Strong uphill, complete recovery" },
+            "instruction": "Use compact steps, a slight lean from the ankles, and active arms; walk or jog the recovery safely.",
+            "cue": "Tall hips, compact feet, full recovery.",
+            "fallback": "End a repeat early, walk down, or stop the set if footing or form becomes unreliable."
+          },
+          {
+            "id": "hill-six-guide-cooldown",
+            "trigger": { "type": "elapsed_time", "startSeconds": 1320, "endSeconds": 1920 },
+            "effort": { "rpeMin": 1, "rpeMax": 3, "feel": "Easy cooldown" },
+            "instruction": "Move easily away from the hill and let effort fall gradually.",
+            "cue": "Hill work done. Easy from here.",
+            "fallback": "Walk the cooldown."
+          }
+        ],
+        "finish": [
+          "All six repeats should look technically similar.",
+          "Allow easy recovery before the next quality workout."
+        ],
+        "stopConditions": [
+          "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe.",
+          "Stop the hill set if footing, traffic, visibility, or downhill recovery becomes unsafe."
+        ]
+      },
+      "sourceRefs": ["world-athletics-speed"]
+    }
+  ]
+}
