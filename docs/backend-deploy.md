@@ -131,6 +131,32 @@ Notes:
 - Do not pass `backend/.env` to `--env-vars-file`. That flag expects YAML or JSON map syntax, not dotenv format.
 - Keep Cloud Run env and secret wiring on the service itself, then redeploy code with `--source=backend`.
 
+## Monitor Backend Logs
+
+Use the repository helper to stream production Cloud Run logs, including output from backend `console.log`, `console.warn`, and `console.error` calls:
+
+```sh
+./scripts/monitor-backend-logs.sh
+```
+
+Other useful views:
+
+```sh
+# Read the last hour once instead of streaming.
+./scripts/monitor-backend-logs.sh recent
+
+# Stream only entries with severity ERROR or higher.
+./scripts/monitor-backend-logs.sh errors
+
+# Follow one tagged backend subsystem.
+./scripts/monitor-backend-logs.sh tail --log-filter='textPayload:"[live-coach]"'
+
+# Follow the local backend started by the iOS build helper.
+./scripts/monitor-backend-logs.sh local
+```
+
+Use `LOG_FRESHNESS` and `LOG_LIMIT` to adjust the recent views. The script also accepts the deployment defaults `PROJECT_ID`, `GCLOUD_ACCOUNT`, `REGION`, `SERVICE`, and `GCLOUD_BIN`. Stop a streaming view with Control-C. Do not log authentication tokens, raw locations, health data, or full AI prompts and responses.
+
 ## Live Coaching Audio Rollout
 
 The deploy script defaults live coaching to `disabled`, the planner to disabled, `en` and `zh-Hans` for the fixed-audio pilot, the Google Cloud TTS route enabled, one female and one male product voice, and dynamic rollout at zero. Google TTS and Vertex AI authenticate through the attached Cloud Run runtime service account. A code deploy therefore cannot begin planner/TTS traffic by itself.
