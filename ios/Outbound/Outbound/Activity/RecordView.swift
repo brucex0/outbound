@@ -83,6 +83,7 @@ struct RecordView: View {
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
     @AppStorage("preferred_launch_goal_mode_v1") private var preferredLaunchGoalModeRawValue = ""
     @AppStorage("launch_goal_mode_start_history_v1") private var launchGoalModeStartHistoryData = Data()
+    @AppStorage("music_discovery_tip_dismissed_v1") private var hasDismissedMusicDiscoveryTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
@@ -135,7 +136,6 @@ struct RecordView: View {
     @State private var selectedRouteDistanceMeters: Double?
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
     @State private var showsMusicDiscoveryTip = false
-    @State private var didPresentMusicDiscoveryTip = false
     @State private var didTrackRecoveryPresentation = false
     @State private var didRestoreSessionPhotos = false
     @State private var isCapturingSessionPhoto = false
@@ -258,6 +258,10 @@ struct RecordView: View {
 #if DEBUG
             configureRequestedRunSimulationIfNeeded()
 #endif
+            if wasVisible, !isNowVisible {
+                dismissMusicDiscoveryTip(result: "dismissed")
+                return
+            }
             guard !wasVisible, isNowVisible else { return }
             presentMusicDiscoveryTipIfNeeded()
         }
@@ -1585,24 +1589,17 @@ struct RecordView: View {
                             isConfigured: musicIsConfigured
                         ) {
                             trackFeatureExposure("music")
+                            hasDismissedMusicDiscoveryTip = true
                             dismissMusicDiscoveryTip(result: "opened")
                             setupSheet = .music
                         }
-                        .popover(isPresented: $showsMusicDiscoveryTip, arrowEdge: .bottom) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(String(localized: "record.music.discovery.title", defaultValue: "Bring music on your activity"))
-                                    .font(.headline)
-                                Text(String(localized: "record.music.discovery.detail", defaultValue: "Tap the Music button to connect Apple Music or choose what to play."))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Button(String(localized: "record.music.discovery.dismiss", defaultValue: "Not now")) {
-                                    dismissMusicDiscoveryTip(result: "dismissed")
-                                }
-                                .font(.subheadline.weight(.semibold))
-                            }
-                            .padding()
-                            .frame(idealWidth: 280, alignment: .leading)
-                            .presentationCompactAdaptation(.popover)
+                        .popover(isPresented: musicDiscoveryTipPresentation, arrowEdge: .bottom) {
+                            OutboundTooltip(
+                                text: String(
+                                    localized: "record.music.discovery.tip",
+                                    defaultValue: "Tap to add music"
+                                )
+                            )
                         }
 
                         setupUtilityButton(
@@ -2491,25 +2488,39 @@ struct RecordView: View {
     }
 
     private func presentMusicDiscoveryTipIfNeeded() {
-        guard !didPresentMusicDiscoveryTip,
+        guard !hasDismissedMusicDiscoveryTip,
+              !showsMusicDiscoveryTip,
               isVisible,
               !showCamera,
               musicStore.snapshot.connectionState == .notConnected
                 || musicStore.snapshot.connectionState == .denied
                 || musicStore.needsPlaybackSetup
         else { return }
-        didPresentMusicDiscoveryTip = true
         showsMusicDiscoveryTip = true
         trackFeatureExposure("music_discovery_tip")
     }
 
     private func dismissMusicDiscoveryTip(result: String) {
         guard showsMusicDiscoveryTip else { return }
+        hasDismissedMusicDiscoveryTip = true
         showsMusicDiscoveryTip = false
         track(.init(.activityConfigurationChanged, properties: [
             .changeType: .string("music_discovery_tip"),
             .selectionType: .string(result)
         ]))
+    }
+
+    private var musicDiscoveryTipPresentation: Binding<Bool> {
+        Binding(
+            get: { showsMusicDiscoveryTip },
+            set: { isPresented in
+                if isPresented {
+                    showsMusicDiscoveryTip = true
+                } else {
+                    dismissMusicDiscoveryTip(result: "dismissed")
+                }
+            }
+        )
     }
 
     private func applyWorkoutMusicSuggestion() {

@@ -597,34 +597,18 @@ private struct SimplifiedTodayView: View {
                 if canPresentThemeTip || showsThemeTip {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            if showsThemeTip {
-                                showsThemeTip = false
-                            } else {
-                                presentThemeTip()
-                            }
+                            openThemeChooserFromTip()
                         } label: {
                             Image(systemName: "paintpalette.fill")
                         }
                         .accessibilityLabel("Change appearance")
                         .popover(isPresented: $showsThemeTip, arrowEdge: .top) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Want a different look?")
-                                    .font(.headline)
-                                Text("Change the mode or pick a theme that feels like you.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Button("Change appearance") {
-                                    hasDismissedThemeTip = true
-                                    showsThemeTip = false
-                                    Task { @MainActor in
-                                        try? await Task.sleep(for: .milliseconds(250))
-                                        showsThemeChooser = true
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                            .padding()
-                            .presentationCompactAdaptation(.popover)
+                            OutboundTooltip(
+                                text: String(
+                                    localized: "theme.discovery.tip",
+                                    defaultValue: "Tap to change appearance"
+                                )
+                            )
                         }
                     }
                 }
@@ -865,29 +849,12 @@ private struct SimplifiedTodayView: View {
         .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
         .accessibilityValue(activityOverflowAccessibilityValue)
         .popover(isPresented: $showsActivityOverflowTip, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(String(localized: "record.more_actions", defaultValue: "More activity options"))
-                    .font(.headline)
-
-                HStack(spacing: 18) {
-                    Label(
-                        String(localized: "record.photo.control", defaultValue: "Photo"),
-                        systemImage: "camera.fill"
-                    )
-                    Label(
-                        String(localized: "library.routes", defaultValue: "Routes"),
-                        systemImage: "map.fill"
-                    )
-                }
-                .font(.subheadline.weight(.medium))
-
-                Button(String(localized: "Got it")) {
-                    dismissActivityOverflowTip(permanently: true)
-                }
-                .font(.subheadline.weight(.semibold))
-            }
-            .padding()
-            .presentationCompactAdaptation(.popover)
+            OutboundTooltip(
+                text: String(
+                    localized: "record.more_actions.discovery.tip",
+                    defaultValue: "Tap for photos and routes"
+                )
+            )
         }
     }
 
@@ -991,6 +958,29 @@ private struct SimplifiedTodayView: View {
         guard canPresentThemeTip else { return }
         themeTipPresentationCount += 1
         showsThemeTip = true
+        Task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("theme_discovery_tip")
+            ]))
+        }
+    }
+
+    private func openThemeChooserFromTip() {
+        hasDismissedThemeTip = true
+        let waitsForTipDismissal = showsThemeTip
+        showsThemeTip = false
+        guard waitsForTipDismissal else {
+            showsThemeChooser = true
+            return
+        }
+        Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+            showsThemeChooser = true
+        }
     }
 
     private var activityEventToday: ActivityEventDTO? {

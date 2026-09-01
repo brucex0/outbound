@@ -13,7 +13,7 @@ Open this when adding, changing, or applying an app theme or editing theme disco
 - Theme is an app appearance preference, not a companion identity or avatar.
 - The permanent entry point is `Settings > Appearance > Theme`. It opens the same appearance chooser used by the Today discovery tip, with mode controls and rich theme previews; do not maintain a second picker presentation.
 - Assistant requests such as “change app theme” open that shared appearance chooser directly.
-- Today may show a discovery tip up to three times: “Want a different look? Change the mode or pick a theme that feels like you.” Its action opens the appearance chooser directly.
+- Today may show the single-line discovery tip “Tap to change appearance” up to three times. It has no action button; tapping outside dismisses it, while tapping the palette control opens the appearance chooser directly.
 - Keep the list intentionally finite. The current eight themes cover restrained, natural, warm, celebratory, and high-energy personalities without categories or pagination.
 - Theme changes apply immediately and persist in `UserDefaults` through `GuideCatalogStore`.
 
@@ -69,7 +69,7 @@ The selected theme is also injected through `EnvironmentValues.outboundTheme`. A
 ## Discovery Tip
 
 - The Today palette tip is shown at most three times after a short delay and is anchored to a temporary palette button. Each actual presentation counts toward the limit.
-- Choosing `Change appearance` permanently dismisses the tip and opens the appearance chooser, where both mode and theme can be changed.
+- Tapping outside dismisses the tip. Tapping the palette control permanently dismisses it and opens the appearance chooser, where both mode and theme can be changed.
 - Dismissal is stored under `theme_discovery_tip_dismissed_v1`.
 - The presentation count is stored under `theme_discovery_tip_presentation_count_v1`.
 - The permanent Settings entry remains available after the temporary tip disappears.

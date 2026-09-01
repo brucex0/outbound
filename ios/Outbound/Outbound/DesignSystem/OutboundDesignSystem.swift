@@ -160,6 +160,20 @@ enum OutboundPalette {
     }
 }
 
+struct OutboundTooltip: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .presentationCompactAdaptation(.popover)
+    }
+}
+
 struct OutboundCard<Content: View>: View {
     @Environment(\.outboundTheme) private var theme
     enum Style {

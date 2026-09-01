@@ -42,6 +42,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Showing Social's accepted-connection preview emits `feature_exposed` with the bounded feature value `social_connections_section`; opening the full list from that section emits `connections_opened` with `entry_source = social_home_preview`. Neither event includes connection identities, presence, names, or counts.
 - Social operation failures presented by the home surface emit `social_operation_failed` with only the bounded source and error category. Raw HTTP status text, response bodies, request paths, and user or social identifiers are excluded.
 - Explicit unit changes emit `preference_changed` with only the bounded preference kind (`measurement_unit_system` or `temperature_unit`) and semantic choice. The event excludes locale identifiers, gear/music details, and the preference snapshot.
+- Discovery tooltips emit privacy-safe `feature_exposed` events with bounded feature names. Music outside-tap dismissal continues to use `activity_configuration_changed` with `change_type = music_discovery_tip` and `selection_type = dismissed`; no tooltip copy or surrounding UI text is collected.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 
