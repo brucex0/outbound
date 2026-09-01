@@ -75,7 +75,8 @@ struct SimplifiedAppShell: View {
                 onPreActivityPhotoAction: onPreActivityPhotoAction,
                 onRouteSelectionAction: onRouteSelectionAction,
                 onRouteRemovalAction: onRouteRemovalAction,
-                onOpenPlan: { openPlanManagement(from: "today_workout_menu") },
+                onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
+                onChangePlan: { presentPlanPicker(from: "today_planned_card_change") },
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
@@ -664,10 +665,11 @@ private struct SimplifiedTodayView: View {
     let onRouteSelectionAction: () -> Void
     let onRouteRemovalAction: () -> Void
     let onOpenPlan: () -> Void
+    let onChangePlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @StateObject private var launchLocationManager = LocationManager()
-    @State private var showsCompanionExplanation = false
     @State private var showsChangeSheet = false
+    @State private var showsPlannedWorkoutDetails = false
     @State private var companionTodayMessage: String?
     @State private var companionWeatherFetchDate: Date?
     @State private var companionActivityID: UUID?
@@ -677,7 +679,6 @@ private struct SimplifiedTodayView: View {
     @State private var showsThemeTip = false
     @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
-    @State private var showsStandaloneWorkouts = false
     @State private var mapAttributionBottomInset: CGFloat = 0
 
     var body: some View {
@@ -800,10 +801,9 @@ private struct SimplifiedTodayView: View {
                 }
             }
         }
-        .alert("Why this workout?", isPresented: $showsCompanionExplanation) {
-            Button("Got it", role: .cancel) {}
-        } message: {
-            Text(todayExplanation)
+        .sheet(isPresented: $showsPlannedWorkoutDetails) {
+            plannedWorkoutDetailsSheet
+                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showsChangeSheet) {
             TodayChangeSheet(originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)") { reason, note, minutes, startsRun in
@@ -816,14 +816,6 @@ private struct SimplifiedTodayView: View {
         .sheet(isPresented: $showsThemeChooser) {
             ThemeChooserView()
                 .environmentObject(guideCatalog)
-        }
-        .sheet(isPresented: $showsStandaloneWorkouts) {
-            StandaloneWorkoutPickerView { workout in
-                showsStandaloneWorkouts = false
-                customizedRunIntent = workout.intent
-                onStartRun(workout.intent)
-            }
-            .presentationDetents([.medium, .large])
         }
     }
 
@@ -1045,9 +1037,9 @@ private struct SimplifiedTodayView: View {
     }
 
     private var plannedWorkoutCard: some View {
-        ZStack(alignment: .topTrailing) {
-            Button(action: openStandaloneWorkoutPicker) {
-                OutboundCard {
+        OutboundCard {
+            VStack(spacing: OutboundSpacing.standard) {
+                Button(action: openPlannedWorkoutDetails) {
                     VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                         HStack(alignment: .top, spacing: OutboundSpacing.standard) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -1059,7 +1051,10 @@ private struct SimplifiedTodayView: View {
                                     .font(.title2.weight(.bold))
                                     .foregroundStyle(OutboundPalette.primaryText)
                             }
-                            Spacer(minLength: 44)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
                         Text(todayTotalDuration)
                             .font(.headline.monospacedDigit())
@@ -1068,42 +1063,91 @@ private struct SimplifiedTodayView: View {
                         CompactIntervalPreview(phases: todayPhases)
                     }
                 }
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint(String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout"))
+                .buttonStyle(.plain)
+                .accessibilityHint(String(localized: "Opens workout details"))
 
-            Menu {
-                Button("Change workout", systemImage: "slider.horizontal.3") {
-                    showsChangeSheet = true
+                Divider()
+
+                HStack(spacing: 0) {
+                    Button(action: onOpenPlan) {
+                        Label(String(localized: "Plan"), systemImage: "calendar")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider()
+                        .frame(height: 28)
+
+                    Button(action: onChangePlan) {
+                        Label(String(localized: "Change plan"), systemImage: "arrow.triangle.2.circlepath")
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
                 }
-                Button("Why this workout?", systemImage: "info.circle") {
-                    showsCompanionExplanation = true
-                }
-                Button {
-                    onOpenPlan()
-                } label: {
-                    Label(String(localized: "Plan"), systemImage: "calendar")
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.headline)
-                    .frame(width: 36, height: 36)
-                    .background(Color.primary.opacity(0.06), in: Circle())
             }
-            .foregroundStyle(.secondary)
-            .padding(16)
-            .accessibilityLabel("Workout options")
         }
     }
 
-    private func openStandaloneWorkoutPicker() {
+    private var plannedWorkoutDetailsSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OutboundSpacing.section) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(todayWorkoutName)
+                            .font(.title2.weight(.bold))
+                        Text(todayTotalDuration)
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    CompactIntervalPreview(phases: todayPhases)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Why this workout?")
+                            .font(.headline)
+                        Text(todayExplanation)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        showsPlannedWorkoutDetails = false
+                        Task { @MainActor in
+                            await Task.yield()
+                            showsChangeSheet = true
+                        }
+                    } label: {
+                        Label("Change workout", systemImage: "slider.horizontal.3")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OutboundSpacing.screen)
+            }
+            .background(OutboundPalette.background)
+            .navigationTitle("Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showsPlannedWorkoutDetails = false }
+                }
+            }
+        }
+    }
+
+    private func openPlannedWorkoutDetails() {
         Task {
             await analyticsManager?.track(.init(.planningSurfaceOpened, properties: [
-                .sourceType: .string("standalone_workouts"),
-                .entrySource: .string("today_workout_card"),
+                .sourceType: .string("planned_workout_details"),
+                .entrySource: .string("today_planned_card"),
             ]))
         }
-        showsStandaloneWorkouts = true
+        showsPlannedWorkoutDetails = true
     }
 
     private var inProgressActivityCard: some View {

@@ -104,6 +104,7 @@ struct RecordView: View {
     @State private var isCustomGoalAlertPresented = false
     @State private var isGoalChooserPresented = false
     @State private var plannedWorkoutIntent: SessionIntent?
+    @State private var curatedWorkoutIntent: SessionIntent?
     @State private var countdownStep: ActivityStartCountdownStep?
     @State private var countdownTask: Task<Void, Never>?
     @State private var didApplySmartGoalDefault = false
@@ -121,7 +122,7 @@ struct RecordView: View {
     @State private var musicSearchCategory: MusicSearchCategory = .songs
     @State private var isAddShoePresented = false
     @State private var showsTrustedContacts = false
-    @State private var showsStandaloneWorkouts = false
+    @State private var showsCuratedWorkouts = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
     @State private var showsRouteLibrary = false
@@ -419,10 +420,10 @@ struct RecordView: View {
             NavigationStack { SafetyContactsSettingsView() }
                 .environmentObject(safetyContactStore)
         }
-        .sheet(isPresented: $showsStandaloneWorkouts) {
-            StandaloneWorkoutPickerView { workout in
+        .sheet(isPresented: $showsCuratedWorkouts) {
+            StandaloneWorkoutPickerView(sport: selectedManualSport ?? .run) { workout in
                 let selectedRoute = plannedIntent?.preparedRoute
-                plannedWorkoutIntent = workout.intent
+                curatedWorkoutIntent = workout.intent
                 if let selectedRoute {
                     intentBeforeSelectedRoute = workout.intent
                     plannedIntent = routeIntent(selectedRoute, appliedTo: workout.intent)
@@ -431,9 +432,13 @@ struct RecordView: View {
                     intentBeforeSelectedRoute = nil
                     selectedRouteDistanceMeters = nil
                 }
-                selectedWorkoutChoice = .planned
-                selectedGoalMode = .planned
-                showsStandaloneWorkouts = false
+                selectedWorkoutChoice = .sport(workout.sport)
+                selectedGoalMode = .curated
+                showsCuratedWorkouts = false
+                track(.init(.activityConfigurationChanged, properties: [
+                    .changeType: .string("curated_workout"),
+                    .selectionType: .string(workout.sport.rawValue),
+                ]))
             }
         }
         .fullScreenCover(isPresented: $isPreActivityCameraPresented) {
@@ -888,6 +893,7 @@ struct RecordView: View {
             selectedGoalMode = .freestyle
             manualActivityGoal = .freestyle
             plannedWorkoutIntent = nil
+            curatedWorkoutIntent = nil
             plannedIntent = .freestyleRun
             intentBeforeSelectedRoute = nil
             isIndoorSession = false
@@ -1324,6 +1330,7 @@ struct RecordView: View {
         onPreActivityPhotoChange?(nil)
         activeIntent = nil
         plannedIntent = nil
+        curatedWorkoutIntent = nil
         selectedWorkoutChoice = .sport(.run)
         manualActivityGoal = .freestyle
         selectedGoalMode = .freestyle
@@ -1465,6 +1472,11 @@ struct RecordView: View {
         selectedWorkoutChoice != .planned
     }
 
+    private var selectedManualSport: SportType? {
+        guard case .sport(let sport) = selectedWorkoutChoice else { return nil }
+        return sport
+    }
+
     @ViewBuilder
     private var launchMap: some View {
         let map = ActivityLaunchMap(
@@ -1481,8 +1493,8 @@ struct RecordView: View {
     private var launchGoalCard: some View {
         Button {
             track(.init(.goalEditorOpened, properties: [.goalType: .string(analyticsGoalType)]))
-            if selectedGoalMode == .planned {
-                showsStandaloneWorkouts = true
+            if selectedGoalMode == .curated {
+                openCuratedWorkoutPicker()
             } else if selectedGoalMode != .freestyle {
                 isGoalChooserPresented.toggle()
             }
@@ -1515,7 +1527,7 @@ struct RecordView: View {
             .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
-        .disabled(selectedGoalMode == .freestyle)
+        .disabled(selectedGoalMode == .planned || selectedGoalMode == .freestyle)
         .popover(isPresented: $isGoalChooserPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
             compactGoalChooser
                 .presentationCompactAdaptation(.popover)
@@ -1735,6 +1747,8 @@ struct RecordView: View {
         .accessibilityLabel(choice.title)
         .accessibilityValue(choice.accessibilityValue(
             plannedIntent: plannedWorkoutIntent,
+            curatedIntent: curatedWorkoutIntent,
+            selectedMode: selectedGoalMode,
             manualGoal: manualActivityGoal,
             unitSystem: measurementPreferences.unitSystem
         ))
@@ -1760,7 +1774,11 @@ struct RecordView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(mode.pillTitle)
-        .accessibilityValue(mode.compactValue(goal: isSelected ? manualActivityGoal : nil))
+        .accessibilityValue(
+            mode == .curated && isSelected
+                ? curatedWorkoutIntent?.title ?? mode.compactValue(goal: nil)
+                : mode.compactValue(goal: isSelected ? manualActivityGoal : nil)
+        )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -1860,7 +1878,7 @@ struct RecordView: View {
                             isGoalChooserPresented = false
                         }
                     }
-                case .planned, .freestyle:
+                case .planned, .curated, .freestyle:
                     EmptyView()
                 }
             }
@@ -1885,7 +1903,10 @@ struct RecordView: View {
 
     private var launchGoalValue: String {
         if selectedGoalMode == .planned {
-            return plannedWorkoutIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
+            return plannedWorkoutIntent?.title ?? String(localized: "From your training plan")
+        }
+        if selectedGoalMode == .curated {
+            return curatedWorkoutIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
         }
         if selectedGoalMode == .freestyle {
             return String(localized: "record.goal.no_target", defaultValue: "No target")
@@ -1896,6 +1917,8 @@ struct RecordView: View {
     private var launchGoalHint: String {
         switch selectedGoalMode {
         case .planned:
+            return String(localized: "From your training plan")
+        case .curated:
             return String(localized: "record.goal.tap_change_workout", defaultValue: "Tap to change workout")
         case .freestyle:
             return String(localized: "record.goal.freestyle.short_hint", defaultValue: "Start and move by feel")
@@ -1912,10 +1935,17 @@ struct RecordView: View {
             return
         }
         isGoalChooserPresented = false
+        if mode == .curated {
+            openCuratedWorkoutPicker()
+            return
+        }
+        resetCuratedStructureForManualGoalIfNeeded()
         selectedGoalMode = mode
         switch mode {
         case .planned:
             selectWorkoutChoice(.planned)
+        case .curated:
+            break
         case .freestyle:
             applyGoal(.freestyle)
         case .distance:
@@ -1941,7 +1971,6 @@ struct RecordView: View {
         switch choice {
         case .planned:
             guard let plannedWorkoutIntent else {
-                showsStandaloneWorkouts = true
                 return
             }
             selectedWorkoutChoice = .planned
@@ -1970,6 +1999,31 @@ struct RecordView: View {
             .changeType: .string("workout_type"),
             .selectionType: .string(choice.analyticsValue)
         ]))
+    }
+
+    private func openCuratedWorkoutPicker() {
+        guard selectedManualSport != nil else { return }
+        isGoalChooserPresented = false
+        track(.init(.planningSurfaceOpened, properties: [
+            .sourceType: .string("curated_workouts"),
+            .entrySource: .string("manual_mode_row"),
+        ]))
+        showsCuratedWorkouts = true
+    }
+
+    private func resetCuratedStructureForManualGoalIfNeeded() {
+        guard selectedGoalMode == .curated, let sport = selectedManualSport else { return }
+        let selectedRoute = plannedIntent?.preparedRoute
+        let baseIntent = freestyleFallback(for: sport)
+
+        if let selectedRoute {
+            intentBeforeSelectedRoute = baseIntent
+            plannedIntent = routeIntent(selectedRoute, appliedTo: baseIntent)
+        } else {
+            plannedIntent = baseIntent
+            intentBeforeSelectedRoute = nil
+            selectedRouteDistanceMeters = nil
+        }
     }
 
     private func setVoiceGuideEnabled(_ isEnabled: Bool) {
@@ -3312,12 +3366,13 @@ struct RecordView: View {
 
             switch selectedGoalMode {
             case .planned:
-                Button {
-                    setupSheet = nil
-                    showsStandaloneWorkouts = true
-                } label: {
-                    Label(String(localized: "record.goal.workout", defaultValue: "Choose a workout"), systemImage: "list.bullet.clipboard")
-                }
+                Text(String(localized: "From your training plan"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            case .curated:
+                Text(curatedWorkoutIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             case .freestyle:
                 Text(String(localized: "record.goal.freestyle.detail", defaultValue: "No preset target. Tap Start and move by feel."))
                     .font(.subheadline)
@@ -3369,11 +3424,15 @@ struct RecordView: View {
 
             Button {
                 setupSheet = nil
-                showsStandaloneWorkouts = true
+                Task { @MainActor in
+                    await Task.yield()
+                    openCuratedWorkoutPicker()
+                }
             } label: {
-                Label(String(localized: "record.goal.workout", defaultValue: "Choose a workout"), systemImage: "list.bullet.clipboard")
+                Label(String(localized: "Curated"), systemImage: "sparkles.rectangle.stack")
                     .font(.subheadline.weight(.semibold))
             }
+            .disabled(selectedWorkoutChoice == .planned)
         }
     }
 
@@ -3850,12 +3909,14 @@ struct RecordView: View {
         guard shouldApplySmartGoalDefault,
               let preferredMode = SessionGoalMode(rawValue: preferredLaunchGoalModeRawValue),
               preferredMode != .planned,
+              preferredMode != .curated,
               preferredMode != selectedGoalMode
         else { return }
         selectLaunchMode(preferredMode)
     }
 
     private func recordStartedGoalMode() {
+        guard selectedGoalMode != .planned, selectedGoalMode != .curated else { return }
         var history = (try? JSONDecoder().decode([String].self, from: launchGoalModeStartHistoryData)) ?? []
         history.append(selectedGoalMode.rawValue)
         history = Array(history.suffix(3))
@@ -4190,12 +4251,16 @@ private enum LaunchWorkoutChoice: Hashable, Identifiable {
 
     func accessibilityValue(
         plannedIntent: SessionIntent?,
+        curatedIntent: SessionIntent?,
+        selectedMode: SessionGoalMode,
         manualGoal: ActivityGoal,
         unitSystem: MeasurementUnitSystem
     ) -> String {
         switch self {
         case .planned:
             plannedIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
+        case .sport(let sport) where selectedMode == .curated && curatedIntent?.sport == sport:
+            curatedIntent?.title ?? String(localized: "Curated")
         case .sport:
             manualGoal.label(unitSystem: unitSystem)
         }
@@ -4204,6 +4269,7 @@ private enum LaunchWorkoutChoice: Hashable, Identifiable {
 
 enum SessionGoalMode: String, CaseIterable, Equatable {
     case planned
+    case curated
     case freestyle
     case distance
     case time
@@ -4226,6 +4292,8 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         switch self {
         case .planned:
             return String(localized: "record.goal.planned", defaultValue: "Planned")
+        case .curated:
+            return String(localized: "Curated")
         case .freestyle:
             return String(localized: "activity.goal.freestyle", defaultValue: "Freestyle")
         case .distance:
@@ -4237,13 +4305,13 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         }
     }
 
-    static let manualCases: [SessionGoalMode] = [.freestyle, .distance, .time, .calories]
+    static let manualCases: [SessionGoalMode] = [.curated, .freestyle, .distance, .time, .calories]
 
     var pillTitle: String {
         switch self {
         case .freestyle:
             String(localized: "record.goal.free", defaultValue: "Free")
-        case .planned, .distance, .time, .calories:
+        case .planned, .curated, .distance, .time, .calories:
             title
         }
     }
@@ -4251,6 +4319,7 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
     var systemImage: String {
         switch self {
         case .planned: return "list.bullet.clipboard.fill"
+        case .curated: return "sparkles.rectangle.stack"
         case .freestyle: return "figure.run"
         case .distance: return "point.topleft.down.to.point.bottomright.curvepath.fill"
         case .time: return "clock.fill"
@@ -4268,6 +4337,8 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
             return String(localized: "record.goal.calories_picker", defaultValue: "Choose calories")
         case .planned:
             return String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
+        case .curated:
+            return String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
         case .freestyle:
             return String(localized: "activity.goal.freestyle", defaultValue: "Freestyle")
         }
@@ -4278,7 +4349,7 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         case .distance: return .distance
         case .time: return .time
         case .calories: return .calories
-        case .planned, .freestyle: return nil
+        case .planned, .curated, .freestyle: return nil
         }
     }
 
@@ -4288,6 +4359,8 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         switch self {
         case .planned:
             return String(localized: "record.goal.today", defaultValue: "Today")
+        case .curated:
+            return String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
         case .freestyle:
             return String(localized: "record.goal.just_run", defaultValue: "Just run")
         case .distance:

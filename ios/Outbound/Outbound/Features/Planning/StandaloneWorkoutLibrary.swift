@@ -76,12 +76,22 @@ struct StandaloneWorkoutPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.outboundTheme) private var theme
     @StateObject private var store = StandaloneWorkoutStore()
+    let sport: SportType
     let onSelect: (StandaloneWorkout) -> Void
+
+    private var workouts: [StandaloneWorkout] {
+        store.workouts.filter { $0.sport == sport }
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
+                    Label(sport.displayName, systemImage: sport.systemImage)
+                        .font(.headline)
+                        .foregroundStyle(theme.accentColor)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     Text("Pick one workout and go. No training plan required.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -99,8 +109,14 @@ struct StandaloneWorkoutPickerView: View {
                         } actions: {
                             Button("Try Again") { Task { await store.refresh() } }
                         }
+                    } else if workouts.isEmpty {
+                        ContentUnavailableView {
+                            Label("No curated workouts", systemImage: "sparkles.rectangle.stack")
+                        } description: {
+                            Text("Try another activity type.")
+                        }
                     } else {
-                        ForEach(store.workouts) { workout in
+                        ForEach(workouts) { workout in
                             workoutButton(workout)
                         }
                     }

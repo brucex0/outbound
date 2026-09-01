@@ -4767,11 +4767,12 @@
       }
     },
     "Curated" : {
+      "comment" : "Compact manual-activity mode that opens sport-specific, prebuilt workouts.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seleccionado"
+            "value" : "Selección"
           }
         },
         "zh-Hans" : {
@@ -6236,6 +6237,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "来自%@"
+          }
+        }
+      }
+    },
+    "From your training plan" : {
+      "comment" : "Explains that a workout is prescribed by the active multi-week plan.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De tu plan de entrenamiento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来自你的训练计划"
           }
         }
       }
@@ -9112,6 +9130,23 @@
         }
       }
     },
+    "No curated workouts" : {
+      "comment" : "Empty-state title when the selected activity type has no curated workouts.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay entrenamientos en la selección"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无精选训练"
+          }
+        }
+      }
+    },
     "No groups yet" : {
       "localizations" : {
         "es" : {
@@ -9811,6 +9846,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开今天已完成的活动"
+          }
+        }
+      }
+    },
+    "Opens workout details" : {
+      "comment" : "Accessibility hint for opening the prescribed workout details.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre los detalles del entrenamiento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开训练详情"
           }
         }
       }
@@ -16459,6 +16511,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "再试一次"
+          }
+        }
+      }
+    },
+    "Try another activity type." : {
+      "comment" : "Empty-state guidance when no curated workouts match the selected activity type.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba con otro tipo de actividad."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试其他活动类型。"
           }
         }
       }
