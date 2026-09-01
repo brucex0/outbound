@@ -43,6 +43,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 - Social operation failures presented by the home surface emit `social_operation_failed` with only the bounded source and error category. Raw HTTP status text, response bodies, request paths, and user or social identifiers are excluded.
 - Explicit unit changes emit `preference_changed` with only the bounded preference kind (`measurement_unit_system` or `temperature_unit`) and semantic choice. The event excludes locale identifiers, gear/music details, and the preference snapshot.
 - Discovery tooltips emit privacy-safe `feature_exposed` events with bounded feature names. Music outside-tap dismissal continues to use `activity_configuration_changed` with `change_type = music_discovery_tip` and `selection_type = dismissed`; no tooltip copy or surrounding UI text is collected.
+- Restored planning navigation emits `planning_surface_opened` with only a bounded surface (`standalone_workouts`, `plan_details`, or `plan_picker`) and entry source (`today_workout_card`, `today_workout_menu`, `me_current_focus`, `plan_details_change`, or `recommendation_more_plans`). It excludes plan IDs, titles, workout details, recommendations, and runner data.
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 

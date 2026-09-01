@@ -20,6 +20,7 @@ enum SimplifiedAppTab: Hashable {
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
@@ -47,6 +48,10 @@ struct SimplifiedAppShell: View {
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
     @State private var selectedRouteName: String?
+    @State private var showsPlanDetails = false
+    @State private var showsPlanPicker = false
+    @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
+    @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -70,13 +75,16 @@ struct SimplifiedAppShell: View {
                 onPreActivityPhotoAction: onPreActivityPhotoAction,
                 onRouteSelectionAction: onRouteSelectionAction,
                 onRouteRemovalAction: onRouteRemovalAction,
+                onOpenPlan: { openPlanManagement(from: "today_workout_menu") },
                 onStartRun: onStartRun
             )
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
                 .tabItem { Label(String(localized: "Today"), systemImage: "sparkles") }
 
-            SimplifiedMeView()
+            SimplifiedMeView(
+                onOpenPlan: { openPlanManagement(from: "me_current_focus") }
+            )
                 .tag(SimplifiedAppTab.me)
                 .tabItem { Label("Me", systemImage: "person.crop.circle") }
         }
@@ -116,6 +124,75 @@ struct SimplifiedAppShell: View {
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showsPlanDetails) {
+            NavigationStack {
+                if let activePlan = trainingPlanStore.activePlan {
+                    if let week = trainingPlanStore.currentWeek {
+                        ActiveTrainingPlanDetailView(
+                            activePlan: activePlan,
+                            week: week,
+                            todaySuggestion: trainingPlanStore.todaySuggestion,
+                            accentColor: theme.accentColor,
+                            onChangePlan: {
+                                showsPlanDetails = false
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    presentPlanPicker(from: "plan_details_change")
+                                }
+                            },
+                            onEndPlan: {
+                                trainingPlanStore.clearActivePlan()
+                                showsPlanDetails = false
+                            }
+                        )
+                    } else {
+                        ActiveTrainingPlanPendingDetailView(activePlan: activePlan, accentColor: theme.accentColor)
+                    }
+                } else {
+                    ActiveTrainingPlanSyncingDetailView(accentColor: theme.accentColor)
+                }
+            }
+        }
+        .sheet(isPresented: $showsPlanPicker) {
+            NavigationStack {
+                TrainingPlanPickerView(
+                    recommendations: trainingPlanStore.planOptions,
+                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
+                    accentColor: theme.accentColor,
+                    onSelectPlan: {
+                        showsPlanPicker = false
+                        selectedPlanRecommendation = $0
+                    },
+                    onUsePlan: { requestPlanActivation($0) }
+                )
+            }
+        }
+        .sheet(item: $selectedPlanRecommendation) { recommendation in
+            NavigationStack {
+                TrainingPlanRecommendationDetailView(
+                    recommendation: recommendation,
+                    accentColor: theme.accentColor,
+                    onUsePlan: { requestPlanActivation(recommendation) },
+                    onMorePlans: { returnToPlanPicker() }
+                )
+            }
+        }
+        .confirmationDialog(
+            "Replace your current training plan?",
+            isPresented: Binding(
+                get: { replacementPlanRecommendation != nil },
+                set: { if !$0 { replacementPlanRecommendation = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Replace plan", role: .destructive) {
+                guard let recommendation = replacementPlanRecommendation else { return }
+                activatePlan(recommendation)
+            }
+            Button("Keep current plan", role: .cancel) { replacementPlanRecommendation = nil }
+        } message: {
+            Text("This replaces your current multi-week schedule with the selected plan. Completed activities stay in your history.")
         }
         .onAppear {
             weatherStore.refreshForToday()
@@ -227,6 +304,62 @@ struct SimplifiedAppShell: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             selection = tab
+        }
+    }
+
+    private func openPlanManagement(from entrySource: String) {
+        if trainingPlanStore.activePlan == nil {
+            presentPlanPicker(from: entrySource)
+        } else {
+            trackPlanningSurfaceOpened("plan_details", entrySource: entrySource)
+            showsPlanDetails = true
+        }
+    }
+
+    private func presentPlanPicker(from entrySource: String) {
+        trainingPlanStore.prepareRecommendations(
+            activities: activityStore.activities,
+            readiness: dailyCheckInStore.readiness,
+            phase: DailyMotivationEngine.phase(for: activityStore.activities)
+        )
+        trackPlanningSurfaceOpened("plan_picker", entrySource: entrySource)
+        showsPlanPicker = true
+    }
+
+    private func requestPlanActivation(_ recommendation: TrainingPlanRecommendation) {
+        if trainingPlanStore.activePlan != nil {
+            showsPlanPicker = false
+            selectedPlanRecommendation = nil
+            Task { @MainActor in
+                await Task.yield()
+                replacementPlanRecommendation = recommendation
+            }
+        } else {
+            activatePlan(recommendation)
+        }
+    }
+
+    private func returnToPlanPicker() {
+        selectedPlanRecommendation = nil
+        Task { @MainActor in
+            await Task.yield()
+            presentPlanPicker(from: "recommendation_more_plans")
+        }
+    }
+
+    private func activatePlan(_ recommendation: TrainingPlanRecommendation) {
+        trainingPlanStore.acceptRecommendation(recommendation)
+        replacementPlanRecommendation = nil
+        selectedPlanRecommendation = nil
+        showsPlanPicker = false
+    }
+
+    private func trackPlanningSurfaceOpened(_ surface: String, entrySource: String) {
+        Task {
+            await analyticsManager?.track(.init(.planningSurfaceOpened, properties: [
+                .sourceType: .string(surface),
+                .entrySource: .string(entrySource),
+            ]))
         }
     }
 
@@ -530,6 +663,7 @@ private struct SimplifiedTodayView: View {
     let onPreActivityPhotoAction: () -> Void
     let onRouteSelectionAction: () -> Void
     let onRouteRemovalAction: () -> Void
+    let onOpenPlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @StateObject private var launchLocationManager = LocationManager()
     @State private var showsCompanionExplanation = false
@@ -544,11 +678,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
     @State private var showsUpcomingWorkout = false
-    @State private var showsPlanDetails = false
-    @State private var showsPlanPicker = false
     @State private var showsStandaloneWorkouts = false
-    @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
-    @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
     @State private var mapAttributionBottomInset: CGFloat = 0
 
     var body: some View {
@@ -692,49 +822,6 @@ private struct SimplifiedTodayView: View {
             upcomingWorkoutSheet
                 .presentationDetents([.medium])
         }
-        .sheet(isPresented: $showsPlanDetails) {
-            NavigationStack {
-                if let activePlan = trainingPlanStore.activePlan {
-                    if let week = trainingPlanStore.currentWeek {
-                        ActiveTrainingPlanDetailView(
-                            activePlan: activePlan,
-                            week: week,
-                            todaySuggestion: trainingPlanStore.todaySuggestion,
-                            accentColor: theme.accentColor,
-                            onChangePlan: {
-                                showsPlanDetails = false
-                                Task { @MainActor in
-                                    await Task.yield()
-                                    presentPlanPicker()
-                                }
-                            },
-                            onEndPlan: {
-                                trainingPlanStore.clearActivePlan()
-                                showsPlanDetails = false
-                            }
-                        )
-                    } else {
-                        ActiveTrainingPlanPendingDetailView(activePlan: activePlan, accentColor: theme.accentColor)
-                    }
-                } else {
-                    ActiveTrainingPlanSyncingDetailView(accentColor: theme.accentColor)
-                }
-            }
-        }
-        .sheet(isPresented: $showsPlanPicker) {
-            NavigationStack {
-                TrainingPlanPickerView(
-                    recommendations: trainingPlanStore.planOptions,
-                    isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
-                    accentColor: theme.accentColor,
-                    onSelectPlan: {
-                        showsPlanPicker = false
-                        selectedPlanRecommendation = $0
-                    },
-                    onUsePlan: { requestPlanActivation($0) }
-                )
-            }
-        }
         .sheet(isPresented: $showsStandaloneWorkouts) {
             StandaloneWorkoutPickerView { workout in
                 showsStandaloneWorkouts = false
@@ -743,69 +830,6 @@ private struct SimplifiedTodayView: View {
             }
             .presentationDetents([.medium, .large])
         }
-        .sheet(item: $selectedPlanRecommendation) { recommendation in
-            NavigationStack {
-                TrainingPlanRecommendationDetailView(
-                    recommendation: recommendation,
-                    accentColor: theme.accentColor,
-                    onUsePlan: { requestPlanActivation(recommendation) },
-                    onMorePlans: { returnToPlanPicker() }
-                )
-            }
-        }
-        .confirmationDialog(
-            "Replace your current training plan?",
-            isPresented: Binding(
-                get: { replacementPlanRecommendation != nil },
-                set: { if !$0 { replacementPlanRecommendation = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Replace plan", role: .destructive) {
-                guard let recommendation = replacementPlanRecommendation else { return }
-                activatePlan(recommendation)
-            }
-            Button("Keep current plan", role: .cancel) { replacementPlanRecommendation = nil }
-        } message: {
-            Text("This replaces your current multi-week schedule with the selected plan. Completed activities stay in your history.")
-        }
-    }
-
-    private func presentPlanPicker() {
-        trainingPlanStore.prepareRecommendations(
-            activities: activityStore.activities,
-            readiness: dailyCheckInStore.readiness,
-            phase: DailyMotivationEngine.phase(for: activityStore.activities)
-        )
-        showsPlanPicker = true
-    }
-
-    private func requestPlanActivation(_ recommendation: TrainingPlanRecommendation) {
-        if trainingPlanStore.activePlan != nil {
-            showsPlanPicker = false
-            selectedPlanRecommendation = nil
-            Task { @MainActor in
-                await Task.yield()
-                replacementPlanRecommendation = recommendation
-            }
-        } else {
-            activatePlan(recommendation)
-        }
-    }
-
-    private func returnToPlanPicker() {
-        selectedPlanRecommendation = nil
-        Task { @MainActor in
-            await Task.yield()
-            presentPlanPicker()
-        }
-    }
-
-    private func activatePlan(_ recommendation: TrainingPlanRecommendation) {
-        trainingPlanStore.acceptRecommendation(recommendation)
-        replacementPlanRecommendation = nil
-        selectedPlanRecommendation = nil
-        showsPlanPicker = false
     }
 
     private var activityOverflowMenu: some View {
@@ -1007,75 +1031,6 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var activityLibraryButtons: some View {
-        HStack(spacing: OutboundSpacing.compact) {
-            activityLibraryButton(
-                title: trainingPlanStore.activePlan?.localizedTitle ?? String(localized: "Plans"),
-                systemImage: "calendar"
-            ) {
-                if trainingPlanStore.activePlan == nil {
-                    presentPlanPicker()
-                } else {
-                    showsPlanDetails = true
-                }
-            }
-            .accessibilityLabel("Plans")
-            .accessibilityValue(trainingPlanStore.activePlan?.localizedTitle ?? String(localized: "No plan selected"))
-
-            activityLibraryButton(
-                title: customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "library.workouts", defaultValue: "Workouts"),
-                systemImage: "figure.run"
-            ) {
-                showsStandaloneWorkouts = true
-            }
-            .accessibilityLabel(String(localized: "library.workouts", defaultValue: "Workouts"))
-            .accessibilityValue(customizedRunIntent.map { localizedAppCopy($0.title) } ?? String(localized: "No workout selected"))
-
-            NavigationLink {
-                CommunityRouteLibraryView()
-            } label: {
-                activityLibraryButtonLabel(
-                    title: selectedRouteName ?? String(localized: "library.routes", defaultValue: "Routes"),
-                    systemImage: "map"
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "library.routes", defaultValue: "Routes"))
-            .accessibilityValue(selectedRouteName ?? String(localized: "No route selected"))
-        }
-    }
-
-    private func activityLibraryButton(
-        title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            activityLibraryButtonLabel(title: title, systemImage: systemImage)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func activityLibraryButtonLabel(title: String, systemImage: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(theme.accentColor)
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .frame(maxWidth: .infinity, minHeight: 76)
-        .padding(.horizontal, 6)
-        .background(
-            Color.primary.opacity(0.045),
-            in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
-    }
-
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
@@ -1096,42 +1051,65 @@ private struct SimplifiedTodayView: View {
     }
 
     private var plannedWorkoutCard: some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                HStack(alignment: .top, spacing: OutboundSpacing.standard) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(completedActivityToday == nil ? "Today’s workout" : "Up next")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(theme.accentColor)
-                            .textCase(.uppercase)
-                        Text(todayWorkoutName)
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(OutboundPalette.primaryText)
-                    }
-                    Spacer()
-                    Menu {
-                        Button("Change workout", systemImage: "slider.horizontal.3") {
-                            showsChangeSheet = true
+        ZStack(alignment: .topTrailing) {
+            Button(action: openStandaloneWorkoutPicker) {
+                OutboundCard {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                        HStack(alignment: .top, spacing: OutboundSpacing.standard) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(completedActivityToday == nil ? "Today’s workout" : "Up next")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(theme.accentColor)
+                                    .textCase(.uppercase)
+                                Text(todayWorkoutName)
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(OutboundPalette.primaryText)
+                            }
+                            Spacer(minLength: 44)
                         }
-                        Button("Why this workout?", systemImage: "info.circle") {
-                            showsCompanionExplanation = true
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.headline)
-                            .frame(width: 36, height: 36)
-                            .background(Color.primary.opacity(0.06), in: Circle())
+                        Text(todayTotalDuration)
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
+                        CompactIntervalPreview(phases: todayPhases)
                     }
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Workout options")
                 }
-                Text(todayTotalDuration)
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
-                CompactIntervalPreview(phases: todayPhases)
             }
+            .buttonStyle(.plain)
+            .accessibilityHint(String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout"))
+
+            Menu {
+                Button("Change workout", systemImage: "slider.horizontal.3") {
+                    showsChangeSheet = true
+                }
+                Button("Why this workout?", systemImage: "info.circle") {
+                    showsCompanionExplanation = true
+                }
+                Button {
+                    onOpenPlan()
+                } label: {
+                    Label(String(localized: "Plan"), systemImage: "calendar")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.headline)
+                    .frame(width: 36, height: 36)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+            }
+            .foregroundStyle(.secondary)
+            .padding(16)
+            .accessibilityLabel("Workout options")
         }
+    }
+
+    private func openStandaloneWorkoutPicker() {
+        Task {
+            await analyticsManager?.track(.init(.planningSurfaceOpened, properties: [
+                .sourceType: .string("standalone_workouts"),
+                .entrySource: .string("today_workout_card"),
+            ]))
+        }
+        showsStandaloneWorkouts = true
     }
 
     private var inProgressActivityCard: some View {
@@ -1450,20 +1428,7 @@ private struct SimplifiedTodayView: View {
         if let suggestion = trainingPlanStore.todaySuggestion {
             return suggestion.suggestedSession.intent
         }
-        return SessionIntent(
-            id: "today-comfortable-run",
-            sport: .run,
-            title: String(localized: "Easy run"),
-            detail: String(localized: "Run · 30 min · conversational effort"),
-            guideLine: String(localized: "Settle into a conversational effort and keep this one comfortable."),
-            startLabel: String(localized: "Start workout"),
-            targetDurationSeconds: 30 * 60,
-            workoutSteps: [
-                SessionIntentStep(id: "warmup", label: String(localized: "Warm-up"), durationSeconds: 5 * 60, detail: String(localized: "Very easy"), coachingTarget: .warmup),
-                SessionIntentStep(id: "relaxed", label: String(localized: "Relaxed"), durationSeconds: 20 * 60, detail: String(localized: "Conversational effort"), coachingTarget: .easy),
-                SessionIntentStep(id: "cooldown", label: String(localized: "Cool-down"), durationSeconds: 5 * 60, detail: String(localized: "Ease down"), coachingTarget: .cooldown),
-            ]
-        )
+        return .todayComfortableRun
     }
 
     private var activeRunIntent: SessionIntent {
@@ -2320,6 +2285,7 @@ private struct SimplifiedMeView: View {
     @State private var showsConnections = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
+    let onOpenPlan: () -> Void
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -2358,18 +2324,33 @@ private struct SimplifiedMeView: View {
                     }
                     .buttonStyle(.plain)
                     connectionsPreview
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("CURRENT FOCUS")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text(planTitle)
-                                .font(.headline)
-                            Text(planDetail)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                    Button(action: onOpenPlan) {
+                        OutboundCard {
+                            HStack(spacing: OutboundSpacing.standard) {
+                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                    Text("CURRENT FOCUS")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Text(planTitle)
+                                        .font(.headline)
+                                    Text(planDetail)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        trainingPlanStore.activePlan == nil
+                            ? String(localized: "Choose a plan")
+                            : String(localized: "View plan")
+                    )
+                    .accessibilityHint(String(localized: "View, change, or end the current training plan"))
                     NavigationLink {
                         CommunityRouteLibraryView(mode: .mine)
                     } label: {

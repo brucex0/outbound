@@ -45,6 +45,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
+    case planningSurfaceOpened = "planning_surface_opened"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
     case musicQuickPickSelected = "music_quick_pick_selected"
@@ -218,6 +219,7 @@ enum ProductAnalyticsSchema {
         .goalProgressReached: [.goalType, .progressPercent],
         .goalEditorOpened: [.goalType],
         .featureExposed: [.feature],
+        .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
         .musicQuickPickSelected: [.selectionType],

@@ -290,6 +290,39 @@ struct SessionIntent: Identifiable, Hashable {
         guideLine: String(localized: "activity.goal.companion.freestyle", defaultValue: "No pressure. Just start where you are."),
         startLabel: String(localized: "Start now")
     )
+
+    static let todayComfortableRun = SessionIntent(
+        id: "today-comfortable-run",
+        sport: .run,
+        title: String(localized: "Easy run"),
+        detail: String(localized: "Run · 30 min · conversational effort"),
+        guideLine: String(localized: "Settle into a conversational effort and keep this one comfortable."),
+        startLabel: String(localized: "Start workout"),
+        targetDurationSeconds: 30 * 60,
+        workoutSteps: [
+            SessionIntentStep(
+                id: "warmup",
+                label: String(localized: "Warm-up"),
+                durationSeconds: 5 * 60,
+                detail: String(localized: "Very easy"),
+                coachingTarget: .warmup
+            ),
+            SessionIntentStep(
+                id: "relaxed",
+                label: String(localized: "Relaxed"),
+                durationSeconds: 20 * 60,
+                detail: String(localized: "Conversational effort"),
+                coachingTarget: .easy
+            ),
+            SessionIntentStep(
+                id: "cooldown",
+                label: String(localized: "Cool-down"),
+                durationSeconds: 5 * 60,
+                detail: String(localized: "Ease down"),
+                coachingTarget: .cooldown
+            ),
+        ]
+    )
 }
 
 struct ActivityEventLaunchContext: Hashable {

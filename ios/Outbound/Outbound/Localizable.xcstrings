@@ -10877,6 +10877,23 @@
         }
       }
     },
+    "Plan" : {
+      "comment" : "Menu item that opens the runner's multi-week training plan.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "训练计划"
+          }
+        }
+      }
+    },
     "Plan a run" : {
       "localizations" : {
         "es" : {

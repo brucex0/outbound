@@ -74,18 +74,19 @@ struct MainTabView: View {
             prepareTodayLaunchIfNeeded()
         }
         .onChange(of: selectedAppTab) { _, tab in
-            guard tab == .today, activitySessionState == .idle else { return }
+            guard tab == SimplifiedAppTab.today else { return }
+            guard activitySessionState == .idle else { return }
             prepareTodayLaunchIfNeeded()
             isActivityVisible = true
         }
         .onChange(of: defaultTodayIntent) { previousIntent, intent in
-            guard selectedAppTab == .today,
-                  activitySessionState == .idle,
-                  activeLaunch?.intent == nil || activeLaunch?.intent == previousIntent,
-                  activeLaunch?.intent != intent
-            else { return }
+            guard selectedAppTab == SimplifiedAppTab.today else { return }
+            guard activitySessionState == .idle else { return }
+            let activeIntent = activeLaunch?.intent
+            guard activeIntent == nil || activeIntent == previousIntent else { return }
+            guard activeIntent != intent else { return }
             activeLaunch = RecordLaunch(intent: intent)
-            preActivityRoute = intent?.preparedRoute
+            preActivityRoute = intent.preparedRoute
             isActivityVisible = true
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
@@ -223,7 +224,7 @@ struct MainTabView: View {
         if selectedAppTab == .today {
             let intent = defaultTodayIntent
             activeLaunch = RecordLaunch(intent: intent)
-            preActivityRoute = intent?.preparedRoute
+            preActivityRoute = intent.preparedRoute
             isActivityVisible = true
         } else {
             activeLaunch = nil
@@ -232,17 +233,18 @@ struct MainTabView: View {
         }
     }
 
-    private var defaultTodayIntent: SessionIntent? {
+    private var defaultTodayIntent: SessionIntent {
         customizedTodayIntent
             ?? personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
             ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
+            ?? .todayComfortableRun
     }
 
     private func prepareTodayLaunchIfNeeded() {
         guard selectedAppTab == .today, activeLaunch == nil else { return }
         let intent = defaultTodayIntent
         activeLaunch = RecordLaunch(intent: intent)
-        preActivityRoute = intent?.preparedRoute
+        preActivityRoute = intent.preparedRoute
         isActivityVisible = true
     }
 
