@@ -12,6 +12,7 @@ struct PostRunSummaryView: View {
     let guidanceReport: LiveGuidanceSessionReport
     let workoutID: String
     let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
+    let onDiscardPrompted: () -> Void
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
@@ -20,6 +21,7 @@ struct PostRunSummaryView: View {
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
     @State private var isSubmitting = false
+    @State private var isDiscardConfirmationPresented = false
 
     init(
         summary: ActivitySummary,
@@ -29,6 +31,7 @@ struct PostRunSummaryView: View {
         guidanceReport: LiveGuidanceSessionReport = .empty,
         workoutID: String = "freestyle-run",
         onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
+        onDiscardPrompted: @escaping () -> Void = {},
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
@@ -39,6 +42,7 @@ struct PostRunSummaryView: View {
         self.guidanceReport = guidanceReport
         self.workoutID = workoutID
         self.onGuidanceFeedback = onGuidanceFeedback
+        self.onDiscardPrompted = onDiscardPrompted
         self.onSave = onSave
         self.onDiscard = onDiscard
         _draftPhotos = State(initialValue: photos.map(PostRunPhoto.init))
@@ -65,7 +69,12 @@ struct PostRunSummaryView: View {
             }
             .ignoresSafeArea(edges: .top)
             
-            actionButtons
+            saveButton
+        }
+        .overlay(alignment: .topLeading) {
+            closeButton
+                .padding(.leading, 16)
+                .padding(.top, 12)
         }
         .sheet(isPresented: $isPhotoManagerPresented) {
             PostRunPhotoManager(
@@ -73,6 +82,41 @@ struct PostRunSummaryView: View {
                 photoMetadata: finishPhotoMetadata
             )
         }
+        .alert(
+            String(localized: "summary.discard.confirmation.title", defaultValue: "Discard unsaved activity?"),
+            isPresented: $isDiscardConfirmationPresented
+        ) {
+            Button(String(localized: "summary.action.discard", defaultValue: "Discard activity"), role: .destructive) {
+                onDiscard()
+            }
+            Button(String(localized: "summary.discard.confirmation.keep_editing", defaultValue: "Keep editing"), role: .cancel) {}
+        } message: {
+            Text(String(
+                localized: "summary.discard.confirmation.message",
+                defaultValue: "This activity hasn’t been saved. If you close now, it will be permanently discarded."
+            ))
+        }
+    }
+
+    private var closeButton: some View {
+        Button {
+            guard !isSubmitting else { return }
+            onDiscardPrompted()
+            isDiscardConfirmationPresented = true
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 16, weight: .bold))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .disabled(isSubmitting)
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .background(.ultraThinMaterial, in: Circle())
+        .overlay(Circle().stroke(.white.opacity(0.22), lineWidth: 1))
+        .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
+        .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+        .accessibilityIdentifier("ClosePostRunSummaryButton")
     }
 
     private var mediaPager: some View {
@@ -371,62 +415,48 @@ struct PostRunSummaryView: View {
         .accessibilityIdentifier("PostRunPhotoReviewSection")
     }
 
-    private var actionButtons: some View {
-        HStack(spacing: 16) {
-            Button(role: .destructive, action: onDiscard) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 20, weight: .semibold))
-            }
-            .disabled(isSubmitting)
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
-            .frame(width: 56, height: 56)
-            .background(Color(.tertiarySystemBackground))
-            .clipShape(Circle())
-            .accessibilityLabel(String(localized: "summary.action.discard", defaultValue: "Discard activity"))
-
-            Button {
-                guard !isSubmitting else { return }
-                isSubmitting = true
-                if let selectedEffort {
-                    Task {
-                        await personalizationStore.submitFeedback(
-                            effort: selectedEffort,
-                            continuationCapacity: continuationCapacity,
-                            workoutID: workoutID,
-                            activityID: nil
-                        )
-                    }
-                }
-                if let selectedGuidanceFeedback {
-                    onGuidanceFeedback(selectedGuidanceFeedback)
-                }
+    private var saveButton: some View {
+        Button {
+            guard !isSubmitting else { return }
+            isSubmitting = true
+            if let selectedEffort {
                 Task {
-                    let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection)
-                    if !didSave {
-                        isSubmitting = false
-                    }
+                    await personalizationStore.submitFeedback(
+                        effort: selectedEffort,
+                        continuationCapacity: continuationCapacity,
+                        workoutID: workoutID,
+                        activityID: nil
+                    )
                 }
-            } label: {
-                Group {
-                    if isSubmitting {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "tray.and.arrow.down.fill")
-                            .font(.system(size: 21, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .frame(width: 56, height: 56)
             }
-            .disabled(isSubmitting)
-            .buttonStyle(.borderless)
+            if let selectedGuidanceFeedback {
+                onGuidanceFeedback(selectedGuidanceFeedback)
+            }
+            Task {
+                let didSave = await onSave(draftPhotos.map { ($0.image, $0.metadata) }, reflection)
+                if !didSave {
+                    isSubmitting = false
+                }
+            }
+        } label: {
+            Group {
+                if isSubmitting {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Image(systemName: "tray.and.arrow.down.fill")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+            }
             .frame(width: 56, height: 56)
-            .background(Color.orange)
-            .clipShape(Circle())
-            .accessibilityLabel(String(localized: "summary.action.save", defaultValue: "Save activity"))
         }
+        .disabled(isSubmitting)
+        .buttonStyle(.borderless)
+        .frame(width: 56, height: 56)
+        .background(Color.orange)
+        .clipShape(Circle())
+        .accessibilityLabel(String(localized: "summary.action.save", defaultValue: "Save activity"))
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

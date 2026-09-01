@@ -573,6 +573,11 @@ struct RecordView: View {
             guidanceReport: activity.guidanceReport,
             workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
             onGuidanceFeedback: handleGuidanceFeedback,
+            onDiscardPrompted: {
+                var properties = outcomeProperties(for: activity.summary)
+                properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(activity.photos.count))
+                track(.init(.activityDiscardPrompted, properties: properties))
+            },
             onSave: { selectedPhotos, reflection in
                 await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
             },

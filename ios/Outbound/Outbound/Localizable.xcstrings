@@ -15033,6 +15033,78 @@
         }
       }
     },
+    "summary.discard.confirmation.keep_editing" : {
+      "comment" : "A button that dismisses the unsaved-activity warning and returns to the post-run editor.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Keep editing"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir editando"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续编辑"
+          }
+        }
+      }
+    },
+    "summary.discard.confirmation.message" : {
+      "comment" : "Explains that closing the post-run summary before saving permanently discards the activity.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This activity hasn’t been saved. If you close now, it will be permanently discarded."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta actividad aún no se ha guardado. Si la cierras ahora, se descartará de forma permanente."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这项活动尚未保存。现在关闭将永久丢弃这项活动。"
+          }
+        }
+      }
+    },
+    "summary.discard.confirmation.title" : {
+      "comment" : "The title of a warning shown before permanently discarding an unsaved activity.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Discard unsaved activity?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Descartar la actividad sin guardar?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放弃未保存的活动？"
+          }
+        }
+      }
+    },
     "summary.action.save" : {
       "comment": "A label for the button that saves the user's workout.",
       "extractionState": "extracted_with_value",

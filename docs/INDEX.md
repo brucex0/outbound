@@ -15,7 +15,7 @@ Primary flow:
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; if `Share live run` was armed, a private live link is created for the default trusted contact, server SMS/push delivery is stubbed, the system Share Sheet opens with the link, and updates stream from live location snapshots.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
-8. Finish stops recording and presents a motivation reflection above the Save Activity / Discard flow, then returns to Me.
+8. Finish stops recording and presents a motivation reflection above Save Activity. Closing the review requires confirmation before the unsaved activity is discarded, then returns to Me.
 9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
 10. Social is always available through authenticated, share-safe connections, groups, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
 11. Me consolidates plan progress, weekly totals, learned runner insights, history, measurement settings, and optional cycle-aware guidance.
