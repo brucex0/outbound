@@ -68,6 +68,8 @@ Before goal intake, show a short identity step only when Apple did not provide a
 7. Optional private training details and Apple Health
    - After the goal, baseline, and realistic-week intake, offer one clearly skippable screen before the final review.
    - Let runners add any combination of birthday, height, weight, and sex assigned at birth manually; no field is required.
+   - Default birthday entry on, while keeping it optional through the toggle and one-tap skip action.
+   - Show height and weight in the runner's saved in-app measurement system when available; otherwise use the device measurement system.
    - Explain that birthday is stored instead of a static age so it remains accurate.
    - Offer Apple Health on the same screen as a faster alternative to manual entry, not as another onboarding page.
    - Request access only after the user taps Connect Apple Health.

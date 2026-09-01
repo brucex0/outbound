@@ -26,7 +26,7 @@ struct SimplifiedOnboardingFlow: View {
     @State private var displayName = ""
     @State private var username = ""
     @State private var email = ""
-    @State private var hasBirthDate = false
+    @State private var hasBirthDate = true
     @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     @State private var heightText = ""
     @State private var weightText = ""
@@ -242,7 +242,7 @@ struct SimplifiedOnboardingFlow: View {
             }
 
             Label(
-                String(localized: "onboarding.profile.private", defaultValue: "These details stay private and are never shared in Together."),
+                String(localized: "onboarding.profile.private", defaultValue: "These details stay private and are never shared."),
                 systemImage: "lock.shield"
             )
             .font(.subheadline)
