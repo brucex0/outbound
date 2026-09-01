@@ -677,7 +677,6 @@ private struct SimplifiedTodayView: View {
     @State private var showsThemeTip = false
     @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
-    @State private var showsUpcomingWorkout = false
     @State private var showsStandaloneWorkouts = false
     @State private var mapAttributionBottomInset: CGFloat = 0
 
@@ -817,10 +816,6 @@ private struct SimplifiedTodayView: View {
         .sheet(isPresented: $showsThemeChooser) {
             ThemeChooserView()
                 .environmentObject(guideCatalog)
-        }
-        .sheet(isPresented: $showsUpcomingWorkout) {
-            upcomingWorkoutSheet
-                .presentationDetents([.medium])
         }
         .sheet(isPresented: $showsStandaloneWorkouts) {
             StandaloneWorkoutPickerView { workout in
@@ -1018,7 +1013,7 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: OutboundSpacing.standard) {
             if let completedActivityToday {
                 completedTodayCard(completedActivityToday)
-                upcomingWorkoutButton
+                plannedWorkoutCard
             } else if let activityEventToday {
                 activityEventCard(activityEventToday)
             } else {
@@ -1152,87 +1147,6 @@ private struct SimplifiedTodayView: View {
             + "\(activityElapsedSeconds.formatted()) elapsed"
         )
         .accessibilityHint("Returns to the activity recording screen")
-    }
-
-    private var upcomingWorkoutButton: some View {
-        Button { showsUpcomingWorkout = true } label: {
-            HStack(spacing: OutboundSpacing.compact) {
-                Image(systemName: "calendar")
-                    .foregroundStyle(theme.accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(upcomingScheduleLabel)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                    Text("\(todayWorkoutName) · \(todayTotalDuration)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: OutboundRadius.control, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(upcomingScheduleLabel), \(todayWorkoutName), \(todayTotalDuration)")
-        .accessibilityHint("Shows the upcoming workout")
-    }
-
-    private var upcomingWorkoutSheet: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: OutboundSpacing.section) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(upcomingScheduleLabel)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(theme.accentColor)
-                        Text(todayWorkoutName)
-                            .font(.title2.weight(.bold))
-                        Text(todayTotalDuration)
-                            .font(.headline.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    CompactIntervalPreview(phases: todayPhases)
-                    Text(todayExplanation)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(OutboundSpacing.screen)
-            }
-            .background(OutboundPalette.background)
-            .navigationTitle("Up next")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showsUpcomingWorkout = false }
-                }
-            }
-        }
-    }
-
-    private var upcomingScheduleLabel: String {
-        guard let dayLabel = trainingPlanStore.todaySuggestion?.workout.dayLabel,
-              !dayLabel.isEmpty,
-              dayLabel.localizedCaseInsensitiveCompare("Today") != .orderedSame
-        else { return String(localized: "Up next") }
-
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
-        let tomorrowLabels = [
-            String(localized: "Tomorrow"),
-            tomorrow.formatted(.dateTime.weekday(.abbreviated)),
-            tomorrow.formatted(.dateTime.weekday(.wide))
-        ]
-        return tomorrowLabels.contains {
-            dayLabel.localizedCaseInsensitiveCompare($0) == .orderedSame
-        }
-            ? String(localized: "Tomorrow")
-            : dayLabel
     }
 
     private func completedTodayCard(_ activity: SavedActivity) -> some View {
