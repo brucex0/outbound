@@ -82,7 +82,7 @@ Primary flow:
 | First-party auth implementation steps | `docs/superpowers/plans/2026-08-20-first-party-auth-sessions.md` | Backend, iOS, tooling, documentation, and verification tasks |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
 | TestFlight, App Store archive, metadata, privacy, submission | `docs/app-store-release.md` | Release build checklist, App Store Connect inputs, privacy review, and owner decisions |
-| TestFlight 1.0 submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, test instructions, review notes, privacy draft, and upload checklist |
+| Current TestFlight and App Store submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, public-release notes, test instructions, review notes, privacy draft, and upload checklist |
 
 ## Documentation Rules
 

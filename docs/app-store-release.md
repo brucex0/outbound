@@ -5,6 +5,7 @@ Open this when preparing a TestFlight or App Store build.
 ## Repository Readiness
 
 - Customer-facing app name: **Plainstride**. The existing internal target, scheme, bundle IDs, backend identifiers, and migration-safe storage names remain `Outbound` where changing them would break integrations or continuity.
+- Public version `1.0 (23)` is released. The current release candidate is `1.1 (35)`.
 - App bundle ID: `plainstride.outbound`.
 - Live Activity extension bundle ID: `plainstride.outbound.liveactivity`.
 - Version 1 supports iPhone only. `TARGETED_DEVICE_FAMILY` is `1` for every target and the plist has no iPad orientation declaration.
@@ -113,7 +114,7 @@ archiving, or uploading it again:
 
 ## App Store Connect Checklist
 
-- Create the app record as **Plainstride** with bundle ID `plainstride.outbound`, version `1.0`, primary category **Health & Fitness**, and the final availability/price.
+- Create App Store version `1.1` on the existing **Plainstride** record with bundle ID `plainstride.outbound`, primary category **Health & Fitness**, and the existing availability/price.
 - Supply the name, subtitle, description, keywords, support URL, marketing URL if available, copyright, privacy policy URL, and any owner-approved custom EULA. Apple’s standard EULA remains in effect when no custom EULA is supplied; Plainstride’s service Terms remain separately available in the app and on the web.
 - Upload truthful iPhone screenshots captured from the release build.
 - Complete age rating, content-rights, advertising-identifier, accessibility, and export-compliance questions.
