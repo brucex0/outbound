@@ -43,7 +43,8 @@ final class ActivityStore: ObservableObject {
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
         activityEventID: String? = nil,
-        followedRoute: FollowedRouteMetadata? = nil
+        followedRoute: FollowedRouteMetadata? = nil,
+        recognitionBadgeIDs: [RecognitionBadgeID] = []
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         ActivityDiagnosticLog.notice(
@@ -67,7 +68,8 @@ final class ActivityStore: ObservableObject {
                 cadence: cadence,
                 heartRateZones: heartRateZones,
                 activityEventID: activityEventID,
-                followedRoute: followedRoute
+                followedRoute: followedRoute,
+                recognitionBadgeIDs: recognitionBadgeIDs
             )
         } catch {
             ActivityDiagnosticLog.error(
@@ -226,6 +228,7 @@ final class ActivityStore: ObservableObject {
             heartRateZones: activity.heartRateZones,
             activityEventID: activity.activityEventID,
             followedRoute: activity.followedRoute,
+            recognitionBadgeIDs: activity.recognitionBadgeIDs,
             route: activity.route,
             photos: activity.photos,
             sync: SavedActivitySyncState(
@@ -368,7 +371,11 @@ final class ActivityStore: ObservableObject {
                     route: uploadableRoute(for: activity),
                     reflection: activity.reflection,
                     clientData: syncSnapshot(for: activity),
-                    clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt
+                    clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt,
+                    recognitionContext: RecognitionContextDTO(
+                        timeZoneIdentifier: TimeZone.current.identifier,
+                        firstWeekday: Calendar.current.firstWeekday
+                    )
                 )
             )
 
@@ -458,6 +465,7 @@ final class ActivityStore: ObservableObject {
             heartRateZones: current.heartRateZones,
             activityEventID: current.activityEventID,
             followedRoute: current.followedRoute,
+            recognitionBadgeIDs: current.recognitionBadgeIDs,
             route: current.route,
             photos: current.photos,
             sync: syncState
@@ -707,6 +715,7 @@ final class ActivityStore: ObservableObject {
             followedRoute: stripImportedFollowedRoute && followedRoute?.source == .imported
                 ? nil
                 : followedRoute,
+            recognitionBadgeIDs: activity.recognitionBadgeIDs,
             route: activity.route,
             photos: photos,
             sync: sync

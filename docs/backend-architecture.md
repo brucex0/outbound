@@ -7,7 +7,7 @@ Open this when planning backend implementation, changing server boundaries, or d
 Today the backend already has the right high-level container shape:
 
 - one Hono service in `backend/src/index.ts`
-- route modules for `auth`, `activities`, `assistant`, `guide`, `social`, and `media`
+- route modules for `auth`, `activities`, `assistant`, `guide`, `recognition`, `social`, and `media`
 - Prisma + Postgres schema in `backend/prisma/schema.prisma`
 - Cloud Run deployment path documented in `docs/backend-deploy.md`
 
@@ -66,6 +66,7 @@ This is still one product backend, but with explicit module boundaries:
 - `guide`
 - `assistant`
 - `plans`
+- `recognition`
 - `social`
 - `safety`
 - `gear`
@@ -88,6 +89,7 @@ Backend should own:
 - synced activities and media metadata
 - guide profile artifacts and weekly review generation
 - active plan state, readiness history, and adaptation logic
+- account-owned recognition awards and share eligibility
 - social graph, posts, reactions, comments, clubs, and rival state
 - server-side AI orchestration and provider keys
 
@@ -143,6 +145,28 @@ Recommended first response model:
 - timestamps
 - media upload state
 - optional lightweight derived summary for the UI
+
+### Recognition
+
+Responsibilities:
+
+- persist one durable award per account and badge;
+- backfill deterministic awards from synchronized activity and Social history;
+- accept exact-context client claims that cannot be reconstructed from server facts;
+- expose only the explicitly shareable subset to accepted connections.
+
+Current API shape:
+
+- `GET /v1/recognition`
+- `POST /v1/recognition/claims`
+- `GET /v1/social/users/:id/profile`
+
+Rules:
+
+- the backend collection is canonical while iOS keeps an account-scoped offline cache;
+- award writes are idempotent through `(userId, badgeId)` uniqueness;
+- activity deletion does not revoke an already earned award;
+- friend-facing profile responses must enforce accepted-connection visibility and the badge share-eligibility flag.
 
 ### Guide
 

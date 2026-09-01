@@ -18,7 +18,7 @@ struct OutboundApp: App {
     @StateObject private var healthImportStore = HealthImportStore()
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
     @StateObject private var musicStore = MusicStore()
-    @StateObject private var recognitionStore = RecognitionStore()
+    @StateObject private var recognitionStore: RecognitionStore
     @StateObject private var socialRecognitionStore = SocialRecognitionStore()
 #if OUTBOUND_ENABLE_SOCIAL
     @StateObject private var socialStore = SocialStore()
@@ -50,6 +50,7 @@ struct OutboundApp: App {
         analyticsManager = manager
         _authStore = StateObject(wrappedValue: AuthStore(analyticsManager: manager))
         _activityStore = StateObject(wrappedValue: ActivityStore(analyticsManager: manager))
+        _recognitionStore = StateObject(wrappedValue: RecognitionStore(analyticsManager: manager))
         Task { await manager.initialize() }
     }
 
@@ -153,6 +154,8 @@ struct OutboundApp: App {
             .environmentObject(communityRouteStore)
             .task {
                 if let userID = authStore.user?.id {
+                    recognitionStore.activate(userID: userID)
+                    socialRecognitionStore.activate(userID: userID)
                     await userPreferencesSyncStore.start(
                         userID: userID,
                         measurementPreferences: measurementPreferences,
@@ -164,6 +167,10 @@ struct OutboundApp: App {
                 }
                 await guideStore.syncIfNeeded()
                 await activityStore.syncPendingActivitiesIfNeeded()
+                if authStore.user != nil {
+                    await recognitionStore.refresh()
+                    await socialRecognitionStore.refresh()
+                }
                 await healthAuthorizationStore.refresh()
                 await healthImportStore.refreshRecentWorkouts()
                 await musicStore.refresh()
@@ -176,6 +183,8 @@ struct OutboundApp: App {
                 Task {
                     await userPreferencesSyncStore.refresh()
                     await activityStore.syncPendingActivitiesIfNeeded()
+                    await recognitionStore.refresh()
+                    await socialRecognitionStore.refresh()
                     await pushNotifications.activate()
                 }
             }

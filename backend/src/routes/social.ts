@@ -9,6 +9,11 @@ import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
 import { signedActivityPhotoURL } from "../services/activityPhotoStorage.js";
+import {
+  awardRecognition,
+  evaluateGoodTeammate,
+  recognitionAwards,
+} from "../services/recognition.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -426,6 +431,24 @@ router.post("/users/:id/block", async (c) => {
   return c.json({ ok: true });
 });
 
+router.get("/users/:id/profile", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const personId = c.req.param("id");
+  if (personId !== user.id && !(await acceptedConnectionIDs(user.id)).includes(personId)) {
+    return c.json({ error: "Profile not found." }, 404);
+  }
+  const person = await getPrismaClient().user.findUnique({
+    where: { id: personId },
+    select: socialPersonSelect,
+  });
+  if (!person) return c.json({ error: "Profile not found." }, 404);
+  return c.json({
+    person,
+    recognitions: await recognitionAwards(personId, true),
+  });
+});
+
 router.delete("/users/:id/block", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -531,6 +554,10 @@ router.post("/groups/:id/membership", async (c) => {
     create: { clubId: c.req.param("id"), userId: user.id },
     update: {},
   });
+  await awardRecognition(user.id, "relayPlayer", {
+    sourceType: "social",
+    sourceReferenceId: `group:${membership.clubId}`,
+  });
   return c.json(membership, 201);
 });
 
@@ -545,6 +572,10 @@ router.post("/clubs/:id/join", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const membership = await getPrismaClient().clubMembership.upsert({ where: { clubId_userId: { clubId: c.req.param("id"), userId: user.id } }, create: { clubId: c.req.param("id"), userId: user.id }, update: {} });
+  await awardRecognition(user.id, "relayPlayer", {
+    sourceType: "social",
+    sourceReferenceId: `group:${membership.clubId}`,
+  });
   return c.json(membership, 201);
 });
 
@@ -611,6 +642,10 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
   if (activity.creatorId !== user.id) {
     await createSocialNotification(activity.creatorId, user.id, "activityEventJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
   }
+  await awardRecognition(user.id, "relayPlayer", {
+    sourceType: "social",
+    sourceReferenceId: `activityEvent:${activity.id}`,
+  });
   return c.json(participant);
 });
 
@@ -696,6 +731,10 @@ router.post("/invitations/:id/accept", zValidator("json", attendanceModeSchema),
   ]);
   await dismissSocialNotification(user.id, "runInvitation", invitation.id);
   await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.activityEventId, `${user.displayName} accepted your activity invitation.`);
+  await awardRecognition(user.id, "relayPlayer", {
+    sourceType: "social",
+    sourceReferenceId: `activityEvent:${invitation.activityEventId}`,
+  });
   return c.json({ ok: true });
 });
 
@@ -721,6 +760,10 @@ router.post("/invitations/token/:token/accept", async (c) => {
   if (invitation.senderId !== user.id) {
     await createSocialNotification(invitation.senderId, user.id, "activityEventJoined", invitation.activityEvent.id, `${user.displayName} joined ${invitation.activityEvent.title}.`);
   }
+  await awardRecognition(user.id, "relayPlayer", {
+    sourceType: "social",
+    sourceReferenceId: `activityEvent:${invitation.activityEvent.id}`,
+  });
   return c.json({ ok: true, activityEventId: invitation.activityEvent.id });
 });
 
@@ -793,7 +836,10 @@ router.post("/activity-shares", zValidator("json", z.object({ activityId: z.stri
   if (user instanceof Response) return user;
   const input = c.req.valid("json");
   if (input.caption && !isAcceptableText(input.caption)) return c.json({ error: "Please revise the caption before sharing." }, 422);
-  const activity = await getPrismaClient().activity.findFirst({ where: { id: input.activityId, userId: user.id, deletedAt: null } });
+  const activity = await getPrismaClient().activity.findFirst({
+    where: { id: input.activityId, userId: user.id, deletedAt: null },
+    include: { _count: { select: { photos: true } } },
+  });
   if (!activity) return c.json({ error: "Activity not found." }, 404);
   const existingPost = await getPrismaClient().post.findFirst({ where: { userId: user.id, activityId: activity.id } });
   const post = existingPost
@@ -806,6 +852,13 @@ router.post("/activity-shares", zValidator("json", z.object({ activityId: z.stri
         data: { userId: user.id, activityId: activity.id, caption: input.caption ?? null, visibility: input.visibility },
         include: socialPostInclude,
       });
+  if (activity._count.photos > 0) {
+    await awardRecognition(user.id, "photoFinish", {
+      sourceType: "social",
+      sourceActivityClientId: activity.clientActivityId,
+      sourceReferenceId: post.id,
+    });
+  }
   return c.json(await postPayload(post, user.id), existingPost ? 200 : 201);
 });
 
@@ -816,6 +869,8 @@ router.put("/posts/:id/cheer", async (c) => {
   if (!post) return c.json({ error: "Post not found." }, 404);
   const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: post.id } }, create: { userId: user.id, postId: post.id, type: "heart" }, update: { type: "heart" } });
   if (post.userId !== user.id) await createSocialNotification(post.userId, user.id, "cheer", post.id, `${user.displayName} cheered your activity.`);
+  const calendar = recognitionCalendarContext(c);
+  await evaluateGoodTeammate(user.id, new Date(), calendar.timeZoneIdentifier, calendar.firstWeekday);
   return c.json(reaction);
 });
 
@@ -834,6 +889,8 @@ router.post("/posts/:id/reactions", zValidator("json", reactionSchema), async (c
   const post = await visiblePost(c.req.param("id"), user.id);
   if (!post) return c.json({ error: "Post not found." }, 404);
   const reaction = await getPrismaClient().reaction.upsert({ where: { userId_postId: { userId: user.id, postId: post.id } }, create: { userId: user.id, postId: post.id, type: c.req.valid("json").type }, update: { type: c.req.valid("json").type } });
+  const calendar = recognitionCalendarContext(c);
+  await evaluateGoodTeammate(user.id, new Date(), calendar.timeZoneIdentifier, calendar.firstWeekday);
   return c.json(reaction);
 });
 
@@ -862,6 +919,8 @@ router.post("/posts/:id/comments", zValidator("json", commentSchema), async (c) 
     include: { author: { select: socialPersonSelect } },
   });
   if (post.userId !== user.id) await createSocialNotification(post.userId, user.id, "comment", post.id, `${user.displayName} commented on your activity.`);
+  const calendar = recognitionCalendarContext(c);
+  await evaluateGoodTeammate(user.id, new Date(), calendar.timeZoneIdentifier, calendar.firstWeekday);
   return c.json(commentPayload(comment, user.id, post.userId), 201);
 });
 
@@ -896,6 +955,13 @@ async function requireSocialUser(c: Context<AppEnv>) {
   const user = await getAuthenticatedAppUser(c);
   if (!user) return c.json({ error: "Authentication required." }, 401);
   return user;
+}
+
+function recognitionCalendarContext(c: Context<AppEnv>) {
+  return {
+    timeZoneIdentifier: c.req.header("X-Plainstride-Time-Zone"),
+    firstWeekday: Number(c.req.header("X-Plainstride-First-Weekday") ?? 2),
+  };
 }
 
 async function acceptedConnectionIDs(userId: string) {

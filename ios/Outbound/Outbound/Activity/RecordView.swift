@@ -1208,7 +1208,8 @@ struct RecordView: View {
                 activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
                     ? socialStore.recordingActivityEventID
                     : nil,
-                followedRoute: followedRoute
+                followedRoute: followedRoute,
+                recognitionBadgeIDs: activity.recognitionPreviews.map(\.badgeID)
             )
         } catch {
             ActivityDiagnosticLog.error(

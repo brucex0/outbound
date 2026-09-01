@@ -24,7 +24,8 @@ actor ActivityPersistence {
         cadence: ActivityCadenceSummary?,
         heartRateZones: ActivityHeartRateZoneSummary?,
         activityEventID: String?,
-        followedRoute: FollowedRouteMetadata?
+        followedRoute: FollowedRouteMetadata?,
+        recognitionBadgeIDs: [RecognitionBadgeID]
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
@@ -41,7 +42,8 @@ actor ActivityPersistence {
             cadence: cadence,
             heartRateZones: heartRateZones,
             activityEventID: activityEventID,
-            followedRoute: followedRoute
+            followedRoute: followedRoute,
+            recognitionBadgeIDs: recognitionBadgeIDs
         )
     }
 
@@ -105,7 +107,8 @@ private nonisolated enum LocalActivityStore {
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
         activityEventID: String? = nil,
-        followedRoute: FollowedRouteMetadata? = nil
+        followedRoute: FollowedRouteMetadata? = nil,
+        recognitionBadgeIDs: [RecognitionBadgeID] = []
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -143,6 +146,7 @@ private nonisolated enum LocalActivityStore {
             heartRateZones: heartRateZones,
             activityEventID: activityEventID,
             followedRoute: followedRoute,
+            recognitionBadgeIDs: recognitionBadgeIDs,
             route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackSegments)),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
@@ -239,6 +243,7 @@ private nonisolated enum LocalActivityStore {
             heartRateZones: activity.heartRateZones,
             activityEventID: activity.activityEventID,
             followedRoute: activity.followedRoute,
+            recognitionBadgeIDs: activity.recognitionBadgeIDs,
             route: activity.route,
             photos: photos + addedPhotos,
             sync: SavedActivitySyncState(
@@ -395,6 +400,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let heartRateZones: ActivityHeartRateZoneSummary?
     let activityEventID: String?
     let followedRoute: FollowedRouteMetadata?
+    let recognitionBadgeIDs: [RecognitionBadgeID]
     let route: SavedRoute?
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
@@ -450,6 +456,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
         activityEventID = try c.decodeIfPresent(String.self, forKey: .activityEventID)
         followedRoute = try c.decodeIfPresent(FollowedRouteMetadata.self, forKey: .followedRoute)
+        recognitionBadgeIDs = (try? c.decode([RecognitionBadgeID].self, forKey: .recognitionBadgeIDs)) ?? []
         if let savedRoute = try c.decodeIfPresent(SavedRoute.self, forKey: .route) {
             route = savedRoute
         } else {
@@ -476,6 +483,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          heartRateZones: ActivityHeartRateZoneSummary? = nil,
          activityEventID: String? = nil,
          followedRoute: FollowedRouteMetadata? = nil,
+         recognitionBadgeIDs: [RecognitionBadgeID] = [],
          route: SavedRoute?,
          photos: [SavedPhoto], sync: SavedActivitySyncState?) {
         self.id = id; self.activityType = activityType; self.title = title; self.guideNudge = guideNudge
@@ -492,6 +500,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.heartRateZones = heartRateZones
         self.activityEventID = activityEventID
         self.followedRoute = followedRoute
+        self.recognitionBadgeIDs = recognitionBadgeIDs
         self.route = route; self.photos = photos; self.sync = sync
     }
 
@@ -520,6 +529,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case heartRateZones
         case activityEventID
         case followedRoute
+        case recognitionBadgeIDs
         case route
         case trackPoints
         case photos

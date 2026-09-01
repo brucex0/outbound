@@ -1776,8 +1776,10 @@ struct SocialConnectionsView: View {
 
 struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let person: TogetherPersonDTO
     var username: String? = nil
+    @State private var sharedRecognitions: [RecognitionAwardDTO] = []
 
     private var posts: [TogetherPostDTO] {
         socialStore.state.posts.filter { $0.user.id == person.id }
@@ -1795,6 +1797,32 @@ struct SocialPersonProfileView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, OutboundSpacing.standard)
+
+                if !sharedRecognitions.isEmpty {
+                    Text(String(localized: "social.profile.milestones", defaultValue: "MILESTONES"))
+                        .socialSectionLabel()
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: OutboundSpacing.compact) {
+                            ForEach(sharedRecognitions, id: \.id) { award in
+                                let display = recognitionDisplay(for: award.badgeId)
+                                VStack(spacing: 6) {
+                                    Image(systemName: display.symbolName)
+                                        .font(.headline)
+                                        .foregroundStyle(OutboundPalette.companion)
+                                        .frame(width: 42, height: 42)
+                                        .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                                    Text(display.title)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2)
+                                }
+                                .frame(width: 86)
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                }
 
                 Text("RECENT ACTIVITIES").socialSectionLabel()
                 if posts.isEmpty {
@@ -1827,6 +1855,23 @@ struct SocialPersonProfileView: View {
         .background(OutboundPalette.background)
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: person.id) {
+            if let response = try? await APIClient.shared.fetchSocialProfile(userID: person.id) {
+                sharedRecognitions = response.recognitions
+            }
+        }
+    }
+
+    private func recognitionDisplay(for badgeID: String) -> (title: String, symbolName: String) {
+        if let primaryID = RecognitionBadgeID(rawValue: badgeID) {
+            let definition = RecognitionStore.definition(for: primaryID)
+            return (definition.title, definition.symbolName)
+        }
+        if let socialID = SocialRecognitionBadgeID(rawValue: badgeID) {
+            let preview = socialRecognitionStore.preview(for: socialID)
+            return (preview.title, preview.symbolName)
+        }
+        return (String(localized: "recognition.title", defaultValue: "Recognition"), "sparkles")
     }
 }
 

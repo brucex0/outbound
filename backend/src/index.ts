@@ -19,6 +19,7 @@ import marketing from "./routes/marketing.js";
 import feedback from "./routes/feedback.js";
 import routes from "./routes/routes.js";
 import liveCoach from "./routes/liveCoach.js";
+import recognition from "./routes/recognition.js";
 import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -67,6 +68,7 @@ app.route("/v1/transcribe", transcribeRoutes);
 app.route("/v1/feedback", feedback);
 app.route("/v1/routes", routes);
 app.route("/v1/live-coach", liveCoach);
+app.route("/v1/recognition", recognition);
 
 const port = Number(process.env.PORT ?? 3000);
 console.log(`Plainstride API running on port ${port}`);

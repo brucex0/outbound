@@ -83,6 +83,7 @@ model User {
   liveCoachSessions           LiveCoachSession[]
   featureEntitlements         FeatureEntitlement[]
   featureUsagePeriods         FeatureUsagePeriod[]
+  recognitionAwards           RecognitionAward[]
 
   @@index([normalizedEmail])
   @@index([normalizedPhone])
@@ -323,6 +324,26 @@ model Activity {
 
   @@unique([userId, clientActivityId])
   @@index([followedRouteId])
+}
+
+model RecognitionAward {
+  id                     String   @id @default(uuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId                String
+  family                 String
+  earnedAt               DateTime
+  sourceType             String
+  sourceActivityClientId String?
+  sourceReferenceId      String?
+  ruleVersion            Int      @default(1)
+  shareEligible          Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([userId, badgeId])
+  @@index([userId, earnedAt])
+  @@index([sourceActivityClientId])
 }
 
 model Route {

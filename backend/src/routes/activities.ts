@@ -10,6 +10,7 @@ import { enqueueActivityCompletedEvent } from "../services/planning/planningServ
 import type { AppEnv } from "../types/hono.js";
 import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
+import { backfillActivityRecognitions } from "../services/recognition.js";
 
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming"] as const;
@@ -177,6 +178,10 @@ const createSchema = z.object({
     .nullable(),
   clientData: z.record(z.unknown()).optional(),
   clientUpdatedAt: z.string().datetime().optional(),
+  recognitionContext: z.object({
+    timeZoneIdentifier: z.string().trim().max(100),
+    firstWeekday: z.number().int().min(1).max(7),
+  }).optional(),
 }).superRefine((body, context) => {
   if (body.followedRouteCompleted && !body.followedRouteId) {
     context.addIssue({
@@ -438,6 +443,12 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       }
     });
   }
+
+  await backfillActivityRecognitions(
+    resolvedUserId,
+    body.recognitionContext?.timeZoneIdentifier,
+    body.recognitionContext?.firstWeekday,
+  );
 
   return c.json(
     {

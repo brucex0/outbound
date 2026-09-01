@@ -64,6 +64,22 @@ final class APIClient {
         try await delete("/activities/\(id)")
     }
 
+    func fetchRecognitionAwards(
+        timeZoneIdentifier: String,
+        firstWeekday: Int
+    ) async throws -> RecognitionAwardsResponseDTO {
+        try await get("/recognition", queryItems: [
+            URLQueryItem(name: "timeZoneIdentifier", value: timeZoneIdentifier),
+            URLQueryItem(name: "firstWeekday", value: String(firstWeekday))
+        ])
+    }
+
+    func claimRecognitionAwards(
+        _ claims: [RecognitionClaimDTO]
+    ) async throws -> RecognitionAwardsResponseDTO {
+        try await post("/recognition/claims", body: RecognitionClaimsRequestDTO(claims: claims))
+    }
+
     func fetchCommunityRoutes(query: String = "") async throws -> CommunityRouteListResponse {
         try await get("/routes/search", queryItems: query.isEmpty ? [] : [URLQueryItem(name: "q", value: query)])
     }
@@ -382,6 +398,10 @@ final class APIClient {
         try await get("/social/people/search", queryItems: [
             URLQueryItem(name: "q", value: query)
         ])
+    }
+
+    func fetchSocialProfile(userID: String) async throws -> SocialProfileResponseDTO {
+        try await get("/social/users/\(userID)/profile")
     }
 
     func requestSocialConnection(userID: String) async throws -> SocialConnectionMutationDTO {
@@ -783,6 +803,8 @@ final class APIClient {
     private func configureLocale(on request: inout URLRequest) {
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "Accept-Language")
         request.setValue(AppLanguage.currentIdentifier, forHTTPHeaderField: "X-Plainstride-Locale")
+        request.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Plainstride-Time-Zone")
+        request.setValue(String(Calendar.current.firstWeekday), forHTTPHeaderField: "X-Plainstride-First-Weekday")
     }
 
     private func validate(response: URLResponse, data: Data) throws {
@@ -1714,6 +1736,12 @@ struct ActivityUploadRequest: Encodable {
     let reflection: FinishReflection?
     let clientData: SavedActivity
     let clientUpdatedAt: Date
+    let recognitionContext: RecognitionContextDTO
+}
+
+struct RecognitionContextDTO: Encodable {
+    let timeZoneIdentifier: String
+    let firstWeekday: Int
 }
 
 struct ActivityUploadResponse: Decodable {

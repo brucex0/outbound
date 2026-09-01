@@ -40,27 +40,78 @@ final class SocialRecognitionStore: ObservableObject {
     @Published private(set) var joinedClubIDs: Set<String>
     @Published private(set) var claimedRivalEdge = false
 
+    private let api: APIClient
     private let defaults: UserDefaults
     private let calendar: Calendar
-    private let awardsKey = "social_recognition_store_awards_v1"
-    private let supportEventsKey = "social_recognition_store_support_events_v1"
-    private let sharedActivitiesKey = "social_recognition_store_shared_activities_v1"
-    private let joinedClubsKey = "social_recognition_store_joined_clubs_v1"
-    private let rivalEdgeKey = "social_recognition_store_claimed_rival_edge_v1"
+    private static let legacyAwardsKey = "social_recognition_store_awards_v1"
+    private static let legacySupportEventsKey = "social_recognition_store_support_events_v1"
+    private static let legacySharedActivitiesKey = "social_recognition_store_shared_activities_v1"
+    private static let legacyJoinedClubsKey = "social_recognition_store_joined_clubs_v1"
+    private static let legacyRivalEdgeKey = "social_recognition_store_claimed_rival_edge_v1"
+    private static let legacyMigrationKey = "social_recognition_store_account_migration_v2"
+    private var currentUserID: String?
+    private var syncTask: Task<Void, Never>?
 
     init(
+        api: APIClient? = nil,
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current
     ) {
+        self.api = api ?? .shared
         self.defaults = defaults
         self.calendar = calendar
-        self.awards = Self.decode([SocialRecognitionAward].self, from: defaults.data(forKey: awardsKey)) ?? []
-        self.supportEvents = Self.decode([SocialSupportEvent].self, from: defaults.data(forKey: supportEventsKey)) ?? []
-        self.sharedActivityIDs = Set(Self.decode([UUID].self, from: defaults.data(forKey: sharedActivitiesKey)) ?? [])
-        self.joinedClubIDs = Set(Self.decode([String].self, from: defaults.data(forKey: joinedClubsKey)) ?? ["sf-dawn"])
-        self.claimedRivalEdge = defaults.bool(forKey: rivalEdgeKey)
-        trimStaleSupportEvents()
-        awards.sort { $0.earnedAt > $1.earnedAt }
+        self.awards = []
+        self.supportEvents = []
+        self.sharedActivityIDs = []
+        self.joinedClubIDs = []
+        self.claimedRivalEdge = false
+    }
+
+    func activate(userID: String) {
+        if currentUserID != userID {
+            syncTask?.cancel()
+            currentUserID = userID
+            migrateLegacyStateIfNeeded()
+            loadCachedState()
+        }
+    }
+
+    func start(userID: String) async {
+        activate(userID: userID)
+        await refresh()
+    }
+
+    func refresh() async {
+        guard currentUserID != nil else { return }
+        do {
+            if !awards.isEmpty {
+                _ = try await api.claimRecognitionAwards(awards.map { award in
+                    RecognitionClaimDTO(
+                        badgeId: award.badgeID.rawValue,
+                        earnedAt: award.earnedAt,
+                        sourceActivityId: award.sourceActivityID,
+                        sourceReferenceId: nil
+                    )
+                })
+            }
+            let response = try await api.fetchRecognitionAwards(
+                timeZoneIdentifier: TimeZone.current.identifier,
+                firstWeekday: calendar.firstWeekday
+            )
+            awards = response.awards.compactMap { award in
+                guard let badgeID = SocialRecognitionBadgeID(rawValue: award.badgeId) else { return nil }
+                return SocialRecognitionAward(
+                    id: award.id,
+                    badgeID: badgeID,
+                    earnedAt: award.earnedAt,
+                    sourceActivityID: award.sourceActivityId.flatMap(UUID.init(uuidString:))
+                )
+            }
+            .sorted { $0.earnedAt > $1.earnedAt }
+            persistAwards()
+        } catch {
+            // The account-scoped cache remains the offline source of truth until the next refresh.
+        }
     }
 
     var highlight: SocialRecognitionPreview? {
@@ -172,6 +223,7 @@ final class SocialRecognitionStore: ObservableObject {
             sourceActivityID: sourceActivityID
         )
         awards.insert(award, at: 0)
+        scheduleSync()
         return award
     }
 
@@ -209,6 +261,52 @@ final class SocialRecognitionStore: ObservableObject {
         defaults.set(data, forKey: joinedClubsKey)
     }
 
+    private var awardsKey: String { scopedKey(Self.legacyAwardsKey) }
+    private var supportEventsKey: String { scopedKey(Self.legacySupportEventsKey) }
+    private var sharedActivitiesKey: String { scopedKey(Self.legacySharedActivitiesKey) }
+    private var joinedClubsKey: String { scopedKey(Self.legacyJoinedClubsKey) }
+    private var rivalEdgeKey: String { scopedKey(Self.legacyRivalEdgeKey) }
+
+    private func scopedKey(_ base: String) -> String {
+        currentUserID.map { "\(base)_account_\($0)" } ?? base
+    }
+
+    private func migrateLegacyStateIfNeeded() {
+        guard currentUserID != nil, !defaults.bool(forKey: Self.legacyMigrationKey) else { return }
+        for base in [
+            Self.legacyAwardsKey,
+            Self.legacySupportEventsKey,
+            Self.legacySharedActivitiesKey,
+            Self.legacyJoinedClubsKey,
+        ] where defaults.object(forKey: scopedKey(base)) == nil {
+            defaults.set(defaults.object(forKey: base), forKey: scopedKey(base))
+        }
+        if defaults.object(forKey: rivalEdgeKey) == nil {
+            defaults.set(defaults.bool(forKey: Self.legacyRivalEdgeKey), forKey: rivalEdgeKey)
+        }
+        defaults.set(true, forKey: Self.legacyMigrationKey)
+    }
+
+    private func loadCachedState() {
+        awards = Self.decode([SocialRecognitionAward].self, from: defaults.data(forKey: awardsKey)) ?? []
+        supportEvents = Self.decode([SocialSupportEvent].self, from: defaults.data(forKey: supportEventsKey)) ?? []
+        sharedActivityIDs = Set(Self.decode([UUID].self, from: defaults.data(forKey: sharedActivitiesKey)) ?? [])
+        joinedClubIDs = Set(Self.decode([String].self, from: defaults.data(forKey: joinedClubsKey)) ?? [])
+        claimedRivalEdge = defaults.bool(forKey: rivalEdgeKey)
+        trimStaleSupportEvents()
+        awards.sort { $0.earnedAt > $1.earnedAt }
+    }
+
+    private func scheduleSync() {
+        guard currentUserID != nil else { return }
+        syncTask?.cancel()
+        syncTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            await self?.refresh()
+        }
+    }
+
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
         return try? JSONDecoder().decode(type, from: data)
@@ -217,13 +315,13 @@ final class SocialRecognitionStore: ObservableObject {
     private static func title(for badgeID: SocialRecognitionBadgeID) -> String {
         switch badgeID {
         case .goodTeammate:
-            return "Good Teammate"
+            return String(localized: "recognition.badge.good_teammate.title", defaultValue: "Good Teammate")
         case .relayPlayer:
-            return "Relay Player"
+            return String(localized: "recognition.badge.relay_player.title", defaultValue: "Relay Player")
         case .rivalEdge:
-            return "Rival Edge"
+            return String(localized: "recognition.badge.rival_edge.title", defaultValue: "Rival Edge")
         case .photoFinish:
-            return "Photo Finish"
+            return String(localized: "recognition.badge.photo_finish.title", defaultValue: "Photo Finish")
         }
     }
 
@@ -243,13 +341,25 @@ final class SocialRecognitionStore: ObservableObject {
     private static func guideLine(for badgeID: SocialRecognitionBadgeID) -> String {
         switch badgeID {
         case .goodTeammate:
-            return "You helped the week feel shared, not solo."
+            return String(
+                localized: "recognition.badge.good_teammate.detail",
+                defaultValue: "You helped the week feel shared, not solo."
+            )
         case .relayPlayer:
-            return "You stepped into the group instead of staying on the sideline."
+            return String(
+                localized: "recognition.badge.relay_player.detail",
+                defaultValue: "You stepped into the group instead of staying on the sideline."
+            )
         case .rivalEdge:
-            return "You turned the week into something competitive and playful."
+            return String(
+                localized: "recognition.badge.rival_edge.detail",
+                defaultValue: "You turned the week into something competitive and playful."
+            )
         case .photoFinish:
-            return "You saved more than the stats. You kept the moment too."
+            return String(
+                localized: "recognition.badge.photo_finish.detail",
+                defaultValue: "You saved more than the stats. You kept the moment too."
+            )
         }
     }
 }

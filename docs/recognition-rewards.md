@@ -66,7 +66,8 @@ This lets rewards influence behavior immediately instead of becoming a dead arch
 
 Ship:
 - a curated set of 8-12 badges
-- local-first unlock evaluation from saved activities and social interactions
+- immediate on-device unlock evaluation for the save experience
+- account-backed awards that restore after reinstall or sign-in on another device
 - guide-framed unlock messaging
 - post-run unlock moments
 - next-day Today reinforcement
@@ -78,7 +79,6 @@ Defer:
 - streak freeze or streak repair systems
 - large badge catalogs
 - seasonal challenge engine
-- backend-only requirements
 - badge rarity economy
 
 ## V1 Badge Families
@@ -269,28 +269,39 @@ Avoid:
 - visible missed-target badges
 - reward mechanics that push spam comments or low-value sharing
 
-## Data Model Sketch
+## Persistence And Sync
 
-Recommended core models:
-- `BadgeDefinition`: id, family, title, unlock rule, share eligibility
-- `BadgeAward`: badge id, earned date, source activity ids, optional metadata
-- `RecognitionFeedItem`: lightweight UI model for Today, post-run, and Social surfaces
+`RecognitionAward` is the account-owned source of truth. The backend stores one row per user and badge, including the earn date, family, optional source activity/reference, rule version, and whether the award can be shared. The unique `(userId, badgeId)` constraint makes evaluation and retries idempotent.
 
-Recommended supporting engine:
-- `RecognitionEngine`
+The iOS stores keep an account-scoped `UserDefaults` cache so earned moments render immediately and remain useful offline. On sign-in and foreground refresh they:
 
-Responsibilities:
-- evaluate unlocks from local activities, goal progress, check-ins, and social actions
-- prevent duplicate awards
-- emit guide-facing copy inputs for UI surfaces
+1. claim any legacy or newly earned cached awards so existing users keep valid local progress;
+2. fetch the canonical server collection; and
+3. replace the account cache with that response.
 
-## Implementation Order
+The activity save request includes the badge IDs earned from exact client context plus the user's time-zone and calendar-week convention. Authenticated API requests also carry that calendar context so weekly Social rules use the same local-week boundary. The backend backfills rules derivable from synchronized activity history, which restores awards such as `First Step`, `Short Counts`, `Back In Motion`, `Week Closed Well`, `Finished What You Started`, and `Steady Return` even after reinstall. Context-dependent awards such as `Three This Week` and `Kept It Easy` require the saved client claim because historical activities alone do not contain the goal/check-in intent needed to reproduce them accurately.
 
-1. Define `BadgeDefinition` and `BadgeAward` models.
-2. Add a local-first unlock evaluator for saved activities and weekly focus state.
-3. Surface one badge card in post-run reflection.
-4. Thread recent recognition into Today spark or momentum copy.
-5. Add Social share formatting for the small shareable subset.
+Social mutations evaluate server-owned rules for `Good Teammate`, `Relay Player`, and `Photo Finish`, while recognition refresh also derives those awards from historical server interactions, memberships, event participation, and photo shares. `Rival Edge` stays dormant until a backend-owned rivalry result exists. Another runner's profile exposes only awards marked shareable, and only to that runner or an accepted connection; the full award collection remains private.
+
+Award deletion does not follow activity deletion. Recognition is a durable account event after it is earned, while the source reference is explanatory provenance rather than ownership.
+
+## Current Implementation
+
+- `backend/src/services/recognition.ts` owns definitions, historical activity backfill, idempotent awards, and Social rule evaluation.
+- `GET /v1/recognition` returns the canonical collection and performs safe historical backfill.
+- `POST /v1/recognition/claims` migrates exact-context awards detected by the client.
+- `RecognitionStore` and `SocialRecognitionStore` provide the account-scoped offline cache and reconcile it with the server.
+- Post-run, Today, Me, History, and accepted-connection profiles render from those reconciled awards.
+
+Apply the schema before deploying the API:
+
+```sh
+cd backend
+npm run db:generate
+npm run db:push
+```
+
+Production rollout should use the schema job documented in `docs/backend-deploy.md`.
 
 ## Copy Guidance
 

@@ -45,6 +45,33 @@ struct RecognitionAward: Codable, Identifiable, Equatable {
     let sourceActivityID: UUID?
 }
 
+struct RecognitionAwardDTO: Codable, Sendable {
+    let id: UUID
+    let badgeId: String
+    let family: String
+    let earnedAt: Date
+    let sourceType: String
+    let sourceActivityId: String?
+    let sourceReferenceId: String?
+    let ruleVersion: Int
+    let shareEligible: Bool
+}
+
+struct RecognitionAwardsResponseDTO: Codable, Sendable {
+    let awards: [RecognitionAwardDTO]
+}
+
+struct RecognitionClaimDTO: Codable, Sendable {
+    let badgeId: String
+    let earnedAt: Date
+    let sourceActivityId: UUID?
+    let sourceReferenceId: String?
+}
+
+struct RecognitionClaimsRequestDTO: Codable, Sendable {
+    let claims: [RecognitionClaimDTO]
+}
+
 struct RecognitionPreview: Identifiable, Equatable {
     let badgeID: RecognitionBadgeID
     let title: String
@@ -62,19 +89,91 @@ struct RecognitionWeekMarker: Hashable {
 @MainActor
 final class RecognitionStore: ObservableObject {
     @Published private(set) var awards: [RecognitionAward]
+    @Published private(set) var isSyncing = false
 
+    private let api: APIClient
+    private let analyticsManager: AnalyticsManager?
     private let defaults: UserDefaults
     private let calendar: Calendar
-    private let awardsKey = "recognition_store_awards_v1"
+    private let legacyAwardsKey = "recognition_store_awards_v1"
+    private let legacyMigrationKey = "recognition_store_account_migration_v2"
+    private var currentUserID: String?
+    private var syncTask: Task<Void, Never>?
 
     init(
+        api: APIClient? = nil,
+        analyticsManager: AnalyticsManager? = nil,
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current
     ) {
+        self.api = api ?? .shared
+        self.analyticsManager = analyticsManager
         self.defaults = defaults
         self.calendar = calendar
-        self.awards = Self.decode([RecognitionAward].self, from: defaults.data(forKey: awardsKey)) ?? []
-        awards.sort { $0.earnedAt > $1.earnedAt }
+        self.awards = []
+    }
+
+    func activate(userID: String) {
+        if currentUserID != userID {
+            syncTask?.cancel()
+            currentUserID = userID
+            migrateLegacyAwardsIfNeeded()
+            awards = cachedAwards(for: userID)
+            awards.sort { $0.earnedAt > $1.earnedAt }
+        }
+    }
+
+    func start(userID: String) async {
+        activate(userID: userID)
+        await refresh()
+    }
+
+    func refresh() async {
+        guard currentUserID != nil, !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            if !awards.isEmpty {
+                _ = try await api.claimRecognitionAwards(awards.map { award in
+                    RecognitionClaimDTO(
+                        badgeId: award.badgeID.rawValue,
+                        earnedAt: award.earnedAt,
+                        sourceActivityId: award.sourceActivityID,
+                        sourceReferenceId: nil
+                    )
+                })
+            }
+            let response = try await api.fetchRecognitionAwards(
+                timeZoneIdentifier: TimeZone.current.identifier,
+                firstWeekday: calendar.firstWeekday
+            )
+            let syncedAwards = response.awards.compactMap { award -> RecognitionAward? in
+                guard let badgeID = RecognitionBadgeID(rawValue: award.badgeId) else { return nil }
+                return RecognitionAward(
+                    id: award.id,
+                    badgeID: badgeID,
+                    earnedAt: award.earnedAt,
+                    sourceActivityID: award.sourceActivityId.flatMap(UUID.init(uuidString:))
+                )
+            }
+            awards = syncedAwards.sorted { $0.earnedAt > $1.earnedAt }
+            persistAwards()
+            await analyticsManager?.track(.init(
+                .recognitionSyncCompleted,
+                properties: [
+                    .countBucket: .string(ProductAnalyticsBucket.count(awards.count)),
+                    .sourceType: .string("server")
+                ]
+            ))
+        } catch {
+            await analyticsManager?.track(.init(
+                .recognitionSyncFailed,
+                properties: [
+                    .sourceType: .string("server"),
+                    .errorCategory: .string(Self.syncErrorCategory(error))
+                ]
+            ))
+        }
     }
 
     var latestAward: RecognitionAward? {
@@ -162,6 +261,7 @@ final class RecognitionStore: ObservableObject {
 
         if !newAwards.isEmpty {
             persistAwards()
+            scheduleSync()
         }
         return newAwards
     }
@@ -229,7 +329,9 @@ final class RecognitionStore: ObservableObject {
     private func isComeback(_ date: Date, priorActivities: [SavedActivity]) -> Bool {
         let candidateDay = calendar.startOfDay(for: date)
         guard let sevenDaysBack = calendar.date(byAdding: .day, value: -7, to: candidateDay) else { return false }
-        return !priorActivities.contains {
+        let earlierActivities = priorActivities.filter { $0.startedAt < candidateDay }
+        guard !earlierActivities.isEmpty else { return false }
+        return !earlierActivities.contains {
             let started = $0.startedAt
             return started >= sevenDaysBack && started < candidateDay
         }
@@ -307,7 +409,47 @@ final class RecognitionStore: ObservableObject {
 
     private func persistAwards() {
         guard let data = try? JSONEncoder().encode(awards) else { return }
-        defaults.set(data, forKey: awardsKey)
+        defaults.set(data, forKey: awardsStorageKey)
+    }
+
+    private var awardsStorageKey: String {
+        currentUserID.map { "recognition_store_awards_v2_\($0)" } ?? legacyAwardsKey
+    }
+
+    private func cachedAwards(for userID: String) -> [RecognitionAward] {
+        Self.decode(
+            [RecognitionAward].self,
+            from: defaults.data(forKey: "recognition_store_awards_v2_\(userID)")
+        ) ?? []
+    }
+
+    private func migrateLegacyAwardsIfNeeded() {
+        guard let currentUserID, !defaults.bool(forKey: legacyMigrationKey) else { return }
+        let scopedKey = "recognition_store_awards_v2_\(currentUserID)"
+        if defaults.data(forKey: scopedKey) == nil,
+           let legacyData = defaults.data(forKey: legacyAwardsKey) {
+            defaults.set(legacyData, forKey: scopedKey)
+        }
+        defaults.set(true, forKey: legacyMigrationKey)
+    }
+
+    private func scheduleSync() {
+        guard currentUserID != nil else { return }
+        syncTask?.cancel()
+        syncTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            await self?.refresh()
+        }
+    }
+
+    private nonisolated static func syncErrorCategory(_ error: Error) -> String {
+        if case let APIError.http(statusCode, _, _) = error { return "http_\(statusCode)" }
+        if error is DecodingError { return "decoding" }
+        if let urlError = error as? URLError {
+            return urlError.code == .notConnectedToInternet ? "offline" : "network"
+        }
+        return "unknown"
     }
 
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {

@@ -14,13 +14,13 @@ The header keeps the community menu focused on Groups and routes; planning and d
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.
 
-Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. Feed, profile, notification, and shared-detail dates use the activity's actual start time, including for workouts imported after they occurred; post creation time remains only a fallback for cached legacy responses. When one of the runner's locally tracked recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary, timing, and route fields rather than returning private reflection, guidance, or client snapshot data.
+Feed activity cards are map-first: a light route preview carries an overlaid distance/time/pace strip, followed by optional caption and icon-plus-count Cheer and comment actions. Feed, profile, notification, and shared-detail dates use the activity's actual start time, including for workouts imported after they occurred; post creation time remains only a fallback for cached legacy responses. When one of the runner's account-backed recognitions belongs to their activity, its compact milestone pill appears directly on the map. The 44-point overflow target contains only delete or safety actions; repost is not part of the feed menu. Social responses select only share-safe activity summary, timing, and route fields rather than returning private reflection, guidance, or client snapshot data.
 
 The home activity feed uses a stable opaque cursor ordered by activity start time and post ID, matching the timestamp displayed on each card. This keeps workouts imported after they occurred in their chronological position and makes page boundaries visually monotonic. It loads 12 newest visible posts across the runner and accepted connections, then automatically appends subsequent pages as the runner reaches the end. Pull-to-refresh resets to the newest page, while the cached accumulated feed remains useful offline.
 
 Opening a feed activity reuses the same layered map-and-sheet detail shell as Me, following Strava's one-detail-screen model. Social keeps the common map, stats, route analysis, and Share action; adds a tappable author profile card and caption in the sheet; pins Cheer and comments at the bottom; and does not expose owner-only editing or unavailable private activity metadata.
 
-The production Social tab also participates in the local recognition layer restored from the earlier prototype. Supporting three distinct activity posts in a calendar week through a Cheer or comment unlocks `Good Teammate`; joining a Group or its run unlocks `Relay Player`; and sharing an activity with a photo unlocks `Photo Finish`. A fresh Social recognition appears as a lightweight `Guide noticed this` card for three days. `Rival Edge` remains dormant until the deferred Rivals feature has a real backend-owned outcome rather than a manual claim button.
+The production Social tab participates in the account-backed recognition layer. The server awards `Good Teammate` after support on three distinct friends' activity posts in a calendar week, `Relay Player` after joining a Group or activity event, and `Photo Finish` after sharing an activity with a photo. The client caches those awards for immediate/offline presentation, and a fresh Social recognition appears as a lightweight `Guide noticed this` card for three days. `Rival Edge` remains dormant until the deferred Rivals feature has a real backend-owned outcome rather than a manual claim button. Accepted connections can see only the small shareable subset of another runner's milestones on their profile.
 
 The support loop is API-backed: each newly synced activity automatically creates one Connections-visible post. Social home repairs missing posts for older synced activities, while soft-deleted posts preserve the runner's opt-out and are not recreated. Later syncs do not duplicate posts. A runner can Cheer or remove a Cheer, open the full comment sheet, and add a comment. Post reads and mutations verify connection visibility on the server. Private reflections and guidance context are never included in Social responses.
 
@@ -91,7 +91,7 @@ npm run db:push -- --accept-data-loss
 
 - `Social/ActivityFeedView.swift` owns the legacy local social hub UI.
 - `Social/SocialModels.swift`, `Social/SocialSeed.swift`, and `Social/SocialStore.swift` retain its seeded models and interaction state behind the `OUTBOUND_ENABLE_SOCIAL` compilation condition.
-- `Social/SocialRecognitionStore.swift` is no longer gated with that prototype. Production Social uses it for local Social milestone evaluation and presentation.
+- `Social/SocialRecognitionStore.swift` is no longer gated with that prototype. Production Social uses it as an account-scoped offline cache and presentation store for server-owned Social awards.
 - The legacy prototype flag should remain unset; production Social is independent of it.
 - The current implementation is local/seeded UI state. It does not call a backend yet.
 - Squad feed cards use route previews, cheers, local comments, route prompts, report, and block controls.
@@ -114,7 +114,7 @@ Apple treats apps with user-generated content or social networking services as n
 
 ## Backend Schema Rollout
 
-This slice adds `SocialBlock`, `SocialReport`, `SocialNotification`, and `GroupRunRSVP`. Apply it to the intended environment before deploying the new API:
+This slice adds `SocialBlock`, `SocialReport`, `SocialNotification`, `GroupRunRSVP`, and account-owned `RecognitionAward` rows. Apply it to the intended environment before deploying the new API:
 
 ```sh
 cd backend

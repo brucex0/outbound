@@ -26,6 +26,11 @@ struct SocialPersonDTO: Codable, Identifiable, Sendable {
     let avatarUrl: String?
 }
 
+struct SocialProfileResponseDTO: Codable, Sendable {
+    let person: SocialPersonDTO
+    let recognitions: [RecognitionAwardDTO]
+}
+
 struct SocialRelationshipDTO: Codable, Sendable {
     let id: String
     let status: String
