@@ -49,32 +49,32 @@ struct PostRunSummaryView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(spacing: 0) {
-                    mediaPager
-                    reflectionSection
-                    feedbackSection
-                    if guidanceReport.spokenCueCount > 0 {
-                        guidanceFeedbackSection
-                    }
-                    photoReviewSection
-                    if let primaryRecognition = recognitionPreviews.first {
-                        recognitionSection(primaryRecognition)
-                    }
-                    statsSection
-                    motivationSection
+        ScrollView {
+            VStack(spacing: 0) {
+                mediaPager
+                reflectionSection
+                feedbackSection
+                if guidanceReport.spokenCueCount > 0 {
+                    guidanceFeedbackSection
                 }
-                .padding(.bottom, 100)
+                photoReviewSection
+                if let primaryRecognition = recognitionPreviews.first {
+                    recognitionSection(primaryRecognition)
+                }
+                statsSection
+                motivationSection
             }
-            .ignoresSafeArea(edges: .top)
-            
-            saveButton
+            .padding(.bottom, 24)
         }
-        .overlay(alignment: .topLeading) {
-            closeButton
-                .padding(.leading, 16)
-                .padding(.top, 12)
+        .ignoresSafeArea(edges: .top)
+        .overlay(alignment: .top) {
+            HStack {
+                closeButton
+                Spacer()
+                saveButton
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
         }
         .sheet(isPresented: $isPhotoManagerPresented) {
             PostRunPhotoManager(
@@ -439,27 +439,27 @@ struct PostRunSummaryView: View {
                 }
             }
         } label: {
-            Group {
+            ZStack {
+                Text(String(localized: "common.save", defaultValue: "Save"))
+                    .font(.subheadline.weight(.bold))
+                    .opacity(isSubmitting ? 0 : 1)
+
                 if isSubmitting {
                     ProgressView()
                         .tint(.white)
-                } else {
-                    Image(systemName: "tray.and.arrow.down.fill")
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(.white)
                 }
             }
-            .frame(width: 56, height: 56)
+            .frame(minWidth: 44)
+            .padding(.horizontal, 12)
+            .frame(height: 44)
         }
         .disabled(isSubmitting)
-        .buttonStyle(.borderless)
-        .frame(width: 56, height: 56)
-        .background(Color.orange)
-        .clipShape(Circle())
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .background(Color.orange, in: Capsule())
+        .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
         .accessibilityLabel(String(localized: "summary.action.save", defaultValue: "Save activity"))
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .accessibilityIdentifier("SavePostRunSummaryButton")
     }
 }
 
