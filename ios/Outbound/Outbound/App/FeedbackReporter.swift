@@ -224,20 +224,13 @@ private struct FeedbackForm: View {
         guard !isSubmitting, !trimmedMessage.isEmpty else { return }
         isSubmitting = true
         toast = nil
-        let recentLogs = includesRecentLogs ? FeedbackLogCollector.snapshot() : nil
-        let logSelection = if !includesRecentLogs {
-            "logs_excluded"
-        } else if recentLogs == nil {
-            "logs_unavailable"
-        } else {
-            "logs_attached"
-        }
+        let logSnapshot = includesRecentLogs ? FeedbackLogCollector.snapshot() : .excluded
         let request = FeedbackSubmissionRequest(
             kind: kind.apiValue,
             message: trimmedMessage,
             currentPage: currentPage,
             diagnostics: includesDiagnostics ? FeedbackDiagnostics.summary : nil,
-            recentLogs: recentLogs,
+            recentLogs: logSnapshot.contents,
             screenshotBase64: screenshot?.jpegData(compressionQuality: 0.82)?.base64EncodedString(),
             screenshotContentType: screenshot == nil ? nil : "image/jpeg"
         )
@@ -250,7 +243,7 @@ private struct FeedbackForm: View {
                         .feedbackReportSubmitted,
                         properties: [
                             .result: .string("succeeded"),
-                            .selectionType: .string(logSelection)
+                            .selectionType: .string(logSnapshot.analyticsValue)
                         ]
                     )
                 )
@@ -264,7 +257,7 @@ private struct FeedbackForm: View {
                         .feedbackReportSubmitted,
                         properties: [
                             .result: .string("failed"),
-                            .selectionType: .string(logSelection)
+                            .selectionType: .string(logSnapshot.analyticsValue)
                         ]
                     )
                 )
@@ -467,15 +460,15 @@ private enum FeedbackLogCollector {
     private static let lookback: TimeInterval = 15 * 60
     private static let maximumLines = 200
     private static let maximumCharacters = 30_000
-    private static let allowedCategories: Set<String> = [
+    private static let allowedCategories = Set([
         "Analytics",
         "AppleMusic",
         "Assistant",
         "MusicStore",
         "Weather"
-    ]
+    ]).union(ActivityDiagnosticCategory.allCases.map(\.rawValue))
 
-    static func snapshot(now: Date = Date()) -> String? {
+    static func snapshot(now: Date = Date()) -> FeedbackLogSnapshot {
         do {
             let store = try OSLogStore(scope: .currentProcessIdentifier)
             let position = store.position(date: now.addingTimeInterval(-lookback))
@@ -496,11 +489,11 @@ private enum FeedbackLogCollector {
                 }
             }
 
-            guard !lines.isEmpty else { return nil }
+            guard !lines.isEmpty else { return .empty }
             let joined = lines.joined(separator: "\n")
-            return String(joined.suffix(maximumCharacters))
+            return .attached(String(joined.suffix(maximumCharacters)))
         } catch {
-            return nil
+            return .unavailable
         }
     }
 
@@ -530,6 +523,27 @@ private enum FeedbackLogCollector {
                 with: "[redacted]",
                 options: .regularExpression
             )
+        }
+    }
+}
+
+private enum FeedbackLogSnapshot {
+    case excluded
+    case empty
+    case unavailable
+    case attached(String)
+
+    var contents: String? {
+        guard case let .attached(contents) = self else { return nil }
+        return contents
+    }
+
+    var analyticsValue: String {
+        switch self {
+        case .excluded: "logs_excluded"
+        case .empty: "logs_empty"
+        case .unavailable: "logs_unavailable"
+        case .attached: "logs_attached"
         }
     }
 }

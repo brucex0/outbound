@@ -30,38 +30,69 @@ struct ActiveSessionJournal {
     }
 
     static func load() -> ActiveSessionJournal? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        guard let metadata = try? JSONDecoder().decode(Metadata.self, from: data) else { return nil }
-        return ActiveSessionJournal(
-            startedAt: metadata.startedAt,
-            elapsedSeconds: metadata.elapsedSeconds,
-            wasPaused: metadata.wasPaused,
-            activityType: metadata.activityType,
-            routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
-            recoveryStage: metadata.recoveryStage ?? .recording,
-            trackPoints: ActiveSessionTrackJournal.load()
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let metadata = try JSONDecoder().decode(Metadata.self, from: data)
+            return ActiveSessionJournal(
+                startedAt: metadata.startedAt,
+                elapsedSeconds: metadata.elapsedSeconds,
+                wasPaused: metadata.wasPaused,
+                activityType: metadata.activityType,
+                routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
+                recoveryStage: metadata.recoveryStage ?? .recording,
+                trackPoints: ActiveSessionTrackJournal.load()
+            )
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery metadata load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return nil
+        }
+    }
+
+    @discardableResult
+    func save() -> Bool {
+        do {
+            let metadata = Metadata(
+                startedAt: startedAt,
+                elapsedSeconds: elapsedSeconds,
+                wasPaused: wasPaused,
+                activityType: activityType,
+                routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
+                recoveryStage: recoveryStage
+            )
+            let data = try JSONEncoder().encode(metadata)
+            let directory = Self.fileURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: Self.fileURL, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    static func clear(reason: ActiveSessionClearReason) {
+        let metadataPresent = FileManager.default.fileExists(atPath: fileURL.path)
+        let metadataCleared = removeIfPresent(fileURL)
+        let trackCleared = ActiveSessionTrackJournal.clear()
+        let routeCleared = ActiveRouteGuidanceSnapshot.clear()
+        let succeeded = metadataCleared && trackCleared && routeCleared
+        ActivityDiagnosticLog.notice(
+            .recovery,
+            "Recovery artifacts cleared reason=\(reason.rawValue) metadata_present=\(metadataPresent) result=\(succeeded ? "success" : "failure")"
         )
     }
 
-    func save() {
-        let metadata = Metadata(
-            startedAt: startedAt,
-            elapsedSeconds: elapsedSeconds,
-            wasPaused: wasPaused,
-            activityType: activityType,
-            routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
-            recoveryStage: recoveryStage
-        )
-        guard let data = try? JSONEncoder().encode(metadata) else { return }
-        let directory = Self.fileURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: Self.fileURL, options: .atomic)
-    }
-
-    static func clear() {
-        try? FileManager.default.removeItem(at: fileURL)
-        ActiveSessionTrackJournal.clear()
-        ActiveRouteGuidanceSnapshot.clear()
+    private static func removeIfPresent(_ url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return true }
+        do {
+            try FileManager.default.removeItem(at: url)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private static var fileURL: URL {
@@ -85,13 +116,43 @@ enum ActiveSessionRecoveryStage: String, Codable {
     case awaitingSave
 }
 
+enum ActiveSessionClearReason: String {
+    case newRecording = "new_recording"
+    case saved
+    case discarded
+}
+
 enum ActiveSessionTrackJournal {
     static func load() -> [JournalTrackPoint] {
-        guard let data = try? Data(contentsOf: fileURL), !data.isEmpty else { return [] }
-        let decoder = JSONDecoder()
-        return data.split(separator: 0x0A).flatMap { line in
-            (try? decoder.decode([JournalTrackPoint].self, from: Data(line))) ?? []
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
+        let data: Data
+        do {
+            data = try Data(contentsOf: fileURL)
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery track load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return []
         }
+        guard !data.isEmpty else { return [] }
+        let decoder = JSONDecoder()
+        var malformedChunks = 0
+        let points = data.split(separator: 0x0A).flatMap { line in
+            do {
+                return try decoder.decode([JournalTrackPoint].self, from: Data(line))
+            } catch {
+                malformedChunks += 1
+                return []
+            }
+        }
+        if malformedChunks > 0 {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery track load skipped malformed_chunks=\(ActivityDiagnosticLog.countBucket(malformedChunks))"
+            )
+        }
+        return points
     }
 
     @discardableResult
@@ -119,8 +180,14 @@ enum ActiveSessionTrackJournal {
         }
     }
 
-    static func clear() {
-        try? FileManager.default.removeItem(at: fileURL)
+    static func clear() -> Bool {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return true }
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private static var fileURL: URL {
@@ -140,10 +207,14 @@ enum ActiveSessionPhotoJournal {
         }
     }
 
-    static func append(_ photo: (UIImage, PhotoMetadata)) {
+    @discardableResult
+    static func append(_ photo: (UIImage, PhotoMetadata)) -> Bool {
         let entry = Entry(metadata: photo.1)
         let imageURL = directoryURL.appendingPathComponent(entry.fileName)
-        guard let imageData = photo.0.jpegData(compressionQuality: 0.9) else { return }
+        guard let imageData = photo.0.jpegData(compressionQuality: 0.9) else {
+            ActivityDiagnosticLog.error(.recovery, "Recovery photo save failed error=image_encoding")
+            return false
+        }
 
         do {
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
@@ -151,14 +222,24 @@ enum ActiveSessionPhotoJournal {
             var entries = loadEntries()
             entries.append(entry)
             try save(entries)
+            return true
         } catch {
             try? FileManager.default.removeItem(at: imageURL)
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery photo save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return false
         }
     }
 
     static func replace(with photos: [(UIImage, PhotoMetadata)]) {
-        clear()
-        photos.forEach(append)
+        let cleared = clear()
+        let saved = photos.map(append).allSatisfy { $0 }
+        ActivityDiagnosticLog.notice(
+            .recovery,
+            "Recovery photo set replaced photos=\(ActivityDiagnosticLog.countBucket(photos.count)) result=\(cleared && saved ? "success" : "failure")"
+        )
     }
 
     static func removePreActivityPhotos() {
@@ -180,19 +261,41 @@ enum ActiveSessionPhotoJournal {
                 )
             }
         } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery pre-activity photo removal failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
             return
         }
     }
 
-    static func clear() {
-        try? FileManager.default.removeItem(at: directoryURL)
+    @discardableResult
+    static func clear() -> Bool {
+        guard FileManager.default.fileExists(atPath: directoryURL.path) else { return true }
+        do {
+            try FileManager.default.removeItem(at: directoryURL)
+            return true
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery photo clear failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return false
+        }
     }
 
     private static func loadEntries() -> [Entry] {
-        guard let data = try? Data(contentsOf: manifestURL),
-              let manifest = try? JSONDecoder().decode(Manifest.self, from: data)
-        else { return [] }
-        return manifest.photos
+        guard FileManager.default.fileExists(atPath: manifestURL.path) else { return [] }
+        do {
+            let data = try Data(contentsOf: manifestURL)
+            return try JSONDecoder().decode(Manifest.self, from: data).photos
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery photo manifest load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return []
+        }
     }
 
     private static func save(_ entries: [Entry]) throws {
@@ -267,22 +370,46 @@ private struct ActiveRouteGuidanceSnapshot: Codable {
     let route: PreparedRoute
 
     static func load() -> PreparedRoute? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        guard let route = try? JSONDecoder().decode(Self.self, from: data).route,
-              route.isUsableForGuidance
-        else { return nil }
-        return route
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let route = try JSONDecoder().decode(Self.self, from: data).route
+            guard route.isUsableForGuidance else {
+                ActivityDiagnosticLog.error(.recovery, "Recovery route load failed error=invalid_route")
+                return nil
+            }
+            return route
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery route load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return nil
+        }
     }
 
     static func save(route: PreparedRoute) {
-        guard let data = try? JSONEncoder().encode(Self(route: route)) else { return }
-        let directory = fileURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: fileURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(Self(route: route))
+            let directory = fileURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery route save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+        }
     }
 
-    static func clear() {
-        try? FileManager.default.removeItem(at: fileURL)
+    static func clear() -> Bool {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return true }
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private static var fileURL: URL {

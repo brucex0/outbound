@@ -132,12 +132,20 @@ struct HealthKitService: HealthKitServing {
 
     func refreshAuthorizationSnapshot() async -> HealthAuthorizationSnapshot {
 #if canImport(HealthKit)
-        guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
+        guard HKHealthStore.isHealthDataAvailable() else {
+            ActivityDiagnosticLog.notice(.healthKit, "Health authorization refresh skipped result=unavailable")
+            return .unavailable
+        }
 
         do {
             let requestStatus = try await fetchRequestStatus()
+            ActivityDiagnosticLog.notice(.healthKit, "Health authorization refresh completed")
             return makeSnapshot(requestState: mapRequestStatus(requestStatus))
         } catch {
+            ActivityDiagnosticLog.error(
+                .healthKit,
+                "Health authorization refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
             return makeSnapshot(requestState: .unknown)
         }
 #else
@@ -148,15 +156,22 @@ struct HealthKitService: HealthKitServing {
     func requestAuthorization() async throws -> HealthAuthorizationSnapshot {
 #if canImport(HealthKit)
         guard HKHealthStore.isHealthDataAvailable() else {
+            ActivityDiagnosticLog.notice(.healthKit, "Health authorization request skipped result=unavailable")
             throw HealthKitServiceError.unavailable
         }
 
+        ActivityDiagnosticLog.notice(.healthKit, "Health authorization request started")
         do {
             try await requestAuthorizationInternal()
         } catch {
+            ActivityDiagnosticLog.error(
+                .healthKit,
+                "Health authorization request failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
             throw HealthKitServiceError.requestFailed(error.localizedDescription)
         }
 
+        ActivityDiagnosticLog.notice(.healthKit, "Health authorization request completed")
         return await refreshAuthorizationSnapshot()
 #else
         throw HealthKitServiceError.unavailable
@@ -166,10 +181,25 @@ struct HealthKitService: HealthKitServing {
     func fetchRecentWorkouts(limit: Int) async throws -> [ImportedWorkout] {
 #if canImport(HealthKit)
         guard HKHealthStore.isHealthDataAvailable() else {
+            ActivityDiagnosticLog.notice(.healthKit, "Health workout fetch skipped result=unavailable")
             throw HealthKitServiceError.unavailable
         }
 
-        return try await fetchRecentWorkoutsInternal(limit: limit)
+        ActivityDiagnosticLog.notice(.healthKit, "Health workout fetch started")
+        do {
+            let workouts = try await fetchRecentWorkoutsInternal(limit: limit)
+            ActivityDiagnosticLog.notice(
+                .healthKit,
+                "Health workout fetch completed candidates=\(ActivityDiagnosticLog.countBucket(workouts.count))"
+            )
+            return workouts
+        } catch {
+            ActivityDiagnosticLog.error(
+                .healthKit,
+                "Health workout fetch failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            throw error
+        }
 #else
         throw HealthKitServiceError.unavailable
 #endif
@@ -200,14 +230,29 @@ struct HealthKitService: HealthKitServing {
     func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {
 #if canImport(HealthKit)
         guard HKHealthStore.isHealthDataAvailable() else {
+            ActivityDiagnosticLog.notice(.healthKit, "Health workout write-back skipped result=unavailable")
             throw HealthKitServiceError.unavailable
         }
 
         guard healthStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized else {
+            ActivityDiagnosticLog.notice(.healthKit, "Health workout write-back skipped result=not_authorized")
             throw HealthKitServiceError.requestFailed("Apple Health workout write access has not been granted.")
         }
 
-        try await saveWorkoutInternal(activity, sport: sport, energyKilocalories: energyKilocalories)
+        ActivityDiagnosticLog.notice(
+            .healthKit,
+            "Health workout write-back started type=\(activity.activityType.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: activity.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: activity.distanceM)) route_points=\(ActivityDiagnosticLog.countBucket(activity.routePoints.count))"
+        )
+        do {
+            try await saveWorkoutInternal(activity, sport: sport, energyKilocalories: energyKilocalories)
+            ActivityDiagnosticLog.notice(.healthKit, "Health workout write-back completed")
+        } catch {
+            ActivityDiagnosticLog.error(
+                .healthKit,
+                "Health workout write-back failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            throw error
+        }
 #else
         throw HealthKitServiceError.unavailable
 #endif

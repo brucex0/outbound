@@ -755,6 +755,10 @@ struct RecordView: View {
     private func restoreInterruptedSessionIfNeeded() {
         guard recorder.recoveredSession, !didRestoreSession else { return }
         didRestoreSession = true
+        ActivityDiagnosticLog.notice(
+            .recovery,
+            "Recovery presentation requested stage=\(recorder.recoveredAwaitingSave ? "awaiting_save" : "recording") route_selected=\(recorder.recoveredRouteGuidance != nil)"
+        )
         if let recovered = recorder.recoveredRouteGuidance {
             let route = recovered.route
             let recoveredActivityType = route.activityType ?? recorder.recoveredActivityType
@@ -792,11 +796,13 @@ struct RecordView: View {
                 .sourceType: .string("awaiting_save"),
                 .countBucket: .string(ProductAnalyticsBucket.count(1))
             ]))
+            ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=awaiting_save")
             finishRecording(recoveredAfterFinish: true)
             return
         }
         activePage = preferredSessionPage
         showCamera = true
+        ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=recording")
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
             with: guideStore.profile,
@@ -1171,27 +1177,38 @@ struct RecordView: View {
             )
         }
 
-        guard let savedActivity = try? await activityStore.save(
-            summary: activity.summary,
-            photos: photos,
-            activityType: savedActivityType,
-            reflection: reflection,
-            goal: activeIntent?.activityGoal,
-            title: activeIntent?.preparedRoute == nil && savedActivityType == .running
-                ? nil
-                : activeIntent?.title,
-            source: .outboundRecorded,
-            gear: savedActivityType == .running ? gearStore.attachment(for: selectedSessionShoe) : nil,
-            indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
-            heartRateZones: heartRateZones(from: activity.summary),
-            activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
-                ? socialStore.recordingActivityEventID
-                : nil,
-            followedRoute: followedRoute
-        ) else {
+        ActivityDiagnosticLog.notice(
+            .persistence,
+            "Post-run save requested type=\(savedActivityType.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: activity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: activity.summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count)) recovered=\(didRestoreSession)"
+        )
+        let savedActivity: SavedActivity
+        do {
+            savedActivity = try await activityStore.save(
+                summary: activity.summary,
+                photos: photos,
+                activityType: savedActivityType,
+                reflection: reflection,
+                goal: activeIntent?.activityGoal,
+                title: activeIntent?.preparedRoute == nil && savedActivityType == .running
+                    ? nil
+                    : activeIntent?.title,
+                source: .outboundRecorded,
+                gear: savedActivityType == .running ? gearStore.attachment(for: selectedSessionShoe) : nil,
+                indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
+                heartRateZones: heartRateZones(from: activity.summary),
+                activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
+                    ? socialStore.recordingActivityEventID
+                    : nil,
+                followedRoute: followedRoute
+            )
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Post-run save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
             return false
         }
-        clearSessionRecoveryArtifacts()
+        ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
         var savedProperties = outcomeProperties(for: activity.summary)
         savedProperties[.goalType] = .string(analyticsGoalType)
         savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))
@@ -1235,7 +1252,7 @@ struct RecordView: View {
             activities: activityStore.activities,
             phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
-        clearPending()
+        clearPending(recoveryReason: .saved)
         onCloseRequest?(false)
         return true
     }
@@ -1268,6 +1285,10 @@ struct RecordView: View {
             var properties = outcomeProperties(for: pendingActivity.summary)
             properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(pendingActivity.photos.count))
             track(.init(.activityDiscarded, properties: properties))
+            ActivityDiagnosticLog.notice(
+                .lifecycle,
+                "Post-run activity discarded duration=\(ActivityDiagnosticLog.durationBucket(seconds: pendingActivity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: pendingActivity.summary.distanceM))"
+            )
         }
         let resolvesRecordingEvent = activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
         let consumedActivityEventID = socialStore.consumeRecordingActivityEventID()
@@ -1275,7 +1296,7 @@ struct RecordView: View {
         liveActivityManager.end()
         liveShareStore.end()
         liveGroupStore.finishActivity()
-        clearPending()
+        clearPending(recoveryReason: .discarded)
         onCloseRequest?(false)
         if let activityEventID {
             Task {
@@ -1284,12 +1305,12 @@ struct RecordView: View {
         }
     }
 
-    private func clearPending() {
+    private func clearPending(recoveryReason: ActiveSessionClearReason) {
         cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
         capturedPhotos = []
         isCapturingSessionPhoto = false
-        clearSessionRecoveryArtifacts()
+        clearSessionRecoveryArtifacts(reason: recoveryReason)
         onPreActivityPhotoChange?(nil)
         activeIntent = nil
         plannedIntent = nil
@@ -1308,9 +1329,13 @@ struct RecordView: View {
 #endif
     }
 
-    private func clearSessionRecoveryArtifacts() {
-        ActiveSessionJournal.clear()
-        ActiveSessionPhotoJournal.clear()
+    private func clearSessionRecoveryArtifacts(reason: ActiveSessionClearReason) {
+        ActiveSessionJournal.clear(reason: reason)
+        let photosCleared = ActiveSessionPhotoJournal.clear()
+        ActivityDiagnosticLog.notice(
+            .recovery,
+            "Recovery photo artifacts cleared reason=\(reason.rawValue) result=\(photosCleared ? "success" : "failure")"
+        )
     }
 
     private var preferredSessionPage: SessionPage {

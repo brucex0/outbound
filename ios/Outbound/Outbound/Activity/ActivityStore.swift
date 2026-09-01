@@ -46,26 +46,43 @@ final class ActivityStore: ObservableObject {
         followedRoute: FollowedRouteMetadata? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
-        let activity = try await persistence.save(
-            summary: summary,
-            photos: photos,
-            activityType: activityType,
-            title: resolvedTitle,
-            guideNudge: "",
-            reflection: reflection,
-            goal: goal,
-            source: source,
-            gear: gear,
-            manualEdits: manualEdits,
-            indoor: indoor,
-            cadence: cadence,
-            heartRateZones: heartRateZones,
-            activityEventID: activityEventID,
-            followedRoute: followedRoute
+        ActivityDiagnosticLog.notice(
+            .persistence,
+            "Local activity save started type=\(activityType.rawValue) source=\(source.kind.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count))"
         )
+        let activity: SavedActivity
+        do {
+            activity = try await persistence.save(
+                summary: summary,
+                photos: photos,
+                activityType: activityType,
+                title: resolvedTitle,
+                guideNudge: "",
+                reflection: reflection,
+                goal: goal,
+                source: source,
+                gear: gear,
+                manualEdits: manualEdits,
+                indoor: indoor,
+                cadence: cadence,
+                heartRateZones: heartRateZones,
+                activityEventID: activityEventID,
+                followedRoute: followedRoute
+            )
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Local activity save failed type=\(activityType.rawValue) source=\(source.kind.rawValue) error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            throw error
+        }
         activityRevision += 1
         activities.append(activity)
         sortActivitiesByStartTime()
+        ActivityDiagnosticLog.notice(
+            .persistence,
+            "Local activity save completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count)) sync_pending=true"
+        )
         Task {
             await syncActivityIfPossible(id: activity.id)
         }
@@ -73,6 +90,10 @@ final class ActivityStore: ObservableObject {
     }
 
     func importHealthWorkouts(_ workouts: [ImportedWorkout]) async -> Set<String> {
+        ActivityDiagnosticLog.notice(
+            .healthKit,
+            "Health import persistence started candidates=\(ActivityDiagnosticLog.countBucket(workouts.count))"
+        )
         var importedIDs: Set<String> = []
         let existingIDs = Set(activities.compactMap(\.source.externalID))
         for workout in workouts where !existingIDs.contains(workout.id) {
@@ -103,9 +124,17 @@ final class ActivityStore: ObservableObject {
                 )
                 importedIDs.insert(workout.id)
             } catch {
+                ActivityDiagnosticLog.error(
+                    .healthKit,
+                    "Health import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
                 continue
             }
         }
+        ActivityDiagnosticLog.notice(
+            .healthKit,
+            "Health import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count))"
+        )
         return importedIDs
     }
 
@@ -242,6 +271,10 @@ final class ActivityStore: ObservableObject {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
+        ActivityDiagnosticLog.notice(
+            .sync,
+            "Activity sync pass started pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount))"
+        )
         await loadActivities()
         await pullRemoteActivities()
         let pendingIDs = activities
@@ -254,6 +287,10 @@ final class ActivityStore: ObservableObject {
         for activity in activities where activity.sync?.serverActivityId != nil {
             await syncPhotosIfPossible(activityID: activity.id)
         }
+        ActivityDiagnosticLog.notice(
+            .sync,
+            "Activity sync pass completed pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount)) failed=\(ActivityDiagnosticLog.countBucket(failedActivityCount))"
+        )
     }
 
     private func loadActivities() async {
@@ -265,9 +302,23 @@ final class ActivityStore: ObservableObject {
             return
         }
         let revisionAtStart = activityRevision
-        let loadedActivities = (try? await persistence.load()) ?? []
-        guard activityRevision == revisionAtStart else { return }
-        activities = loadedActivities.sortedByStartTimeDescending()
+        do {
+            let loadedActivities = try await persistence.load()
+            guard activityRevision == revisionAtStart else {
+                ActivityDiagnosticLog.notice(.persistence, "Local activity load ignored because in-memory history changed")
+                return
+            }
+            activities = loadedActivities.sortedByStartTimeDescending()
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Local activity load completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count))"
+            )
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Local activity load failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+        }
     }
 
     private func syncActivityIfPossible(id: UUID) async {
@@ -292,6 +343,10 @@ final class ActivityStore: ObservableObject {
             localUpdatedAt: priorState.localUpdatedAt ?? activity.createdAt
         )
         await persistSyncState(attemptState, for: activity.id)
+        ActivityDiagnosticLog.notice(
+            .sync,
+            "Activity upload started source=\(activity.source.kind.rawValue) existing_remote=\(priorState.serverActivityId != nil) route_included=\(uploadableRoute(for: activity) != nil) photos=\(ActivityDiagnosticLog.countBucket(activity.photos.count))"
+        )
 
         do {
             let response = try await api.uploadActivity(
@@ -330,6 +385,10 @@ final class ActivityStore: ObservableObject {
                 .activitySyncCompleted,
                 properties: syncAnalyticsProperties(for: activity)
             ))
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Activity upload completed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil)"
+            )
             await syncPhotosIfPossible(activityID: activity.id)
         } catch {
             let failedState = SavedActivitySyncState(
@@ -344,7 +403,10 @@ final class ActivityStore: ObservableObject {
             var properties = syncAnalyticsProperties(for: activity)
             properties[.errorCategory] = .string(syncErrorCategory(error))
             await analyticsManager?.track(ProductAnalyticsEvent(.activitySyncFailed, properties: properties))
-            print("[ActivityStore] activity sync failed: \(error.localizedDescription)")
+            ActivityDiagnosticLog.error(
+                .sync,
+                "Activity upload failed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil) error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
         }
     }
 
@@ -400,7 +462,15 @@ final class ActivityStore: ObservableObject {
             photos: current.photos,
             sync: syncState
         )
-        guard (try? await persistence.replace(updated)) != nil else { return }
+        do {
+            try await persistence.replace(updated)
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Sync-state persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return
+        }
         activityRevision += 1
         if let index = activities.firstIndex(where: { $0.id == updated.id }) {
             activities[index] = updated
@@ -411,9 +481,13 @@ final class ActivityStore: ObservableObject {
         do {
             var offset = 0
             var hasMore = true
+            var remoteCount = 0
+            var restoredCount = 0
+            var deletedCount = 0
             while hasMore {
                 let response = try await api.fetchActivities(offset: offset)
                 for remote in response.activities {
+                remoteCount += 1
                 guard let clientID = remote.clientActivityId,
                       let activityID = UUID(uuidString: clientID) else { continue }
 
@@ -422,6 +496,7 @@ final class ActivityStore: ObservableObject {
                         try? await persistence.delete(local)
                         activities.removeAll { $0.id == activityID }
                         activityRevision += 1
+                        deletedCount += 1
                     }
                     continue
                 }
@@ -468,14 +543,22 @@ final class ActivityStore: ObservableObject {
                 } else {
                     activities.append(restored)
                 }
+                restoredCount += 1
                 await restoreRemotePhotos(remote.photos ?? [], activityID: activityID)
                 }
                 offset += response.activities.count
                 hasMore = response.hasMore && !response.activities.isEmpty
             }
             sortActivitiesByStartTime()
+            ActivityDiagnosticLog.notice(
+                .sync,
+                "Activity restore completed received=\(ActivityDiagnosticLog.countBucket(remoteCount)) restored=\(ActivityDiagnosticLog.countBucket(restoredCount)) deleted=\(ActivityDiagnosticLog.countBucket(deletedCount))"
+            )
         } catch {
-            print("[ActivityStore] activity restore failed: \(error.localizedDescription)")
+            ActivityDiagnosticLog.error(
+                .sync,
+                "Activity restore failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
         }
     }
 
@@ -486,7 +569,15 @@ final class ActivityStore: ObservableObject {
     private func syncPhotosIfPossible(activityID: UUID) async {
         guard let activity = activity(id: activityID),
               let serverActivityID = activity.sync?.serverActivityId else { return }
-        for photo in activity.photos where photo.remotePhotoId == nil {
+        let pendingPhotos = activity.photos.filter { $0.remotePhotoId == nil }
+        guard !pendingPhotos.isEmpty else { return }
+        ActivityDiagnosticLog.notice(
+            .sync,
+            "Photo upload started pending=\(ActivityDiagnosticLog.countBucket(pendingPhotos.count))"
+        )
+        var uploadedCount = 0
+        var failedCount = 0
+        for photo in pendingPhotos {
             do {
                 let data = try await persistence.uploadData(for: photo)
                 let remote = try await api.uploadActivityPhoto(
@@ -504,10 +595,19 @@ final class ActivityStore: ObservableObject {
                     )
                 )
                 await markPhotoUploaded(photo.id, remote: remote, activityID: activityID)
+                uploadedCount += 1
             } catch {
-                print("[ActivityStore] photo sync failed for \(photo.id): \(error.localizedDescription)")
+                failedCount += 1
+                ActivityDiagnosticLog.error(
+                    .sync,
+                    "Photo upload failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
             }
         }
+        ActivityDiagnosticLog.notice(
+            .sync,
+            "Photo upload completed uploaded=\(ActivityDiagnosticLog.countBucket(uploadedCount)) failed=\(ActivityDiagnosticLog.countBucket(failedCount))"
+        )
     }
 
     private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID) async {
@@ -528,7 +628,10 @@ final class ActivityStore: ObservableObject {
                 photos.append(try await persistence.saveDownloadedPhoto(data, remote: remote, activityID: activityID))
                 changed = true
             } catch {
-                print("[ActivityStore] photo restore failed for \(remote.id): \(error.localizedDescription)")
+                ActivityDiagnosticLog.error(
+                    .sync,
+                    "Photo restore failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
             }
         }
         guard changed else { return }

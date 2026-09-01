@@ -101,7 +101,7 @@ final class ActivityRecorder: ObservableObject {
         resetRunSimulation()
 #endif
         timer?.cancel()
-        ActiveSessionJournal.clear()
+        ActiveSessionJournal.clear(reason: .newRecording)
         lastJournaledTrackPointCount = 0
         recoveredAwaitingSave = false
         let now = Date()
@@ -129,6 +129,10 @@ final class ActivityRecorder: ObservableObject {
         locationManager.startTracking(activityType: activityType)
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
+        ActivityDiagnosticLog.notice(
+            .lifecycle,
+            "Recording started type=\(activityType.rawValue) route_selected=\(routeGuidance != nil)"
+        )
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -154,6 +158,10 @@ final class ActivityRecorder: ObservableObject {
         }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
+        ActivityDiagnosticLog.notice(
+            .lifecycle,
+            "Recording paused trigger=\(autoTriggered ? "automatic" : "manual") duration=\(ActivityDiagnosticLog.durationBucket(seconds: elapsedSeconds))"
+        )
     }
 
     func resume() {
@@ -167,6 +175,10 @@ final class ActivityRecorder: ObservableObject {
         locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
+        ActivityDiagnosticLog.notice(
+            .lifecycle,
+            "Recording resumed source=\(wasAutoPaused ? "automatic_pause" : "manual_pause")"
+        )
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
@@ -220,6 +232,10 @@ final class ActivityRecorder: ObservableObject {
             trackPoints: reconciledTrack.points,
             trackSegmentStartIndices: reconciledTrack.segmentStartIndices
         )
+        ActivityDiagnosticLog.notice(
+            .lifecycle,
+            "Recording finished duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) track_points=\(ActivityDiagnosticLog.countBucket(summary.trackPoints.count)) segments=\(ActivityDiagnosticLog.countBucket(summary.trackSegmentStartIndices.count)) recovery_stage=awaiting_save"
+        )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
         currentSegmentStartDate = nil
@@ -262,7 +278,7 @@ final class ActivityRecorder: ObservableObject {
 
         timer?.cancel()
         resetRunSimulation()
-        ActiveSessionJournal.clear()
+        ActiveSessionJournal.clear(reason: .newRecording)
         lastJournaledTrackPointCount = 0
         let now = Date()
         state = .active
@@ -616,6 +632,10 @@ final class ActivityRecorder: ObservableObject {
         }
         routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
         liveSnapshot = makeSnapshot()
+        ActivityDiagnosticLog.notice(
+            .recovery,
+            "Session recovered stage=\(journal.recoveryStage.rawValue) type=\(activityType.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: elapsedSeconds)) track_points=\(ActivityDiagnosticLog.countBucket(points.count)) route_selected=\(routeGuidance != nil)"
+        )
     }
 
     private func updateRouteGuidance(with location: CLLocation) {
@@ -656,10 +676,11 @@ final class ActivityRecorder: ObservableObject {
         let newTrackPoints = locationManager.journalTrackPoints(
             startingAt: lastJournaledTrackPointCount
         )
-        if ActiveSessionTrackJournal.append(newTrackPoints) {
+        let trackAppendSucceeded = ActiveSessionTrackJournal.append(newTrackPoints)
+        if trackAppendSucceeded {
             lastJournaledTrackPointCount = trackPoints.count
         }
-        ActiveSessionJournal(
+        let metadataSaved = ActiveSessionJournal(
             startedAt: startDate,
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
@@ -667,6 +688,22 @@ final class ActivityRecorder: ObservableObject {
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
             recoveryStage: recoveryStage
         ).save()
+        if force {
+            let stateName = switch state {
+            case .idle: "idle"
+            case .active: "active"
+            case .paused: "paused"
+            }
+            ActivityDiagnosticLog.notice(
+                .recovery,
+                "Recovery checkpoint stage=\(recoveryStage.rawValue) state=\(stateName) new_points=\(ActivityDiagnosticLog.countBucket(newTrackPoints.count)) track_write=\(trackAppendSucceeded ? "success" : "failure") metadata_write=\(metadataSaved ? "success" : "failure")"
+            )
+        } else if !trackAppendSucceeded || !metadataSaved {
+            ActivityDiagnosticLog.error(
+                .recovery,
+                "Recovery checkpoint failed track_write=\(trackAppendSucceeded ? "success" : "failure") metadata_write=\(metadataSaved ? "success" : "failure")"
+            )
+        }
     }
 
     private func currentElapsedSeconds(at now: Date) -> Int {
