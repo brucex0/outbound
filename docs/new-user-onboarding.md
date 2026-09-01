@@ -119,8 +119,12 @@ Settings includes a DEBUG-only replay action that restarts the simplified onboar
   - Shows the extracted guide review before the recommendation.
   - Calls back with whether the user chose to start the first session.
 
+- `App/OutboundApp.swift`
+  - Resolves authentication and account-scoped onboarding before choosing the first interactive screen.
+  - Routes a new authenticated account directly from the branded launch surface into onboarding, without briefly rendering the main shell underneath it.
+
 - `App/MainTabView.swift`
-  - Presents onboarding after authentication when the current account has not completed it.
+  - Presents onboarding only for the DEBUG replay action after normal startup routing is complete.
   - Applies the profile by setting the daily readiness.
   - Applies the onboarding unit choice to app measurement preferences.
   - Starts `RecordView` with the personalized `SessionIntent` when requested.

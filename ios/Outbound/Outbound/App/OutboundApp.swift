@@ -38,6 +38,9 @@ struct OutboundApp: App {
     @StateObject private var pushNotifications = PushNotificationCoordinator.shared
     @StateObject private var communityRouteStore = CommunityRouteStore()
     @StateObject private var userPreferencesSyncStore = UserPreferencesSyncStore()
+    @State private var startupDestination: AppStartupDestination = .launching
+    @State private var startupBeganAt = Date()
+    @State private var hasTrackedInitialStartup = false
 
     init() {
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
@@ -73,92 +76,165 @@ struct OutboundApp: App {
                 .environmentObject(personalizationStore)
                 .environmentObject(togetherStore)
         } else {
-            authenticatedRoot
+            startupRoot
         }
         #else
-        authenticatedRoot
+        startupRoot
         #endif
     }
 
     @ViewBuilder
-    private var authenticatedRoot: some View {
-        if authStore.isAuthenticated {
-            MainTabView()
-                .environmentObject(authStore)
-                .environmentObject(guideStore)
-                .environmentObject(guideCatalogStore)
-                .environmentObject(activityStore)
-                .environmentObject(goalStore)
-                .environmentObject(trainingPlanStore)
-                .environmentObject(assistantStore)
-                .environmentObject(appNavigationStore)
-                .environmentObject(healthAuthorizationStore)
-                .environmentObject(healthImportStore)
-                .environmentObject(dailyCheckInStore)
-                .environmentObject(musicStore)
-                .environmentObject(recognitionStore)
-                .environmentObject(socialRecognitionStore)
+    private var startupRoot: some View {
+        ZStack {
+            Group {
+                switch startupDestination {
+                case .launching:
+                    AppLaunchView()
+                case .authentication:
+                    AuthView()
+                        .environmentObject(authStore)
+                case .onboarding:
+                    onboardingRoot
+                case .main:
+                    mainRoot
+                }
+            }
+            .id(startupDestination)
+            .transition(.opacity.combined(with: .scale(scale: 0.99)))
+        }
+        .animation(.easeInOut(duration: 0.28), value: startupDestination)
+        .task(id: authStore.resolutionState) {
+            resolveStartupDestination()
+        }
+        .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
+            guard startupDestination == .onboarding, wasPresented, !isPresented else { return }
+            startupDestination = .main
+        }
+        .onOpenURL { url in
+            handleIncomingURL(url)
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            guard let url = activity.webpageURL else { return }
+            handleIncomingURL(url)
+        }
+    }
+
+    private var mainRoot: some View {
+        MainTabView()
+            .environmentObject(authStore)
+            .environmentObject(guideStore)
+            .environmentObject(guideCatalogStore)
+            .environmentObject(activityStore)
+            .environmentObject(goalStore)
+            .environmentObject(trainingPlanStore)
+            .environmentObject(assistantStore)
+            .environmentObject(appNavigationStore)
+            .environmentObject(healthAuthorizationStore)
+            .environmentObject(healthImportStore)
+            .environmentObject(dailyCheckInStore)
+            .environmentObject(musicStore)
+            .environmentObject(recognitionStore)
+            .environmentObject(socialRecognitionStore)
 #if OUTBOUND_ENABLE_SOCIAL
-                .environmentObject(socialStore)
+            .environmentObject(socialStore)
 #endif
-                .environmentObject(measurementPreferences)
-                .environmentObject(onboardingStore)
-                .environmentObject(gearStore)
-                .environmentObject(liveShareStore)
-                .environmentObject(liveGroupStore)
-                .environmentObject(safetyContactStore)
-                .environmentObject(personalizationStore)
-                .environmentObject(togetherStore)
-                .environmentObject(cycleAwareStore)
-                .environmentObject(situationalWeatherStore)
-                .environmentObject(connectivityStore)
-                .environmentObject(pushNotifications)
-                .environmentObject(communityRouteStore)
-                .task {
-                    if let userID = authStore.user?.id {
-                        await userPreferencesSyncStore.start(
-                            userID: userID,
-                            measurementPreferences: measurementPreferences,
-                            appearancePreferences: appearancePreferences,
-                            guideCatalog: guideCatalogStore,
-                            gearStore: gearStore,
-                            musicStore: musicStore
-                        )
-                    }
-                    await guideStore.syncIfNeeded()
+            .environmentObject(measurementPreferences)
+            .environmentObject(onboardingStore)
+            .environmentObject(gearStore)
+            .environmentObject(liveShareStore)
+            .environmentObject(liveGroupStore)
+            .environmentObject(safetyContactStore)
+            .environmentObject(personalizationStore)
+            .environmentObject(togetherStore)
+            .environmentObject(cycleAwareStore)
+            .environmentObject(situationalWeatherStore)
+            .environmentObject(connectivityStore)
+            .environmentObject(pushNotifications)
+            .environmentObject(communityRouteStore)
+            .task {
+                if let userID = authStore.user?.id {
+                    await userPreferencesSyncStore.start(
+                        userID: userID,
+                        measurementPreferences: measurementPreferences,
+                        appearancePreferences: appearancePreferences,
+                        guideCatalog: guideCatalogStore,
+                        gearStore: gearStore,
+                        musicStore: musicStore
+                    )
+                }
+                await guideStore.syncIfNeeded()
+                await activityStore.syncPendingActivitiesIfNeeded()
+                await healthAuthorizationStore.refresh()
+                await healthImportStore.refreshRecentWorkouts()
+                await musicStore.refresh()
+                await personalizationStore.refresh()
+                await togetherStore.refresh()
+                await consumePendingInviteIfPossible()
+                await pushNotifications.activate()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                Task {
+                    await userPreferencesSyncStore.refresh()
                     await activityStore.syncPendingActivitiesIfNeeded()
-                    await healthAuthorizationStore.refresh()
-                    await healthImportStore.refreshRecentWorkouts()
-                    await musicStore.refresh()
-                    await personalizationStore.refresh()
-                    await togetherStore.refresh()
-                    await consumePendingInviteIfPossible()
                     await pushNotifications.activate()
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    Task {
-                        await userPreferencesSyncStore.refresh()
-                        await activityStore.syncPendingActivitiesIfNeeded()
-                        await pushNotifications.activate()
-                    }
-                }
-                .onOpenURL { url in
-                    handleIncomingURL(url)
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                    guard let url = activity.webpageURL else { return }
-                    handleIncomingURL(url)
-                }
-        } else {
-            AuthView()
-                .environmentObject(authStore)
-                .onOpenURL { url in
-                    handleIncomingURL(url)
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                    guard let url = activity.webpageURL else { return }
-                    handleIncomingURL(url)
-                }
+            }
+    }
+
+    private var onboardingRoot: some View {
+        SimplifiedOnboardingFlow { profile in
+            measurementPreferences.unitSystem = profile.bodyProfile.unitSystem
+            dailyCheckInStore.select(profile.suggestedReadiness)
+        }
+        .environmentObject(authStore)
+        .environmentObject(onboardingStore)
+        .environmentObject(personalizationStore)
+        .environmentObject(trainingPlanStore)
+        .environmentObject(healthAuthorizationStore)
+        .environmentObject(healthImportStore)
+        .environmentObject(measurementPreferences)
+    }
+
+    private func resolveStartupDestination() {
+        let destination: AppStartupDestination
+        switch authStore.resolutionState {
+        case .resolving:
+            destination = .launching
+        case .signedOut:
+            destination = .authentication
+        case .authenticated:
+            let identity = authStore.user?.id ?? authStore.localSessionLabel ?? "local"
+            onboardingStore.prepareForAuthenticatedUser(identity: identity)
+            destination = onboardingStore.isPresented ? .onboarding : .main
+        }
+
+        startupDestination = destination
+        trackInitialStartupIfNeeded(destination)
+    }
+
+    private func trackInitialStartupIfNeeded(_ destination: AppStartupDestination) {
+        guard destination != .launching, !hasTrackedInitialStartup else { return }
+        hasTrackedInitialStartup = true
+        let latency = max(0, Date().timeIntervalSince(startupBeganAt))
+        Task {
+            await analyticsManager.setUserId(userId: authStore.user?.id)
+            await analyticsManager.track(.init(
+                .appStartupResolved,
+                properties: [
+                    .destination: .string(destination.rawValue),
+                    .latencyBucket: .string(Self.startupLatencyBucket(latency))
+                ]
+            ))
+        }
+    }
+
+    private static func startupLatencyBucket(_ seconds: TimeInterval) -> String {
+        switch seconds {
+        case ..<0.25: "under_250ms"
+        case ..<0.5: "250ms_500ms"
+        case ..<1: "500ms_1s"
+        case ..<2: "1s_2s"
+        default: "2s_plus"
         }
     }
 
@@ -191,6 +267,34 @@ struct OutboundApp: App {
             return
         }
         UserDefaults.standard.removeObject(forKey: "pending_plainstride_invite_v1")
+    }
+}
+
+private enum AppStartupDestination: String {
+    case launching
+    case authentication
+    case onboarding
+    case main
+}
+
+private struct AppLaunchView: View {
+    var body: some View {
+        ZStack {
+            Color("LaunchBackground")
+                .ignoresSafeArea()
+
+            Image("LaunchMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 112, height: 112)
+
+            Text(String(localized: "Plainstride"))
+                .font(.system(.headline, design: .rounded, weight: .semibold))
+                .tracking(1.2)
+                .foregroundStyle(.primary)
+                .offset(y: 80)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

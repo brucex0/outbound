@@ -5,6 +5,12 @@ import Foundation
 import Security
 import UIKit
 
+enum AuthenticationResolutionState: Equatable {
+    case resolving
+    case signedOut
+    case authenticated
+}
+
 @MainActor
 final class AuthStore: ObservableObject {
     #if DEBUG
@@ -20,6 +26,7 @@ final class AuthStore: ObservableObject {
     @Published var authError: String?
     @Published var user: AuthenticatedUser?
     @Published var localSessionLabel: String?
+    @Published private(set) var resolutionState: AuthenticationResolutionState = .resolving
     private var appleCoordinator: AppleAuthorizationCoordinator?
     private let analyticsManager: AnalyticsManager?
 
@@ -33,10 +40,16 @@ final class AuthStore: ObservableObject {
     init(analyticsManager: AnalyticsManager? = nil) {
         self.analyticsManager = analyticsManager
         if ProcessInfo.processInfo.arguments.contains("-OutboundDisableAuthentication") || ProcessInfo.processInfo.arguments.contains("-OutboundDisableFirebase") {
-            isAuthenticated = true; localSessionLabel = "UI test session"; return
+            isAuthenticated = true
+            localSessionLabel = "UI test session"
+            resolutionState = .authenticated
+            return
         }
         Task { [weak self] in
-            guard let session = await SessionCoordinator.shared.storedSession(), session.isRefreshUsable else { return }
+            guard let session = await SessionCoordinator.shared.storedSession(), session.isRefreshUsable else {
+                self?.resolutionState = .signedOut
+                return
+            }
             self?.apply(session)
         }
         NotificationCenter.default.addObserver(forName: .outboundAuthenticationExpired, object: nil, queue: .main) { [weak self] _ in
@@ -112,8 +125,21 @@ final class AuthStore: ObservableObject {
         catch let error as ASAuthorizationError where error.code == .canceled { }
         catch { authError = error.localizedDescription }
     }
-    private func apply(_ session: AuthSession) { user = session.user; Self.cachedUserID = session.user.id; isAuthenticated = true; localSessionLabel = nil }
-    private func clearPresentation() { user = nil; Self.cachedUserID = nil; isAuthenticated = false; localSessionLabel = nil }
+    private func apply(_ session: AuthSession) {
+        user = session.user
+        Self.cachedUserID = session.user.id
+        isAuthenticated = true
+        localSessionLabel = nil
+        resolutionState = .authenticated
+    }
+
+    private func clearPresentation() {
+        user = nil
+        Self.cachedUserID = nil
+        isAuthenticated = false
+        localSessionLabel = nil
+        resolutionState = .signedOut
+    }
     private func makeAppleCredential() async throws -> AppleCredentialResult {
         let coordinator = AppleAuthorizationCoordinator(); appleCoordinator = coordinator
         defer { appleCoordinator = nil }; return try await coordinator.credential()
