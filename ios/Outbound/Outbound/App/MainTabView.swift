@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
@@ -71,7 +70,6 @@ struct MainTabView: View {
         }
         .onAppear {
             restoreInterruptedActivityIfNeeded()
-            prepareOnboarding()
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
         }
@@ -89,9 +87,6 @@ struct MainTabView: View {
             activeLaunch = RecordLaunch(intent: intent)
             preActivityRoute = intent?.preparedRoute
             isActivityVisible = true
-        }
-        .onChange(of: onboardingIdentity) { _, _ in
-            prepareOnboarding()
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
             guard wasPresented, !isPresented else { return }
@@ -132,10 +127,6 @@ struct MainTabView: View {
                 presentWhenFound: presentWhenFound
             )
         }
-    }
-
-    private var onboardingIdentity: String {
-        authStore.user?.id ?? authStore.localSessionLabel ?? "local"
     }
 
     private var onboardingPresentation: Binding<Bool> {
@@ -253,10 +244,6 @@ struct MainTabView: View {
         activeLaunch = RecordLaunch(intent: intent)
         preActivityRoute = intent?.preparedRoute
         isActivityVisible = true
-    }
-
-    private func prepareOnboarding() {
-        onboardingStore.prepareForAuthenticatedUser(identity: onboardingIdentity)
     }
 
     private func applyOnboardingProfile(_ profile: OnboardingProfile) {

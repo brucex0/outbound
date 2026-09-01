@@ -6,6 +6,19 @@ nonisolated struct AuthenticatedUser: Codable, Equatable, Sendable {
     let displayName: String
     let avatarUrl: String?
     let email: String?
+    // Optional so sessions written before this field existed remain decodable.
+    let onboardingCompleted: Bool?
+
+    nonisolated func withOnboardingCompleted(_ completed: Bool) -> AuthenticatedUser {
+        AuthenticatedUser(
+            id: id,
+            username: username,
+            displayName: displayName,
+            avatarUrl: avatarUrl,
+            email: email,
+            onboardingCompleted: completed
+        )
+    }
 }
 
 nonisolated struct AuthSession: Codable, Equatable, Sendable {
@@ -19,6 +32,17 @@ nonisolated struct AuthSession: Codable, Equatable, Sendable {
     nonisolated var isRefreshUsable: Bool { refreshTokenExpiresAt > Date() }
     nonisolated func hasUsableAccessToken(at date: Date = Date(), leeway: TimeInterval = 60) -> Bool {
         accessTokenExpiresAt.timeIntervalSince(date) > leeway
+    }
+
+    nonisolated func withOnboardingCompleted(_ completed: Bool) -> AuthSession {
+        AuthSession(
+            accessToken: accessToken,
+            accessTokenExpiresAt: accessTokenExpiresAt,
+            refreshToken: refreshToken,
+            refreshTokenExpiresAt: refreshTokenExpiresAt,
+            refreshRecovery: refreshRecovery,
+            user: user.withOnboardingCompleted(completed)
+        )
     }
 }
 

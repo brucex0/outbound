@@ -1,10 +1,10 @@
 # New User Onboarding
 
-## Fresh-install authentication
+## Startup authentication and completion
 
-Firebase may retain credentials in the iOS Keychain after the app is deleted. Plainstride stores a separate installation marker in `UserDefaults`. If that marker is missing on launch but Firebase restores a user, the app signs out that stale restored session and shows the provider login screen. Normal relaunches and app updates keep the authenticated session because the installation marker remains present.
+First-party sessions are stored in the iOS Keychain and may survive app-container replacement. Login and refresh responses embed the server-backed onboarding result derived from `RunnerProfile.completedAt`; sessions written before that field existed decode it as unknown. `UserDefaults` keeps a fast account-scoped completion cache, while the authenticated session carries completion across reinstalls and account use on another device.
 
-Onboarding completion is account-scoped and survives sign-out. Preparing a previously completed account must explicitly clear any onboarding presentation left behind while authentication transitioned through a signed-out/local identity.
+Startup trusts completion from either source. A restored incomplete or unknown session receives one bounded refresh through the existing auth endpoint. Confirmed incomplete accounts enter onboarding; a refresh failure or 1.5-second timeout fails open to the main UI. A timed-out refresh may still repair the stored session in the background, while later authenticated activity can retry a failed refresh. The main shell never reruns the local-only gate or forces onboarding over an already-visible UI.
 
 Plainstride onboarding should create a first win, not teach the whole product.
 
@@ -108,7 +108,7 @@ Settings includes a DEBUG-only replay action that restarts the simplified onboar
 ## Implementation
 
 - `App/OnboardingStore.swift`
-  - Owns account-scoped completion state in `UserDefaults`.
+  - Owns the fast account-scoped completion cache in `UserDefaults` and repairs it from an authoritative completed session.
   - Keeps the in-progress draft local.
   - Stores raw intake text, body basics, extracted intake summary, suggested readiness, and a `SuggestedSession`.
   - Uses a deterministic local intake analyzer for V1 so onboarding remains offline and predictable; a backend or on-device model can replace the analyzer later while preserving the structured summary shape.
@@ -122,7 +122,7 @@ Settings includes a DEBUG-only replay action that restarts the simplified onboar
   - Calls back with whether the user chose to start the first session.
 
 - `App/OutboundApp.swift`
-  - Resolves authentication and account-scoped onboarding before choosing the first interactive screen.
+  - Resolves authentication and account-scoped onboarding before choosing the first interactive screen, with a bounded session refresh and fail-open main destination when status cannot be obtained.
   - Routes a new authenticated account directly from the branded launch surface into onboarding, without briefly rendering the main shell underneath it.
 
 - `App/MainTabView.swift`
@@ -136,13 +136,13 @@ Settings includes a DEBUG-only replay action that restarts the simplified onboar
 
 ## Persistence
 
-Completion and profile keys are namespaced by authenticated identity:
+Completion and profile keys are namespaced by the stable Plainstride account ID:
 
-- Firebase users: `AuthStore.user.uid`.
+- Authenticated users: `AuthStore.user.id`.
 - Local sessions: `AuthStore.localSessionLabel`.
 - Fallback: `local`.
 
-This keeps a completed flow for one account from hiding onboarding for another account on the same device.
+The auth session also stores an optional `onboardingCompleted` value. A missing value means an older session or partial rollout, not an incomplete account. Completing onboarding updates the local flag and Keychain session immediately, queues a retryable runner-profile write, and lets later login or refresh responses confirm the server result.
 
 ## Debugging
 

@@ -358,7 +358,16 @@ final class OnboardingStore: ObservableObject {
         makeProfile(completedAt: Date())
     }
 
-    func prepareForAuthenticatedUser(identity: String?) {
+    func hasCompletedOnboardingLocally(identity: String?) -> Bool {
+        let resolvedIdentity = identity?.isEmpty == false ? identity! : "local"
+        return hasCompletedOnboarding(for: resolvedIdentity)
+    }
+
+    func prepareForAuthenticatedUser(
+        identity: String?,
+        authoritativeCompletion: Bool? = nil,
+        failOpenOnUnknown: Bool = false
+    ) {
         #if DEBUG
         if (Bundle.main.object(forInfoDictionaryKey: "OutboundAppTestMode") as? String) == "YES"
             || ProcessInfo.processInfo.arguments.contains("-OutboundSkipOnboarding")
@@ -377,7 +386,18 @@ final class OnboardingStore: ObservableObject {
             step = .welcome
         }
 
+        if authoritativeCompletion == true {
+            defaults.set(true, forKey: completedKey(for: resolvedIdentity))
+            isPresented = false
+            return
+        }
+
         if hasCompletedOnboarding(for: resolvedIdentity) {
+            isPresented = false
+            return
+        }
+
+        if authoritativeCompletion == nil, failOpenOnUnknown {
             isPresented = false
             return
         }

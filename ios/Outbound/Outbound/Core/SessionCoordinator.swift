@@ -12,6 +12,10 @@ enum AuthenticationSessionRecovery: String, Sendable {
     case transientRefreshFailure = "transient_refresh_failure"
 }
 
+private enum SessionCoordinatorError: Error {
+    case missingSession
+}
+
 actor SessionCoordinator {
     static let shared = SessionCoordinator()
     private let repository: SessionPersisting
@@ -25,7 +29,20 @@ actor SessionCoordinator {
     }
 
     func storedSession() -> AuthSession? { session }
-    func replace(_ value: AuthSession) throws { try repository.replace(value); session = value }
+    func replace(_ value: AuthSession) throws {
+        let resolvedValue: AuthSession
+        if session?.user.id == value.user.id, session?.user.onboardingCompleted == true {
+            resolvedValue = value.withOnboardingCompleted(true)
+        } else {
+            resolvedValue = value
+        }
+        try repository.replace(resolvedValue)
+        session = resolvedValue
+    }
+    func markOnboardingCompleted() throws {
+        guard let session else { return }
+        try replace(session.withOnboardingCompleted(true))
+    }
     func clear(notify: Bool = false) {
         session = nil; try? repository.delete()
         if notify { Task { @MainActor in NotificationCenter.default.post(name: .outboundAuthenticationExpired, object: nil) } }
@@ -46,6 +63,13 @@ actor SessionCoordinator {
             return session.accessToken
         }
         return try await refresh(using: session)
+    }
+
+    func refreshStoredSession() async throws -> AuthSession {
+        guard let session else { throw SessionCoordinatorError.missingSession }
+        _ = try await refresh(using: session)
+        guard let refreshedSession = self.session else { throw SessionCoordinatorError.missingSession }
+        return refreshedSession
     }
 
     private func refresh(using snapshot: AuthSession) async throws -> String {

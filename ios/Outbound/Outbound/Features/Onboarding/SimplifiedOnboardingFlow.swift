@@ -507,6 +507,7 @@ struct SimplifiedOnboardingFlow: View {
         onboardingStore.selectUnitSystem(measurementPreferences.unitSystem)
         onboardingStore.selectEffortPreference(.balanced)
         let profile = onboardingStore.complete()
+        authStore.markOnboardingCompleted()
         Task {
             await personalizationStore.completeProfile(
                 RunnerProfileRequestDTO(

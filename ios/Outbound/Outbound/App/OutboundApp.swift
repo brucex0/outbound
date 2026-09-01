@@ -104,7 +104,7 @@ struct OutboundApp: App {
         }
         .animation(.easeInOut(duration: 0.28), value: startupDestination)
         .task(id: authStore.resolutionState) {
-            resolveStartupDestination()
+            await resolveStartupDestination()
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
             guard startupDestination == .onboarding, wasPresented, !isPresented else { return }
@@ -195,24 +195,83 @@ struct OutboundApp: App {
         .environmentObject(measurementPreferences)
     }
 
-    private func resolveStartupDestination() {
+    private func resolveStartupDestination() async {
         let destination: AppStartupDestination
+        let source: String
         switch authStore.resolutionState {
         case .resolving:
             destination = .launching
+            source = "auth_state"
         case .signedOut:
             destination = .authentication
+            source = "auth_state"
         case .authenticated:
             let identity = authStore.user?.id ?? authStore.localSessionLabel ?? "local"
-            onboardingStore.prepareForAuthenticatedUser(identity: identity)
+            let decision = await onboardingCompletionDecision(identity: identity)
+            onboardingStore.prepareForAuthenticatedUser(
+                identity: identity,
+                authoritativeCompletion: decision.completed,
+                failOpenOnUnknown: true
+            )
             destination = onboardingStore.isPresented ? .onboarding : .main
+            source = decision.source
         }
 
         startupDestination = destination
-        trackInitialStartupIfNeeded(destination)
+        trackInitialStartupIfNeeded(destination, source: source)
     }
 
-    private func trackInitialStartupIfNeeded(_ destination: AppStartupDestination) {
+    private func onboardingCompletionDecision(identity: String) async -> OnboardingCompletionDecision {
+        if onboardingStore.hasCompletedOnboardingLocally(identity: identity) {
+            return OnboardingCompletionDecision(completed: true, source: "local_cache")
+        }
+
+        if authStore.user?.onboardingCompleted == true {
+            return OnboardingCompletionDecision(completed: true, source: "auth_session")
+        }
+
+        if authStore.sessionOrigin == .server {
+            guard let completed = authStore.user?.onboardingCompleted else {
+                return OnboardingCompletionDecision(completed: nil, source: "fail_open_unavailable")
+            }
+            return OnboardingCompletionDecision(completed: completed, source: "auth_session")
+        }
+
+        switch await reconcileOnboardingCompletionWithTimeout() {
+        case .resolved(let completed):
+            guard let completed else {
+                return OnboardingCompletionDecision(completed: nil, source: "fail_open_unavailable")
+            }
+            return OnboardingCompletionDecision(completed: completed, source: "session_refresh")
+        case .timedOut:
+            return OnboardingCompletionDecision(completed: nil, source: "fail_open_timeout")
+        }
+    }
+
+    private func reconcileOnboardingCompletionWithTimeout() async -> TimedOnboardingCompletion {
+        let stream = AsyncStream<TimedOnboardingCompletion> { continuation in
+            let timeoutTask = Task {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled else { return }
+                continuation.yield(.timedOut)
+                continuation.finish()
+            }
+            continuation.onTermination = { @Sendable _ in timeoutTask.cancel() }
+
+            Task { @MainActor in
+                let completed = await authStore.reconcileOnboardingCompletion()
+                continuation.yield(.resolved(completed))
+                continuation.finish()
+            }
+        }
+
+        for await result in stream {
+            return result
+        }
+        return .timedOut
+    }
+
+    private func trackInitialStartupIfNeeded(_ destination: AppStartupDestination, source: String) {
         guard destination != .launching, !hasTrackedInitialStartup else { return }
         hasTrackedInitialStartup = true
         let latency = max(0, Date().timeIntervalSince(startupBeganAt))
@@ -222,7 +281,8 @@ struct OutboundApp: App {
                 .appStartupResolved,
                 properties: [
                     .destination: .string(destination.rawValue),
-                    .latencyBucket: .string(Self.startupLatencyBucket(latency))
+                    .latencyBucket: .string(Self.startupLatencyBucket(latency)),
+                    .sourceType: .string(source)
                 ]
             ))
         }
@@ -275,6 +335,16 @@ private enum AppStartupDestination: String {
     case authentication
     case onboarding
     case main
+}
+
+private struct OnboardingCompletionDecision {
+    let completed: Bool?
+    let source: String
+}
+
+private enum TimedOnboardingCompletion: Sendable {
+    case resolved(Bool?)
+    case timedOut
 }
 
 private struct AppLaunchView: View {

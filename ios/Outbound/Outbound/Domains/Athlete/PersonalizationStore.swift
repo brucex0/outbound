@@ -11,6 +11,7 @@ final class PersonalizationStore: ObservableObject {
     private let defaults: UserDefaults
     private let cacheKey = "personalization_snapshot_v1"
     private let cacheLocaleKey = "personalization_snapshot_locale_v1"
+    private let profileQueueKey = "personalization_profile_queue_v1"
     private let readinessQueueKey = "personalization_readiness_queue_v1"
     private let feedbackQueueKey = "personalization_feedback_queue_v1"
 
@@ -40,7 +41,9 @@ final class PersonalizationStore: ObservableObject {
         do {
             let response = try await api.updateRunnerProfile(request)
             apply(response)
+            persistQueue([RunnerProfileRequestDTO](), key: profileQueueKey)
         } catch {
+            persistQueue([request], key: profileQueueKey)
             lastError = error.localizedDescription
         }
     }
@@ -105,6 +108,15 @@ final class PersonalizationStore: ObservableObject {
     }
 
     func flushPending() async {
+        var profiles = queued(RunnerProfileRequestDTO.self, key: profileQueueKey)
+        while let request = profiles.first {
+            do {
+                apply(try await api.updateRunnerProfile(request))
+                profiles.removeFirst()
+                persistQueue(profiles, key: profileQueueKey)
+            } catch { break }
+        }
+
         var readiness = queued(ReadinessCheckInRequestDTO.self, key: readinessQueueKey)
         while let request = readiness.first {
             do {

@@ -11,6 +11,11 @@ enum AuthenticationResolutionState: Equatable {
     case authenticated
 }
 
+enum AuthenticationSessionOrigin: Equatable {
+    case restored
+    case server
+}
+
 @MainActor
 final class AuthStore: ObservableObject {
     #if DEBUG
@@ -27,6 +32,7 @@ final class AuthStore: ObservableObject {
     @Published var user: AuthenticatedUser?
     @Published var localSessionLabel: String?
     @Published private(set) var resolutionState: AuthenticationResolutionState = .resolving
+    @Published private(set) var sessionOrigin: AuthenticationSessionOrigin?
     private var appleCoordinator: AppleAuthorizationCoordinator?
     private let analyticsManager: AnalyticsManager?
 
@@ -43,6 +49,7 @@ final class AuthStore: ObservableObject {
             isAuthenticated = true
             localSessionLabel = "UI test session"
             resolutionState = .authenticated
+            sessionOrigin = .server
             return
         }
         Task { [weak self] in
@@ -50,7 +57,7 @@ final class AuthStore: ObservableObject {
                 self?.resolutionState = .signedOut
                 return
             }
-            self?.apply(session)
+            self?.apply(session, origin: .restored)
         }
         NotificationCenter.default.addObserver(forName: .outboundAuthenticationExpired, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in self?.clearPresentation() }
@@ -72,7 +79,7 @@ final class AuthStore: ObservableObject {
             let session = try await APIClient.shared.createAppleSession(credential.sessionRequest)
             try await SessionCoordinator.shared.replace(session)
             AppleProfileCache.remove(for: credential.userIdentifier)
-            self.apply(session)
+            self.apply(session, origin: .server)
         }
     }
 
@@ -81,7 +88,7 @@ final class AuthStore: ObservableObject {
         guard isUsingDebugPersonas else { authError = String(localized: "Debug personas are unavailable in this build."); return }
         await performAuthentication {
             let session = try await APIClient.shared.createDebugPersonaSession(.init(persona: persona.apiValue, deviceLabel: UIDevice.current.name))
-            try await SessionCoordinator.shared.replace(session); self.apply(session)
+            try await SessionCoordinator.shared.replace(session); self.apply(session, origin: .server)
         }
     }
     #endif
@@ -115,8 +122,26 @@ final class AuthStore: ObservableObject {
             username: username,
             displayName: displayName,
             avatarUrl: user.avatarUrl,
-            email: user.email
+            email: user.email,
+            onboardingCompleted: user.onboardingCompleted
         )
+    }
+
+    func markOnboardingCompleted() {
+        if let user {
+            self.user = user.withOnboardingCompleted(true)
+        }
+        Task { try? await SessionCoordinator.shared.markOnboardingCompleted() }
+    }
+
+    func reconcileOnboardingCompletion() async -> Bool? {
+        do {
+            let session = try await SessionCoordinator.shared.refreshStoredSession()
+            apply(session, origin: .server)
+            return session.user.onboardingCompleted
+        } catch {
+            return nil
+        }
     }
 
     private func performAuthentication(_ operation: () async throws -> Void) async {
@@ -125,11 +150,12 @@ final class AuthStore: ObservableObject {
         catch let error as ASAuthorizationError where error.code == .canceled { }
         catch { authError = error.localizedDescription }
     }
-    private func apply(_ session: AuthSession) {
+    private func apply(_ session: AuthSession, origin: AuthenticationSessionOrigin) {
         user = session.user
         Self.cachedUserID = session.user.id
         isAuthenticated = true
         localSessionLabel = nil
+        sessionOrigin = origin
         resolutionState = .authenticated
     }
 
@@ -138,6 +164,7 @@ final class AuthStore: ObservableObject {
         Self.cachedUserID = nil
         isAuthenticated = false
         localSessionLabel = nil
+        sessionOrigin = nil
         resolutionState = .signedOut
     }
     private func makeAppleCredential() async throws -> AppleCredentialResult {
