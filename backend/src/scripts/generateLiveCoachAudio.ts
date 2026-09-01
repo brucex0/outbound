@@ -212,7 +212,7 @@ for (const voiceProfileId of voiceProfileIds) {
             semanticMoment: entry.cueKey,
             stableInstructions: stableLiveCoachInstructions(locale, "metric"),
             compiledContext: {
-              version: 2,
+              version: 3,
               measurementUnitSystem: "metric",
               runnerModelVersion: "fixed-asset",
               locale,
@@ -231,6 +231,7 @@ for (const voiceProfileId of voiceProfileIds) {
               },
               workout: null,
               clientWorkout: null,
+              workoutExecution: null,
               readiness: null,
               surveySummary: [],
               runnerInsights: [],

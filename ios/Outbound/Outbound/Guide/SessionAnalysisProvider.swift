@@ -14,6 +14,7 @@ struct SessionAnalysisRequest {
     let sessionIntent: SessionIntent?
     let companionBrief: CompanionSessionBriefDTO?
     let momentType: LiveGuidanceMomentType?
+    let instructionID: String?
     let preferredMessage: String?
     let routeGuidanceActive: Bool
 
@@ -25,6 +26,7 @@ struct SessionAnalysisRequest {
         sessionIntent: SessionIntent? = nil,
         companionBrief: CompanionSessionBriefDTO? = nil,
         momentType: LiveGuidanceMomentType? = nil,
+        instructionID: String? = nil,
         preferredMessage: String? = nil,
         routeGuidanceActive: Bool = false
     ) {
@@ -35,6 +37,7 @@ struct SessionAnalysisRequest {
         self.sessionIntent = sessionIntent
         self.companionBrief = companionBrief
         self.momentType = momentType
+        self.instructionID = instructionID
         self.preferredMessage = preferredMessage
         self.routeGuidanceActive = routeGuidanceActive
     }

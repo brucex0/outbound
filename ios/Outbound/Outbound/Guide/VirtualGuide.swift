@@ -49,6 +49,12 @@ private enum GoalMilestone: Hashable {
     }
 }
 
+private enum WorkoutCueTriggerState {
+    case notReached
+    case due
+    case missed
+}
+
 // On-device real-time guide that analyzes active session snapshots and speaks
 // short nudges through the configured SessionAnalysisProvider.
 @MainActor
@@ -90,6 +96,8 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var routeSpeechQuietUntil: Date?
     private var pendingMoment: DetectedLiveGuidanceMoment?
     private var queuedMoments: [DetectedLiveGuidanceMoment] = []
+    private var processedWorkoutCueIDs: Set<String> = []
+    private var lastWorkoutCueSnapshot: ActiveSessionSnapshot?
 
     private let maxSnapshotHistory = 240
     private let maxRecentSpokenFingerprints = 4
@@ -169,6 +177,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         routeSpeechQuietUntil = nil
         pendingMoment = nil
         queuedMoments = []
+        processedWorkoutCueIDs = []
+        lastWorkoutCueSnapshot = nil
         lastNudge = sessionIntent.map { Self.initialNudge(for: $0, unitSystem: unitSystem) } ?? ""
         lastSpokenAnnouncement = ""
         latestAnalysis = nil
@@ -226,6 +236,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             snapshotHistory.removeFirst(snapshotHistory.count - maxSnapshotHistory)
         }
 
+        queueWorkoutInstructions(for: snapshot)
         announceProgressIfNeeded(for: snapshot)
         let update = momentDirector.ingest(snapshot, profile: profile, intent: sessionIntent)
         update.evaluatedCues.forEach { record in
@@ -238,12 +249,7 @@ final class VirtualGuide: NSObject, ObservableObject {
                 type: moment.type,
                 contract: persona?.coachingContract ?? .responsive
             ))
-            if pendingMoment == nil {
-                pendingMoment = moment
-            } else if pendingMoment?.type != moment.type,
-                      !queuedMoments.contains(where: { $0.type == moment.type }) {
-                queuedMoments.append(moment)
-            }
+            enqueue(moment)
         }
         processPendingMoment(using: snapshot)
     }
@@ -367,6 +373,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             sessionIntent: sessionIntent,
             companionBrief: companionBrief,
             momentType: moment.type,
+            instructionID: moment.instructionID,
             preferredMessage: moment.preferredMessage,
             routeGuidanceActive: routeSpeechQuietUntil.map { Date() < $0 } ?? false
         )
@@ -433,15 +440,18 @@ final class VirtualGuide: NSObject, ObservableObject {
         lastNudge = message
 
         let fingerprint = normalizedFingerprint(for: message)
-        guard !recentSpokenFingerprints.contains(fingerprint) else { return }
-        guard canSpeakGuideMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else {
+        guard isWorkoutBoundaryMoment(moment.type)
+                || !recentSpokenFingerprints.contains(fingerprint) else { return }
+        guard isWorkoutBoundaryMoment(moment.type)
+                || canSpeakGuideMoment(at: snapshot.elapsedSeconds, urgency: analysis.urgency) else {
             pendingMoment = DetectedLiveGuidanceMoment(
                 type: moment.type,
                 detectedAtElapsedSeconds: snapshot.elapsedSeconds,
                 baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
                 targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
                 evaluationDelaySeconds: moment.evaluationDelaySeconds,
-                preferredMessage: message
+                preferredMessage: message,
+                instructionID: moment.instructionID
             )
             return
         }
@@ -473,7 +483,8 @@ final class VirtualGuide: NSObject, ObservableObject {
                 baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
                 targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
                 evaluationDelaySeconds: moment.evaluationDelaySeconds,
-                preferredMessage: message
+                preferredMessage: message,
+                instructionID: moment.instructionID
             )
         }
     }
@@ -488,7 +499,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             baselinePaceSecondsPerKilometer: moment.baselinePaceSecondsPerKilometer,
             targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
             evaluationDelaySeconds: moment.evaluationDelaySeconds,
-            preferredMessage: moment.preferredMessage
+            preferredMessage: moment.preferredMessage,
+            instructionID: moment.instructionID
         )
         _ = momentDirector.recordSpoken(spokenMoment)
         sessionReport = momentDirector.report(finalizing: false)
@@ -502,7 +514,10 @@ final class VirtualGuide: NSObject, ObservableObject {
         _ moment: DetectedLiveGuidanceMoment,
         at elapsedSeconds: Int
     ) -> Bool {
-        if moment.type == .challengeComplete || moment.type == .segmentTransition {
+        if isWorkoutBoundaryMoment(moment.type) {
+            return true
+        }
+        if moment.type == .challengeComplete {
             return canSpeakProgressUpdate(at: elapsedSeconds)
         }
         return canSpeakGuideMoment(at: elapsedSeconds, urgency: .opportunity)
@@ -510,6 +525,10 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func advancePendingMoment() {
         pendingMoment = queuedMoments.isEmpty ? nil : queuedMoments.removeFirst()
+    }
+
+    private func isWorkoutBoundaryMoment(_ type: LiveGuidanceMomentType) -> Bool {
+        type == .workoutInstruction || type == .segmentTransition
     }
 
     private func role(for type: LiveGuidanceMomentType) -> GuidanceMomentRole {
@@ -521,7 +540,7 @@ final class VirtualGuide: NSObject, ObservableObject {
              .challengeStart, .challengeComplete: .hype
         case .unexpectedStop, .resumeAfterBreak: .breakStatus
         case .climbStart: .form
-        case .segmentTransition: .segment
+        case .segmentTransition, .workoutInstruction: .segment
         case .finishOpportunity: .finish
         }
     }
@@ -616,6 +635,88 @@ final class VirtualGuide: NSObject, ObservableObject {
         requestProgressAnalysis(for: snapshot, localAnnouncement: announcement)
     }
 
+    private func queueWorkoutInstructions(for snapshot: ActiveSessionSnapshot) {
+        defer { lastWorkoutCueSnapshot = snapshot }
+        guard let sessionIntent, !sessionIntent.workoutCues.isEmpty else { return }
+
+        for cue in sessionIntent.workoutCues where !processedWorkoutCueIDs.contains(cue.id) {
+            let state = workoutCueTriggerState(
+                cue.trigger,
+                previous: lastWorkoutCueSnapshot,
+                current: snapshot
+            )
+            guard state != .notReached else { continue }
+            processedWorkoutCueIDs.insert(cue.id)
+            guard state == .due else { continue }
+            guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
+
+            let fallback = AppLanguage.current == .english
+                ? cue.cue
+                : String(
+                    localized: "live_guidance.workout_instruction",
+                    defaultValue: "New segment. Settle into the prescribed effort."
+                )
+            let moment = DetectedLiveGuidanceMoment(
+                type: .workoutInstruction,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                evaluationDelaySeconds: 0,
+                preferredMessage: fallback,
+                instructionID: cue.id
+            )
+            guidanceEventHandler?(.momentDetected(
+                type: moment.type,
+                contract: persona?.coachingContract ?? .responsive
+            ))
+            enqueue(moment)
+        }
+    }
+
+    private func workoutCueTriggerState(
+        _ trigger: SessionWorkoutCueTrigger,
+        previous: ActiveSessionSnapshot?,
+        current: ActiveSessionSnapshot
+    ) -> WorkoutCueTriggerState {
+        switch trigger.type {
+        case .elapsedTime:
+            guard let start = trigger.startSeconds else { return .missed }
+            guard current.elapsedSeconds >= start else { return .notReached }
+            if start == 0, previous == nil { return current.elapsedSeconds <= 20 ? .due : .missed }
+            guard current.elapsedSeconds - start <= 20 else { return .missed }
+            return .due
+        case .distance:
+            guard let start = trigger.startMeters else { return .missed }
+            if start == 0, previous == nil { return .due }
+            guard current.distanceMeters >= start else { return .notReached }
+            guard current.distanceMeters - start <= 75 else { return .missed }
+            guard hasReliableDistanceProgress(current) else { return .notReached }
+            return .due
+        }
+    }
+
+    private func enqueue(_ moment: DetectedLiveGuidanceMoment) {
+        if pendingMoment == nil {
+            pendingMoment = moment
+        } else if isWorkoutBoundaryMoment(moment.type),
+                  pendingMoment.map({ !isWorkoutBoundaryMoment($0.type) }) == true,
+                  !queuedMoments.contains(where: { sameQueueKey($0, moment) }) {
+            queuedMoments.insert(pendingMoment!, at: 0)
+            pendingMoment = moment
+        } else if !sameQueueKey(pendingMoment!, moment),
+                  !queuedMoments.contains(where: { sameQueueKey($0, moment) }) {
+            queuedMoments.append(moment)
+        }
+    }
+
+    private func sameQueueKey(
+        _ left: DetectedLiveGuidanceMoment,
+        _ right: DetectedLiveGuidanceMoment
+    ) -> Bool {
+        if let leftID = left.instructionID, let rightID = right.instructionID {
+            return leftID == rightID
+        }
+        return left.instructionID == nil && right.instructionID == nil && left.type == right.type
+    }
+
     private func requestProgressAnalysis(
         for snapshot: ActiveSessionSnapshot,
         localAnnouncement: String
@@ -630,12 +731,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             type: .progress,
             contract: persona?.coachingContract ?? .responsive
         ))
-        if pendingMoment == nil {
-            pendingMoment = moment
-        } else if pendingMoment?.type != .progress,
-                  !queuedMoments.contains(where: { $0.type == .progress }) {
-            queuedMoments.append(moment)
-        }
+        enqueue(moment)
         processPendingMoment(using: snapshot)
     }
 
@@ -765,6 +861,28 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func announceTimedBoundaryIfNeeded(for snapshot: ActiveSessionSnapshot) -> Bool {
         guard var cue = nextTimedBoundaryCue(at: snapshot.elapsedSeconds) else { return false }
+        if cue.isSegmentTransition {
+            spokenTimedBoundaryCues.insert(cue.id)
+            if sessionIntent?.workoutCues.contains(where: {
+                $0.trigger.type == .elapsedTime
+                    && $0.trigger.startSeconds == cue.boundarySeconds
+            }) == true {
+                return false
+            }
+            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+            let moment = DetectedLiveGuidanceMoment(
+                type: .segmentTransition,
+                detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                evaluationDelaySeconds: 0,
+                preferredMessage: cue.text
+            )
+            guidanceEventHandler?(.momentDetected(
+                type: moment.type,
+                contract: persona?.coachingContract ?? .responsive
+            ))
+            enqueue(moment)
+            return true
+        }
         if cue.isCompletion {
             let summary = keyProgressSummary(for: snapshot)
             if !summary.isEmpty {
@@ -789,22 +907,18 @@ final class VirtualGuide: NSObject, ObservableObject {
         if cue.isCompletion {
             spokenGoalMilestones.insert(.durationComplete)
         }
-        if cue.isSegmentTransition {
-            let contract = persona?.coachingContract ?? .responsive
-            guidanceEventHandler?(.momentDetected(type: .segmentTransition, contract: contract))
-            _ = momentDirector.recordSystemCue(
-                type: .segmentTransition,
-                elapsedSeconds: snapshot.elapsedSeconds
-            )
-            sessionReport = momentDirector.report(finalizing: false)
-            guidanceEventHandler?(.cueSpoken(type: .segmentTransition, contract: contract))
-        }
         return true
     }
 
     private func nextTimedBoundaryCue(
         at elapsedSeconds: Int
-    ) -> (id: String, text: String, isCompletion: Bool, isSegmentTransition: Bool)? {
+    ) -> (
+        id: String,
+        text: String,
+        isCompletion: Bool,
+        isSegmentTransition: Bool,
+        boundarySeconds: Int
+    )? {
         guard let sessionIntent else { return nil }
         let steps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
         let boundaries: [(seconds: Int, nextLabel: String?)]
@@ -824,15 +938,28 @@ final class VirtualGuide: NSObject, ObservableObject {
             if (1...5).contains(remaining) {
                 let id = "boundary-\(index)-count-\(remaining)"
                 if !spokenTimedBoundaryCues.contains(id) {
-                    return (id, "\(remaining)", false, false)
+                    return (id, "\(remaining)", false, false, boundary.seconds)
                 }
             } else if remaining <= 0 {
                 let id = "boundary-\(index)-complete"
                 guard !spokenTimedBoundaryCues.contains(id) else { continue }
                 if let nextLabel = boundary.nextLabel {
-                    return (id, "Go. \(nextLabel).", false, true)
+                    return (
+                        id,
+                        String(
+                            format: String(
+                                localized: "live_guidance.segment_transition.format",
+                                defaultValue: "Go. %@."
+                            ),
+                            locale: .autoupdatingCurrent,
+                            nextLabel
+                        ),
+                        false,
+                        true,
+                        boundary.seconds
+                    )
                 }
-                return (id, "Workout complete.", true, false)
+                return (id, "Workout complete.", true, false, boundary.seconds)
             }
         }
         return nil

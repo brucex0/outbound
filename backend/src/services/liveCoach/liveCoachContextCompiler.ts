@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import type { LiveCoachCompiledContext } from "../aiProviders/types.js";
+import { standaloneWorkoutCatalog } from "../../data/standaloneWorkouts.js";
 import { AIProviderError } from "../aiProviders/errors.js";
 import type {
   CompiledLiveCoachSessionContext,
@@ -16,8 +17,11 @@ export async function compileLiveCoachContext(
   prisma: PrismaClient,
   userId: string,
   input: Pick<CreateLiveCoachSessionInput,
-    "workoutId" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
+    "workoutId" | "workoutRef" | "measurementUnitSystem" | "locale" | "sessionIntent" | "clientWorkout" | "environment">
 ): Promise<CompiledLiveCoachSessionContext> {
+  if (input.workoutId && input.workoutRef) {
+    throw new AIProviderError("not_eligible", "Only one selected workout source may be used.");
+  }
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * millisecondsPerDay);
   const twentyEightDaysAgo = new Date(now.getTime() - 28 * millisecondsPerDay);
@@ -82,11 +86,12 @@ export async function compileLiveCoachContext(
   if (input.workoutId && !workout && !input.clientWorkout) {
     throw new AIProviderError("not_eligible", "The selected workout is unavailable for this runner.");
   }
+  const workoutExecution = resolveWorkoutExecution(input.workoutRef);
 
   const sevenDayActivities = activities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const olderBaselineActivities = activities.filter((activity) => activity.startedAt < sevenDaysAgo);
   const context: LiveCoachCompiledContext = {
-    version: 2,
+    version: 3,
     measurementUnitSystem: input.measurementUnitSystem,
     runnerModelVersion: latestModel?.id ?? "runner-model-empty",
     locale: input.locale,
@@ -143,6 +148,7 @@ export async function compileLiveCoachContext(
       })),
     } : null,
     clientWorkout: sanitizeClientWorkout(input.clientWorkout),
+    workoutExecution,
     readiness: readiness ? {
       choice: clip(readiness.choice, 24),
       energy: finiteNumber(readiness.energy),
@@ -188,6 +194,43 @@ export async function compileLiveCoachContext(
     serialized,
     contextHash: createHash("sha256").update(serialized).digest("hex"),
     estimatedTokens,
+  };
+}
+
+function resolveWorkoutExecution(
+  reference: CreateLiveCoachSessionInput["workoutRef"]
+): LiveCoachCompiledContext["workoutExecution"] {
+  if (!reference) return null;
+  if (reference.version != null && reference.version !== standaloneWorkoutCatalog.version) {
+    throw new AIProviderError("not_eligible", "The selected standalone workout catalog is out of date.");
+  }
+  const workout = standaloneWorkoutCatalog.workouts.find((candidate) => candidate.id === reference.id);
+  if (!workout) {
+    throw new AIProviderError("not_eligible", "The selected standalone workout is unavailable.");
+  }
+  return {
+    source: "standalone_catalog",
+    id: workout.id,
+    catalogVersion: standaloneWorkoutCatalog.version,
+    title: clip(workout.title, 120),
+    objective: clip(workout.guideInstructions.objective, 500),
+    targetDistanceMeters: finiteNumber(workout.targetDistanceMeters),
+    targetDurationSeconds: finiteNumber(workout.targetDurationSeconds),
+    beforeStart: workout.guideInstructions.beforeStart.slice(0, 12).map((value) => clip(value, 300)),
+    segments: workout.guideInstructions.segments.slice(0, 80).map((segment) => ({
+      id: clip(segment.id, 120),
+      trigger: segment.trigger,
+      effort: {
+        rpeMin: segment.effort.rpeMin,
+        rpeMax: segment.effort.rpeMax,
+        feel: clip(segment.effort.feel, 180),
+      },
+      instruction: clip(segment.instruction, 500),
+      referenceCue: clip(segment.cue, 180),
+      adjustmentCue: clip(segment.fallback, 180),
+    })),
+    finish: workout.guideInstructions.finish.slice(0, 12).map((value) => clip(value, 300)),
+    stopConditions: workout.guideInstructions.stopConditions.slice(0, 12).map((value) => clip(value, 300)),
   };
 }
 

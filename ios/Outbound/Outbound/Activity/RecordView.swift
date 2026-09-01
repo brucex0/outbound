@@ -3801,6 +3801,8 @@ struct RecordView: View {
                 activityTypeOverride: restoredBase.activityTypeOverride,
                 workoutSteps: restoredBase.workoutSteps,
                 coachingTarget: restoredBase.coachingTarget,
+                workoutReference: restoredBase.workoutReference,
+                workoutCues: restoredBase.workoutCues,
                 activityEvent: restoredBase.activityEvent
             )
             intentBeforeSelectedRoute = nil
@@ -3834,6 +3836,8 @@ struct RecordView: View {
             activityTypeOverride: route.activityType,
             workoutSteps: preservesBaseStructure ? baseIntent.workoutSteps : [],
             coachingTarget: preservesBaseStructure ? baseIntent.coachingTarget : nil,
+            workoutReference: preservesBaseStructure ? baseIntent.workoutReference : nil,
+            workoutCues: preservesBaseStructure ? baseIntent.workoutCues : [],
             activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
         )
     }
@@ -3887,6 +3891,8 @@ struct RecordView: View {
             activityTypeOverride: directedRoute.activityType ?? currentIntent.activityTypeOverride,
             workoutSteps: currentIntent.workoutSteps,
             coachingTarget: currentIntent.coachingTarget,
+            workoutReference: currentIntent.workoutReference,
+            workoutCues: currentIntent.workoutCues,
             activityEvent: currentIntent.activityEvent
         )
         track(.init(.activityConfigurationChanged, properties: [

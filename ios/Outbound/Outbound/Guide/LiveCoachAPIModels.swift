@@ -106,6 +106,7 @@ struct CreateLiveCoachSessionRequest: Encodable {
     let contractVersion = 1
     let clientSessionId: UUID
     let workoutId: String?
+    let workoutRef: WorkoutReferenceDTO?
     let locale: String
     let coachPersonaId: String
     let voiceProfileId: String
@@ -119,6 +120,12 @@ struct CreateLiveCoachSessionRequest: Encodable {
     struct SessionIntentDTO: Encodable {
         let activityType: String
         let goalType: String
+    }
+
+    struct WorkoutReferenceDTO: Encodable {
+        let source: String
+        let id: String
+        let version: Int?
     }
 
     struct ClientWorkoutDTO: Encodable {
@@ -216,6 +223,8 @@ struct LiveCoachGuidancePlanDTO: Decodable, Equatable {
     struct Cue: Decodable, Equatable {
         let id: String
         let moment: String
+        let instructionId: String?
+        let trigger: SessionWorkoutCueTrigger?
         let phases: [String]
         let priority: String
         let cooldownSeconds: Int

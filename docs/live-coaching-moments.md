@@ -39,6 +39,7 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `finish_opportunity` | A planned finish is near enough for an optional controlled lift, but not an immediate finish command. | After 5 active minutes; 300-800 m or up to 12% remains for distance goals, or 2-5 minutes or up to 12% remains for time goals. | Once per session. |
 | `challenge_start` | The runner explicitly enabled a 2- or 3-minute lift and enough workout remains. | After 6 active minutes; baseline pace exists; at least challenge duration plus 60 seconds remains when the goal is bounded. | Once per selected challenge. |
 | `challenge_complete` | The selected challenge duration elapsed after its cue was spoken. | Challenge start was spoken and the selected duration elapsed. | Once per selected challenge. |
+| `workout_instruction` | A selected standalone workout reached a catalog-authored execution boundary. | Exact instruction ID plus a distance or elapsed-time trigger carried in the cached workout; the server-issued phrase plan carries the matching ID and trigger. | Once per instruction ID; stale crossings are skipped. |
 
 Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The director retains up to 240 active snapshots.
 
@@ -72,7 +73,7 @@ Route guidance has priority over ordinary coaching. A live route cue also forces
 
 ## Cooldowns, Outcomes, And Suppression
 
-- Quiet has no automatic coaching cooldown and therefore emits no ordinary detector moments. Explicit challenges, progress, workout transitions, route/safety, and auto-pause status remain separate system behaviors.
+- Quiet has no automatic coaching cooldown and therefore emits no ordinary detector moments. Explicit challenges, progress, selected-workout instructions, workout transitions, route/safety, and auto-pause status remain separate system behaviors.
 - Responsive permits a new ordinary coaching moment after 180 seconds.
 - Coach Me permits one after 90 seconds.
 - Spoken pace corrections are evaluated after their delay. Only measured improvement or stabilization can produce `rhythm_recovery`.
@@ -98,6 +99,7 @@ Catalog `2026-08-30.1` gives each correction a script that preserves its coachin
 | `climb_start` | `coach.climb_by_effort` |
 | `crest_recovery` | `coach.crest_reset` |
 | `segment_transition` | `workout.segment_start` |
+| `workout_instruction` | Instruction-specific planned phrase; `workout.segment_start` is the generic localized fallback |
 | `finish_opportunity` | `coach.strong_finish` |
 | `challenge_start`, `challenge_complete` | `challenge.start`, `challenge.complete` |
 

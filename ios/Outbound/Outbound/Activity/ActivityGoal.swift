@@ -182,6 +182,8 @@ extension SessionIntent {
                 activityTypeOverride: activityTypeOverride,
                 workoutSteps: workoutSteps,
                 coachingTarget: coachingTarget,
+                workoutReference: workoutReference,
+                workoutCues: workoutCues,
                 activityEvent: activityEvent
             )
         }
@@ -200,6 +202,8 @@ extension SessionIntent {
             activityTypeOverride: activityTypeOverride,
             workoutSteps: workoutSteps,
             coachingTarget: coachingTarget,
+            workoutReference: workoutReference,
+            workoutCues: workoutCues,
             activityEvent: activityEvent
         )
     }

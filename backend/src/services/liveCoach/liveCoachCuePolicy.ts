@@ -19,6 +19,7 @@ const dynamicMoments = new Set<LiveCoachMoment>([
   "finish_opportunity",
   "challenge_start",
   "challenge_complete",
+  "workout_instruction",
 ]);
 
 export function cuePolicyDecision(input: RequestLiveCoachCueInput, config: LiveCoachFeatureConfig): {
@@ -45,6 +46,7 @@ export function urgencyForMoment(moment: LiveCoachMoment): "steady" | "opportuni
     case "crest_recovery":
     case "finish_opportunity":
     case "segment_transition":
+    case "workout_instruction":
     case "challenge_start":
       return "opportunity";
     default:

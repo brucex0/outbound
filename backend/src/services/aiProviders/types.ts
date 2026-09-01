@@ -59,7 +59,7 @@ export type LiveCoachLiveState = {
 };
 
 export type LiveCoachCompiledContext = {
-  version: 2;
+  version: 3;
   measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
   locale: SupportedAILocale;
@@ -106,6 +106,28 @@ export type LiveCoachCompiledContext = {
     targetDurationSeconds: number | null;
     steps: unknown[];
     route: unknown | null;
+  } | null;
+  workoutExecution: {
+    source: "standalone_catalog";
+    id: string;
+    catalogVersion: number;
+    title: string;
+    objective: string;
+    targetDistanceMeters: number | null;
+    targetDurationSeconds: number | null;
+    beforeStart: string[];
+    segments: Array<{
+      id: string;
+      trigger:
+        | { type: "distance"; startMeters: number; endMeters: number }
+        | { type: "elapsed_time"; startSeconds: number; endSeconds: number };
+      effort: { rpeMin: number; rpeMax: number; feel: string };
+      instruction: string;
+      referenceCue: string;
+      adjustmentCue: string;
+    }>;
+    finish: string[];
+    stopConditions: string[];
   } | null;
   readiness: {
     choice: string;

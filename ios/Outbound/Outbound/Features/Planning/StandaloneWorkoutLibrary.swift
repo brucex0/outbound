@@ -15,6 +15,16 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
     let targetDurationSeconds: Int?
     let steps: [SessionIntentStep]
     let coachingTarget: SessionCoachingTarget?
+    let guideInstructions: GuideInstructions
+    var catalogVersion: Int?
+
+    struct GuideInstructions: Hashable, Codable {
+        let objective: String
+        let beforeStart: [String]
+        let segments: [SessionWorkoutCue]
+        let finish: [String]
+        let stopConditions: [String]
+    }
 
     var intent: SessionIntent {
         SessionIntent(
@@ -23,8 +33,20 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
             targetDistanceMeters: targetDistanceMeters,
             targetDurationSeconds: targetDurationSeconds,
             workoutSteps: steps,
-            coachingTarget: coachingTarget
+            coachingTarget: coachingTarget,
+            workoutReference: SessionWorkoutReference(
+                source: "standalone_catalog",
+                id: id,
+                version: catalogVersion
+            ),
+            workoutCues: guideInstructions.segments
         )
+    }
+
+    func withCatalogVersion(_ version: Int) -> StandaloneWorkout {
+        var copy = self
+        copy.catalogVersion = version
+        return copy
     }
 }
 
@@ -48,7 +70,7 @@ final class StandaloneWorkoutStore: ObservableObject {
         self.defaults = defaults
         if let data = defaults.data(forKey: cacheKey),
            let cached = try? JSONDecoder().decode(StandaloneWorkoutCatalogResponse.self, from: data) {
-            workouts = cached.workouts
+            workouts = cached.workouts.map { $0.withCatalogVersion(cached.version) }
         }
     }
 
@@ -60,7 +82,7 @@ final class StandaloneWorkoutStore: ObservableObject {
 
         do {
             let response = try await api.fetchStandaloneWorkouts()
-            workouts = response.workouts
+            workouts = response.workouts.map { $0.withCatalogVersion(response.version) }
             if let data = try? JSONEncoder().encode(response) {
                 defaults.set(data, forKey: cacheKey)
             }

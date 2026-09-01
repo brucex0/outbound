@@ -34,7 +34,10 @@ final class LiveCoachSessionController {
         voiceProfileID = persona.voice.id
         let request = CreateLiveCoachSessionRequest(
             clientSessionId: UUID(),
-            workoutId: companionBrief?.workout?.id,
+            workoutId: intent?.workoutReference == nil ? companionBrief?.workout?.id : nil,
+            workoutRef: intent?.workoutReference.map {
+                .init(source: $0.source, id: $0.id, version: $0.version)
+            },
             locale: AppLanguage.currentIdentifier,
             coachPersonaId: persona.template.id,
             voiceProfileId: persona.voice.id,
@@ -65,18 +68,24 @@ final class LiveCoachSessionController {
         }
     }
 
-    func requestCueStream(_ request: LiveCoachCueRequest) async throws -> LiveCoachCueStreamResponse {
+    func requestCueStream(
+        _ request: LiveCoachCueRequest,
+        instructionID: String? = nil
+    ) async throws -> LiveCoachCueStreamResponse {
         let active = if let session { session } else if let createTask { try await createTask.value } else {
             throw LiveCoachSessionError.notStarted
         }
         guard active.expiresAt > Date() else { throw LiveCoachSessionError.expired }
-        let selectedPhraseID = request.moment == "progress"
-            ? nil
-            : selectedPhraseID(
+        let selectedPhraseID = request.moment == "progress" ? nil
+            : request.selectedPhraseId ?? selectedPhraseID(
                 in: active.guidancePlan,
                 moment: request.moment,
-                phase: request.liveState.workoutSegmentPhase
+                phase: request.liveState.workoutSegmentPhase,
+                instructionID: instructionID
             )
+        if request.moment == "workout_instruction", instructionID != nil, selectedPhraseID == nil {
+            throw LiveCoachSessionError.missingInstructionPhrase
+        }
         if let selectedPhraseID,
            let cached = await GuidePlannedAudioCache.shared.audioData(
                 planHash: active.guidancePlanHash,
@@ -158,9 +167,13 @@ final class LiveCoachSessionController {
             "early_overpace", "pace_above_target", "pace_below_target", "pace_drift",
             "recovery_too_hard", "climb_start", "segment_transition", "finish_opportunity"
         ]
-        let phrases = preferredMoments.compactMap { moment in
+        let workoutPhrases = response.guidancePlan.cues
+            .filter { $0.moment == "workout_instruction" }
+            .compactMap(\.phrases.first)
+        let reactivePhrases = preferredMoments.compactMap { moment in
             response.guidancePlan.cues.first(where: { $0.moment == moment })?.phrases.first
-        }.prefix(8)
+        }
+        let phrases = Array((workoutPhrases + reactivePhrases).prefix(8))
         for phrase in phrases {
             guard !Task.isCancelled else { return }
             if await GuidePlannedAudioCache.shared.audioData(
@@ -204,7 +217,7 @@ final class LiveCoachSessionController {
 
     private func goalType(for intent: SessionIntent?) -> String {
         guard let intent else { return "freestyle" }
-        if !intent.workoutSteps.isEmpty { return "workout" }
+        if intent.workoutReference != nil || !intent.workoutSteps.isEmpty { return "workout" }
         if intent.resolvedTargetDistanceMeters != nil { return "distance" }
         if intent.resolvedTargetDurationSeconds != nil { return "time" }
         return "freestyle"
@@ -213,10 +226,12 @@ final class LiveCoachSessionController {
     private func selectedPhraseID(
         in plan: LiveCoachGuidancePlanDTO,
         moment: String,
-        phase: String?
+        phase: String?,
+        instructionID: String?
     ) -> String? {
         let eligible = plan.cues.filter { cue in
             cue.moment == moment
+                && (instructionID == nil || cue.instructionId == instructionID)
                 && (phase == nil || cue.phases.contains("any") || cue.phases.contains(phase!))
         }.flatMap(\.phrases)
         guard !eligible.isEmpty else { return nil }
@@ -325,4 +340,5 @@ final class LiveCoachSessionController {
 private enum LiveCoachSessionError: Error {
     case notStarted
     case expired
+    case missingInstructionPhrase
 }

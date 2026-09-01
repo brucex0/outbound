@@ -159,6 +159,40 @@ struct SessionIntentStep: Identifiable, Hashable, Codable {
     }
 }
 
+struct SessionWorkoutReference: Hashable, Codable {
+    let source: String
+    let id: String
+    let version: Int?
+}
+
+struct SessionWorkoutCueTrigger: Hashable, Codable {
+    enum Kind: String, Codable {
+        case distance
+        case elapsedTime = "elapsed_time"
+    }
+
+    let type: Kind
+    let startMeters: Double?
+    let endMeters: Double?
+    let startSeconds: Int?
+    let endSeconds: Int?
+}
+
+struct SessionWorkoutCue: Identifiable, Hashable, Codable {
+    struct Effort: Hashable, Codable {
+        let rpeMin: Int
+        let rpeMax: Int
+        let feel: String
+    }
+
+    let id: String
+    let trigger: SessionWorkoutCueTrigger
+    let effort: Effort
+    let instruction: String
+    let cue: String
+    let fallback: String
+}
+
 struct ActiveSessionCoachingSegment: Hashable {
     let id: String
     let target: SessionCoachingTarget
@@ -181,6 +215,8 @@ struct SessionIntent: Identifiable, Hashable {
     let activityTypeOverride: ActivityType?
     let workoutSteps: [SessionIntentStep]
     let coachingTarget: SessionCoachingTarget?
+    let workoutReference: SessionWorkoutReference?
+    let workoutCues: [SessionWorkoutCue]
     let activityEvent: ActivityEventLaunchContext?
 
     init(
@@ -198,6 +234,8 @@ struct SessionIntent: Identifiable, Hashable {
         activityTypeOverride: ActivityType? = nil,
         workoutSteps: [SessionIntentStep] = [],
         coachingTarget: SessionCoachingTarget? = nil,
+        workoutReference: SessionWorkoutReference? = nil,
+        workoutCues: [SessionWorkoutCue] = [],
         activityEvent: ActivityEventLaunchContext? = nil
     ) {
         self.id = id
@@ -214,6 +252,8 @@ struct SessionIntent: Identifiable, Hashable {
         self.activityTypeOverride = activityTypeOverride
         self.workoutSteps = workoutSteps
         self.coachingTarget = coachingTarget
+        self.workoutReference = workoutReference
+        self.workoutCues = workoutCues
         self.activityEvent = activityEvent
     }
 

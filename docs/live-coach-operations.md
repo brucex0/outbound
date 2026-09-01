@@ -6,11 +6,13 @@ Open this when generating or publishing live-coach audio, changing the Google TT
 
 Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
 
-1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. Gemini returns a strict-JSON phase-aware phrase plan.
-2. iOS keeps semantic detection and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
+1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. A standalone selection is sent as a catalog reference; the backend resolves its guide-relevant execution projection before Gemini returns a strict-JSON phase-aware and instruction-ID-aware phrase plan.
+2. iOS keeps semantic detection, selected-workout distance/time trigger crossings, and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
 3. Google TTS receives only the finalized sentence, selected voice, language, and 24 kHz PCM settings.
 4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
-5. Generated plans prewarm up to eight likely WAV phrases in the background. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the planned cache, reviewed local pack, or session-pinned on-device system voice.
+5. Generated plans prewarm up to eight likely WAV phrases in the background, with selected-workout instructions first. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the catalog cue in English, a localized generic segment cue in other locales, the reviewed local pack, or the session-pinned on-device system voice.
+
+Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter distance crossing window. The first zero trigger may fire immediately. Reliable distance is required after the initial cue, stale crossings are skipped, route guidance wins, and elapsed catalog cues replace only the generic timed transition at the same boundary. Other timed-step transitions now use the same live-coach phrase/cache/TTS path; countdown and completion behavior remains deterministic on device.
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 

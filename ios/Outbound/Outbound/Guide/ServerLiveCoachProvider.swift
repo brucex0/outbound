@@ -91,18 +91,23 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         )
 
         do {
-            let response = try await controller.requestCueStream(cueRequest)
+            let response = try await controller.requestCueStream(
+                cueRequest,
+                instructionID: request.instructionID
+            )
             let metadata = response.metadata
             let latency = LiveCoachLatencyBucket(seconds: Date().timeIntervalSince(startedAt))
             guard metadata.expiresAt > Date() else {
                 return silentResult(source: metadata.source, result: .stale, latency: latency)
             }
             let fallback = Self.fallback(for: moment, language: AppLanguage.current)
-            let localProgressText = moment == .progress ? request.preferredMessage : nil
+            let localPreferredText = (moment == .progress || moment == .workoutInstruction)
+                ? request.preferredMessage
+                : nil
             let message = metadata.source == .dynamicGeneration
                 ? metadata.transcript
-                : localProgressText ?? metadata.transcript
-            let fallbackKey = localProgressText == nil ? metadata.fixedCueKey ?? fallback.key : nil
+                : localPreferredText ?? metadata.transcript
+            let fallbackKey = localPreferredText == nil ? metadata.fixedCueKey ?? fallback.key : nil
             let fallbackAudio: Data? = if let cached = response.cachedAudioData {
                 cached
             } else if let fallbackKey {
@@ -342,7 +347,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             .steady
         case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
              .paceDrift, .recoveryTooHard, .climbStart, .segmentTransition,
-             .finishOpportunity, .challengeStart:
+             .finishOpportunity, .challengeStart, .workoutInstruction:
             .opportunity
         case .unexpectedStop:
             .caution
@@ -372,6 +377,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         case .finishOpportunity: key = "coach.strong_finish"
         case .challengeStart: key = "challenge.start"
         case .challengeComplete: key = "challenge.complete"
+        case .workoutInstruction: key = "workout.segment_start"
         }
         let texts: [String: [String: String]] = [
             AppLanguage.english.rawValue: [

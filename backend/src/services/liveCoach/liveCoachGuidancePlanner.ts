@@ -7,20 +7,24 @@ import { fixedFallbackEnvelope } from "./liveCoachFallback.js";
 import { loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import { urgencyForMoment } from "./liveCoachCuePolicy.js";
 import {
-  LIVE_COACH_MOMENTS,
+  LIVE_COACH_REACTIVE_MOMENTS,
   type LiveCoachGuidancePhase,
   type LiveCoachGuidancePlan,
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-08-30.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-08-31.1";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
-  moment: z.enum(LIVE_COACH_MOMENTS),
+  moment: z.enum(LIVE_COACH_REACTIVE_MOMENTS),
   phases: z.array(z.enum(phases)).min(1).max(8),
   cooldownSeconds: z.number().int().min(45).max(900),
   phrases: z.array(z.string().trim().min(2).max(180)).min(1).max(3),
+}).strict();
+const plannerWorkoutInstructionSchema = z.object({
+  instructionId: z.string().trim().min(1).max(120),
+  phrase: z.string().trim().min(2).max(180),
 }).strict();
 const plannerOutputSchema = z.object({
   summary: z.string().trim().min(1).max(320),
@@ -29,13 +33,14 @@ const plannerOutputSchema = z.object({
     announceEveryMeters: z.number().int().min(500).max(10_000),
     includePace: z.boolean(),
   }).strict(),
-  cues: z.array(plannerCueSchema).min(LIVE_COACH_MOMENTS.length).max(LIVE_COACH_MOMENTS.length * 2),
+  cues: z.array(plannerCueSchema).min(LIVE_COACH_REACTIVE_MOMENTS.length).max(LIVE_COACH_REACTIVE_MOMENTS.length * 2),
+  workoutInstructions: z.array(plannerWorkoutInstructionSchema).max(80),
 }).strict();
 
 const plannerJSONSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "progressPolicy", "cues"],
+  required: ["summary", "progressPolicy", "cues", "workoutInstructions"],
   properties: {
     summary: { type: "string", minLength: 1, maxLength: 320 },
     progressPolicy: {
@@ -50,17 +55,30 @@ const plannerJSONSchema = {
     },
     cues: {
       type: "array",
-      minItems: LIVE_COACH_MOMENTS.length,
-      maxItems: LIVE_COACH_MOMENTS.length * 2,
+      minItems: LIVE_COACH_REACTIVE_MOMENTS.length,
+      maxItems: LIVE_COACH_REACTIVE_MOMENTS.length * 2,
       items: {
         type: "object",
         additionalProperties: false,
         required: ["moment", "phases", "cooldownSeconds", "phrases"],
         properties: {
-          moment: { type: "string", enum: [...LIVE_COACH_MOMENTS] },
+          moment: { type: "string", enum: [...LIVE_COACH_REACTIVE_MOMENTS] },
           phases: { type: "array", minItems: 1, maxItems: 8, items: { type: "string", enum: [...phases] } },
           cooldownSeconds: { type: "integer", minimum: 45, maximum: 900 },
           phrases: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", minLength: 2, maxLength: 180 } },
+        },
+      },
+    },
+    workoutInstructions: {
+      type: "array",
+      maxItems: 80,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["instructionId", "phrase"],
+        properties: {
+          instructionId: { type: "string", minLength: 1, maxLength: 120 },
+          phrase: { type: "string", minLength: 2, maxLength: 180 },
         },
       },
     },
@@ -102,7 +120,8 @@ export async function generateLiveCoachGuidancePlan(
       model: config.planner.model,
       contents: JSON.stringify({
         task: "Create the executable live-coaching phrase plan for this workout.",
-        supportedMoments: LIVE_COACH_MOMENTS,
+        supportedMoments: LIVE_COACH_REACTIVE_MOMENTS,
+        requiredWorkoutInstructionIds: context.workoutExecution?.segments.map((segment) => segment.id) ?? [],
         runnerContext: context,
       }),
       config: {
@@ -154,7 +173,7 @@ function normalizeGeneratedPlan(
     grouped.set(cue.moment, current);
   }
   const fallback = fallbackGuidancePlan(context);
-  const cues = LIVE_COACH_MOMENTS.flatMap((moment) => {
+  const cues: LiveCoachGuidancePlan["cues"] = LIVE_COACH_REACTIVE_MOMENTS.flatMap((moment) => {
     const generated = grouped.get(moment);
     if (!generated?.length) return fallback.cues.filter((cue) => cue.moment === moment);
     return generated.map((cue, cueIndex) => ({
@@ -169,6 +188,8 @@ function normalizeGeneratedPlan(
       })),
     }));
   });
+  const workoutInstructions = normalizedWorkoutInstructions(output.workoutInstructions, context);
+  cues.push(...workoutInstructions);
   const provisional = {
     contractVersion: 1 as const,
     planVersion: "pending",
@@ -184,6 +205,24 @@ function fallbackGuidancePlan(context: LiveCoachCompiledContext): LiveCoachGuida
   const progressDistance = context.activityType === "cycling"
     ? context.measurementUnitSystem === "imperial" ? 8_047 : 5_000
     : context.measurementUnitSystem === "imperial" ? 1_609 : 1_000;
+  const reactiveCues: LiveCoachGuidancePlan["cues"] = LIVE_COACH_REACTIVE_MOMENTS.map((moment) => {
+    const fallback = fixedFallbackEnvelope({
+      cueRequestId: "00000000-0000-0000-0000-000000000000",
+      moment,
+      locale: context.locale,
+      validForMilliseconds: 5_000,
+      result: "success",
+      source: "fixed_pack",
+    });
+    return {
+      id: `${moment}.0`,
+      moment,
+      phases: ["any" as const],
+      priority: urgencyForMoment(moment),
+      cooldownSeconds: defaultCooldown(moment),
+      phrases: [{ id: `${moment}.0.0`, text: fallback.transcript }],
+    };
+  });
   const provisional = {
     contractVersion: 1 as const,
     planVersion: "pending",
@@ -192,26 +231,54 @@ function fallbackGuidancePlan(context: LiveCoachCompiledContext): LiveCoachGuida
       : context.locale === "es" ? "Usa orientación predeterminada, segura y clara."
       : "Uses safe, clear default live guidance.",
     progressPolicy: { announceEverySeconds: 300, announceEveryMeters: progressDistance, includePace: true },
-    cues: LIVE_COACH_MOMENTS.map((moment) => {
-      const fallback = fixedFallbackEnvelope({
-        cueRequestId: "00000000-0000-0000-0000-000000000000",
-        moment,
-        locale: context.locale,
-        validForMilliseconds: 5_000,
-        result: "success",
-        source: "fixed_pack",
-      });
-      return {
-        id: `${moment}.0`,
-        moment,
-        phases: ["any" as const],
-        priority: urgencyForMoment(moment),
-        cooldownSeconds: defaultCooldown(moment),
-        phrases: [{ id: `${moment}.0.0`, text: fallback.transcript }],
-      };
-    }),
+    cues: reactiveCues.concat(fallbackWorkoutInstructions(context)),
   };
   return { ...provisional, planVersion: planHash(provisional).slice(0, 16) };
+}
+
+function normalizedWorkoutInstructions(
+  output: z.infer<typeof plannerWorkoutInstructionSchema>[],
+  context: LiveCoachCompiledContext
+): LiveCoachGuidancePlan["cues"] {
+  const segments = context.workoutExecution?.segments ?? [];
+  const byId = new Map(output.map((instruction) => [instruction.instructionId, instruction]));
+  if (byId.size !== output.length
+      || output.length !== segments.length
+      || segments.some((segment) => !byId.has(segment.id))) {
+    throw new Error("Planner workout instructions did not match the selected workout.");
+  }
+  return segments.map((segment, index) => ({
+    id: `workout_instruction.${index}`,
+    moment: "workout_instruction",
+    instructionId: segment.id,
+    trigger: segment.trigger,
+    phases: ["any"],
+    priority: "opportunity",
+    cooldownSeconds: 45,
+    phrases: [{
+      id: `workout_instruction.${index}.0`,
+      text: validatePhrase(byId.get(segment.id)!.phrase, context.locale),
+    }],
+  }));
+}
+
+function fallbackWorkoutInstructions(context: LiveCoachCompiledContext): LiveCoachGuidancePlan["cues"] {
+  const generic = context.locale === "zh-Hans" ? "进入新阶段，按训练要求稳定强度。"
+    : context.locale === "es" ? "Nuevo segmento. Adopta el esfuerzo indicado."
+    : null;
+  return (context.workoutExecution?.segments ?? []).map((segment, index) => ({
+    id: `workout_instruction.${index}`,
+    moment: "workout_instruction",
+    instructionId: segment.id,
+    trigger: segment.trigger,
+    phases: ["any"],
+    priority: "opportunity",
+    cooldownSeconds: 45,
+    phrases: [{
+      id: `workout_instruction.${index}.0`,
+      text: generic ?? validatePhrase(segment.referenceCue, context.locale),
+    }],
+  }));
 }
 
 function plannerInstructions(locale: string, personaInstructions: string): string {
@@ -219,7 +286,8 @@ function plannerInstructions(locale: string, personaInstructions: string): strin
     "You are designing a live coaching plan, not replying to the runner.",
     `Write every spoken phrase in locale ${locale}.`,
     personaInstructions,
-    "Use every supported moment at least once. Use phases to specialize wording where the workout structure benefits.",
+    "Use every supported reactive moment at least once. Use phases to specialize wording where the workout structure benefits.",
+    "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and rewrite its reference cue as concise coaching in the requested locale. Return an empty array when there are no required IDs.",
     "Each phrase must be one natural, immediately speakable sentence of at most 24 English/Spanish words or 48 Chinese characters.",
     "Do not include placeholders, metric values, markdown, medical diagnoses, commands to exceed the prescribed workout, or claims about facts not present in context.",
     "Never speak private bio, health, location, survey, or weather details explicitly. Use them only to choose safe tone, focus, timing, and advice.",

@@ -88,6 +88,7 @@ enum LiveGuidanceMomentType: String, Codable, CaseIterable, Hashable {
     case finishOpportunity = "finish_opportunity"
     case challengeStart = "challenge_start"
     case challengeComplete = "challenge_complete"
+    case workoutInstruction = "workout_instruction"
 }
 
 enum LiveGuidanceCueOutcome: String, Codable, Hashable {
@@ -190,6 +191,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
     let targetPaceSecondsPerKilometer: Double?
     let evaluationDelaySeconds: Int
     let preferredMessage: String?
+    let instructionID: String?
 
     init(
         type: LiveGuidanceMomentType,
@@ -197,7 +199,8 @@ struct DetectedLiveGuidanceMoment: Equatable {
         baselinePaceSecondsPerKilometer: Double? = nil,
         targetPaceSecondsPerKilometer: Double? = nil,
         evaluationDelaySeconds: Int = 75,
-        preferredMessage: String? = nil
+        preferredMessage: String? = nil,
+        instructionID: String? = nil
     ) {
         self.type = type
         self.detectedAtElapsedSeconds = detectedAtElapsedSeconds
@@ -205,6 +208,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
         self.targetPaceSecondsPerKilometer = targetPaceSecondsPerKilometer
         self.evaluationDelaySeconds = evaluationDelaySeconds
         self.preferredMessage = preferredMessage
+        self.instructionID = instructionID
     }
 }
 

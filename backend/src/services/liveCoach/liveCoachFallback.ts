@@ -21,6 +21,7 @@ const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string;
     finish_opportunity: { key: "coach.strong_finish", text: "Stay composed and let the effort rise gradually." },
     challenge_start: { key: "challenge.start", text: "Challenge starts now. Build the pace smoothly." },
     challenge_complete: { key: "challenge.complete", text: "Challenge complete. Settle back into your run." },
+    workout_instruction: { key: "workout.segment_start", text: "New segment. Settle into the target before you press." },
   },
   es: {
     progress: { key: "progress.steady", text: "Mantén este ritmo estable." },
@@ -40,6 +41,7 @@ const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string;
     finish_opportunity: { key: "coach.strong_finish", text: "Mantén la calma y aumenta el esfuerzo gradualmente." },
     challenge_start: { key: "challenge.start", text: "Empieza el reto. Aumenta el ritmo con suavidad." },
     challenge_complete: { key: "challenge.complete", text: "Reto completado. Vuelve a tu ritmo de carrera." },
+    workout_instruction: { key: "workout.segment_start", text: "Nuevo segmento. Encuentra el objetivo antes de apretar." },
   },
   "zh-Hans": {
     progress: { key: "progress.steady", text: "保持现在的稳定节奏。" },
@@ -59,6 +61,7 @@ const messages: Record<SupportedAILocale, Record<LiveCoachMoment, { key: string;
     finish_opportunity: { key: "coach.strong_finish", text: "保持从容，逐步提升强度。" },
     challenge_start: { key: "challenge.start", text: "挑战开始，平稳加速。" },
     challenge_complete: { key: "challenge.complete", text: "挑战完成，回到原来的跑步节奏。" },
+    workout_instruction: { key: "workout.segment_start", text: "进入新阶段，先稳定到目标强度，再逐步发力。" },
   },
 };
 

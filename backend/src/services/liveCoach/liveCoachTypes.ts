@@ -1,7 +1,7 @@
 import type { LiveCoachCompiledContext, LiveCoachLiveState, ResolvedAIRoute, SupportedAILocale } from "../aiProviders/types.js";
 import type { LiveCoachMode } from "./liveCoachFeatureConfig.js";
 
-export const LIVE_COACH_MOMENTS = [
+export const LIVE_COACH_REACTIVE_MOMENTS = [
   "progress",
   "early_overpace",
   "pace_above_target",
@@ -20,6 +20,7 @@ export const LIVE_COACH_MOMENTS = [
   "challenge_start",
   "challenge_complete",
 ] as const;
+export const LIVE_COACH_MOMENTS = [...LIVE_COACH_REACTIVE_MOMENTS, "workout_instruction"] as const;
 export type LiveCoachMoment = (typeof LIVE_COACH_MOMENTS)[number];
 export type CoachingContract = "quiet" | "responsive" | "coach_me";
 export type LiveCoachCueSource = "dynamic_generation" | "planned_cache" | "fixed_pack" | "cached_fallback";
@@ -39,6 +40,7 @@ export type CreateLiveCoachSessionInput = {
   contractVersion: 1;
   clientSessionId: string;
   workoutId?: string;
+  workoutRef?: LiveCoachWorkoutReference;
   locale: SupportedAILocale;
   coachPersonaId: string;
   voiceProfileId: string;
@@ -48,6 +50,12 @@ export type CreateLiveCoachSessionInput = {
   clientWorkout?: LiveCoachClientWorkout;
   environment?: LiveCoachEnvironmentInput;
   appDistributionHint?: "global";
+};
+
+export type LiveCoachWorkoutReference = {
+  source: "standalone_catalog";
+  id: string;
+  version?: number;
 };
 
 export type LiveCoachClientWorkout = {
@@ -102,6 +110,10 @@ export type LiveCoachGuidancePhase = "any" | "warmup" | "easy" | "work" | "recov
 export type LiveCoachGuidancePlanCue = {
   id: string;
   moment: LiveCoachMoment;
+  instructionId?: string;
+  trigger?:
+    | { type: "distance"; startMeters: number; endMeters: number }
+    | { type: "elapsed_time"; startSeconds: number; endSeconds: number };
   phases: LiveCoachGuidancePhase[];
   priority: "steady" | "opportunity" | "caution";
   cooldownSeconds: number;

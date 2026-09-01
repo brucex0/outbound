@@ -74,6 +74,11 @@ const createSessionSchema = z.object({
   contractVersion: z.literal(1),
   clientSessionId: identifier,
   workoutId: z.string().min(1).max(120).optional(),
+  workoutRef: z.object({
+    source: z.literal("standalone_catalog"),
+    id: z.string().trim().min(1).max(120),
+    version: z.number().int().positive().optional(),
+  }).strict().optional(),
   locale: z.enum(SUPPORTED_AI_LOCALES),
   coachPersonaId: z.enum(["plainstride_supportive_v1", "plainstride_focused_v1", "plainstride_calm_v1"]),
   voiceProfileId: z.enum(VOICE_PROFILE_IDS),
@@ -86,7 +91,9 @@ const createSessionSchema = z.object({
   clientWorkout: clientWorkoutSchema.optional(),
   environment: environmentSchema.optional(),
   appDistributionHint: z.literal("global").optional(),
-}).strict();
+}).strict().refine((value) => !(value.workoutId && value.workoutRef), {
+  message: "workoutId and workoutRef are mutually exclusive",
+});
 
 const liveStateSchema = z.object({
   elapsedSeconds: z.number().int().min(0).max(24 * 60 * 60),
