@@ -1011,8 +1011,7 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.standard) {
-            if let completedActivityToday {
-                completedTodayCard(completedActivityToday)
+            if completedActivityToday != nil {
                 plannedWorkoutCard
             } else if let activityEventToday {
                 activityEventCard(activityEventToday)
@@ -1149,33 +1148,6 @@ private struct SimplifiedTodayView: View {
         .accessibilityHint("Returns to the activity recording screen")
     }
 
-    private func completedTodayCard(_ activity: SavedActivity) -> some View {
-        NavigationLink(value: activity) {
-            OutboundCard(style: .companion) {
-                VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    HStack {
-                        Label("Today’s run is done", systemImage: "checkmark.circle.fill")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.72))
-                    }
-                    Text("Nice work. Recover well and let this one count.")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.82))
-                    HStack {
-                        todayStat(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1), "Distance")
-                        todayStat(durationLabel(activity.durationSecs), "Time")
-                    }
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens today’s completed activity")
-    }
-
     private var lastActivityCard: some View {
         OutboundCard {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
@@ -1225,14 +1197,6 @@ private struct SimplifiedTodayView: View {
                 }
             }
         }
-    }
-
-    private func todayStat(_ value: String, _ label: LocalizedStringKey) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.headline.monospacedDigit())
-            Text(label).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var completedActivityToday: SavedActivity? {
