@@ -13,6 +13,9 @@ Open this when preparing a TestFlight or App Store build.
 - `PrivacyInfo.xcprivacy` declares the app's `UserDefaults` required-reason API use. Keep it current when adding covered APIs.
 - `ITSAppUsesNonExemptEncryption` is `false` because the app relies on exempt operating-system and HTTPS encryption and does not implement proprietary cryptography. Reassess this if cryptography is added.
 - Production uses `https://outbound-api-186140050970.us-central1.run.app/v1` and the bundled Firebase configuration.
+- Public legal pages are `https://run.plainstride.com/terms` and `https://run.plainstride.com/privacy`. The sign-in disclosure and Settings → Legal link to them.
+- Terms acceptance is versioned. New Apple sign-ins accept the current version through the adjacent disclosure; an authenticated runner whose stored version is older sees a blocking review screen that still permits sign-out and account deletion.
+- For a material Terms update, change both `CURRENT_TERMS_VERSION` in `backend/src/services/legal.ts` and `PlainstrideLegal.currentTermsVersion` in iOS, update the effective date and public copy, deploy the schema/backend, then release the coordinated client.
 - The app icon is a 1024-by-1024 opaque PNG.
 
 ## Before Archiving
@@ -20,7 +23,7 @@ Open this when preparing a TestFlight or App Store build.
 1. Confirm the Apple Developer identifiers have Sign in with Apple, HealthKit, WeatherKit, and the Live Activity extension configured for distribution.
 2. Confirm the distribution profiles cover both bundle IDs and that agreements in App Store Connect are current.
 3. Confirm the production backend is deployed, monitored, and compatible with this client build.
-4. Exercise authentication, onboarding, activity recording in foreground/background, saving, HealthKit read/write, voice permissions, Apple Music, Live Activities, and account deletion on a physical iPhone.
+4. Exercise authentication, Terms and Privacy links, forced Terms reacceptance, onboarding, activity recording in foreground/background, saving, HealthKit read/write, voice permissions, Apple Music, Live Activities, and account deletion on a physical iPhone.
 5. Increment `CURRENT_PROJECT_VERSION` for the app and extension together.
 6. Run an unsigned Release compile check:
 
@@ -111,7 +114,7 @@ archiving, or uploading it again:
 ## App Store Connect Checklist
 
 - Create the app record as **Plainstride** with bundle ID `plainstride.outbound`, version `1.0`, primary category **Health & Fitness**, and the final availability/price.
-- Supply the name, subtitle, description, keywords, support URL, marketing URL if available, copyright, and privacy policy URL.
+- Supply the name, subtitle, description, keywords, support URL, marketing URL if available, copyright, privacy policy URL, and any owner-approved custom EULA. Apple’s standard EULA remains in effect when no custom EULA is supplied; Plainstride’s service Terms remain separately available in the app and on the web.
 - Upload truthful iPhone screenshots captured from the release build.
 - Complete age rating, content-rights, advertising-identifier, accessibility, and export-compliance questions.
 - Complete App Privacy from actual production behavior, including Firebase and backend handling. Audit at least: account identifiers and contact information, user content, health/fitness data, precise location, diagnostics, and any photos uploaded off device. Local-only data is not “collected” for the label merely because it is stored on device.
@@ -121,12 +124,13 @@ archiving, or uploading it again:
 ## Owner Decisions Still Required
 
 - Final product-page copy, URLs, screenshots, territories, price, age rating, and release method.
-- The authoritative privacy-label answers and public privacy policy. These must match production server retention, deletion, diagnostics, and third-party processing—not only the iOS source.
+- Final legal review of the public Terms and privacy policy. These must match production retention, deletion, diagnostics, third-party processing, social behavior, and fitness-safety boundaries—not only the iOS source.
 - Final hands-on device acceptance and permission-path review before upload.
 
 ## Account Deletion
 
 - Settings exposes **Delete Account** with a destructive confirmation.
+- The forced Terms-review screen also exposes account deletion, so a runner can delete their account without accepting updated Terms.
 - Apple-linked users reauthorize and the app revokes the Apple authorization token before deletion. Google-only users reauthenticate with Google.
 - `DELETE /v1/auth/me` deletes the user's relational data through database cascades and then deletes the Firebase Auth identity.
 - After the server confirms deletion, the app removes local activities and all Outbound `UserDefaults`, signs out, and returns to authentication.

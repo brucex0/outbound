@@ -33,6 +33,7 @@ This beta focuses on the complete runner journey: signing in, setting a goal and
 Please focus on:
 
 - Sign in with Apple or Google, then complete runner onboarding.
+- Open Terms and Privacy from sign-in and Settings; if a Terms-version gate is enabled for the build, confirm accept, sign-out, and account-deletion paths.
 - Review Today's suggested workout and readiness adjustment.
 - Start, pause, resume, finish, and save an outdoor run.
 - Confirm GPS route, elapsed time, distance, pace, photos, and Live Activity behavior.
@@ -137,11 +138,12 @@ Plainstride provides fitness guidance, not medical advice. Availability of Apple
 The following must be publicly reachable before App Store submission. They are not needed for the first internal TestFlight build.
 
 - Support URL: `https://run.plainstride.com/support`
+- Terms of service URL: `https://run.plainstride.com/terms`
 - Privacy policy URL: `https://run.plainstride.com/privacy`
 - Marketing URL (optional): `[PUBLIC_MARKETING_URL]`
 - Privacy choices/account deletion URL (optional): `[PUBLIC_PRIVACY_CHOICES_URL]`
 
-The support and privacy pages are served by the same Cloud Run service as the marketing homepage and live/invitation functionality. Deploy the current backend before entering these URLs in App Store Connect.
+The support, Terms, and privacy pages are served by the same Cloud Run service as the marketing homepage and live/invitation functionality. Deploy the current backend before entering these URLs in App Store Connect.
 
 ## App Privacy Working Draft
 
@@ -150,7 +152,7 @@ Do not publish these answers until production retention and third-party processi
 Likely collected and linked to identity:
 
 - Contact Info: email address returned by Apple or Google sign-in.
-- Identifiers: Firebase user ID and provider identifiers.
+- Identifiers and account metadata: provider identifiers plus the current accepted Terms version and acceptance time.
 - Fitness: onboarding profile, plan/readiness inputs, workout/activity data, and guidance feedback sent to the backend.
 - Precise Location: active live-share coordinates and any uploaded route/activity coordinates.
 - User Content: assistant messages, activity reflections, and user-submitted live-share/contact fields; include photos only if the production build uploads them.

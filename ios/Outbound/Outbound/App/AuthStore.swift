@@ -33,6 +33,7 @@ final class AuthStore: ObservableObject {
     @Published var localSessionLabel: String?
     @Published private(set) var resolutionState: AuthenticationResolutionState = .resolving
     @Published private(set) var sessionOrigin: AuthenticationSessionOrigin?
+    @Published private(set) var currentTermsVersion = PlainstrideLegal.currentTermsVersion
     private var appleCoordinator: AppleAuthorizationCoordinator?
     private let analyticsManager: AnalyticsManager?
 
@@ -42,6 +43,18 @@ final class AuthStore: ObservableObject {
     var connectedProviderLabels: [String] { user == nil ? [] : [String(localized: "Apple")] }
     var isAppleSignInAvailable: Bool { Self.hasAppleSignInEntitlement() }
     var isUsingDebugPersonas: Bool { ProcessInfo.processInfo.arguments.contains("-OutboundEnableDebugPersonas") }
+    var requiresTermsAcceptance: Bool {
+        guard let user else { return false }
+        return (user.termsAcceptedVersion ?? 0) < currentTermsVersion
+    }
+    var startupResolutionKey: String {
+        let state = switch resolutionState {
+        case .resolving: "resolving"
+        case .signedOut: "signed_out"
+        case .authenticated: "authenticated"
+        }
+        return "\(state):\(user?.termsAcceptedVersion ?? 0):\(currentTermsVersion)"
+    }
 
     init(analyticsManager: AnalyticsManager? = nil) {
         self.analyticsManager = analyticsManager
@@ -102,6 +115,24 @@ final class AuthStore: ObservableObject {
         clearPresentation()
     }
 
+    func acceptCurrentTerms() async -> Bool {
+        guard user != nil else { return false }
+        isBusy = true
+        authError = nil
+        defer { isBusy = false }
+        do {
+            let acceptance = try await APIClient.shared.acceptTerms(version: currentTermsVersion)
+            try await SessionCoordinator.shared.markTermsAccepted(version: acceptance.termsVersion)
+            if let user {
+                self.user = user.withTermsAccepted(version: acceptance.termsVersion)
+            }
+            return true
+        } catch {
+            authError = error.localizedDescription
+            return false
+        }
+    }
+
     func deleteAccount() async {
         await performAuthentication {
             let credential = try await self.makeAppleCredential()
@@ -123,7 +154,8 @@ final class AuthStore: ObservableObject {
             displayName: displayName,
             avatarUrl: user.avatarUrl,
             email: user.email,
-            onboardingCompleted: user.onboardingCompleted
+            onboardingCompleted: user.onboardingCompleted,
+            termsAcceptedVersion: user.termsAcceptedVersion
         )
     }
 
@@ -152,6 +184,10 @@ final class AuthStore: ObservableObject {
     }
     private func apply(_ session: AuthSession, origin: AuthenticationSessionOrigin) {
         user = session.user
+        currentTermsVersion = max(
+            session.currentTermsVersion ?? 0,
+            PlainstrideLegal.currentTermsVersion
+        )
         Self.cachedUserID = session.user.id
         isAuthenticated = true
         localSessionLabel = nil
@@ -165,6 +201,7 @@ final class AuthStore: ObservableObject {
         isAuthenticated = false
         localSessionLabel = nil
         sessionOrigin = nil
+        currentTermsVersion = PlainstrideLegal.currentTermsVersion
         resolutionState = .signedOut
     }
     private func makeAppleCredential() async throws -> AppleCredentialResult {

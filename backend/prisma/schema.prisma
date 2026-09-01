@@ -21,6 +21,8 @@ model User {
   contactEmail    String?
   contactPhone    String?
   verified        Boolean  @default(false)
+  termsAcceptedVersion Int?
+  termsAcceptedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

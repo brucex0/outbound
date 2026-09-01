@@ -43,6 +43,10 @@ actor SessionCoordinator {
         guard let session else { return }
         try replace(session.withOnboardingCompleted(true))
     }
+    func markTermsAccepted(version: Int) throws {
+        guard let session else { return }
+        try replace(session.withTermsAccepted(version: version))
+    }
     func clear(notify: Bool = false) {
         session = nil; try? repository.delete()
         if notify { Task { @MainActor in NotificationCenter.default.post(name: .outboundAuthenticationExpired, object: nil) } }

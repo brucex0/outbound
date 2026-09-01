@@ -15,10 +15,15 @@ import { deleteUserActivityPhotos } from "../services/activityPhotoStorage.js";
 import { verifyAppleIdentityToken, revokeAppleAuthorization } from "../services/appleAuth.js";
 import { issueSession, rotateSession, revokeRefreshToken, revokeSession } from "../services/authSessions.js";
 import { Prisma } from "@prisma/client";
+import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
 
 const router = new Hono<AppEnv>();
 
-const sessionClient = z.object({ platform: z.enum(["ios", "android", "web"]), deviceLabel: z.string().trim().max(100).nullish() });
+const sessionClient = z.object({
+  platform: z.enum(["ios", "android", "web"]),
+  deviceLabel: z.string().trim().max(100).nullish(),
+  termsVersion: z.number().int().positive(),
+});
 
 const gearItemSchema = z.object({
   id: z.string().uuid(),
@@ -73,6 +78,7 @@ router.post("/apple", zValidator("json", sessionClient.extend({
 })), async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json");
+  if (body.termsVersion !== CURRENT_TERMS_VERSION) return termsVersionError(c);
   try {
     const claims = await verifyAppleIdentityToken(body.identityToken, body.rawNonce);
     const displayName = [body.givenName, body.familyName].filter(Boolean).join(" ") || null;
@@ -81,7 +87,8 @@ router.post("/apple", zValidator("json", sessionClient.extend({
       emails: claims.email ? [claims.email] : [], emailVerified: claims.email_verified === true || claims.email_verified === "true",
       name: displayName, picture: null, phoneNumber: null, phoneNumbers: [] });
     if (!user) throw new Error("authentication_unavailable");
-    return c.json(await issueSession(user, body.platform, body.deviceLabel));
+    const acceptedUser = await acceptCurrentTerms(user, body.termsVersion);
+    return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
   } catch (error) { return authError(c, error); }
 });
 
@@ -105,12 +112,28 @@ router.post("/debug/persona", zValidator("json", sessionClient.extend({ persona:
   if (process.env.NODE_ENV === "production" || process.env.AUTH_ENABLE_DEBUG_PERSONAS !== "true") return c.json({ error: "Not found." }, 404);
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json"); const email = `${body.persona}-runner@plainstride.test`;
+  if (body.termsVersion !== CURRENT_TERMS_VERSION) return termsVersionError(c);
   const user = await resolveAuthenticatedAppUser({ subject: `debug:${body.persona}`, authenticationKind: "provider", provider: "firebase",
     providerSubject: `debug:${body.persona}`, internalUserId: null, sessionId: null, email, emails: [email], emailVerified: true,
     name: `${body.persona[0]!.toUpperCase()}${body.persona.slice(1)} Runner`, picture: null, phoneNumber: null, phoneNumbers: [] });
   if (!user) return c.json({ error: "Authentication unavailable." }, 503);
-  return c.json(await issueSession(user, body.platform, body.deviceLabel));
+  const acceptedUser = await acceptCurrentTerms(user, body.termsVersion);
+  return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
 });
+
+router.post(
+  "/terms/accept",
+  zValidator("json", z.object({ termsVersion: z.number().int().positive() }).strict()),
+  async (c) => {
+    const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+    const user = await getAuthenticatedAppUser(c);
+    if (!user) return c.json({ error: "Authentication required." }, 401);
+    const version = c.req.valid("json").termsVersion;
+    if (version !== CURRENT_TERMS_VERSION) return termsVersionError(c);
+    const acceptedUser = await acceptCurrentTerms(user, version);
+    return c.json({ termsVersion: acceptedUser.termsAcceptedVersion, acceptedAt: acceptedUser.termsAcceptedAt });
+  },
+);
 
 router.get("/avatars/:userId", async (c) => {
   try {
@@ -331,6 +354,14 @@ function authError(c: any, error: unknown) {
   }
   console.error("[auth] unexpected authentication failure", error);
   return c.json({ error: "Authentication is temporarily unavailable.", code: "authentication_unavailable" }, 503);
+}
+
+function termsVersionError(c: any) {
+  return c.json({
+    error: "Please update Plainstride to review the current Terms of Service.",
+    code: "terms_version_outdated",
+    currentTermsVersion: CURRENT_TERMS_VERSION,
+  }, 409);
 }
 
 export default router;

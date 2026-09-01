@@ -2717,6 +2717,7 @@ private struct SimplifiedMeView: View {
 
 private struct SimplifiedSettingsView: View {
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var appearancePreferences: AppearancePreferences
     @EnvironmentObject private var authStore: AuthStore
@@ -2825,6 +2826,13 @@ private struct SimplifiedSettingsView: View {
                     Label("Trusted contacts", systemImage: "person.crop.circle.badge.checkmark")
                 }
             }
+            Section {
+                legalDocumentButton(.terms, title: String(localized: "legal.terms.title"), systemImage: "doc.text")
+                legalDocumentButton(.privacy, title: String(localized: "legal.privacy.title"), systemImage: "hand.raised")
+                legalDocumentButton(.support, title: String(localized: "legal.support.title"), systemImage: "questionmark.circle")
+            } header: {
+                Text("legal.section.title")
+            }
             #if DEBUG
             Section("Debug") {
                 Button {
@@ -2843,7 +2851,7 @@ private struct SimplifiedSettingsView: View {
                 LabeledContent("Version", value: appVersion)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Delete account") {
+                Button(String(localized: "account.delete.title")) {
                     confirmsAccountDeletion = true
                 }
                 .font(.footnote)
@@ -2896,6 +2904,32 @@ private struct SimplifiedSettingsView: View {
                 .selectionType: .string(selection),
             ]))
         }
+    }
+
+    private func legalDocumentButton(
+        _ document: PlainstrideLegalDocument,
+        title: String,
+        systemImage: String
+    ) -> some View {
+        Button {
+            Task {
+                await analyticsManager?.track(.init(.legalDocumentOpened, properties: [
+                    .documentType: .string(document.rawValue),
+                    .entrySource: .string("settings"),
+                ]))
+            }
+            openURL(document.url)
+        } label: {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var appVersion: String {

@@ -413,12 +413,14 @@ Keep `route` as JSON for the first implementation unless query requirements forc
 
 ## Auth And Request Model
 
-Implementation target:
+Current boundary:
 
-- add auth middleware that verifies Firebase ID tokens with `firebase-admin`
-- attach Firebase identity metadata to request context and resolve it to an internal `User`
+- verify native Apple credentials on the backend and issue Plainstride access plus rotating refresh sessions
+- temporarily accept legacy Firebase tokens only when the documented migration flag is enabled
+- attach provider-neutral identity metadata to request context and resolve it to an internal `User`
 - keep one `AuthIdentity` row per unique provider subject; email equality alone never links established accounts
-- introduce authenticated endpoints that no longer take `userId` in the path for self-service routes
+- store the latest accepted Terms version and timestamp on `User`; new sign-ins accept the disclosed current version, and session responses drive material-update reacceptance
+- keep authenticated self-service endpoints free of caller-supplied `userId` values
 
 Preferred route style:
 

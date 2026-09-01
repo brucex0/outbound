@@ -612,6 +612,10 @@ final class APIClient {
         let _: LogoutResponse = try await post("/auth/logout", body: LogoutSessionRequest(refreshToken: refreshToken))
     }
 
+    func acceptTerms(version: Int) async throws -> TermsAcceptanceResponse {
+        try await post("/auth/terms/accept", body: TermsAcceptanceRequest(termsVersion: version))
+    }
+
     func deleteMyAccount(_ request: DeleteAccountRequest) async throws {
         let _: AccountDeletionResponse = try await delete("/auth/me", body: request)
     }

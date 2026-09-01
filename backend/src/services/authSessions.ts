@@ -2,10 +2,11 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import type { Prisma, User } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 import { issueAccessToken } from "./accessTokens.js";
+import { CURRENT_TERMS_VERSION } from "./legal.js";
 
 const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const refreshRotationGraceMs = 60 * 1000;
-export type SessionUser = Pick<User, "id" | "username" | "displayName" | "avatarUrl" | "normalizedEmail">;
+export type SessionUser = Pick<User, "id" | "username" | "displayName" | "avatarUrl" | "normalizedEmail" | "termsAcceptedVersion">;
 
 export async function issueSession(user: SessionUser, platform: string, deviceLabel?: string | null) {
   const prisma = getPrismaClient();
@@ -95,6 +96,7 @@ function response(
 ) {
   const access = issueAccessToken(user.id, sessionId);
   return { accessToken: access.token, accessTokenExpiresAt: access.expiresAt, refreshToken, refreshTokenExpiresAt, refreshRecovery,
+    currentTermsVersion: CURRENT_TERMS_VERSION,
     user: {
       id: user.id,
       username: user.username,
@@ -102,6 +104,7 @@ function response(
       avatarUrl: user.avatarUrl,
       email: user.normalizedEmail,
       onboardingCompleted,
+      termsAcceptedVersion: user.termsAcceptedVersion,
     } };
 }
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }

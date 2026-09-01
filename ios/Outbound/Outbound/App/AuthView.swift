@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AuthView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var authStore: AuthStore
 
     var body: some View {
@@ -9,6 +10,7 @@ struct AuthView: View {
             let actionReserve: CGFloat = (statusMessage == nil ? 126 : 166)
                 + testPersonaActionReserve
                 + appleSignInExplanationReserve
+                + legalDisclosureReserve
             let storyHeight: CGFloat = compact ? 310 : 330
             let storyTop: CGFloat = 42
             let storyBottom = proxy.size.height - actionReserve - 18
@@ -59,6 +61,17 @@ struct AuthView: View {
                                 .padding(.horizontal, 4)
                                 .accessibilityLabel(appleSignInExplanation)
                         }
+
+                        Text(LocalizedStringKey("auth.legal.consent"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 4)
+                            .environment(\.openURL, OpenURLAction { url in
+                                trackLegalDocumentOpened(url)
+                                return .systemAction
+                            })
                     }
 
                     #if DEBUG
@@ -149,6 +162,18 @@ struct AuthView: View {
 
     private var appleSignInExplanationReserve: CGFloat {
         authStore.isAppleSignInAvailable ? 56 : 0
+    }
+
+    private var legalDisclosureReserve: CGFloat { 50 }
+
+    private func trackLegalDocumentOpened(_ url: URL) {
+        guard let document = PlainstrideLegal.document(for: url) else { return }
+        Task {
+            await analyticsManager?.track(.init(.legalDocumentOpened, properties: [
+                .documentType: .string(document.rawValue),
+                .entrySource: .string("authentication"),
+            ]))
+        }
     }
 }
 

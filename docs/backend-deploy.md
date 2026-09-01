@@ -13,6 +13,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.
 - The database on that instance is `outbound`; the old shared Boatshare database is no longer a runtime dependency.
 - The live Cloud Run service has `DATABASE_URL` configured and database-backed routes are active.
+- The `User` schema stores the current Terms version and acceptance time. Deploy `prisma db push` before releasing an iOS build that sends `termsVersion` or presents the reacceptance gate.
 - User-uploaded avatars use the `outbound-494602-avatars` GCS bucket in `us-central1`; Cloud Run sets `AVATAR_STORAGE_BUCKET=outbound-494602-avatars` and its runtime service account has object access there. Private activity photos use `MEDIA_STORAGE_BUCKET` when set and otherwise fall back to `<project-id>.firebasestorage.app`.
 - Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, authenticates each download, and redirects it to a 15-minute signed URL; bucket objects must not be made public. A full Cloud CDN layer remains optional until media egress justifies it.
 
@@ -371,7 +372,7 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 
 - Canonical invite host: `https://run.plainstride.com`.
 - Map that host to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://run.plainstride.com`.
-- The same service serves the Plainstride marketing homepage at `/`, beta support at `/support`, and the public privacy policy at `/privacy`.
+- The same service serves the Plainstride marketing homepage at `/`, beta support at `/support`, Terms of Service at `/terms`, and the public privacy policy at `/privacy`.
 - Set `IOS_APP_STORE_URL` to the final App Store listing URL when App Store Connect assigns the numeric app ID. Until then, the checked-in default opens an App Store search for Plainstride.
 - Set `ANDROID_PLAY_STORE_URL` to the production Play Store listing. Set `IOS_BETA_URL` and `ANDROID_BETA_URL` to TestFlight and Google Play testing enrollment links when those programs are active; omitted beta URLs are not shown.
 - For Android App Links, set `ANDROID_PACKAGE_NAME` and comma-separated `ANDROID_SHA256_CERT_FINGERPRINTS` for every beta/production signing certificate that may open the canonical host.

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types/hono.js";
+import { CURRENT_TERMS_EFFECTIVE_DATE, CURRENT_TERMS_VERSION } from "../services/legal.js";
 
 const router = new Hono<AppEnv>();
 
@@ -137,7 +138,7 @@ const pageShell = ({
   <footer>
     <div class="footer-inner">
       <span>© 2026 Plainstride Labs Inc.</span>
-      <div class="footer-links"><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/health">System status</a></div>
+      <div class="footer-links"><a href="/support">Support</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/health">System status</a></div>
     </div>
   </footer>
 </body>
@@ -220,6 +221,61 @@ router.get("/support", (c) => c.html(pageShell({
     </article>`,
 })));
 
+router.get("/terms", (c) => c.html(pageShell({
+  title: "Plainstride Terms of Service",
+  description: "The terms that govern use of the Plainstride app and related services.",
+  path: "/terms",
+  content: `
+    <article class="legal wrap">
+      <p class="eyebrow">Terms of service</p>
+      <h1>Move well. Treat people well.</h1>
+      <p class="lede">These Terms govern your use of the Plainstride iPhone app and related services operated by Plainstride Labs Inc. Effective ${CURRENT_TERMS_EFFECTIVE_DATE}. Version ${CURRENT_TERMS_VERSION}.</p>
+      <div class="legal-card"><strong>Plainstride provides general fitness information and tools. It does not provide medical care, diagnosis, or emergency services.</strong></div>
+
+      <h2>1. Agreement and eligibility</h2>
+      <p>By creating an account, signing in, or using Plainstride, you agree to these Terms and acknowledge our <a href="/privacy">Privacy Policy</a>. You must be at least 13 years old to use Plainstride. If you are under the age of legal majority where you live, a parent or legal guardian must authorize your use.</p>
+
+      <h2>2. The service</h2>
+      <p>Plainstride offers activity recording, training plans, personalized and AI-assisted fitness guidance, progress tools, social features, live-location sharing, and integrations with Apple and other services. Features may be added, changed, suspended, or removed as the service evolves, particularly during a beta.</p>
+
+      <h2>3. Fitness, health, and outdoor safety</h2>
+      <p>Training suggestions, readiness adjustments, race predictions, generated guidance, and spoken cues are informational and may be incomplete, delayed, or inaccurate. They are not a substitute for your judgment or advice from a qualified health professional. You are responsible for deciding whether an activity is appropriate for you.</p>
+      <p>Stop exercising and seek appropriate care if you feel pain, faintness, illness, or danger. Do not interact with Plainstride when doing so would distract you from traffic, terrain, weather, other people, or your surroundings. Plainstride cannot guarantee route safety, GPS accuracy, live-share delivery, or that another person will monitor a shared link.</p>
+
+      <h2>4. Accounts and security</h2>
+      <p>Provide accurate information, keep control of your sign-in account and device, and notify us through <a href="/support">Support</a> if you believe your account is being misused. You are responsible for activity under your account unless caused by our failure to use reasonable security measures.</p>
+
+      <h2>5. Social features and acceptable use</h2>
+      <p>You may not use Plainstride to harass, threaten, impersonate, exploit, deceive, discriminate against, or endanger another person; publish illegal, hateful, sexually exploitative, or rights-infringing material; distribute spam or malware; scrape or probe the service; evade safety controls; or interfere with another person's use.</p>
+      <p>Use live-location and invitation links only with people you trust. Do not share another person's private information, location, activity, photo, or message without permission. We may remove content, limit visibility, suspend features, or terminate accounts when reasonably necessary to protect people, the service, or legal rights.</p>
+
+      <h2>6. Your content</h2>
+      <p>You retain ownership of content you submit. You give Plainstride a limited, worldwide, non-exclusive license to host, process, reproduce, and display that content only as needed to operate, secure, improve, and provide the features you choose. This license ends when the content is deleted from our systems, subject to reasonable backup, security, and legal retention.</p>
+      <p>You represent that you have the rights and permissions needed to submit and share your content. Feedback and suggestions may be used without restriction or compensation, but we will handle personal information in accordance with the Privacy Policy.</p>
+
+      <h2>7. Plainstride property</h2>
+      <p>Plainstride, its software, design, branding, and service content are owned by Plainstride Labs Inc. or its licensors. These Terms give you a personal, limited, revocable, non-transferable right to use the service. They do not permit you to copy, sell, reverse engineer, or create derivative services except where applicable law expressly allows it.</p>
+
+      <h2>8. Third-party services</h2>
+      <p>Features may depend on Apple, Google, mapping, weather, music, health, AI, transcription, notification, or other third-party services. Your use of those services may be governed by separate terms. Plainstride is not responsible for third-party availability, content, or actions, but remains responsible for its own obligations under applicable law and the Privacy Policy.</p>
+
+      <h2>9. Availability and beta changes</h2>
+      <p>Plainstride is provided on an “as available” basis. To the extent permitted by law, we do not promise uninterrupted availability or that every prediction, route, plan, sync, notification, or generated response will be accurate or error-free. Beta data or features may be reset when necessary to maintain or improve the service.</p>
+
+      <h2>10. Suspension, termination, and deletion</h2>
+      <p>You may stop using Plainstride, sign out, or delete your account in <strong>Me → Settings → Delete Account</strong>. We may suspend or terminate access for a material or repeated breach of these Terms, safety risks, unlawful conduct, or threats to the service. Provisions that by their nature should survive termination—including ownership, disclaimers, and responsibility for prior conduct—will survive.</p>
+
+      <h2>11. Disclaimers and responsibility</h2>
+      <p>To the fullest extent permitted by applicable law, Plainstride Labs Inc. and its providers disclaim implied warranties of merchantability, fitness for a particular purpose, and non-infringement. To the fullest extent permitted by law, they will not be liable for indirect, incidental, special, consequential, or punitive damages, lost data, lost profits, or personal decisions made in reliance on the service. Nothing in these Terms excludes rights or liability that cannot legally be excluded.</p>
+
+      <h2>12. Changes to these Terms</h2>
+      <p>We may update these Terms as the service changes. We will update the effective date and version above. If a change materially affects your rights or responsibilities, Plainstride will provide additional notice and ask you to accept the updated Terms before continuing to use the authenticated service.</p>
+
+      <h2>13. Contact</h2>
+      <p>Questions about these Terms can be sent through <a href="/support">Plainstride Support</a> or the feedback contact included in your TestFlight invitation.</p>
+    </article>`,
+})));
+
 router.get("/privacy", (c) => c.html(pageShell({
   title: "Plainstride Privacy Policy",
   description: "How Plainstride handles account, fitness, location, health, and feedback data.",
@@ -228,10 +284,10 @@ router.get("/privacy", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Privacy policy</p>
       <h1>Your run is personal.</h1>
-      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone app and related web services during the beta. Last updated August 11, 2026.</p>
+      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone app and related web services during the beta. Last updated August 31, 2026.</p>
       <div class="legal-card"><strong>Plainstride does not sell personal information or use it for third-party advertising.</strong></div>
       <h2>Information we handle</h2>
-      <h3>Account information</h3><p>When you sign in with Apple or Google, we receive an account identifier and, when the provider makes it available, your name and email address. We use this information to authenticate you and maintain your Plainstride account.</p>
+      <h3>Account information</h3><p>When you sign in with Apple or Google, we receive an account identifier and, when the provider makes it available, your name and email address. We also retain the version and time of your most recent Terms acceptance. We use this information to authenticate you, maintain your Plainstride account, and document the agreement governing the service.</p>
       <h3>Runner and fitness information</h3><p>Plainstride may process information you provide about goals, experience, availability, readiness, workout feedback, training plans, and completed activities to provide and personalize app functionality.</p>
       <h3>Location and activity routes</h3><p>Precise location is used while recording an outdoor activity. If you explicitly start private live sharing or a live group run, current location updates are sent to our service for that feature. Approximate or one-shot location may be used to provide local weather context. Plainstride does not continuously collect location when these features are not active.</p>
       <h3>Apple Health</h3><p>With your permission, Plainstride can read relevant workout and fitness information from Apple Health and save completed workouts there. Health information stays under Apple's Health permissions and is not used for advertising. You can change access in iOS Settings or the Health app.</p>

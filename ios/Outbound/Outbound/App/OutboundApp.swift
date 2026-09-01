@@ -94,6 +94,9 @@ struct OutboundApp: App {
                 case .authentication:
                     AuthView()
                         .environmentObject(authStore)
+                case .termsAcceptance:
+                    TermsAcceptanceView()
+                        .environmentObject(authStore)
                 case .onboarding:
                     onboardingRoot
                 case .main:
@@ -104,7 +107,7 @@ struct OutboundApp: App {
             .transition(.opacity.combined(with: .scale(scale: 0.99)))
         }
         .animation(.easeInOut(duration: 0.28), value: startupDestination)
-        .task(id: authStore.resolutionState) {
+        .task(id: authStore.startupResolutionKey) {
             await resolveStartupDestination()
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
@@ -215,6 +218,11 @@ struct OutboundApp: App {
             destination = .authentication
             source = "auth_state"
         case .authenticated:
+            if authStore.requiresTermsAcceptance {
+                destination = .termsAcceptance
+                source = "terms_version"
+                break
+            }
             let identity = authStore.user?.id ?? authStore.localSessionLabel ?? "local"
             let decision = await onboardingCompletionDecision(identity: identity)
             onboardingStore.prepareForAuthenticatedUser(
@@ -342,6 +350,7 @@ struct OutboundApp: App {
 private enum AppStartupDestination: String {
     case launching
     case authentication
+    case termsAcceptance = "terms_acceptance"
     case onboarding
     case main
 }

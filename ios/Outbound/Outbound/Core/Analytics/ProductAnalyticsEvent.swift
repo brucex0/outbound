@@ -99,6 +99,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case onboardingTrainingProfileViewed = "onboarding_training_profile_viewed"
     case onboardingTrainingProfileCompleted = "onboarding_training_profile_completed"
     case authenticationSessionRecovered = "authentication_session_recovered"
+    case legalDocumentOpened = "legal_document_opened"
+    case termsAcceptancePresented = "terms_acceptance_presented"
+    case termsAcceptanceCompleted = "terms_acceptance_completed"
     case healthConnectionRequested = "health_connection_requested"
     case healthConnectionCompleted = "health_connection_completed"
     case healthImportPromptViewed = "health_import_prompt_viewed"
@@ -163,6 +166,8 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case segmentCountBucket = "segment_count_bucket"
     case motionBridgeUsed = "motion_bridge_used"
     case routeMatchResult = "route_match_result"
+    case documentType = "document_type"
+    case termsVersion = "terms_version"
 }
 
 struct ProductAnalyticsEvent: Sendable, Equatable {
@@ -275,6 +280,9 @@ enum ProductAnalyticsSchema {
         .onboardingTrainingProfileViewed: [],
         .onboardingTrainingProfileCompleted: [.result, .sourceType],
         .authenticationSessionRecovered: [.result],
+        .legalDocumentOpened: [.documentType, .entrySource],
+        .termsAcceptancePresented: [.termsVersion],
+        .termsAcceptanceCompleted: [.termsVersion, .result],
         .healthConnectionRequested: [],
         .healthConnectionCompleted: [.result],
         .healthImportPromptViewed: [.sourceType],
