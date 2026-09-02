@@ -24,6 +24,10 @@ private enum ActivitySetupSheet: String, Identifiable {
     }
 }
 
+private enum PendingCaloriesWeightAction {
+    case selectMode(reopenGoalEditor: Bool)
+}
+
 enum ActivityLaunchLayout {
     static let dockHeight: CGFloat = 168
     static let peerCardGap: CGFloat = 12
@@ -103,6 +107,9 @@ struct RecordView: View {
     @State private var customGoalKind: CustomGoalKind?
     @State private var isCustomGoalAlertPresented = false
     @State private var isGoalChooserPresented = false
+    @State private var isCaloriesWeightPromptPresented = false
+    @State private var caloriesWeightText = ""
+    @State private var pendingCaloriesWeightAction: PendingCaloriesWeightAction?
     @State private var plannedWorkoutIntent: SessionIntent?
     @State private var curatedWorkoutIntent: SessionIntent?
     @State private var countdownStep: ActivityStartCountdownStep?
@@ -511,6 +518,28 @@ struct RecordView: View {
             }
         } message: {
             Text(customGoalAlertMessage)
+        }
+        .alert(
+            String(localized: "record.goal.calories.weight_prompt.title", defaultValue: "Add your weight"),
+            isPresented: $isCaloriesWeightPromptPresented
+        ) {
+            TextField(weightPromptFieldLabel, text: $caloriesWeightText)
+                .keyboardType(.decimalPad)
+
+            Button(String(localized: "record.goal.calories.weight_prompt.continue", defaultValue: "Save and continue")) {
+                savePromptedWeightAndContinue()
+            }
+            .disabled(promptedWeightKilograms == nil)
+
+            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {
+                pendingCaloriesWeightAction = nil
+                trackCaloriesWeightPrompt(selection: "dismissed")
+            }
+        } message: {
+            Text(String(
+                localized: "record.goal.calories.weight_prompt.message",
+                defaultValue: "Your weight is needed to estimate calories. It stays private and can be changed in your profile."
+            ))
         }
         .alert(String(localized: "record.group.join.title", defaultValue: "Join group run"), isPresented: $isGroupJoinAlertPresented) {
             TextField(String(localized: "record.group.invite.placeholder", defaultValue: "Invite link or token"), text: $groupInviteText)
@@ -1920,6 +1949,10 @@ struct RecordView: View {
             if mode == .planned {
                 selectWorkoutChoice(.planned)
             }
+            return
+        }
+        if mode == .calories, !hasWeightForCalories {
+            presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: false))
             return
         }
         isGoalChooserPresented = false
@@ -3605,7 +3638,7 @@ struct RecordView: View {
 
     private func goalModeButton(_ mode: SessionGoalMode) -> some View {
         Button {
-            selectedGoalMode = mode
+            selectGoalModeFromEditor(mode)
         } label: {
             Text(mode.title)
                 .font(.caption.weight(.semibold))
@@ -3645,6 +3678,119 @@ struct RecordView: View {
 
     private var currentActivityGoal: ActivityGoal {
         (plannedIntent ?? .freestyleRun).activityGoal
+    }
+
+    private var hasWeightForCalories: Bool {
+        guard let weightKilograms = onboardingStore.latestWeightKilograms,
+              weightKilograms.isFinite else { return false }
+        return (25...350).contains(weightKilograms)
+    }
+
+    private var weightPromptFieldLabel: String {
+        measurementPreferences.unitSystem == .metric
+            ? String(localized: "Weight (kg)")
+            : String(localized: "Weight (lb)")
+    }
+
+    private var promptedWeightKilograms: Double? {
+        guard let value = Double(
+            caloriesWeightText
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: ",", with: ".")
+        ), value.isFinite else { return nil }
+        let kilograms = measurementPreferences.unitSystem == .metric ? value : value * 0.45359237
+        return (25...350).contains(kilograms) ? kilograms : nil
+    }
+
+    private func selectGoalModeFromEditor(_ mode: SessionGoalMode) {
+        guard mode == .calories else {
+            selectedGoalMode = mode
+            return
+        }
+        if !hasWeightForCalories {
+            setupSheet = nil
+            presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: true), afterCurrentPresentation: true)
+            return
+        }
+        if selectedWorkoutChoice == .planned {
+            selectedGoalMode = .calories
+        } else {
+            selectLaunchMode(.calories)
+        }
+    }
+
+    private func presentCaloriesWeightPrompt(
+        for action: PendingCaloriesWeightAction,
+        afterCurrentPresentation: Bool = false
+    ) {
+        pendingCaloriesWeightAction = action
+        caloriesWeightText = ""
+        trackCaloriesWeightPrompt(selection: "presented")
+        if afterCurrentPresentation {
+            Task { @MainActor in
+                await Task.yield()
+                isCaloriesWeightPromptPresented = true
+            }
+        } else {
+            isCaloriesWeightPromptPresented = true
+        }
+    }
+
+    private func savePromptedWeightAndContinue() {
+        guard let weightKilograms = promptedWeightKilograms else { return }
+        showSetupToast(String(
+            localized: "record.goal.calories.weight_prompt.saving",
+            defaultValue: "Saving weight…"
+        ))
+        Task { @MainActor in
+            do {
+                let currentProfile = try await APIClient.shared.fetchTrainingProfile()
+                let updatedProfile = try await APIClient.shared.updateTrainingProfile(
+                    TrainingProfileUpdateDTO(
+                        sexAtBirth: currentProfile.sexAtBirth,
+                        birthDate: currentProfile.birthDate,
+                        heightCentimeters: currentProfile.heightCentimeters,
+                        weightKilograms: weightKilograms,
+                        primaryMotivation: currentProfile.primaryMotivation,
+                        preferredRunGoalType: currentProfile.preferredRunGoalType
+                    )
+                )
+                onboardingStore.applyTrainingProfile(updatedProfile)
+                trackCaloriesWeightPrompt(selection: "saved")
+                resumePendingCaloriesWeightAction()
+            } catch {
+                pendingCaloriesWeightAction = nil
+                trackCaloriesWeightPrompt(selection: "save_failed")
+                showSetupToast(String(
+                    localized: "record.goal.calories.weight_prompt.save_failed",
+                    defaultValue: "Couldn’t save your weight. Try again."
+                ))
+            }
+        }
+    }
+
+    private func resumePendingCaloriesWeightAction() {
+        guard let action = pendingCaloriesWeightAction else { return }
+        pendingCaloriesWeightAction = nil
+        switch action {
+        case .selectMode(let reopenGoalEditor):
+            if selectedWorkoutChoice == .planned {
+                selectedGoalMode = .calories
+            } else {
+                selectLaunchMode(.calories)
+            }
+            if reopenGoalEditor {
+                setupSheet = .goal
+            }
+        }
+    }
+
+    private func trackCaloriesWeightPrompt(selection: String) {
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("calorie_weight_prompt"),
+            .selectionType: .string(selection),
+            .goalType: .string("calories")
+        ]))
     }
 
     private var distanceGoalPresets: [DistanceGoalPreset] {

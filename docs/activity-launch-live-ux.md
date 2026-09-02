@@ -77,6 +77,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Planned retains the recommendation's assigned sport and the existing Today card and Up Next implementation as its peer content layer.
 - Tapping Planned only restores the prescribed workout; tapping its card body opens workout details rather than the standalone catalog.
 - The planned card exposes visible Plan and Change plan footer actions; Current Focus in Me remains a secondary plan-details entry, and More plans remains available in recommendations.
+- Tapping Calories without a saved weight prompts for a private weight value, saves it to the training profile, and resumes the calorie-goal choice; canceling leaves the current goal unchanged.
 - Completing an activity removes its Today completion summary while keeping the planned card available as `Up next`.
 - The text-only Curated, Free, Distance, Time, and Calories pills float above the dock for manual sports and remain hidden for Planned.
 - Curated opens a catalog filtered to the selected Run, Walk, Hike, or Bike type and returns the chosen structured workout to that manual sport.
