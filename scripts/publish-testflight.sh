@@ -16,9 +16,13 @@ dry_run=false
 commit_changes=true
 configure_beta=true
 beta_setup_only=false
+submit_public_release=false
+manual_release=false
+requested_version=""
 requested_build=""
 beta_group_name="${BETA_GROUP:-}"
 beta_locale="${BETA_LOCALE:-en-US}"
+app_store_locale="${APP_STORE_LOCALE:-en-US}"
 asc_processing_timeout="${ASC_PROCESSING_TIMEOUT:-3600}"
 asc_poll_interval="${ASC_POLL_INTERVAL:-30}"
 
@@ -39,24 +43,36 @@ trap 'printf "error: failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 
 usage() {
   cat <<USAGE
-Usage: $0 [--dry-run] [--no-commit] [--build-number NUMBER]
-          [--beta-group NAME] [--beta-setup-only | --skip-beta-setup]
+Usage: $0 [--dry-run] [--no-commit] [--version VERSION]
+          [--build-number NUMBER]
+          [--beta-group NAME] [--setup-only | --skip-beta-setup]
+          [--public-release [--manual-release]]
 
 Increment Plainstride's build number, compile the Release configuration,
 commit the verified metadata, create an App Store archive, and upload it to
 App Store Connect. After processing, populate the build's release notes and
-assign it to a TestFlight beta group.
+assign it to a TestFlight beta group. With --public-release, also attach the
+build to its App Store version and submit it to App Review.
 
 Options:
   --dry-run              Print the planned version without changing anything.
-  --no-commit            Do not commit the verified build-number changes.
+  --no-commit            Do not commit the verified version/build changes.
+  --version VERSION      Use VERSION instead of the current marketing version.
+                         Public releases otherwise bump its last component.
   --build-number NUMBER  Use NUMBER instead of incrementing by one. NUMBER may
                          equal the current build to publish prepared metadata.
   --beta-group NAME      Assign the build to this exact TestFlight group name.
                          If omitted, the sole internal group is selected.
-  --beta-setup-only      Configure release notes and testers for an existing
-                         build without compiling, archiving, or uploading.
+  --setup-only           Configure an existing uploaded build without
+                         compiling, archiving, or uploading it again.
+  --beta-setup-only      Backward-compatible alias for --setup-only.
   --skip-beta-setup      Upload without release notes or group assignment.
+                         Public-release setup still runs when requested.
+  --public-release       Populate App Store What's New, attach the build to
+                         the matching iOS version, and submit it to App Review.
+                         The version releases automatically after approval.
+  --manual-release       With --public-release, hold the approved version for
+                         manual release in App Store Connect.
   -h, --help             Show this help.
 
 Environment:
@@ -68,11 +84,13 @@ Environment:
   ASC_ISSUER_ID     Issuer ID paired with ASC_KEY_PATH.
   BETA_GROUP        TestFlight group name; overridden by --beta-group.
   BETA_LOCALE       Release-notes locale. Defaults to en-US.
+  APP_STORE_LOCALE  App Store What's New locale. Defaults to en-US.
   ASC_PROCESSING_TIMEOUT  Seconds to wait for processing. Defaults to 3600.
   ASC_POLL_INTERVAL      Poll interval in seconds. Defaults to 30.
 
-The beta setup requires an App Store Connect API key. External groups may still
-require Apple's Beta App Review before their testers receive the build.
+Post-upload setup requires an App Store Connect API key. Public submission also
+requires complete App Store metadata and an API key role allowed to submit it.
+External groups may still require Beta App Review before testers receive it.
 USAGE
 }
 
@@ -84,6 +102,11 @@ while [[ $# -gt 0 ]]; do
     --no-commit)
       commit_changes=false
       ;;
+    --version)
+      shift
+      [[ $# -gt 0 ]] || fail "--version requires a value"
+      requested_version="$1"
+      ;;
     --build-number)
       shift
       [[ $# -gt 0 ]] || fail "--build-number requires a value"
@@ -94,11 +117,17 @@ while [[ $# -gt 0 ]]; do
       [[ $# -gt 0 ]] || fail "--beta-group requires a value"
       beta_group_name="$1"
       ;;
-    --beta-setup-only)
+    --setup-only|--beta-setup-only)
       beta_setup_only=true
       ;;
     --skip-beta-setup)
       configure_beta=false
+      ;;
+    --public-release)
+      submit_public_release=true
+      ;;
+    --manual-release)
+      manual_release=true
       ;;
     -h|--help)
       usage
@@ -111,8 +140,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if [[ "$beta_setup_only" == true && "$configure_beta" == false ]]; then
-  fail "--beta-setup-only and --skip-beta-setup cannot be used together"
+if [[ "$manual_release" == true && "$submit_public_release" == false ]]; then
+  fail "--manual-release requires --public-release"
+fi
+if [[ "$beta_setup_only" == true && "$configure_beta" == false && "$submit_public_release" == false ]]; then
+  fail "--setup-only requires beta setup or --public-release"
 fi
 
 cd "$ROOT_DIR"
@@ -125,7 +157,12 @@ done
   fail "ASC_PROCESSING_TIMEOUT must be a positive integer"
 [[ "$asc_poll_interval" =~ ^[1-9][0-9]*$ ]] || \
   fail "ASC_POLL_INTERVAL must be a positive integer"
-[[ -n "$beta_locale" ]] || fail "BETA_LOCALE must not be empty"
+if [[ "$configure_beta" == true ]]; then
+  [[ -n "$beta_locale" ]] || fail "BETA_LOCALE must not be empty"
+fi
+if [[ "$submit_public_release" == true ]]; then
+  [[ -n "$app_store_locale" ]] || fail "APP_STORE_LOCALE must not be empty"
+fi
 
 default_asc_key_path="${HOME}/Library/Application Support/Plainstride/AppStoreConnect/AuthKey_8F64X54A9C.p8"
 default_asc_key_id="8F64X54A9C"
@@ -155,8 +192,8 @@ if [[ -n "$asc_key_path" || -n "$asc_key_id" || -n "$asc_issuer_id" ]]; then
   use_asc_api_key=true
 fi
 
-if [[ "$dry_run" == false && "$configure_beta" == true && "$use_asc_api_key" == false ]]; then
-  fail "automatic beta setup requires ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID (or the configured local key); use --skip-beta-setup to upload only"
+if [[ "$dry_run" == false && ( "$configure_beta" == true || "$submit_public_release" == true ) && "$use_asc_api_key" == false ]]; then
+  fail "post-upload setup requires ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID (or the configured local key); omit --public-release and use --skip-beta-setup to upload only"
 fi
 
 [[ -f "$PROJECT_FILE" ]] || fail "Xcode project file not found: $PROJECT_FILE"
@@ -173,6 +210,21 @@ abort "Beta Release Notes exceed App Store Connect's 4,000-character limit" if n
 puts notes
 RUBY
   } 2>&1)" || fail "$documented_release_notes"
+
+app_store_release_notes=""
+if [[ "$submit_public_release" == true ]]; then
+  app_store_release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
+path = ENV.fetch("RELEASE_DOC")
+text = File.read(path)
+match = text.match(/^### App Store What.s New\s*$\n(.*?)(?=^###?\s|\z)/m)
+abort "release document is missing the App Store release-notes section" unless match
+notes = match[1].strip
+abort "App Store release notes must not be empty" if notes.empty?
+abort "App Store release notes exceed the 4,000-character limit" if notes.length > 4_000
+puts notes
+RUBY
+    } 2>&1)" || fail "$app_store_release_notes"
+fi
 
 if [[ "$dry_run" == false && "$beta_setup_only" == false && -n "$(git status --porcelain --untracked-files=no)" ]]; then
   fail "tracked files are already modified; commit or stash them before publishing"
@@ -208,9 +260,41 @@ puts "#{versions.first}\t#{builds.first}"
 RUBY
   } 2>&1)" || fail "$version_info"
 
-marketing_version="${version_info%%$'\t'*}"
+current_marketing_version="${version_info%%$'\t'*}"
 current_build="${version_info#*$'\t'}"
 [[ "$current_build" =~ ^[0-9]+$ ]] || fail "current build number is not an integer: $current_build"
+
+if [[ -n "$requested_version" ]]; then
+  [[ "$requested_version" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || \
+    fail "requested version must contain one to three dot-separated integers"
+  marketing_version="$requested_version"
+elif [[ "$submit_public_release" == true && "$beta_setup_only" == false ]]; then
+  marketing_version="$({ CURRENT_VERSION="$current_marketing_version" ruby <<'RUBY'
+version = ENV.fetch("CURRENT_VERSION")
+parts = version.split(".")
+abort "current marketing version must contain one to three dot-separated integers: #{version}" unless parts.length.between?(1, 3) && parts.all? { |part| part.match?(/\A\d+\z/) }
+parts[-1] = (Integer(parts[-1], 10) + 1).to_s
+puts parts.join(".")
+RUBY
+    } 2>&1)" || fail "$marketing_version"
+else
+  marketing_version="$current_marketing_version"
+fi
+
+if [[ "$submit_public_release" == true && "$marketing_version" != "$current_marketing_version" ]]; then
+  app_store_release_notes="${app_store_release_notes//Plainstride ${current_marketing_version}/Plainstride ${marketing_version}}"
+fi
+
+if [[ "$beta_setup_only" == false ]]; then
+  version_order="$({ CURRENT_VERSION="$current_marketing_version" NEXT_VERSION="$marketing_version" ruby <<'RUBY'
+current = ENV.fetch("CURRENT_VERSION").split(".").map { |part| Integer(part, 10) }
+requested = ENV.fetch("NEXT_VERSION").split(".").map { |part| Integer(part, 10) }
+width = [current.length, requested.length].max
+puts((requested.fill(0, requested.length...width) <=> current.fill(0, current.length...width)))
+RUBY
+    } 2>&1)" || fail "$version_order"
+  (( version_order >= 0 )) || fail "new marketing version must not be lower than ${current_marketing_version}"
+fi
 
 if [[ -n "$requested_build" ]]; then
   [[ "$requested_build" =~ ^[0-9]+$ ]] || fail "requested build number must be an integer"
@@ -231,7 +315,7 @@ if [[ "$beta_setup_only" == true ]] || (( next_build == current_build )); then
 else
   last_release_commit="$(git log \
     --extended-regexp \
-    --grep='^Bump TestFlight build to [0-9]+$' \
+    --grep='^(Bump TestFlight build to [0-9]+|Prepare Plainstride [0-9]+(\.[0-9]+){0,2} build [0-9]+)$' \
     --format='%H' \
     -1)"
   [[ -n "$last_release_commit" ]] || fail "could not find the previous TestFlight release commit"
@@ -264,10 +348,10 @@ fi
 
 if [[ "$beta_setup_only" == true ]]; then
   log "Plainstride ${marketing_version}: configuring existing build ${next_build}"
-elif (( next_build == current_build )); then
+elif [[ "$marketing_version" == "$current_marketing_version" ]] && (( next_build == current_build )); then
   log "Plainstride ${marketing_version}: using prepared build ${current_build}"
 else
-  log "Plainstride ${marketing_version}: build ${current_build} -> ${next_build}"
+  log "Plainstride ${current_marketing_version} (${current_build}) -> ${marketing_version} (${next_build})"
 fi
 log "External TestFlight eligibility: enabled"
 if [[ "$configure_beta" == true ]]; then
@@ -278,6 +362,15 @@ if [[ "$configure_beta" == true ]]; then
   fi
 else
   log "Beta setup: skipped"
+fi
+if [[ "$submit_public_release" == true ]]; then
+  if [[ "$manual_release" == true ]]; then
+    log "App Store submission: ${app_store_locale}, manual release after approval"
+  else
+    log "App Store submission: ${app_store_locale}, automatic release after approval"
+  fi
+else
+  log "App Store submission: skipped"
 fi
 if [[ "$release_notes_generated" == true ]]; then
   log "Release notes from commits after $(git rev-parse --short "$last_release_commit"):"
@@ -294,13 +387,16 @@ if [[ "$dry_run" == true ]]; then
 fi
 
 if [[ "$beta_setup_only" == false ]]; then
-PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
+PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
 bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID")]
+old_version = ENV.fetch("OLD_VERSION")
+new_version = ENV.fetch("NEW_VERSION")
 old_build = ENV.fetch("OLD_BUILD")
 new_build = ENV.fetch("NEW_BUILD")
 lines = File.readlines(path)
-updated = 0
+updated_builds = 0
+updated_versions = 0
 
 lines.each_index do |start|
   next unless lines[start].include?("buildSettings = {")
@@ -312,25 +408,36 @@ lines.each_index do |start|
   index = (start..finish).find { |line_index| lines[line_index].include?("CURRENT_PROJECT_VERSION = #{old_build};") }
   abort "expected build #{old_build} in app/extension block" unless index
   lines[index] = lines[index].sub("CURRENT_PROJECT_VERSION = #{old_build};", "CURRENT_PROJECT_VERSION = #{new_build};")
-  updated += 1
+  updated_builds += 1
+
+  index = (start..finish).find { |line_index| lines[line_index].include?("MARKETING_VERSION = #{old_version};") }
+  abort "expected marketing version #{old_version} in app/extension block" unless index
+  lines[index] = lines[index].sub("MARKETING_VERSION = #{old_version};", "MARKETING_VERSION = #{new_version};")
+  updated_versions += 1
 end
 
-abort "expected to update 4 app/extension blocks, updated #{updated}" unless updated == 4
+abort "expected to update 4 app/extension build numbers, updated #{updated_builds}" unless updated_builds == 4
+abort "expected to update 4 app/extension marketing versions, updated #{updated_versions}" unless updated_versions == 4
 temporary_path = "#{path}.publish-tmp"
 File.write(temporary_path, lines.join)
 File.rename(temporary_path, path)
 RUBY
 
-OLD_BUILD="$current_build" NEW_BUILD="$next_build" MARKETING_VERSION="$marketing_version" RELEASE_DOC="$RELEASE_DOC" RELEASE_NOTES="$release_notes" ruby <<'RUBY'
+OLD_BUILD="$current_build" NEW_BUILD="$next_build" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" RELEASE_DOC="$RELEASE_DOC" RELEASE_NOTES="$release_notes" APP_STORE_RELEASE_NOTES="$app_store_release_notes" UPDATE_APP_STORE_NOTES="$submit_public_release" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
 old_build = ENV.fetch("OLD_BUILD")
 new_build = ENV.fetch("NEW_BUILD")
-marketing_version = ENV.fetch("MARKETING_VERSION")
+old_version = ENV.fetch("OLD_VERSION")
+new_version = ENV.fetch("NEW_VERSION")
 release_notes = ENV.fetch("RELEASE_NOTES")
+app_store_release_notes = ENV.fetch("APP_STORE_RELEASE_NOTES")
+update_app_store_notes = ENV.fetch("UPDATE_APP_STORE_NOTES") == "true"
 text = File.read(path)
 replacements = {
+  "# TestFlight and App Store #{old_version} Submission Sheet" => "# TestFlight and App Store #{new_version} Submission Sheet",
+  "- Version: `#{old_version}`" => "- Version: `#{new_version}`",
   "- Build: `#{old_build}`" => "- Build: `#{new_build}`",
-  "Archive `#{marketing_version} (#{old_build})`" => "Archive `#{marketing_version} (#{new_build})`"
+  "Archive `#{old_version} (#{old_build})`" => "Archive `#{new_version} (#{new_build})`"
 }
 replacements.each do |before, after|
   abort "release document is missing: #{before}" unless text.include?(before)
@@ -339,6 +446,11 @@ end
 notes_pattern = /^### Beta Release Notes\s*$\n.*?(?=^###?\s|\z)/m
 abort "release document is missing the Beta Release Notes section" unless text.match?(notes_pattern)
 text = text.sub(notes_pattern, "### Beta Release Notes\n\n#{release_notes}\n\n")
+if update_app_store_notes
+  app_store_notes_pattern = /^### App Store What.s New\s*$\n.*?(?=^###?\s|\z)/m
+  abort "release document is missing the App Store release-notes section" unless text.match?(app_store_notes_pattern)
+  text = text.sub(app_store_notes_pattern, "### App Store What's New\n\n#{app_store_release_notes}\n\n")
+end
 temporary_path = "#{path}.publish-tmp"
 File.write(temporary_path, text)
 File.rename(temporary_path, path)
@@ -360,7 +472,11 @@ if [[ "$commit_changes" == true ]]; then
   if git diff --cached --quiet; then
     log "Build metadata is already committed"
   else
-    git commit -m "Bump TestFlight build to ${next_build}"
+    if [[ "$submit_public_release" == true || "$marketing_version" != "$current_marketing_version" ]]; then
+      git commit -m "Prepare Plainstride ${marketing_version} build ${next_build}"
+    else
+      git commit -m "Bump TestFlight build to ${next_build}"
+    fi
     log "Committed verified build metadata"
   fi
 else
@@ -450,8 +566,8 @@ else
   log "Skipping compile, archive, and upload for existing build ${next_build}"
 fi
 
-if [[ "$configure_beta" == false ]]; then
-  log "Skipped release notes and beta group assignment"
+if [[ "$configure_beta" == false && "$submit_public_release" == false ]]; then
+  log "Skipped App Store Connect post-upload setup"
   exit 0
 fi
 
@@ -573,6 +689,8 @@ done
 
 log "Build ${next_build} processed successfully"
 encoded_build_id="$(urlencode "$build_id")"
+
+if [[ "$configure_beta" == true ]]; then
 encoded_locale="$(urlencode "$beta_locale")"
 localizations_json="$(asc_request GET "/v1/betaBuildLocalizations?filter%5Bbuild%5D=${encoded_build_id}&filter%5Blocale%5D=${encoded_locale}&limit=2")"
 localization_count="$(jq '.data | length' <<<"$localizations_json")"
@@ -624,3 +742,145 @@ else
 fi
 
 log "Beta setup complete: Plainstride ${marketing_version} (${next_build})"
+fi
+
+if [[ "$submit_public_release" == true ]]; then
+  app_store_versions_json="$(asc_request GET "/v1/apps/${encoded_app_id}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=200&fields%5BappStoreVersions%5D=versionString%2CappVersionState%2CreleaseType%2Cbuild")"
+  matching_app_store_versions="$(jq -c --arg version "$marketing_version" '[.data[] | select(.attributes.versionString == $version)]' <<<"$app_store_versions_json")"
+  app_store_version_count="$(jq 'length' <<<"$matching_app_store_versions")"
+  (( app_store_version_count <= 1 )) || fail "found multiple iOS App Store versions named ${marketing_version}"
+
+  desired_release_type="AFTER_APPROVAL"
+  if [[ "$manual_release" == true ]]; then
+    desired_release_type="MANUAL"
+  fi
+
+  if (( app_store_version_count == 0 )); then
+    create_app_store_version_payload="$(jq -cn \
+      --arg app_id "$app_id" \
+      --arg version "$marketing_version" \
+      --arg release_type "$desired_release_type" \
+      '{data:{type:"appStoreVersions",attributes:{platform:"IOS",versionString:$version,releaseType:$release_type},relationships:{app:{data:{type:"apps",id:$app_id}}}}}')"
+    created_app_store_version_json="$(asc_request POST "/v1/appStoreVersions" "$create_app_store_version_payload")"
+    matching_app_store_versions="$(jq -c '[.data]' <<<"$created_app_store_version_json")"
+    log "Created iOS App Store version ${marketing_version}"
+  fi
+
+  app_store_version_id="$(jq -r '.[0].id' <<<"$matching_app_store_versions")"
+  app_store_version_state="$(jq -r '.[0].attributes.appVersionState // .[0].attributes.appStoreState // empty' <<<"$matching_app_store_versions")"
+  current_release_type="$(jq -r '.[0].attributes.releaseType // empty' <<<"$matching_app_store_versions")"
+  [[ -n "$app_store_version_state" ]] || fail "App Store version ${marketing_version} has no appVersionState"
+  encoded_app_store_version_id="$(urlencode "$app_store_version_id")"
+
+  app_store_build_json="$(asc_request GET "/v1/appStoreVersions/${encoded_app_store_version_id}/relationships/build")"
+  attached_build_id="$(jq -r '.data.id // empty' <<<"$app_store_build_json")"
+  public_submission_needed=false
+
+  case "$app_store_version_state" in
+    PREPARE_FOR_SUBMISSION)
+      public_submission_needed=true
+      ;;
+    READY_FOR_REVIEW)
+      public_submission_needed=true
+      ;;
+    WAITING_FOR_REVIEW|IN_REVIEW|PENDING_APPLE_RELEASE|PENDING_DEVELOPER_RELEASE|PROCESSING_FOR_DISTRIBUTION|READY_FOR_DISTRIBUTION|READY_FOR_SALE|ACCEPTED)
+      [[ "$attached_build_id" == "$build_id" ]] || \
+        fail "App Store version ${marketing_version} is ${app_store_version_state} with a different build attached"
+      log "App Store version ${marketing_version} is already ${app_store_version_state} with build ${next_build}"
+      ;;
+    *)
+      fail "App Store version ${marketing_version} cannot be submitted from state ${app_store_version_state}"
+      ;;
+  esac
+
+  if [[ "$public_submission_needed" == true ]]; then
+    if [[ "$app_store_version_state" == "READY_FOR_REVIEW" && "$attached_build_id" != "$build_id" ]]; then
+      fail "App Store version ${marketing_version} is already ready for review with a different build attached"
+    elif [[ "$attached_build_id" == "$build_id" ]]; then
+      log "Build ${next_build} is already attached to App Store version ${marketing_version}"
+    else
+      build_linkage_payload="$(jq -cn --arg build_id "$build_id" '{data:{type:"builds",id:$build_id}}')"
+      asc_request PATCH "/v1/appStoreVersions/${encoded_app_store_version_id}/relationships/build" "$build_linkage_payload" >/dev/null
+      log "Attached build ${next_build} to App Store version ${marketing_version}"
+    fi
+
+    if [[ "$app_store_version_state" == "PREPARE_FOR_SUBMISSION" ]]; then
+      app_store_localizations_json="$(asc_request GET "/v1/appStoreVersions/${encoded_app_store_version_id}/appStoreVersionLocalizations?limit=200&fields%5BappStoreVersionLocalizations%5D=locale%2CwhatsNew")"
+      matching_app_store_localizations="$(jq -c --arg locale "$app_store_locale" '[.data[] | select(.attributes.locale == $locale)]' <<<"$app_store_localizations_json")"
+      app_store_localization_count="$(jq 'length' <<<"$matching_app_store_localizations")"
+      (( app_store_localization_count == 1 )) || \
+        fail "expected one ${app_store_locale} localization for App Store version ${marketing_version}, found ${app_store_localization_count}"
+      app_store_localization_id="$(jq -r '.[0].id' <<<"$matching_app_store_localizations")"
+      current_app_store_notes="$(jq -r '.[0].attributes.whatsNew // empty' <<<"$matching_app_store_localizations")"
+
+      if [[ "$current_app_store_notes" == "$app_store_release_notes" ]]; then
+        log "App Store What's New already matches ${RELEASE_DOC}"
+      else
+        app_store_localization_payload="$(jq -cn \
+          --arg id "$app_store_localization_id" \
+          --arg whats_new "$app_store_release_notes" \
+          '{data:{type:"appStoreVersionLocalizations",id:$id,attributes:{whatsNew:$whats_new}}}')"
+        asc_request PATCH "/v1/appStoreVersionLocalizations/$(urlencode "$app_store_localization_id")" "$app_store_localization_payload" >/dev/null
+        log "Published ${app_store_locale} App Store What's New"
+      fi
+
+      if [[ "$current_release_type" == "$desired_release_type" ]]; then
+        log "App Store release type is already ${desired_release_type}"
+      else
+        release_type_payload="$(jq -cn \
+          --arg id "$app_store_version_id" \
+          --arg release_type "$desired_release_type" \
+          '{data:{type:"appStoreVersions",id:$id,attributes:{releaseType:$release_type}}}')"
+        asc_request PATCH "/v1/appStoreVersions/${encoded_app_store_version_id}" "$release_type_payload" >/dev/null
+        log "Set App Store release type to ${desired_release_type}"
+      fi
+    elif [[ "$current_release_type" != "$desired_release_type" ]]; then
+      fail "App Store version ${marketing_version} is ready for review with release type ${current_release_type:-unknown}, expected ${desired_release_type}"
+    fi
+
+    ready_submissions_json="$(asc_request GET "/v1/apps/${encoded_app_id}/reviewSubmissions?filter%5Bplatform%5D=IOS&filter%5Bstate%5D=READY_FOR_REVIEW&limit=2&fields%5BreviewSubmissions%5D=state")"
+    ready_submission_count="$(jq '.data | length' <<<"$ready_submissions_json")"
+    (( ready_submission_count <= 1 )) || fail "multiple iOS review submissions are ready; resolve them in App Store Connect"
+
+    if (( ready_submission_count == 0 )); then
+      review_submission_payload="$(jq -cn --arg app_id "$app_id" '{data:{type:"reviewSubmissions",relationships:{app:{data:{type:"apps",id:$app_id}}}}}')"
+      review_submission_json="$(asc_request POST "/v1/reviewSubmissions" "$review_submission_payload")"
+      review_submission_id="$(jq -r '.data.id // empty' <<<"$review_submission_json")"
+      [[ -n "$review_submission_id" ]] || fail "App Store Connect did not return a review submission ID"
+      log "Created App Store review submission"
+    else
+      review_submission_id="$(jq -r '.data[0].id' <<<"$ready_submissions_json")"
+      log "Reusing the existing ready App Store review submission"
+    fi
+
+    encoded_review_submission_id="$(urlencode "$review_submission_id")"
+    review_items_json="$(asc_request GET "/v1/reviewSubmissions/${encoded_review_submission_id}/items?limit=50&fields%5BreviewSubmissionItems%5D=state%2CappStoreVersion")"
+    matching_review_item_count="$(jq --arg version_id "$app_store_version_id" '[.data[] | select(.relationships.appStoreVersion.data.id? == $version_id)] | length' <<<"$review_items_json")"
+    other_app_version_item_count="$(jq --arg version_id "$app_store_version_id" '[.data[] | select(.relationships.appStoreVersion.data.id? != null and .relationships.appStoreVersion.data.id != $version_id)] | length' <<<"$review_items_json")"
+    (( matching_review_item_count <= 1 )) || fail "App Store version ${marketing_version} appears multiple times in the review submission"
+    (( other_app_version_item_count == 0 )) || fail "the ready review submission already contains a different App Store version"
+
+    if (( matching_review_item_count == 0 )); then
+      review_item_payload="$(jq -cn \
+        --arg submission_id "$review_submission_id" \
+        --arg version_id "$app_store_version_id" \
+        '{data:{type:"reviewSubmissionItems",relationships:{reviewSubmission:{data:{type:"reviewSubmissions",id:$submission_id}},appStoreVersion:{data:{type:"appStoreVersions",id:$version_id}}}}}')"
+      asc_request POST "/v1/reviewSubmissionItems" "$review_item_payload" >/dev/null
+      log "Added App Store version ${marketing_version} to the review submission"
+    else
+      log "App Store version ${marketing_version} is already in the review submission"
+    fi
+
+    submit_review_payload="$(jq -cn \
+      --arg submission_id "$review_submission_id" \
+      '{data:{type:"reviewSubmissions",id:$submission_id,attributes:{submitted:true}}}')"
+    asc_request PATCH "/v1/reviewSubmissions/${encoded_review_submission_id}" "$submit_review_payload" >/dev/null
+    log "Submitted Plainstride ${marketing_version} (${next_build}) to App Review"
+  fi
+
+  if [[ "$manual_release" == true ]]; then
+    log "Public release setup complete; release the approved version manually in App Store Connect"
+  else
+    log "Public release setup complete; Apple will release the version automatically after approval"
+  fi
+fi

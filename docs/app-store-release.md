@@ -49,7 +49,7 @@ Run the repository helper from a clean tracked worktree:
 ./scripts/publish-testflight.sh
 ```
 
-The helper increments the app and Live Activity extension build number, generates brief release notes from product commits after the latest `Bump TestFlight build` commit, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests or publish the app publicly.
+The helper increments the app and Live Activity extension build number, generates brief release notes from product commits after the latest release-preparation commit, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests, and its default mode does not publish the app publicly.
 
 Release notes use the newest five commit subjects that touch `ios/Outbound`,
 `backend`, or `Package.swift`. When more changes exist, the final bullet reports
@@ -113,6 +113,58 @@ archiving, or uploading it again:
 ./scripts/publish-testflight.sh --beta-setup-only --build-number 29
 ```
 
+## Automated Public Release
+
+Use the explicit public-release mode only after the product page, screenshots,
+privacy answers, agreements, review contact, and release notes in
+`docs/testflight-1.0.md` are ready:
+
+```sh
+./scripts/publish-testflight.sh --public-release
+```
+
+For a public release, the helper increments the last component of the marketing
+version and the build number by default (`1.1 (35)` becomes `1.2 (36)`). It
+updates both app targets and both Live Activity extension configurations, builds
+and uploads the new archive, creates the matching iOS App Store version when it
+does not exist, copies **App Store What's New** into the configured localization,
+attaches the processed build, and submits the version through App Review. The
+default release type is **After approval**, so Apple makes the version public
+when review succeeds.
+
+Override either generated number independently:
+
+```sh
+./scripts/publish-testflight.sh \
+  --public-release \
+  --version 1.2.1 \
+  --build-number 40
+```
+
+Use `--manual-release` to hold an approved version in **Pending Developer
+Release** instead. Use `--skip-beta-setup` when the public build should not also
+be assigned to the TestFlight group.
+
+If the build is already uploaded, retry only the App Store Connect work with
+the exact prepared identity:
+
+```sh
+./scripts/publish-testflight.sh \
+  --public-release \
+  --setup-only \
+  --skip-beta-setup \
+  --version 1.2 \
+  --build-number 36
+```
+
+Creating an App Store version through the API does not fill missing product
+metadata, screenshots, review details, privacy answers, agreements, or
+localizations. The helper returns a nonzero error when those prerequisites are
+missing; complete them in App Store Connect and rerun the setup-only command.
+The API key must have permission to manage and submit the app version. A public
+submission is idempotent when the requested build is already attached or the
+version is already waiting for review.
+
 ## App Store Connect Checklist
 
 - Create App Store version `1.1` on the existing **Plainstride** record with bundle ID `plainstride.outbound`, primary category **Health & Fitness**, and the existing availability/price.
@@ -121,7 +173,7 @@ archiving, or uploading it again:
 - Complete age rating, content-rights, advertising-identifier, accessibility, and export-compliance questions.
 - Complete App Privacy from actual production behavior, including Firebase and backend handling. Audit at least: account identifiers and contact information, user content, health/fitness data, precise location, diagnostics, and any photos uploaded off device. Local-only data is not “collected” for the label merely because it is stored on device.
 - Provide App Review contact details and concise review notes explaining why background location, HealthKit, microphone/speech, camera, Apple Music, WeatherKit, and Live Activities are used. Include a working review account only if Apple/Google sign-in cannot give review access.
-- Select the processed build, answer the encryption question consistently with the plist, add it to the submission, and submit for review.
+- Select the processed build and submit it for review manually, or use `./scripts/publish-testflight.sh --public-release` after all required metadata and review answers are complete.
 
 ## Owner Decisions Still Required
 
