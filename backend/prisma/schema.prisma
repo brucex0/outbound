@@ -300,7 +300,7 @@ model Activity {
   elevationM   Float?
   avgPace      Float? // secs/km
   avgHeartRate Int?
-  calories     Int?
+  energyKilocalories Int?
 
   route                      Json? // GeoJSON Feature with LineString geometry
   splits                     Json? // Split[]
@@ -590,6 +590,8 @@ model TrainingGoal {
   daysPerWeekTarget    Int       @default(3)
   maxSessionMinutes    Int       @default(45)
   riskTolerance        String    @default("balanced")
+  primaryMotivation    String    @default("generalFitness")
+  preferredRunGoalType String    @default("time")
   constraints          Json      @default("{}")
   status               String    @default("active")
   createdAt            DateTime  @default(now())
@@ -651,6 +653,7 @@ model PlannedWorkout {
   title             String
   durationSeconds   Int
   distanceMeters    Float?
+  targetCalories    Int?
   intensityModel    String
   intensityTarget   Json?
   prescription      Json                @default("{}")
@@ -717,6 +720,8 @@ model WorkoutCompletion {
   completedAt       DateTime       @default(now())
   durationSeconds   Int?
   distanceMeters    Float?
+  targetCalories    Int?
+  energyKilocalories Int?
   avgPace           Float?
   avgHeartRate      Int?
   avgPower          Float?
@@ -760,6 +765,8 @@ model RunnerProfile {
   targetSessionsPerWeek      Int       @default(3)
   preferredLongRunDay        String?
   guidanceDetail             String    @default("balanced")
+  primaryMotivation          String    @default("generalFitness")
+  preferredRunGoalType       String    @default("time")
   sexAtBirth                 String?
   birthDate                  DateTime? @db.Date
   heightCentimeters          Float?

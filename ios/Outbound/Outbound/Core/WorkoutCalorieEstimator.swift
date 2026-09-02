@@ -20,15 +20,32 @@ struct WorkoutCalorieEstimate: Equatable, Sendable {
     }
 }
 
+struct PlannedRunCalorieEstimate: Equatable, Sendable {
+    let targetCalories: Int
+    let distanceMeters: Double
+    let durationSeconds: Int
+}
+
+struct LearnedRunPace: Equatable, Sendable {
+    let secondsPerKilometer: Double?
+    let validRunCount: Int
+    let isReliable: Bool
+}
+
 /// Produces a conservative gross-energy estimate from the workout facts the app
 /// can verify. Values are calculated on demand so activity edits and newer body
 /// weight measurements cannot leave a stale calorie value behind.
 enum WorkoutCalorieEstimator {
+    private static let validRunPaceRange = 150.0...1_200.0
+
     static func estimate(
         for activity: SavedActivity,
         weightKilograms: Double?
     ) -> WorkoutCalorieEstimate {
-        estimate(
+        if let energyKilocalories = activity.energyKilocalories, energyKilocalories > 0 {
+            return .available(energyKilocalories)
+        }
+        return estimate(
             activityType: activity.activityType,
             distanceMeters: activity.distanceM,
             durationSeconds: activity.durationSecs,
@@ -79,10 +96,15 @@ enum WorkoutCalorieEstimator {
             return .unavailable(.implausibleSpeed)
         }
 
-        let rawKilocalories = metabolicEquivalent(
-            for: activityType,
-            speedKilometersPerHour: speedKilometersPerHour
-        ) * weightKilograms * durationHours
+        let rawKilocalories: Double
+        if activityType == .running {
+            rawKilocalories = weightKilograms * (distanceMeters / 1_000)
+        } else {
+            rawKilocalories = metabolicEquivalent(
+                for: activityType,
+                speedKilometersPerHour: speedKilometersPerHour
+            ) * weightKilograms * durationHours
+        }
 
         guard rawKilocalories.isFinite, rawKilocalories >= 10, rawKilocalories <= 10_000 else {
             return .unavailable(.implausibleSpeed)
@@ -91,6 +113,89 @@ enum WorkoutCalorieEstimator {
         // Five-calorie increments communicate the estimate without implying
         // precision that the available workout inputs cannot support.
         return .available(max(5, Int((rawKilocalories / 5).rounded()) * 5))
+    }
+
+    static func liveEnergyKilocalories(
+        activityType: ActivityType,
+        distanceMeters: Double,
+        durationSeconds: Int,
+        weightKilograms: Double?
+    ) -> Double? {
+        guard let weightKilograms,
+              weightKilograms.isFinite,
+              (25...350).contains(weightKilograms),
+              durationSeconds > 0 else { return nil }
+        switch activityType {
+        case .running:
+            guard distanceMeters > 0 else { return nil }
+            return weightKilograms * (distanceMeters / 1_000)
+        case .cycling:
+            return 8 * weightKilograms * (Double(durationSeconds) / 3_600)
+        case .walking:
+            return 3.5 * weightKilograms * (Double(durationSeconds) / 3_600)
+        case .hiking, .swimming:
+            return 6 * weightKilograms * (Double(durationSeconds) / 3_600)
+        }
+    }
+
+    static func resolveLearnedRunPace(
+        activities: [SavedActivity],
+        calibrationCompleted: Bool
+    ) -> LearnedRunPace {
+        let values = activities
+            .filter { $0.activityType == .running }
+            .filter { $0.distanceM >= 500 && (5 * 60...12 * 60 * 60).contains($0.durationSecs) }
+            .compactMap { activity -> Double? in
+                let pace = activity.avgPace ?? Double(activity.durationSecs) / (activity.distanceM / 1_000)
+                return pace.isFinite && validRunPaceRange.contains(pace) ? pace : nil
+            }
+            .prefix(10)
+            .sorted()
+        let reliable = values.count >= 3 || (calibrationCompleted && !values.isEmpty)
+        guard reliable else {
+            return LearnedRunPace(secondsPerKilometer: nil, validRunCount: values.count, isReliable: false)
+        }
+        let middle = values.count / 2
+        let pace = values.count.isMultiple(of: 2)
+            ? (values[middle - 1] + values[middle]) / 2
+            : values[middle]
+        return LearnedRunPace(secondsPerKilometer: pace, validRunCount: values.count, isReliable: true)
+    }
+
+    static func plannedRun(
+        targetCalories: Int,
+        weightKilograms: Double?,
+        paceSecondsPerKilometer: Double?
+    ) -> PlannedRunCalorieEstimate? {
+        guard let weightKilograms,
+              (25...350).contains(weightKilograms),
+              let paceSecondsPerKilometer,
+              validRunPaceRange.contains(paceSecondsPerKilometer),
+              targetCalories > 0 else { return nil }
+        let roundedCalories = max(50, Int((Double(targetCalories) / 25).rounded()) * 25)
+        let distanceKilometers = Double(roundedCalories) / weightKilograms
+        return PlannedRunCalorieEstimate(
+            targetCalories: roundedCalories,
+            distanceMeters: distanceKilometers * 1_000,
+            durationSeconds: max(60, Int((distanceKilometers * paceSecondsPerKilometer).rounded()))
+        )
+    }
+
+    static func plannedRun(
+        durationSeconds: Int,
+        weightKilograms: Double?,
+        paceSecondsPerKilometer: Double?
+    ) -> PlannedRunCalorieEstimate? {
+        guard let weightKilograms,
+              let paceSecondsPerKilometer,
+              durationSeconds > 0,
+              validRunPaceRange.contains(paceSecondsPerKilometer) else { return nil }
+        let distanceKilometers = Double(durationSeconds) / paceSecondsPerKilometer
+        return plannedRun(
+            targetCalories: Int((weightKilograms * distanceKilometers).rounded()),
+            weightKilograms: weightKilograms,
+            paceSecondsPerKilometer: paceSecondsPerKilometer
+        )
     }
 
     static func calorieValue(_ kilocalories: Int) -> String {

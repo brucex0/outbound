@@ -38,6 +38,7 @@ export async function createPlanVersionWithWorkouts(
         title: workout.title,
         durationSeconds: workout.durationSeconds,
         distanceMeters: workout.distanceMeters ?? null,
+        targetCalories: workout.targetCalories ?? null,
         intensityModel: workout.intensityModel,
         intensityTarget: workout.intensityTarget ? json(workout.intensityTarget) : Prisma.JsonNull,
         prescription: json(workout.prescription),

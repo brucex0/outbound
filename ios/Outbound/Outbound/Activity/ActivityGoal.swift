@@ -153,19 +153,20 @@ enum ActivityGoal: Codable, Hashable {
 
 extension SessionIntent {
     var activityGoal: ActivityGoal {
+        if let calories = resolvedTargetCalories {
+            return .calories(calories)
+        }
         if let distance = resolvedTargetDistanceMeters {
             return .distanceMeters(distance)
         }
         if let duration = resolvedTargetDurationSeconds {
             return .timeSeconds(duration)
         }
-        if let calories = resolvedTargetCalories {
-            return .calories(calories)
-        }
         return .freestyle
     }
 
     func replacingGoal(_ goal: ActivityGoal, unitSystem: MeasurementUnitSystem) -> SessionIntent {
+        let usesCalories = goal.targetCalories != nil
         if preparedRoute != nil {
             return SessionIntent(
                 id: id,
@@ -177,13 +178,16 @@ extension SessionIntent {
                 targetDistanceMeters: goal.targetDistanceMeters,
                 targetDurationSeconds: goal.targetDurationSeconds,
                 targetCalories: goal.targetCalories,
+                estimatedDistanceMeters: usesCalories ? estimatedDistanceMeters : nil,
+                estimatedDurationSeconds: usesCalories ? estimatedDurationSeconds : nil,
+                allowsCalorieGoal: allowsCalorieGoal,
                 routeName: routeName,
                 preparedRoute: preparedRoute,
                 activityTypeOverride: activityTypeOverride,
-                workoutSteps: workoutSteps,
+                workoutSteps: usesCalories ? [] : workoutSteps,
                 coachingTarget: coachingTarget,
                 workoutReference: workoutReference,
-                workoutCues: workoutCues,
+                workoutCues: usesCalories ? [] : workoutCues,
                 activityEvent: activityEvent
             )
         }
@@ -197,14 +201,44 @@ extension SessionIntent {
             targetDistanceMeters: goal.targetDistanceMeters,
             targetDurationSeconds: goal.targetDurationSeconds,
             targetCalories: goal.targetCalories,
+            estimatedDistanceMeters: usesCalories ? estimatedDistanceMeters : nil,
+            estimatedDurationSeconds: usesCalories ? estimatedDurationSeconds : nil,
+            allowsCalorieGoal: allowsCalorieGoal,
             routeName: routeName,
             preparedRoute: preparedRoute,
             activityTypeOverride: activityTypeOverride,
-            workoutSteps: workoutSteps,
+            workoutSteps: usesCalories ? [] : workoutSteps,
             coachingTarget: coachingTarget,
             workoutReference: workoutReference,
-            workoutCues: workoutCues,
+            workoutCues: usesCalories ? [] : workoutCues,
             activityEvent: activityEvent
+        )
+    }
+
+    func replacingCalorieGoal(
+        _ estimate: PlannedRunCalorieEstimate,
+        unitSystem: MeasurementUnitSystem
+    ) -> SessionIntent {
+        let base = replacingGoal(.calories(estimate.targetCalories), unitSystem: unitSystem)
+        return SessionIntent(
+            id: base.id,
+            sport: base.sport,
+            title: base.title,
+            detail: base.detail,
+            guideLine: base.guideLine,
+            startLabel: base.startLabel,
+            targetCalories: estimate.targetCalories,
+            estimatedDistanceMeters: estimate.distanceMeters,
+            estimatedDurationSeconds: estimate.durationSeconds,
+            allowsCalorieGoal: base.allowsCalorieGoal,
+            routeName: base.routeName,
+            preparedRoute: base.preparedRoute,
+            activityTypeOverride: base.activityTypeOverride,
+            workoutSteps: [],
+            coachingTarget: base.coachingTarget,
+            workoutReference: base.workoutReference,
+            workoutCues: [],
+            activityEvent: base.activityEvent
         )
     }
 

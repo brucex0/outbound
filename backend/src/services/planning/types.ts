@@ -37,6 +37,10 @@ export type PlanningStatus = "stable" | "reassessing" | "updated" | "needsAttent
 
 export type TrainingPlanPhase = "base" | "build" | "sharpen" | "taper" | "recovery" | "maintenance";
 
+export type PrimaryMotivation = "generalFitness" | "consistency" | "performance" | "weightLoss" | "weightMaintenance";
+
+export type RunGoalType = "time" | "distance" | "calories";
+
 export interface CreateTrainingGoalInput {
   type: string;
   primaryModality?: Modality;
@@ -48,6 +52,8 @@ export interface CreateTrainingGoalInput {
   daysPerWeekTarget?: number;
   maxSessionMinutes?: number;
   riskTolerance?: "conservative" | "balanced" | "stretch";
+  primaryMotivation?: PrimaryMotivation;
+  preferredRunGoalType?: RunGoalType;
   constraints?: Record<string, unknown>;
 }
 
@@ -67,6 +73,8 @@ export interface CompleteWorkoutInput {
   completedAt?: string;
   durationSeconds?: number | null;
   distanceMeters?: number | null;
+  targetCalories?: number | null;
+  energyKilocalories?: number | null;
   avgPace?: number | null;
   avgHeartRate?: number | null;
   avgPower?: number | null;
@@ -106,6 +114,7 @@ export interface PlannedWorkoutForState {
   stimulus: string;
   durationSeconds: number;
   distanceMeters: number | null;
+  targetCalories: number | null;
   isKeyWorkout: boolean;
   status: string;
 }
@@ -153,6 +162,7 @@ export interface PlannedWorkoutDraft {
   title: string;
   durationSeconds: number;
   distanceMeters?: number | null;
+  targetCalories?: number | null;
   intensityModel: string;
   intensityTarget?: Record<string, unknown> | null;
   prescription: Record<string, unknown>;
@@ -182,6 +192,8 @@ export interface WorkoutGenerationInput {
   modality: Modality;
   stimulus: TrainingStimulus;
   durationMinutes: number;
+  distanceMeters?: number | null;
+  targetCalories?: number | null;
   isKeyWorkout?: boolean;
   athleteState: AthleteTrainingStateSnapshot;
 }
@@ -265,6 +277,8 @@ export interface ActivitySuggestion {
   modality: Modality;
   stimulus: TrainingStimulus;
   durationMinutes: number;
+  distanceMeters?: number | null;
+  targetCalories?: number | null;
   effortLabel: string;
   intensityModel: ActivitySuggestionIntensityModel;
   intensityTarget?: Record<string, unknown> | null;

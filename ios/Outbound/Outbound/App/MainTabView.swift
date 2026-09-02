@@ -344,6 +344,11 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let startLabel: String
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
+    let targetCalories: Int?
+    let estimatedDistanceMeters: Double?
+    let estimatedDurationSeconds: Int?
+    let allowsCalorieGoal: Bool
+    let plannedWorkoutID: String?
     let routeName: String?
     let workoutSteps: [SessionIntentStep]?
 
@@ -358,6 +363,11 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         startLabel: String,
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
+        targetCalories: Int? = nil,
+        estimatedDistanceMeters: Double? = nil,
+        estimatedDurationSeconds: Int? = nil,
+        allowsCalorieGoal: Bool = false,
+        plannedWorkoutID: String? = nil,
         routeName: String? = nil,
         workoutSteps: [SessionIntentStep]? = nil
     ) {
@@ -371,6 +381,11 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.startLabel = startLabel
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
+        self.targetCalories = targetCalories
+        self.estimatedDistanceMeters = estimatedDistanceMeters
+        self.estimatedDurationSeconds = estimatedDurationSeconds
+        self.allowsCalorieGoal = allowsCalorieGoal
+        self.plannedWorkoutID = plannedWorkoutID
         self.routeName = routeName
         self.workoutSteps = workoutSteps
     }
@@ -384,9 +399,18 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             guideLine: guideLine,
             startLabel: startLabel,
             targetDistanceMeters: targetDistanceMeters,
-            targetDurationSeconds: targetDurationSeconds ?? SessionIntentGoalParser.durationSeconds(from: durationLabel),
+            targetDurationSeconds: targetCalories == nil
+                ? targetDurationSeconds ?? SessionIntentGoalParser.durationSeconds(from: durationLabel)
+                : nil,
+            targetCalories: targetCalories,
+            estimatedDistanceMeters: estimatedDistanceMeters,
+            estimatedDurationSeconds: estimatedDurationSeconds,
+            allowsCalorieGoal: allowsCalorieGoal,
             routeName: routeName,
-            workoutSteps: workoutSteps ?? []
+            workoutSteps: targetCalories == nil ? workoutSteps ?? [] : [],
+            workoutReference: plannedWorkoutID.map {
+                SessionWorkoutReference(source: "planned_workout", id: $0, version: nil)
+            }
         )
     }
 }

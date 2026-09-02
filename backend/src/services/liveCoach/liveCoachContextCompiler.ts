@@ -59,7 +59,7 @@ export async function compileLiveCoachContext(
         elevationM: true,
         avgPace: true,
         avgHeartRate: true,
-        calories: true,
+        energyKilocalories: true,
       },
     }),
     prisma.workoutFeedback.findMany({
@@ -110,6 +110,8 @@ export async function compileLiveCoachContext(
       targetSessionsPerWeek: runnerProfile?.targetSessionsPerWeek ?? null,
       preferredLongRunDay: nullableClip(runnerProfile?.preferredLongRunDay, 24),
       guidanceDetail: nullableClip(runnerProfile?.guidanceDetail, 24),
+      primaryMotivation: nullableClip(runnerProfile?.primaryMotivation, 40),
+      preferredRunGoalType: nullableClip(runnerProfile?.preferredRunGoalType, 40),
       constraints: boundedJSON(runnerProfile?.constraints ?? {}, 2_000),
     },
     coachingProfile: {
@@ -126,6 +128,7 @@ export async function compileLiveCoachContext(
       title: clip(workout.title, 120),
       purpose: clip(workout.stimulus, 160),
       durationSeconds: workout.durationSeconds,
+      targetCalories: workout.targetCalories,
       intensityTarget: boundedJSON(workout.intensityTarget, 2_000),
       prescription: boundedJSON(workout.prescription, 5_000),
       blocks: workout.blocks.map((block) => ({
@@ -242,6 +245,7 @@ function sanitizeClientWorkout(workout: LiveCoachClientWorkout | undefined): Liv
     guideLine: clip(workout.guideLine, 400),
     targetDistanceMeters: finiteNumber(workout.targetDistanceMeters),
     targetDurationSeconds: finiteNumber(workout.targetDurationSeconds),
+    targetCalories: finiteNumber(workout.targetCalories),
     steps: workout.steps.slice(0, 80).map((step) => ({
       label: clip(step.label, 100),
       durationSeconds: step.durationSeconds,
@@ -321,7 +325,7 @@ type ActivitySummaryInput = {
   elevationM: number | null;
   avgPace: number | null;
   avgHeartRate: number | null;
-  calories: number | null;
+  energyKilocalories: number | null;
 };
 
 function activitySummary(activity: ActivitySummaryInput, now: Date) {
@@ -334,7 +338,7 @@ function activitySummary(activity: ActivitySummaryInput, now: Date) {
     elevationGainMeters: finiteNumber(activity.elevationM),
     averagePaceSecondsPerKilometer: finiteNumber(activity.avgPace),
     averageHeartRate: activity.avgHeartRate,
-    calories: activity.calories,
+    energyKilocalories: activity.energyKilocalories,
   };
 }
 

@@ -64,7 +64,7 @@ export type LiveCoachCompiledContext = {
   runnerModelVersion: string;
   locale: SupportedAILocale;
   activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
-  goalType: "workout" | "distance" | "time" | "freestyle";
+  goalType: "workout" | "distance" | "time" | "calories" | "freestyle";
   bio: {
     biography: string | null;
     ageYears: number | null;
@@ -78,6 +78,8 @@ export type LiveCoachCompiledContext = {
     targetSessionsPerWeek: number | null;
     preferredLongRunDay: string | null;
     guidanceDetail: string | null;
+    primaryMotivation: string | null;
+    preferredRunGoalType: string | null;
     constraints: unknown;
   };
   coachingProfile: {
@@ -94,6 +96,7 @@ export type LiveCoachCompiledContext = {
     title: string;
     purpose: string;
     durationSeconds: number;
+    targetCalories: number | null;
     intensityTarget: unknown;
     prescription: unknown;
     blocks: unknown[];
@@ -104,6 +107,7 @@ export type LiveCoachCompiledContext = {
     guideLine: string;
     targetDistanceMeters: number | null;
     targetDurationSeconds: number | null;
+    targetCalories: number | null;
     steps: unknown[];
     route: unknown | null;
   } | null;

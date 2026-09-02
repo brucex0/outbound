@@ -65,6 +65,7 @@ Maintain a versioned runner model with provenance and confidence rather than an 
 ### Facts
 
 - goals, dates, availability, preferences, and recurring social commitments;
+- structured `primaryMotivation` and `preferredRunGoalType` values from onboarding or profile editing;
 - optional private training-profile facts: sex assigned at birth, birth date, height, and weight;
 - injury or restriction flags that the runner explicitly supplied;
 - measurement units and guidance-detail preference.
@@ -104,7 +105,7 @@ Never regenerate the entire plan because one run was missed. Meaningful changes 
 - Sensor estimates never override explicit runner feedback without explanation.
 - Raw cycle data stays within the boundary defined in `docs/cycle-aware-guidance.md`.
 
-Optional body details live in a separate Me -> Settings -> Training profile editor, can be changed or cleared individually, and never appear in Together. Apply its additive backend columns with `cd backend && npm run db:push`.
+Optional body details live in the Me profile editor, can be changed or cleared individually, and never appear in Together. Weight is private estimation input for calorie goals and is never copied into assistant prose, social responses, or analytics. Because the product is pre-release, apply the current schema with the clean rebuild command in Development Database Rebuild rather than preserving old rows.
 
 ## Client Plan
 
@@ -254,6 +255,7 @@ The first shippable learning loop is complete when a new runner can finish intak
 ## Implemented V1 Vertical Slice
 
 - Simplified onboarding captures structured runner facts and shows an editable understanding before calibration.
+- Onboarding and the editable profile persist primary motivation plus a preferred run-goal type. Weight-loss and weight-maintenance choices default eligible easy and recovery runs to calories.
 - Three reviewed calibration workouts are scaled from comfortable duration and take precedence on Today while calibration is active.
 - Today uses backend plan data outside calibration and preserves Open, Distance, and Time Quick Run starts.
 - Readiness and workout feedback are authenticated, idempotent, cached locally, and queued offline.
@@ -262,6 +264,7 @@ The first shippable learning loop is complete when a new runner can finish intak
 - The runner explicitly accepts or rejects changes; accepted duration changes update the owned planned workout.
 - Me displays up to three evidence-backed insights with confidence language.
 - The simplified shell is the only app shell in both DEBUG and release builds.
+- Calorie planning waits for private weight and reliable learned pace. Reliability requires three recent valid saved runs, or completed calibration plus valid run history; otherwise generated runs remain time-based.
 
 Authenticated API surface:
 

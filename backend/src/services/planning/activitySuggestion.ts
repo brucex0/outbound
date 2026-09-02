@@ -317,7 +317,7 @@ function chooseNoPlanSuggestion(
 }
 
 function plannedWorkoutSuggestion(workout: PlannedWorkoutWithBlocks, why: string): ActivitySuggestion {
-  const steps = workout.blocks.flatMap((block) =>
+  const steps = workout.targetCalories ? [] : workout.blocks.flatMap((block) =>
     block.steps.length > 0
       ? block.steps.map((step) => step.label)
       : [`${titleCase(block.blockType)}${block.durationSeconds ? `, ${minutesLabel(block.durationSeconds)}` : ""}`]
@@ -329,11 +329,13 @@ function plannedWorkoutSuggestion(workout: PlannedWorkoutWithBlocks, why: string
     modality: toModality(workout.modality),
     stimulus: toStimulus(workout.stimulus),
     durationMinutes: Math.max(1, Math.round(workout.durationSeconds / 60)),
+    distanceMeters: workout.distanceMeters,
+    targetCalories: workout.targetCalories,
     effortLabel: effortLabelFor(workout.stimulus),
     intensityModel: toIntensityModel(workout.intensityModel),
     intensityTarget: jsonObject(workout.intensityTarget),
     why,
-    steps: steps.length > 0 ? steps : [workout.title],
+    steps: workout.targetCalories ? [] : (steps.length > 0 ? steps : [workout.title]),
     startLabel: startLabelFor(workout.modality),
     plannedWorkoutId: workout.id,
     archetypeId: null,
@@ -557,6 +559,7 @@ function plannedWorkoutForState(workout: PlannedWorkoutWithBlocks): PlannedWorko
     stimulus: workout.stimulus,
     durationSeconds: workout.durationSeconds,
     distanceMeters: workout.distanceMeters,
+    targetCalories: workout.targetCalories,
     isKeyWorkout: workout.isKeyWorkout,
     status: workout.status,
   };

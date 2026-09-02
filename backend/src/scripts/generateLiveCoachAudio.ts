@@ -223,6 +223,7 @@ for (const voiceProfileId of voiceProfileIds) {
                 weightKilograms: null, goalSummary: null, scheduleSummary: null,
                 comfortableDurationMinutes: null, recentSessionsPerWeek: null,
                 targetSessionsPerWeek: null, preferredLongRunDay: null, guidanceDetail: null,
+                primaryMotivation: null, preferredRunGoalType: null,
                 constraints: {},
               },
               coachingProfile: {

@@ -75,6 +75,7 @@ struct RecordView: View {
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @EnvironmentObject var onboardingStore: OnboardingStore
+    @EnvironmentObject var personalizationStore: PersonalizationStore
     @EnvironmentObject var socialStore: TogetherStore
     @EnvironmentObject var connectivityStore: ConnectivityStore
     @EnvironmentObject var communityRouteStore: CommunityRouteStore
@@ -83,10 +84,9 @@ struct RecordView: View {
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @StateObject private var workoutPresence = WorkoutPresenceController()
+    @StateObject private var launchPreferenceStore: ActivityLaunchPreferenceStore
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
-    @AppStorage("preferred_launch_goal_mode_v1") private var preferredLaunchGoalModeRawValue = ""
-    @AppStorage("launch_goal_mode_start_history_v1") private var launchGoalModeStartHistoryData = Data()
     @AppStorage("music_discovery_tip_dismissed_v1") private var hasDismissedMusicDiscoveryTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
@@ -101,6 +101,7 @@ struct RecordView: View {
     @State private var selectedGoalMode: SessionGoalMode = .freestyle
     @State private var selectedWorkoutChoice: LaunchWorkoutChoice = .sport(.run)
     @State private var manualActivityGoal: ActivityGoal = .freestyle
+    @State private var manualSetupDrafts: [SportType: ActivityManualSetupDraft] = [:]
     @State private var customDistanceText = ""
     @State private var customTimeText = ""
     @State private var customCaloriesText = ""
@@ -183,6 +184,9 @@ struct RecordView: View {
         onElapsedTimeChange: ((Int) -> Void)? = nil,
         onLiveSurfaceVisibilityChange: ((Bool) -> Void)? = nil
     ) {
+        _launchPreferenceStore = StateObject(
+            wrappedValue: ActivityLaunchPreferenceStore(userID: AuthStore.currentUserId)
+        )
         _plannedIntent = State(initialValue: initialIntent ?? .freestyleRun)
         _plannedWorkoutIntent = State(initialValue: initialIntent)
         _selectedGoalMode = State(initialValue: initialIntent == nil ? .freestyle : .planned)
@@ -1215,6 +1219,11 @@ struct RecordView: View {
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
         let savedActivityType = activeIntent?.resolvedActivityType ?? .running
         let savedSport = SportType(activityType: savedActivityType)
+        let energyKilocalories = WorkoutCalorieEstimator.estimate(
+            for: activity.summary,
+            activityType: savedActivityType,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        ).kilocalories
         let followedRoute = activeIntent?.preparedRoute.map { route in
             FollowedRouteMetadata(
                 route: route,
@@ -1235,6 +1244,7 @@ struct RecordView: View {
                 activityType: savedActivityType,
                 reflection: reflection,
                 goal: activeIntent?.activityGoal,
+                energyKilocalories: energyKilocalories,
                 title: activeIntent?.preparedRoute == nil && savedActivityType == .running
                     ? nil
                     : activeIntent?.title,
@@ -1275,15 +1285,29 @@ struct RecordView: View {
         }
         _ = socialStore.consumeRecordingActivityEventID()
 
-        let estimatedEnergy = estimatedEnergyKilocalories(
-            for: savedActivity,
-            weightKilograms: onboardingStore.latestWeightKilograms
-        )
         Task {
             try? await HealthKitService().saveWorkout(
                 savedActivity,
                 sport: savedSport,
-                energyKilocalories: estimatedEnergy
+                energyKilocalories: energyKilocalories.map(Double.init)
+            )
+        }
+
+        if let workoutReference = activeIntent?.workoutReference,
+           workoutReference.source == "planned_workout" {
+            try? await APIClient.shared.completePlannedWorkout(
+                id: workoutReference.id,
+                request: PlannedWorkoutCompletionRequest(
+                    activityId: nil,
+                    completedAt: activity.summary.endedAt,
+                    durationSeconds: activity.summary.durationSecs,
+                    distanceMeters: activity.summary.distanceM,
+                    targetCalories: activeIntent?.targetCalories,
+                    energyKilocalories: energyKilocalories,
+                    avgPace: activity.summary.avgPace,
+                    avgHeartRate: activity.summary.healthMetrics?.averageHeartRateBPM,
+                    completionQuality: "completed"
+                )
             )
         }
 
@@ -1301,16 +1325,6 @@ struct RecordView: View {
         clearPending(recoveryReason: .saved)
         onCloseRequest?(false)
         return true
-    }
-
-    private func estimatedEnergyKilocalories(
-        for activity: SavedActivity,
-        weightKilograms: Double?
-    ) -> Double? {
-        WorkoutCalorieEstimator.estimate(
-            for: activity,
-            weightKilograms: weightKilograms
-        ).kilocalories.map(Double.init)
     }
 
     private func discardPendingActivity() {
@@ -1350,6 +1364,7 @@ struct RecordView: View {
         curatedWorkoutIntent = nil
         selectedWorkoutChoice = .sport(.run)
         manualActivityGoal = .freestyle
+        manualSetupDrafts = [:]
         selectedGoalMode = .freestyle
         selectedSessionShoeID = nil
         didApplyDefaultSessionShoe = false
@@ -1421,8 +1436,8 @@ struct RecordView: View {
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
-            applySmartGoalDefaultIfNeeded()
             applyLearnedGoalModeIfNeeded()
+            applySmartGoalDefaultIfNeeded()
             applyDefaultSessionShoeIfNeeded()
             trackSetupAndFeatureExposureIfNeeded()
         }
@@ -1470,8 +1485,8 @@ struct RecordView: View {
         }
         .onAppear {
             guideCatalog.refreshInstalledVoices()
-            applySmartGoalDefaultIfNeeded()
             applyLearnedGoalModeIfNeeded()
+            applySmartGoalDefaultIfNeeded()
             applyDefaultSessionShoeIfNeeded()
             trackSetupAndFeatureExposureIfNeeded()
         }
@@ -1699,7 +1714,7 @@ struct RecordView: View {
     private var launchGoalPillRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(SessionGoalMode.manualCases, id: \.self) { mode in
+                ForEach(availableManualGoalModes, id: \.self) { mode in
                     launchGoalPill(mode)
                 }
             }
@@ -1794,7 +1809,7 @@ struct RecordView: View {
         .accessibilityValue(
             mode == .curated && isSelected
                 ? curatedWorkoutIntent?.title ?? mode.compactValue(goal: nil)
-                : mode.compactValue(goal: isSelected ? manualActivityGoal : nil)
+                : mode.compactValue(goal: isSelected ? manualActivityGoal : manualDraftGoal(for: mode))
         )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -1900,6 +1915,12 @@ struct RecordView: View {
                 }
             }
 
+            if selectedGoalMode == .calories, let estimate = calorieEditorEstimateLabel {
+                Label(estimate, systemImage: "ruler")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Button {
                 let kind = selectedGoalMode.customGoalKind
                 isGoalChooserPresented = false
@@ -1960,31 +1981,13 @@ struct RecordView: View {
             openCuratedWorkoutPicker()
             return
         }
+        guard let sport = selectedManualSport else { return }
         resetCuratedStructureForManualGoalIfNeeded()
-        selectedGoalMode = mode
-        switch mode {
-        case .planned:
-            selectWorkoutChoice(.planned)
-        case .curated:
-            break
-        case .freestyle:
-            applyGoal(.freestyle)
-        case .distance:
-            if currentActivityGoal.targetDistanceMeters == nil {
-                applyGoal(.distanceMeters(distanceGoalPresets.first?.meters ?? 5_000))
-            }
-        case .time:
-            if currentActivityGoal.targetDurationSeconds == nil {
-                applyGoal(.timeSeconds(timeGoalPresets.first?.seconds ?? 30 * 60))
-            }
-        case .calories:
-            if currentActivityGoal.targetCalories == nil {
-                applyGoal(.calories(calorieGoalPresets.first ?? 300))
-            }
-        }
+        let draft = resolvedManualSetupDraft(for: sport)
+        applyGoal(resolvedGoal(for: draft, mode: mode), trackChange: false)
     }
 
-    private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice) {
+    private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice, trackChange: Bool = true) {
         isGoalChooserPresented = false
         if choice == .sport(.walk) {
             let didRequestPermission = recorder.locationManager.requestWalkingStepPermissionIfNeeded { result in
@@ -1998,6 +2001,7 @@ struct RecordView: View {
         }
         let selectedRoute = plannedIntent?.preparedRoute
         let nextBaseIntent: SessionIntent
+        var restoredManualGoal: ActivityGoal?
 
         switch choice {
         case .planned:
@@ -2008,10 +2012,14 @@ struct RecordView: View {
             selectedGoalMode = .planned
             nextBaseIntent = routeFreeIntent(from: plannedWorkoutIntent)
         case .sport(let sport):
+            let draft = resolvedManualSetupDraft(for: sport)
+            let goal = resolvedGoal(for: draft, mode: draft.selectedMode)
+            manualSetupDrafts[sport] = draft
             selectedWorkoutChoice = choice
-            selectedGoalMode = SessionGoalMode(goal: manualActivityGoal)
+            selectedGoalMode = draft.selectedMode
+            manualActivityGoal = goal
             nextBaseIntent = freestyleFallback(for: sport)
-                .replacingGoal(manualActivityGoal, unitSystem: measurementPreferences.unitSystem)
+            restoredManualGoal = goal
         }
 
         if let selectedRoute {
@@ -2026,10 +2034,18 @@ struct RecordView: View {
             selectedRouteDistanceMeters = nil
         }
 
-        track(.init(.activityConfigurationChanged, properties: [
-            .changeType: .string("workout_type"),
-            .selectionType: .string(choice.analyticsValue)
-        ]))
+        if let restoredManualGoal,
+           !applyGoal(restoredManualGoal, trackChange: false) {
+            selectedGoalMode = .freestyle
+            manualActivityGoal = .freestyle
+        }
+
+        if trackChange {
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("workout_type"),
+                .selectionType: .string(choice.analyticsValue)
+            ]))
+        }
     }
 
     private func openCuratedWorkoutPicker() {
@@ -2841,20 +2857,12 @@ struct RecordView: View {
     }
 
     private func estimatedLiveEnergyKilocalories(distanceMeters: Double, durationSeconds: Int) -> Double? {
-        guard let weight = onboardingStore.latestWeightKilograms, weight > 0, durationSeconds > 0 else { return nil }
-        switch (activeIntent ?? plannedIntent ?? .freestyleRun).sport {
-        case .run:
-            guard distanceMeters > 0 else { return nil }
-            return weight * (distanceMeters / 1_000)
-        case .bike:
-            return 8 * weight * (Double(durationSeconds) / 3_600)
-        case .walk:
-            return 3.5 * weight * (Double(durationSeconds) / 3_600)
-        case .hike:
-            return 6 * weight * (Double(durationSeconds) / 3_600)
-        case .swim:
-            return 6 * weight * (Double(durationSeconds) / 3_600)
-        }
+        WorkoutCalorieEstimator.liveEnergyKilocalories(
+            activityType: (activeIntent ?? plannedIntent ?? .freestyleRun).resolvedActivityType,
+            distanceMeters: distanceMeters,
+            durationSeconds: durationSeconds,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
     }
 
     private func preparedRouteDistance(_ route: PreparedRoute) -> Double {
@@ -3365,9 +3373,16 @@ struct RecordView: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer(minLength: 8)
-                Text(intent.activityGoal.label(unitSystem: measurementPreferences.unitSystem))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(intent.activityGoal.label(unitSystem: measurementPreferences.unitSystem))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    if let estimate = calorieEstimateLabel(for: intent) {
+                        Text(estimate)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.tertiary)
@@ -3392,7 +3407,9 @@ struct RecordView: View {
                 goalModeButton(.freestyle)
                 goalModeButton(.distance)
                 goalModeButton(.time)
-                goalModeButton(.calories)
+                if plannedIntent?.sport == .run {
+                    goalModeButton(.calories)
+                }
             }
 
             switch selectedGoalMode {
@@ -3448,6 +3465,11 @@ struct RecordView: View {
                     goalPresetButton(title: String(localized: "record.goal.custom", defaultValue: "Custom"), isSelected: isCustomCaloriesSelected) {
                         presentCustomGoalFromSheet(.calories)
                     }
+                }
+                if let estimate = calorieEditorEstimateLabel {
+                    Label(estimate, systemImage: "ruler")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -3613,6 +3635,26 @@ struct RecordView: View {
                             .padding(.leading, 36)
                     }
                 }
+            }
+
+            if intent.allowsCalorieGoal {
+                Button {
+                    track(.init(.goalEditorOpened, properties: [.goalType: .string("calories")]))
+                    if hasWeightForCalories {
+                        selectedGoalMode = .calories
+                        setupSheet = .goal
+                    } else {
+                        presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: true))
+                    }
+                } label: {
+                    Label(
+                        String(localized: "record.goal.use_calories", defaultValue: "Use Calories instead"),
+                        systemImage: "flame.fill"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
             }
         }
         .padding(18)
@@ -3793,6 +3835,27 @@ struct RecordView: View {
         ]))
     }
 
+    private func resolvedManualSetupDraft(for sport: SportType) -> ActivityManualSetupDraft {
+        manualSetupDrafts[sport] ?? launchPreferenceStore.draft(for: sport)
+    }
+
+    private func resolvedGoal(
+        for draft: ActivityManualSetupDraft,
+        mode: SessionGoalMode
+    ) -> ActivityGoal {
+        draft.goal(
+            for: mode,
+            defaultDistanceMeters: distanceGoalPresets.first?.meters ?? 5_000,
+            defaultTimeSeconds: timeGoalPresets.first?.seconds ?? 30 * 60,
+            defaultCalories: calorieGoalPresets.first ?? 300
+        )
+    }
+
+    private func manualDraftGoal(for mode: SessionGoalMode) -> ActivityGoal? {
+        guard mode.isLearnableManualMode, let sport = selectedManualSport else { return nil }
+        return resolvedGoal(for: resolvedManualSetupDraft(for: sport), mode: mode)
+    }
+
     private var distanceGoalPresets: [DistanceGoalPreset] {
         DistanceGoalPreset.recommended(from: activityStore.activities)
     }
@@ -3805,11 +3868,50 @@ struct RecordView: View {
         [150, 250, 300, 400, 500]
     }
 
+    private var availableManualGoalModes: [SessionGoalMode] {
+        selectedManualSport == .run
+            ? SessionGoalMode.manualCases
+            : SessionGoalMode.manualCases.filter { $0 != .calories }
+    }
+
     private func calorieGoalLabel(_ calories: Int) -> String {
         String(
             format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
             locale: .autoupdatingCurrent,
             calories
+        )
+    }
+
+    private var calorieEditorEstimateLabel: String? {
+        let target = currentActivityGoal.targetCalories ?? calorieGoalPresets.first ?? 300
+        guard let weightKilograms = onboardingStore.latestWeightKilograms,
+              let pace = WorkoutCalorieEstimator.resolveLearnedRunPace(
+                  activities: activityStore.activities,
+                  calibrationCompleted: personalizationStore.snapshot.calibration.status == .completed
+              ).secondsPerKilometer,
+              let estimate = WorkoutCalorieEstimator.plannedRun(
+                  targetCalories: target,
+                  weightKilograms: weightKilograms,
+                  paceSecondsPerKilometer: pace
+              ) else { return nil }
+        return calorieEstimateLabel(distanceMeters: estimate.distanceMeters, durationSeconds: estimate.durationSeconds)
+    }
+
+    private func calorieEstimateLabel(for intent: SessionIntent) -> String? {
+        guard intent.targetCalories != nil,
+              let distanceMeters = intent.estimatedDistanceMeters,
+              let durationSeconds = intent.estimatedDurationSeconds else { return nil }
+        return calorieEstimateLabel(distanceMeters: distanceMeters, durationSeconds: durationSeconds)
+    }
+
+    private func calorieEstimateLabel(distanceMeters: Double, durationSeconds: Int) -> String {
+        let distance = measurementPreferences.unitSystem.distanceString(meters: distanceMeters, fractionDigits: 1)
+        let minutes = max(1, Int((Double(durationSeconds) / 60).rounded()))
+        return String(
+            format: String(localized: "record.goal.calories.estimate_format", defaultValue: "About %@ · %d min"),
+            locale: .autoupdatingCurrent,
+            distance,
+            minutes
         )
     }
 
@@ -3838,18 +3940,64 @@ struct RecordView: View {
         return !calorieGoalPresets.contains(calories)
     }
 
-    private func applyGoal(_ goal: ActivityGoal) {
+    @discardableResult
+    private func applyGoal(_ goal: ActivityGoal, trackChange: Bool = true) -> Bool {
         let currentIntent = plannedIntent ?? .freestyleRun
-        plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
-        if selectedWorkoutChoice != .planned {
+        if case .calories(let targetCalories) = goal {
+            let isEligibleManualRun = selectedWorkoutChoice != .planned && currentIntent.sport == .run
+            guard currentIntent.allowsCalorieGoal || isEligibleManualRun else {
+                showSetupToast(String(
+                    localized: "record.goal.calories.easy_only",
+                    defaultValue: "Calories are available only for easy and recovery runs."
+                ))
+                return false
+            }
+            guard let weightKilograms = onboardingStore.latestWeightKilograms, weightKilograms > 0 else {
+                showSetupToast(String(
+                    localized: "record.goal.calories.weight_required",
+                    defaultValue: "Add your weight in Body Profile to use a calorie target."
+                ))
+                return false
+            }
+            let learnedPace = WorkoutCalorieEstimator.resolveLearnedRunPace(
+                activities: activityStore.activities,
+                calibrationCompleted: personalizationStore.snapshot.calibration.status == .completed
+            )
+            guard let paceSecondsPerKilometer = learnedPace.secondsPerKilometer,
+                  let estimate = WorkoutCalorieEstimator.plannedRun(
+                      targetCalories: targetCalories,
+                      weightKilograms: weightKilograms,
+                      paceSecondsPerKilometer: paceSecondsPerKilometer
+                  ) else {
+                showSetupToast(String(
+                    localized: "record.goal.calories.pace_required",
+                    defaultValue: "Complete calibration or save three runs before using a calorie target."
+                ))
+                return false
+            }
+            plannedIntent = currentIntent.replacingCalorieGoal(
+                estimate,
+                unitSystem: measurementPreferences.unitSystem
+            )
+        } else {
+            plannedIntent = currentIntent.replacingGoal(goal, unitSystem: measurementPreferences.unitSystem)
+        }
+        if let sport = selectedManualSport {
+            var draft = resolvedManualSetupDraft(for: sport)
+            draft.remember(goal)
+            manualSetupDrafts[sport] = draft
             manualActivityGoal = goal
         }
         selectedGoalMode = SessionGoalMode(goal: goal)
-        track(.init(.activityConfigurationChanged, properties: [
-            .changeType: .string("goal"),
-            .goalType: .string(analyticsGoalType),
-            .targetBucket: .string(analyticsTargetBucket(for: goal))
-        ]))
+        if trackChange {
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("goal"),
+                .goalType: .string(analyticsGoalType),
+                .targetBucket: .string(analyticsTargetBucket(for: goal)),
+                .sourceType: .string(selectedWorkoutChoice == .planned ? "planned_override" : "manual")
+            ]))
+        }
+        return true
     }
 
     private func applyGoalAndDismiss(_ goal: ActivityGoal) {
@@ -3940,6 +4088,9 @@ struct RecordView: View {
                 targetDistanceMeters: restoredBase.targetDistanceMeters,
                 targetDurationSeconds: restoredBase.targetDurationSeconds,
                 targetCalories: restoredBase.targetCalories,
+                estimatedDistanceMeters: restoredBase.estimatedDistanceMeters,
+                estimatedDurationSeconds: restoredBase.estimatedDurationSeconds,
+                allowsCalorieGoal: restoredBase.allowsCalorieGoal,
                 routeName: restoredBase.routeName,
                 preparedRoute: restoredBase.preparedRoute,
                 activityTypeOverride: restoredBase.activityTypeOverride,
@@ -3975,6 +4126,9 @@ struct RecordView: View {
             targetDistanceMeters: baseIntent.targetDistanceMeters,
             targetDurationSeconds: baseIntent.targetDurationSeconds,
             targetCalories: baseIntent.targetCalories,
+            estimatedDistanceMeters: baseIntent.estimatedDistanceMeters,
+            estimatedDurationSeconds: baseIntent.estimatedDurationSeconds,
+            allowsCalorieGoal: preservesBaseStructure && baseIntent.allowsCalorieGoal,
             routeName: route.name,
             preparedRoute: route,
             activityTypeOverride: route.activityType,
@@ -4030,6 +4184,9 @@ struct RecordView: View {
             targetDistanceMeters: currentIntent.targetDistanceMeters,
             targetDurationSeconds: currentIntent.targetDurationSeconds,
             targetCalories: currentIntent.targetCalories,
+            estimatedDistanceMeters: currentIntent.estimatedDistanceMeters,
+            estimatedDurationSeconds: currentIntent.estimatedDurationSeconds,
+            allowsCalorieGoal: currentIntent.allowsCalorieGoal,
             routeName: directedRoute.name,
             preparedRoute: directedRoute,
             activityTypeOverride: directedRoute.activityType ?? currentIntent.activityTypeOverride,
@@ -4048,43 +4205,54 @@ struct RecordView: View {
     private func applySmartGoalDefaultIfNeeded() {
         guard shouldApplySmartGoalDefault, !didApplySmartGoalDefault else { return }
         didApplySmartGoalDefault = true
-        guard currentActivityGoal.isFreestyle,
+        guard let sport = selectedManualSport,
+              launchPreferenceStore.preferredGoalMode(for: sport) == nil,
+              currentActivityGoal.isFreestyle,
               let preferredGoal = SmartGoalPreference.preferredFrequentCustomGoal(from: activityStore.activities) else {
             return
         }
-        applyGoal(preferredGoal)
+        applyGoal(preferredGoal, trackChange: false)
     }
 
     private func applyLearnedGoalModeIfNeeded() {
-        guard shouldApplySmartGoalDefault,
-              let preferredMode = SessionGoalMode(rawValue: preferredLaunchGoalModeRawValue),
-              preferredMode != .planned,
-              preferredMode != .curated,
-              preferredMode != selectedGoalMode
-        else { return }
-        selectLaunchMode(preferredMode)
+        guard shouldApplySmartGoalDefault else { return }
+        let sport = launchPreferenceStore.lastManualSport ?? selectedManualSport ?? .run
+        selectWorkoutChoice(.sport(sport), trackChange: false)
     }
 
     private func recordStartedGoalMode() {
-        guard selectedGoalMode != .planned, selectedGoalMode != .curated else { return }
-        var history = (try? JSONDecoder().decode([String].self, from: launchGoalModeStartHistoryData)) ?? []
-        history.append(selectedGoalMode.rawValue)
-        history = Array(history.suffix(3))
-        launchGoalModeStartHistoryData = (try? JSONEncoder().encode(history)) ?? Data()
-
-        guard history.count == 3,
-              history.allSatisfy({ $0 == selectedGoalMode.rawValue }),
-              preferredLaunchGoalModeRawValue != selectedGoalMode.rawValue
-        else { return }
-
-        preferredLaunchGoalModeRawValue = selectedGoalMode.rawValue
-        showSetupToast(
-            String(
-                format: String(localized: "record.goal.default_learned.format", defaultValue: "%@ is now your default"),
-                locale: .autoupdatingCurrent,
-                selectedGoalMode.title
-            )
+        guard let sport = selectedManualSport, selectedGoalMode.isLearnableManualMode else { return }
+        let changes = launchPreferenceStore.recordStarted(
+            sport: sport,
+            mode: selectedGoalMode,
+            goal: manualActivityGoal
         )
+
+        if changes.didChangeSport {
+            track(.init(.preferenceChanged, properties: [
+                .changeType: .string("activity_sport_default"),
+                .selectionType: .string(sport.rawValue)
+            ]))
+        }
+        if changes.didChangeTarget {
+            track(.init(.preferenceChanged, properties: [
+                .changeType: .string("activity_target_default"),
+                .selectionType: .string(selectedGoalMode.rawValue)
+            ]))
+        }
+        if changes.didLearnGoalMode {
+            track(.init(.preferenceChanged, properties: [
+                .changeType: .string("activity_goal_mode_default"),
+                .selectionType: .string(selectedGoalMode.rawValue)
+            ]))
+            showSetupToast(
+                String(
+                    format: String(localized: "record.goal.default_learned.format", defaultValue: "%@ is now your default"),
+                    locale: .autoupdatingCurrent,
+                    selectedGoalMode.title
+                )
+            )
+        }
     }
 
     private func presentCustomGoal(_ kind: CustomGoalKind) {

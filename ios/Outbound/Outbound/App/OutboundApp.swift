@@ -678,8 +678,39 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let effortLabel: String
     let durationSeconds: Int
     let distanceLabel: String?
+    let targetCalories: Int?
     let steps: [TrainingPlanWorkoutStep]
     let isOptional: Bool
+
+    init(
+        id: String,
+        title: String,
+        kind: TrainingPlanWorkoutKind,
+        dayLabel: String,
+        summary: String,
+        purpose: String,
+        guideCue: String,
+        effortLabel: String,
+        durationSeconds: Int,
+        distanceLabel: String?,
+        targetCalories: Int? = nil,
+        steps: [TrainingPlanWorkoutStep],
+        isOptional: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.dayLabel = dayLabel
+        self.summary = summary
+        self.purpose = purpose
+        self.guideCue = guideCue
+        self.effortLabel = effortLabel
+        self.durationSeconds = durationSeconds
+        self.distanceLabel = distanceLabel
+        self.targetCalories = targetCalories
+        self.steps = steps
+        self.isOptional = isOptional
+    }
 
     var durationMinutesRounded: Int {
         Int(ceil(Double(durationSeconds) / 60.0))
@@ -706,7 +737,8 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     }
 
     var sessionIntentSteps: [SessionIntentStep] {
-        steps.map {
+        guard targetCalories == nil else { return [] }
+        return steps.map {
             SessionIntentStep(
                 id: $0.id,
                 label: $0.label,
@@ -1474,8 +1506,13 @@ private extension TrainingPlanStore {
             framing: workout.purpose,
             guideLine: guideLine,
             startLabel: "Start now",
-            targetDistanceMeters: workout.targetDistanceMeters,
-            targetDurationSeconds: workout.durationSeconds,
+            targetDistanceMeters: workout.targetCalories == nil ? workout.targetDistanceMeters : nil,
+            targetDurationSeconds: workout.targetCalories == nil ? workout.durationSeconds : nil,
+            targetCalories: workout.targetCalories,
+            estimatedDistanceMeters: workout.targetCalories == nil ? nil : workout.targetDistanceMeters,
+            estimatedDurationSeconds: workout.targetCalories == nil ? nil : workout.durationSeconds,
+            allowsCalorieGoal: workout.kind == .easy || workout.kind == .recovery,
+            plannedWorkoutID: workout.id,
             routeName: nil,
             workoutSteps: workout.sessionIntentSteps
         )

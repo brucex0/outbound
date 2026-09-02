@@ -5,6 +5,7 @@ import { enqueuePlanningEvent } from "./events.js";
 import { generateInitialPlan, normalizeGoalInput } from "./generator.js";
 import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
+import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { getPrismaClient } from "../prisma.js";
 import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
 import { buildTrainingPlanState } from "../trainingPlans.js";
@@ -28,18 +29,35 @@ export async function createGoal(
   input: CreateTrainingGoalInput
 ): Promise<PlanningState> {
   const prisma = getPrismaClient();
-  const normalized = normalizeGoalInput(input);
-  const activities = await recentActivities(userId);
+  const [activities, profile, calibration] = await Promise.all([
+    recentActivities(userId),
+    prisma.runnerProfile.findUnique({ where: { userId } }),
+    prisma.calibrationProgram.findUnique({ where: { userId } }),
+  ]);
+  const normalized = normalizeGoalInput({
+    ...input,
+    primaryMotivation: input.primaryMotivation ?? profile?.primaryMotivation as CreateTrainingGoalInput["primaryMotivation"],
+    preferredRunGoalType: input.preferredRunGoalType ?? profile?.preferredRunGoalType as CreateTrainingGoalInput["preferredRunGoalType"],
+  });
   const athleteState = computeAthleteTrainingState({
     activities,
     plannedWorkouts: [],
     readiness: [],
   });
-  const generation = generateInitialPlan({
+  const generated = generateInitialPlan({
     goal: normalized,
     athleteState,
     reason: "initial",
   });
+  const generation = {
+    ...generated,
+    workouts: applyCalorieTargets({
+      workouts: generated.workouts,
+      preferredRunGoalType: normalized.preferredRunGoalType,
+      weightKilograms: profile?.weightKilograms,
+      pace: resolveLearnedRunPace(activities, calibration?.status === "completed"),
+    }),
+  };
 
   await prisma.$transaction(async (tx) => {
     await tx.trainingPlan.updateMany({
@@ -49,6 +67,18 @@ export async function createGoal(
     await tx.trainingGoal.updateMany({
       where: { userId, status: "active" },
       data: { status: "archived" },
+    });
+    await tx.runnerProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        primaryMotivation: normalized.primaryMotivation,
+        preferredRunGoalType: normalized.preferredRunGoalType,
+      },
+      update: {
+        primaryMotivation: normalized.primaryMotivation,
+        preferredRunGoalType: normalized.preferredRunGoalType,
+      },
     });
 
     const goal = await tx.trainingGoal.create({
@@ -64,6 +94,8 @@ export async function createGoal(
         daysPerWeekTarget: normalized.daysPerWeekTarget,
         maxSessionMinutes: normalized.maxSessionMinutes,
         riskTolerance: normalized.riskTolerance,
+        primaryMotivation: normalized.primaryMotivation,
+        preferredRunGoalType: normalized.preferredRunGoalType,
         constraints: json(normalized.constraints),
       },
     });
@@ -259,6 +291,8 @@ export async function completeWorkout(
         completedAt: input.completedAt ? new Date(input.completedAt) : new Date(),
         durationSeconds: input.durationSeconds ?? null,
         distanceMeters: input.distanceMeters ?? null,
+        targetCalories: input.targetCalories ?? workout.targetCalories ?? null,
+        energyKilocalories: input.energyKilocalories ?? null,
         avgPace: input.avgPace ?? null,
         avgHeartRate: input.avgHeartRate ?? null,
         avgPower: input.avgPower ?? null,

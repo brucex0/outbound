@@ -468,7 +468,9 @@ struct SimplifiedOnboardingFlow: View {
             sexAtBirth: trainingProfileSex,
             birthDate: hasBirthDate ? Self.birthDateFormatter.string(from: birthDate) : nil,
             heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
-            weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
+            weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 },
+            primaryMotivation: goal.primaryMotivation,
+            preferredRunGoalType: goal.preferredRunGoalType
         )
     }
 
@@ -518,6 +520,8 @@ struct SimplifiedOnboardingFlow: View {
                     targetSessionsPerWeek: runsPerWeek,
                     preferredLongRunDay: "Saturday",
                     guidanceDetail: "balanced",
+                    primaryMotivation: goal.primaryMotivation,
+                    preferredRunGoalType: goal.preferredRunGoalType,
                     constraints: [:],
                     complete: true
                 )
@@ -693,7 +697,7 @@ private extension SimplifiedOnboardingFlow {
     }
 
     enum Goal: String, CaseIterable, Identifiable, Titled {
-        case consistency, start, comeback, race, faster
+        case consistency, start, comeback, race, faster, weightLoss, weightMaintenance
         var id: Self { self }
         var title: String {
             switch self {
@@ -702,6 +706,23 @@ private extension SimplifiedOnboardingFlow {
             case .comeback: String(localized: "Return after a break")
             case .race: String(localized: "Train for a race")
             case .faster: String(localized: "Run faster")
+            case .weightLoss: String(localized: "profile.motivation.weight_loss", defaultValue: "Support weight loss")
+            case .weightMaintenance: String(localized: "profile.motivation.weight_maintenance", defaultValue: "Maintain weight")
+            }
+        }
+        var primaryMotivation: RunnerPrimaryMotivation {
+            switch self {
+            case .consistency: .consistency
+            case .race, .faster: .performance
+            case .weightLoss: .weightLoss
+            case .weightMaintenance: .weightMaintenance
+            case .start, .comeback: .generalFitness
+            }
+        }
+        var preferredRunGoalType: PreferredRunGoalType {
+            switch self {
+            case .weightLoss, .weightMaintenance: .calories
+            default: .time
             }
         }
         var intakeText: String {

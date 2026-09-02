@@ -102,6 +102,9 @@ export const runAdapter: ModalityAdapter = {
   },
 
   evaluateCompletion(input: CompletionEvaluationInput): CompletionQuality {
+    if (input.workout.targetCalories && input.completion.energyKilocalories != null) {
+      if (input.completion.energyKilocalories < input.workout.targetCalories * 0.6) return "partial";
+    }
     const duration = input.completion.durationSeconds ?? 0;
     if (duration < input.workout.durationSeconds * 0.6) return "partial";
     if ((input.completion.perceivedEffort ?? 0) >= 9) return "tooHard";

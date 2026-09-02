@@ -19,6 +19,7 @@ import {
 } from "../services/personalization/personalizationService.js";
 import type { AppEnv } from "../types/hono.js";
 import { z } from "zod";
+import { rebuildPlan } from "../services/planning/planningService.js";
 
 const router = new Hono<AppEnv>();
 
@@ -45,17 +46,35 @@ router.patch("/profile/training", zValidator("json", trainingProfileInputSchema)
   const user = await requireUser(c);
   if (user instanceof Response) return user;
   const input = c.req.valid("json");
+  const previous = await getPrismaClient().runnerProfile.findUnique({ where: { userId: user.id } });
   const data = {
     sexAtBirth: input.sexAtBirth,
     birthDate: input.birthDate ? new Date(`${input.birthDate}T00:00:00.000Z`) : null,
     heightCentimeters: input.heightCentimeters,
     weightKilograms: input.weightKilograms,
+    primaryMotivation: input.primaryMotivation,
+    preferredRunGoalType: input.preferredRunGoalType,
   };
   const profile = await getPrismaClient().runnerProfile.upsert({
     where: { userId: user.id },
     create: { userId: user.id, ...data },
     update: data,
   });
+  const preferenceChanged = previous?.preferredRunGoalType !== profile.preferredRunGoalType
+    || previous?.primaryMotivation !== profile.primaryMotivation;
+  const calorieEstimationInputChanged = previous?.weightKilograms !== profile.weightKilograms
+    && profile.preferredRunGoalType === "calories";
+  if (preferenceChanged || calorieEstimationInputChanged) {
+    await getPrismaClient().trainingGoal.updateMany({
+      where: { userId: user.id, status: "active" },
+      data: {
+        primaryMotivation: profile.primaryMotivation,
+        preferredRunGoalType: profile.preferredRunGoalType,
+      },
+    });
+    const activePlan = await getPrismaClient().trainingPlan.findFirst({ where: { userId: user.id, status: "active" } });
+    if (activePlan) await rebuildPlan(user.id, { reason: "manualRebuild" });
+  }
   return c.json(trainingProfilePayload(profile));
 });
 
@@ -115,12 +134,16 @@ function trainingProfilePayload(profile: {
   birthDate: Date | null;
   heightCentimeters: number | null;
   weightKilograms: number | null;
+  primaryMotivation: string;
+  preferredRunGoalType: string;
 } | null) {
   return {
     sexAtBirth: profile?.sexAtBirth ?? null,
     birthDate: profile?.birthDate?.toISOString().slice(0, 10) ?? null,
     heightCentimeters: profile?.heightCentimeters ?? null,
     weightKilograms: profile?.weightKilograms ?? null,
+    primaryMotivation: profile?.primaryMotivation ?? "generalFitness",
+    preferredRunGoalType: profile?.preferredRunGoalType ?? "time",
   };
 }
 

@@ -210,6 +210,9 @@ struct SessionIntent: Identifiable, Hashable {
     let targetDistanceMeters: Double?
     let targetDurationSeconds: Int?
     let targetCalories: Int?
+    let estimatedDistanceMeters: Double?
+    let estimatedDurationSeconds: Int?
+    let allowsCalorieGoal: Bool
     let routeName: String?
     let preparedRoute: PreparedRoute?
     let activityTypeOverride: ActivityType?
@@ -229,6 +232,9 @@ struct SessionIntent: Identifiable, Hashable {
         targetDistanceMeters: Double? = nil,
         targetDurationSeconds: Int? = nil,
         targetCalories: Int? = nil,
+        estimatedDistanceMeters: Double? = nil,
+        estimatedDurationSeconds: Int? = nil,
+        allowsCalorieGoal: Bool = false,
         routeName: String? = nil,
         preparedRoute: PreparedRoute? = nil,
         activityTypeOverride: ActivityType? = nil,
@@ -247,6 +253,9 @@ struct SessionIntent: Identifiable, Hashable {
         self.targetDistanceMeters = targetDistanceMeters
         self.targetDurationSeconds = targetDurationSeconds
         self.targetCalories = targetCalories
+        self.estimatedDistanceMeters = estimatedDistanceMeters
+        self.estimatedDurationSeconds = estimatedDurationSeconds
+        self.allowsCalorieGoal = allowsCalorieGoal
         self.routeName = routeName
         self.preparedRoute = preparedRoute
         self.activityTypeOverride = activityTypeOverride
@@ -265,6 +274,7 @@ struct SessionIntent: Identifiable, Hashable {
 
     var resolvedTargetDistanceMeters: Double? {
         if let targetDistanceMeters { return targetDistanceMeters }
+        guard targetCalories == nil else { return nil }
         guard preparedRoute == nil else { return nil }
         return SessionIntentGoalParser.distanceMeters(from: title)
             ?? SessionIntentGoalParser.distanceMeters(from: detail)
@@ -272,6 +282,7 @@ struct SessionIntent: Identifiable, Hashable {
 
     var resolvedTargetDurationSeconds: Int? {
         if let targetDurationSeconds { return targetDurationSeconds }
+        guard targetCalories == nil else { return nil }
         guard preparedRoute == nil else { return nil }
         return SessionIntentGoalParser.durationSeconds(from: detail)
     }

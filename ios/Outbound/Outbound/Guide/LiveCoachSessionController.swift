@@ -32,10 +32,17 @@ final class LiveCoachSessionController {
         phraseUseCounts = [:]
         guard let persona else { return }
         voiceProfileID = persona.voice.id
+        let plannedWorkoutReference = intent?.workoutReference?.source == "planned_workout"
+            ? intent?.workoutReference
+            : nil
+        let standaloneWorkoutReference = intent?.workoutReference?.source == "planned_workout"
+            ? nil
+            : intent?.workoutReference
         let request = CreateLiveCoachSessionRequest(
             clientSessionId: UUID(),
-            workoutId: intent?.workoutReference == nil ? companionBrief?.workout?.id : nil,
-            workoutRef: intent?.workoutReference.map {
+            workoutId: plannedWorkoutReference?.id
+                ?? (standaloneWorkoutReference == nil ? companionBrief?.workout?.id : nil),
+            workoutRef: standaloneWorkoutReference.map {
                 .init(source: $0.source, id: $0.id, version: $0.version)
             },
             locale: AppLanguage.currentIdentifier,
@@ -217,6 +224,7 @@ final class LiveCoachSessionController {
 
     private func goalType(for intent: SessionIntent?) -> String {
         guard let intent else { return "freestyle" }
+        if intent.resolvedTargetCalories != nil { return "calories" }
         if intent.workoutReference != nil || !intent.workoutSteps.isEmpty { return "workout" }
         if intent.resolvedTargetDistanceMeters != nil { return "distance" }
         if intent.resolvedTargetDurationSeconds != nil { return "time" }
@@ -267,6 +275,7 @@ final class LiveCoachSessionController {
             guideLine: intent.guideLine,
             targetDistanceMeters: intent.resolvedTargetDistanceMeters,
             targetDurationSeconds: intent.resolvedTargetDurationSeconds,
+            targetCalories: intent.resolvedTargetCalories,
             steps: steps,
             route: routeDTO(intent.preparedRoute)
         )

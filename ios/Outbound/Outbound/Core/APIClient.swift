@@ -333,6 +333,16 @@ final class APIClient {
         return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
     }
 
+    func completePlannedWorkout(
+        id: String,
+        request: PlannedWorkoutCompletionRequest
+    ) async throws {
+        let _: PlanningAPIStateResponse = try await post(
+            "/planning/workouts/\(id)/complete",
+            body: request
+        )
+    }
+
     func clearActiveTrainingPlan(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await delete("/planning/plan")
         let activitySuggestion = try? await fetchActivitySuggestion()
@@ -1100,8 +1110,13 @@ private extension PlanningAPIStateResponse {
             framing: workout.purpose,
             guideLine: guideLine,
             startLabel: "Start now",
-            targetDistanceMeters: workout.targetDistanceMeters,
-            targetDurationSeconds: workout.durationSeconds,
+            targetDistanceMeters: workout.targetCalories == nil ? workout.targetDistanceMeters : nil,
+            targetDurationSeconds: workout.targetCalories == nil ? workout.durationSeconds : nil,
+            targetCalories: workout.targetCalories,
+            estimatedDistanceMeters: workout.targetCalories == nil ? nil : workout.targetDistanceMeters,
+            estimatedDurationSeconds: workout.targetCalories == nil ? nil : workout.durationSeconds,
+            allowsCalorieGoal: ["easyAerobic", "recovery"].contains(apiWorkout.stimulus),
+            plannedWorkoutID: apiWorkout.id,
             routeName: nil,
             workoutSteps: workout.sessionIntentSteps
         )
@@ -1163,7 +1178,8 @@ private extension PlanningAPIWorkout {
             effortLabel: stimulus.effortLabel,
             durationSeconds: durationSeconds,
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
-            steps: steps,
+            targetCalories: targetCalories,
+            steps: targetCalories == nil ? steps : [],
             isOptional: !isKeyWorkout
         )
     }
@@ -1446,6 +1462,18 @@ struct PlanRecommendationsResponse: Codable, Equatable {
     let catalogVersion: String?
 }
 
+struct PlannedWorkoutCompletionRequest: Encodable {
+    let activityId: String?
+    let completedAt: Date
+    let durationSeconds: Int
+    let distanceMeters: Double
+    let targetCalories: Int?
+    let energyKilocalories: Int?
+    let avgPace: Double?
+    let avgHeartRate: Int?
+    let completionQuality: String
+}
+
 struct ActivitySuggestionPlanContext: Codable, Equatable {
     let planId: String
     let planVersionId: String?
@@ -1458,6 +1486,8 @@ struct ActivitySuggestionPayload: Codable, Equatable, Identifiable {
     let modality: String
     let stimulus: String
     let durationMinutes: Int
+    let distanceMeters: Double?
+    let targetCalories: Int?
     let effortLabel: String
     let intensityModel: String
     let why: String
@@ -1509,6 +1539,31 @@ extension ActivitySuggestionResponse {
 extension ActivitySuggestionPayload {
     func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion {
         let durationSeconds = durationMinutes * 60
+        let calorieDetail = targetCalories.map { targetCalories in
+            let target = String(
+                format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
+                locale: .autoupdatingCurrent,
+                targetCalories
+            )
+            if let distanceMeters {
+                return String(
+                    format: String(
+                        localized: "today.calorie_goal.summary_format",
+                        defaultValue: "%@ · about %@ · %d min"
+                    ),
+                    locale: .autoupdatingCurrent,
+                    target,
+                    APIDateParser.distanceLabel(meters: distanceMeters),
+                    durationMinutes
+                )
+            }
+            let duration = String(
+                format: String(localized: "activity.completed.duration.format", defaultValue: "%d min"),
+                locale: .autoupdatingCurrent,
+                durationMinutes
+            )
+            return "\(target) · \(duration)"
+        }
         let stepDuration = max(60, durationSeconds / max(1, steps.count))
         let workoutSteps = steps.enumerated().map { index, step in
             TrainingPlanWorkoutStep(
@@ -1529,9 +1584,11 @@ extension ActivitySuggestionPayload {
             guideCue: guideLine,
             effortLabel: effortLabel,
             durationSeconds: durationSeconds,
-            distanceLabel: nil,
-            steps: workoutSteps.isEmpty
-                ? [
+            distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
+            targetCalories: targetCalories,
+            steps: targetCalories != nil
+                ? []
+                : workoutSteps.isEmpty ? [
                     TrainingPlanWorkoutStep(
                         id: "\(id)-main",
                         kind: stimulus.stepKind,
@@ -1551,12 +1608,19 @@ extension ActivitySuggestionPayload {
             activityLabel: effortLabel.lowercased(),
             framing: why,
             guideLine: guideLine,
-            startLabel: startLabel
+            startLabel: startLabel,
+            targetDistanceMeters: targetCalories == nil ? distanceMeters : nil,
+            targetDurationSeconds: targetCalories == nil ? durationSeconds : nil,
+            targetCalories: targetCalories,
+            estimatedDistanceMeters: targetCalories == nil ? nil : distanceMeters,
+            estimatedDurationSeconds: targetCalories == nil ? nil : durationSeconds,
+            allowsCalorieGoal: modality == "run" && ["easyAerobic", "recovery"].contains(stimulus),
+            plannedWorkoutID: plannedWorkoutId
         )
 
         return TodayTrainingSuggestion(
             title: title,
-            detail: "\(durationMinutes) min • \(effortLabel)",
+            detail: calorieDetail ?? "\(durationMinutes) min • \(effortLabel)",
             guideLine: guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,
@@ -1684,6 +1748,7 @@ private struct PlanningAPIWorkout: Decodable {
     let title: String
     let durationSeconds: Int
     let distanceMeters: Double?
+    let targetCalories: Int?
     let isKeyWorkout: Bool
     let status: String
     let blocks: [PlanningAPIWorkoutBlock]
@@ -1733,6 +1798,7 @@ struct ActivityUploadRequest: Encodable {
     let elevationM: Double?
     let avgPace: Double?
     let avgHeartRate: Int?
+    let energyKilocalories: Int?
     let activityEventId: String?
     let followedRouteId: String?
     let followedRouteCompleted: Bool?

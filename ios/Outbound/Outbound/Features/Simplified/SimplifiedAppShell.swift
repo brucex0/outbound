@@ -1368,6 +1368,30 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayTotalDuration: String {
+        if let targetCalories = activeRunIntent.targetCalories {
+            let target = String(
+                format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
+                locale: .autoupdatingCurrent,
+                targetCalories
+            )
+            guard let distanceMeters = activeRunIntent.estimatedDistanceMeters,
+                  let durationSeconds = activeRunIntent.estimatedDurationSeconds else { return target }
+            let distance = measurementPreferences.unitSystem.distanceString(
+                meters: distanceMeters,
+                fractionDigits: 1
+            )
+            let minutes = max(1, Int((Double(durationSeconds) / 60).rounded()))
+            return String(
+                format: String(
+                    localized: "today.calorie_goal.summary_format",
+                    defaultValue: "%@ · about %@ · %d min"
+                ),
+                locale: .autoupdatingCurrent,
+                target,
+                distance,
+                minutes
+            )
+        }
         if let distanceMeters = activeRunIntent.targetDistanceMeters {
             let kilometers = distanceMeters / 1_000
             return kilometers.rounded() == kilometers
@@ -1387,6 +1411,18 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPhases: [WorkoutPhaseItem] {
+        if let targetCalories = activeRunIntent.targetCalories {
+            return [WorkoutPhaseItem(
+                id: activeRunIntent.id,
+                duration: String(
+                    format: String(localized: "activity.goal.calories.format", defaultValue: "%d kcal"),
+                    locale: .autoupdatingCurrent,
+                    targetCalories
+                ),
+                title: String(localized: "today.calorie_goal.continuous_run", defaultValue: "Continuous easy run"),
+                weight: 1
+            )]
+        }
         if let customizedRunIntent {
             if let meters = customizedRunIntent.targetDistanceMeters {
                 return [WorkoutPhaseItem(
@@ -1530,6 +1566,10 @@ private struct TodayActivityCompanionSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var personalizationStore: PersonalizationStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let message: String
     let isLoading: Bool
     let activity: SessionIntent
@@ -1647,7 +1687,7 @@ private struct TodayActivityCompanionSheet: View {
                 surface: .today,
                 prompt: """
                 You are the specialist for customizing the single planned activity shown on today's card. Current activity: \(currentActivity.title), \(currentActivity.detail). Request: \(prompt).
-                The client can directly apply distances (km, kilometers, mi, miles), durations (minutes or hours), and run effort (recovery, easy, tempo). This request did not contain a change the client could apply. Do not say the card was updated. Briefly clarify what is missing or suggest a concrete adjustment that fits the current activity.
+                The client can directly apply distances (km, kilometers, mi, miles), durations (minutes or hours), calorie targets, and run effort (recovery, easy, tempo). This request did not contain a change the client could safely apply. Do not say the card was updated. Briefly clarify what is missing or suggest a concrete adjustment that fits the current activity.
                 """,
                 conversationKey: "ios-today-activity-customization",
                 recentMessages: conversation.suffix(6).map {
@@ -1660,7 +1700,10 @@ private struct TodayActivityCompanionSheet: View {
                 signals: []
             ))
             conversation.append(TodayCompanionLine(
-                text: response?.message ?? "Tell me a distance, duration, or effort—like “15 km,” “45 minutes,” or “make it easy”—and I’ll update this activity.",
+                text: response?.message ?? String(
+                    localized: "today.companion.adjustment_hint",
+                    defaultValue: "Tell me a distance, duration, calorie target, or effort—like “15 km,” “45 minutes,” “300 calories,” or “make it easy”—and I’ll update this activity."
+                ),
                 isUser: false
             ))
             saveConversation()
@@ -1685,6 +1728,26 @@ private struct TodayActivityCompanionSheet: View {
         }()
         guard requestedGoal != nil || effort != nil else { return nil }
 
+        if case .calories(let targetCalories) = requestedGoal {
+            guard currentActivity.sport == .run,
+                  currentActivity.allowsCalorieGoal,
+                  effort?.title != "Tempo run",
+                  let weightKilograms = onboardingStore.latestWeightKilograms,
+                  let paceSecondsPerKilometer = WorkoutCalorieEstimator.resolveLearnedRunPace(
+                      activities: activityStore.activities,
+                      calibrationCompleted: personalizationStore.snapshot.calibration.status == .completed
+                  ).secondsPerKilometer,
+                  let estimate = WorkoutCalorieEstimator.plannedRun(
+                      targetCalories: targetCalories,
+                      weightKilograms: weightKilograms,
+                      paceSecondsPerKilometer: paceSecondsPerKilometer
+                  ) else { return nil }
+            return currentActivity.replacingCalorieGoal(
+                estimate,
+                unitSystem: measurementPreferences.unitSystem
+            )
+        }
+
         let distanceMeters: Double?
         let durationSeconds: Int?
         switch requestedGoal {
@@ -1694,6 +1757,8 @@ private struct TodayActivityCompanionSheet: View {
         case .duration(let seconds):
             distanceMeters = nil
             durationSeconds = seconds
+        case .calories:
+            return nil
         case nil:
             distanceMeters = currentActivity.targetDistanceMeters
             durationSeconds = currentActivity.targetDurationSeconds
@@ -1715,8 +1780,14 @@ private struct TodayActivityCompanionSheet: View {
             startLabel: String(localized: "Start activity"),
             targetDistanceMeters: distanceMeters,
             targetDurationSeconds: durationSeconds,
+            allowsCalorieGoal: currentActivity.allowsCalorieGoal,
             routeName: currentActivity.routeName,
-            workoutSteps: []
+            preparedRoute: currentActivity.preparedRoute,
+            activityTypeOverride: currentActivity.activityTypeOverride,
+            workoutSteps: [],
+            coachingTarget: currentActivity.coachingTarget,
+            workoutReference: currentActivity.workoutReference,
+            activityEvent: currentActivity.activityEvent
         )
     }
 
@@ -1733,10 +1804,11 @@ private struct TodayActivityCompanionSheet: View {
     private enum RequestedGoal {
         case distance(Double)
         case duration(Int)
+        case calories(Int)
     }
 
     private func requestedGoal(in text: String) -> RequestedGoal? {
-        let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*(kilometers?|kilometres?|kms?|km|miles?|mi|hours?|hrs?|hr|h|minutes?|mins?|min|m)\b"#
+        let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*(kilocalories?|calories?|kcals?|kcal|kilometers?|kilometres?|kms?|km|miles?|mi|hours?|hrs?|hr|h|minutes?|mins?|min|m)\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let valueRange = Range(match.range(at: 1), in: text),
@@ -1744,6 +1816,11 @@ private struct TodayActivityCompanionSheet: View {
               let value = Double(text[valueRange]) else { return nil }
 
         let unit = String(text[unitRange])
+        if unit.hasPrefix("cal") || unit.hasPrefix("kcal") || unit.hasPrefix("kilocal") {
+            let calories = Int(value.rounded())
+            guard (50...5_000).contains(calories) else { return nil }
+            return .calories(calories)
+        }
         if unit.hasPrefix("k") {
             guard (0.1...200).contains(value) else { return nil }
             return .distance(value * 1_000)
@@ -2997,6 +3074,7 @@ private struct SimplifiedProfileView: View {
 }
 
 private struct SimplifiedProfileEditorView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     var onProfileUpdated: ((AppUserProfileDTO) -> Void)? = nil
@@ -3019,6 +3097,8 @@ private struct SimplifiedProfileEditorView: View {
     @State private var birthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
     @State private var heightText = ""
     @State private var weightText = ""
+    @State private var primaryMotivation: RunnerPrimaryMotivation = .generalFitness
+    @State private var preferredRunGoalType: PreferredRunGoalType = .time
     @State private var preservedTrainingProfile: TrainingProfileDTO?
     @State private var toast: ProfileToast?
 
@@ -3122,6 +3202,32 @@ private struct SimplifiedProfileEditorView: View {
                 Text("Body measurements")
             } footer: {
                 Text("Leave a field blank to remove it. You can update these values whenever they change.")
+            }
+            .disabled(preservedTrainingProfile == nil)
+            Section {
+                Picker(
+                    String(localized: "profile.motivation.title", defaultValue: "Primary motivation"),
+                    selection: $primaryMotivation
+                ) {
+                    ForEach(RunnerPrimaryMotivation.allCases) { motivation in
+                        Text(motivation.title).tag(motivation)
+                    }
+                }
+                Picker(
+                    String(localized: "profile.run_goal_preference.title", defaultValue: "Easy-run goal"),
+                    selection: $preferredRunGoalType
+                ) {
+                    ForEach(PreferredRunGoalType.allCases) { goalType in
+                        Text(goalType.title).tag(goalType)
+                    }
+                }
+            } header: {
+                Text(String(localized: "profile.run_goals.title", defaultValue: "Run goals"))
+            } footer: {
+                Text(String(
+                    localized: "profile.run_goals.footer",
+                    defaultValue: "Calories apply only to eligible easy and recovery runs. Weight and a reliable learned pace are required."
+                ))
             }
             .disabled(preservedTrainingProfile == nil)
             Section {
@@ -3230,9 +3336,23 @@ private struct SimplifiedProfileEditorView: View {
         do {
             if let preservedTrainingProfile,
                hasTrainingProfileChanges(from: preservedTrainingProfile) {
+                let motivationChanged = primaryMotivation != preservedTrainingProfile.primaryMotivation
+                let goalPreferenceChanged = preferredRunGoalType != preservedTrainingProfile.preferredRunGoalType
                 let trainingProfile = try await APIClient.shared.updateTrainingProfile(trainingProfileRequest)
                 applyTrainingProfile(trainingProfile)
                 onTrainingProfileUpdated?(trainingProfile)
+                if motivationChanged {
+                    await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                        .changeType: .string("primary_motivation"),
+                        .selectionType: .string(trainingProfile.primaryMotivation.rawValue)
+                    ]))
+                }
+                if goalPreferenceChanged {
+                    await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                        .changeType: .string("run_goal_type"),
+                        .selectionType: .string(trainingProfile.preferredRunGoalType.rawValue)
+                    ]))
+                }
             }
             let profile = try await APIClient.shared.updateMyProfile(
                 AppUserProfileUpdateDTO(
@@ -3297,7 +3417,9 @@ private struct SimplifiedProfileEditorView: View {
             sexAtBirth: sexAtBirth,
             birthDate: hasBirthDate ? Self.birthDateFormatter.string(from: birthDate) : nil,
             heightCentimeters: parsedMeasurement(heightText).map { usesMetric ? $0 : $0 * 2.54 },
-            weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 }
+            weightKilograms: parsedMeasurement(weightText).map { usesMetric ? $0 : $0 * 0.45359237 },
+            primaryMotivation: primaryMotivation,
+            preferredRunGoalType: preferredRunGoalType
         )
     }
 
@@ -3306,6 +3428,8 @@ private struct SimplifiedProfileEditorView: View {
             || (hasBirthDate ? Self.birthDateFormatter.string(from: birthDate) : nil) != profile.birthDate
             || heightText != formatted(profile.heightCentimeters.map { usesMetric ? $0 : $0 / 2.54 })
             || weightText != formatted(profile.weightKilograms.map { usesMetric ? $0 : $0 / 0.45359237 })
+            || primaryMotivation != profile.primaryMotivation
+            || preferredRunGoalType != profile.preferredRunGoalType
     }
 
     private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
@@ -3319,6 +3443,8 @@ private struct SimplifiedProfileEditorView: View {
         }
         heightText = formatted(profile.heightCentimeters.map { usesMetric ? $0 : $0 / 2.54 })
         weightText = formatted(profile.weightKilograms.map { usesMetric ? $0 : $0 / 0.45359237 })
+        primaryMotivation = profile.primaryMotivation
+        preferredRunGoalType = profile.preferredRunGoalType
     }
 
     private func parsedMeasurement(_ text: String) -> Double? {

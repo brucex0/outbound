@@ -24,11 +24,13 @@ export type CompiledContext = {
 };
 
 export type CompanionActionProposal = {
-  actionType: "communicate" | "shorten_workout" | "move_workout" | "update_memory";
+  actionType: "communicate" | "shorten_workout" | "set_workout_calories" | "update_run_goal_preference" | "move_workout" | "update_memory";
   permissionTier: 0 | 1 | 2 | 3;
   requiresConfirmation: boolean;
   workoutId?: string;
   durationMinutes?: number;
+  targetCalories?: number;
+  goalType?: "time" | "distance" | "calories";
   scheduledDate?: string;
   stableKey?: string;
   value?: unknown;
@@ -42,4 +44,3 @@ export type ValidationResult = {
   reasonCodes: string[];
   normalizedProposal: CompanionActionProposal;
 };
-

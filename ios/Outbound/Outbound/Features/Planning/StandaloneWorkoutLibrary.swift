@@ -32,6 +32,8 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
             guideLine: guideLine, startLabel: startLabel,
             targetDistanceMeters: targetDistanceMeters,
             targetDurationSeconds: targetDurationSeconds,
+            allowsCalorieGoal: sport == .run
+                && (coachingTarget.map { [SessionCoachingPhase.easy, .recovery].contains($0.phase) } ?? false),
             workoutSteps: steps,
             coachingTarget: coachingTarget,
             workoutReference: SessionWorkoutReference(

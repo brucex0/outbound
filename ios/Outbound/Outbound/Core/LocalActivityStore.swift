@@ -17,6 +17,7 @@ actor ActivityPersistence {
         guideNudge: String,
         reflection: FinishReflection?,
         goal: ActivityGoal?,
+        energyKilocalories: Int?,
         source: ActivitySourceMetadata,
         gear: ActivityGearAttachment?,
         manualEdits: ActivityManualEdits?,
@@ -35,6 +36,7 @@ actor ActivityPersistence {
             guideNudge: guideNudge,
             reflection: reflection,
             goal: goal,
+            energyKilocalories: energyKilocalories,
             source: source,
             gear: gear,
             manualEdits: manualEdits,
@@ -100,6 +102,7 @@ private nonisolated enum LocalActivityStore {
         guideNudge: String,
         reflection: FinishReflection?,
         goal: ActivityGoal?,
+        energyKilocalories: Int? = nil,
         source: ActivitySourceMetadata = .outboundRecorded,
         gear: ActivityGearAttachment? = nil,
         manualEdits: ActivityManualEdits? = nil,
@@ -139,6 +142,7 @@ private nonisolated enum LocalActivityStore {
             walkingStepCount: summary.walkingStepCount,
             healthMetrics: summary.healthMetrics,
             goal: goal,
+            energyKilocalories: energyKilocalories,
             source: source,
             gear: gear,
             manualEdits: manualEdits,
@@ -395,6 +399,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let walkingStepCount: Int?
     let healthMetrics: ActivityHealthMetrics?
     let goal: ActivityGoal?
+    let energyKilocalories: Int?
     let source: ActivitySourceMetadata
     let gear: ActivityGearAttachment?
     let manualEdits: ActivityManualEdits?
@@ -452,6 +457,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
             healthMetrics = nil
         }
         goal = try c.decodeIfPresent(ActivityGoal.self, forKey: .goal)
+        energyKilocalories = try c.decodeIfPresent(Int.self, forKey: .energyKilocalories)
         source = try c.decodeIfPresent(ActivitySourceMetadata.self, forKey: .source) ?? .outboundRecorded
         gear = try c.decodeIfPresent(ActivityGearAttachment.self, forKey: .gear)
         manualEdits = try c.decodeIfPresent(ActivityManualEdits.self, forKey: .manualEdits)
@@ -480,6 +486,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          avgPace: Double?, elevationGainM: Double? = nil,
          walkingStepCount: Int? = nil,
          healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil,
+         energyKilocalories: Int? = nil,
          source: ActivitySourceMetadata = .outboundRecorded,
          gear: ActivityGearAttachment? = nil,
          manualEdits: ActivityManualEdits? = nil,
@@ -498,6 +505,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.elevationGainM = elevationGainM; self.walkingStepCount = walkingStepCount
         self.healthMetrics = healthMetrics
         self.goal = goal
+        self.energyKilocalories = energyKilocalories
         self.source = source
         self.gear = gear
         self.manualEdits = manualEdits
@@ -528,6 +536,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case healthMetrics
         case avgHeartRate
         case goal
+        case energyKilocalories
         case source
         case gear
         case manualEdits
@@ -560,6 +569,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(walkingStepCount, forKey: .walkingStepCount)
         try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
         try c.encodeIfPresent(goal, forKey: .goal)
+        try c.encodeIfPresent(energyKilocalories, forKey: .energyKilocalories)
         try c.encode(source, forKey: .source)
         try c.encodeIfPresent(gear, forKey: .gear)
         try c.encodeIfPresent(manualEdits, forKey: .manualEdits)

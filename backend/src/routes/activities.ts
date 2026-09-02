@@ -148,7 +148,7 @@ const createSchema = z.object({
   activityEventId: z.string().min(1).optional(),
   followedRouteId: z.string().min(1).max(128).optional(),
   followedRouteCompleted: z.boolean().optional(),
-  calories: z.number().optional(),
+  energyKilocalories: z.number().int().nonnegative().optional(),
   route: z
     .object({
       points: z
@@ -263,7 +263,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     elevationM: body.elevationM,
     avgPace: body.avgPace,
     avgHeartRate: body.avgHeartRate,
-    calories: body.calories,
+    energyKilocalories: body.energyKilocalories,
     followedRouteId: resolvedFollowedRouteId,
     route: normalizeRoute(body.route),
     splits: body.splits,

@@ -56,6 +56,8 @@ export async function compileCompanionContext(
     targetSessionsPerWeek: state.profile.targetSessionsPerWeek,
     preferredLongRunDay: state.profile.preferredLongRunDay,
     guidanceDetail: state.profile.guidanceDetail,
+    primaryMotivation: state.profile.primaryMotivation,
+    preferredRunGoalType: state.profile.preferredRunGoalType,
     constraints: state.profile.constraints,
   } : {};
   const currentState = {
@@ -65,7 +67,9 @@ export async function compileCompanionContext(
       scheduledDate: workout.scheduledDate.toISOString(),
       title: workout.title,
       durationSeconds: workout.durationSeconds,
+      targetCalories: workout.targetCalories,
       stimulus: workout.stimulus,
+      modality: workout.modality,
       isKeyWorkout: workout.isKeyWorkout,
     })),
     latestReadiness: state.latestReadiness,

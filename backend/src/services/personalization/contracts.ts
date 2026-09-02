@@ -98,6 +98,16 @@ export const workoutFeedbackRequestSchema = z.object({
 });
 export type WorkoutFeedbackRequest = z.infer<typeof workoutFeedbackRequestSchema>;
 
+export const primaryMotivationSchema = z.enum([
+  "generalFitness",
+  "consistency",
+  "performance",
+  "weightLoss",
+  "weightMaintenance",
+]);
+
+export const runGoalTypeSchema = z.enum(["time", "distance", "calories"]);
+
 export const runnerProfileInputSchema = z.object({
   goalSummary: z.string().min(1).max(500).nullable().optional(),
   scheduleSummary: z.string().min(1).max(500).nullable().optional(),
@@ -106,6 +116,8 @@ export const runnerProfileInputSchema = z.object({
   targetSessionsPerWeek: z.number().int().min(1).max(7).optional(),
   preferredLongRunDay: z.string().min(1).max(16).nullable().optional(),
   guidanceDetail: z.enum(["minimal", "balanced", "detailed"]).optional(),
+  primaryMotivation: primaryMotivationSchema.optional(),
+  preferredRunGoalType: runGoalTypeSchema.optional(),
   constraints: z.record(z.unknown()).optional(),
   complete: z.boolean().optional(),
 });
@@ -116,6 +128,8 @@ export const trainingProfileInputSchema = z.object({
   birthDate: z.string().date().nullable(),
   heightCentimeters: z.number().min(90).max(250).nullable(),
   weightKilograms: z.number().min(25).max(350).nullable(),
+  primaryMotivation: primaryMotivationSchema,
+  preferredRunGoalType: runGoalTypeSchema,
 });
 export type TrainingProfileInput = z.infer<typeof trainingProfileInputSchema>;
 

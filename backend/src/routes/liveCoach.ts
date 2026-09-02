@@ -28,6 +28,7 @@ const clientWorkoutSchema = z.object({
   guideLine: z.string().trim().max(400),
   targetDistanceMeters: z.number().finite().min(0).max(1_000_000).optional(),
   targetDurationSeconds: z.number().finite().min(0).max(24 * 60 * 60).optional(),
+  targetCalories: z.number().int().min(1).max(20_000).optional(),
   steps: z.array(z.object({
     label: z.string().trim().min(1).max(100),
     durationSeconds: z.number().finite().min(0).max(24 * 60 * 60),
@@ -86,7 +87,7 @@ const createSessionSchema = z.object({
   measurementUnitSystem: z.enum(["metric", "imperial"]),
   sessionIntent: z.object({
     activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),
-    goalType: z.enum(["workout", "distance", "time", "freestyle"]),
+    goalType: z.enum(["workout", "distance", "time", "calories", "freestyle"]),
   }).strict(),
   clientWorkout: clientWorkoutSchema.optional(),
   environment: environmentSchema.optional(),

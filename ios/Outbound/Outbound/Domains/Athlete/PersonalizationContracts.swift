@@ -185,8 +185,46 @@ struct RunnerProfileRequestDTO: Codable, Equatable, Sendable {
     let targetSessionsPerWeek: Int
     let preferredLongRunDay: String?
     let guidanceDetail: String
+    let primaryMotivation: RunnerPrimaryMotivation
+    let preferredRunGoalType: PreferredRunGoalType
     let constraints: [String: String]
     let complete: Bool
+}
+
+enum RunnerPrimaryMotivation: String, Codable, CaseIterable, Identifiable, Sendable {
+    case generalFitness
+    case consistency
+    case performance
+    case weightLoss
+    case weightMaintenance
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .generalFitness: String(localized: "profile.motivation.general_fitness", defaultValue: "General fitness")
+        case .consistency: String(localized: "profile.motivation.consistency", defaultValue: "Run consistently")
+        case .performance: String(localized: "profile.motivation.performance", defaultValue: "Performance")
+        case .weightLoss: String(localized: "profile.motivation.weight_loss", defaultValue: "Support weight loss")
+        case .weightMaintenance: String(localized: "profile.motivation.weight_maintenance", defaultValue: "Maintain weight")
+        }
+    }
+}
+
+enum PreferredRunGoalType: String, Codable, CaseIterable, Identifiable, Sendable {
+    case time
+    case distance
+    case calories
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .time: String(localized: "record.goal.time", defaultValue: "Time")
+        case .distance: String(localized: "record.goal.distance", defaultValue: "Distance")
+        case .calories: String(localized: "record.goal.calories", defaultValue: "Calories")
+        }
+    }
 }
 
 enum TrainingProfileSex: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -202,6 +240,8 @@ struct TrainingProfileDTO: Codable, Equatable, Sendable {
     let birthDate: String?
     let heightCentimeters: Double?
     let weightKilograms: Double?
+    let primaryMotivation: RunnerPrimaryMotivation
+    let preferredRunGoalType: PreferredRunGoalType
 }
 
 struct TrainingProfileUpdateDTO: Encodable, Equatable, Sendable {
@@ -209,12 +249,16 @@ struct TrainingProfileUpdateDTO: Encodable, Equatable, Sendable {
     let birthDate: String?
     let heightCentimeters: Double?
     let weightKilograms: Double?
+    let primaryMotivation: RunnerPrimaryMotivation
+    let preferredRunGoalType: PreferredRunGoalType
 
     private enum CodingKeys: String, CodingKey {
         case sexAtBirth
         case birthDate
         case heightCentimeters
         case weightKilograms
+        case primaryMotivation
+        case preferredRunGoalType
     }
 
     func encode(to encoder: Encoder) throws {
@@ -223,6 +267,8 @@ struct TrainingProfileUpdateDTO: Encodable, Equatable, Sendable {
         try container.encodeIfPresent(birthDate, forKey: .birthDate)
         try container.encodeIfPresent(heightCentimeters, forKey: .heightCentimeters)
         try container.encodeIfPresent(weightKilograms, forKey: .weightKilograms)
+        try container.encode(primaryMotivation, forKey: .primaryMotivation)
+        try container.encode(preferredRunGoalType, forKey: .preferredRunGoalType)
 
         if sexAtBirth == nil { try container.encodeNil(forKey: .sexAtBirth) }
         if birthDate == nil { try container.encodeNil(forKey: .birthDate) }

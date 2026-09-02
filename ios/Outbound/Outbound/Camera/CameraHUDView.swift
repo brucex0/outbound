@@ -151,21 +151,12 @@ struct CameraHUDView: View {
     }
 
     private var estimatedEnergyKilocalories: Double? {
-        guard let weight = onboardingStore.latestWeightKilograms,
-              weight > 0,
-              recorder.elapsedSeconds > 0
-        else { return nil }
-        switch intent?.sport ?? .run {
-        case .run:
-            guard recorder.distanceMeters > 0 else { return nil }
-            return weight * (recorder.distanceMeters / 1_000)
-        case .bike:
-            return 8 * weight * (Double(recorder.elapsedSeconds) / 3_600)
-        case .walk:
-            return 3.5 * weight * (Double(recorder.elapsedSeconds) / 3_600)
-        case .hike, .swim:
-            return 6 * weight * (Double(recorder.elapsedSeconds) / 3_600)
-        }
+        WorkoutCalorieEstimator.liveEnergyKilocalories(
+            activityType: intent?.resolvedActivityType ?? .running,
+            distanceMeters: recorder.distanceMeters,
+            durationSeconds: recorder.elapsedSeconds,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
     }
 
     private var rightControlRail: some View {

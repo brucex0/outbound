@@ -79,6 +79,15 @@ Practical behavior:
 - The current phase should change only when the goal or user state meaningfully changes.
 - Historical plan versions should remain immutable for auditability.
 
+### Calorie goals for planned runs
+
+- `TrainingGoal` and `RunnerProfile` persist `primaryMotivation` and `preferredRunGoalType`; supported goal types are `time`, `distance`, and `calories`.
+- Only `run` workouts with `easyAerobic` or `recovery` stimulus may receive `targetCalories`. Tempo, interval, long-endurance, race-prep, and race prescriptions keep their time/distance structure and blocks.
+- Central estimation uses `distanceKm = targetCalories / weightKg` and `durationSeconds = distanceKm * learnedPaceSecondsPerKm`. Generated targets are rounded to 25 kcal and recalculated after readiness adaptation changes intended duration.
+- Learned pace is the median of up to ten recent valid saved runs. It is reliable after three runs, or after completed calibration plus at least one valid run. Missing weight or unreliable pace leaves the generated workout time-based.
+- A calorie-target workout retains internal estimated duration and distance for scheduling/load, but its client `SessionIntent` exposes calories as the only completion goal and no timed phases.
+- Today/assistant one-off conversion and recurring `update_run_goal_preference(goalType)` use the same eligibility and estimator. Preference updates rebuild eligible upcoming workouts.
+
 ## Implementation Architecture
 
 Build planning as a backend domain that guide surfaces consume. The guide UI can explain and present the plan, but the planning service should own goals, generated workouts, adaptation, and event processing.
@@ -709,6 +718,8 @@ Important fields:
 - `daysPerWeekTarget`
 - `maxSessionMinutes`
 - `riskTolerance`: `conservative`, `balanced`, `stretch`
+- `primaryMotivation`: `generalFitness`, `consistency`, `performance`, `weightLoss`, `weightMaintenance`
+- `preferredRunGoalType`: `time`, `distance`, `calories`
 - `constraints` JSON
 - `status`: `active`, `paused`, `completed`, `archived`
 - `createdAt`
@@ -769,6 +780,7 @@ Important fields:
 - `title`
 - `durationSeconds`
 - `distanceMeters`
+- `targetCalories`
 - `intensityModel`: `rpe`, `pace`, `heartRate`, `power`, `percentOneRepMax`, `repsInReserve`, `open`
 - `intensityTarget` JSON
 - `prescription` JSON
@@ -826,6 +838,8 @@ Important fields:
 - `completedAt`
 - `durationSeconds`
 - `distanceMeters`
+- `targetCalories`
+- `energyKilocalories`
 - `avgPace`
 - `avgHeartRate`
 - `avgPower`

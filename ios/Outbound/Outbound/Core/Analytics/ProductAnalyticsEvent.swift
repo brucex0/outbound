@@ -198,7 +198,7 @@ enum ProductAnalyticsSchema {
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activitySetupViewed: [.entrySource],
-        .activityConfigurationChanged: [.changeType, .selectionType, .goalType, .targetBucket],
+        .activityConfigurationChanged: [.changeType, .selectionType, .goalType, .targetBucket, .sourceType],
         .activityStarted: [.entrySource, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .participantCountBucket],
         .activityPaused: [],
         .activityResumed: [],

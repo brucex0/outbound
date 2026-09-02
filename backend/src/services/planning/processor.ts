@@ -4,6 +4,7 @@ import { computeAthleteTrainingState } from "./athleteState.js";
 import { claimDuePlanningEvents, failPlanningEvent } from "./events.js";
 import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { getPrismaClient } from "../prisma.js";
+import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import type {
   ActivityForPlanning,
   PlanningEventResult,
@@ -64,7 +65,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       return result;
     }
 
-    const [activities, plannedWorkouts, readiness] = await Promise.all([
+    const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
       prisma.activity.findMany({
         where: { userId: event.userId, startedAt: { gte: addDays(new Date(), -90) } },
         orderBy: { startedAt: "desc" },
@@ -88,6 +89,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           stimulus: true,
           durationSeconds: true,
           distanceMeters: true,
+          targetCalories: true,
           isKeyWorkout: true,
           status: true,
         },
@@ -105,6 +107,8 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           illnessOrPain: true,
         },
       }),
+      prisma.runnerProfile.findUnique({ where: { userId: event.userId } }),
+      prisma.calibrationProgram.findUnique({ where: { userId: event.userId } }),
     ]);
 
     const athleteState = computeAthleteTrainingState({
@@ -124,9 +128,17 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         daysPerWeekTarget: plan.goal.daysPerWeekTarget,
         maxSessionMinutes: plan.goal.maxSessionMinutes,
         riskTolerance: plan.goal.riskTolerance,
+        primaryMotivation: plan.goal.primaryMotivation as "generalFitness" | "consistency" | "performance" | "weightLoss" | "weightMaintenance",
+        preferredRunGoalType: plan.goal.preferredRunGoalType as "time" | "distance" | "calories",
       },
       athleteState,
       latestReadiness,
+    });
+    const adaptedWorkouts = applyCalorieTargets({
+      workouts: adaptation.workouts,
+      preferredRunGoalType: plan.goal.preferredRunGoalType as "time" | "distance" | "calories",
+      weightKilograms: profile?.weightKilograms,
+      pace: resolveLearnedRunPace(activities as ActivityForPlanning[], calibration?.status === "completed"),
     });
 
     if (!adaptation.shouldCreateVersion) {
@@ -195,7 +207,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           athleteState,
         },
         engineDecision: adaptation.engineDecision,
-        workouts: adaptation.workouts,
+        workouts: adaptedWorkouts,
       });
       await tx.planAdjustmentEvent.create({
         data: {

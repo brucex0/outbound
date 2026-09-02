@@ -2,13 +2,41 @@ import type { CompiledContext, CompanionActionProposal } from "./types.js";
 
 export function generateCandidateAction(prompt: string, context: CompiledContext): CompanionActionProposal {
   const normalized = prompt.toLowerCase();
-  const currentState = context.currentState as { nextWorkouts?: Array<{ id: string; durationSeconds: number; title: string; scheduledDate: string; isKeyWorkout: boolean }> };
+  const currentState = context.currentState as { nextWorkouts?: Array<{ id: string; durationSeconds: number; title: string; scheduledDate: string; isKeyWorkout: boolean; modality: string; stimulus: string; targetCalories?: number | null }> };
   const nextWorkout = currentState.nextWorkouts?.[0];
   const signalTypes = new Set(context.situationalSignals.map((signal) => String(signal.type)));
   const asksForShorter = /short(er|en)|less time|busy|only \d+ (minute|min)/.test(normalized);
   const fatigue = /tired|fatigue|exhausted/.test(normalized) || signalTypes.has("recovery.fatigue");
   const soreness = /sore|pain|hurt/.test(normalized) || signalTypes.has("recovery.soreness");
   const unsafeWeather = ["weather.heat_risk", "weather.lightning", "weather.air_quality_risk"].some((type) => signalTypes.has(type));
+  const requestedCalories = parseRequestedCalories(normalized);
+  const asksForCaloriePreference = /(make|set|use|prefer).*(easy|recovery|regular).*(calorie|kcal)|calorie[- ]based.*(easy|recovery|run)/.test(normalized);
+
+  if (asksForCaloriePreference) {
+    return {
+      actionType: "update_run_goal_preference",
+      permissionTier: 2,
+      requiresConfirmation: true,
+      goalType: "calories",
+      evidenceIds: context.includedRefs.map((reference) => reference.id),
+      rationale: "This changes eligible future easy and recovery runs, so it requires confirmation before rebuilding the plan.",
+    };
+  }
+
+  if (nextWorkout && requestedCalories != null) {
+    const eligible = nextWorkout.modality === "run" && ["easyAerobic", "recovery"].includes(nextWorkout.stimulus);
+    if (eligible) {
+      return {
+        actionType: "set_workout_calories",
+        permissionTier: 2,
+        requiresConfirmation: true,
+        workoutId: nextWorkout.id,
+        targetCalories: requestedCalories,
+        evidenceIds: context.includedRefs.map((reference) => reference.id),
+        rationale: "The exact calorie target can replace this easy run's timed phases after weight and pace inputs are validated.",
+      };
+    }
+  }
 
   if (nextWorkout && (asksForShorter || fatigue || soreness || unsafeWeather)) {
     const currentMinutes = Math.max(1, Math.round(nextWorkout.durationSeconds / 60));
@@ -46,3 +74,9 @@ function parseRequestedMinutes(prompt: string) {
   return match ? Number(match[1]) : null;
 }
 
+function parseRequestedCalories(prompt: string) {
+  const match = prompt.match(/(\d{2,5})\s*(?:calories|calorie|kcal|cals?)\b/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return value >= 50 && value <= 5_000 ? value : null;
+}

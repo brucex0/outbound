@@ -22,7 +22,7 @@ export async function runCompanionTurn(
   let action = null;
   if (proposal.actionType !== "communicate" && validation.approved) {
     const idempotencyKey = createHash("sha256")
-      .update(`${userId}:${request.conversationKey}:${context.manifestId}:${proposal.actionType}:${proposal.workoutId ?? ""}`)
+      .update(`${userId}:${request.conversationKey}:${context.manifestId}:${proposal.actionType}:${proposal.workoutId ?? ""}:${proposal.targetCalories ?? ""}:${proposal.goalType ?? ""}`)
       .digest("hex");
     action = await createAgentAction(prisma, {
       userId,
@@ -82,6 +82,16 @@ function deterministicMessage(
     }
     return copy.couldNotChange(proposal.rationale);
   }
+  if (proposal.actionType === "set_workout_calories" && proposal.targetCalories) {
+    return disposition === "confirmation_required"
+      ? copy.calorieTarget(proposal.targetCalories)
+      : copy.couldNotChange(proposal.rationale);
+  }
+  if (proposal.actionType === "update_run_goal_preference") {
+    return disposition === "confirmation_required"
+      ? copy.caloriePreference
+      : copy.couldNotChange(proposal.rationale);
+  }
   return copy.defaultMessage;
 }
 
@@ -91,6 +101,8 @@ function localizedCompanionCopy(locale: SupportedLocale) {
     suggestedReplies: ["¿Por qué este cambio?", "Mantener el original"],
     preparedExplanation: "Este ajuste se basa en tu plan actual y en las señales de entrenamiento disponibles.",
     shorten: (minutes: number, _rationale: string) => `Encontré una opción más segura para hoy: acortar el entrenamiento previsto a ${minutes} minutos. Todavía no lo he cambiado.`,
+    calorieTarget: (calories: number) => `Puedo convertir la carrera suave prevista en un objetivo de ${calories} kcal. Antes de cambiarla, comprobaré tu peso privado y tu ritmo aprendido.`,
+    caloriePreference: "Puedo usar calorías como objetivo habitual para futuras carreras suaves y de recuperación que cumplan los requisitos. Esto reconstruirá los entrenamientos próximos elegibles.",
     couldNotChange: (_rationale: string) => "No pude preparar ese cambio de entrenamiento de forma segura.",
     defaultMessage: "Estoy usando tu plan actual, entrenamiento reciente, estado de hoy y preferencias confirmadas. Dime qué se siente difícil del plan de hoy y buscaré el ajuste útil más pequeño.",
   };
@@ -99,6 +111,8 @@ function localizedCompanionCopy(locale: SupportedLocale) {
     suggestedReplies: ["为什么这样调整？", "保留原计划"],
     preparedExplanation: "此调整基于你当前的计划和现有训练信号。",
     shorten: (minutes: number, _rationale: string) => `我找到了更适合今天的安全方案：将计划训练缩短到 ${minutes} 分钟。我还没有进行更改。`,
+    calorieTarget: (calories: number) => `我可以把计划中的轻松跑改为 ${calories} 千卡目标。更改前会先检查你的私密体重信息和已学习的配速。`,
+    caloriePreference: "我可以让符合条件的轻松跑和恢复跑默认使用热量目标，并重新生成近期符合条件的训练。",
     couldNotChange: (_rationale: string) => "我无法安全地准备这项训练更改。",
     defaultMessage: "我正在结合你当前的计划、近期训练、今日状态和已确认的偏好。告诉我今天的计划哪里感觉困难，我会帮你找到最小且有效的调整。",
   };
@@ -107,6 +121,8 @@ function localizedCompanionCopy(locale: SupportedLocale) {
     suggestedReplies: ["Why this change?", "Keep the original"],
     preparedExplanation: "This adjustment is based on your current plan and available training signals.",
     shorten: (minutes: number, rationale: string) => `I found a safer fit for today: shorten the planned workout to ${minutes} minutes. ${rationale} I have not changed it yet.`,
+    calorieTarget: (calories: number) => `I can replace the eligible easy run with a ${calories} kcal goal. I’ll validate your private weight and learned pace before changing it.`,
+    caloriePreference: "I can make calories the recurring goal for eligible easy and recovery runs, then rebuild the upcoming workouts that qualify.",
     couldNotChange: (rationale: string) => `I could not safely prepare that workout change. ${rationale}`,
     defaultMessage: "I’m using your current plan, recent training, readiness, and confirmed preferences. Tell me what feels difficult about today’s plan and I’ll help find the smallest useful adjustment.",
   };

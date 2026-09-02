@@ -38,6 +38,8 @@ const goalSchema = z.object({
   daysPerWeekTarget: z.number().int().min(1).max(6).optional(),
   maxSessionMinutes: z.number().int().min(10).max(180).optional(),
   riskTolerance: z.enum(["conservative", "balanced", "stretch"]).optional(),
+  primaryMotivation: z.enum(["generalFitness", "consistency", "performance", "weightLoss", "weightMaintenance"]).optional(),
+  preferredRunGoalType: z.enum(["time", "distance", "calories"]).optional(),
   constraints: z.record(z.unknown()).optional(),
 });
 
@@ -57,6 +59,8 @@ const completionSchema = z.object({
   completedAt: z.string().optional(),
   durationSeconds: z.number().int().positive().optional().nullable(),
   distanceMeters: z.number().nonnegative().optional().nullable(),
+  targetCalories: z.number().int().positive().optional().nullable(),
+  energyKilocalories: z.number().int().nonnegative().optional().nullable(),
   avgPace: z.number().positive().optional().nullable(),
   avgHeartRate: z.number().int().positive().optional().nullable(),
   avgPower: z.number().positive().optional().nullable(),

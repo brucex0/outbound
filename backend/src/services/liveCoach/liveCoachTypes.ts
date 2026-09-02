@@ -46,7 +46,7 @@ export type CreateLiveCoachSessionInput = {
   voiceProfileId: string;
   coachingContract: CoachingContract;
   measurementUnitSystem: "metric" | "imperial";
-  sessionIntent: { activityType: "running" | "walking" | "cycling" | "hiking" | "swimming"; goalType: "workout" | "distance" | "time" | "freestyle" };
+  sessionIntent: { activityType: "running" | "walking" | "cycling" | "hiking" | "swimming"; goalType: "workout" | "distance" | "time" | "calories" | "freestyle" };
   clientWorkout?: LiveCoachClientWorkout;
   environment?: LiveCoachEnvironmentInput;
   appDistributionHint?: "global";
@@ -64,6 +64,7 @@ export type LiveCoachClientWorkout = {
   guideLine: string;
   targetDistanceMeters?: number;
   targetDurationSeconds?: number;
+  targetCalories?: number;
   steps: Array<{
     label: string;
     durationSeconds: number;

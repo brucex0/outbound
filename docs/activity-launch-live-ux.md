@@ -17,15 +17,17 @@ Use one fixed, flat two-row control area at the bottom of Today. Workout choices
 
 For discoverability, a compact single-line popover points to the overflow control on at most two Today visits and says `Tap for photos and routes`. It has no action button, dismisses when the runner taps outside or leaves Today or idle setup, and is permanently suppressed after either menu action. Modal actions wait for the popover dismissal to complete so the two presentations never overlap. Its exposure uses the existing privacy-safe `feature_exposed` event without route names, photo content, or other private values.
 
-The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Selecting a manual sport builds the corresponding activity intent and preserves the user's manual goal when switching between sports.
+The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Each manual sport keeps an in-memory setup draft with its selected manual mode plus independent Distance and Time values; Run also retains Calories. Switching modes, sports, Planned, or Curated and then returning restores that draft instead of replacing it with a preset.
 Selecting `Walk` requests Motion & Fitness access when it is still undetermined so live and saved walks can include step count. Declining access does not block the walk; distance, time, and the rest of recording continue without steps.
 The selected route is an independent setup choice: switching between Planned and manual workout types, or choosing a different curated workout, rebuilds the workout intent while retaining the route and its map preview. Only the explicit Remove Route action clears it.
 
-For a manual sport, a separate horizontal row of compact text-only pills floats immediately above the dock: `Curated`, `Free`, `Distance`, `Time`, and `Calories`. This row is hidden for `Planned`; planned workouts already define their own structure and target. `Curated` opens the plan-independent workout catalog filtered to the selected sport and keeps that sport selected after a workout is chosen. `Free` records without a target, while Distance, Time, and Calories record toward one explicit target. Curated and target modes use their compact information card in the map region, and Free has no information card.
+For a manual sport, a separate horizontal row of compact text-only pills floats immediately above the dock: `Curated`, `Free`, `Distance`, and `Time`; Run also exposes `Calories`. This row is hidden for `Planned`; planned workouts already define their own structure and target. `Curated` opens the plan-independent workout catalog filtered to the selected sport and keeps that sport selected after a workout is chosen. `Free` records without a target, while Distance, Time, and Calories record toward one explicit target. Curated and target modes use their compact information card in the map region, and Free has no information card.
 
 Planned is exclusively the active plan source. It renders the prescribed Today or Up Next card as a standalone peer above the dock; it must not use a page-sized scroll container that intercepts touches outside the card. Tapping the card body opens workout details, including the explanation and one-day `Change workout` adaptation. The card footer exposes `Plan` for active-plan details and `Change plan` for the plan picker without an overflow menu. Me's Current Focus card remains a secondary plan-management entry. After an activity is completed, keep the planned card in the `Up next` state without adding a separate completion row. The Distance, Time, or Calories card opens a small anchored chooser with one row of presets and a custom input. Do not use a dimmed full-height sheet for goal values. Settings controls render only their icon and localized title; the floating Photo action is intentionally icon-only and keeps a localized accessibility label and state value. The floating goal controls are text only. Current values remain available through configuration state, the goal card/editor, and accessibility. The dock has no grabber, expansion state, setup heading, or second setup screen. The assistant uses the same shell-owned bottom-leading screen position as on Social and Me, mirrored by Photo at bottom-trailing on Today.
 
-Learn a different manual target default only after the same `Free`, `Distance`, `Time`, or `Calories` mode reaches live recording for three consecutive activities. Curated selection, exploratory taps, and canceled countdowns do not count. Store this preference locally and keep every mode available; selecting a workout or goal never starts the activity.
+Eligible planned easy and recovery runs expose `Use Calories instead`. A calorie intent has one target and no timed phases; its planner-derived distance and duration remain display-only estimates in the editor and Today card. Weight and a reliable pace learned from three valid runs, or completed calibration plus valid run history, are required. Missing body data opens a private body-profile weight prompt and resumes the original choice after save, while insufficient pace evidence leaves the planned time target unchanged. Tempo, interval, long, race-prep, and race workouts never expose this conversion.
+
+Learn a different manual mode default per sport only after the same available `Free`, `Distance`, `Time`, or Run-only `Calories` mode reaches live recording for three consecutive activities of that sport. When a targeted manual activity reaches live recording, store its canonical target value for that sport and mode immediately; Distance uses meters, Time uses seconds, and Calories uses kilocalories. Curated selection, exploratory taps, and canceled countdowns do not update learned preferences. Store these preferences locally and account-scope them, while keeping every eligible mode available; selecting a workout or goal never starts the activity.
 
 Configure launch options from the dock:
 
@@ -75,11 +77,12 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - The Apple Maps logo and Legal attribution remain unobstructed above Today cards and every live-run bottom overlay, including expanded route-guidance and group-run panels.
 - The workout row contains Planned, Run, Walk, Hike, and Bike, with supported manual sports defined in one extensible collection.
 - Planned retains the recommendation's assigned sport and the existing Today card and Up Next implementation as its peer content layer.
+- Planned easy and recovery runs may be replaced by one continuous calorie target only when private weight and reliable learned pace are available; quality, long, and race workouts retain their phases.
 - Tapping Planned only restores the prescribed workout; tapping its card body opens workout details rather than the standalone catalog.
 - The planned card exposes visible Plan and Change plan footer actions; Current Focus in Me remains a secondary plan-details entry, and More plans remains available in recommendations.
 - Tapping Calories without a saved weight prompts for a private weight value, saves it to the training profile, and resumes the calorie-goal choice; canceling leaves the current goal unchanged.
 - Completing an activity removes its Today completion summary while keeping the planned card available as `Up next`.
-- The text-only Curated, Free, Distance, Time, and Calories pills float above the dock for manual sports and remain hidden for Planned.
+- The text-only Curated, Free, Distance, and Time pills float above the dock for manual sports; Calories is additionally available for Run, and all manual-goal pills remain hidden for Planned.
 - Curated opens a catalog filtered to the selected Run, Walk, Hike, or Bike type and returns the chosen structured workout to that manual sport.
 - Target-based manual modes show their compact goal information layer, while Free shows no target card.
 - The native center tab contains exactly one control: an icon-only Start on idle Today and labeled Today navigation on Social or Me.
@@ -89,16 +92,17 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Capturing a pre-activity photo replaces the overflow ellipsis with a circular thumbnail plus an ellipsis badge; removing the photo restores the standard ellipsis.
 - Selecting a route fits its highlighted line and endpoint pins in the map and shows a compact route name/distance card with Change and Remove actions.
 - Switching workout types or planned workouts retains the selected route; only Remove Route clears it.
-- Choosing Run, Walk, Hike, or Bike updates the prepared activity without losing the selected manual goal.
+- Choosing Run, Walk, Hike, or Bike updates the prepared activity and restores that sport's draft mode and target values.
 - Choosing Walk requests Motion & Fitness access only when authorization is undetermined; the walk remains usable if access is unavailable or declined.
-- Choosing Distance, Time, or Calories updates the card without opening the chooser.
+- Choosing Distance or Time, plus Calories for Run, updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.
 - Goal and utility dock buttons display no secondary value line.
 - Photo is available for Planned and every manual sport, returns to the same retained setup after capture, and exposes preview, Retake, and Remove after a photo is added.
 - Setup choices carry into countdown and live status.
 - Countdown starts high-accuracy acquisition, communicates GPS quality without delaying `Go`, and reuses a fresh suitable fix as the zero-distance baseline.
-- Countdown cancel preserves setup; only entry into live recording advances default learning.
+- Switching among Distance, Time, and Calories restores each mode's current draft value, including values edited before any activity starts.
+- Countdown cancel preserves setup; only entry into live recording persists targets and advances default learning.
 - Edge-to-edge countdown and live backgrounds keep their top controls below the device status area.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
 - Interrupted-session recovery opens the paused live surface directly.

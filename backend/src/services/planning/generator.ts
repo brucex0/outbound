@@ -5,6 +5,8 @@ import type {
   Modality,
   PlanGenerationResult,
   PlannedWorkoutDraft,
+  PrimaryMotivation,
+  RunGoalType,
   TrainingStimulus,
 } from "./types.js";
 
@@ -18,6 +20,8 @@ export interface GeneratePlanInput {
     daysPerWeekTarget: number;
     maxSessionMinutes: number;
     riskTolerance: string;
+    primaryMotivation: PrimaryMotivation;
+    preferredRunGoalType: RunGoalType;
   };
   athleteState: AthleteTrainingStateSnapshot;
   now?: Date;
@@ -33,6 +37,8 @@ export function normalizeGoalInput(input: CreateTrainingGoalInput) {
     daysPerWeekTarget: clampInt(input.daysPerWeekTarget ?? 3, 1, 6),
     maxSessionMinutes: clampInt(input.maxSessionMinutes ?? 45, 10, 180),
     riskTolerance: input.riskTolerance ?? "balanced",
+    primaryMotivation: input.primaryMotivation ?? "generalFitness",
+    preferredRunGoalType: input.preferredRunGoalType ?? "time",
     constraints: input.constraints ?? {},
   };
 }
@@ -72,6 +78,7 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       horizonDays: 14,
       sessions: workouts.length,
       modality: input.goal.primaryModality,
+      preferredRunGoalType: input.goal.preferredRunGoalType,
       fatigueRisk: input.athleteState.fatigueRisk,
     },
   };

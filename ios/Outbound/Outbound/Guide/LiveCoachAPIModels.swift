@@ -134,6 +134,7 @@ struct CreateLiveCoachSessionRequest: Encodable {
         let guideLine: String
         let targetDistanceMeters: Double?
         let targetDurationSeconds: Int?
+        let targetCalories: Int?
         let steps: [StepDTO]
         let route: RouteDTO?
 
