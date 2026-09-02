@@ -106,8 +106,6 @@ struct RecordView: View {
     @State private var customTimeText = ""
     @State private var customCaloriesText = ""
     @State private var inlineCustomGoalKind: CustomGoalKind?
-    @State private var customGoalKind: CustomGoalKind?
-    @State private var isCustomGoalAlertPresented = false
     @FocusState private var focusedCustomGoalKind: CustomGoalKind?
     @State private var isGoalChooserPresented = false
     @State private var isCaloriesWeightPromptPresented = false
@@ -502,28 +500,6 @@ struct RecordView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .accessibilityAddTraits(.isStaticText)
             }
-        }
-        .alert(customGoalAlertTitle, isPresented: $isCustomGoalAlertPresented) {
-            if customGoalKind == .distance {
-                TextField(String(localized: "record.goal.distance_km", defaultValue: "Distance in km"), text: $customDistanceText)
-                    .keyboardType(.decimalPad)
-            } else if customGoalKind == .time {
-                TextField(String(localized: "record.goal.time_minutes", defaultValue: "Time in minutes"), text: $customTimeText)
-                    .keyboardType(.numberPad)
-            } else {
-                TextField(String(localized: "record.goal.calories_kcal", defaultValue: "Calories in kcal"), text: $customCaloriesText)
-                    .keyboardType(.numberPad)
-            }
-
-            Button(String(localized: "common.set", defaultValue: "Set")) {
-                applyCustomGoal()
-            }
-
-            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) {
-                customGoalKind = nil
-            }
-        } message: {
-            Text(customGoalAlertMessage)
         }
         .alert(
             String(localized: "record.goal.calories.weight_prompt.title", defaultValue: "Add your weight"),
@@ -1932,15 +1908,7 @@ struct RecordView: View {
 
             if let kind = selectedGoalMode.customGoalKind {
                 Button {
-                    if kind == .calories {
-                        isGoalChooserPresented = false
-                        Task { @MainActor in
-                            await Task.yield()
-                            presentCustomGoal(kind)
-                        }
-                    } else {
-                        presentInlineCustomGoal(kind)
-                    }
+                    presentInlineCustomGoal(kind)
                 } label: {
                     Label(String(localized: "record.goal.custom", defaultValue: "Custom"), systemImage: "slider.horizontal.3")
                         .font(.subheadline.weight(.semibold))
@@ -3500,9 +3468,15 @@ struct RecordView: View {
                             applyGoalAndDismiss(.calories(calories))
                         }
                     }
-                    goalPresetButton(title: String(localized: "record.goal.custom", defaultValue: "Custom"), isSelected: isCustomCaloriesSelected) {
-                        presentCustomGoalFromSheet(.calories)
+                    goalPresetButton(
+                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
+                        isSelected: inlineCustomGoalKind == .calories || isCustomCaloriesSelected
+                    ) {
+                        presentInlineCustomGoal(.calories)
                     }
+                }
+                if inlineCustomGoalKind == .calories {
+                    inlineCustomGoalInput(.calories)
                 }
                 if let estimate = calorieEditorEstimateLabel {
                     Label(estimate, systemImage: "ruler")
@@ -4115,11 +4089,6 @@ struct RecordView: View {
     }
 
     private func presentInlineCustomGoal(_ kind: CustomGoalKind) {
-        guard kind == .distance || kind == .time else {
-            presentCustomGoal(kind)
-            return
-        }
-
         if inlineCustomGoalKind != kind {
             switch kind {
             case .distance:
@@ -4139,7 +4108,7 @@ struct RecordView: View {
                 customTimeText = currentActivityGoal.targetDurationSeconds
                     .map { String(max(1, $0 / 60)) } ?? ""
             case .calories:
-                break
+                customCaloriesText = currentActivityGoal.targetCalories.map(String.init) ?? ""
             }
         }
 
@@ -4191,14 +4160,6 @@ struct RecordView: View {
             return String(localized: "record.goal.unit.minutes", defaultValue: "min")
         case .calories:
             return String(localized: "record.goal.unit.calories", defaultValue: "kcal")
-        }
-    }
-
-    private func presentCustomGoalFromSheet(_ kind: CustomGoalKind) {
-        setupSheet = nil
-        Task { @MainActor in
-            await Task.yield()
-            presentCustomGoal(kind)
         }
     }
 
@@ -4444,26 +4405,6 @@ struct RecordView: View {
         }
     }
 
-    private func presentCustomGoal(_ kind: CustomGoalKind) {
-        customGoalKind = kind
-        switch kind {
-        case .distance:
-            customDistanceText = ""
-        case .time:
-            customTimeText = ""
-        case .calories:
-            customCaloriesText = ""
-        }
-        isCustomGoalAlertPresented = true
-    }
-
-    private func applyCustomGoal() {
-        guard let customGoalKind,
-              applyCustomGoal(customGoalKind)
-        else { return }
-        self.customGoalKind = nil
-    }
-
     @discardableResult
     private func applyCustomGoal(_ kind: CustomGoalKind) -> Bool {
         guard let goal = customActivityGoal(for: kind) else { return false }
@@ -4490,13 +4431,6 @@ struct RecordView: View {
         }
     }
 
-    private var customGoalAlertTitle: String {
-        guard let customGoalKind else {
-            return String(localized: "record.goal.custom", defaultValue: "Custom goal")
-        }
-        return customGoalAlertTitle(for: customGoalKind)
-    }
-
     private func customGoalAlertTitle(for kind: CustomGoalKind) -> String {
         switch kind {
         case .distance:
@@ -4505,19 +4439,6 @@ struct RecordView: View {
             return String(localized: "record.goal.custom_time", defaultValue: "Custom time")
         case .calories:
             return String(localized: "record.goal.custom_calories", defaultValue: "Custom calories")
-        }
-    }
-
-    private var customGoalAlertMessage: String {
-        switch customGoalKind {
-        case .distance:
-            return String(localized: "record.goal.custom_distance.message", defaultValue: "Enter kilometers for this activity.")
-        case .time:
-            return String(localized: "record.goal.custom_time.message", defaultValue: "Enter minutes for this activity.")
-        case .calories:
-            return String(localized: "record.goal.custom_calories.message", defaultValue: "Enter a calorie target for this activity.")
-        case .none:
-            return ""
         }
     }
 
