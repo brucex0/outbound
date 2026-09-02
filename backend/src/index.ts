@@ -45,6 +45,7 @@ app.use("/v1/guide/*", rateLimit({ name: "guide-ai", limit: 20, windowMs: 60_000
 app.use("/v1/live-coach/*", rateLimit({ name: "live-coach", limit: 30, windowMs: 60_000, key: "identity" }));
 app.use("/v1/feedback/*", rateLimit({ name: "feedback", limit: 10, windowMs: 60_000 }));
 app.use("/v1/transcribe/*", rateLimit({ name: "transcribe", limit: 10, windowMs: 60_000 }));
+app.use("/waitlist/*", rateLimit({ name: "public-waitlist", limit: 5, windowMs: 60_000, key: "ip" }));
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
 app.get("/live/:token", liveShareViewer);

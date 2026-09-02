@@ -1,9 +1,27 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { AppEnv } from "../types/hono.js";
+import { requireDatabase } from "../services/database.js";
 import { CURRENT_TERMS_EFFECTIVE_DATE, CURRENT_TERMS_VERSION } from "../services/legal.js";
+import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono<AppEnv>();
 const IOS_APP_STORE_URL = "https://apps.apple.com/us/app/plainstride/id6800191455";
+const androidWaitlistSchema = z.object({
+  email: z.string().trim().email().max(254),
+  companyWebsite: z.string().trim().max(200).optional().default(""),
+});
+
+type AndroidWaitlistResult = "accepted" | "invalid" | "spam_rejected" | "failed";
+
+function logAndroidWaitlistSubmission(result: AndroidWaitlistResult) {
+  console.info(JSON.stringify({
+    event: "android_waitlist_submitted",
+    schemaVersion: 1,
+    source: "marketing_home",
+    result,
+  }));
+}
 
 const pageShell = ({
   title,
@@ -99,8 +117,25 @@ const pageShell = ({
     .download { padding: 110px 0; text-align: center; }
     .download-card { position: relative; max-width: 840px; margin: 0 auto; padding: clamp(42px, 8vw, 78px); border-radius: 42px; background: var(--lime); overflow: hidden; }
     .download-card::before { content: ""; position: absolute; width: 220px; height: 220px; left: -70px; bottom: -100px; border: 34px solid rgba(23,32,25,.09); border-radius: 50%; }
-    .download-card p { max-width: 540px; margin: 0 auto 28px; color: #405044; }
+    .download-intro { max-width: 540px; margin: 0 auto 34px; color: #405044; }
     .download-card .button { position: relative; }
+    .platform-grid { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-align: left; }
+    .platform-card { display: flex; min-height: 255px; flex-direction: column; align-items: flex-start; padding: 27px; border: 1px solid rgba(23,32,25,.12); border-radius: 26px; background: rgba(255,253,248,.74); }
+    .platform-card p { margin-bottom: 22px; color: #405044; }
+    .platform-card .button { margin-top: auto; }
+    .platform-label { display: inline-flex; margin-bottom: 22px; padding: 6px 10px; border-radius: 999px; background: rgba(23,32,25,.08); color: var(--moss); font-size: .7rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .waitlist-form { width: 100%; margin-top: auto; }
+    .waitlist-fields { display: flex; align-items: stretch; flex-direction: column; gap: 8px; }
+    .waitlist-fields input { min-width: 0; flex: 1; min-height: 50px; padding: 0 16px; border: 1px solid rgba(23,32,25,.2); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; outline: none; }
+    .waitlist-fields input:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(49,92,64,.14); }
+    .waitlist-fields .button { width: 100%; flex: 0 0 auto; border: 0; cursor: pointer; font: inherit; }
+    .waitlist-fields .button:disabled { cursor: wait; opacity: .68; }
+    .form-note { margin: 10px 3px 0 !important; color: #536158 !important; font-size: .76rem; line-height: 1.45 !important; }
+    .form-note a { text-underline-offset: 2px; }
+    .honeypot { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+    .toast { position: fixed; z-index: 10; right: 22px; bottom: 22px; max-width: min(380px, calc(100% - 44px)); padding: 15px 18px; border-radius: 16px; background: var(--ink); color: white; font-size: .9rem; font-weight: 650; box-shadow: 0 16px 44px rgba(23,32,25,.24); }
+    .toast.error { background: #8b382c; }
+    .toast[hidden] { display: none; }
     .legal { max-width: 760px; padding: 76px 0 120px; }
     .legal h1 { font-size: clamp(2.8rem, 7vw, 5rem); }
     .legal h2 { margin-top: 46px; font-size: 1.45rem; letter-spacing: -.025em; }
@@ -120,6 +155,8 @@ const pageShell = ({
       .feature-grid { grid-template-columns: 1fr; }
       .feature { min-height: 200px; }
       .feature-num { margin-bottom: 40px; }
+      .platform-grid { grid-template-columns: 1fr; }
+      .platform-card { min-height: auto; }
       .footer-inner { padding: 28px 0; align-items: flex-start; flex-direction: column; }
     }
   </style>
@@ -155,8 +192,8 @@ router.get("/", (c) => c.html(pageShell({
         <p class="eyebrow">Run the day you're in</p>
         <h1>A guide that keeps pace with real life.</h1>
         <p class="lede">Plainstride turns your goals, readiness, recent training, and available time into one clear answer: what should I do today?</p>
-        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a></div>
-        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Available for iPhone on the App Store</div>
+        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download for iPhone</a><a class="button secondary" href="#android-waitlist">Join the Android waitlist</a></div>
+        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Available for iPhone · Android waitlist open</div>
       </div>
     </section>
     <section class="moment wrap" id="how-it-works">
@@ -195,13 +232,114 @@ router.get("/", (c) => c.html(pageShell({
     </section>
     <section class="download wrap" id="download">
       <div class="download-card">
-        <p class="eyebrow">Available on the App Store</p>
+        <p class="eyebrow">Choose your platform</p>
         <h2>Your next run starts here.</h2>
-        <p>Download Plainstride for iPhone and get one clear, adaptive answer for what to do today.</p>
-        <a class="button" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a>
+        <p class="download-intro">Get one clear, adaptive answer for what to do today—on iPhone now, with Android coming next.</p>
+        <div class="platform-grid">
+          <section class="platform-card" aria-labelledby="iphone-title">
+            <span class="platform-label">Available now</span>
+            <h3 id="iphone-title">Plainstride for iPhone</h3>
+            <p>Download the full running companion today from the App Store.</p>
+            <a class="button" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a>
+          </section>
+          <section class="platform-card" id="android-waitlist" aria-labelledby="android-title">
+            <span class="platform-label">Coming next</span>
+            <h3 id="android-title">Plainstride for Android</h3>
+            <p>Join the waitlist and we'll email you when Android early access is ready.</p>
+            <form class="waitlist-form" id="android-waitlist-form" action="/waitlist/android" method="post">
+              <label class="honeypot" for="company-website" aria-hidden="true" hidden>Company website</label>
+              <input class="honeypot" id="company-website" name="companyWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" hidden>
+              <label class="honeypot" for="android-email">Email address</label>
+              <div class="waitlist-fields">
+                <input id="android-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="you@example.com" aria-label="Email address" required>
+                <button class="button" type="submit">Join waitlist</button>
+              </div>
+              <p class="form-note">Android launch updates only. See our <a href="/privacy">Privacy Policy</a>.</p>
+            </form>
+          </section>
+        </div>
       </div>
-    </section>`,
+    </section>
+    <div class="toast" id="waitlist-toast" role="status" aria-live="polite" hidden></div>
+    <script>
+      (function () {
+        var form = document.getElementById("android-waitlist-form");
+        var toast = document.getElementById("waitlist-toast");
+        if (!form || !toast) return;
+
+        var button = form.querySelector("button[type=submit]");
+        var hideTimer;
+        function showToast(message, isError) {
+          window.clearTimeout(hideTimer);
+          toast.textContent = message;
+          toast.classList.toggle("error", isError);
+          toast.hidden = false;
+          hideTimer = window.setTimeout(function () { toast.hidden = true; }, 5000);
+        }
+
+        form.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          var formData = new FormData(form);
+          button.disabled = true;
+          button.textContent = "Joining…";
+          form.setAttribute("aria-busy", "true");
+
+          try {
+            var response = await fetch(form.action, {
+              method: "POST",
+              headers: { "Accept": "application/json", "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: formData.get("email"),
+                companyWebsite: formData.get("companyWebsite")
+              })
+            });
+            if (!response.ok) throw new Error("waitlist_request_failed");
+            form.reset();
+            showToast("You're on the Android waitlist. We'll be in touch.", false);
+          } catch (error) {
+            showToast("We couldn't save your spot. Please try again.", true);
+          } finally {
+            button.disabled = false;
+            button.textContent = "Join waitlist";
+            form.removeAttribute("aria-busy");
+          }
+        });
+      })();
+    </script>`,
 })));
+
+router.post("/waitlist/android", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = androidWaitlistSchema.safeParse(body);
+  if (!parsed.success) {
+    logAndroidWaitlistSubmission("invalid");
+    return c.json({ error: "Enter a valid email address." }, 400);
+  }
+
+  if (parsed.data.companyWebsite) {
+    logAndroidWaitlistSubmission("spam_rejected");
+    return c.json({ ok: true }, 201);
+  }
+
+  const email = parsed.data.email.toLowerCase();
+  try {
+    await getPrismaClient().androidWaitlistEntry.upsert({
+      where: { email },
+      create: { email, source: "marketing_home" },
+      update: { source: "marketing_home" },
+    });
+    logAndroidWaitlistSubmission("accepted");
+    return c.json({ ok: true }, 201);
+  } catch {
+    logAndroidWaitlistSubmission("failed");
+    console.error("[android-waitlist] Could not persist waitlist submission.");
+    return c.json({ error: "Could not join the waitlist right now." }, 503);
+  }
+});
 
 router.get("/support", (c) => c.html(pageShell({
   title: "Plainstride Support",
@@ -211,8 +349,9 @@ router.get("/support", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Support</p>
       <h1>We're here for the run.</h1>
-      <p class="lede">Plainstride is available on the App Store. Your feedback helps us make every part of the experience clearer and more dependable.</p>
+      <p class="lede">Plainstride is available on the App Store, with an Android version in the works. Your feedback helps us make every part of the experience clearer and more dependable.</p>
       <div class="legal-card"><h3>Report a bug or suggestion</h3><p>When no activity is recording, shake your iPhone twice to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then submit the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
+      <div class="legal-card"><h3>Web and waitlist support</h3><p>Email <a href="mailto:info@plainstride.com">info@plainstride.com</a> for website help or to update or remove your Android waitlist email.</p></div>
       <h2>Common questions</h2>
       <h3>How do I install Plainstride?</h3><p><a href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download Plainstride directly from the App Store</a> on your iPhone.</p>
       <h3>Why is a permission requested?</h3><p>Location records an outdoor activity and can provide local running conditions. Apple Health import and workout saving, camera photos, voice commands, Apple Music, and live sharing are optional and requested only when you use the related feature.</p>
@@ -286,10 +425,11 @@ router.get("/privacy", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Privacy policy</p>
       <h1>Your run is personal.</h1>
-      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone app and related web services during the beta. Last updated August 31, 2026.</p>
+      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone app and related web services during the beta. Last updated September 2, 2026.</p>
       <div class="legal-card"><strong>Plainstride does not sell personal information or use it for third-party advertising.</strong></div>
       <h2>Information we handle</h2>
       <h3>Account information</h3><p>When you sign in with Apple or Google, we receive an account identifier and, when the provider makes it available, your name and email address. We also retain the version and time of your most recent Terms acceptance. We use this information to authenticate you, maintain your Plainstride account, and document the agreement governing the service.</p>
+      <h3>Android waitlist</h3><p>If you join the Android waitlist, we retain the email address you submit so we can send Android launch and early-access updates. Waitlist addresses are not added to unrelated marketing lists.</p>
       <h3>Runner and fitness information</h3><p>Plainstride may process information you provide about goals, experience, availability, readiness, workout feedback, training plans, and completed activities to provide and personalize app functionality.</p>
       <h3>Location and activity routes</h3><p>Precise location is used while recording an outdoor activity. If you explicitly start private live sharing or a live group run, current location updates are sent to our service for that feature. Approximate or one-shot location may be used to provide local weather context. Plainstride does not continuously collect location when these features are not active.</p>
       <h3>Apple Health</h3><p>With your permission, Plainstride can read relevant workout and fitness information from Apple Health and save completed workouts there. Health information stays under Apple's Health permissions and is not used for advertising. You can change access in iOS Settings or the Health app.</p>
@@ -298,8 +438,8 @@ router.get("/privacy", (c) => c.html(pageShell({
       <h2>How we use information</h2><ul><li>Provide authentication, activity recording, training guidance, progress, sharing, and support.</li><li>Personalize workouts and explain relevant adjustments.</li><li>Maintain security, prevent abuse, diagnose failures, and improve the beta.</li><li>Meet legal obligations and enforce our agreements.</li></ul>
       <h2>Service providers</h2><p>Plainstride relies on service providers including Apple services, Google Firebase and Google Cloud infrastructure, and AI or transcription providers for features you invoke. These providers process information on our behalf under their applicable terms and safeguards.</p>
       <h2>Sharing and visibility</h2><p>Your private plan, health context, and readiness reasons are not shown to other runners. Live location or group-run information is shared only when you explicitly start that feature and with people who receive or join the relevant private link. Avoid forwarding private links to people you do not trust.</p>
-      <h2>Retention and deletion</h2><p>We retain account and server-backed app information while your account is active and as reasonably needed to operate and secure the service. Feature-specific temporary data, such as active live-location updates, may be retained for a shorter operational period. You can delete your account in <strong>Me → Settings → Delete Account</strong>; this deletes associated server account data and clears local Plainstride data, subject to limited retention required for security, legal compliance, or resolving disputes.</p>
-      <h2>Your choices</h2><p>You can decline optional permissions, stop live sharing, remove locally saved activities, change Apple Health access, sign out, or delete your account. Some features will not work without their related permission.</p>
+      <h2>Retention and deletion</h2><p>We retain account and server-backed app information while your account is active and as reasonably needed to operate and secure the service. Feature-specific temporary data, such as active live-location updates, may be retained for a shorter operational period. Android waitlist email addresses are kept until the related launch updates are complete or you ask us to remove yours. You can delete your account in <strong>Me → Settings → Delete Account</strong>; this deletes associated server account data and clears local Plainstride data, subject to limited retention required for security, legal compliance, or resolving disputes.</p>
+      <h2>Your choices</h2><p>You can decline optional permissions, stop live sharing, remove locally saved activities, change Apple Health access, sign out, or delete your account. Some features will not work without their related permission. To update or remove an Android waitlist address, email <a href="mailto:info@plainstride.com">info@plainstride.com</a>.</p>
       <h2>Children</h2><p>Plainstride is not directed to children under 13, and we do not knowingly collect personal information from children under 13.</p>
       <h2>Changes</h2><p>We may update this policy as the beta evolves. We will update the date above and provide additional notice when a change is material.</p>
       <h2>Contact</h2><p>For privacy or support questions during the beta, use <a href="/support">Plainstride Support</a> or the feedback contact included in your TestFlight invitation.</p>

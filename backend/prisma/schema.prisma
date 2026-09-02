@@ -93,6 +93,16 @@ model User {
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_username_trgm_idx")
 }
 
+model AndroidWaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("marketing_home")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 model UserPreferences {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
