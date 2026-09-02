@@ -16,6 +16,7 @@ Open this when preparing a TestFlight or App Store build.
 - Production uses `https://outbound-api-186140050970.us-central1.run.app/v1` and the bundled Firebase configuration.
 - Public legal pages are `https://run.plainstride.com/terms` and `https://run.plainstride.com/privacy`. The sign-in disclosure and Settings → Legal link to them.
 - Terms acceptance is versioned. New Apple sign-ins accept the current version through the adjacent disclosure; an authenticated runner whose stored version is older sees a blocking review screen that still permits sign-out and account deletion.
+- Current Terms version 2 is effective September 1, 2026. Its fitness disclaimer explicitly covers approximate calculated health and fitness data, including calorie estimates, and states that those calculations are not medical information.
 - For a material Terms update, change both `CURRENT_TERMS_VERSION` in `backend/src/services/legal.ts` and `PlainstrideLegal.currentTermsVersion` in iOS, update the effective date and public copy, deploy the schema/backend, then release the coordinated client.
 - The app icon is a 1024-by-1024 opaque PNG.
 

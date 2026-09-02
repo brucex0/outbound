@@ -6,6 +6,8 @@ struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var personalizationStore: PersonalizationStore
     let summary: ActivitySummary
+    let activityType: ActivityType
+    let weightKilograms: Double?
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
@@ -25,6 +27,8 @@ struct PostRunSummaryView: View {
 
     init(
         summary: ActivitySummary,
+        activityType: ActivityType = .running,
+        weightKilograms: Double? = nil,
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection,
         recognitionPreviews: [RecognitionPreview],
@@ -36,6 +40,8 @@ struct PostRunSummaryView: View {
         onDiscard: @escaping () -> Void
     ) {
         self.summary = summary
+        self.activityType = activityType
+        self.weightKilograms = weightKilograms
         self.photos = photos
         self.reflection = reflection
         self.recognitionPreviews = recognitionPreviews
@@ -182,6 +188,14 @@ struct PostRunSummaryView: View {
                     value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
                     unit: measurementPreferences.unitSystem.elevationUnit
                 )
+                if let kilocalories = calorieEstimate.kilocalories {
+                    Divider().frame(height: 48)
+                    SummaryStatColumn(
+                        label: String(localized: "activity.metric.calories", defaultValue: "Calories"),
+                        value: WorkoutCalorieEstimator.calorieValue(kilocalories),
+                        unit: ""
+                    )
+                }
                 if let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM {
                     Divider().frame(height: 48)
                     SummaryStatColumn(label: String(localized: "summary.stats.avg_hr", defaultValue: "Avg HR"), value: "\(averageHeartRate)", unit: "bpm")
@@ -195,6 +209,14 @@ struct PostRunSummaryView: View {
         .padding(.horizontal, 20)
         .padding(.top, 24)
         .padding(.bottom, 8)
+    }
+
+    private var calorieEstimate: WorkoutCalorieEstimate {
+        WorkoutCalorieEstimator.estimate(
+            for: summary,
+            activityType: activityType,
+            weightKilograms: weightKilograms
+        )
     }
 
     private var reflectionSection: some View {

@@ -18,6 +18,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     @State private var shareURL: URL?
     @State private var shareImage: UIImage?
@@ -34,6 +35,7 @@ struct ActivityDetailView: View {
     @State private var isPublishRoutePresented = false
     @State private var publishedRouteMessage: String?
     @State private var hasTrackedSaveRouteExposure = false
+    @State private var hasTrackedCalorieExposure = false
 
     init(
         activity: SavedActivity,
@@ -93,18 +95,34 @@ struct ActivityDetailView: View {
     }
 
     private var activityStats: [DetailActivityStat] {
-        [
+        var stats = [
             DetailActivityStat(label: String(localized: "Distance"), value: primaryStat),
             DetailActivityStat(
                 label: String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
                 value: currentActivity.avgPace?.paceString(for: unitSystem) ?? "—"
             ),
             DetailActivityStat(label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"), value: currentActivity.durationSecs.formatted()),
+        ]
+        if showsPrivateDetails, let kilocalories = calorieEstimate.kilocalories {
+            stats.append(DetailActivityStat(
+                label: String(localized: "activity.metric.calories", defaultValue: "Calories"),
+                value: WorkoutCalorieEstimator.calorieValue(kilocalories)
+            ))
+        }
+        stats.append(
             DetailActivityStat(
                 label: String(localized: "activity.metric.elevation_gain", defaultValue: "Elev Gain"),
                 value: currentActivity.elevationGainM.map { unitSystem.elevationString(meters: $0) } ?? "—"
-            ),
-        ]
+            )
+        )
+        return stats
+    }
+
+    private var calorieEstimate: WorkoutCalorieEstimate {
+        WorkoutCalorieEstimator.estimate(
+            for: currentActivity,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
     }
 
     private var splits: [ActivitySplit] {
@@ -262,11 +280,20 @@ struct ActivityDetailView: View {
         }
         .onAppear {
             selectFirstLocatedPhotoIfNeeded()
-            guard canPublishRoute, !hasTrackedSaveRouteExposure else { return }
-            hasTrackedSaveRouteExposure = true
-            track(.init(.featureExposed, properties: [
-                .feature: .string("save_route"),
-            ]))
+            if showsPrivateDetails,
+               calorieEstimate.kilocalories != nil,
+               !hasTrackedCalorieExposure {
+                hasTrackedCalorieExposure = true
+                track(.init(.featureExposed, properties: [
+                    .feature: .string("completed_workout_calories"),
+                ]))
+            }
+            if canPublishRoute, !hasTrackedSaveRouteExposure {
+                hasTrackedSaveRouteExposure = true
+                track(.init(.featureExposed, properties: [
+                    .feature: .string("save_route"),
+                ]))
+            }
         }
     }
 
@@ -543,7 +570,7 @@ struct ActivityDetailView: View {
                 alignment: .leading,
                 spacing: 18
             ) {
-                ForEach(Array(activityStats.prefix(4))) { stat in
+                ForEach(activityStats) { stat in
                     DetailStatCell(label: stat.label, value: stat.value)
                 }
             }

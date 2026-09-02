@@ -13,7 +13,7 @@ The current view is a Strava-style layered detail page:
 
 1. **Full-screen route map** — backed by `MKMapView`, with pace-colored route segments and photo pins
 2. **Draggable information sheet** — default split position, collapsed map-first position, and expanded full-info position
-3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats
+3. **Stats hero** — large distance plus compact time/pace/elevation/HR stats and, when the inputs are reliable, a calculated calorie estimate based on activity type, distance-derived speed, duration, and the runner's latest weight
 4. **Collapsible elevation profile** — real altitude over distance, hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
 6. **Route actions** — persistent navigation-bar Share action; visible owner-only `Save Route` top-bar action for activities with usable track geometry; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
@@ -114,6 +114,7 @@ Splits are computed on-the-fly by iterating route points, computing cumulative d
 
 Most analysis features are computed locally:
 
+- **Calories** — calculated on demand from current activity facts and the latest private weight, using speed-banded MET values from the [2024 Adult Compendium of Physical Activities](https://pacompendium.com/adult-compendium/), so workout or weight edits update every completed-workout surface without persisting a stale value; hidden when weight, distance, duration, or speed plausibility is insufficient
 - **Elevation profile** — computed from persisted `SavedRoutePoint.altitude` values
 - **Splits** — computed from route points via haversine + timestamp arithmetic
 - **Pace heatmap** — computed from point-to-point distance/time deltas

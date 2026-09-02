@@ -16,7 +16,7 @@ enum PlainstrideLegalDocument: String, Sendable {
 
 enum PlainstrideLegal {
     // Increment with the backend constant whenever a material Terms update requires reacceptance.
-    static let currentTermsVersion = 1
+    static let currentTermsVersion = 2
     static let termsURL = URL(string: "https://run.plainstride.com/terms")!
     static let privacyURL = URL(string: "https://run.plainstride.com/privacy")!
     static let supportURL = URL(string: "https://run.plainstride.com/support")!

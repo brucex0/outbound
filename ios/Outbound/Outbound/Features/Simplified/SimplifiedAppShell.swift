@@ -2207,6 +2207,7 @@ private struct SimplifiedMeView: View {
     @State private var showsConnections = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
+    @State private var hasTrackedCalorieExposure = false
     let onOpenPlan: () -> Void
 
     var body: some View {
@@ -2393,6 +2394,9 @@ private struct SimplifiedMeView: View {
                                             VStack(alignment: .leading) {
                                                 Text(activity.title).font(.subheadline.weight(.semibold))
                                                 Text(activity.startedAt.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
+                                                Text(completedWorkoutStatLine(for: activity))
+                                                    .font(.caption.monospacedDigit())
+                                                    .foregroundStyle(.secondary)
                                             }
                                             Spacer()
                                             Text(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 1)).font(.subheadline.monospacedDigit())
@@ -2415,7 +2419,10 @@ private struct SimplifiedMeView: View {
             .task { await loadMeData() }
             .onAppear {
                 handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
+                trackCalorieExposureIfNeeded()
             }
+            .onChange(of: activityStore.activities) { _, _ in trackCalorieExposureIfNeeded() }
+            .onChange(of: onboardingStore.latestWeightKilograms) { _, _ in trackCalorieExposureIfNeeded() }
             .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
                 handlePendingAssistantTarget(target)
             }
@@ -2618,7 +2625,8 @@ private struct SimplifiedMeView: View {
     }
 
     private func loadTrainingProfile() async {
-        applyTrainingProfileSex(try? await APIClient.shared.fetchTrainingProfile().sexAtBirth)
+        guard let profile = try? await APIClient.shared.fetchTrainingProfile() else { return }
+        applyTrainingProfile(profile)
     }
 
     private func applyTrainingProfileSex(_ sex: TrainingProfileSex?) {
@@ -2630,6 +2638,35 @@ private struct SimplifiedMeView: View {
 
     private func applyTrainingProfile(_ profile: TrainingProfileDTO) {
         applyTrainingProfileSex(profile.sexAtBirth)
+        onboardingStore.applyTrainingProfile(profile)
+    }
+
+    private func completedWorkoutStatLine(for activity: SavedActivity) -> String {
+        let estimate = WorkoutCalorieEstimator.estimate(
+            for: activity,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
+        return WorkoutCalorieEstimator.durationAndCalorieLine(
+            durationSeconds: activity.durationSecs,
+            kilocalories: estimate.kilocalories
+        )
+    }
+
+    private func trackCalorieExposureIfNeeded() {
+        guard !hasTrackedCalorieExposure,
+              activityStore.activities.prefix(3).contains(where: {
+                  WorkoutCalorieEstimator.estimate(
+                      for: $0,
+                      weightKilograms: onboardingStore.latestWeightKilograms
+                  ).kilocalories != nil
+              })
+        else { return }
+        hasTrackedCalorieExposure = true
+        Task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("completed_workout_calories"),
+            ]))
+        }
     }
 
     private var showsCycleAwareGuidance: Bool {

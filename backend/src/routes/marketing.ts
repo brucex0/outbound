@@ -241,6 +241,7 @@ router.get("/terms", (c) => c.html(pageShell({
 
       <h2>3. Fitness, health, and outdoor safety</h2>
       <p>Training suggestions, readiness adjustments, race predictions, generated guidance, and spoken cues are informational and may be incomplete, delayed, or inaccurate. They are not a substitute for your judgment or advice from a qualified health professional. You are responsible for deciding whether an activity is appropriate for you.</p>
+      <p>Calculated health and fitness data—including calorie, pace, distance, speed, training-load, recovery, and similar estimates—may be approximate because they depend on available workout, sensor, and profile information. Do not treat these calculations as medical information, a diagnosis, or a basis for medical decisions.</p>
       <p>Stop exercising and seek appropriate care if you feel pain, faintness, illness, or danger. Do not interact with Plainstride when doing so would distract you from traffic, terrain, weather, other people, or your surroundings. Plainstride cannot guarantee route safety, GPS accuracy, live-share delivery, or that another person will monitor a shared link.</p>
 
       <h2>4. Accounts and security</h2>

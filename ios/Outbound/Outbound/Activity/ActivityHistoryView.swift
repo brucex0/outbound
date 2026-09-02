@@ -3,6 +3,7 @@ import SwiftUI
 struct ActivityHistoryView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var recognitionStore: RecognitionStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var selectedActivity: SavedActivity?
     @State private var selectedActivityIDs: Set<UUID> = []
@@ -10,6 +11,7 @@ struct ActivityHistoryView: View {
     @State private var confirmsDeletion = false
     @State private var deletionFailed = false
     @State private var visibleActivityCount = Self.pageSize
+    @State private var hasTrackedCalorieExposure = false
 
     private static let pageSize = 20
 
@@ -74,6 +76,9 @@ struct ActivityHistoryView: View {
         } message: {
             Text(String(localized: "activity.history.delete.failed.message", defaultValue: "Some activities could not be deleted. Please try again."))
         }
+        .onAppear { trackCalorieExposureIfNeeded() }
+        .onChange(of: visibleActivities) { _, _ in trackCalorieExposureIfNeeded() }
+        .onChange(of: onboardingStore.latestWeightKilograms) { _, _ in trackCalorieExposureIfNeeded() }
     }
 
     private var list: some View {
@@ -136,6 +141,23 @@ struct ActivityHistoryView: View {
                 .sourceType: .string("activity_history"),
                 .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
                 .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+            ]))
+        }
+    }
+
+    private func trackCalorieExposureIfNeeded() {
+        guard !hasTrackedCalorieExposure,
+              visibleActivities.contains(where: {
+                  WorkoutCalorieEstimator.estimate(
+                      for: $0,
+                      weightKilograms: onboardingStore.latestWeightKilograms
+                  ).kilocalories != nil
+              })
+        else { return }
+        hasTrackedCalorieExposure = true
+        Task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("completed_workout_calories"),
             ]))
         }
     }
@@ -210,11 +232,19 @@ struct ActivityHistoryView: View {
 private struct ActivityRowCard: View {
     @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     let activity: SavedActivity
     let activityStore: ActivityStore
 
     private var recognitionPreview: RecognitionPreview? {
         recognitionStore.topRecognition(for: activity.id)
+    }
+
+    private var calorieEstimate: WorkoutCalorieEstimate {
+        WorkoutCalorieEstimator.estimate(
+            for: activity,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
     }
 
     var body: some View {
@@ -233,9 +263,15 @@ private struct ActivityRowCard: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(OutboundPalette.companion)
                     }
-                    HStack(spacing: 14) {
+                    HStack(spacing: 10) {
                         Label(measurementPreferences.unitSystem.distanceString(meters: activity.distanceM), systemImage: "figure.run")
-                        Label(activity.durationSecs.formatted(), systemImage: "timer")
+                        Label(
+                            WorkoutCalorieEstimator.durationAndCalorieLine(
+                                durationSeconds: activity.durationSecs,
+                                kilocalories: calorieEstimate.kilocalories
+                            ),
+                            systemImage: "timer"
+                        )
                         if let pace = activity.avgPace {
                             Label(pace.paceString(for: measurementPreferences.unitSystem), systemImage: "speedometer")
                         }
@@ -243,6 +279,7 @@ private struct ActivityRowCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.72)
                 }
 
                 Spacer(minLength: 0)

@@ -576,6 +576,8 @@ struct RecordView: View {
     private func postRunSummarySurface(_ activity: PendingFinishedActivity) -> some View {
         PostRunSummaryView(
             summary: activity.summary,
+            activityType: activeIntent?.resolvedActivityType ?? .running,
+            weightKilograms: onboardingStore.latestWeightKilograms,
             photos: activity.photos,
             reflection: activity.reflection,
             recognitionPreviews: activity.recognitionPreviews,
@@ -1246,8 +1248,7 @@ struct RecordView: View {
 
         let estimatedEnergy = estimatedEnergyKilocalories(
             for: savedActivity,
-            sport: savedSport,
-            weightKilograms: onboardingStore.bodyProfile.weightKilograms
+            weightKilograms: onboardingStore.latestWeightKilograms
         )
         Task {
             try? await HealthKitService().saveWorkout(
@@ -1275,25 +1276,12 @@ struct RecordView: View {
 
     private func estimatedEnergyKilocalories(
         for activity: SavedActivity,
-        sport: SportType,
         weightKilograms: Double?
     ) -> Double? {
-        guard let weightKilograms, weightKilograms > 0, activity.durationSecs > 0 else { return nil }
-
-        switch sport {
-        case .run:
-            guard activity.distanceM > 0 else { return nil }
-            return weightKilograms * (activity.distanceM / 1_000)
-        case .bike:
-            let moderateCyclingMET = 8.0
-            return moderateCyclingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
-        case .walk, .hike:
-            let walkingMET = sport == .hike ? 6.0 : 3.5
-            return walkingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
-        case .swim:
-            let moderateSwimmingMET = 6.0
-            return moderateSwimmingMET * weightKilograms * (Double(activity.durationSecs) / 3_600)
-        }
+        WorkoutCalorieEstimator.estimate(
+            for: activity,
+            weightKilograms: weightKilograms
+        ).kilocalories.map(Double.init)
     }
 
     private func discardPendingActivity() {
@@ -2810,7 +2798,7 @@ struct RecordView: View {
     }
 
     private func estimatedLiveEnergyKilocalories(distanceMeters: Double, durationSeconds: Int) -> Double? {
-        guard let weight = onboardingStore.bodyProfile.weightKilograms, weight > 0, durationSeconds > 0 else { return nil }
+        guard let weight = onboardingStore.latestWeightKilograms, weight > 0, durationSeconds > 0 else { return nil }
         switch (activeIntent ?? plannedIntent ?? .freestyleRun).sport {
         case .run:
             guard distanceMeters > 0 else { return nil }

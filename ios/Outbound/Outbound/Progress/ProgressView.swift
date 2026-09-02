@@ -593,9 +593,17 @@ private struct GearMileageRow: View {
 }
 
 private struct RecentProgressActivityRow: View {
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     let activity: SavedActivity
     let notableEfforts: [ProgressBestEffort]
     let unitSystem: MeasurementUnitSystem
+
+    private var calorieEstimate: WorkoutCalorieEstimate {
+        WorkoutCalorieEstimator.estimate(
+            for: activity,
+            weightKilograms: onboardingStore.latestWeightKilograms
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -631,7 +639,10 @@ private struct RecentProgressActivityRow: View {
 
             HStack(spacing: 12) {
                 Text(unitSystem.distanceString(meters: activity.distanceM, fractionDigits: 2))
-                Text(activity.durationSecs.formatted())
+                Text(WorkoutCalorieEstimator.durationAndCalorieLine(
+                    durationSeconds: activity.durationSecs,
+                    kilocalories: calorieEstimate.kilocalories
+                ))
                 Text(activity.avgPace?.paceString(for: unitSystem) ?? "--")
                 if let elevation = activity.elevationGainM {
                     Text(unitSystem.elevationString(meters: elevation))

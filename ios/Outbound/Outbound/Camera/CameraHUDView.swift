@@ -150,7 +150,7 @@ struct CameraHUDView: View {
     }
 
     private var estimatedEnergyKilocalories: Double? {
-        guard let weight = onboardingStore.bodyProfile.weightKilograms,
+        guard let weight = onboardingStore.latestWeightKilograms,
               weight > 0,
               recorder.elapsedSeconds > 0
         else { return nil }

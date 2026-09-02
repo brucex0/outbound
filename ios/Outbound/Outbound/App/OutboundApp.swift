@@ -176,6 +176,7 @@ struct OutboundApp: App {
                 }
                 await healthAuthorizationStore.refresh()
                 await healthImportStore.refreshRecentWorkouts()
+                await refreshTrainingProfile()
                 await musicStore.refresh()
                 await personalizationStore.refresh()
                 await togetherStore.refresh()
@@ -189,6 +190,7 @@ struct OutboundApp: App {
                     await recognitionStore.refresh()
                     await socialRecognitionStore.refresh()
                     await pushNotifications.activate()
+                    await refreshTrainingProfile()
                 }
             }
     }
@@ -205,6 +207,13 @@ struct OutboundApp: App {
         .environmentObject(healthAuthorizationStore)
         .environmentObject(healthImportStore)
         .environmentObject(measurementPreferences)
+    }
+
+    private func refreshTrainingProfile() async {
+        guard authStore.user != nil,
+              let profile = try? await APIClient.shared.fetchTrainingProfile()
+        else { return }
+        onboardingStore.applyTrainingProfile(profile)
     }
 
     private func resolveStartupDestination() async {

@@ -336,13 +336,20 @@ final class OnboardingStore: ObservableObject {
     }
 
     var bodyProfile: OnboardingBodyProfile {
-        OnboardingBodyProfile(
+        if !isPresented, let completedProfile {
+            return completedProfile.bodyProfile
+        }
+        return OnboardingBodyProfile(
             ageYears: Self.integer(from: draft.ageText),
             heightCentimeters: Self.heightCentimeters(from: draft.heightText, unitSystem: draft.unitSystem),
             weightKilograms: Self.weightKilograms(from: draft.weightText, unitSystem: draft.unitSystem),
             sex: draft.sex,
             unitSystem: draft.unitSystem
         )
+    }
+
+    var latestWeightKilograms: Double? {
+        bodyProfile.weightKilograms
     }
 
     var intakeSummary: OnboardingIntakeSummary {
@@ -446,6 +453,45 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
+    func applyTrainingProfile(_ profile: TrainingProfileDTO, calendar: Calendar = .current) {
+        let unitSystem = completedProfile?.bodyProfile.unitSystem ?? draft.unitSystem
+        draft.unitSystem = unitSystem
+        draft.heightText = profile.heightCentimeters.map {
+            String(format: "%.1f", unitSystem == .metric ? $0 : $0 / 2.54)
+        } ?? ""
+        draft.weightText = profile.weightKilograms.map {
+            String(format: "%.1f", unitSystem == .metric ? $0 : $0 / 0.45359237)
+        } ?? ""
+        if let birthDate = profile.birthDate.flatMap(Self.birthDateFormatter.date(from:)) {
+            draft.ageText = calendar.dateComponents([.year], from: birthDate, to: Date()).year.map(String.init) ?? ""
+        } else {
+            draft.ageText = ""
+        }
+        switch profile.sexAtBirth {
+        case .female: draft.sex = .female
+        case .male: draft.sex = .male
+        case .none: draft.sex = .notSpecified
+        }
+
+        guard let existing = completedProfile else { return }
+        let updated = OnboardingProfile(
+            goalText: existing.goalText,
+            baselineText: existing.baselineText,
+            scheduleText: existing.scheduleText,
+            bodyProfile: OnboardingBodyProfile(
+                ageYears: Self.integer(from: draft.ageText),
+                heightCentimeters: profile.heightCentimeters,
+                weightKilograms: profile.weightKilograms,
+                sex: draft.sex,
+                unitSystem: unitSystem
+            ),
+            intakeSummary: existing.intakeSummary,
+            completedAt: existing.completedAt
+        )
+        completedProfile = updated
+        persist(profile: updated)
+    }
+
     func updateBaselineText(_ text: String) {
         draft.baselineText = text
     }
@@ -541,6 +587,15 @@ final class OnboardingStore: ObservableObject {
             return value * 0.45359237
         }
     }
+
+    private static let birthDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 private enum OnboardingIntakeAnalyzer {
