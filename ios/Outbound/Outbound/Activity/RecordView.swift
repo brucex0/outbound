@@ -1989,7 +1989,7 @@ struct RecordView: View {
 
     private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice, trackChange: Bool = true) {
         isGoalChooserPresented = false
-        if choice == .sport(.walk) {
+        if trackChange, choice == .sport(.walk) {
             let didRequestPermission = recorder.locationManager.requestWalkingStepPermissionIfNeeded { result in
                 track(.init(.motionAuthorizationCompleted, properties: [
                     .result: .string(result.rawValue)
