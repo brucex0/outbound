@@ -6,7 +6,7 @@ const router = new Hono<AppEnv>();
 
 const APPLE_TEAM_ID = "WT54K7D7VH";
 const IOS_BUNDLE_ID = "plainstride.outbound";
-const DEFAULT_IOS_STORE_URL = "https://apps.apple.com/us/search?term=Plainstride";
+const DEFAULT_IOS_STORE_URL = "https://apps.apple.com/us/app/plainstride/id6800191455";
 const DEFAULT_ANDROID_STORE_URL = "https://play.google.com/store/search?q=Plainstride&c=apps";
 
 router.get("/.well-known/apple-app-site-association", (c) => {

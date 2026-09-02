@@ -3,6 +3,7 @@ import type { AppEnv } from "../types/hono.js";
 import { CURRENT_TERMS_EFFECTIVE_DATE, CURRENT_TERMS_VERSION } from "../services/legal.js";
 
 const router = new Hono<AppEnv>();
+const IOS_APP_STORE_URL = "https://apps.apple.com/us/app/plainstride/id6800191455";
 
 const pageShell = ({
   title,
@@ -95,11 +96,11 @@ const pageShell = ({
     .feature { min-height: 245px; padding: 26px; border: 1px solid rgba(255,255,255,.12); border-radius: 26px; background: rgba(255,255,255,.035); }
     .feature-num { display: block; margin-bottom: 64px; color: var(--lime); font-size: .78rem; }
     .feature p { margin-bottom: 0; font-size: .94rem; }
-    .beta { padding: 110px 0; text-align: center; }
-    .beta-card { position: relative; max-width: 840px; margin: 0 auto; padding: clamp(42px, 8vw, 78px); border-radius: 42px; background: var(--lime); overflow: hidden; }
-    .beta-card::before { content: ""; position: absolute; width: 220px; height: 220px; left: -70px; bottom: -100px; border: 34px solid rgba(23,32,25,.09); border-radius: 50%; }
-    .beta-card p { max-width: 540px; margin: 0 auto 28px; color: #405044; }
-    .beta-card .button { position: relative; }
+    .download { padding: 110px 0; text-align: center; }
+    .download-card { position: relative; max-width: 840px; margin: 0 auto; padding: clamp(42px, 8vw, 78px); border-radius: 42px; background: var(--lime); overflow: hidden; }
+    .download-card::before { content: ""; position: absolute; width: 220px; height: 220px; left: -70px; bottom: -100px; border: 34px solid rgba(23,32,25,.09); border-radius: 50%; }
+    .download-card p { max-width: 540px; margin: 0 auto 28px; color: #405044; }
+    .download-card .button { position: relative; }
     .legal { max-width: 760px; padding: 76px 0 120px; }
     .legal h1 { font-size: clamp(2.8rem, 7vw, 5rem); }
     .legal h2 { margin-top: 46px; font-size: 1.45rem; letter-spacing: -.025em; }
@@ -130,7 +131,7 @@ const pageShell = ({
       <div class="nav-links">
         <a href="/#how-it-works">How it works</a>
         <a href="/support">Support</a>
-        <a class="nav-pill" href="/#beta">TestFlight beta</a>
+        <a class="nav-pill" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">App Store</a>
       </div>
     </nav>
   </header>
@@ -154,8 +155,8 @@ router.get("/", (c) => c.html(pageShell({
         <p class="eyebrow">Run the day you're in</p>
         <h1>A guide that keeps pace with real life.</h1>
         <p class="lede">Plainstride turns your goals, readiness, recent training, and available time into one clear answer: what should I do today?</p>
-        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="#beta">Join the beta</a></div>
-        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Private TestFlight beta now underway</div>
+        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a></div>
+        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Available for iPhone on the App Store</div>
       </div>
     </section>
     <section class="moment wrap" id="how-it-works">
@@ -192,28 +193,28 @@ router.get("/", (c) => c.html(pageShell({
         </div>
       </div>
     </section>
-    <section class="beta wrap" id="beta">
-      <div class="beta-card">
-        <p class="eyebrow">TestFlight beta</p>
-        <h2>Help shape the next mile.</h2>
-        <p>Plainstride is currently testing with a small group of runners on iPhone. Invitations are private while we tune the experience.</p>
-        <a class="button" href="/support">Beta tester guide</a>
+    <section class="download wrap" id="download">
+      <div class="download-card">
+        <p class="eyebrow">Available on the App Store</p>
+        <h2>Your next run starts here.</h2>
+        <p>Download Plainstride for iPhone and get one clear, adaptive answer for what to do today.</p>
+        <a class="button" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a>
       </div>
     </section>`,
 })));
 
 router.get("/support", (c) => c.html(pageShell({
   title: "Plainstride Support",
-  description: "Help, feedback, and beta testing guidance for Plainstride.",
+  description: "Help, feedback, and installation guidance for Plainstride.",
   path: "/support",
   content: `
     <article class="legal wrap">
       <p class="eyebrow">Support</p>
       <h1>We're here for the run.</h1>
-      <p class="lede">Plainstride is currently in TestFlight beta. Your feedback helps us make every part of the experience clearer and more dependable.</p>
+      <p class="lede">Plainstride is available on the App Store. Your feedback helps us make every part of the experience clearer and more dependable.</p>
       <div class="legal-card"><h3>Report a bug or suggestion</h3><p>When no activity is recording, shake your iPhone twice to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then submit the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
-      <h2>Common beta questions</h2>
-      <h3>How do I install Plainstride?</h3><p>Install Apple's TestFlight app, then open the private invitation sent by the Plainstride team. Test builds remain available for up to 90 days.</p>
+      <h2>Common questions</h2>
+      <h3>How do I install Plainstride?</h3><p><a href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download Plainstride directly from the App Store</a> on your iPhone.</p>
       <h3>Why is a permission requested?</h3><p>Location records an outdoor activity and can provide local running conditions. Apple Health import and workout saving, camera photos, voice commands, Apple Music, and live sharing are optional and requested only when you use the related feature.</p>
       <h3>How do I delete my account?</h3><p>Open <strong>Me → Settings → Delete Account</strong>. Plainstride may ask you to confirm your Apple or Google identity, then deletes your server account data, clears local Plainstride data, and signs you out.</p>
       <h3>Is Plainstride medical advice?</h3><p>No. Plainstride provides general fitness guidance and is not a medical service. Stop exercising and seek appropriate professional care if you feel unwell or unsafe.</p>
