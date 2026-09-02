@@ -195,8 +195,8 @@ GEMINI_VERTEX_LOCATION=global \
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000 \
 LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS=1500 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
-LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-08-30.1/manifest.json' \
-LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-08-30.1/assets' \
+LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-09-01.1/manifest.json' \
+LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-09-01.1/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 

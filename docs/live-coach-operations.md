@@ -32,7 +32,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 
 ## Current Production Deployment
 
-- Revision: `outbound-api-voicepack830`
+- Revision: `outbound-api-voicepack901`
 - Image digest: `sha256:7de1a00889be61699c975215f8db2a05b94629d92088f176e990020701cbe4f1`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
@@ -41,7 +41,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 - Planner: enabled, `gemini-3.1-pro-preview`, Vertex `global`
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
-- Fixed pack: signed `2026-08-30.1` manifest; 204 two-voice assets are published, while the enabled EN/ZH subset uses 136
+- Fixed pack: signed `2026-09-01.1` manifest; 204 two-voice assets are published, while the enabled EN/ZH subset uses 136
 - Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
 
 The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
@@ -99,7 +99,7 @@ Never copy the generated ADC file, a service-account key, or an OAuth plist into
 
 ## Fixed Pack Inventory
 
-The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-08-30.1` contains 34 semantic cues:
+The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-09-01.1` contains 34 semantic cues:
 
 | Group | Cue keys |
 | --- | --- |
@@ -117,7 +117,7 @@ Each cue has product-authored English, Spanish, and Simplified Chinese text. The
 34 cues × 3 locales × 2 active Google voices = 204 published WAV files
 ```
 
-Catalog `2026-08-30.1` adds eight purpose-built cues for early pacing, faster/slower target correction, pace instability, pace drift, recovery effort, climb entry, and crest recovery. It does not force these meanings through the older generic settle/restore scripts. Confirmations and workout controls still share an existing cue only where the script expresses the semantic event exactly. The fixed transcript must match the selected catalog entry exactly; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
+Catalog `2026-08-30.1` introduced eight purpose-built cues for early pacing, faster/slower target correction, pace instability, pace drift, recovery effort, climb entry, and crest recovery; `2026-09-01.1` retains them. It does not force these meanings through the older generic settle/restore scripts. Confirmations and workout controls still share an existing cue only where the script expresses the semantic event exactly. The fixed transcript must match the selected catalog entry exactly; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
 
 ```text
 34 cues × 2 enabled locales × 2 active Google voices = 136 active EN/ZH files
@@ -140,7 +140,7 @@ After ADC is configured:
 ./scripts/generate-live-coach-audio.sh
 ```
 
-`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-08-30.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
+`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-09-01.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
 
 Fixed generation sends Google the exact transcript and selected voice, then validates the resulting 24 kHz mono PCM WAV before storage. The wrapper generates only `plainstride_warm_1` and `plainstride_clear_1` unless an explicit `--voice-profile` is supplied. It writes content-addressed assets and `review-manifest.json` under the gitignored review directory; reruns validate and reuse completed files, and provider/model/voice identity remains part of the content hash.
 
@@ -180,7 +180,7 @@ The prior fixed-only pilot was deliberately limited to English and Simplified Ch
 - Former active runtime subset: 26 cues × 2 locales × 2 enabled voices = 104 WAV files
 - Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
 
-The pilot remains published as a rollback artifact but is no longer configured. Production uses the signed `2026-08-30.1` manifest: 34 cues × 3 locales × 2 voices = 204 assets, with 136 EN/ZH assets enabled. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
+The pilot remains published as a rollback artifact but is no longer configured. Production uses the signed `2026-09-01.1` manifest: 34 cues × 3 locales × 2 voices = 204 assets, with 136 EN/ZH assets enabled. The successor reuses 196 approved `2026-08-30.1` renditions byte-for-byte and replaces the four countdown cues for English female Aoede and Simplified Chinese male Charon with the owner-selected, independently synthesized energetic renditions. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
 
 For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The 68 Spanish assets are signed and published, but enabling Spanish still requires explicit product approval and listening QA.
 
@@ -193,7 +193,7 @@ Publish a successor only after every in-scope entry is approved:
 ```sh
 cd backend
 npm run live-coach:publish-audio -- \
-  --review-manifest .local/live-coach-review/2026-08-30.1/review-manifest.json \
+  --review-manifest .local/live-coach-review/2026-09-01.1/review-manifest.json \
   --approved
 ```
 
@@ -235,4 +235,4 @@ A trial is consumed only after the first successful dynamic cue in that workout,
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
-Production now points at `2026-08-30.1`. All 204 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 136 English/Simplified-Chinese assets and keeps the 68 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved pack plus the representative real-device latency benchmark above.
+Production now points at `2026-09-01.1`. All 204 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 136 English/Simplified-Chinese assets and keeps the 68 Spanish assets unavailable. The English female and Simplified Chinese male countdowns use the owner-selected energetic refresh; the other fixed renditions carry forward unchanged. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.

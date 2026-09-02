@@ -82,7 +82,7 @@ Route guidance has priority over ordinary coaching. A live route cue also forces
 
 ## Fixed Audio Compatibility
 
-Catalog `2026-08-30.1` gives each correction a script that preserves its coaching meaning. Existing cues are reused only when they are already an exact fit, such as steady target confirmation, measured rhythm recovery, pause/resume, segment transitions, finishes, and challenges.
+Catalog `2026-08-30.1` introduced a script for each correction that preserves its coaching meaning, and successor catalogs retain that mapping. Existing cues are reused only when they are already an exact fit, such as steady target confirmation, measured rhythm recovery, pause/resume, segment transitions, finishes, and challenges.
 
 | Semantic moments | Reviewed fallback key |
 | --- | --- |
