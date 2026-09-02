@@ -103,6 +103,13 @@ struct ActivityDetailView: View {
             ),
             DetailActivityStat(label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"), value: currentActivity.durationSecs.formatted()),
         ]
+        if currentActivity.activityType == .walking,
+           let walkingStepCount = currentActivity.walkingStepCount {
+            stats.append(DetailActivityStat(
+                label: String(localized: "activity.metric.steps", defaultValue: "Steps"),
+                value: walkingStepCount.formatted()
+            ))
+        }
         if showsPrivateDetails, let kilocalories = calorieEstimate.kilocalories {
             stats.append(DetailActivityStat(
                 label: String(localized: "activity.metric.calories", defaultValue: "Calories"),

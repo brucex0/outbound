@@ -7,6 +7,7 @@ struct ActiveSessionJournal {
     let elapsedSeconds: Int
     let wasPaused: Bool
     let activityType: ActivityType?
+    let walkingStepCount: Int?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
     let recoveryStage: ActiveSessionRecoveryStage
     let trackPoints: [JournalTrackPoint]
@@ -16,6 +17,7 @@ struct ActiveSessionJournal {
         elapsedSeconds: Int,
         wasPaused: Bool,
         activityType: ActivityType?,
+        walkingStepCount: Int? = nil,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
         recoveryStage: ActiveSessionRecoveryStage = .recording,
         trackPoints: [JournalTrackPoint] = []
@@ -24,6 +26,7 @@ struct ActiveSessionJournal {
         self.elapsedSeconds = elapsedSeconds
         self.wasPaused = wasPaused
         self.activityType = activityType
+        self.walkingStepCount = walkingStepCount
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
         self.recoveryStage = recoveryStage
         self.trackPoints = trackPoints
@@ -39,6 +42,7 @@ struct ActiveSessionJournal {
                 elapsedSeconds: metadata.elapsedSeconds,
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
+                walkingStepCount: metadata.walkingStepCount,
                 routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
                 recoveryStage: metadata.recoveryStage ?? .recording,
                 trackPoints: ActiveSessionTrackJournal.load()
@@ -60,6 +64,7 @@ struct ActiveSessionJournal {
                 elapsedSeconds: elapsedSeconds,
                 wasPaused: wasPaused,
                 activityType: activityType,
+                walkingStepCount: walkingStepCount,
                 routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
                 recoveryStage: recoveryStage
             )
@@ -106,6 +111,7 @@ struct ActiveSessionJournal {
         let elapsedSeconds: Int
         let wasPaused: Bool
         let activityType: ActivityType?
+        let walkingStepCount: Int?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
         let recoveryStage: ActiveSessionRecoveryStage?
     }

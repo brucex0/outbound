@@ -136,6 +136,7 @@ private nonisolated enum LocalActivityStore {
             distanceM: summary.distanceM,
             avgPace: summary.avgPace,
             elevationGainM: summary.elevationGainM,
+            walkingStepCount: summary.walkingStepCount,
             healthMetrics: summary.healthMetrics,
             goal: goal,
             source: source,
@@ -233,6 +234,7 @@ private nonisolated enum LocalActivityStore {
             distanceM: activity.distanceM,
             avgPace: activity.avgPace,
             elevationGainM: activity.elevationGainM,
+            walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
             source: activity.source,
@@ -390,6 +392,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let distanceM: Double
     let avgPace: Double?
     let elevationGainM: Double?
+    let walkingStepCount: Int?
     let healthMetrics: ActivityHealthMetrics?
     let goal: ActivityGoal?
     let source: ActivitySourceMetadata
@@ -436,6 +439,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         avgPace = try c.decodeIfPresent(Double.self, forKey: .avgPace)
         elevationGainM = try c.decodeIfPresent(Double.self, forKey: .elevationGainM)
             ?? c.decodeIfPresent(Double.self, forKey: .elevationM)
+        walkingStepCount = try c.decodeIfPresent(Int.self, forKey: .walkingStepCount)
         if let decodedHealthMetrics = try c.decodeIfPresent(ActivityHealthMetrics.self, forKey: .healthMetrics) {
             healthMetrics = decodedHealthMetrics
         } else if let avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate) {
@@ -474,6 +478,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     init(id: UUID, activityType: ActivityType = .running, title: String, guideNudge: String, reflection: FinishReflection?, createdAt: Date,
          startedAt: Date, endedAt: Date, durationSecs: Int, distanceM: Double,
          avgPace: Double?, elevationGainM: Double? = nil,
+         walkingStepCount: Int? = nil,
          healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil,
          source: ActivitySourceMetadata = .outboundRecorded,
          gear: ActivityGearAttachment? = nil,
@@ -490,7 +495,8 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.reflection = reflection
         self.createdAt = createdAt; self.startedAt = startedAt; self.endedAt = endedAt
         self.durationSecs = durationSecs; self.distanceM = distanceM; self.avgPace = avgPace
-        self.elevationGainM = elevationGainM; self.healthMetrics = healthMetrics
+        self.elevationGainM = elevationGainM; self.walkingStepCount = walkingStepCount
+        self.healthMetrics = healthMetrics
         self.goal = goal
         self.source = source
         self.gear = gear
@@ -518,6 +524,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case avgPace
         case elevationGainM
         case elevationM
+        case walkingStepCount
         case healthMetrics
         case avgHeartRate
         case goal
@@ -550,6 +557,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encode(distanceM, forKey: .distanceM)
         try c.encodeIfPresent(avgPace, forKey: .avgPace)
         try c.encodeIfPresent(elevationGainM, forKey: .elevationGainM)
+        try c.encodeIfPresent(walkingStepCount, forKey: .walkingStepCount)
         try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
         try c.encodeIfPresent(goal, forKey: .goal)
         try c.encode(source, forKey: .source)

@@ -188,6 +188,14 @@ struct PostRunSummaryView: View {
                     value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
                     unit: measurementPreferences.unitSystem.elevationUnit
                 )
+                if activityType == .walking, let walkingStepCount = summary.walkingStepCount {
+                    Divider().frame(height: 48)
+                    SummaryStatColumn(
+                        label: String(localized: "activity.metric.steps", defaultValue: "Steps"),
+                        value: walkingStepCount.formatted(),
+                        unit: ""
+                    )
+                }
                 if let kilocalories = calorieEstimate.kilocalories {
                     Divider().frame(height: 48)
                     SummaryStatColumn(

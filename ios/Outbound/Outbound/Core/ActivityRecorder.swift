@@ -27,6 +27,7 @@ final class ActivityRecorder: ObservableObject {
     @Published var elapsedSeconds: Int = 0
     @Published var distanceMeters: Double = 0
     @Published var elevationGainMeters: Double = 0
+    @Published private(set) var walkingStepCount: Int?
     @Published var currentPace: Double?   // secs/km
     @Published var heartRate: Int? {
         didSet {
@@ -123,6 +124,7 @@ final class ActivityRecorder: ObservableObject {
         elapsedSeconds = 0
         distanceMeters = 0
         elevationGainMeters = 0
+        walkingStepCount = nil
         currentPace = nil
         heartRate = nil
         heartRateSamples.removeAll()
@@ -219,6 +221,7 @@ final class ActivityRecorder: ObservableObject {
         )
         distanceMeters = finalDistanceMeters
         elevationGainMeters = finalElevationGainMeters
+        walkingStepCount = stoppedTrack.walkingStepCount
         let finishedRouteGuidance = routeGuidanceSnapshot
         let summary = ActivitySummary(
             startedAt: startDate ?? Date(),
@@ -227,6 +230,7 @@ final class ActivityRecorder: ObservableObject {
             distanceM: finalDistanceMeters,
             avgPace: finalDistanceMeters > 0 ? Double(elapsedSeconds) / (finalDistanceMeters / 1000) : nil,
             elevationGainM: finalElevationGainMeters,
+            walkingStepCount: stoppedTrack.walkingStepCount,
             healthMetrics: healthMetricsSummary(),
             routeGuidance: finishedRouteGuidance,
             trackPoints: reconciledTrack.points,
@@ -596,6 +600,7 @@ final class ActivityRecorder: ObservableObject {
         elapsedSeconds = currentElapsedSeconds(at: now)
         distanceMeters = locationManager.totalDistanceMeters
         elevationGainMeters = locationManager.elevationGainMeters
+        walkingStepCount = locationManager.walkingStepCount
         currentPace = locationManager.currentPaceSecsPerKm
         liveSnapshot = makeSnapshot()
         persistJournal()
@@ -616,10 +621,12 @@ final class ActivityRecorder: ObservableObject {
         locationManager.restoreTracking(
             from: points,
             segmentStartIndices: segmentStarts,
-            activityType: activityType
+            activityType: activityType,
+            walkingStepCount: journal.walkingStepCount
         )
         distanceMeters = locationManager.totalDistanceMeters
         elevationGainMeters = locationManager.elevationGainMeters
+        walkingStepCount = locationManager.walkingStepCount
         currentPace = locationManager.currentPaceSecsPerKm
         state = .paused
         recoveredSession = true
@@ -685,6 +692,7 @@ final class ActivityRecorder: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
             activityType: activityType,
+            walkingStepCount: walkingStepCount,
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
             recoveryStage: recoveryStage
         ).save()
@@ -799,6 +807,7 @@ struct ActivitySummary {
     let distanceM: Double
     let avgPace: Double?
     let elevationGainM: Double
+    let walkingStepCount: Int?
     let healthMetrics: ActivityHealthMetrics?
     let routeGuidance: RouteGuidanceSnapshot?
     let trackPoints: [CLLocation]
@@ -827,6 +836,7 @@ struct ActivitySummary {
         distanceM: Double,
         avgPace: Double?,
         elevationGainM: Double = 0,
+        walkingStepCount: Int? = nil,
         healthMetrics: ActivityHealthMetrics? = nil,
         routeGuidance: RouteGuidanceSnapshot? = nil,
         trackPoints: [CLLocation],
@@ -838,6 +848,7 @@ struct ActivitySummary {
         self.distanceM = distanceM
         self.avgPace = avgPace
         self.elevationGainM = elevationGainM
+        self.walkingStepCount = walkingStepCount
         self.healthMetrics = healthMetrics
         self.routeGuidance = routeGuidance
         self.trackPoints = trackPoints

@@ -50,6 +50,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case planningSurfaceOpened = "planning_surface_opened"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
+    case motionAuthorizationRequested = "motion_authorization_requested"
+    case motionAuthorizationCompleted = "motion_authorization_completed"
     case musicQuickPickSelected = "music_quick_pick_selected"
     case musicPlaybackStarted = "music_playback_started"
     case musicPlaybackRecoveryCompleted = "music_playback_recovery_completed"
@@ -231,6 +233,8 @@ enum ProductAnalyticsSchema {
         .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
+        .motionAuthorizationRequested: [],
+        .motionAuthorizationCompleted: [.result],
         .musicQuickPickSelected: [.selectionType],
         .musicPlaybackStarted: [.result],
         .musicPlaybackRecoveryCompleted: [.result, .sourceType],

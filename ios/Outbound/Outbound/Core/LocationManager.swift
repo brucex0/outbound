@@ -37,7 +37,16 @@ struct StoppedLocationTrack {
     let liveDistanceMeters: Double
     let motionSupplementDistanceMeters: Double
     let motionTailDistanceMeters: Double
+    let walkingStepCount: Int?
     let preservesLiveMetrics: Bool
+}
+
+enum MotionPermissionResult: String {
+    case authorized
+    case denied
+    case restricted
+    case unavailable
+    case failed
 }
 
 @MainActor
@@ -48,6 +57,7 @@ final class LocationManager: NSObject, ObservableObject {
     @Published private(set) var signalQuality: LocationSignalQuality = .unavailable
     @Published var trackPoints: [CLLocation] = []
     @Published private(set) var trackCoordinates: [CLLocationCoordinate2D] = []
+    @Published private(set) var walkingStepCount: Int?
 
     private let maximumPublishedLocationAccuracyMeters: Double = 80
     private let minimumValidPaceDistanceMeters: Double = 25
@@ -60,6 +70,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     private let pedometer = CMPedometer()
+    private let permissionPedometer = CMPedometer()
     private var activityType: ActivityType = .running
     private var filter = LocationTrackFilter(activityType: .running)
     private var probeFilter = LocationTrackFilter(activityType: .running)
@@ -87,6 +98,8 @@ final class LocationManager: NSObject, ObservableObject {
     private var pedometerDistanceMeters: Double = 0
     private var pedometerDistanceAtLastTrackPoint: Double = 0
     private var pedometerDistanceAtProbeStart: Double = 0
+    private var accumulatedWalkingStepCount = 0
+    private var isRequestingWalkingStepPermission = false
     private var lastAcceptedDeliveryAt: Date?
 #if DEBUG
     private var testDistanceMeters: Double?
@@ -126,6 +139,37 @@ final class LocationManager: NSObject, ObservableObject {
 
     func requestPermission() {
         manager.requestWhenInUseAuthorization()
+    }
+
+    @discardableResult
+    func requestWalkingStepPermissionIfNeeded(
+        completion: @escaping @MainActor (MotionPermissionResult) -> Void
+    ) -> Bool {
+        guard CMPedometer.isStepCountingAvailable() else { return false }
+        guard CMPedometer.authorizationStatus() == .notDetermined,
+              !isRequestingWalkingStepPermission
+        else { return false }
+
+        isRequestingWalkingStepPermission = true
+        let now = Date()
+        permissionPedometer.queryPedometerData(
+            from: now.addingTimeInterval(-1),
+            to: now
+        ) { [weak self] _, _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isRequestingWalkingStepPermission = false
+                let result: MotionPermissionResult = switch CMPedometer.authorizationStatus() {
+                case .authorized: .authorized
+                case .denied: .denied
+                case .restricted: .restricted
+                case .notDetermined: .failed
+                @unknown default: .failed
+                }
+                completion(result)
+            }
+        }
+        return true
     }
 
     func requestCurrentLocation() {
@@ -265,6 +309,7 @@ final class LocationManager: NSObject, ObservableObject {
             liveDistanceMeters: liveDistance,
             motionSupplementDistanceMeters: motionAssistedDistanceMeters,
             motionTailDistanceMeters: motionTail,
+            walkingStepCount: walkingStepCount,
             preservesLiveMetrics: preservesLiveMetrics
         )
         motionAssistedDistanceMeters += motionTail
@@ -284,13 +329,16 @@ final class LocationManager: NSObject, ObservableObject {
     func restoreTracking(
         from points: [CLLocation],
         segmentStartIndices restoredSegmentStarts: Set<Int> = [],
-        activityType: ActivityType = .running
+        activityType: ActivityType = .running,
+        walkingStepCount restoredWalkingStepCount: Int? = nil
     ) {
 #if DEBUG
         isSimulatingLocations = false
         simulatedSpeedMetersPerSecond = nil
 #endif
         self.activityType = activityType
+        accumulatedWalkingStepCount = max(0, restoredWalkingStepCount ?? 0)
+        walkingStepCount = activityType == .walking ? restoredWalkingStepCount : nil
         configureFilters(for: activityType)
         trackPoints = points
         trackCoordinates = points.map(\.coordinate)
@@ -432,6 +480,8 @@ final class LocationManager: NSObject, ObservableObject {
         routeMatchResult = "not_available"
         pedometerDistanceMeters = 0
         pedometerDistanceAtLastTrackPoint = 0
+        accumulatedWalkingStepCount = 0
+        walkingStepCount = nil
         previousMotionLocation = nil
         currentMotionSpeed = nil
         lastAcceptedDeliveryAt = nil
@@ -456,20 +506,34 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func startPedometerIfAvailable() {
-        guard supportsPedometerDistance else { return }
+        guard supportsPedometerDistance || supportsWalkingStepCount else { return }
         pedometer.stopUpdates()
         pedometerDistanceMeters = 0
         pedometerDistanceAtLastTrackPoint = 0
         pedometer.startUpdates(from: Date()) { [weak self] data, _ in
-            guard let distance = data?.distance?.doubleValue else { return }
+            guard let data else { return }
             Task { @MainActor in
-                self?.pedometerDistanceMeters = max(0, distance)
+                guard let self else { return }
+                if let distance = data.distance?.doubleValue {
+                    self.pedometerDistanceMeters = max(0, distance)
+                }
+                if self.supportsWalkingStepCount {
+                    self.walkingStepCount = self.accumulatedWalkingStepCount
+                        + max(0, data.numberOfSteps.intValue)
+                }
             }
         }
     }
 
     private func stopPedometer() {
+        if let walkingStepCount {
+            accumulatedWalkingStepCount = walkingStepCount
+        }
         pedometer.stopUpdates()
+    }
+
+    private var supportsWalkingStepCount: Bool {
+        activityType == .walking && CMPedometer.isStepCountingAvailable()
     }
 
     private func promoteAutoPauseProbe() {

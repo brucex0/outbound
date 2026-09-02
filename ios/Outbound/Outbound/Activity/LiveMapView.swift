@@ -171,6 +171,7 @@ struct LiveMapView: View {
                         distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
                         distanceMeters: recorder.distanceMeters,
                         energyKilocalories: estimatedEnergyKilocalories,
+                        walkingStepCount: recorder.walkingStepCount,
                         distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,

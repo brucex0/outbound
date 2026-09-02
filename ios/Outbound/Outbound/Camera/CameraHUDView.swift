@@ -77,6 +77,7 @@ struct CameraHUDView: View {
                         distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
                         distanceMeters: recorder.distanceMeters,
                         energyKilocalories: estimatedEnergyKilocalories,
+                        walkingStepCount: recorder.walkingStepCount,
                         distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,
@@ -581,6 +582,7 @@ struct SessionStatusCard: View {
     let distanceText: String
     let distanceMeters: Double
     let energyKilocalories: Double?
+    let walkingStepCount: Int?
     let distanceLabel: String
     let elevationText: String
     let elevationLabel: String
@@ -714,7 +716,7 @@ struct SessionStatusCard: View {
                 VStack(spacing: 8) {
                     SessionMetricColumn(value: paceText, label: paceLabel)
                     HStack(spacing: 8) {
-                        SessionMetricColumn(value: elevationText, label: elevationLabel)
+                        SessionMetricColumn(value: movementDetailValue, label: movementDetailLabel)
                         SessionMetricColumn(value: heartRateText, label: "HR")
                     }
                 }
@@ -729,12 +731,23 @@ struct SessionStatusCard: View {
                 }
 
                 HStack(spacing: 10) {
-                    SessionMetricColumn(value: elevationText, label: elevationLabel)
+                    SessionMetricColumn(value: movementDetailValue, label: movementDetailLabel)
                     primaryControl()
                     SessionMetricColumn(value: heartRateText, label: "HR")
                 }
             }
         }
+    }
+
+    private var movementDetailValue: String {
+        guard intent?.sport == .walk else { return elevationText }
+        return walkingStepCount?.formatted() ?? "--"
+    }
+
+    private var movementDetailLabel: String {
+        intent?.sport == .walk
+            ? String(localized: "activity.metric.steps", defaultValue: "Steps")
+            : elevationLabel
     }
 
     @ViewBuilder

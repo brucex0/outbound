@@ -1953,6 +1953,16 @@ struct RecordView: View {
 
     private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice) {
         isGoalChooserPresented = false
+        if choice == .sport(.walk) {
+            let didRequestPermission = recorder.locationManager.requestWalkingStepPermissionIfNeeded { result in
+                track(.init(.motionAuthorizationCompleted, properties: [
+                    .result: .string(result.rawValue)
+                ]))
+            }
+            if didRequestPermission {
+                track(.init(.motionAuthorizationRequested))
+            }
+        }
         let selectedRoute = plannedIntent?.preparedRoute
         let nextBaseIntent: SessionIntent
 

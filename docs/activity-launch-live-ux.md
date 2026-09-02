@@ -18,6 +18,7 @@ Use one fixed, flat two-row control area at the bottom of Today. Workout choices
 For discoverability, a compact single-line popover points to the overflow control on at most two Today visits and says `Tap for photos and routes`. It has no action button, dismisses when the runner taps outside or leaves Today or idle setup, and is permanently suppressed after either menu action. Modal actions wait for the popover dismissal to complete so the two presentations never overlap. Its exposure uses the existing privacy-safe `feature_exposed` event without route names, photo content, or other private values.
 
 The workout row contains `Planned`, `Run`, `Walk`, `Hike`, and `Bike`. `Planned` represents the recommendation itself rather than one sport, so a recommended walk remains a planned walk. Manual sports come from one extensible supported-sports list so future workout types can join without changing the selector contract. Selecting a manual sport builds the corresponding activity intent and preserves the user's manual goal when switching between sports.
+Selecting `Walk` requests Motion & Fitness access when it is still undetermined so live and saved walks can include step count. Declining access does not block the walk; distance, time, and the rest of recording continue without steps.
 The selected route is an independent setup choice: switching between Planned and manual workout types, or choosing a different curated workout, rebuilds the workout intent while retaining the route and its map preview. Only the explicit Remove Route action clears it.
 
 For a manual sport, a separate horizontal row of compact text-only pills floats immediately above the dock: `Curated`, `Free`, `Distance`, `Time`, and `Calories`. This row is hidden for `Planned`; planned workouts already define their own structure and target. `Curated` opens the plan-independent workout catalog filtered to the selected sport and keeps that sport selected after a workout is chosen. `Free` records without a target, while Distance, Time, and Calories record toward one explicit target. Curated and target modes use their compact information card in the map region, and Free has no information card.
@@ -88,6 +89,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Selecting a route fits its highlighted line and endpoint pins in the map and shows a compact route name/distance card with Change and Remove actions.
 - Switching workout types or planned workouts retains the selected route; only Remove Route clears it.
 - Choosing Run, Walk, Hike, or Bike updates the prepared activity without losing the selected manual goal.
+- Choosing Walk requests Motion & Fitness access only when authorization is undetermined; the walk remains usable if access is unavailable or declined.
 - Choosing Distance, Time, or Calories updates the card without opening the chooser.
 - The compact chooser opens only from the value card and supports presets and custom input.
 - Presets, custom targets, and selected-state labels stay synchronized.

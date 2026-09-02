@@ -209,6 +209,7 @@ final class ActivityStore: ObservableObject {
             distanceM: max(0, distanceM),
             avgPace: avgPace,
             elevationGainM: activity.elevationGainM,
+            walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
             source: editedFields.isEmpty ? activity.source : ActivitySourceMetadata(
@@ -455,6 +456,7 @@ final class ActivityStore: ObservableObject {
             distanceM: current.distanceM,
             avgPace: current.avgPace,
             elevationGainM: current.elevationGainM,
+            walkingStepCount: current.walkingStepCount,
             healthMetrics: current.healthMetrics,
             goal: current.goal,
             source: current.source,
@@ -703,6 +705,7 @@ final class ActivityStore: ObservableObject {
             distanceM: activity.distanceM,
             avgPace: activity.avgPace,
             elevationGainM: activity.elevationGainM,
+            walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
             source: activity.source,

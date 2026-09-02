@@ -239,19 +239,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride uses motion sensors to improve pace and cadence tracking."
+            "value" : "Plainstride uses motion sensors to count steps and improve pace and cadence tracking."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride usa los sensores de movimiento para mejorar el registro del ritmo y la cadencia."
+            "value" : "Plainstride usa los sensores de movimiento para contar tus pasos y mejorar el registro del ritmo y la cadencia."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平步青云使用运动传感器来提高配速和步频记录的准确性。"
+            "value" : "平步青云使用运动传感器记录步数，并提高配速和步频记录的准确性。"
           }
         }
       }
