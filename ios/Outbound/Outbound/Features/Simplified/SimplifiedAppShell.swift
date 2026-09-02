@@ -116,6 +116,10 @@ struct SimplifiedAppShell: View {
                 .padding(.bottom, 40)
             }
         }
+        .ignoresSafeArea(
+            .keyboard,
+            edges: selection == .today && activitySessionState == .idle ? .bottom : []
+        )
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
                 screenName: assistantScreenName,

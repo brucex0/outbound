@@ -315,6 +315,7 @@ struct RecordView: View {
 
     var body: some View {
         recordStateSurface
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .task {
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
@@ -3752,10 +3753,15 @@ struct RecordView: View {
 
     private func inlineCustomGoalInput(_ kind: CustomGoalKind) -> some View {
         HStack(spacing: 8) {
-            TextField(customGoalAlertTitle(for: kind), text: customGoalTextBinding(for: kind))
+            TextField(
+                customGoalAlertTitle(for: kind),
+                text: customGoalTextBinding(for: kind),
+                prompt: Text("0")
+            )
                 .keyboardType(kind == .distance ? .decimalPad : .numberPad)
-                .font(.title3.monospacedDigit().weight(.semibold))
-                .multilineTextAlignment(.trailing)
+                .font(.body.monospacedDigit().weight(.semibold))
+                .multilineTextAlignment(.leading)
+                .frame(width: 80, alignment: .leading)
                 .focused($focusedCustomGoalKind, equals: kind)
 
             Text(customGoalUnitLabel(for: kind))
@@ -3767,23 +3773,25 @@ struct RecordView: View {
                 applyInlineCustomGoal(kind)
             } label: {
                 Image(systemName: "checkmark")
-                    .font(.subheadline.weight(.bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
                     .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
             .disabled(customActivityGoal(for: kind) == nil)
             .accessibilityLabel(String(localized: "common.set", defaultValue: "Set"))
         }
         .padding(.leading, 12)
-        .padding(.trailing, 3)
-        .frame(minHeight: 50)
+        .padding(.trailing, 2)
+        .frame(minHeight: 48)
         .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var currentActivityGoal: ActivityGoal {
@@ -4160,7 +4168,8 @@ struct RecordView: View {
 
         inlineCustomGoalKind = kind
         Task { @MainActor in
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(200))
+            guard inlineCustomGoalKind == kind else { return }
             focusedCustomGoalKind = kind
         }
     }
