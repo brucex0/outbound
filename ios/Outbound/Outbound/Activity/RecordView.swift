@@ -1925,9 +1925,7 @@ struct RecordView: View {
             }
 
             if selectedGoalMode == .calories, let estimate = calorieEditorEstimateLabel {
-                Label(estimate, systemImage: "ruler")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                calorieEstimateCallout(estimate)
             }
         }
         .padding(14)
@@ -1956,7 +1954,10 @@ struct RecordView: View {
             return String(localized: "record.goal.tap_change_workout", defaultValue: "Tap to change workout")
         case .freestyle:
             return String(localized: "record.goal.freestyle.short_hint", defaultValue: "Start and move by feel")
-        case .distance, .time, .calories:
+        case .calories:
+            return calorieEditorEstimateLabel
+                ?? String(localized: "record.goal.tap_change", defaultValue: "Tap to change")
+        case .distance, .time:
             return String(localized: "record.goal.tap_change", defaultValue: "Tap to change")
         }
     }
@@ -3497,9 +3498,7 @@ struct RecordView: View {
                     inlineCustomGoalInput(.calories)
                 }
                 if let estimate = calorieEditorEstimateLabel {
-                    Label(estimate, systemImage: "ruler")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    calorieEstimateCallout(estimate)
                 }
             }
 
@@ -3995,6 +3994,23 @@ struct RecordView: View {
             distance,
             minutes
         )
+    }
+
+    private func calorieEstimateCallout(_ estimate: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "ruler")
+                .foregroundStyle(theme.accentColor)
+            Text(estimate)
+                .foregroundStyle(.primary)
+        }
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(
+            theme.accentColor.opacity(0.12),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .accessibilityElement(children: .combine)
     }
 
     private func isSelectedDistancePreset(_ meters: Double) -> Bool {
