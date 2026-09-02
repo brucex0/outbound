@@ -78,7 +78,6 @@ router.post("/apple", zValidator("json", sessionClient.extend({
 })), async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json");
-  if (body.termsVersion > CURRENT_TERMS_VERSION) return termsVersionError(c);
   try {
     const claims = await verifyAppleIdentityToken(body.identityToken, body.rawNonce);
     const displayName = [body.givenName, body.familyName].filter(Boolean).join(" ") || null;
@@ -122,7 +121,6 @@ router.post("/debug/persona", zValidator("json", sessionClient.extend({ persona:
   if (process.env.NODE_ENV === "production" || process.env.AUTH_ENABLE_DEBUG_PERSONAS !== "true") return c.json({ error: "Not found." }, 404);
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json"); const email = `${body.persona}-runner@plainstride.test`;
-  if (body.termsVersion > CURRENT_TERMS_VERSION) return termsVersionError(c);
   const user = await resolveAuthenticatedAppUser({ subject: `debug:${body.persona}`, authenticationKind: "provider", provider: "firebase",
     providerSubject: `debug:${body.persona}`, internalUserId: null, sessionId: null, email, emails: [email], emailVerified: true,
     name: `${body.persona[0]!.toUpperCase()}${body.persona.slice(1)} Runner`, picture: null, phoneNumber: null, phoneNumbers: [] });
