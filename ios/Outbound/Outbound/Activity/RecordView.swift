@@ -1873,7 +1873,10 @@ struct RecordView: View {
                 switch selectedGoalMode {
                 case .distance:
                     ForEach(distanceGoalPresets) { preset in
-                        goalPresetButton(title: preset.title, isSelected: isSelectedDistancePreset(preset.meters)) {
+                        goalPresetButton(
+                            title: preset.title,
+                            isSelected: inlineCustomGoalKind != .distance && isSelectedDistancePreset(preset.meters)
+                        ) {
                             dismissInlineCustomGoalInput()
                             applyGoal(.distanceMeters(preset.meters))
                             isGoalChooserPresented = false
@@ -1881,7 +1884,10 @@ struct RecordView: View {
                     }
                 case .time:
                     ForEach(timeGoalPresets) { preset in
-                        goalPresetButton(title: preset.title, isSelected: isSelectedTimePreset(preset.seconds)) {
+                        goalPresetButton(
+                            title: preset.title,
+                            isSelected: inlineCustomGoalKind != .time && isSelectedTimePreset(preset.seconds)
+                        ) {
                             dismissInlineCustomGoalInput()
                             applyGoal(.timeSeconds(preset.seconds))
                             isGoalChooserPresented = false
@@ -1889,7 +1895,10 @@ struct RecordView: View {
                     }
                 case .calories:
                     ForEach(calorieGoalPresets, id: \.self) { calories in
-                        goalPresetButton(title: calorieGoalLabel(calories), isSelected: currentActivityGoal.targetCalories == calories) {
+                        goalPresetButton(
+                            title: calorieGoalLabel(calories),
+                            isSelected: inlineCustomGoalKind != .calories && currentActivityGoal.targetCalories == calories
+                        ) {
                             dismissInlineCustomGoalInput()
                             applyGoal(.calories(calories))
                             isGoalChooserPresented = false
@@ -1898,6 +1907,21 @@ struct RecordView: View {
                 case .planned, .curated, .freestyle:
                     EmptyView()
                 }
+
+                if let kind = selectedGoalMode.customGoalKind {
+                    goalPresetButton(
+                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
+                        isSelected: inlineCustomGoalKind == kind || isCustomGoalSelected(kind)
+                    ) {
+                        presentInlineCustomGoal(kind)
+                    }
+                }
+            }
+
+            if let kind = selectedGoalMode.customGoalKind,
+               inlineCustomGoalKind == kind {
+                inlineCustomGoalInput(kind)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             if selectedGoalMode == .calories, let estimate = calorieEditorEstimateLabel {
@@ -1905,25 +1929,10 @@ struct RecordView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            if let kind = selectedGoalMode.customGoalKind {
-                Button {
-                    presentInlineCustomGoal(kind)
-                } label: {
-                    Label(String(localized: "record.goal.custom", defaultValue: "Custom"), systemImage: "slider.horizontal.3")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 38)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityAddTraits(inlineCustomGoalKind == kind ? .isSelected : [])
-
-                if inlineCustomGoalKind == kind {
-                    inlineCustomGoalInput(kind)
-                }
-            }
         }
         .padding(14)
         .frame(idealWidth: 330)
+        .animation(.easeInOut(duration: 0.18), value: inlineCustomGoalKind)
     }
 
     private var launchGoalValue: String {
@@ -3430,7 +3439,10 @@ struct RecordView: View {
             case .distance:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
                     ForEach(distanceGoalPresets) { preset in
-                        goalPresetButton(title: preset.title, isSelected: isSelectedDistancePreset(preset.meters)) {
+                        goalPresetButton(
+                            title: preset.title,
+                            isSelected: inlineCustomGoalKind != .distance && isSelectedDistancePreset(preset.meters)
+                        ) {
                             applyGoalAndDismiss(.distanceMeters(preset.meters))
                         }
                     }
@@ -3447,7 +3459,10 @@ struct RecordView: View {
             case .time:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
                     ForEach(timeGoalPresets) { preset in
-                        goalPresetButton(title: preset.title, isSelected: isSelectedTimePreset(preset.seconds)) {
+                        goalPresetButton(
+                            title: preset.title,
+                            isSelected: inlineCustomGoalKind != .time && isSelectedTimePreset(preset.seconds)
+                        ) {
                             applyGoalAndDismiss(.timeSeconds(preset.seconds))
                         }
                     }
@@ -3464,7 +3479,10 @@ struct RecordView: View {
             case .calories:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
                     ForEach(calorieGoalPresets, id: \.self) { calories in
-                        goalPresetButton(title: calorieGoalLabel(calories), isSelected: currentActivityGoal.targetCalories == calories) {
+                        goalPresetButton(
+                            title: calorieGoalLabel(calories),
+                            isSelected: inlineCustomGoalKind != .calories && currentActivityGoal.targetCalories == calories
+                        ) {
                             applyGoalAndDismiss(.calories(calories))
                         }
                     }
@@ -3734,34 +3752,38 @@ struct RecordView: View {
     }
 
     private func inlineCustomGoalInput(_ kind: CustomGoalKind) -> some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                TextField(customGoalAlertTitle(for: kind), text: customGoalTextBinding(for: kind))
-                    .keyboardType(kind == .distance ? .decimalPad : .numberPad)
-                    .font(.title3.monospacedDigit().weight(.semibold))
-                    .multilineTextAlignment(.trailing)
-                    .focused($focusedCustomGoalKind, equals: kind)
+        HStack(spacing: 8) {
+            TextField(customGoalAlertTitle(for: kind), text: customGoalTextBinding(for: kind))
+                .keyboardType(kind == .distance ? .decimalPad : .numberPad)
+                .font(.title3.monospacedDigit().weight(.semibold))
+                .multilineTextAlignment(.trailing)
+                .focused($focusedCustomGoalKind, equals: kind)
 
-                Text(customGoalUnitLabel(for: kind))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 44)
-            .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
-            }
+            Text(customGoalUnitLabel(for: kind))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .fixedSize()
 
-            Button(String(localized: "common.set", defaultValue: "Set")) {
+            Button {
                 applyInlineCustomGoal(kind)
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
-            .controlSize(.large)
+            .buttonStyle(.plain)
             .disabled(customActivityGoal(for: kind) == nil)
+            .accessibilityLabel(String(localized: "common.set", defaultValue: "Set"))
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 3)
+        .frame(minHeight: 50)
+        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
         }
     }
 
@@ -3998,6 +4020,14 @@ struct RecordView: View {
     private var isCustomCaloriesSelected: Bool {
         guard let calories = currentActivityGoal.targetCalories else { return false }
         return !calorieGoalPresets.contains(calories)
+    }
+
+    private func isCustomGoalSelected(_ kind: CustomGoalKind) -> Bool {
+        switch kind {
+        case .distance: return isCustomDistanceSelected
+        case .time: return isCustomTimeSelected
+        case .calories: return isCustomCaloriesSelected
+        }
     }
 
     @discardableResult
