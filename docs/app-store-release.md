@@ -5,7 +5,7 @@ Open this when preparing a TestFlight or App Store build.
 ## Repository Readiness
 
 - Customer-facing app name: **Plainstride**. The existing internal target, scheme, bundle IDs, backend identifiers, and migration-safe storage names remain `Outbound` where changing them would break integrations or continuity.
-- Public version `1.0 (23)` is released. The current release candidate is `1.1 (35)`.
+- Public version `1.1 (35)` is released. The current release candidate is `1.2 (36)`.
 - App bundle ID: `plainstride.outbound`.
 - Live Activity extension bundle ID: `plainstride.outbound.liveactivity`.
 - Version 1 supports iPhone only. `TARGETED_DEVICE_FAMILY` is `1` for every target and the plist has no iPad orientation declaration.
@@ -15,9 +15,9 @@ Open this when preparing a TestFlight or App Store build.
 - `ITSAppUsesNonExemptEncryption` is `false` because the app relies on exempt operating-system and HTTPS encryption and does not implement proprietary cryptography. Reassess this if cryptography is added.
 - Production uses `https://outbound-api-186140050970.us-central1.run.app/v1` and the bundled Firebase configuration.
 - Public legal pages are `https://run.plainstride.com/terms` and `https://run.plainstride.com/privacy`. The sign-in disclosure and Settings → Legal link to them.
-- Terms acceptance is versioned. New Apple sign-ins accept the current version through the adjacent disclosure; an authenticated runner whose stored version is older sees a blocking review screen that still permits sign-out and account deletion.
+- Terms acceptance is versioned. New Apple sign-ins accept the current version through the adjacent disclosure; an authenticated runner whose stored version is older sees a blocking review screen that still permits sign-out and account deletion. A terms-aware older client may authenticate against a newer Terms version because the session response supplies the current version and immediately drives that same blocking review screen.
 - Current Terms version 2 is effective September 1, 2026. Its fitness disclaimer explicitly covers approximate calculated health and fitness data, including calorie estimates, and states that those calculations are not medical information.
-- For a material Terms update, change both `CURRENT_TERMS_VERSION` in `backend/src/services/legal.ts` and `PlainstrideLegal.currentTermsVersion` in iOS, update the effective date and public copy, deploy the schema/backend, then release the coordinated client.
+- For a material Terms update, change both `CURRENT_TERMS_VERSION` in `backend/src/services/legal.ts` and `PlainstrideLegal.currentTermsVersion` in iOS, update the effective date and public copy, deploy the schema/backend, then release the coordinated client. Before the new client is public, verify the current public build can sign in and is routed to reacceptance by the server-provided version.
 - The app icon is a 1024-by-1024 opaque PNG.
 
 ## Before Archiving

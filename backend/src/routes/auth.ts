@@ -78,7 +78,7 @@ router.post("/apple", zValidator("json", sessionClient.extend({
 })), async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json");
-  if (body.termsVersion !== CURRENT_TERMS_VERSION) return termsVersionError(c);
+  if (body.termsVersion > CURRENT_TERMS_VERSION) return termsVersionError(c);
   try {
     const claims = await verifyAppleIdentityToken(body.identityToken, body.rawNonce);
     const displayName = [body.givenName, body.familyName].filter(Boolean).join(" ") || null;
@@ -87,7 +87,17 @@ router.post("/apple", zValidator("json", sessionClient.extend({
       emails: claims.email ? [claims.email] : [], emailVerified: claims.email_verified === true || claims.email_verified === "true",
       name: displayName, picture: null, phoneNumber: null, phoneNumbers: [] });
     if (!user) throw new Error("authentication_unavailable");
-    const acceptedUser = await acceptCurrentTerms(user, body.termsVersion);
+    const acceptedUser = body.termsVersion === CURRENT_TERMS_VERSION
+      ? await acceptCurrentTerms(user, body.termsVersion)
+      : user;
+    if (body.termsVersion < CURRENT_TERMS_VERSION) {
+      console.info("[auth] authenticated client requires terms reacceptance", {
+        code: "terms_reacceptance_required",
+        presentedTermsVersion: body.termsVersion,
+        currentTermsVersion: CURRENT_TERMS_VERSION,
+        provider: "apple",
+      });
+    }
     return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
   } catch (error) { return authError(c, error); }
 });
@@ -112,12 +122,22 @@ router.post("/debug/persona", zValidator("json", sessionClient.extend({ persona:
   if (process.env.NODE_ENV === "production" || process.env.AUTH_ENABLE_DEBUG_PERSONAS !== "true") return c.json({ error: "Not found." }, 404);
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const body = c.req.valid("json"); const email = `${body.persona}-runner@plainstride.test`;
-  if (body.termsVersion !== CURRENT_TERMS_VERSION) return termsVersionError(c);
+  if (body.termsVersion > CURRENT_TERMS_VERSION) return termsVersionError(c);
   const user = await resolveAuthenticatedAppUser({ subject: `debug:${body.persona}`, authenticationKind: "provider", provider: "firebase",
     providerSubject: `debug:${body.persona}`, internalUserId: null, sessionId: null, email, emails: [email], emailVerified: true,
     name: `${body.persona[0]!.toUpperCase()}${body.persona.slice(1)} Runner`, picture: null, phoneNumber: null, phoneNumbers: [] });
   if (!user) return c.json({ error: "Authentication unavailable." }, 503);
-  const acceptedUser = await acceptCurrentTerms(user, body.termsVersion);
+  const acceptedUser = body.termsVersion === CURRENT_TERMS_VERSION
+    ? await acceptCurrentTerms(user, body.termsVersion)
+    : user;
+  if (body.termsVersion < CURRENT_TERMS_VERSION) {
+    console.info("[auth] authenticated client requires terms reacceptance", {
+      code: "terms_reacceptance_required",
+      presentedTermsVersion: body.termsVersion,
+      currentTermsVersion: CURRENT_TERMS_VERSION,
+      provider: "debug_persona",
+    });
+  }
   return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
 });
 
