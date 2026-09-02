@@ -33,7 +33,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 ## Current Production Deployment
 
 - Revision: `outbound-api-voicepack901`
-- Image digest: `sha256:7de1a00889be61699c975215f8db2a05b94629d92088f176e990020701cbe4f1`
+- Image digest: `sha256:6afba19cff0585e2f095f564f63330db2a35abf3d144ac87d942fe0bfd23e53f`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
