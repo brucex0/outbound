@@ -271,6 +271,7 @@ struct LiveMapView: View {
             activityType: intent?.resolvedActivityType ?? .running,
             distanceMeters: recorder.distanceMeters,
             durationSeconds: recorder.elapsedSeconds,
+            elevationGainMeters: recorder.elevationGainMeters,
             weightKilograms: onboardingStore.latestWeightKilograms
         )
     }

@@ -20,7 +20,7 @@ struct WorkoutCalorieEstimate: Equatable, Sendable {
     }
 }
 
-struct PlannedRunCalorieEstimate: Equatable, Sendable {
+struct PlannedCalorieEstimate: Equatable, Sendable {
     let targetCalories: Int
     let distanceMeters: Double
     let durationSeconds: Int
@@ -37,6 +37,7 @@ struct LearnedRunPace: Equatable, Sendable {
 /// weight measurements cannot leave a stale calorie value behind.
 enum WorkoutCalorieEstimator {
     private static let validRunPaceRange = 150.0...1_200.0
+    private static let defaultWalkingSpeedKilometersPerHour = 4.8
 
     static func estimate(
         for activity: SavedActivity,
@@ -49,6 +50,7 @@ enum WorkoutCalorieEstimator {
             activityType: activity.activityType,
             distanceMeters: activity.distanceM,
             durationSeconds: activity.durationSecs,
+            elevationGainMeters: activity.elevationGainM ?? 0,
             weightKilograms: weightKilograms
         )
     }
@@ -62,6 +64,7 @@ enum WorkoutCalorieEstimator {
             activityType: activityType,
             distanceMeters: summary.distanceM,
             durationSeconds: summary.durationSecs,
+            elevationGainMeters: summary.elevationGainM,
             weightKilograms: weightKilograms
         )
     }
@@ -70,6 +73,7 @@ enum WorkoutCalorieEstimator {
         activityType: ActivityType,
         distanceMeters: Double,
         durationSeconds: Int,
+        elevationGainMeters: Double = 0,
         weightKilograms: Double?
     ) -> WorkoutCalorieEstimate {
         guard let weightKilograms,
@@ -96,15 +100,21 @@ enum WorkoutCalorieEstimator {
             return .unavailable(.implausibleSpeed)
         }
 
-        let rawKilocalories: Double
+        let levelKilocalories: Double
         if activityType == .running {
-            rawKilocalories = weightKilograms * (distanceMeters / 1_000)
+            levelKilocalories = weightKilograms * (distanceMeters / 1_000)
         } else {
-            rawKilocalories = metabolicEquivalent(
+            levelKilocalories = metabolicEquivalent(
                 for: activityType,
                 speedKilometersPerHour: speedKilometersPerHour
             ) * weightKilograms * durationHours
         }
+        let rawKilocalories = levelKilocalories + uphillEnergyKilocalories(
+            activityType: activityType,
+            elevationGainMeters: elevationGainMeters,
+            distanceMeters: distanceMeters,
+            weightKilograms: weightKilograms
+        )
 
         guard rawKilocalories.isFinite, rawKilocalories >= 10, rawKilocalories <= 10_000 else {
             return .unavailable(.implausibleSpeed)
@@ -119,23 +129,37 @@ enum WorkoutCalorieEstimator {
         activityType: ActivityType,
         distanceMeters: Double,
         durationSeconds: Int,
+        elevationGainMeters: Double,
         weightKilograms: Double?
     ) -> Double? {
         guard let weightKilograms,
               weightKilograms.isFinite,
               (25...350).contains(weightKilograms),
               durationSeconds > 0 else { return nil }
+        let levelKilocalories: Double
         switch activityType {
         case .running:
             guard distanceMeters > 0 else { return nil }
-            return weightKilograms * (distanceMeters / 1_000)
+            levelKilocalories = weightKilograms * (distanceMeters / 1_000)
         case .cycling:
-            return 8 * weightKilograms * (Double(durationSeconds) / 3_600)
+            levelKilocalories = 8 * weightKilograms * (Double(durationSeconds) / 3_600)
         case .walking:
-            return 3.5 * weightKilograms * (Double(durationSeconds) / 3_600)
+            guard distanceMeters > 0 else { return nil }
+            let durationHours = Double(durationSeconds) / 3_600
+            let speedKilometersPerHour = (distanceMeters / 1_000) / durationHours
+            let walkingMET = plausibleSpeedRange(for: .walking).contains(speedKilometersPerHour)
+                ? metabolicEquivalent(for: .walking, speedKilometersPerHour: speedKilometersPerHour)
+                : 3.5
+            levelKilocalories = walkingMET * weightKilograms * durationHours
         case .hiking, .swimming:
-            return 6 * weightKilograms * (Double(durationSeconds) / 3_600)
+            levelKilocalories = 6 * weightKilograms * (Double(durationSeconds) / 3_600)
         }
+        return levelKilocalories + uphillEnergyKilocalories(
+            activityType: activityType,
+            elevationGainMeters: elevationGainMeters,
+            distanceMeters: distanceMeters,
+            weightKilograms: weightKilograms
+        )
     }
 
     static func resolveLearnedRunPace(
@@ -166,7 +190,7 @@ enum WorkoutCalorieEstimator {
         targetCalories: Int,
         weightKilograms: Double?,
         paceSecondsPerKilometer: Double?
-    ) -> PlannedRunCalorieEstimate? {
+    ) -> PlannedCalorieEstimate? {
         guard let weightKilograms,
               (25...350).contains(weightKilograms),
               let paceSecondsPerKilometer,
@@ -174,7 +198,7 @@ enum WorkoutCalorieEstimator {
               targetCalories > 0 else { return nil }
         let roundedCalories = max(50, Int((Double(targetCalories) / 25).rounded()) * 25)
         let distanceKilometers = Double(roundedCalories) / weightKilograms
-        return PlannedRunCalorieEstimate(
+        return PlannedCalorieEstimate(
             targetCalories: roundedCalories,
             distanceMeters: distanceKilometers * 1_000,
             durationSeconds: max(60, Int((distanceKilometers * paceSecondsPerKilometer).rounded()))
@@ -185,7 +209,7 @@ enum WorkoutCalorieEstimator {
         durationSeconds: Int,
         weightKilograms: Double?,
         paceSecondsPerKilometer: Double?
-    ) -> PlannedRunCalorieEstimate? {
+    ) -> PlannedCalorieEstimate? {
         guard let weightKilograms,
               let paceSecondsPerKilometer,
               durationSeconds > 0,
@@ -195,6 +219,30 @@ enum WorkoutCalorieEstimator {
             targetCalories: Int((weightKilograms * distanceKilometers).rounded()),
             weightKilograms: weightKilograms,
             paceSecondsPerKilometer: paceSecondsPerKilometer
+        )
+    }
+
+    static func plannedWalk(
+        targetCalories: Int,
+        weightKilograms: Double?,
+        speedKilometersPerHour: Double = defaultWalkingSpeedKilometersPerHour
+    ) -> PlannedCalorieEstimate? {
+        guard let weightKilograms,
+              (25...350).contains(weightKilograms),
+              targetCalories > 0,
+              plausibleSpeedRange(for: .walking).contains(speedKilometersPerHour)
+        else { return nil }
+
+        let roundedCalories = max(50, Int((Double(targetCalories) / 25).rounded()) * 25)
+        let metabolicEquivalent = metabolicEquivalent(
+            for: .walking,
+            speedKilometersPerHour: speedKilometersPerHour
+        )
+        let durationHours = Double(roundedCalories) / (metabolicEquivalent * weightKilograms)
+        return PlannedCalorieEstimate(
+            targetCalories: roundedCalories,
+            distanceMeters: speedKilometersPerHour * durationHours * 1_000,
+            durationSeconds: max(60, Int((durationHours * 3_600).rounded()))
         )
     }
 
@@ -300,5 +348,37 @@ enum WorkoutCalorieEstimator {
             default: 10.5
             }
         }
+    }
+
+    private static func uphillEnergyKilocalories(
+        activityType: ActivityType,
+        elevationGainMeters: Double,
+        distanceMeters: Double,
+        weightKilograms: Double
+    ) -> Double {
+        guard elevationGainMeters.isFinite,
+              elevationGainMeters > 0,
+              distanceMeters.isFinite,
+              distanceMeters > 0
+        else { return 0 }
+
+        // The level-work formulas do not account for climbing. These coefficients
+        // integrate the uphill term in the ACSM walking/running metabolic equations;
+        // cycling uses gravitational work at 25% mechanical efficiency. Elevation is
+        // capped by traveled distance as a final guard against bad altitude samples.
+        let kilocaloriesPerKilogramMeter: Double
+        switch activityType {
+        case .running:
+            kilocaloriesPerKilogramMeter = 0.0045
+        case .walking, .hiking:
+            kilocaloriesPerKilogramMeter = 0.009
+        case .cycling:
+            kilocaloriesPerKilogramMeter = 9.80665 / (4_184 * 0.25)
+        case .swimming:
+            return 0
+        }
+        return weightKilograms
+            * min(elevationGainMeters, distanceMeters)
+            * kilocaloriesPerKilogramMeter
     }
 }

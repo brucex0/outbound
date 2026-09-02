@@ -128,6 +128,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case sourceType = "source_type"
     case timestampSource = "timestamp_source"
     case direction
+    case activityType = "activity_type"
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
     case progressPercent = "progress_percent"
@@ -198,12 +199,12 @@ enum ProductAnalyticsSchema {
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activitySetupViewed: [.entrySource],
-        .activityConfigurationChanged: [.changeType, .selectionType, .goalType, .targetBucket, .sourceType],
-        .activityStarted: [.entrySource, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .participantCountBucket],
+        .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType],
+        .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .participantCountBucket],
         .activityPaused: [],
         .activityResumed: [],
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],
-        .activitySaved: [.goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor],
+        .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor],
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDeleted: [.sourceType, .countBucket],
@@ -227,8 +228,8 @@ enum ProductAnalyticsSchema {
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .socialOperationFailed: [.sourceType, .errorCategory],
-        .goalProgressReached: [.goalType, .progressPercent],
-        .goalEditorOpened: [.goalType],
+        .goalProgressReached: [.activityType, .goalType, .progressPercent],
+        .goalEditorOpened: [.activityType, .goalType],
         .featureExposed: [.feature],
         .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],

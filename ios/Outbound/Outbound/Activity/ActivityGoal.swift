@@ -216,7 +216,7 @@ extension SessionIntent {
     }
 
     func replacingCalorieGoal(
-        _ estimate: PlannedRunCalorieEstimate,
+        _ estimate: PlannedCalorieEstimate,
         unitSystem: MeasurementUnitSystem
     ) -> SessionIntent {
         let base = replacingGoal(.calories(estimate.targetCalories), unitSystem: unitSystem)
