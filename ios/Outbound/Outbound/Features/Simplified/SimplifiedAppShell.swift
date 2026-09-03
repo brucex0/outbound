@@ -19,7 +19,6 @@ enum SimplifiedAppTab: Hashable {
 
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
@@ -53,11 +52,14 @@ struct SimplifiedAppShell: View {
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
-    @State private var assistantLauncherAnimationFrequency = AssistantLauncherAnimationFrequency()
     @State private var assistantLauncherAnimationTask: Task<Void, Never>?
     @State private var assistantLauncherScale = 1.0
     @State private var assistantLauncherShimmerOpacity = 0.0
-    @State private var wasAssistantLauncherEligible = false
+    @State private var assistantLauncherRotation = 0.0
+    @State private var assistantLauncherRingScale = 0.72
+    @State private var assistantLauncherRingOpacity = 0.0
+    @State private var hasTrackedAssistantLauncherForeground = false
+    @State private var hasTrackedAssistantLauncherAnimation = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -108,11 +110,8 @@ struct SimplifiedAppShell: View {
             )
             .frame(width: 0, height: 0)
         }
-        .onChange(of: selection, initial: true) { previousTab, tab in
+        .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
-            if previousTab != tab {
-                cancelAssistantLauncherAnimation()
-            }
         }
         .overlay(alignment: .bottom) {
             if !isActivityFullscreenVisible {
@@ -216,7 +215,7 @@ struct SimplifiedAppShell: View {
                 readiness: dailyCheckInStore.readiness,
                 phase: DailyMotivationEngine.phase(for: activityStore.activities)
             )
-            updateAssistantLauncherEligibility(entrySource: "app_shell")
+            startAssistantLauncherAnimationLoop(entrySource: "app_shell")
         }
         .onDisappear {
             cancelAssistantLauncherAnimation()
@@ -276,21 +275,16 @@ struct SimplifiedAppShell: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
+                startAssistantLauncherAnimationLoop(entrySource: "foreground")
+            } else {
+                hasTrackedAssistantLauncherForeground = false
+                hasTrackedAssistantLauncherAnimation = false
+                cancelAssistantLauncherAnimation()
             }
-            updateAssistantLauncherEligibility(entrySource: "foreground")
         }
         .onChange(of: isActivityFullscreenVisible) { _, isVisible in
             if isVisible {
                 showsAssistant = false
-            }
-            updateAssistantLauncherEligibility(entrySource: "activity_closed")
-        }
-        .onChange(of: showsAssistant) { _, isVisible in
-            updateAssistantLauncherEligibility(entrySource: isVisible ? "assistant_opened" : "assistant_closed")
-        }
-        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
-            if reduceMotion {
-                cancelAssistantLauncherAnimation()
             }
         }
     }
@@ -311,21 +305,26 @@ struct SimplifiedAppShell: View {
 
     private var assistantLaunchButton: some View {
         Button {
-            cancelAssistantLauncherAnimation()
             trackAssistantEvent(.assistantLauncherOpened, entrySource: "persistent_launcher")
             showsAssistant = true
         } label: {
             ZStack {
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
+                Circle()
+                    .stroke(Color.white.opacity(0.9), lineWidth: 2)
+                    .scaleEffect(assistantLauncherRingScale)
+                    .opacity(assistantLauncherRingOpacity)
 
                 Image(systemName: "sparkles")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
-                    .scaleEffect(1.16)
+                    .rotationEffect(.degrees(assistantLauncherRotation))
+
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .scaleEffect(1.28)
                     .opacity(assistantLauncherShimmerOpacity)
-                    .blur(radius: 0.5)
+                    .blur(radius: 0.8)
             }
             .frame(width: 48, height: 48)
             .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
@@ -348,43 +347,54 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private var isAssistantLauncherEligible: Bool {
-        scenePhase == .active && !isActivityFullscreenVisible && !showsAssistant
-    }
-
     @MainActor
-    private func updateAssistantLauncherEligibility(entrySource: String) {
-        guard isAssistantLauncherEligible else {
-            wasAssistantLauncherEligible = false
+    private func startAssistantLauncherAnimationLoop(entrySource: String) {
+        guard scenePhase == .active else {
             cancelAssistantLauncherAnimation()
             return
         }
 
-        guard !wasAssistantLauncherEligible else { return }
-        wasAssistantLauncherEligible = true
-        trackAssistantEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
-
-        guard assistantLauncherAnimationFrequency.claimFirstEligiblePresentation(),
-              !accessibilityReduceMotion
-        else { return }
+        if !hasTrackedAssistantLauncherForeground {
+            hasTrackedAssistantLauncherForeground = true
+            trackAssistantEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
+        }
 
         assistantLauncherAnimationTask?.cancel()
         assistantLauncherAnimationTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(650))
-            guard !Task.isCancelled, isAssistantLauncherEligible else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            while !Task.isCancelled, scenePhase == .active {
+                if !hasTrackedAssistantLauncherAnimation {
+                    hasTrackedAssistantLauncherAnimation = true
+                    trackAssistantEvent(.assistantLauncherAnimationShown, entrySource: "foreground_loop")
+                }
 
-            trackAssistantEvent(.assistantLauncherAnimationShown, entrySource: "daily_eligible")
-            withAnimation(.easeOut(duration: 0.28)) {
-                assistantLauncherScale = 1.07
-                assistantLauncherShimmerOpacity = 0.52
+                withAnimation(.easeOut(duration: 0.32)) {
+                    assistantLauncherScale = 1.17
+                    assistantLauncherRotation = -10
+                    assistantLauncherShimmerOpacity = 0.9
+                    assistantLauncherRingScale = 0.94
+                    assistantLauncherRingOpacity = 0.82
+                }
+                try? await Task.sleep(for: .milliseconds(320))
+                guard !Task.isCancelled else { return }
+
+                withAnimation(.spring(duration: 0.65, bounce: 0.38)) {
+                    assistantLauncherScale = 1.0
+                    assistantLauncherRotation = 0
+                    assistantLauncherShimmerOpacity = 0.0
+                    assistantLauncherRingScale = 1.55
+                    assistantLauncherRingOpacity = 0.0
+                }
+                try? await Task.sleep(for: .milliseconds(650))
+                guard !Task.isCancelled else { return }
+
+                var transaction = Transaction(animation: nil)
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    assistantLauncherRingScale = 0.72
+                }
+                try? await Task.sleep(for: .milliseconds(2_800))
             }
-            try? await Task.sleep(for: .milliseconds(280))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(duration: 0.52, bounce: 0.24)) {
-                assistantLauncherScale = 1.0
-                assistantLauncherShimmerOpacity = 0.0
-            }
-            try? await Task.sleep(for: .milliseconds(520))
             assistantLauncherAnimationTask = nil
         }
     }
@@ -398,6 +408,9 @@ struct SimplifiedAppShell: View {
         withTransaction(transaction) {
             assistantLauncherScale = 1.0
             assistantLauncherShimmerOpacity = 0.0
+            assistantLauncherRotation = 0.0
+            assistantLauncherRingScale = 0.72
+            assistantLauncherRingOpacity = 0.0
         }
     }
 
