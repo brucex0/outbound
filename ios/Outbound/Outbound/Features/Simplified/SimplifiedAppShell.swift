@@ -53,7 +53,7 @@ struct SimplifiedAppShell: View {
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
-    @State private var assistantLauncherExperiment = AssistantLauncherExperiment()
+    @State private var assistantLauncherAnimationFrequency = AssistantLauncherAnimationFrequency()
     @State private var assistantLauncherAnimationTask: Task<Void, Never>?
     @State private var assistantLauncherScale = 1.0
     @State private var assistantLauncherShimmerOpacity = 0.0
@@ -135,7 +135,6 @@ struct SimplifiedAppShell: View {
                 isRecordingActive: activitySessionState != .idle,
                 focusedActivity: selection == .today ? customizedTodayIntent ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent : nil,
                 onApplyFocusedActivity: { customizedTodayIntent = $0 },
-                launcherExperimentVariant: assistantLauncherExperiment.variant,
                 analyticsDestination: assistantAnalyticsDestination
             )
             .presentationDetents([.medium, .large])
@@ -313,7 +312,7 @@ struct SimplifiedAppShell: View {
     private var assistantLaunchButton: some View {
         Button {
             cancelAssistantLauncherAnimation()
-            trackAssistantExperimentEvent(.assistantLauncherOpened, entrySource: "persistent_launcher")
+            trackAssistantEvent(.assistantLauncherOpened, entrySource: "persistent_launcher")
             showsAssistant = true
         } label: {
             ZStack {
@@ -363,10 +362,9 @@ struct SimplifiedAppShell: View {
 
         guard !wasAssistantLauncherEligible else { return }
         wasAssistantLauncherEligible = true
-        trackAssistantExperimentEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
+        trackAssistantEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
 
-        guard assistantLauncherExperiment.variant == .treatment,
-              assistantLauncherExperiment.claimFirstEligiblePresentation(),
+        guard assistantLauncherAnimationFrequency.claimFirstEligiblePresentation(),
               !accessibilityReduceMotion
         else { return }
 
@@ -375,7 +373,7 @@ struct SimplifiedAppShell: View {
             try? await Task.sleep(for: .milliseconds(650))
             guard !Task.isCancelled, isAssistantLauncherEligible else { return }
 
-            trackAssistantExperimentEvent(.assistantLauncherAnimationShown, entrySource: "daily_eligible")
+            trackAssistantEvent(.assistantLauncherAnimationShown, entrySource: "daily_eligible")
             withAnimation(.easeOut(duration: 0.28)) {
                 assistantLauncherScale = 1.07
                 assistantLauncherShimmerOpacity = 0.52
@@ -403,9 +401,8 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private func trackAssistantExperimentEvent(_ name: ProductEventName, entrySource: String) {
+    private func trackAssistantEvent(_ name: ProductEventName, entrySource: String) {
         let event = ProductAnalyticsEvent(name, properties: [
-            .experimentVariant: .string(assistantLauncherExperiment.variant.rawValue),
             .destination: .string(assistantAnalyticsDestination),
             .entrySource: .string(entrySource)
         ])

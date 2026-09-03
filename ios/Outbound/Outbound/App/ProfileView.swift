@@ -505,7 +505,6 @@ struct AssistantView: View {
     let isRecordingActive: Bool
     let focusedActivity: SessionIntent?
     let onApplyFocusedActivity: ((SessionIntent) -> Void)?
-    let launcherExperimentVariant: AssistantLauncherExperimentVariant?
     let analyticsDestination: String?
 
     init(
@@ -513,14 +512,12 @@ struct AssistantView: View {
         isRecordingActive: Bool,
         focusedActivity: SessionIntent? = nil,
         onApplyFocusedActivity: ((SessionIntent) -> Void)? = nil,
-        launcherExperimentVariant: AssistantLauncherExperimentVariant? = nil,
         analyticsDestination: String? = nil
     ) {
         self.screenName = screenName
         self.isRecordingActive = isRecordingActive
         self.focusedActivity = focusedActivity
         self.onApplyFocusedActivity = onApplyFocusedActivity
-        self.launcherExperimentVariant = launcherExperimentVariant
         self.analyticsDestination = analyticsDestination
     }
 
@@ -887,9 +884,8 @@ struct AssistantView: View {
     }
 
     private func trackMeaningfulEngagement(entrySource: String) {
-        guard let launcherExperimentVariant, let analyticsDestination else { return }
+        guard let analyticsDestination else { return }
         let event = ProductAnalyticsEvent(.assistantMeaningfulEngagement, properties: [
-            .experimentVariant: .string(launcherExperimentVariant.rawValue),
             .destination: .string(analyticsDestination),
             .entrySource: .string(entrySource)
         ])

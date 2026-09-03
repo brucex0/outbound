@@ -127,7 +127,6 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case authenticationState = "authentication_state"
     case destination
     case entrySource = "entry_source"
-    case experimentVariant = "experiment_variant"
     case feature
     case changeType = "change_type"
     case selectionType = "selection_type"
@@ -238,10 +237,10 @@ enum ProductAnalyticsSchema {
         .goalProgressReached: [.activityType, .goalType, .progressPercent],
         .goalEditorOpened: [.activityType, .goalType],
         .featureExposed: [.feature],
-        .assistantLauncherEligibleExposure: [.experimentVariant, .destination, .entrySource],
-        .assistantLauncherAnimationShown: [.experimentVariant, .destination, .entrySource],
-        .assistantLauncherOpened: [.experimentVariant, .destination, .entrySource],
-        .assistantMeaningfulEngagement: [.experimentVariant, .destination, .entrySource],
+        .assistantLauncherEligibleExposure: [.destination, .entrySource],
+        .assistantLauncherAnimationShown: [.destination, .entrySource],
+        .assistantLauncherOpened: [.destination, .entrySource],
+        .assistantMeaningfulEngagement: [.destination, .entrySource],
         .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
