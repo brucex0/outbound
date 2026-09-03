@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.2 Submission Sheet
+# TestFlight and App Store 1.3 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.2`
-- Build: `36`
+- Version: `1.3`
+- Build: `37`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,16 +54,16 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- Fix custom goal keyboard layout
-- Show calorie goal estimates prominently
-- Refine custom goal chooser hierarchy
-- Inline custom calorie goal entry
-- Simplify custom activity goal entry
+- Make assistant launcher animation recurring
+- Enable assistant launcher animation for everyone
+- Merge branch 'codex/assistant-sparkle-experiment'
+- Add assistant launcher motion experiment
+- Protect activity meetup coordinates across sessions
 - Plus 8 more fixes and improvements
 
 ### App Store What's New
 
-Plainstride 1.2 makes every run easier to start, guide, and finish. A redesigned map-first setup brings workouts, goals, Music, Live Track, shoes, environment, and voice guidance together. Live coaching now supports planned and standalone workouts, while improved recovery protects finished activities until they are saved. This release also strengthens recognition milestones, routes, Apple Health import, social and profile navigation, activity photos, and access to versioned Terms of Service.
+Plainstride 1.3 makes every run easier to start, guide, and finish. A redesigned map-first setup brings workouts, goals, Music, Live Track, shoes, environment, and voice guidance together. Live coaching now supports planned and standalone workouts, while improved recovery protects finished activities until they are saved. This release also strengthens recognition milestones, routes, Apple Health import, social and profile navigation, activity photos, and access to versioned Terms of Service.
 
 ### How to Report Feedback
 
@@ -178,6 +178,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.2 (36)`, validate, and upload from Xcode Organizer.
+- Archive `1.3 (37)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
