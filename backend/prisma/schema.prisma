@@ -1233,6 +1233,8 @@ model ActivityEvent {
   startsAt          DateTime
   endsAt            DateTime
   locationName      String?
+  latitude          Float?
+  longitude         Float?
   note              String?
   participationMode String                     @default("hybrid")
   activityPolicy    String                     @default("fixed")

@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 
 enum ActivityEventTiming {
@@ -146,10 +147,19 @@ struct TogetherCompatibilityDTO: Codable, Sendable {
 
 struct ActivityEventDTO: Codable, Identifiable, Sendable {
     let id: String
+
+    var meetupCoordinate: CLLocationCoordinate2D? {
+        guard let latitude, let longitude,
+              (-90...90).contains(latitude),
+              (-180...180).contains(longitude) else { return nil }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
     let title: String
     let startsAt: Date
     var endsAt: Date? = nil
     let locationName: String?
+    var latitude: Double? = nil
+    var longitude: Double? = nil
     let paceNote: String?
     let club: TogetherClubDTO?
     let creator: TogetherPersonDTO
@@ -166,10 +176,19 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
 
 struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     let id: String
+
+    var meetupCoordinate: CLLocationCoordinate2D? {
+        guard let latitude, let longitude,
+              (-90...90).contains(latitude),
+              (-180...180).contains(longitude) else { return nil }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
     let title: String
     let startsAt: Date
     var endsAt: Date? = nil
     let locationName: String?
+    var latitude: Double? = nil
+    var longitude: Double? = nil
     let paceNote: String?
     let club: TogetherClubDTO?
     let creator: TogetherPersonDTO
@@ -216,6 +235,8 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
     let title: String
     let startsAt: Date
     let locationName: String?
+    var latitude: Double? = nil
+    var longitude: Double? = nil
     let note: String?
     var durationMinutes: Int = ActivityEventTiming.defaultDurationMinutes
 }

@@ -34,7 +34,17 @@ const createActivityEventSchema = z.object({
   startsAt: z.string().datetime(),
   durationMinutes: z.number().int().min(15).max(24 * 60).default(60),
   locationName: z.string().trim().max(120).nullable().optional(),
+  latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+  longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
+}).superRefine((value, context) => {
+  if ((value.latitude == null) !== (value.longitude == null)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Latitude and longitude must be provided together.",
+      path: [value.latitude == null ? "latitude" : "longitude"],
+    });
+  }
 });
 const invitationBatchSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(50) });
 const linkActivityEventSchema = z.object({ activityId: z.string().min(1) });
@@ -603,6 +613,8 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
         startsAt,
         endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
         locationName: input.locationName || null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
         note: input.note || null,
         participationMode: "hybrid",
         activityPolicy: "fixed",
@@ -1184,6 +1196,8 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     startsAt: activity.startsAt,
     endsAt: activity.endsAt,
     locationName: activity.locationName,
+    latitude: activity.latitude,
+    longitude: activity.longitude,
     paceNote: activity.note,
     note: activity.note,
     participationMode: activity.participationMode,

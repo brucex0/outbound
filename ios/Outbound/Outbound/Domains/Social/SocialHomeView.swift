@@ -699,6 +699,79 @@ struct SocialHomeView: View {
     }
 }
 
+private struct ActivityEventMeetingPointView: View {
+    let coordinate: CLLocationCoordinate2D
+    let locationName: String?
+
+    private var coordinateText: String {
+        String(
+            format: String(
+                localized: "social.event.location.coordinates.format",
+                defaultValue: "%1$@, %2$@"
+            ),
+            locale: .autoupdatingCurrent,
+            coordinate.latitude.coordinateString,
+            coordinate.longitude.coordinateString
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let locationName {
+                Text(locationName)
+                    .font(.headline)
+            }
+            Map(
+                position: .constant(.region(MKCoordinateRegion(
+                    center: coordinate,
+                    latitudinalMeters: 500,
+                    longitudinalMeters: 500
+                ))),
+                interactionModes: [.pan, .zoom]
+            ) {
+                Annotation(
+                    String(
+                        localized: "social.event.location.map.meet_here",
+                        defaultValue: "Meet here"
+                    ),
+                    coordinate: coordinate
+                ) {
+                    Image(systemName: "mappin")
+                        .font(.system(size: 34, weight: .medium))
+                        .foregroundStyle(OutboundPalette.companion)
+                        .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+                }
+            }
+            .mapStyle(.standard(elevation: .realistic))
+            .frame(height: 180)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .accessibilityLabel(
+                String(
+                    localized: "social.event.location.map.detail_accessibility",
+                    defaultValue: "Meeting point map"
+                )
+            )
+
+            Label(coordinateText, systemImage: "location")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .accessibilityLabel(
+                    String(
+                        localized: "social.event.location.coordinates.accessibility",
+                        defaultValue: "Exact coordinates"
+                    )
+                )
+        }
+    }
+}
+
+private extension Double {
+    var coordinateString: String {
+        String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), self)
+    }
+}
+
 private struct SocialActivityDiscoveryView: View {
     @EnvironmentObject private var socialStore: TogetherStore
 
@@ -824,6 +897,16 @@ private struct ActivityEventDetailView: View {
                 if let pace = run.paceNote { LabeledContent("Pace / note", value: pace) }
                 if run.locationName == nil { LabeledContent("Where", value: "Join from anywhere") }
                 if let detail { LabeledContent("Going", value: "\(detail.attendeeCount)") }
+            }
+            if let coordinate = detail?.meetupCoordinate ?? run.meetupCoordinate {
+                Section {
+                    ActivityEventMeetingPointView(
+                        coordinate: coordinate,
+                        locationName: detail?.locationName ?? run.locationName
+                    )
+                } header: {
+                    Text(String(localized: "social.event.location.meeting_point", defaultValue: "Meeting point"))
+                }
             }
             if let compatibility = run.compatibility {
                 Section("Fit") { AIExplanationView(text: compatibility.explanation) }

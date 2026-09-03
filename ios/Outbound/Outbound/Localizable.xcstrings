@@ -14584,6 +14584,10 @@
         }
       }
     },
+    "social.event.location.coordinates.accessibility" : { "comment" : "Accessibility label for the exact latitude and longitude shown for an activity event meetup point.", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Exact coordinates" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Coordenadas exactas" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "精确坐标" } } } },
+    "social.event.location.coordinates.format" : { "comment" : "%1$@ is latitude and %2$@ is longitude for an activity event meetup point.", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "%1$@, %2$@" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "%1$@, %2$@" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%1$@，%2$@" } } } },
+    "social.event.location.map.detail_accessibility" : { "comment" : "Accessibility label for the map showing the exact activity event meetup point.", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Meeting point map" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Mapa del punto de encuentro" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "集合点地图" } } } },
+    "social.event.location.meeting_point" : { "comment" : "Section header for the exact map location of an activity event.", "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Meeting point" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Punto de encuentro" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "集合点" } } } },
     "social.event.location.map.title" : {
       "comment": "Title of the map screen for choosing the event meetup point.",
       "localizations": {

@@ -275,6 +275,8 @@ struct CreateActivityEventView: View {
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             startsAt: startsAt,
             locationName: locationName.locationNameForSubmission,
+            latitude: selectedLocationCoordinate?.latitude,
+            longitude: selectedLocationCoordinate?.longitude,
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes
         ))
