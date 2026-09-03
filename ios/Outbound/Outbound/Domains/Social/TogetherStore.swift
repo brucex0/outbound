@@ -29,7 +29,10 @@ final class TogetherStore: ObservableObject {
 
     private let api: APIClient
     private let defaults: UserDefaults
-    private let cacheKey = "together_state_v1"
+    private let legacyCacheKey = "together_state_v1"
+    private let cacheKeyPrefix = "together_state_v1_account_"
+    private var activeUserID: String?
+    private var authGeneration = 0
     private var nextConnectionsCursor: String?
     private var latestPeopleSearchQuery = ""
 
@@ -40,32 +43,59 @@ final class TogetherStore: ObservableObject {
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
         self.defaults = defaults
-        state = ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+        defaults.removeObject(forKey: legacyCacheKey)
+        let hasUITestSeedData = ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+        state = hasUITestSeedData
             ? Self.uiTestFixture
-            : Self.decode(TogetherResponseDTO.self, from: defaults.data(forKey: cacheKey))
-                ?? TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
-        if isUITestSeedData {
-            connections = Self.uiTestConnections
-            hasLoadedConnections = true
-            notifications = Self.uiTestNotifications
-            discoverableGroups = Self.uiTestGroups
-            blocks = Self.uiTestBlocks
+            : Self.emptyState
+        if hasUITestSeedData {
+            loadUITestState()
         }
     }
 
+    func activate(userID: String?) {
+        guard activeUserID != userID else { return }
+        if let activeUserID {
+            defaults.removeObject(forKey: cacheKey(for: activeUserID))
+        }
+        authGeneration += 1
+        activeUserID = userID
+        resetState()
+
+        guard let userID else { return }
+        if isUITestSeedData {
+            state = Self.uiTestFixture
+            loadUITestState()
+            return
+        }
+        state = Self.decode(
+            TogetherResponseDTO.self,
+            from: defaults.data(forKey: cacheKey(for: userID))
+        ) ?? Self.emptyState
+    }
+
     func refresh() async {
-        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
+        guard isUITestSeedData || activeUserID != nil else { return }
+        let generation = authGeneration
+        if isUITestSeedData {
             state = Self.uiTestFixture
             errorMessage = nil
             return
         }
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if generation == authGeneration {
+                isLoading = false
+            }
+        }
         do {
-            state = try await api.fetchTogether()
+            let refreshedState = try await api.fetchTogether()
+            guard generation == authGeneration, activeUserID != nil else { return }
+            state = refreshedState
             persist()
             errorMessage = nil
         } catch {
+            guard generation == authGeneration else { return }
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
@@ -73,11 +103,17 @@ final class TogetherStore: ObservableObject {
     }
 
     func loadMorePosts() async -> Int? {
-        guard !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return 0 }
+        guard activeUserID != nil, !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return 0 }
+        let generation = authGeneration
         isLoadingMorePosts = true
-        defer { isLoadingMorePosts = false }
+        defer {
+            if generation == authGeneration {
+                isLoadingMorePosts = false
+            }
+        }
         do {
             let page = try await api.fetchTogether(feedCursor: cursor)
+            guard generation == authGeneration, activeUserID != nil else { return nil }
             let existingIDs = Set(state.posts.map(\.id))
             let appendedPosts = page.posts.filter { !existingIDs.contains($0.id) }
             state = TogetherResponseDTO(
@@ -316,6 +352,8 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshConnections() async {
+        guard isUITestSeedData || activeUserID != nil else { return }
+        let generation = authGeneration
         if isUITestSeedData {
             connections = connections.isEmpty ? Self.uiTestConnections : connections
             hasLoadedConnections = true
@@ -324,26 +362,38 @@ final class TogetherStore: ObservableObject {
         }
         guard !isConnectionsLoading, !isLoadingMoreConnections else { return }
         isConnectionsLoading = true
-        defer { isConnectionsLoading = false }
+        defer {
+            if generation == authGeneration {
+                isConnectionsLoading = false
+            }
+        }
         do {
             let page = try await api.fetchSocialConnections()
+            guard generation == authGeneration, activeUserID != nil else { return }
             connections = page.connections
             hasLoadedConnections = true
             nextConnectionsCursor = page.nextCursor
             errorMessage = nil
         } catch {
+            guard generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
 
     @discardableResult
     func loadMoreConnections() async -> Int? {
-        guard !isConnectionsLoading, !isLoadingMoreConnections,
+        guard activeUserID != nil, !isConnectionsLoading, !isLoadingMoreConnections,
               let cursor = nextConnectionsCursor else { return 0 }
+        let generation = authGeneration
         isLoadingMoreConnections = true
-        defer { isLoadingMoreConnections = false }
+        defer {
+            if generation == authGeneration {
+                isLoadingMoreConnections = false
+            }
+        }
         do {
             let page = try await api.fetchSocialConnections(cursor: cursor)
+            guard generation == authGeneration, activeUserID != nil else { return nil }
             let existingIDs = Set(connections.map(\.id))
             let appended = page.connections.filter { !existingIDs.contains($0.id) }
             connections.append(contentsOf: appended)
@@ -351,6 +401,7 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             return appended.count
         } catch {
+            guard generation == authGeneration else { return nil }
             errorMessage = error.localizedDescription
             return nil
         }
@@ -364,6 +415,8 @@ final class TogetherStore: ObservableObject {
 
     @discardableResult
     func searchPeople(_ query: String) async -> SocialPeopleSearchOutcome? {
+        guard activeUserID != nil else { return nil }
+        let generation = authGeneration
         let cleaned = Self.normalizedPeopleSearchQuery(query)
         latestPeopleSearchQuery = cleaned
         guard !cleaned.isEmpty else {
@@ -382,7 +435,9 @@ final class TogetherStore: ObservableObject {
         }
         do {
             let response = try await api.searchSocialPeople(query: cleaned)
-            guard latestPeopleSearchQuery == cleaned else { return nil }
+            guard generation == authGeneration,
+                  activeUserID != nil,
+                  latestPeopleSearchQuery == cleaned else { return nil }
             peopleResults = response.people
             errorMessage = nil
             return SocialPeopleSearchOutcome(
@@ -390,7 +445,9 @@ final class TogetherStore: ObservableObject {
                 matchMode: Self.analyticsSearchMatchMode(response.matchMode)
             )
         } catch {
-            guard latestPeopleSearchQuery == cleaned else { return nil }
+            guard generation == authGeneration,
+                  activeUserID != nil,
+                  latestPeopleSearchQuery == cleaned else { return nil }
             errorMessage = error.localizedDescription
             return nil
         }
@@ -458,9 +515,45 @@ final class TogetherStore: ObservableObject {
     }
 
     private func persist() {
+        guard let activeUserID else { return }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        defaults.set(try? encoder.encode(state), forKey: cacheKey)
+        defaults.set(try? encoder.encode(state), forKey: cacheKey(for: activeUserID))
+    }
+
+    private func cacheKey(for userID: String) -> String {
+        cacheKeyPrefix + userID
+    }
+
+    private func resetState() {
+        state = Self.emptyState
+        isLoading = false
+        isLoadingMorePosts = false
+        errorMessage = nil
+        latestInvitationURL = nil
+        connections = []
+        hasLoadedConnections = false
+        peopleResults = []
+        isConnectionsLoading = false
+        isLoadingMoreConnections = false
+        pendingConnectionIDs = []
+        commentsByPostID = [:]
+        isSocialMutationPending = false
+        notifications = []
+        discoverableGroups = []
+        blocks = []
+        resultsByActivityEventID = [:]
+        recordingActivityEventID = nil
+        nextConnectionsCursor = nil
+        latestPeopleSearchQuery = ""
+    }
+
+    private func loadUITestState() {
+        connections = Self.uiTestConnections
+        hasLoadedConnections = true
+        notifications = Self.uiTestNotifications
+        discoverableGroups = Self.uiTestGroups
+        blocks = Self.uiTestBlocks
     }
 
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
@@ -468,6 +561,10 @@ final class TogetherStore: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(type, from: data)
+    }
+
+    private static var emptyState: TogetherResponseDTO {
+        TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
     }
 
     private var isUITestSeedData: Bool {
@@ -531,14 +628,19 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshNotifications() async {
+        guard isUITestSeedData || activeUserID != nil else { return }
+        let generation = authGeneration
         if isUITestSeedData {
             notifications = notifications.isEmpty ? Self.uiTestNotifications : notifications
             return
         }
         do {
-            notifications = try await api.fetchSocialNotifications().notifications
+            let refreshedNotifications = try await api.fetchSocialNotifications().notifications
+            guard generation == authGeneration, activeUserID != nil else { return }
+            notifications = refreshedNotifications
             errorMessage = nil
         } catch {
+            guard generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -579,14 +681,19 @@ final class TogetherStore: ObservableObject {
     }
 
     func refreshGroups() async {
+        guard isUITestSeedData || activeUserID != nil else { return }
+        let generation = authGeneration
         if isUITestSeedData {
             discoverableGroups = discoverableGroups.isEmpty ? Self.uiTestGroups : discoverableGroups
             return
         }
         do {
-            discoverableGroups = try await api.fetchSocialGroups().groups
+            let refreshedGroups = try await api.fetchSocialGroups().groups
+            guard generation == authGeneration, activeUserID != nil else { return }
+            discoverableGroups = refreshedGroups
             errorMessage = nil
         } catch {
+            guard generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -616,15 +723,19 @@ final class TogetherStore: ObservableObject {
     }
 
     func activityEventDetail(id: String) async -> ActivityEventDetailDTO? {
+        guard isUITestSeedData || activeUserID != nil else { return nil }
+        let generation = authGeneration
         if isUITestSeedData {
             guard let run = state.upcomingRuns.first(where: { $0.id == id }) else { return nil }
             return Self.uiTestRunDetail(run: run, isGoing: false)
         }
         do {
             let detail = try await api.fetchActivityEvent(id: id)
+            guard generation == authGeneration, activeUserID != nil else { return nil }
             errorMessage = nil
             return detail
         } catch {
+            guard generation == authGeneration else { return nil }
             errorMessage = error.localizedDescription
             return nil
         }

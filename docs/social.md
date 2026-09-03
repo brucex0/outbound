@@ -54,7 +54,7 @@ The production activity-event loop follows `docs/prototypes/future-activities-e2
 `Plan -> Invite -> Discover -> Review -> Joined -> Record -> Reconcile`
 
 - Social's Upcoming add action opens a two-step `Plan a run` / `Invite friends` flow.
-- The MVP form stores a name, date/time, optional meetup label, and optional pace/note. The optional meetup field uses native MapKit place autocomplete with a choose-on-map sheet, so the runner can pick a suggestion or drop a pin; only the resolved display label is persisted as `locationName`, with no coordinate storage or third-party provider.
+- The MVP form stores a name, date/time, optional meetup label, optional exact meetup latitude/longitude, and optional pace/note. The optional meetup field uses native MapKit place autocomplete with a choose-on-map sheet, so the runner can pick a suggestion or center the map on a precise point; the resolved display label is persisted as `locationName` and the exact coordinate pair is persisted on `ActivityEvent` for invited participants to find the meeting spot. No third-party location provider is used.
 - Every activity event is hybrid by default: participants may meet at the suggested location or join from anywhere.
 - Creation, Upcoming cards, and activity detail label this explicitly as `Meet up or join from anywhere`; the person-and-radio-waves icon reinforces that both in-person and virtual participation are first-class, and meetup location remains optional.
 - Creating an activity automatically joins its creator. Eligible connections and invitation recipients join immediately; there is no approval or pending-RSVP state.
@@ -86,7 +86,7 @@ npm run db:push -- --accept-data-loss
 ## Current iOS Shape
 
 - `Domains/Social/SocialHomeView.swift` owns the production Social home and Connections UI.
-- `Domains/Social/TogetherStore.swift` and `TogetherContracts.swift` still retain their earlier internal names while owning API-backed Social home, connection, invitation, referral, and Cheer state; rename these after external behavior stabilizes rather than maintaining a second store.
+- `Domains/Social/TogetherStore.swift` and `TogetherContracts.swift` still retain their earlier internal names while owning API-backed Social home, connection, invitation, referral, and Cheer state; rename these after external behavior stabilizes rather than maintaining a second store. Together's offline cache is account-scoped and is cleared from memory and storage when authentication changes; exact meetup coordinates are never reused across accounts.
 - `Features/Simplified/SimplifiedAppShell.swift` owns the `Social · Today · Me` tab shell and routes Today's social invitation into Social.
 
 - `Social/ActivityFeedView.swift` owns the legacy local social hub UI.

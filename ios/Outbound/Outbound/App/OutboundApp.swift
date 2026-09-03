@@ -65,6 +65,16 @@ struct OutboundApp: App {
                 .task(id: authStore.user?.id) {
                     await analyticsManager.setUserId(userId: authStore.user?.id)
                 }
+                .onChange(of: authStore.user?.id, initial: true) { _, userID in
+                    togetherStore.activate(userID: userID)
+                }
+                .onChange(of: authStore.isAuthenticated, initial: true) { _, isAuthenticated in
+                    togetherStore.activate(
+                        userID: isAuthenticated
+                            ? (authStore.user?.id ?? authStore.localSessionLabel)
+                            : nil
+                    )
+                }
         }
     }
 

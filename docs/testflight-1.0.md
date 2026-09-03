@@ -95,7 +95,7 @@ Suggested temporary value if no support inbox exists: `bruce.xia74@gmail.com`.
 
 Plainstride is an iPhone running and fitness beta. A reviewer can sign in with Apple, complete the short runner intake, and use the Today and Me areas without granting optional permissions.
 
-Location is requested when the reviewer starts an outdoor activity or enables local weather context. Precise/background location records an active route and keeps the session accurate while the screen is locked or the app is backgrounded. Location is not continuously collected when an activity or explicit live share is not active.
+Location is requested when the reviewer starts an outdoor activity, chooses an exact meetup point for a Social activity event, or enables local weather context. Precise/background location records an active route and keeps the session accurate while the screen is locked or the app is backgrounded. Choosing a meetup point stores one exact latitude/longitude pair with that event so participants can find the marker; it is not continuous location collection. Location is not continuously collected when an activity, meetup selection, or explicit live share is not active.
 
 Camera access captures optional still photos during an activity. Microphone and speech recognition support optional short voice activity commands. Apple Health read/write access imports workouts and saves completed workouts. Apple Music access provides optional workout playback. WeatherKit uses a one-shot location request for local running conditions. Live Activities show active workout status on the Lock Screen and Dynamic Island.
 
@@ -158,7 +158,7 @@ Likely collected and linked to identity:
 - Contact Info: email address returned by Apple or Google sign-in.
 - Identifiers and account metadata: provider identifiers plus the current accepted Terms version and acceptance time.
 - Fitness: onboarding profile, plan/readiness inputs, workout/activity data, and guidance feedback sent to the backend.
-- Precise Location: active live-share coordinates and any uploaded route/activity coordinates.
+- Precise Location: one exact meetup coordinate pair for Social activity events, active live-share coordinates, and any uploaded route/activity coordinates.
 - User Content: assistant messages, activity reflections, and user-submitted live-share/contact fields; include photos only if the production build uploads them.
 
 Confirm before selecting:

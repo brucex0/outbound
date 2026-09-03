@@ -734,7 +734,8 @@ private struct ActivityEventMeetingPointView: View {
                         localized: "social.event.location.map.meet_here",
                         defaultValue: "Meet here"
                     ),
-                    coordinate: coordinate
+                    coordinate: coordinate,
+                    anchor: .bottom
                 ) {
                     Image(systemName: "mappin")
                         .font(.system(size: 34, weight: .medium))
@@ -762,6 +763,7 @@ private struct ActivityEventMeetingPointView: View {
                         defaultValue: "Exact coordinates"
                     )
                 )
+                .accessibilityValue(coordinateText)
         }
     }
 }
