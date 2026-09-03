@@ -486,6 +486,7 @@ struct AddShoeView: View {
 
 struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
@@ -504,17 +505,23 @@ struct AssistantView: View {
     let isRecordingActive: Bool
     let focusedActivity: SessionIntent?
     let onApplyFocusedActivity: ((SessionIntent) -> Void)?
+    let launcherExperimentVariant: AssistantLauncherExperimentVariant?
+    let analyticsDestination: String?
 
     init(
         screenName: String,
         isRecordingActive: Bool,
         focusedActivity: SessionIntent? = nil,
-        onApplyFocusedActivity: ((SessionIntent) -> Void)? = nil
+        onApplyFocusedActivity: ((SessionIntent) -> Void)? = nil,
+        launcherExperimentVariant: AssistantLauncherExperimentVariant? = nil,
+        analyticsDestination: String? = nil
     ) {
         self.screenName = screenName
         self.isRecordingActive = isRecordingActive
         self.focusedActivity = focusedActivity
         self.onApplyFocusedActivity = onApplyFocusedActivity
+        self.launcherExperimentVariant = launcherExperimentVariant
+        self.analyticsDestination = analyticsDestination
     }
 
     var body: some View {
@@ -597,13 +604,14 @@ struct AssistantView: View {
 
             ForEach(compactSuggestions) { suggestion in
                 Button {
+                    trackMeaningfulEngagement(entrySource: "suggestion")
                     Task {
                         if suggestion.id == "log-workout" {
                             assistantStore.draft = suggestion.prompt
-                            await sendDraft()
+                            await sendDraft(trackEngagement: false)
                         } else if focusedActivity != nil {
                             assistantStore.draft = suggestion.prompt
-                            await sendDraft()
+                            await sendDraft(trackEngagement: false)
                         } else if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {
                             routeThroughApp(target)
                         }
@@ -864,15 +872,28 @@ struct AssistantView: View {
         return String(localized: "Helping with \(screenName)")
     }
 
-    private func sendDraft() async {
+    private func sendDraft(trackEngagement: Bool = true) async {
         let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
+        if trackEngagement {
+            trackMeaningfulEngagement(entrySource: "message")
+        }
 
         if handleManualWorkoutPromptIfPresent(prompt) { return }
         if handleActivityCommandIfPresent(prompt) { return }
         if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
             routeThroughApp(target)
         }
+    }
+
+    private func trackMeaningfulEngagement(entrySource: String) {
+        guard let launcherExperimentVariant, let analyticsDestination else { return }
+        let event = ProductAnalyticsEvent(.assistantMeaningfulEngagement, properties: [
+            .experimentVariant: .string(launcherExperimentVariant.rawValue),
+            .destination: .string(analyticsDestination),
+            .entrySource: .string(entrySource)
+        ])
+        Task { await analyticsManager?.track(event) }
     }
 
     @discardableResult

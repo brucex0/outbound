@@ -48,6 +48,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
+    case assistantLauncherEligibleExposure = "assistant_launcher_eligible_exposure"
+    case assistantLauncherAnimationShown = "assistant_launcher_animation_shown"
+    case assistantLauncherOpened = "assistant_launcher_opened"
+    case assistantMeaningfulEngagement = "assistant_meaningful_engagement"
     case planningSurfaceOpened = "planning_surface_opened"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
@@ -123,6 +127,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case authenticationState = "authentication_state"
     case destination
     case entrySource = "entry_source"
+    case experimentVariant = "experiment_variant"
     case feature
     case changeType = "change_type"
     case selectionType = "selection_type"
@@ -233,6 +238,10 @@ enum ProductAnalyticsSchema {
         .goalProgressReached: [.activityType, .goalType, .progressPercent],
         .goalEditorOpened: [.activityType, .goalType],
         .featureExposed: [.feature],
+        .assistantLauncherEligibleExposure: [.experimentVariant, .destination, .entrySource],
+        .assistantLauncherAnimationShown: [.experimentVariant, .destination, .entrySource],
+        .assistantLauncherOpened: [.experimentVariant, .destination, .entrySource],
+        .assistantMeaningfulEngagement: [.experimentVariant, .destination, .entrySource],
         .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
