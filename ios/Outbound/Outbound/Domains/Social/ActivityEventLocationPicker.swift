@@ -96,6 +96,7 @@ struct ActivityEventMapPicker: View {
     @State private var selectedPlace: ActivityEventPlace?
     @State private var isResolving = false
     @State private var hasResolutionError = false
+    @State private var resolutionGeneration = 0
 
     init(
         initialCoordinate: CLLocationCoordinate2D?,
@@ -124,63 +125,51 @@ struct ActivityEventMapPicker: View {
 
     var body: some View {
         NavigationStack {
-            MapReader { proxy in
-                Map(position: $position) {
-                    UserAnnotation()
+            Map(position: $position) {
+                UserAnnotation()
+            }
+            .mapStyle(.standard(elevation: .realistic))
+            .onMapCameraChange(frequency: .onEnd) { context in
+                choose(context.region.center)
+            }
+            .overlay {
+                centerPin
+            }
+            .overlay(alignment: .top) {
+                HStack(alignment: .top, spacing: 10) {
+                    Label(
+                        String(
+                            localized: "social.event.location.map.instructions",
+                            defaultValue: "Pan or zoom the map to choose a meetup point."
+                        ),
+                        systemImage: "hand.draw"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
 
-                    if let selectedCoordinate {
-                        Annotation(
-                            String(localized: "social.event.location.map.meet_here", defaultValue: "Meet here"),
-                            coordinate: selectedCoordinate
-                        ) {
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.system(size: 38))
-                                .foregroundStyle(OutboundPalette.companion, .white)
-                                .shadow(color: .black.opacity(0.2), radius: 5, y: 2)
-                        }
+                    Spacer(minLength: 0)
+
+                    Button {
+                        position = .userLocation(fallback: .automatic)
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .frame(width: 24, height: 24)
+                            .padding(8)
+                            .background(.regularMaterial, in: Circle())
                     }
-                }
-                .mapStyle(.standard(elevation: .realistic))
-                .onTapGesture { point in
-                    guard let coordinate = proxy.convert(point, from: .local) else { return }
-                    choose(coordinate)
-                }
-                .overlay(alignment: .top) {
-                    HStack(alignment: .top, spacing: 10) {
-                        Label(
-                            String(
-                                localized: "social.event.location.map.instructions",
-                                defaultValue: "Tap the map to choose a meetup point."
-                            ),
-                            systemImage: "hand.tap"
+                    .accessibilityLabel(
+                        String(
+                            localized: "social.event.location.map.current",
+                            defaultValue: "Go to my location"
                         )
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(.regularMaterial, in: Capsule())
-
-                        Spacer(minLength: 0)
-
-                        Button {
-                            position = .userLocation(fallback: .automatic)
-                        } label: {
-                            Image(systemName: "location.fill")
-                                .frame(width: 24, height: 24)
-                                .padding(8)
-                                .background(.regularMaterial, in: Circle())
-                        }
-                        .accessibilityLabel(
-                            String(
-                                localized: "social.event.location.map.current",
-                                defaultValue: "Go to my location"
-                            )
-                        )
-                    }
-                    .padding()
+                    )
                 }
-                .safeAreaInset(edge: .bottom) {
-                    selectionCard
-                }
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom) {
+                selectionCard
             }
             .navigationTitle(
                 String(localized: "social.event.location.map.title", defaultValue: "Choose meetup point")
@@ -197,9 +186,24 @@ struct ActivityEventMapPicker: View {
                 // A coordinate may arrive without a resolved place, for example when the
                 // autocomplete resolve was still running when the sheet opened.
                 guard selectedPlace == nil, let coordinate = selectedCoordinate else { return }
-                resolve(coordinate)
+                choose(coordinate)
             }
         }
+    }
+
+    private var centerPin: some View {
+        Image(systemName: "mappin")
+            .font(.system(size: 44, weight: .medium))
+            .foregroundStyle(OutboundPalette.companion)
+            .shadow(color: .black.opacity(0.2), radius: 5, y: 2)
+            .offset(y: -22)
+            .accessibilityLabel(
+                String(
+                    localized: "social.event.location.map.meet_here",
+                    defaultValue: "Meet here"
+                )
+            )
+            .allowsHitTesting(false)
     }
 
     private var selectionCard: some View {
@@ -262,18 +266,18 @@ struct ActivityEventMapPicker: View {
     }
 
     private func choose(_ coordinate: CLLocationCoordinate2D) {
+        resolutionGeneration += 1
+        let generation = resolutionGeneration
         selectedCoordinate = coordinate
         selectedPlace = nil
         hasResolutionError = false
         isResolving = true
-        resolve(coordinate)
-    }
 
-    private func resolve(_ coordinate: CLLocationCoordinate2D) {
         Task {
             let place = await ActivityEventLocationFormatter.place(at: coordinate)
-            // A newer tap supersedes this result; never let a stale geocode win.
-            guard coordinatesMatch(selectedCoordinate, coordinate) else { return }
+            // A newer map position supersedes this result; never let stale geocoding win.
+            guard generation == resolutionGeneration,
+                  coordinatesMatch(selectedCoordinate, coordinate) else { return }
             isResolving = false
             selectedPlace = place
             hasResolutionError = place == nil

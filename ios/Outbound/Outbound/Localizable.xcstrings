@@ -14498,19 +14498,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap the map to choose a meetup point."
+            "value": "Pan or zoom the map to choose a meetup point."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toca el mapa para elegir un punto de encuentro."
+            "value": "Desplaza o amplía el mapa para elegir un punto de encuentro."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻点地图选择集合点。"
+            "value": "平移或缩放地图以选择集合点。"
           }
         }
       }
@@ -14539,7 +14539,7 @@
       }
     },
     "social.event.location.map.meet_here" : {
-      "comment": "Label on the pin dropped in the map picker.",
+      "comment": "Accessibility label for the fixed center pin in the map picker.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -14562,7 +14562,7 @@
       }
     },
     "social.event.location.map.no_selection" : {
-      "comment": "Placeholder in the map picker before any point is chosen.",
+      "comment": "Placeholder in the map picker before the map center is resolved.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -14608,24 +14608,24 @@
       }
     },
     "social.event.location.map.unavailable" : {
-      "comment": "Error shown when a tapped map point cannot be turned into a place name.",
+      "comment": "Error shown when the map center cannot be turned into a place name.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn’t identify this place. Try another point."
+            "value": "Couldn’t identify this place. Pan to another point and try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo identificar este lugar. Prueba con otro punto."
+            "value": "No se pudo identificar este lugar. Desplázate a otro punto e inténtalo de nuevo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法识别此地点，请尝试选择其他位置。"
+            "value": "无法识别此地点，请平移到其他位置重试。"
           }
         }
       }
