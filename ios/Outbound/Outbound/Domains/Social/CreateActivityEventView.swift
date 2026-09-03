@@ -1,18 +1,29 @@
+import CoreLocation
+import MapKit
 import SwiftUI
 
 struct CreateActivityEventView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
+
+    @StateObject private var locationSearch = ActivityEventLocationSearchModel()
 
     @State private var title = ""
     @State private var startsAt = Date().addingTimeInterval(86_400)
     @State private var durationMinutes = 0
     @State private var locationName = ""
+    @State private var selectedLocationCoordinate: CLLocationCoordinate2D?
+    @State private var selectedLocationName: String?
+    @State private var isResolvingLocation = false
+    @State private var locationResolveToken = 0
+    @State private var showsMapPicker = false
     @State private var note = ""
     @State private var created: ActivityEventDetailDTO?
     @State private var selectedConnectionIDs: Set<String> = []
     @State private var shareURL: URL?
     @State private var isSubmitting = false
+    @FocusState private var isLocationFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -32,10 +43,21 @@ struct CreateActivityEventView: View {
             }
         }
         .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("activity_event_location_picker"),
+            ]))
             if socialStore.connections.isEmpty {
                 await socialStore.refreshConnections()
             }
             await socialStore.loadRemainingConnections()
+        }
+        .sheet(isPresented: $showsMapPicker) {
+            ActivityEventMapPicker(
+                initialCoordinate: selectedLocationCoordinate,
+                initialName: selectedLocationName
+            ) { place in
+                apply(place, source: "map")
+            }
         }
     }
 
@@ -63,7 +85,74 @@ struct CreateActivityEventView: View {
             }
 
             Section {
-                TextField(String(localized: "social.event.location.placeholder", defaultValue: "Golden Gate Park"), text: $locationName)
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    TextField(
+                        String(
+                            localized: "social.event.location.placeholder",
+                            defaultValue: "Search for a place or address"
+                        ),
+                        text: $locationName
+                    )
+                    .focused($isLocationFieldFocused)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+                    .onSubmit { isLocationFieldFocused = false }
+
+                    if isResolvingLocation {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityLabel(
+                                String(
+                                    localized: "social.event.location.search.resolving",
+                                    defaultValue: "Selecting location"
+                                )
+                            )
+                    }
+                }
+
+                if isLocationFieldFocused {
+                    ForEach(locationSearch.completions, id: \.suggestionID) { completion in
+                        Button {
+                            Task { await select(completion) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .foregroundStyle(OutboundPalette.companion)
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(completion.title)
+                                        .foregroundStyle(.primary)
+                                    if !completion.subtitle.isEmpty {
+                                        Text(completion.subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isResolvingLocation)
+                    }
+                }
+
+                Button {
+                    isLocationFieldFocused = false
+                    locationSearch.clear()
+                    showsMapPicker = true
+                } label: {
+                    Label(
+                        String(
+                            localized: "social.event.location.choose_on_map",
+                            defaultValue: "Choose on map"
+                        ),
+                        systemImage: "map"
+                    )
+                }
             } header: {
                 Text(String(localized: "social.event.meet_at", defaultValue: "Meet at"))
             } footer: {
@@ -94,6 +183,19 @@ struct CreateActivityEventView: View {
                     }
                 }
                 .disabled(isSubmitting || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .onChange(of: locationName) { _, query in
+            guard isLocationFieldFocused else { return }
+            selectedLocationCoordinate = nil
+            selectedLocationName = nil
+            locationSearch.update(query: query)
+        }
+        .onChange(of: isLocationFieldFocused) { _, isFocused in
+            if isFocused {
+                locationSearch.update(query: locationName)
+            } else {
+                locationSearch.clear()
             }
         }
     }
@@ -172,10 +274,35 @@ struct CreateActivityEventView: View {
         created = await socialStore.createActivityEvent(CreateActivityEventRequestDTO(
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             startsAt: startsAt,
-            locationName: locationName.nilIfBlank,
+            locationName: locationName.locationNameForSubmission,
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes
         ))
+    }
+
+    private func select(_ completion: MKLocalSearchCompletion) async {
+        isResolvingLocation = true
+        let resolveToken = locationResolveToken
+        let place = await locationSearch.resolve(completion)
+        guard resolveToken == locationResolveToken else { return }
+        isResolvingLocation = false
+        apply(place, source: "autocomplete")
+    }
+
+    private func apply(_ place: ActivityEventPlace, source: String) {
+        isLocationFieldFocused = false
+        locationSearch.clear()
+        locationResolveToken += 1
+        let boundedName = String(place.displayName.prefix(120))
+        locationName = boundedName
+        selectedLocationName = boundedName
+        selectedLocationCoordinate = place.coordinate
+
+        Task {
+            await analyticsManager?.track(.init(.activityEventLocationSelected, properties: [
+                .sourceType: .string(source),
+            ]))
+        }
     }
 }
 
@@ -209,5 +336,9 @@ private extension String {
     var nilIfBlank: String? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var locationNameForSubmission: String? {
+        nilIfBlank.map { String($0.prefix(120)) }
     }
 }

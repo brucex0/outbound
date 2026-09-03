@@ -44,6 +44,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
     case socialOperationFailed = "social_operation_failed"
+    case activityEventLocationSelected = "activity_event_location_selected"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
@@ -228,6 +229,7 @@ enum ProductAnalyticsSchema {
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .socialOperationFailed: [.sourceType, .errorCategory],
+        .activityEventLocationSelected: [.sourceType],
         .goalProgressReached: [.activityType, .goalType, .progressPercent],
         .goalEditorOpened: [.activityType, .goalType],
         .featureExposed: [.feature],

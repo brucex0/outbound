@@ -54,7 +54,7 @@ The production activity-event loop follows `docs/prototypes/future-activities-e2
 `Plan -> Invite -> Discover -> Review -> Joined -> Record -> Reconcile`
 
 - Social's Upcoming add action opens a two-step `Plan a run` / `Invite friends` flow.
-- The MVP form stores a name, date/time, optional meetup label, and optional pace/note.
+- The MVP form stores a name, date/time, optional meetup label, and optional pace/note. The optional meetup field uses native MapKit place autocomplete with a choose-on-map sheet, so the runner can pick a suggestion or drop a pin; only the resolved display label is persisted as `locationName`, with no coordinate storage or third-party provider.
 - Every activity event is hybrid by default: participants may meet at the suggested location or join from anywhere.
 - Creation, Upcoming cards, and activity detail label this explicitly as `Meet up or join from anywhere`; the person-and-radio-waves icon reinforces that both in-person and virtual participation are first-class, and meetup location remains optional.
 - Creating an activity automatically joins its creator. Eligible connections and invitation recipients join immediately; there is no approval or pending-RSVP state.
