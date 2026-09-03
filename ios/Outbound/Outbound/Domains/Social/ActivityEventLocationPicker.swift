@@ -131,6 +131,9 @@ struct ActivityEventMapPicker: View {
                 UserAnnotation()
             }
             .mapStyle(.standard(elevation: .realistic))
+            .onMapCameraChange(frequency: .continuous) { context in
+                invalidateSelectionIfNeeded(for: context.region.center)
+            }
             .onMapCameraChange(frequency: .onEnd) { context in
                 choose(context.region.center)
             }
@@ -269,6 +272,20 @@ struct ActivityEventMapPicker: View {
         }
         .padding()
         .background(.regularMaterial)
+    }
+
+    private func invalidateSelectionIfNeeded(for coordinate: CLLocationCoordinate2D) {
+        guard selectedPlace != nil || isResolving || hasResolutionError else { return }
+        guard !coordinatesMatch(selectedCoordinate, coordinate) else { return }
+
+        resolutionGeneration += 1
+        resolutionTask?.cancel()
+        reverseGeocoder.cancelGeocode()
+        resolutionTask = nil
+        selectedCoordinate = nil
+        selectedPlace = nil
+        isResolving = false
+        hasResolutionError = false
     }
 
     private func choose(_ coordinate: CLLocationCoordinate2D) {
