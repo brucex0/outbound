@@ -97,6 +97,8 @@ struct ActivityEventMapPicker: View {
     @State private var isResolving = false
     @State private var hasResolutionError = false
     @State private var resolutionGeneration = 0
+    @State private var resolutionTask: Task<Void, Never>?
+    @State private var reverseGeocoder = CLGeocoder()
 
     init(
         initialCoordinate: CLLocationCoordinate2D?,
@@ -186,7 +188,11 @@ struct ActivityEventMapPicker: View {
                 // A coordinate may arrive without a resolved place, for example when the
                 // autocomplete resolve was still running when the sheet opened.
                 guard selectedPlace == nil, let coordinate = selectedCoordinate else { return }
-                choose(coordinate)
+                beginResolution(for: coordinate)
+            }
+            .onDisappear {
+                resolutionTask?.cancel()
+                reverseGeocoder.cancelGeocode()
             }
         }
     }
@@ -266,22 +272,73 @@ struct ActivityEventMapPicker: View {
     }
 
     private func choose(_ coordinate: CLLocationCoordinate2D) {
+        // Camera callbacks can repeat the same settled center. Avoid restarting a valid
+        // request, which would otherwise make CLGeocoder more likely to be throttled.
+        guard !coordinatesMatch(selectedCoordinate, coordinate) else { return }
+        selectedCoordinate = coordinate
+        beginResolution(for: coordinate)
+    }
+
+    private func beginResolution(for coordinate: CLLocationCoordinate2D) {
         resolutionGeneration += 1
         let generation = resolutionGeneration
-        selectedCoordinate = coordinate
         selectedPlace = nil
         hasResolutionError = false
         isResolving = true
 
-        Task {
-            let place = await ActivityEventLocationFormatter.place(at: coordinate)
-            // A newer map position supersedes this result; never let stale geocoding win.
-            guard generation == resolutionGeneration,
-                  coordinatesMatch(selectedCoordinate, coordinate) else { return }
-            isResolving = false
-            selectedPlace = place
-            hasResolutionError = place == nil
+        resolutionTask?.cancel()
+        reverseGeocoder.cancelGeocode()
+        resolutionTask = Task { @MainActor in
+            do {
+                // Let the camera settle before starting the request, especially after a
+                // gesture produces several closely spaced onEnd callbacks.
+                try await Task.sleep(nanoseconds: 500_000_000)
+                try Task.checkCancellation()
+                let place = await resolvePlace(at: coordinate)
+                try Task.checkCancellation()
+
+                // A newer map position supersedes this result; never let stale geocoding win.
+                guard generation == resolutionGeneration,
+                      coordinatesMatch(selectedCoordinate, coordinate) else { return }
+                isResolving = false
+                selectedPlace = place
+                hasResolutionError = place == nil
+            } catch is CancellationError {
+                // A newer camera position owns the loading state.
+            } catch {
+                guard generation == resolutionGeneration else { return }
+                isResolving = false
+                hasResolutionError = true
+            }
         }
+    }
+
+    private func resolvePlace(at coordinate: CLLocationCoordinate2D) async -> ActivityEventPlace? {
+        for attempt in 0..<2 {
+            do {
+                let placemarks = try await reverseGeocoder.reverseGeocodeLocation(
+                    CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                    preferredLocale: .autoupdatingCurrent
+                )
+                if let placemark = placemarks.first,
+                   let place = ActivityEventLocationFormatter.place(
+                       from: placemark,
+                       coordinate: coordinate
+                   ) {
+                    return place
+                }
+            } catch {
+                guard !Task.isCancelled else { return nil }
+            }
+
+            guard attempt == 0, !Task.isCancelled else { return nil }
+            do {
+                try await Task.sleep(nanoseconds: 750_000_000)
+            } catch {
+                return nil
+            }
+        }
+        return nil
     }
 
     private func coordinatesMatch(
@@ -295,28 +352,21 @@ struct ActivityEventMapPicker: View {
 }
 
 enum ActivityEventLocationFormatter {
-    static func place(at coordinate: CLLocationCoordinate2D) async -> ActivityEventPlace? {
-        do {
-            let placemarks = try await CLGeocoder().reverseGeocodeLocation(
-                CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude),
-                preferredLocale: .autoupdatingCurrent
-            )
-            guard let placemark = placemarks.first else { return nil }
-
-            let street = [placemark.subThoroughfare, placemark.thoroughfare]
-                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-                .joined(separator: " ")
-            let area = [placemark.locality, placemark.administrativeArea]
-                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-                .joined(separator: ", ")
-            let displayName = joined(placemark.name ?? street, area)
-            guard !displayName.isEmpty else { return nil }
-            return ActivityEventPlace(displayName: displayName, coordinate: coordinate)
-        } catch {
-            return nil
-        }
+    static func place(
+        from placemark: CLPlacemark,
+        coordinate: CLLocationCoordinate2D
+    ) -> ActivityEventPlace? {
+        let street = [placemark.subThoroughfare, placemark.thoroughfare]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let area = [placemark.locality, placemark.administrativeArea]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        let displayName = joined(placemark.name ?? street, area)
+        guard !displayName.isEmpty else { return nil }
+        return ActivityEventPlace(displayName: displayName, coordinate: coordinate)
     }
 
     static func joined(_ title: String, _ subtitle: String) -> String {
