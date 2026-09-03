@@ -19,6 +19,7 @@ enum SimplifiedAppTab: Hashable {
 
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
@@ -52,6 +53,11 @@ struct SimplifiedAppShell: View {
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
+    @State private var assistantLauncherExperiment = AssistantLauncherExperiment()
+    @State private var assistantLauncherAnimationTask: Task<Void, Never>?
+    @State private var assistantLauncherScale = 1.0
+    @State private var assistantLauncherShimmerOpacity = 0.0
+    @State private var wasAssistantLauncherEligible = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -102,8 +108,11 @@ struct SimplifiedAppShell: View {
             )
             .frame(width: 0, height: 0)
         }
-        .onChange(of: selection, initial: true) { _, tab in
+        .onChange(of: selection, initial: true) { previousTab, tab in
             feedbackPage = tab.feedbackPageName
+            if previousTab != tab {
+                cancelAssistantLauncherAnimation()
+            }
         }
         .overlay(alignment: .bottom) {
             if !isActivityFullscreenVisible {
@@ -125,7 +134,9 @@ struct SimplifiedAppShell: View {
                 screenName: assistantScreenName,
                 isRecordingActive: activitySessionState != .idle,
                 focusedActivity: selection == .today ? customizedTodayIntent ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent : nil,
-                onApplyFocusedActivity: { customizedTodayIntent = $0 }
+                onApplyFocusedActivity: { customizedTodayIntent = $0 },
+                launcherExperimentVariant: assistantLauncherExperiment.variant,
+                analyticsDestination: assistantAnalyticsDestination
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -206,6 +217,10 @@ struct SimplifiedAppShell: View {
                 readiness: dailyCheckInStore.readiness,
                 phase: DailyMotivationEngine.phase(for: activityStore.activities)
             )
+            updateAssistantLauncherEligibility(entrySource: "app_shell")
+        }
+        .onDisappear {
+            cancelAssistantLauncherAnimation()
         }
         .onChange(of: activityStore.activities) { _, activities in
             trainingPlanStore.refresh(
@@ -263,10 +278,20 @@ struct SimplifiedAppShell: View {
             if phase == .active {
                 weatherStore.refreshForToday()
             }
+            updateAssistantLauncherEligibility(entrySource: "foreground")
         }
         .onChange(of: isActivityFullscreenVisible) { _, isVisible in
             if isVisible {
                 showsAssistant = false
+            }
+            updateAssistantLauncherEligibility(entrySource: "activity_closed")
+        }
+        .onChange(of: showsAssistant) { _, isVisible in
+            updateAssistantLauncherEligibility(entrySource: isVisible ? "assistant_opened" : "assistant_closed")
+        }
+        .onChange(of: accessibilityReduceMotion) { _, reduceMotion in
+            if reduceMotion {
+                cancelAssistantLauncherAnimation()
             }
         }
     }
@@ -287,21 +312,104 @@ struct SimplifiedAppShell: View {
 
     private var assistantLaunchButton: some View {
         Button {
+            cancelAssistantLauncherAnimation()
+            trackAssistantExperimentEvent(.assistantLauncherOpened, entrySource: "persistent_launcher")
             showsAssistant = true
         } label: {
-            Image(systemName: "sparkles")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 48, height: 48)
-                .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-                .overlay {
-                    Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-                }
-                .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+            ZStack {
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .scaleEffect(1.16)
+                    .opacity(assistantLauncherShimmerOpacity)
+                    .blur(radius: 0.5)
+            }
+            .frame(width: 48, height: 48)
+            .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
+            .overlay {
+                Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+            }
+            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+            .scaleEffect(assistantLauncherScale)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "Open assistant"))
         .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+    }
+
+    private var assistantAnalyticsDestination: String {
+        switch selection {
+        case .social: "social"
+        case .today: "today"
+        case .me: "me"
+        }
+    }
+
+    private var isAssistantLauncherEligible: Bool {
+        scenePhase == .active && !isActivityFullscreenVisible && !showsAssistant
+    }
+
+    @MainActor
+    private func updateAssistantLauncherEligibility(entrySource: String) {
+        guard isAssistantLauncherEligible else {
+            wasAssistantLauncherEligible = false
+            cancelAssistantLauncherAnimation()
+            return
+        }
+
+        guard !wasAssistantLauncherEligible else { return }
+        wasAssistantLauncherEligible = true
+        trackAssistantExperimentEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
+
+        guard assistantLauncherExperiment.variant == .treatment,
+              assistantLauncherExperiment.claimFirstEligiblePresentation(),
+              !accessibilityReduceMotion
+        else { return }
+
+        assistantLauncherAnimationTask?.cancel()
+        assistantLauncherAnimationTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(650))
+            guard !Task.isCancelled, isAssistantLauncherEligible else { return }
+
+            trackAssistantExperimentEvent(.assistantLauncherAnimationShown, entrySource: "daily_eligible")
+            withAnimation(.easeOut(duration: 0.28)) {
+                assistantLauncherScale = 1.07
+                assistantLauncherShimmerOpacity = 0.52
+            }
+            try? await Task.sleep(for: .milliseconds(280))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(duration: 0.52, bounce: 0.24)) {
+                assistantLauncherScale = 1.0
+                assistantLauncherShimmerOpacity = 0.0
+            }
+            try? await Task.sleep(for: .milliseconds(520))
+            assistantLauncherAnimationTask = nil
+        }
+    }
+
+    @MainActor
+    private func cancelAssistantLauncherAnimation() {
+        assistantLauncherAnimationTask?.cancel()
+        assistantLauncherAnimationTask = nil
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            assistantLauncherScale = 1.0
+            assistantLauncherShimmerOpacity = 0.0
+        }
+    }
+
+    private func trackAssistantExperimentEvent(_ name: ProductEventName, entrySource: String) {
+        let event = ProductAnalyticsEvent(name, properties: [
+            .experimentVariant: .string(assistantLauncherExperiment.variant.rawValue),
+            .destination: .string(assistantAnalyticsDestination),
+            .entrySource: .string(entrySource)
+        ])
+        Task { await analyticsManager?.track(event) }
     }
 
     private func selectTabWithoutAnimation(_ tab: SimplifiedAppTab) {

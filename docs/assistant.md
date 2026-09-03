@@ -79,6 +79,8 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ## Current Implementation Shape
 
 - `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights.
+- The launcher runs a local-only `assistant_launcher_sparkle_v1` experiment with a persisted 50/50 control/treatment assignment. Control remains static. Treatment may play one 0.8-second two-step bounce/shimmer after a short settle delay on the first eligible presentation of the local calendar day.
+- Launcher motion is eligible only while the scene is active, the launcher is visible, and both the assistant and full-screen activity are closed. Tab changes never trigger it, and Reduce Motion uses the static launcher. DEBUG builds can force `control` or `treatment` with `-AssistantLauncherExperimentVariant` for manual verification.
 - `RecordView` owns the compact live-session assistant entry.
 - `AssistantView` remains the expanded assistant surface with:
   - a short hero summary
@@ -273,6 +275,7 @@ Useful references:
 
 ## File Map
 
+- `ios/Outbound/Outbound/Core/Experiments/AssistantLauncherExperiment.swift`: local variant assignment and calendar-day frequency cap for the launcher motion experiment.
 - `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and optional Apple Foundation Models responder.
 - `ios/Outbound/Outbound/App/AssistantActivityCommandParser.swift`: deterministic parser for short voice activity commands.
 - `ios/Outbound/Outbound/App/OutboundActivityIntents.swift`: App Intents and App Shortcuts for Siri/system activity prep.
