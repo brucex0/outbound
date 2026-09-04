@@ -162,6 +162,8 @@ Keep early adaptation narrow and explain every material change:
 - group runs and one-to-one run invitations;
 - recent social activity.
 
+The production tab remains named `Social` while the broader destination naming is unresolved. Do not rename it as part of Circle work. Implement private Circles according to `docs/your-circle.md`: Circle is the persistent relationship, Weekly Focus is optional configuration, Social owns creation and management, and Today shows at most one compact primary-Circle opportunity.
+
 Do not use `Crew` as a primary product term.
 
 AI should connect personal training with social opportunity:

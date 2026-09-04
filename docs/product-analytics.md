@@ -94,6 +94,7 @@ Track:
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
 | Group runs | group control exposed -> create/join attempted -> invitation shared/opened -> joined -> activity started -> activity saved |
+| Your Circle | eligible section exposure -> creation -> invitation -> acceptance -> active Circle -> focus configured -> run contributed -> Cheer or run planned -> following-week contribution |
 | Live Guidance | coaching level selected -> semantic moment detected -> cue spoken -> cue outcome evaluated -> optional challenge completed -> post-run feedback submitted |
 | Assistant launcher | eligible exposure -> animation shown -> launcher opened -> suggestion selected or message sent |
 
@@ -115,6 +116,7 @@ Live Guidance uses semantic values such as moment type (including periodic `prog
 - Goal completion by goal type and coarse target bucket.
 - Feature combinations used at activity start and their relationship to save and repeat-run rates.
 - Group-run create/join conversion and participant-count buckets.
+- Circle invitation acceptance, activation, weekly contribution, focus completion, support actions, continuity, and their relationship to D7/D28 saved-activity retention. Follow the privacy contract in `docs/your-circle.md` and do not treat observational correlation as causation.
 
 Do not treat correlation between a feature and retention as proof that the feature caused retention.
 

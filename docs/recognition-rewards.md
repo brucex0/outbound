@@ -257,9 +257,10 @@ This keeps the system from turning into pure goal compliance.
 
 ## Relationship To Social
 
-Social rewards should reinforce the existing loops in `Squad`, `Clubs`, and `Rivals`.
+Social rewards should reinforce private Circles and the existing loops in `Squad`, `Clubs`, and `Rivals`.
 
 Recommended mapping:
+- `Your Circle`: contribution and weekly-completion moments from `docs/your-circle.md`; do not create a repeatable badge for every completed week
 - `Squad`: support badges such as `Good Teammate`
 - `Clubs`: participation badges such as `Relay Player`
 - `Rivals`: outcome badges such as `Rival Edge`

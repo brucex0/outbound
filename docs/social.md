@@ -40,6 +40,8 @@ The end-to-end event flow was originally explored in `docs/prototypes/future-act
 
 Social is the app's network-effect surface. It should make runs feel shared, timely, and worth returning to even before a user starts recording.
 
+`Your Circle` is the next permanent private-relationship layer. Its canonical product, privacy, data, analytics, and implementation contract is `docs/your-circle.md`. Keep Circle separate from the legacy feature-flagged Social prototype and preserve the existing Social navigation and feed hierarchy while adding it.
+
 Core loops:
 
 - `Squad`: friends' runs, live relays, cheers, comments, and route prompts.
@@ -128,5 +130,5 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 
 - Push notification delivery; the inbox is complete without APNs.
 - Group creation and administration; launch Groups are managed/seeded.
-- Public following, public feed ranking, direct messages, circles, rivals, challenges, and relays.
+- Public following, public feed ranking, direct messages, rivals, challenges, and relays. Private Circles are specified in `docs/your-circle.md` and are no longer deferred.
 - Automated moderation classification and an operator review console; reports are persisted but still require response ownership.
