@@ -233,56 +233,9 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
 
     private func rollingGrade(_ snapshots: [ActiveSessionSnapshot]) -> Double? {
         guard let endElapsed = snapshots.last?.elapsedSeconds else { return nil }
-        let locations = snapshots
-            .filter { $0.elapsedSeconds >= endElapsed - 45 }
-            .compactMap(\.location)
-            .filter {
-                $0.horizontalAccuracyMeters >= 0
-                    && $0.horizontalAccuracyMeters <= 25
-                    && $0.verticalAccuracyMeters >= 0
-                    && $0.verticalAccuracyMeters <= 10
-            }
-        guard locations.count >= 6 else { return nil }
-        let count = min(3, locations.count / 2)
-        let start = averagedLocation(Array(locations.prefix(count)))
-        let end = averagedLocation(Array(locations.suffix(count)))
-        let distance = haversineDistance(
-            latitudeA: start.latitude,
-            longitudeA: start.longitude,
-            latitudeB: end.latitude,
-            longitudeB: end.longitude
+        return LiveTerrainGradeEstimator.grade(
+            from: snapshots.filter { $0.elapsedSeconds >= endElapsed - 45 }
         )
-        guard distance >= 45 else { return nil }
-        let grade = (end.altitude - start.altitude) / distance * 100
-        return grade.isFinite && abs(grade) <= 40 ? grade : nil
-    }
-
-    private func averagedLocation(
-        _ locations: [SessionLocation]
-    ) -> (latitude: Double, longitude: Double, altitude: Double) {
-        let divisor = Double(locations.count)
-        return (
-            locations.reduce(0) { $0 + $1.latitude } / divisor,
-            locations.reduce(0) { $0 + $1.longitude } / divisor,
-            locations.reduce(0) { $0 + $1.altitudeMeters } / divisor
-        )
-    }
-
-    private func haversineDistance(
-        latitudeA: Double,
-        longitudeA: Double,
-        latitudeB: Double,
-        longitudeB: Double
-    ) -> Double {
-        let radians = Double.pi / 180
-        let latitudeDelta = (latitudeB - latitudeA) * radians
-        let longitudeDelta = (longitudeB - longitudeA) * radians
-        let firstLatitude = latitudeA * radians
-        let secondLatitude = latitudeB * radians
-        let value = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
-            + cos(firstLatitude) * cos(secondLatitude)
-            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
-        return 6_371_000 * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
     }
 
     private func workoutSegment(

@@ -230,6 +230,7 @@ final class LiveGuidanceDirector {
     private var lastDriftElapsedSeconds: Int?
     private var lastInstabilityElapsedSeconds: Int?
     private var isOnClimb = false
+    private var climbCandidateStartDistanceMeters: Double?
     private var challengeStartedAtElapsedSeconds: Int?
     private var challengeStartQueued = false
     private var challengeCompleted = false
@@ -250,6 +251,7 @@ final class LiveGuidanceDirector {
         lastDriftElapsedSeconds = nil
         lastInstabilityElapsedSeconds = nil
         isOnClimb = false
+        climbCandidateStartDistanceMeters = nil
         challengeStartedAtElapsedSeconds = nil
         challengeStartQueued = false
         challengeCompleted = false
@@ -543,17 +545,30 @@ final class LiveGuidanceDirector {
         gradePercent: Double?
     ) -> DetectedLiveGuidanceMoment? {
         guard intent?.resolvedActivityType == .running,
-              snapshot.elapsedSeconds >= 90,
+              snapshot.elapsedSeconds >= 300,
               let gradePercent
-        else { return nil }
+        else {
+            climbCandidateStartDistanceMeters = nil
+            return nil
+        }
 
         if !isOnClimb, gradePercent >= 3.5 {
+            guard let candidateStart = climbCandidateStartDistanceMeters else {
+                climbCandidateStartDistanceMeters = snapshot.distanceMeters
+                return nil
+            }
+            guard snapshot.distanceMeters - candidateStart >= 30 else { return nil }
             isOnClimb = true
+            climbCandidateStartDistanceMeters = nil
             guard !suppressedMomentTypes.contains(.climbStart) else { return nil }
             return DetectedLiveGuidanceMoment(
                 type: .climbStart,
                 detectedAtElapsedSeconds: snapshot.elapsedSeconds
             )
+        }
+
+        if !isOnClimb {
+            climbCandidateStartDistanceMeters = nil
         }
 
         if isOnClimb, gradePercent <= 1.25 {
@@ -726,59 +741,11 @@ final class LiveGuidanceDirector {
     }
 
     private func rollingGradePercent(through elapsedSeconds: Int) -> Double? {
-        let locations = history
-            .filter { $0.elapsedSeconds >= elapsedSeconds - 45 && $0.elapsedSeconds <= elapsedSeconds }
-            .compactMap(\.location)
-            .filter {
-                $0.horizontalAccuracyMeters >= 0
-                    && $0.horizontalAccuracyMeters <= 25
-                    && $0.verticalAccuracyMeters >= 0
-                    && $0.verticalAccuracyMeters <= 10
+        LiveTerrainGradeEstimator.grade(
+            from: history.filter {
+                $0.elapsedSeconds >= elapsedSeconds - 45 && $0.elapsedSeconds <= elapsedSeconds
             }
-        guard locations.count >= 6 else { return nil }
-        let endpointCount = min(3, locations.count / 2)
-        let startLocations = Array(locations.prefix(endpointCount))
-        let endLocations = Array(locations.suffix(endpointCount))
-        let start = averagedLocation(startLocations)
-        let end = averagedLocation(endLocations)
-        let horizontalMeters = haversineDistanceMeters(
-            latitudeA: start.latitude,
-            longitudeA: start.longitude,
-            latitudeB: end.latitude,
-            longitudeB: end.longitude
         )
-        guard horizontalMeters >= 45 else { return nil }
-        let grade = (end.altitude - start.altitude) / horizontalMeters * 100
-        guard grade.isFinite, abs(grade) <= 40 else { return nil }
-        return grade
-    }
-
-    private func averagedLocation(
-        _ locations: [SessionLocation]
-    ) -> (latitude: Double, longitude: Double, altitude: Double) {
-        let divisor = Double(locations.count)
-        return (
-            locations.reduce(0) { $0 + $1.latitude } / divisor,
-            locations.reduce(0) { $0 + $1.longitude } / divisor,
-            locations.reduce(0) { $0 + $1.altitudeMeters } / divisor
-        )
-    }
-
-    private func haversineDistanceMeters(
-        latitudeA: Double,
-        longitudeA: Double,
-        latitudeB: Double,
-        longitudeB: Double
-    ) -> Double {
-        let degreesToRadians = Double.pi / 180
-        let latitudeDelta = (latitudeB - latitudeA) * degreesToRadians
-        let longitudeDelta = (longitudeB - longitudeA) * degreesToRadians
-        let firstLatitude = latitudeA * degreesToRadians
-        let secondLatitude = latitudeB * degreesToRadians
-        let value = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
-            + cos(firstLatitude) * cos(secondLatitude)
-            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
-        return 6_371_000 * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
     }
 
     private func isInFinishWindow(
@@ -835,5 +802,81 @@ final class LiveGuidanceDirector {
         case .spanish: "Ese ajuste funcionó. Recuperaste el ritmo."
         case .simplifiedChinese: "刚才的调整有效。你重新找回节奏了。"
         }
+    }
+}
+
+enum LiveTerrainGradeEstimator {
+    static func grade(from snapshots: [ActiveSessionSnapshot]) -> Double? {
+        let reliable = snapshots.filter { snapshot in
+            guard let location = snapshot.location else { return false }
+            return location.horizontalAccuracyMeters >= 0
+                && location.horizontalAccuracyMeters <= 20
+                && location.verticalAccuracyMeters >= 0
+                && location.verticalAccuracyMeters <= 8
+        }
+        guard reliable.count >= 8,
+              let first = reliable.first,
+              let last = reliable.last,
+              last.elapsedSeconds - first.elapsedSeconds >= 30
+        else { return nil }
+
+        let endpointCount = min(5, reliable.count / 2)
+        let start = averagedEndpoint(Array(reliable.prefix(endpointCount)))
+        let end = averagedEndpoint(Array(reliable.suffix(endpointCount)))
+        let traveledMeters = end.distanceMeters - start.distanceMeters
+        let displacementMeters = haversineDistanceMeters(
+            latitudeA: start.latitude,
+            longitudeA: start.longitude,
+            latitudeB: end.latitude,
+            longitudeB: end.longitude
+        )
+        let altitudeDelta = end.altitude - start.altitude
+        let requiredAltitudeChange = max(
+            6,
+            max(start.verticalAccuracyMeters, end.verticalAccuracyMeters)
+        )
+        guard traveledMeters >= 75,
+              displacementMeters >= 40,
+              abs(altitudeDelta) >= requiredAltitudeChange
+        else { return nil }
+
+        let grade = altitudeDelta / traveledMeters * 100
+        return grade.isFinite && abs(grade) <= 40 ? grade : nil
+    }
+
+    private static func averagedEndpoint(
+        _ snapshots: [ActiveSessionSnapshot]
+    ) -> (
+        latitude: Double,
+        longitude: Double,
+        altitude: Double,
+        distanceMeters: Double,
+        verticalAccuracyMeters: Double
+    ) {
+        let divisor = Double(snapshots.count)
+        return (
+            snapshots.compactMap(\.location).reduce(0) { $0 + $1.latitude } / divisor,
+            snapshots.compactMap(\.location).reduce(0) { $0 + $1.longitude } / divisor,
+            snapshots.compactMap(\.location).reduce(0) { $0 + $1.altitudeMeters } / divisor,
+            snapshots.reduce(0) { $0 + $1.distanceMeters } / divisor,
+            snapshots.compactMap(\.location).reduce(0) { $0 + $1.verticalAccuracyMeters } / divisor
+        )
+    }
+
+    private static func haversineDistanceMeters(
+        latitudeA: Double,
+        longitudeA: Double,
+        latitudeB: Double,
+        longitudeB: Double
+    ) -> Double {
+        let degreesToRadians = Double.pi / 180
+        let latitudeDelta = (latitudeB - latitudeA) * degreesToRadians
+        let longitudeDelta = (longitudeB - longitudeA) * degreesToRadians
+        let firstLatitude = latitudeA * degreesToRadians
+        let secondLatitude = latitudeB * degreesToRadians
+        let value = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
+            + cos(firstLatitude) * cos(secondLatitude)
+            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return 6_371_000 * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
     }
 }

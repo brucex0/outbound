@@ -33,7 +33,7 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `recovery_too_hard` | Warmup, recovery, or cooldown pace is persistently faster than its personalized upper bound. | Same persistence and terrain gates as `pace_above_target`; phase must be warmup, recovery, or cooldown. | Once per segment. |
 | `unexpected_stop` | Movement-based auto-pause paused an active workout. | Running speed remained below 1.0 m/s for 12 seconds after the first 10 active seconds. Manual pause does not create this moment. | Each actual auto-pause. |
 | `resume_after_break` | Movement-based auto-pause resumed the workout. | Running speed remained at or above 1.5 m/s for 6 seconds while auto-paused. Manual resume does not create this moment. | Each actual auto-resume. |
-| `climb_start` | Reliable altitude and location history indicate a sustained climb. | Running session; at least 90 active seconds; 45-second location window; grade at least 3.5%. | On transition into a climb, subject to coaching cooldown. |
+| `climb_start` | Reliable altitude and location history indicate a sustained climb. | Running session; at least 5 active minutes so startup altitude can settle; reliable 45-second location window; grade at least 3.5% persists for another 30 m. | On transition into a climb, subject to coaching cooldown. |
 | `crest_recovery` | A detected climb has eased enough to reset effort and rhythm. | Active climb state and rolling grade at or below 1.25%. | On transition out of a climb, subject to coaching cooldown. |
 | `segment_transition` | A timed workout step ended and another began. | Cumulative duration boundary from structured workout steps. | Each segment boundary. |
 | `finish_opportunity` | A planned finish is near enough for an optional controlled lift, but not an immediate finish command. | After 5 active minutes; 300-800 m or up to 12% remains for distance goals, or 2-5 minutes or up to 12% remains for time goals. | Once per session. |
@@ -65,7 +65,7 @@ Current plan steps, calibration workouts, the default easy run, standalone 5K/10
 
 ## Terrain And Confidence Gates
 
-Grade uses a 45-second window with at least six locations. Horizontal accuracy must be 25 m or better, vertical accuracy 10 m or better, and averaged endpoints must be at least 45 m apart. Values outside +/-40% are discarded.
+Grade uses a 45-second window spanning at least 30 seconds with at least eight reliable snapshots. Horizontal accuracy must be 20 m or better and vertical accuracy 8 m or better. The runner must advance at least 75 m, the averaged endpoints must be at least 40 m apart, and the altitude change must exceed both 6 m and the reported endpoint vertical uncertainty. Grade uses recorded path distance rather than straight-line endpoint distance, so turns do not exaggerate slope. Values outside +/-40% are discarded. A climb cue additionally requires the qualifying grade to persist for another 30 m; loss of a reliable qualifying signal resets that candidate.
 
 An absolute grade of 2.5% or more suppresses pace correction, pace drift, instability, and target-lock praise. The coach should first acknowledge the hill and guide effort; flat-ground pace advice during a climb or descent is usually misleading.
 
