@@ -40,6 +40,15 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
+After pulling the destructive pre-release Your Circle schema replacement, rebuild local backend data and generated Prisma types before launching the app:
+
+```sh
+cd backend
+npm run db:rebuild
+```
+
+For a non-destructive compile-only backend check, use `npm run db:generate && npm run build`.
+
 ## Test Commands
 
 Run tests only when the user asks.

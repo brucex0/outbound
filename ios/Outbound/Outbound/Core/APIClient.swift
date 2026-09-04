@@ -392,6 +392,95 @@ final class APIClient {
         )
     }
 
+    func fetchCircles() async throws -> CircleListResponseDTO {
+        try await get("/circles")
+    }
+
+    func fetchCircle(id: String) async throws -> CircleDTO {
+        try await get("/circles/\(id)")
+    }
+
+    func createCircle(_ request: CircleCreateRequestDTO) async throws -> CircleDTO {
+        try await post("/circles", body: request)
+    }
+
+    func inviteToCircle(id: String, request: CircleInviteRequestDTO) async throws -> CircleDTO {
+        let response: CircleInvitationMutationResponseDTO = try await post("/circles/\(id)/invitations", body: request)
+        return response.circle
+    }
+
+    func fetchCircleInvitations() async throws -> CircleInvitationListResponseDTO {
+        try await get("/circles/invitations/inbox")
+    }
+
+    func acceptCircleInvitation(id: String) async throws -> CircleDTO {
+        try await post("/circles/invitations/\(id)/accept", body: EmptyBody())
+    }
+
+    func declineCircleInvitation(id: String) async throws -> CircleConnectionMutationDTO {
+        try await post("/circles/invitations/\(id)/decline", body: EmptyBody())
+    }
+
+    func updateCircleName(id: String, name: String) async throws -> CircleDTO {
+        try await patch("/circles/\(id)", body: ["name": name])
+    }
+
+    func updateCircleFocus(id: String, request: CircleFocusRequestDTO) async throws -> CircleDTO {
+        try await post("/circles/\(id)/focus", body: request)
+    }
+
+    func updateCircleCommitment(id: String, request: CircleCommitmentRequestDTO) async throws -> CircleDTO {
+        try await put("/circles/\(id)/commitment", body: request)
+    }
+
+    func sendCircleCheer(id: String, request: CircleCheerRequestDTO) async throws -> CircleCheerResponseDTO {
+        try await post("/circles/\(id)/cheers", body: request)
+    }
+
+    func cancelCircleInvitation(circleID: String, invitationID: String) async throws -> CircleInvitationCancellationResponseDTO {
+        try await post("/circles/\(circleID)/invitations/\(invitationID)/cancel", body: EmptyBody())
+    }
+
+    func updateCircleCalendar(id: String, request: CircleCalendarRequestDTO) async throws -> CircleDTO {
+        try await put("/circles/\(id)/calendar", body: request)
+    }
+
+    func removeCircleCheer(id: String, cheerID: String) async throws -> CircleCheerResponseDTO {
+        try await delete("/circles/\(id)/cheers/\(cheerID)")
+    }
+
+    func selectPrimaryCircle(id: String) async throws -> CirclePrimaryResponseDTO {
+        try await put("/circles/\(id)/primary", body: EmptyBody())
+    }
+
+    func setCircleNotifications(id: String, muted: Bool) async throws -> CircleDTO {
+        try await put("/circles/\(id)/notifications", body: CircleMuteRequestDTO(muted: muted))
+    }
+
+    func leaveCircle(id: String) async throws -> CircleMutationResponseDTO {
+        try await post("/circles/\(id)/leave", body: EmptyBody())
+    }
+
+    func removeCircleMember(id: String, memberUserID: String) async throws -> CircleDTO {
+        try await delete("/circles/\(id)/members/\(memberUserID)")
+    }
+
+    func transferCircleOwnership(id: String, recipientUserID: String) async throws -> CircleDTO {
+        try await post("/circles/\(id)/transfer", body: CircleTransferRequestDTO(recipientUserId: recipientUserID))
+    }
+
+    func archiveCircle(id: String) async throws -> CircleDTO {
+        try await post("/circles/\(id)/archive", body: EmptyBody())
+    }
+
+    func reactivateCircle(id: String) async throws -> CircleDTO {
+        try await post("/circles/\(id)/reactivate", body: EmptyBody())
+    }
+
+    func presentCircleWeek(circleID: String, weekID: String) async throws -> CirclePresentationResponseDTO {
+        try await post("/circles/\(circleID)/weeks/\(weekID)/presentation", body: EmptyBody())
+    }
+
     func fetchTogether(feedCursor: String? = nil) async throws -> TogetherResponseDTO {
         try await get("/social/home", queryItems: feedCursor.map {
             [URLQueryItem(name: "feedCursor", value: $0)]
@@ -1820,6 +1909,7 @@ struct ActivityUploadResponse: Decodable {
     let status: String
     let uploadedAt: Date
     let serverUpdatedAt: Date
+    let circleContributions: [CircleContributionDTO]?
 }
 
 struct ActivitySyncListResponse: Decodable {

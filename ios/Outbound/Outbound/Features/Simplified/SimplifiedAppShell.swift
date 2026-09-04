@@ -29,6 +29,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
+    @EnvironmentObject private var circleStore: CircleStore
     @Binding var selection: SimplifiedAppTab
     let activitySessionState: ActivitySessionPortalState
     let isActivityFullscreenVisible: Bool
@@ -60,6 +61,8 @@ struct SimplifiedAppShell: View {
     @State private var assistantLauncherRingOpacity = 0.0
     @State private var hasTrackedAssistantLauncherForeground = false
     @State private var hasTrackedAssistantLauncherAnimation = false
+    @State private var completionCircle: CircleDTO?
+    @State private var circleToast: String?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -122,6 +125,37 @@ struct SimplifiedAppShell: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 40)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let circleToast {
+                Label(circleToast, systemImage: "person.3.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: circleToast)
+        .task(id: circleToast) {
+            guard circleToast != nil else { return }
+            try? await Task.sleep(for: .seconds(3.6))
+            guard !Task.isCancelled else { return }
+            circleToast = nil
+        }
+        .fullScreenCover(item: $completionCircle) { circle in
+            CircleCompletionCelebrationView(circle: circle) {
+                completionCircle = nil
+                Task {
+                    if await circleStore.presentCompletionIfNeeded(for: circle) {
+                        await analyticsManager?.track(.init(.circleWeeklyFocusCompleted, properties: [
+                            .selectionType: .string(circle.week.focusMode),
+                            .participantCountBucket: .string(ProductAnalyticsBucket.count(circle.memberCount))
+                        ]))
+                    }
+                }
             }
         }
         .ignoresSafeArea(
@@ -268,6 +302,16 @@ struct SimplifiedAppShell: View {
                 activityTypeOverride: route.activityType
             ))
             communityRouteStore.consumeLaunch()
+        }
+        .onChange(of: circleStore.pendingCompletion?.id, initial: true) { _, _ in
+            guard completionCircle == nil else { return }
+            circleToast = nil
+            completionCircle = circleStore.pendingCompletion
+        }
+        .onChange(of: circleStore.toastMessage) { _, message in
+            guard completionCircle == nil, let message else { return }
+            circleToast = message
+            circleStore.clearToast()
         }
         .onChange(of: preActivityRoute) { _, route in
             selectedRouteName = route?.name
@@ -766,6 +810,7 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @AppStorage("theme_discovery_tip_dismissed_v1") private var hasDismissedThemeTip = false
     @AppStorage("theme_discovery_tip_presentation_count_v1") private var themeTipPresentationCount = 0
@@ -817,7 +862,7 @@ private struct SimplifiedTodayView: View {
                         .clipped()
 
                         if preActivityRoute == nil
-                            && (launchGoalMode == .planned || activitySessionState != .idle) {
+                            && (launchGoalMode == .planned || activitySessionState != .idle || circleStore.eligiblePrimaryCircle != nil) {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, ActivityLaunchLayout.peerCardGap)
@@ -1118,7 +1163,7 @@ private struct SimplifiedTodayView: View {
 
     private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
-            $0.currentUserGoing == true && Calendar.current.isDateInToday($0.startsAt)
+            $0.currentUserGoing == true && $0.startsAt <= Date().addingTimeInterval(24 * 60 * 60)
         }
     }
 
@@ -1129,6 +1174,9 @@ private struct SimplifiedTodayView: View {
                 plannedWorkoutCard
             } else if let activityEventToday {
                 activityEventCard(activityEventToday)
+            } else if let circle = circleStore.eligiblePrimaryCircle {
+                NavigationLink { CircleDetailView(circle: circle) } label: { CircleCompactCard(circle: circle, isPrimary: true) }
+                    .buttonStyle(.plain)
             } else {
                 plannedWorkoutCard
             }

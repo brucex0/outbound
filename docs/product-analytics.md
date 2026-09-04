@@ -98,6 +98,8 @@ Track:
 | Live Guidance | coaching level selected -> semantic moment detected -> cue spoken -> cue outcome evaluated -> optional challenge completed -> post-run feedback submitted |
 | Assistant launcher | eligible exposure -> animation shown -> launcher opened -> suggestion selected or message sent |
 
+Your Circle uses the typed `circle_*` events defined in `ProductAnalyticsEvent.swift` for section exposure; creation; invitation send/accept/decline/cancel; activation; focus and coarse target changes; progress; Cheer send/remove; run planning; confirmed contribution; weekly completion; primary/mute/member/ownership lifecycle outcomes; and normalized failures. The allowlist accepts only entry/source/result categories, focus selection, and coarse participant/target buckets. IDs, names, activity facts, locations, free text, notification text, and exact counts are rejected from this event family.
+
 Exposure matters: a missing action means something only when the runner actually saw the relevant control. Use explicit exposure events for optional features and compare exposed users with adopters.
 
 Avoid continuous progress telemetry. Emit at most one event for each meaningful activity goal threshold, such as 25, 50, 75, and 100 percent.

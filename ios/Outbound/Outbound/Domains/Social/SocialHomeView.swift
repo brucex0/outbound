@@ -6,6 +6,7 @@ struct SocialHomeView: View {
 
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
@@ -47,6 +48,8 @@ struct SocialHomeView: View {
                     } else if !acceptedConnections.isEmpty {
                         connectionsSection
                     }
+
+                    yourCircleSection
 
                     if let milestone = socialRecognitionStore.highlight {
                         SocialMilestoneCard(preview: milestone)
@@ -96,12 +99,16 @@ struct SocialHomeView: View {
             .refreshable {
                 async let homeRefresh: Void = socialStore.refresh()
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
-                _ = await (homeRefresh, connectionsRefresh)
+                async let circleRefresh: Void = circleStore.refresh()
+                async let invitationRefresh: Void = circleStore.refreshInvitations()
+                _ = await (homeRefresh, connectionsRefresh, circleRefresh, invitationRefresh)
             }
             .task {
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
                 async let notificationsRefresh: Void = socialStore.refreshNotifications()
-                _ = await (connectionsRefresh, notificationsRefresh)
+                async let circleRefresh: Void = circleStore.refresh()
+                async let circleInvitations: Void = circleStore.refreshInvitations()
+                _ = await (connectionsRefresh, notificationsRefresh, circleRefresh, circleInvitations)
             }
             .onChange(of: shouldShowConnectionPrompt, initial: true) { _, showsPrompt in
                 guard showsPrompt else { return }
@@ -118,6 +125,23 @@ struct SocialHomeView: View {
                         .feature: .string("social_connections_section"),
                     ]))
                 }
+            }
+            .onChange(of: socialStore.hasLoadedConnections, initial: true) { _, loaded in
+                guard loaded else { return }
+                Task { await analyticsManager?.track(.init(.circleSectionExposed, properties: [
+                    .entrySource: .string("social"),
+                    .participantCountBucket: .string(ProductAnalyticsBucket.count(circleStore.primaryCircle?.memberCount ?? 0))
+                ])) }
+            }
+            .onChange(of: circleStore.errorMessage) { _, message in
+                guard let message else { return }
+                toastMessage = message
+                Task { await analyticsManager?.track(.init(.circleOperationFailed, properties: [.sourceType: .string("social_home"), .errorCategory: .string("api_unavailable")])) }
+            }
+            .onChange(of: circleStore.toastMessage) { _, message in
+                guard let message else { return }
+                toastMessage = message
+                circleStore.clearToast()
             }
             .onChange(of: socialStore.errorMessage) { _, message in
                 guard message != nil else { return }
@@ -236,6 +260,100 @@ struct SocialHomeView: View {
                         Label("Invite", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var yourCircleSection: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            Text(String(localized: "circle.section.title", defaultValue: "Your Circle"))
+                .socialSectionLabel()
+            ForEach(circleStore.invitations) { invitation in
+                circleInvitationCard(invitation)
+            }
+            if circleStore.circles.isEmpty {
+                if circleStore.invitations.isEmpty,
+                   socialStore.hasLoadedConnections,
+                   !acceptedConnections.isEmpty {
+                    NavigationLink {
+                        CircleCreateView()
+                    } label: {
+                        OutboundCard(style: .companion) {
+                            HStack(spacing: OutboundSpacing.standard) {
+                                Image(systemName: "person.3.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(OutboundPalette.companion)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(String(localized: "circle.create.title", defaultValue: "Create a private Circle"))
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Text(String(localized: "circle.create.detail", defaultValue: "Choose a few connections to share weekly momentum."))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                ForEach(circleStore.circles) { circle in
+                    NavigationLink {
+                        CircleDetailView(circle: circle)
+                    } label: {
+                        CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if socialStore.hasLoadedConnections, !acceptedConnections.isEmpty {
+                    NavigationLink {
+                        CircleCreateView()
+                    } label: {
+                        Label(String(localized: "circle.create.another", defaultValue: "Create another Circle"), systemImage: "plus.circle")
+                            .frame(minHeight: 44)
+                    }
+                }
+            }
+        }
+    }
+
+    private func circleInvitationCard(_ invitation: CircleInvitationDTO) -> some View {
+        OutboundCard(style: .companion) {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(String(localized: "circle.invitation.title", defaultValue: "You’re invited to a Circle"))
+                    .font(.headline)
+                Text(String(
+                    format: String(localized: "circle.invitation.from", defaultValue: "%@ invited you to %@"),
+                    invitation.sender.displayName,
+                    invitation.circle.name
+                ))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
+                        Task {
+                            if await circleStore.accept(invitation),
+                               let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
+                                await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
+                                    .entrySource: .string("social"),
+                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                                ]))
+                                if joined.lifecycle == "active" {
+                                    await analyticsManager?.track(.init(.circleActivated, properties: [
+                                        .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                                    ]))
+                                }
+                            }
+                        }
+                    }
+                        .buttonStyle(.borderedProminent)
+                    Button(String(localized: "circle.invitation.decline", defaultValue: "Decline")) { Task { if await circleStore.decline(invitation) { await analyticsManager?.track(.init(.circleInvitationDeclined, properties: [.entrySource: .string("social")])) } } }
+                        .buttonStyle(.bordered)
                 }
             }
         }
@@ -1211,6 +1329,7 @@ private struct PastActivityEventRow: View {
 private struct SocialNotificationsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
+    @EnvironmentObject private var circleStore: CircleStore
     @State private var selectedNotification: SocialNotificationDTO?
 
     var body: some View {
@@ -1225,7 +1344,7 @@ private struct SocialNotificationsView: View {
                         HStack(alignment: .top, spacing: OutboundSpacing.compact) {
                             SocialAvatar(name: notification.actor?.displayName ?? "Plainstride", avatarURL: notification.actor?.avatarUrl)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(notification.message)
+                                Text(localizedCircleNotificationMessage(notification))
                                     .font(notification.readAt == nil ? .body.weight(.semibold) : .body)
                                     .foregroundStyle(.primary)
                                 Text(notification.createdAt.formatted(.relative(presentation: .named)))
@@ -1276,6 +1395,15 @@ private struct SocialNotificationsView: View {
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
+        case "circleInvitation":
+            CircleNotificationInvitationView(notification: notification)
+        case "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred":
+            if let circleID = notification.objectId,
+               let circle = circleStore.circles.first(where: { $0.id == circleID }) {
+                CircleDetailView(circle: circle)
+            } else {
+                SocialNotificationDetailView(notification: notification)
+            }
         default:
             SocialNotificationDetailView(notification: notification)
         }
@@ -1287,8 +1415,50 @@ private struct SocialNotificationsView: View {
         case "cheer", "comment": return String(localized: "Opens the activity")
         case "runInvitation": return String(localized: "Opens the invitation")
         case "invitationAccepted": return String(localized: "Opens the group run")
+        case "circleInvitation": return String(localized: "circle.notification.open_invitation", defaultValue: "Opens the Circle invitation")
+        case "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred": return String(localized: "circle.notification.open", defaultValue: "Opens the Circle")
         default: return String(localized: "Opens notification details")
         }
+    }
+}
+
+private struct CircleNotificationInvitationView: View {
+    @EnvironmentObject private var circleStore: CircleStore
+    @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.dismiss) private var dismiss
+    let notification: SocialNotificationDTO
+
+    private var invitation: CircleInvitationDTO? { circleStore.invitations.first { $0.id == notification.objectId } }
+
+    var body: some View {
+        List {
+            Label(localizedCircleNotificationMessage(notification), systemImage: "person.3.fill")
+            if let invitation {
+                Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
+                    Task {
+                        if await circleStore.accept(invitation),
+                           let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
+                            await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
+                                .entrySource: .string("notification_inbox"),
+                                .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                            ]))
+                            if joined.lifecycle == "active" {
+                                await analyticsManager?.track(.init(.circleActivated, properties: [
+                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                                ]))
+                            }
+                            dismiss()
+                        }
+                    }
+                }
+                Button(String(localized: "circle.invitation.decline", defaultValue: "Decline"), role: .destructive) { Task { if await circleStore.decline(invitation) { dismiss() } } }
+            } else {
+                Text(String(localized: "circle.invitation.handled", defaultValue: "This invitation is no longer available."))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle(String(localized: "circle.invitation.navigation", defaultValue: "Circle invitation"))
+        .task { await circleStore.refreshInvitations() }
     }
 }
 
@@ -1418,7 +1588,7 @@ private struct SocialNotificationDetailView: View {
 
     var body: some View {
         List {
-            Label(notification.message, systemImage: "bell")
+            Label(localizedCircleNotificationMessage(notification), systemImage: "bell")
             LabeledContent("Received", value: notification.createdAt.formatted(date: .abbreviated, time: .shortened))
         }
         .navigationTitle("Notification")
@@ -2320,8 +2490,26 @@ private struct SocialIconButtonStyle: ButtonStyle {
     }
 }
 
-private extension Text {
+extension Text {
     func socialSectionLabel() -> some View {
         font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+    }
+}
+
+private func localizedCircleNotificationMessage(_ notification: SocialNotificationDTO) -> String {
+    let actorName = notification.actor?.displayName ?? String(localized: "circle.notification.someone", defaultValue: "Someone")
+    switch notification.type {
+    case "circleInvitation":
+        return String(format: String(localized: "circle.notification.invitation", defaultValue: "%@ invited you to a Circle."), actorName)
+    case "circleInvitationAccepted":
+        return String(format: String(localized: "circle.notification.accepted", defaultValue: "%@ joined your Circle."), actorName)
+    case "circleCheer":
+        return String(format: String(localized: "circle.notification.cheer", defaultValue: "%@ sent you a Cheer."), actorName)
+    case "circleWeeklyGoalCompleted":
+        return String(localized: "circle.notification.weekly_complete", defaultValue: "Your Circle completed this week’s focus.")
+    case "circleOwnershipTransferred":
+        return String(format: String(localized: "circle.notification.ownership", defaultValue: "%@ made you the Circle owner."), actorName)
+    default:
+        return notification.message
     }
 }

@@ -24,6 +24,16 @@ struct CreateActivityEventView: View {
     @State private var shareURL: URL?
     @State private var isSubmitting = false
     @FocusState private var isLocationFieldFocused: Bool
+    let sourceCircleID: String?
+    let additionalInvitees: [CirclePersonDTO]
+    let onCompleted: () -> Void
+
+    init(sourceCircleID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [CirclePersonDTO] = [], onCompleted: @escaping () -> Void = {}) {
+        self.sourceCircleID = sourceCircleID
+        self.additionalInvitees = additionalInvitees
+        self.onCompleted = onCompleted
+        _selectedConnectionIDs = State(initialValue: preselectedConnectionIDs)
+    }
 
     var body: some View {
         NavigationStack {
@@ -233,6 +243,20 @@ struct CreateActivityEventView: View {
                         }
                     }
                 }
+                ForEach(additionalInvitees.filter { person in
+                    !socialStore.connections.contains { $0.status == "accepted" && $0.person.id == person.id }
+                }) { person in
+                    Button { toggleInvitee(person.id) } label: {
+                        HStack(spacing: 12) {
+                            SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
+                            Text(person.displayName).foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: selectedConnectionIDs.contains(person.id) ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(selectedConnectionIDs.contains(person.id) ? OutboundPalette.companion : .secondary)
+                        }
+                    }
+                }
             }
 
             Section {
@@ -252,6 +276,7 @@ struct CreateActivityEventView: View {
                     Task {
                         isSubmitting = true
                         if await socialStore.inviteConnections(Array(selectedConnectionIDs), toActivityEvent: activity.id) {
+                            onCompleted()
                             dismiss()
                         }
                         isSubmitting = false
@@ -278,7 +303,8 @@ struct CreateActivityEventView: View {
             latitude: selectedLocationCoordinate?.latitude,
             longitude: selectedLocationCoordinate?.longitude,
             note: note.nilIfBlank,
-            durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes
+            durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
+            sourceCircleId: sourceCircleID
         ))
     }
 
@@ -289,6 +315,10 @@ struct CreateActivityEventView: View {
         guard resolveToken == locationResolveToken else { return }
         isResolvingLocation = false
         apply(place, source: "autocomplete")
+    }
+
+    private func toggleInvitee(_ id: String) {
+        if selectedConnectionIDs.contains(id) { selectedConnectionIDs.remove(id) } else { selectedConnectionIDs.insert(id) }
     }
 
     private func apply(_ place: ActivityEventPlace, source: String) {

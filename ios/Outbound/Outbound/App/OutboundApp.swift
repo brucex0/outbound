@@ -31,6 +31,7 @@ struct OutboundApp: App {
     @StateObject private var safetyContactStore = SafetyContactStore()
     @StateObject private var personalizationStore = PersonalizationStore()
     @StateObject private var togetherStore = TogetherStore()
+    @StateObject private var circleStore = CircleStore()
     @StateObject private var cycleAwareStore = CycleAwareStore()
     @StateObject private var situationalWeatherStore = SituationalWeatherStore()
     @StateObject private var connectivityStore = ConnectivityStore()
@@ -67,6 +68,7 @@ struct OutboundApp: App {
                 }
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
+                    circleStore.activate(userID: authStore.isAuthenticated ? (userID ?? authStore.localSessionLabel) : nil)
                 }
                 .onChange(of: authStore.isAuthenticated, initial: true) { _, isAuthenticated in
                     togetherStore.activate(
@@ -74,6 +76,9 @@ struct OutboundApp: App {
                             ? (authStore.user?.id ?? authStore.localSessionLabel)
                             : nil
                     )
+                    if !isAuthenticated {
+                        circleStore.activate(userID: nil)
+                    }
                 }
         }
     }
@@ -160,6 +165,7 @@ struct OutboundApp: App {
             .environmentObject(safetyContactStore)
             .environmentObject(personalizationStore)
             .environmentObject(togetherStore)
+            .environmentObject(circleStore)
             .environmentObject(cycleAwareStore)
             .environmentObject(situationalWeatherStore)
             .environmentObject(connectivityStore)
@@ -190,6 +196,8 @@ struct OutboundApp: App {
                 await musicStore.refresh()
                 await personalizationStore.refresh()
                 await togetherStore.refresh()
+                await circleStore.refresh()
+                await circleStore.refreshInvitations()
                 await consumePendingInviteIfPossible()
                 await pushNotifications.activate()
             }
@@ -199,6 +207,8 @@ struct OutboundApp: App {
                     await activityStore.syncPendingActivitiesIfNeeded()
                     await recognitionStore.refresh()
                     await socialRecognitionStore.refresh()
+                    await circleStore.refresh()
+                    await circleStore.refreshInvitations()
                     await pushNotifications.activate()
                     await refreshTrainingProfile()
                 }

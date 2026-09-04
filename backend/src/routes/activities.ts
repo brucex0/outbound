@@ -11,6 +11,7 @@ import type { AppEnv } from "../types/hono.js";
 import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 import { backfillActivityRecognitions } from "../services/recognition.js";
+import { reconcileActivityToCircles } from "../services/circles.js";
 
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming"] as const;
@@ -449,6 +450,10 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     body.recognitionContext?.timeZoneIdentifier,
     body.recognitionContext?.firstWeekday,
   );
+  const circleContributions = await reconcileActivityToCircles(resolvedUserId, activity.id).catch((error) => {
+    console.error("[circle] activity contribution failed", { activityId: activity.id, error });
+    return [];
+  });
 
   return c.json(
     {
@@ -460,6 +465,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       followedRouteId: activity.followedRouteId,
       routeCompletionRecorded,
       followedRouteUnavailable: body.followedRouteId != null && resolvedFollowedRouteId == null,
+      circleContributions,
     },
     wasCreated ? 201 : 200
   );
@@ -528,6 +534,9 @@ router.delete("/:id", async (c) => {
       where: { id: activity.id },
       data: { deletedAt: new Date(), clientData: undefined },
     });
+  });
+  await reconcileActivityToCircles(user.id, activity.id, true).catch((error) => {
+    console.error("[circle] activity deletion reconciliation failed", { activityId: activity.id, error });
   });
   return c.json({ status: "deleted", id: deleted.id, deletedAt: deleted.deletedAt });
 });

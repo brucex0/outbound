@@ -44,6 +44,34 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
     case socialOperationFailed = "social_operation_failed"
+    case circleSectionExposed = "circle_section_exposed"
+    case circleCreationStarted = "circle_creation_started"
+    case circleCreationCompleted = "circle_creation_completed"
+    case circleCreationFailed = "circle_creation_failed"
+    case circleInvitationSent = "circle_invitation_sent"
+    case circleInvitationAccepted = "circle_invitation_accepted"
+    case circleInvitationDeclined = "circle_invitation_declined"
+    case circleInvitationCancelled = "circle_invitation_cancelled"
+    case circleActivated = "circle_activated"
+    case circleFocusChanged = "circle_focus_changed"
+    case circleTargetChanged = "circle_target_changed"
+    case circleProgressOpened = "circle_progress_opened"
+    case circleCheerSent = "circle_cheer_sent"
+    case circleCheerRemoved = "circle_cheer_removed"
+    case circlePlanRunStarted = "circle_plan_run_started"
+    case circlePlanRunCompleted = "circle_plan_run_completed"
+    case circleRunContributionReconciled = "circle_run_contribution_reconciled"
+    case circleWeeklyFocusCompleted = "circle_weekly_focus_completed"
+    case circlePrimaryChanged = "circle_primary_changed"
+    case circleNotificationsChanged = "circle_notifications_changed"
+    case circleNameChanged = "circle_name_changed"
+    case circleCalendarChanged = "circle_calendar_changed"
+    case circleOwnershipTransferred = "circle_ownership_transferred"
+    case circleMemberLeft = "circle_member_left"
+    case circleMemberRemoved = "circle_member_removed"
+    case circleArchived = "circle_archived"
+    case circleReactivated = "circle_reactivated"
+    case circleOperationFailed = "circle_operation_failed"
     case activityEventLocationSelected = "activity_event_location_selected"
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
@@ -233,6 +261,34 @@ enum ProductAnalyticsSchema {
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .socialOperationFailed: [.sourceType, .errorCategory],
+        .circleSectionExposed: [.entrySource, .participantCountBucket],
+        .circleCreationStarted: [.entrySource],
+        .circleCreationCompleted: [.entrySource, .participantCountBucket],
+        .circleCreationFailed: [.entrySource, .errorCategory],
+        .circleInvitationSent: [.entrySource, .participantCountBucket, .result],
+        .circleInvitationAccepted: [.entrySource, .participantCountBucket],
+        .circleInvitationDeclined: [.entrySource],
+        .circleInvitationCancelled: [.entrySource],
+        .circleActivated: [.participantCountBucket],
+        .circleFocusChanged: [.selectionType, .sourceType],
+        .circleTargetChanged: [.selectionType, .targetBucket, .sourceType],
+        .circleProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
+        .circleCheerSent: [.selectionType],
+        .circleCheerRemoved: [.selectionType],
+        .circlePlanRunStarted: [.entrySource, .participantCountBucket],
+        .circlePlanRunCompleted: [.participantCountBucket, .result],
+        .circleRunContributionReconciled: [.selectionType, .participantCountBucket, .result],
+        .circleWeeklyFocusCompleted: [.selectionType, .participantCountBucket],
+        .circlePrimaryChanged: [.entrySource],
+        .circleNotificationsChanged: [.selectionType],
+        .circleNameChanged: [],
+        .circleCalendarChanged: [.sourceType],
+        .circleOwnershipTransferred: [.participantCountBucket],
+        .circleMemberLeft: [.participantCountBucket],
+        .circleMemberRemoved: [.participantCountBucket],
+        .circleArchived: [.participantCountBucket],
+        .circleReactivated: [.participantCountBucket],
+        .circleOperationFailed: [.sourceType, .errorCategory],
         .activityEventLocationSelected: [.sourceType],
         .goalProgressReached: [.activityType, .goalType, .progressPercent],
         .goalEditorOpened: [.activityType, .goalType],

@@ -239,6 +239,7 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
     var longitude: Double? = nil
     let note: String?
     var durationMinutes: Int = ActivityEventTiming.defaultDurationMinutes
+    var sourceCircleId: String? = nil
 }
 
 struct ActivityEventInvitationBatchRequestDTO: Codable, Sendable {

@@ -397,6 +397,16 @@ final class ActivityStore: ObservableObject {
                 .activitySyncCompleted,
                 properties: syncAnalyticsProperties(for: activity)
             ))
+            if let contributions = response.circleContributions, !contributions.isEmpty {
+                CircleContributionCenter.shared.publish(contributions)
+                for contribution in contributions {
+                    await analyticsManager?.track(.init(.circleRunContributionReconciled, properties: [
+                        .selectionType: .string(contribution.focusMode),
+                        .participantCountBucket: .string(ProductAnalyticsBucket.count(contribution.memberCount)),
+                        .result: .string(contribution.completed ? "completed" : "contributed")
+                    ]))
+                }
+            }
             ActivityDiagnosticLog.notice(
                 .sync,
                 "Activity upload completed source=\(activity.source.kind.rawValue) route_included=\(uploadableRoute(for: activity) != nil)"

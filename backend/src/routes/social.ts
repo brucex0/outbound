@@ -14,6 +14,7 @@ import {
   evaluateGoodTeammate,
   recognitionAwards,
 } from "../services/recognition.js";
+import { assertCircleMember } from "../services/circles.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -37,6 +38,7 @@ const createActivityEventSchema = z.object({
   latitude: z.number().finite().min(-90).max(90).nullable().optional(),
   longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
+  sourceCircleId: z.string().min(1).nullable().optional(),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null)) {
     context.addIssue({
@@ -605,10 +607,19 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
   const input = c.req.valid("json");
   const startsAt = new Date(input.startsAt);
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
+  if (input.sourceCircleId) {
+    try {
+      const membership = await assertCircleMember(input.sourceCircleId, user.id);
+      if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Circle is not active." }, 422);
+    } catch {
+      return c.json({ error: "Circle membership is required." }, 403);
+    }
+  }
   const activity = await getPrismaClient().$transaction(async (prisma) => {
     const created = await prisma.activityEvent.create({
       data: {
         creatorId: user.id,
+        sourceCircleId: input.sourceCircleId ?? null,
         title: input.title,
         startsAt,
         endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
@@ -692,7 +703,24 @@ router.post("/activity-events/:id/invitations/batch", zValidator("json", invitat
   const activity = await getPrismaClient().activityEvent.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
   if (!activity) return c.json({ error: "Activity event not found." }, 404);
   const connectionIds = new Set(await acceptedConnectionIDs(user.id));
-  const recipientIds = [...new Set(c.req.valid("json").recipientUserIds)].filter((id) => connectionIds.has(id));
+  const circleMemberIds = activity.sourceCircleId
+    ? new Set((await getPrismaClient().circleMember.findMany({ where: { circleId: activity.sourceCircleId, status: "active" }, select: { userId: true } })).map((member) => member.userId))
+    : new Set<string>();
+  const recipientIds: string[] = [];
+  for (const recipientId of [...new Set(c.req.valid("json").recipientUserIds)]) {
+    if (connectionIds.has(recipientId)) {
+      recipientIds.push(recipientId);
+      continue;
+    }
+    if (activity.sourceCircleId && circleMemberIds.has(recipientId)) {
+      try {
+        await assertCircleMember(activity.sourceCircleId, recipientId);
+        recipientIds.push(recipientId);
+      } catch {
+        // A newly blocked or departed Circle member is not eligible for this event invitation.
+      }
+    }
+  }
   const invitations = [];
   for (const recipientId of recipientIds) {
     const existing = await getPrismaClient().invitation.findFirst({ where: { activityEventId: activity.id, recipientId, status: "pending" } });

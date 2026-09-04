@@ -125,12 +125,14 @@ Responsibilities:
 - attach route summaries and photo metadata
 - normalize uploaded route points into an `Activity.route` GeoJSON Feature, using `[longitude, latitude, altitude]` coordinates when altitude is available and preserving per-point timestamps/vertical accuracy in route properties
 - trigger downstream guide and plan work
+- reconcile every canonical saved running activity into each eligible Circle week by activity start time; activity deletion removes the same idempotent contributions
 
 Rules:
 
 - activity ingest must be idempotent
 - server should store one canonical activity per logical workout
 - route and photo visibility must be policy-controlled, not implied by raw storage
+- Circle reconciliation is best effort after canonical save/delete and must never make the activity operation fail
 
 Recommended API shape:
 
@@ -303,6 +305,12 @@ Recommended early API shape:
 - `DELETE /v1/social/follow/:targetUserId`
 - `POST /v1/social/reactions`
 - `POST /v1/social/comments`
+
+### Your Circle
+
+`backend/src/routes/circles.ts` and `backend/src/services/circles.ts` own the permanent private-Circle slice. Prisma stores lifecycle, server-owned invitations, membership snapshots/preferences, immutable Circle-week intervals, optional focus configuration, personal commitments, activity-backed contributions, one-time completion presentation, preset Cheers, and the account-owned primary Circle selection. All Circle reads and mutations derive identity from authentication, enforce active membership or a valid invitation, and recheck accepted connections, blocks, and the six-member capacity where applicable.
+
+`POST /v1/activities` and activity deletion invoke the idempotent Circle reconciler after the canonical activity operation. The reconciler assigns running activities by actual start time, permits one contribution per Circle week, handles multiple active Circles, and recomputes deletions. Its failures are logged and never fail activity save or deletion. Circle responses contain only the share-safe fields defined in `docs/your-circle.md`; activity IDs and private workout facts stay server-side.
 
 ### Safety
 

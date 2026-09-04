@@ -10,6 +10,8 @@ The Social home connection-growth card is limited to runners with no accepted co
 
 Background refresh failures leave cached Social content in place and use a transient localized toast rather than inserting raw HTTP status text into the page layout.
 
+Your Circle is implemented directly below Connections. It shows pending invitations, a restrained creation entry after successful connection loading, and compact Circle rows with the account-owned primary first. Circle detail owns the optional Weekly Focus, member progress, preset private Cheers, existing activity-event planning flow, recent Circle moments, history, and management. Today consumes only the primary eligible Circle and keeps imminent joined activity events ahead of it in the existing one-opportunity slot. The full product and privacy rules remain canonical in `docs/your-circle.md`.
+
 The header keeps the community menu focused on Groups and routes; planning and discovery stay beside Upcoming, Connections stays in its home section, and Notifications remains a dedicated action. Connections uses an always-visible inline search field rather than relying on the navigation bar's collapsible search presentation.
 
 Compact Social rows use circular icon actions with 44-point tap targets for recognizable commands such as accept, decline, connect, invite, unblock, and send. Text remains on primary navigation, RSVP, membership, and other actions whose state or destination needs a label.
