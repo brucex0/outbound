@@ -300,8 +300,6 @@ struct CircleFocusEditor: View {
     @State private var personalTarget: Int
     @State private var apply = "now"
     @State private var skip = false
-    @State private var focusAutosaver = DebouncedSerialAutosaver<FocusAutosavePayload>()
-    @State private var commitmentAutosaver = DebouncedSerialAutosaver<CommitmentAutosavePayload>()
 
     init(circle: CircleDTO) {
         self.circle = circle
@@ -326,7 +324,7 @@ struct CircleFocusEditor: View {
                 }
                 Section { Picker(String(localized: "circle.focus.apply", defaultValue: "Apply"), selection: $apply) { Text(String(localized: "circle.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "circle.apply.next", defaultValue: "Next week")).tag("next_week") } }
             }
-            if current.week.focusConfigured && current.week.focusMode == "personal_targets" {
+            if editsCurrentPersonalFocus {
                 Section(String(localized: "circle.commitment.mine", defaultValue: "My target")) {
                     targetPresets(selection: $personalTarget)
                     Stepper(String(localized: "circle.commitment.count", defaultValue: "\(personalTarget) runs"), value: $personalTarget, in: 1...100)
@@ -336,14 +334,7 @@ struct CircleFocusEditor: View {
         }
         .navigationTitle(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus"))
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } } }
-        .onChange(of: mode) { _, _ in scheduleFocusAutosave() }
-        .onChange(of: sharedTarget) { _, _ in
-            guard mode == "shared_target" else { return }
-            scheduleFocusAutosave()
-        }
-        .onChange(of: apply) { _, _ in scheduleFocusAutosave() }
-        .onChange(of: personalTarget) { _, _ in scheduleCommitmentAutosave() }
-        .onChange(of: skip) { _, _ in scheduleCommitmentAutosave() }
+        .onDisappear { saveDraftIfNeeded() }
     }
 
     private func targetPresets(selection: Binding<Int>) -> some View {
@@ -363,22 +354,50 @@ struct CircleFocusEditor: View {
         }
     }
 
-    private func scheduleFocusAutosave() {
-        let payload = FocusAutosavePayload(circle: current, mode: mode, sharedTarget: mode == "shared_target" ? sharedTarget : nil, apply: apply)
-        focusAutosaver.schedule(payload) { payload in
-            guard await circleStore.updateFocus(circle: payload.circle, mode: payload.mode, sharedTarget: payload.sharedTarget, apply: payload.apply) != nil else { return }
-            await analyticsManager?.track(.init(.circleFocusChanged, properties: [.selectionType: .string(payload.mode), .sourceType: .string(payload.apply)]))
-            if let sharedTarget = payload.sharedTarget {
-                await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string("shared"), .targetBucket: .string(ProductAnalyticsBucket.count(sharedTarget)), .sourceType: .string(payload.apply)]))
-            }
-        }
+    private var editsCurrentPersonalFocus: Bool {
+        if circle.role == "owner", apply == "now" { return mode == "personal_targets" }
+        return current.week.focusConfigured && current.week.focusMode == "personal_targets"
     }
 
-    private func scheduleCommitmentAutosave() {
-        let payload = CommitmentAutosavePayload(circle: current, target: personalTarget, skipped: skip)
-        commitmentAutosaver.schedule(payload) { payload in
-            guard await circleStore.updateCommitment(circle: payload.circle, targetCount: payload.skipped ? nil : payload.target, skipped: payload.skipped) != nil else { return }
-            await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string(payload.skipped ? "skipped" : "target"), .targetBucket: .string(ProductAnalyticsBucket.count(payload.target)), .sourceType: .string("now")]))
+    private func saveDraftIfNeeded() {
+        let draftMode = mode
+        let draftSharedTarget = sharedTarget
+        let draftPersonalTarget = personalTarget
+        let draftApply = apply
+        let draftSkipped = skip
+        let originalCommitment = circle.members.first(where: \.isCurrentUser)?.commitment
+        let originalPersonalTarget = originalCommitment?.targetCount ?? 3
+        let originalSkipped = originalCommitment?.skipped ?? false
+        let normalizedSharedTarget = draftMode == "shared_target" ? draftSharedTarget : nil
+        let originalSharedTarget = circle.week.focusMode == "shared_target" ? circle.week.sharedTarget : nil
+        let focusChanged = circle.role == "owner" && (
+            draftMode != circle.week.focusMode ||
+            normalizedSharedTarget != originalSharedTarget ||
+            draftApply != "now"
+        )
+        let intendedCurrentMode = circle.role == "owner" && draftApply == "now" ? draftMode : circle.week.focusMode
+        let enteredPersonalFocus = circle.week.focusMode != "personal_targets" && intendedCurrentMode == "personal_targets"
+        let commitmentChanged = intendedCurrentMode == "personal_targets" && (
+            draftPersonalTarget != originalPersonalTarget || draftSkipped != originalSkipped || enteredPersonalFocus
+        )
+        guard focusChanged || commitmentChanged else { return }
+
+        let circleSnapshot = current
+        Task {
+            var focusSaved = true
+            if focusChanged {
+                focusSaved = await circleStore.updateFocus(circle: circleSnapshot, mode: draftMode, sharedTarget: normalizedSharedTarget, apply: draftApply) != nil
+                if focusSaved {
+                    await analyticsManager?.track(.init(.circleFocusChanged, properties: [.selectionType: .string(draftMode), .sourceType: .string(draftApply)]))
+                    if let normalizedSharedTarget {
+                        await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string("shared"), .targetBucket: .string(ProductAnalyticsBucket.count(normalizedSharedTarget)), .sourceType: .string(draftApply)]))
+                    }
+                }
+            }
+            guard commitmentChanged, focusSaved else { return }
+            if await circleStore.updateCommitment(circle: circleSnapshot, targetCount: draftSkipped ? nil : draftPersonalTarget, skipped: draftSkipped) != nil {
+                await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string(draftSkipped ? "skipped" : "target"), .targetBucket: .string(ProductAnalyticsBucket.count(draftPersonalTarget)), .sourceType: .string("now")]))
+            }
         }
     }
 }
@@ -393,16 +412,30 @@ struct CircleManagementView: View {
     @State private var resetWeekday: Int
     @State private var timeZone: String
     @State private var calendarApply = "next_week"
+    @State private var notificationMuted: Bool
     @State private var showsInvite = false
-    @State private var nameAutosaver = DebouncedSerialAutosaver<NameAutosavePayload>()
-    @State private var calendarAutosaver = DebouncedSerialAutosaver<CalendarAutosavePayload>()
+    @State private var savedName: String
+    @State private var savedResetWeekday: Int
+    @State private var savedTimeZone: String
+    @State private var savedCalendarApply = "next_week"
+    @State private var savedNotificationMuted: Bool
 
-    init(circle: CircleDTO) { self.circle = circle; _name = State(initialValue: circle.name); _resetWeekday = State(initialValue: circle.resetWeekday); _timeZone = State(initialValue: circle.timeZone) }
+    init(circle: CircleDTO) {
+        self.circle = circle
+        _name = State(initialValue: circle.name)
+        _resetWeekday = State(initialValue: circle.resetWeekday)
+        _timeZone = State(initialValue: circle.timeZone)
+        _notificationMuted = State(initialValue: circle.currentUserMuted)
+        _savedName = State(initialValue: circle.name)
+        _savedResetWeekday = State(initialValue: circle.resetWeekday)
+        _savedTimeZone = State(initialValue: circle.timeZone)
+        _savedNotificationMuted = State(initialValue: circle.currentUserMuted)
+    }
     private var current: CircleDTO { circleStore.circles.first(where: { $0.id == circle.id }) ?? circle }
 
     var body: some View {
         Form {
-            Section { NavigationLink(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus")) { CircleFocusEditor(circle: current) }; Button(current.id == circleStore.primaryCircleID ? String(localized: "circle.primary.current", defaultValue: "Primary Circle") : String(localized: "circle.primary.make", defaultValue: "Make primary")) { Task { if await circleStore.selectPrimary(current) { track(.circlePrimaryChanged, [.entrySource: .string("circle_settings")]) } } }.disabled(current.id == circleStore.primaryCircleID || !current.eligibleForToday); Toggle(String(localized: "circle.notifications.mute", defaultValue: "Mute optional notifications"), isOn: Binding(get: { current.currentUserMuted }, set: { muted in Task { if await circleStore.setMuted(current, muted: muted) { track(.circleNotificationsChanged, [.selectionType: .string(muted ? "muted" : "unmuted")]) } } })) }
+            Section { NavigationLink(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus")) { CircleFocusEditor(circle: current) }; Button(current.id == circleStore.primaryCircleID ? String(localized: "circle.primary.current", defaultValue: "Primary Circle") : String(localized: "circle.primary.make", defaultValue: "Make primary")) { Task { if await circleStore.selectPrimary(current) { track(.circlePrimaryChanged, [.entrySource: .string("circle_settings")]) } } }.disabled(current.id == circleStore.primaryCircleID || !current.eligibleForToday); Toggle(String(localized: "circle.notifications.mute", defaultValue: "Mute optional notifications"), isOn: $notificationMuted) }
 
             if current.role == "owner" {
                 Section(String(localized: "circle.management.owner", defaultValue: "Owner controls")) { TextField(String(localized: "circle.create.name", defaultValue: "Name"), text: $name); if current.lifecycle != "archived" { Button(String(localized: "circle.invite.more", defaultValue: "Invite connections")) { showsInvite = true } } }
@@ -432,25 +465,36 @@ struct CircleManagementView: View {
         }
         .navigationTitle(String(localized: "circle.management", defaultValue: "Circle settings"))
         .sheet(isPresented: $showsInvite) { CircleInviteView(circle: current) }
-        .onChange(of: name) { _, _ in scheduleNameAutosave() }
-        .onChange(of: resetWeekday) { _, _ in scheduleCalendarAutosave() }
-        .onChange(of: timeZone) { _, _ in scheduleCalendarAutosave() }
-        .onChange(of: calendarApply) { _, _ in scheduleCalendarAutosave() }
+        .onDisappear { saveDraftIfNeeded() }
     }
 
-    private func scheduleNameAutosave() {
-        let payload = NameAutosavePayload(circle: current, name: name)
-        nameAutosaver.schedule(payload) { payload in
-            guard await circleStore.updateName(circle: payload.circle, name: payload.name) != nil else { return }
-            await analyticsManager?.track(.init(.circleNameChanged))
-        }
-    }
+    private func saveDraftIfNeeded() {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTimeZone = timeZone.trimmingCharacters(in: .whitespacesAndNewlines)
+        let draftResetWeekday = resetWeekday
+        let draftCalendarApply = calendarApply
+        let draftNotificationMuted = notificationMuted
+        let nameChanged = trimmedName != savedName
+        let calendarChanged = draftResetWeekday != savedResetWeekday || trimmedTimeZone != savedTimeZone || draftCalendarApply != savedCalendarApply
+        let notificationsChanged = draftNotificationMuted != savedNotificationMuted
+        guard nameChanged || calendarChanged || notificationsChanged else { return }
 
-    private func scheduleCalendarAutosave() {
-        let payload = CalendarAutosavePayload(circle: current, resetWeekday: resetWeekday, timeZone: timeZone, apply: calendarApply)
-        calendarAutosaver.schedule(payload) { payload in
-            guard await circleStore.updateCalendar(circle: payload.circle, resetWeekday: payload.resetWeekday, timeZone: payload.timeZone, apply: payload.apply) != nil else { return }
-            await analyticsManager?.track(.init(.circleCalendarChanged, properties: [.sourceType: .string(payload.apply)]))
+        let circleSnapshot = current
+        Task {
+            if nameChanged, await circleStore.updateName(circle: circleSnapshot, name: trimmedName) != nil {
+                savedName = trimmedName
+                await analyticsManager?.track(.init(.circleNameChanged))
+            }
+            if calendarChanged, await circleStore.updateCalendar(circle: circleSnapshot, resetWeekday: draftResetWeekday, timeZone: trimmedTimeZone, apply: draftCalendarApply) != nil {
+                savedResetWeekday = draftResetWeekday
+                savedTimeZone = trimmedTimeZone
+                savedCalendarApply = draftCalendarApply
+                await analyticsManager?.track(.init(.circleCalendarChanged, properties: [.sourceType: .string(draftCalendarApply)]))
+            }
+            if notificationsChanged, await circleStore.setMuted(circleSnapshot, muted: draftNotificationMuted) {
+                savedNotificationMuted = draftNotificationMuted
+                await analyticsManager?.track(.init(.circleNotificationsChanged, properties: [.selectionType: .string(draftNotificationMuted ? "muted" : "unmuted")]))
+            }
         }
     }
 
@@ -458,67 +502,6 @@ struct CircleManagementView: View {
         Calendar.current.weekdaySymbols[isoWeekday % 7]
     }
     private func track(_ event: ProductEventName, _ properties: [ProductPropertyKey: AnalyticsValue]) { Task { await analyticsManager?.track(.init(event, properties: properties)) } }
-}
-
-private struct FocusAutosavePayload {
-    let circle: CircleDTO
-    let mode: String
-    let sharedTarget: Int?
-    let apply: String
-}
-
-private struct CommitmentAutosavePayload {
-    let circle: CircleDTO
-    let target: Int
-    let skipped: Bool
-}
-
-private struct NameAutosavePayload {
-    let circle: CircleDTO
-    let name: String
-}
-
-private struct CalendarAutosavePayload {
-    let circle: CircleDTO
-    let resetWeekday: Int
-    let timeZone: String
-    let apply: String
-}
-
-@MainActor
-private final class DebouncedSerialAutosaver<Value> {
-    typealias Operation = @MainActor (Value) async -> Void
-
-    private var pending: (value: Value, operation: Operation)?
-    private var worker: Task<Void, Never>?
-    private var revision = 0
-
-    func schedule(_ value: Value, operation: @escaping Operation) {
-        pending = (value, operation)
-        revision += 1
-        guard worker == nil else { return }
-        worker = Task {
-            await self.drain()
-        }
-    }
-
-    private func drain() async {
-        while true {
-            let scheduledRevision = revision
-            try? await Task.sleep(for: .milliseconds(450))
-            guard scheduledRevision == revision else { continue }
-            guard let next = pending else {
-                worker = nil
-                return
-            }
-            pending = nil
-            await next.operation(next.value)
-            if pending == nil {
-                worker = nil
-                return
-            }
-        }
-    }
 }
 
 private struct CircleInviteView: View {

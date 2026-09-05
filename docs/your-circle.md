@@ -200,7 +200,7 @@ When a numeric Weekly Focus reaches completion:
 
 Use one clear Circle settings screen.
 
-Settings fields and Weekly Focus controls save automatically after changes, with transient success or failure feedback; they do not use explicit Save buttons.
+Settings fields and Weekly Focus controls keep a local draft while editing, then sync changed values when their screen closes. Unchanged drafts do not call the API, and sync results use transient success or failure feedback; these screens do not use explicit Save buttons.
 
 Owner controls:
 
