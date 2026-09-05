@@ -3901,6 +3901,22 @@
         }
       }
     },
+    "Collapse Circle card" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraer tarjeta del Círculo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起跑圈卡片"
+          }
+        }
+      }
+    },
     "Collapse group run" : {
       "localizations" : {
         "es" : {
@@ -3929,6 +3945,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "收起跑鞋设置"
+          }
+        }
+      }
+    },
+    "Collapse workout card" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraer tarjeta de entrenamiento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起训练卡片"
           }
         }
       }
@@ -6090,6 +6122,22 @@
         }
       }
     },
+    "Expand Circle card" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expandir tarjeta del Círculo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开跑圈卡片"
+          }
+        }
+      }
+    },
     "Expand group run" : {
       "localizations" : {
         "es" : {
@@ -6118,6 +6166,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "展开跑鞋设置"
+          }
+        }
+      }
+    },
+    "Expand workout card" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expandir tarjeta de entrenamiento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "展开训练卡片"
           }
         }
       }

@@ -6,25 +6,41 @@ struct CircleCompactCard: View {
 
     var body: some View {
         OutboundCard(style: .companion) {
-            HStack(spacing: OutboundSpacing.standard) {
-                Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
-                    .font(.title2)
-                    .foregroundStyle(OutboundPalette.companion)
-                    .frame(width: 44, height: 44)
-                    .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(circle.name).font(.headline).foregroundStyle(.primary)
-                        if isPrimary { Image(systemName: "star.fill").font(.caption2).foregroundStyle(OutboundPalette.companion) }
-                    }
-                    Text(statusText).font(.subheadline).foregroundStyle(.secondary)
+            CircleCompactContent(circle: circle, isPrimary: isPrimary)
+        }
+    }
+}
+
+struct CircleCompactContent: View {
+    let circle: CircleDTO
+    let isPrimary: Bool
+    var isMinimized = false
+    var showsNavigationIndicator = true
+
+    var body: some View {
+        HStack(spacing: isMinimized ? OutboundSpacing.compact : OutboundSpacing.standard) {
+            Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
+                .font(isMinimized ? .subheadline : .title2)
+                .foregroundStyle(OutboundPalette.companion)
+                .frame(width: isMinimized ? 34 : 44, height: isMinimized ? 34 : 44)
+                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(circle.name).font(.headline).foregroundStyle(.primary).lineLimit(1)
+                    if isPrimary { Image(systemName: "star.fill").font(.caption2).foregroundStyle(OutboundPalette.companion) }
                 }
-                Spacer(minLength: 8)
+                if !isMinimized {
+                    Text(statusText).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                }
+            }
+            Spacer(minLength: 8)
+            if showsNavigationIndicator {
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private var statusText: String {

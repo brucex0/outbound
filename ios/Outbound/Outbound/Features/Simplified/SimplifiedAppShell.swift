@@ -843,6 +843,8 @@ private struct SimplifiedTodayView: View {
     @AppStorage("theme_discovery_tip_presentation_count_v1") private var themeTipPresentationCount = 0
     @AppStorage("activity_overflow_tip_dismissed_v1") private var hasDismissedActivityOverflowTip = false
     @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
+    @AppStorage("today_planned_workout_card_minimized_v1") private var isPlannedWorkoutCardMinimized = false
+    @AppStorage("today_circle_card_minimized_v1") private var isCircleCardMinimized = false
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
     let isActivityFullscreenVisible: Bool
@@ -874,6 +876,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
+    @State private var lastExposedTodayCircleID: String?
 
     var body: some View {
         NavigationStack {
@@ -889,7 +892,10 @@ private struct SimplifiedTodayView: View {
                         .clipped()
 
                         if preActivityRoute == nil
-                            && (launchGoalMode == .planned || activitySessionState != .idle || circleStore.eligiblePrimaryCircle != nil) {
+                            && (launchGoalMode == .planned
+                                || activitySessionState != .idle
+                                || activityEventToday != nil
+                                || circleStore.eligiblePrimaryCircle != nil) {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, ActivityLaunchLayout.peerCardGap)
@@ -947,6 +953,7 @@ private struct SimplifiedTodayView: View {
             }
             .onAppear {
                 launchLocationManager.requestCurrentLocation()
+                trackTodayCircleExposureIfNeeded()
             }
             .task {
                 await loadCompanionTodayMessage()
@@ -987,7 +994,12 @@ private struct SimplifiedTodayView: View {
                 if !isSelected {
                     showsThemeTip = false
                     showsActivityOverflowTip = false
+                } else {
+                    trackTodayCircleExposureIfNeeded()
                 }
+            }
+            .onChange(of: circleStore.eligiblePrimaryCircle?.id) { _, _ in
+                trackTodayCircleExposureIfNeeded()
             }
             .onChange(of: activitySessionState) { _, state in
                 if state != .idle {
@@ -1196,16 +1208,15 @@ private struct SimplifiedTodayView: View {
 
     @ViewBuilder
     private var todayPeerCards: some View {
-        VStack(spacing: OutboundSpacing.standard) {
-            if completedActivityToday != nil {
-                plannedWorkoutCard
-            } else if let activityEventToday {
+        VStack(spacing: OutboundSpacing.compact) {
+            plannedWorkoutCard
+
+            if completedActivityToday == nil, let activityEventToday {
                 activityEventCard(activityEventToday)
-            } else if let circle = circleStore.eligiblePrimaryCircle {
-                NavigationLink { CircleDetailView(circle: circle) } label: { CircleCompactCard(circle: circle, isPrimary: true) }
-                    .buttonStyle(.plain)
-            } else {
-                plannedWorkoutCard
+            }
+
+            if let circle = circleStore.eligiblePrimaryCircle {
+                todayCircleCard(circle)
             }
 
             if activitySessionState != .idle {
@@ -1235,57 +1246,150 @@ private struct SimplifiedTodayView: View {
 
     private var plannedWorkoutCard: some View {
         OutboundCard {
-            VStack(spacing: OutboundSpacing.standard) {
-                Button(action: openPlannedWorkoutDetails) {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                        HStack(alignment: .top, spacing: OutboundSpacing.standard) {
-                            VStack(alignment: .leading, spacing: 4) {
+            VStack(spacing: isPlannedWorkoutCardMinimized ? 0 : OutboundSpacing.standard) {
+                HStack(spacing: OutboundSpacing.compact) {
+                    Button(action: openPlannedWorkoutDetails) {
+                        HStack(spacing: OutboundSpacing.standard) {
+                            VStack(alignment: .leading, spacing: 3) {
                                 Text(completedActivityToday == nil ? "Today’s workout" : "Up next")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(theme.accentColor)
                                     .textCase(.uppercase)
                                 Text(todayWorkoutName)
-                                    .font(.title2.weight(.bold))
+                                    .font((isPlannedWorkoutCardMinimized ? Font.headline : .title3).weight(.bold))
                                     .foregroundStyle(OutboundPalette.primaryText)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
                             }
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
+                            Text(todayTotalDuration)
+                                .font(.subheadline.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
-                        Text(todayTotalDuration)
-                            .font(.headline.monospacedDigit())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(localized: "Opens workout details"))
+
+                    Button(action: togglePlannedWorkoutCard) {
+                        Image(systemName: isPlannedWorkoutCardMinimized ? "chevron.down" : "chevron.up")
+                            .font(.caption.weight(.bold))
                             .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Color.primary.opacity(0.06), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        isPlannedWorkoutCardMinimized
+                            ? String(localized: "Expand workout card")
+                            : String(localized: "Collapse workout card")
+                    )
+                }
+
+                if !isPlannedWorkoutCardMinimized {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         WorkoutWeatherGuidance(snapshot: weatherStore.snapshot)
                         CompactIntervalPreview(phases: todayPhases)
                     }
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(String(localized: "Opens workout details"))
-
-                Divider()
-
-                HStack(spacing: 0) {
-                    Button(action: onOpenPlan) {
-                        Label(String(localized: "Plan"), systemImage: "calendar")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.plain)
 
                     Divider()
-                        .frame(height: 28)
 
-                    Button(action: onChangePlan) {
-                        Label(String(localized: "Change plan"), systemImage: "arrow.triangle.2.circlepath")
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                    HStack(spacing: 0) {
+                        Button(action: onOpenPlan) {
+                            Label(String(localized: "Plan"), systemImage: "calendar")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 40)
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+                            .frame(height: 24)
+
+                        Button(action: onChangePlan) {
+                            Label(String(localized: "Change plan"), systemImage: "arrow.triangle.2.circlepath")
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .frame(maxWidth: .infinity, minHeight: 40)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
+            .animation(.snappy, value: isPlannedWorkoutCardMinimized)
+        }
+    }
+
+    private func todayCircleCard(_ circle: CircleDTO) -> some View {
+        OutboundCard(style: .companion) {
+            HStack(spacing: OutboundSpacing.compact) {
+                NavigationLink {
+                    CircleDetailView(circle: circle)
+                } label: {
+                    CircleCompactContent(
+                        circle: circle,
+                        isPrimary: true,
+                        isMinimized: isCircleCardMinimized,
+                        showsNavigationIndicator: false
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button(action: toggleCircleCard) {
+                    Image(systemName: isCircleCardMinimized ? "chevron.down" : "chevron.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(theme.heroForegroundColor)
+                        .frame(width: 32, height: 32)
+                        .background(theme.heroForegroundColor.opacity(0.14), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    isCircleCardMinimized
+                        ? String(localized: "Expand Circle card")
+                        : String(localized: "Collapse Circle card")
+                )
+            }
+            .animation(.snappy, value: isCircleCardMinimized)
+        }
+    }
+
+    private func togglePlannedWorkoutCard() {
+        let isMinimized = !isPlannedWorkoutCardMinimized
+        withAnimation(.snappy) {
+            isPlannedWorkoutCardMinimized = isMinimized
+        }
+        trackTodayCardDisplay(sourceType: "planned_workout", isMinimized: isMinimized)
+    }
+
+    private func toggleCircleCard() {
+        let isMinimized = !isCircleCardMinimized
+        withAnimation(.snappy) {
+            isCircleCardMinimized = isMinimized
+        }
+        trackTodayCardDisplay(sourceType: "circle", isMinimized: isMinimized)
+    }
+
+    private func trackTodayCardDisplay(sourceType: String, isMinimized: Bool) {
+        Task {
+            await analyticsManager?.track(.init(.todayCardDisplayChanged, properties: [
+                .sourceType: .string(sourceType),
+                .selectionType: .string(isMinimized ? "minimized" : "expanded"),
+            ]))
+        }
+    }
+
+    private func trackTodayCircleExposureIfNeeded() {
+        guard isSelected,
+              let circle = circleStore.eligiblePrimaryCircle,
+              circle.id != lastExposedTodayCircleID else { return }
+        lastExposedTodayCircleID = circle.id
+        Task {
+            await analyticsManager?.track(.init(.circleSectionExposed, properties: [
+                .entrySource: .string("today"),
+                .participantCountBucket: .string(ProductAnalyticsBucket.count(circle.memberCount)),
+            ]))
         }
     }
 

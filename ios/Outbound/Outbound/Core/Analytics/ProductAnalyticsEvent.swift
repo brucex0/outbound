@@ -80,6 +80,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case assistantLauncherAnimationShown = "assistant_launcher_animation_shown"
     case assistantLauncherOpened = "assistant_launcher_opened"
     case assistantMeaningfulEngagement = "assistant_meaningful_engagement"
+    case todayCardDisplayChanged = "today_card_display_changed"
     case planningSurfaceOpened = "planning_surface_opened"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
@@ -297,6 +298,7 @@ enum ProductAnalyticsSchema {
         .assistantLauncherAnimationShown: [.destination, .entrySource],
         .assistantLauncherOpened: [.destination, .entrySource],
         .assistantMeaningfulEngagement: [.destination, .entrySource],
+        .todayCardDisplayChanged: [.sourceType, .selectionType],
         .planningSurfaceOpened: [.sourceType, .entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
