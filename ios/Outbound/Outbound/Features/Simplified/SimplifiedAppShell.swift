@@ -844,7 +844,7 @@ private struct SimplifiedTodayView: View {
     @AppStorage("activity_overflow_tip_dismissed_v1") private var hasDismissedActivityOverflowTip = false
     @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
     @AppStorage("today_planned_workout_card_minimized_v1") private var isPlannedWorkoutCardMinimized = false
-    @AppStorage("today_circle_card_minimized_v1") private var isCircleCardMinimized = false
+    @AppStorage("today_circle_card_minimized_v1") private var isCircleCardMinimized = true
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
     let isActivityFullscreenVisible: Bool
@@ -898,8 +898,9 @@ private struct SimplifiedTodayView: View {
                                 || circleStore.eligiblePrimaryCircle != nil) {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
-                                .padding(.bottom, ActivityLaunchLayout.peerCardGap)
+                                .padding(.bottom, todayPeerCardsBottomPadding)
                                 .reportsMapAttributionOcclusionHeight()
+                                .animation(.snappy, value: launchGoalMode)
                         }
                     }
 
@@ -1209,10 +1210,12 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.compact) {
-            plannedWorkoutCard
-
-            if completedActivityToday == nil, let activityEventToday {
+            if completedActivityToday != nil {
+                plannedWorkoutCard
+            } else if let activityEventToday {
                 activityEventCard(activityEventToday)
+            } else if launchGoalMode == .planned || circleStore.eligiblePrimaryCircle == nil {
+                plannedWorkoutCard
             }
 
             if let circle = circleStore.eligiblePrimaryCircle {
@@ -1223,6 +1226,11 @@ private struct SimplifiedTodayView: View {
                 inProgressActivityCard
             }
         }
+    }
+
+    private var todayPeerCardsBottomPadding: CGFloat {
+        ActivityLaunchLayout.peerCardGap
+            + (launchGoalMode == .planned ? 0 : ActivityLaunchLayout.goalPillRowHeight)
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {

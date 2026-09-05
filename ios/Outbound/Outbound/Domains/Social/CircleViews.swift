@@ -29,9 +29,11 @@ struct CircleCompactContent: View {
                     Text(circle.name).font(.headline).foregroundStyle(.primary).lineLimit(1)
                     if isPrimary { Image(systemName: "star.fill").font(.caption2).foregroundStyle(OutboundPalette.companion) }
                 }
-                if !isMinimized {
-                    Text(statusText).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-                }
+                Text(statusText)
+                    .font(isMinimized ? .caption : .subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(isMinimized ? 1 : 2)
+                    .minimumScaleFactor(isMinimized ? 0.8 : 1)
             }
             Spacer(minLength: 8)
             if showsNavigationIndicator {
