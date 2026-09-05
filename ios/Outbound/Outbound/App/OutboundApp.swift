@@ -195,9 +195,16 @@ struct OutboundApp: App {
                 await refreshTrainingProfile()
                 await musicStore.refresh()
                 await personalizationStore.refresh()
-                await togetherStore.refresh()
-                await circleStore.refresh()
-                await circleStore.refreshInvitations()
+                async let socialHomeRefresh: Void = togetherStore.refresh()
+                async let socialConnectionsRefresh: Void = togetherStore.refreshConnections()
+                async let circleRefresh: Void = circleStore.refresh()
+                async let circleInvitationsRefresh: Void = circleStore.refreshInvitations()
+                _ = await (
+                    socialHomeRefresh,
+                    socialConnectionsRefresh,
+                    circleRefresh,
+                    circleInvitationsRefresh
+                )
                 await consumePendingInviteIfPossible()
                 await pushNotifications.activate()
             }

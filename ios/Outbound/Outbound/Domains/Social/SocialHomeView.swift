@@ -43,7 +43,9 @@ struct SocialHomeView: View {
                         incomingRequestCard(incomingRequest)
                     }
 
-                    if shouldShowConnectionPrompt {
+                    if !socialStore.hasLoadedConnections {
+                        connectionsLoadingSection
+                    } else if shouldShowConnectionPrompt {
                         connectionGrowthCard
                     } else if !acceptedConnections.isEmpty {
                         connectionsSection
@@ -407,6 +409,34 @@ struct SocialHomeView: View {
                 .scrollIndicators(.hidden)
             }
         }
+    }
+
+    private var connectionsLoadingSection: some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            HStack {
+                Text("Connections").socialSectionLabel()
+                Spacer()
+                Text("All")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(OutboundPalette.companion)
+            }
+
+            OutboundCard {
+                HStack(spacing: OutboundSpacing.standard) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        VStack(spacing: 6) {
+                            Circle()
+                                .fill(OutboundPalette.companion.opacity(0.12))
+                                .frame(width: 40, height: 40)
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(Color.secondary.opacity(0.12))
+                                .frame(width: 48, height: 12)
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     private func openConnections() {

@@ -31,6 +31,7 @@ final class TogetherStore: ObservableObject {
     private let defaults: UserDefaults
     private let legacyCacheKey = "together_state_v1"
     private let cacheKeyPrefix = "together_state_v1_account_"
+    private let connectionsCacheKeyPrefix = "social_connections_v1_account_"
     private var activeUserID: String?
     private var authGeneration = 0
     private var nextConnectionsCursor: String?
@@ -57,6 +58,7 @@ final class TogetherStore: ObservableObject {
         guard activeUserID != userID else { return }
         if let activeUserID {
             defaults.removeObject(forKey: cacheKey(for: activeUserID))
+            defaults.removeObject(forKey: connectionsCacheKey(for: activeUserID))
         }
         authGeneration += 1
         activeUserID = userID
@@ -72,6 +74,14 @@ final class TogetherStore: ObservableObject {
             TogetherResponseDTO.self,
             from: defaults.data(forKey: cacheKey(for: userID))
         ) ?? Self.emptyState
+        if let cachedConnections = Self.decode(
+            SocialConnectionsResponseDTO.self,
+            from: defaults.data(forKey: connectionsCacheKey(for: userID))
+        ) {
+            connections = cachedConnections.connections
+            nextConnectionsCursor = cachedConnections.nextCursor
+            hasLoadedConnections = true
+        }
     }
 
     func refresh() async {
@@ -373,6 +383,7 @@ final class TogetherStore: ObservableObject {
             connections = page.connections
             hasLoadedConnections = true
             nextConnectionsCursor = page.nextCursor
+            persistConnections()
             errorMessage = nil
         } catch {
             guard generation == authGeneration else { return }
@@ -398,6 +409,7 @@ final class TogetherStore: ObservableObject {
             let appended = page.connections.filter { !existingIDs.contains($0.id) }
             connections.append(contentsOf: appended)
             nextConnectionsCursor = page.nextCursor
+            persistConnections()
             errorMessage = nil
             return appended.count
         } catch {
@@ -486,6 +498,7 @@ final class TogetherStore: ObservableObject {
         do {
             _ = try await api.acceptSocialConnection(id: connection.id)
             replaceConnection(connection, status: "accepted", direction: "incoming")
+            persistConnections()
             notifications.removeAll { $0.type == "connectionRequest" && $0.objectId == connection.id }
             errorMessage = nil
             await refreshConnections()
@@ -505,6 +518,7 @@ final class TogetherStore: ObservableObject {
         do {
             _ = try await api.removeSocialConnection(id: connection.id)
             connections.removeAll { $0.id == connection.id }
+            persistConnections()
             notifications.removeAll { $0.type == "connectionRequest" && $0.objectId == connection.id }
             errorMessage = nil
             await refreshConnections()
@@ -523,6 +537,21 @@ final class TogetherStore: ObservableObject {
 
     private func cacheKey(for userID: String) -> String {
         cacheKeyPrefix + userID
+    }
+
+    private func connectionsCacheKey(for userID: String) -> String {
+        connectionsCacheKeyPrefix + userID
+    }
+
+    private func persistConnections() {
+        guard let activeUserID else { return }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let snapshot = SocialConnectionsResponseDTO(
+            connections: connections,
+            nextCursor: nextConnectionsCursor
+        )
+        defaults.set(try? encoder.encode(snapshot), forKey: connectionsCacheKey(for: activeUserID))
     }
 
     private func resetState() {
