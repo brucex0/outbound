@@ -114,6 +114,14 @@ private struct ActivityShareCardView: View {
         activity.avgPace?.paceString(for: unitSystem) ?? "--"
     }
 
+    private var paceValueText: String {
+        paceText.split(separator: " ", maxSplits: 1).first.map(String.init) ?? paceText
+    }
+
+    private var paceUnitText: String? {
+        paceText == "--" ? nil : unitSystem.paceUnitSuffix
+    }
+
     var body: some View {
         ZStack {
             if let mapImage {
@@ -152,7 +160,7 @@ private struct ActivityShareCardView: View {
         VStack {
             Spacer()
 
-            HStack(alignment: .bottom, spacing: 42) {
+            HStack(alignment: .bottom, spacing: 52) {
                 VStack(alignment: .leading, spacing: 34) {
                     Image(systemName: "figure.run.circle.fill")
                         .font(.system(size: 78, weight: .semibold))
@@ -173,6 +181,7 @@ private struct ActivityShareCardView: View {
 
                     statsStack
                 }
+                .frame(width: 500, alignment: .leading)
 
                 Spacer()
 
@@ -236,17 +245,31 @@ private struct ActivityShareCardView: View {
     }
 
     private var statsStack: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            HStack(alignment: .top, spacing: 72) {
-                ShareStat(label: String(localized: "Distance"), value: unitSystem.distanceString(meters: activity.distanceM))
-                ShareStat(label: String(localized: "Time"), value: activity.durationSecs.formatted())
-            }
-
-            HStack(alignment: .top, spacing: 72) {
-                ShareStat(label: "Pace", value: paceText)
-                if let elevation = activity.elevationGainM {
-                    ShareStat(label: "Elev", value: unitSystem.elevationString(meters: elevation))
-                }
+        LazyVGrid(
+            columns: [
+                GridItem(.fixed(232), spacing: 36, alignment: .leading),
+                GridItem(.fixed(232), spacing: 0, alignment: .leading)
+            ],
+            alignment: .leading,
+            spacing: 28
+        ) {
+            ShareStat(
+                label: String(localized: "Distance"),
+                value: unitSystem.distanceValueString(meters: activity.distanceM),
+                unit: unitSystem.distanceUnit
+            )
+            ShareStat(label: String(localized: "Time"), value: activity.durationSecs.formatted())
+            ShareStat(
+                label: String(localized: "Pace"),
+                value: paceValueText,
+                unit: paceUnitText
+            )
+            if let elevation = activity.elevationGainM {
+                ShareStat(
+                    label: String(localized: "summary.stats.elev_gain", defaultValue: "Elev Gain"),
+                    value: unitSystem.elevationValueString(meters: elevation),
+                    unit: unitSystem.elevationUnit
+                )
             }
         }
     }
@@ -255,19 +278,31 @@ private struct ActivityShareCardView: View {
 private struct ShareStat: View {
     let label: String
     let value: String
+    var unit: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(value)
-                .font(.system(size: 62, weight: .bold))
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(value)
+                    .font(.system(size: 56, weight: .bold))
+
+                if let unit, !unit.isEmpty {
+                    Text(unit)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                }
+            }
                 .foregroundStyle(.white)
-                .lineLimit(2)
-                .minimumScaleFactor(0.58)
-            Text(label.uppercased())
-                .font(.system(size: 26, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
+                .allowsTightening(true)
+            Text(label)
+                .font(.system(size: 24, weight: .medium))
                 .foregroundStyle(.white.opacity(0.80))
+                .lineLimit(1)
+                .minimumScaleFactor(0.80)
         }
-        .frame(width: 250, alignment: .leading)
+        .frame(width: 232, alignment: .leading)
     }
 }
 
