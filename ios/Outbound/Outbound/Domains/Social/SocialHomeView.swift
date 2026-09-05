@@ -295,10 +295,10 @@ struct SocialHomeView: View {
                                     Image(systemName: "arrow.right")
                                         .foregroundStyle(OutboundPalette.companion)
                                 }
-                                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Live well, together."))
+                                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Active. Positive. Together."))
                                     .font(.title3.bold())
                                     .foregroundStyle(.primary)
-                                Text(String(localized: "circle.create.detail", defaultValue: "Build a more active, positive life with family and friends. Share workouts, weekly momentum, and encouragement in one Circle."))
+                                Text(String(localized: "circle.create.detail", defaultValue: "Share goals and progress with the people closest to you—and cheer each other on."))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 Text(String(localized: "circle.create.start", defaultValue: "Create your Circle"))

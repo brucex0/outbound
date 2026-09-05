@@ -168,9 +168,9 @@ struct CircleCreateView: View {
                             .background(OutboundPalette.companion.opacity(0.12), in: Circle())
                     }
                 }
-                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Live well, together."))
+                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Active. Positive. Together."))
                     .font(.title2.bold())
-                Text(String(localized: "circle.create.inspiration_detail", defaultValue: "Build a more active, positive life with family and friends. Every workout can add to the momentum—whatever activity works for each person."))
+                Text(String(localized: "circle.create.inspiration_detail", defaultValue: "Share goals and progress with the people closest to you—and cheer each other on."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
