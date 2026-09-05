@@ -1209,11 +1209,9 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.compact) {
-            if completedActivityToday != nil {
-                plannedWorkoutCard
-            } else if let activityEventToday {
+            if completedActivityToday == nil, let activityEventToday {
                 activityEventCard(activityEventToday)
-            } else if launchGoalMode == .planned || circleStore.eligiblePrimaryCircle == nil {
+            } else if launchGoalMode == .planned {
                 plannedWorkoutCard
             }
 
