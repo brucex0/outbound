@@ -78,7 +78,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Current Implementation Shape
 
-- `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights.
+- `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights. The launcher's recurring animation state is isolated inside `AssistantLauncherButton`, so each pulse does not invalidate the surrounding tab, toolbar, or presented native menus.
 - While the app scene is active, the launcher plays a noticeable bounce, sparkle shimmer, and expanding glow ring about every four seconds after a short initial settle delay.
 - The loop stops when the app leaves the foreground and resumes when it becomes active again. Assistant presentation, tab changes, and activity presentation do not consume or permanently suppress the loop.
 - `RecordView` owns the compact live-session assistant entry.

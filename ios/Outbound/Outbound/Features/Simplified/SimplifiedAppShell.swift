@@ -17,6 +17,151 @@ enum SimplifiedAppTab: Hashable {
     }
 }
 
+private struct AssistantLauncherButton: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.analyticsManager) private var analyticsManager
+    let accentColor: Color
+    let analyticsDestination: String
+    let onOpen: () -> Void
+
+    @State private var scale = 1.0
+    @State private var shimmerOpacity = 0.0
+    @State private var rotation = 0.0
+    @State private var ringScale = 0.72
+    @State private var ringOpacity = 0.0
+    @State private var hasTrackedForeground = false
+    @State private var hasTrackedAnimation = false
+    @State private var hasEvaluatedInitialScene = false
+
+    var body: some View {
+        Button {
+            track(.assistantLauncherOpened, entrySource: "persistent_launcher")
+            onOpen()
+        } label: {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.9), lineWidth: 2)
+                    .scaleEffect(ringScale)
+                    .opacity(ringOpacity)
+
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .rotationEffect(.degrees(rotation))
+
+                Image(systemName: "sparkles")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .scaleEffect(1.28)
+                    .opacity(shimmerOpacity)
+                    .blur(radius: 0.8)
+            }
+            .frame(width: 48, height: 48)
+            .background(accentColor.gradient, in: Circle())
+            .overlay {
+                Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
+            }
+            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+            .scaleEffect(scale)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "Open assistant"))
+        .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
+        .task(id: scenePhase) {
+            await runAnimationLoop()
+        }
+    }
+
+    @MainActor
+    private func runAnimationLoop() async {
+        let entrySource = hasEvaluatedInitialScene ? "foreground" : "app_shell"
+        hasEvaluatedInitialScene = true
+
+        guard scenePhase == .active else {
+            hasTrackedForeground = false
+            hasTrackedAnimation = false
+            resetVisualState()
+            return
+        }
+
+        if !hasTrackedForeground {
+            hasTrackedForeground = true
+            track(.assistantLauncherEligibleExposure, entrySource: entrySource)
+        }
+
+        do {
+            try await Task.sleep(for: .milliseconds(500))
+        } catch {
+            return
+        }
+
+        while !Task.isCancelled, scenePhase == .active {
+            if !hasTrackedAnimation {
+                hasTrackedAnimation = true
+                track(.assistantLauncherAnimationShown, entrySource: "foreground_loop")
+            }
+
+            withAnimation(.easeOut(duration: 0.32)) {
+                scale = 1.17
+                rotation = -10
+                shimmerOpacity = 0.9
+                ringScale = 0.94
+                ringOpacity = 0.82
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(320))
+            } catch {
+                return
+            }
+
+            withAnimation(.spring(duration: 0.65, bounce: 0.38)) {
+                scale = 1.0
+                rotation = 0
+                shimmerOpacity = 0.0
+                ringScale = 1.55
+                ringOpacity = 0.0
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(650))
+            } catch {
+                return
+            }
+
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                ringScale = 0.72
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(2_800))
+            } catch {
+                return
+            }
+        }
+    }
+
+    @MainActor
+    private func resetVisualState() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scale = 1.0
+            shimmerOpacity = 0.0
+            rotation = 0.0
+            ringScale = 0.72
+            ringOpacity = 0.0
+        }
+    }
+
+    private func track(_ name: ProductEventName, entrySource: String) {
+        let event = ProductAnalyticsEvent(name, properties: [
+            .destination: .string(analyticsDestination),
+            .entrySource: .string(entrySource)
+        ])
+        Task { await analyticsManager?.track(event) }
+    }
+}
+
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
@@ -53,14 +198,6 @@ struct SimplifiedAppShell: View {
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
-    @State private var assistantLauncherAnimationTask: Task<Void, Never>?
-    @State private var assistantLauncherScale = 1.0
-    @State private var assistantLauncherShimmerOpacity = 0.0
-    @State private var assistantLauncherRotation = 0.0
-    @State private var assistantLauncherRingScale = 0.72
-    @State private var assistantLauncherRingOpacity = 0.0
-    @State private var hasTrackedAssistantLauncherForeground = false
-    @State private var hasTrackedAssistantLauncherAnimation = false
     @State private var completionCircle: CircleDTO?
     @State private var circleToast: String?
 
@@ -117,15 +254,16 @@ struct SimplifiedAppShell: View {
             feedbackPage = tab.feedbackPageName
         }
         .overlay(alignment: .bottom) {
-            if !isActivityFullscreenVisible {
-                HStack {
-                    assistantLaunchButton
+            HStack {
+                assistantLaunchButton
+                    .opacity(isActivityFullscreenVisible ? 0 : 1)
+                    .allowsHitTesting(!isActivityFullscreenVisible)
+                    .accessibilityHidden(isActivityFullscreenVisible)
 
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 40)
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 40)
         }
         .overlay(alignment: .top) {
             if let circleToast {
@@ -249,10 +387,6 @@ struct SimplifiedAppShell: View {
                 readiness: dailyCheckInStore.readiness,
                 phase: DailyMotivationEngine.phase(for: activityStore.activities)
             )
-            startAssistantLauncherAnimationLoop(entrySource: "app_shell")
-        }
-        .onDisappear {
-            cancelAssistantLauncherAnimation()
         }
         .onChange(of: activityStore.activities) { _, activities in
             trainingPlanStore.refresh(
@@ -319,11 +453,6 @@ struct SimplifiedAppShell: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
-                startAssistantLauncherAnimationLoop(entrySource: "foreground")
-            } else {
-                hasTrackedAssistantLauncherForeground = false
-                hasTrackedAssistantLauncherAnimation = false
-                cancelAssistantLauncherAnimation()
             }
         }
         .onChange(of: isActivityFullscreenVisible) { _, isVisible in
@@ -348,39 +477,12 @@ struct SimplifiedAppShell: View {
     }
 
     private var assistantLaunchButton: some View {
-        Button {
-            trackAssistantEvent(.assistantLauncherOpened, entrySource: "persistent_launcher")
+        AssistantLauncherButton(
+            accentColor: guideCatalog.selectedTheme.accentColor,
+            analyticsDestination: assistantAnalyticsDestination
+        ) {
             showsAssistant = true
-        } label: {
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.9), lineWidth: 2)
-                    .scaleEffect(assistantLauncherRingScale)
-                    .opacity(assistantLauncherRingOpacity)
-
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .rotationEffect(.degrees(assistantLauncherRotation))
-
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .scaleEffect(1.28)
-                    .opacity(assistantLauncherShimmerOpacity)
-                    .blur(radius: 0.8)
-            }
-            .frame(width: 48, height: 48)
-            .background(guideCatalog.selectedTheme.accentColor.gradient, in: Circle())
-            .overlay {
-                Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-            }
-            .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
-            .scaleEffect(assistantLauncherScale)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(String(localized: "Open assistant"))
-        .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
     }
 
     private var assistantAnalyticsDestination: String {
@@ -389,81 +491,6 @@ struct SimplifiedAppShell: View {
         case .today: "today"
         case .me: "me"
         }
-    }
-
-    @MainActor
-    private func startAssistantLauncherAnimationLoop(entrySource: String) {
-        guard scenePhase == .active else {
-            cancelAssistantLauncherAnimation()
-            return
-        }
-
-        if !hasTrackedAssistantLauncherForeground {
-            hasTrackedAssistantLauncherForeground = true
-            trackAssistantEvent(.assistantLauncherEligibleExposure, entrySource: entrySource)
-        }
-
-        assistantLauncherAnimationTask?.cancel()
-        assistantLauncherAnimationTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(500))
-            while !Task.isCancelled, scenePhase == .active {
-                if !hasTrackedAssistantLauncherAnimation {
-                    hasTrackedAssistantLauncherAnimation = true
-                    trackAssistantEvent(.assistantLauncherAnimationShown, entrySource: "foreground_loop")
-                }
-
-                withAnimation(.easeOut(duration: 0.32)) {
-                    assistantLauncherScale = 1.17
-                    assistantLauncherRotation = -10
-                    assistantLauncherShimmerOpacity = 0.9
-                    assistantLauncherRingScale = 0.94
-                    assistantLauncherRingOpacity = 0.82
-                }
-                try? await Task.sleep(for: .milliseconds(320))
-                guard !Task.isCancelled else { return }
-
-                withAnimation(.spring(duration: 0.65, bounce: 0.38)) {
-                    assistantLauncherScale = 1.0
-                    assistantLauncherRotation = 0
-                    assistantLauncherShimmerOpacity = 0.0
-                    assistantLauncherRingScale = 1.55
-                    assistantLauncherRingOpacity = 0.0
-                }
-                try? await Task.sleep(for: .milliseconds(650))
-                guard !Task.isCancelled else { return }
-
-                var transaction = Transaction(animation: nil)
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    assistantLauncherRingScale = 0.72
-                }
-                try? await Task.sleep(for: .milliseconds(2_800))
-            }
-            assistantLauncherAnimationTask = nil
-        }
-    }
-
-    @MainActor
-    private func cancelAssistantLauncherAnimation() {
-        assistantLauncherAnimationTask?.cancel()
-        assistantLauncherAnimationTask = nil
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            assistantLauncherScale = 1.0
-            assistantLauncherShimmerOpacity = 0.0
-            assistantLauncherRotation = 0.0
-            assistantLauncherRingScale = 0.72
-            assistantLauncherRingOpacity = 0.0
-        }
-    }
-
-    private func trackAssistantEvent(_ name: ProductEventName, entrySource: String) {
-        let event = ProductAnalyticsEvent(name, properties: [
-            .destination: .string(assistantAnalyticsDestination),
-            .entrySource: .string(entrySource)
-        ])
-        Task { await analyticsManager?.track(event) }
     }
 
     private func selectTabWithoutAnimation(_ tab: SimplifiedAppTab) {
