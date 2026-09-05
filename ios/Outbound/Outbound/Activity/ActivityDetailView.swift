@@ -1,5 +1,6 @@
 import Charts
 import MapKit
+import Photos
 import SwiftUI
 import UIKit
 
@@ -257,7 +258,15 @@ struct ActivityDetailView: View {
         .toolbar(.visible, for: .navigationBar)
         .sheet(isPresented: isShareSheetPresented) {
             if let shareImage {
-                ShareSheet(activityItems: [shareImage])
+                ActivitySharePreview(
+                    image: shareImage,
+                    onAction: { result in
+                        track(.init(.activityShareAction, properties: [
+                            .result: .string(result),
+                            .sourceType: .string("activity_detail"),
+                        ]))
+                    }
+                )
             } else if let shareURL {
                 ShareSheet(activityItems: [shareURL])
             }
@@ -883,6 +892,9 @@ struct ActivityDetailView: View {
                     referralURL: referralURL
                 )
                 shareImage = cardImage
+                track(.init(.activitySharePreviewed, properties: [
+                    .sourceType: .string("activity_detail"),
+                ]))
             } catch {
                 shareError = ShareRouteError(message: error.localizedDescription)
             }
@@ -1479,6 +1491,102 @@ private struct SplitRow: View {
 private struct ShareRouteError: Identifiable {
     let id = UUID()
     let message: String
+}
+
+private struct ActivitySharePreview: View {
+    @Environment(\.dismiss) private var dismiss
+    let image: UIImage
+    let onAction: (String) -> Void
+    @State private var isSystemSharePresented = false
+    @State private var isSaving = false
+    @State private var toastMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .top) {
+                Color(.secondarySystemBackground).ignoresSafeArea()
+                ScrollView {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+                        .padding(20)
+                }
+
+                if let toastMessage {
+                    Text(toastMessage)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .shadow(radius: 8)
+                        .padding(.top, 8)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 12) {
+                    Button(action: saveImage) {
+                        Label(
+                            isSaving
+                                ? String(localized: "activity.share.saving", defaultValue: "Saving…")
+                                : String(localized: "activity.share.save_image", defaultValue: "Save Image"),
+                            systemImage: "square.and.arrow.down"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(isSaving)
+
+                    Button {
+                        onAction("share_sheet_opened")
+                        isSystemSharePresented = true
+                    } label: {
+                        Label(String(localized: "activity.share.more", defaultValue: "Share…"), systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.bar)
+            }
+            .navigationTitle(String(localized: "activity.share.preview", defaultValue: "Share Preview"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() }
+                }
+            }
+            .sheet(isPresented: $isSystemSharePresented) {
+                ShareSheet(activityItems: [image])
+            }
+            .task(id: toastMessage) {
+                guard toastMessage != nil else { return }
+                try? await Task.sleep(for: .seconds(2.5))
+                toastMessage = nil
+            }
+        }
+    }
+
+    private func saveImage() {
+        isSaving = true
+        Task { @MainActor in
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest.creationRequestForAsset(from: image)
+                }
+                toastMessage = String(localized: "activity.share.saved", defaultValue: "Saved to Photos")
+                onAction("saved_to_photos")
+            } catch {
+                toastMessage = String(localized: "activity.share.save_failed", defaultValue: "Couldn’t save image")
+                onAction("save_failed")
+            }
+            isSaving = false
+        }
+    }
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {

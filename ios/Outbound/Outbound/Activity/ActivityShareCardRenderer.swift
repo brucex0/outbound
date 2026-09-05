@@ -314,10 +314,12 @@ private enum ActivityShareMapSnapshotRenderer {
 
         let options = MKMapSnapshotter.Options()
         options.size = size
-        options.scale = 1
-        options.mapType = .mutedStandard
-        options.pointOfInterestFilter = .excludingAll
-        options.showsBuildings = false
+        // Render above the final card resolution and downsample through SwiftUI.
+        // This preserves small roads and labels while keeping the exported card at 1080p.
+        options.scale = 2
+        options.mapType = .standard
+        options.pointOfInterestFilter = .includingAll
+        options.showsBuildings = true
         options.mapRect = mapRect(for: coordinates, size: size)
 
         let snapshot = try await MKMapSnapshotter(options: options).start()

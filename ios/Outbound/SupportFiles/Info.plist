@@ -69,6 +69,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Plainstride keeps the camera ready so you can capture moments during your run without leaving the app.</string>
 
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Plainstride saves activity share images to your photo library when you choose Save Image.</string>
+
     <key>NSMicrophoneUsageDescription</key>
     <string>Plainstride uses the microphone for voice activity commands and guide audio during workouts.</string>
     <key>NSSpeechRecognitionUsageDescription</key>

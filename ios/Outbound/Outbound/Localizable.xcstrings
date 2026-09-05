@@ -2187,6 +2187,12 @@
         }
       }
     },
+    "activity.share.more" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Share…" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Compartir…" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享…" } } } },
+    "activity.share.preview" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Share Preview" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Vista previa" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享预览" } } } },
+    "activity.share.save_failed" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t save image" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo guardar la imagen" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法保存图片" } } } },
+    "activity.share.save_image" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Image" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar imagen" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存图片" } } } },
+    "activity.share.saved" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saved to Photos" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardada en Fotos" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已存储到“照片”" } } } },
+    "activity.share.saving" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Saving…" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardando…" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在保存…" } } } },
     "activity.share" : {
       "extractionState": "extracted_with_value",
       "localizations": {
