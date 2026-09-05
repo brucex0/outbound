@@ -36,7 +36,7 @@ Configure launch options from the dock:
 - Music, Live Track, and Shoes use compact icon-plus-label controls that open focused overlays and return the chosen value to the dock.
 - The current `Indoor` or `Outdoor` choice and Voice Guide use the same icon-plus-label treatment and toggle directly. Voice Guide defaults on for a new install and continues to honor an existing saved choice.
 - Photo stays outside the settings scroller in the top-right overflow menu. Before capture its menu action opens the camera; afterward the toolbar label becomes the captured thumbnail and the menu action opens the preview with Retake and Remove.
-- Find Route uses the same overflow menu. Selecting a route fits its full highlighted polyline on the Today map, shows start/finish markers, and replaces the planned peer card with a compact route name/distance card offering Change and Remove. The menu action changes from Find Route to Change Route while selected.
+- Find Route uses the same overflow menu. Selecting a route fits its full highlighted polyline on the Today map, shows start/finish markers, and replaces the planned/event peer slot with a compact route name/distance card offering Change and Remove. An eligible Circle remains visible above the route card, positioned from the route/goal overlay's measured height. The menu action changes from Find Route to Change Route while selected.
 - Off states must stop using the configured treatment.
 - Every independent control keeps a minimum 44-point target and a visible or accessible label.
 

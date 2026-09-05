@@ -875,6 +875,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
+    @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var lastExposedTodayCircleID: String?
 
     var body: some View {
@@ -890,16 +891,16 @@ private struct SimplifiedTodayView: View {
                         )
                         .clipped()
 
-                        if preActivityRoute == nil
-                            && (launchGoalMode == .planned
-                                || activitySessionState != .idle
-                                || activityEventToday != nil
-                                || circleStore.eligiblePrimaryCircle != nil) {
+                        if launchGoalMode == .planned
+                            || activitySessionState != .idle
+                            || activityEventToday != nil
+                            || circleStore.eligiblePrimaryCircle != nil {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, todayPeerCardsBottomPadding)
                                 .reportsMapAttributionOcclusionHeight()
                                 .animation(.snappy, value: launchGoalMode)
+                                .animation(.snappy, value: activityLaunchFloatingContentHeight)
                         }
                     }
 
@@ -915,6 +916,9 @@ private struct SimplifiedTodayView: View {
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
                 mapAttributionBottomInset = height
+            }
+            .onPreferenceChange(ActivityLaunchFloatingContentHeightPreferenceKey.self) { height in
+                activityLaunchFloatingContentHeight = height
             }
             .background(OutboundPalette.background)
             .ignoresSafeArea(edges: isActivityFullscreenVisible ? [] : .top)
@@ -1209,10 +1213,12 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.compact) {
-            if completedActivityToday == nil, let activityEventToday {
-                activityEventCard(activityEventToday)
-            } else if launchGoalMode == .planned {
-                plannedWorkoutCard
+            if preActivityRoute == nil {
+                if completedActivityToday == nil, let activityEventToday {
+                    activityEventCard(activityEventToday)
+                } else if launchGoalMode == .planned {
+                    plannedWorkoutCard
+                }
             }
 
             if let circle = circleStore.eligiblePrimaryCircle {
@@ -1226,8 +1232,12 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPeerCardsBottomPadding: CGFloat {
-        guard launchGoalMode != .planned else { return ActivityLaunchLayout.peerCardGap }
-        return ActivityLaunchLayout.goalPillRowHeight + (ActivityLaunchLayout.peerCardGap / 2)
+        let goalPillHeight = launchGoalMode == .planned ? 0 : ActivityLaunchLayout.goalPillRowHeight
+        let hasAdjacentFloatingContent = goalPillHeight > 0 || activityLaunchFloatingContentHeight > 0
+        let gap = hasAdjacentFloatingContent
+            ? ActivityLaunchLayout.peerCardGap / 2
+            : ActivityLaunchLayout.peerCardGap
+        return goalPillHeight + activityLaunchFloatingContentHeight + gap
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {

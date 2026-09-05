@@ -44,12 +44,31 @@ struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
     }
 }
 
+struct ActivityLaunchFloatingContentHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 extension View {
     func reportsMapAttributionOcclusionHeight() -> some View {
         background {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: MapAttributionOcclusionHeightPreferenceKey.self,
+                    value: proxy.size.height
+                )
+            }
+        }
+    }
+
+    func reportsActivityLaunchFloatingContentHeight() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ActivityLaunchFloatingContentHeightPreferenceKey.self,
                     value: proxy.size.height
                 )
             }
@@ -1472,6 +1491,7 @@ struct RecordView: View {
                         }
                         .padding(.horizontal, 18)
                         .padding(.bottom, 12)
+                        .reportsActivityLaunchFloatingContentHeight()
                         .reportsMapAttributionOcclusionHeight()
                     }
                 }
