@@ -89,7 +89,12 @@ exact App Store Connect name:
 The same value can be supplied as `BETA_GROUP`. `BETA_LOCALE` overrides the
 release-note locale, and `ASC_PROCESSING_TIMEOUT` / `ASC_POLL_INTERVAL` tune the
 default one-hour processing wait and 30-second polling interval. Assigning an
-external group does not bypass Apple's Beta App Review.
+external group does not bypass Apple's Beta App Review. The
+upload/export phase is bounded by `ASC_UPLOAD_TIMEOUT` (default 1,800 seconds)
+so a stalled Xcode SPI/export-compliance request cannot wait forever; when it
+expires, the signed archive is preserved and the script prints the Organizer
+fallback. A timeout can still leave an accepted upload on Apple's side, so
+check App Store Connect before retrying the same build number.
 
 Preview the next build number without changing files:
 

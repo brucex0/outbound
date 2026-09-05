@@ -25,6 +25,7 @@ beta_locale="${BETA_LOCALE:-en-US}"
 app_store_locale="${APP_STORE_LOCALE:-en-US}"
 asc_processing_timeout="${ASC_PROCESSING_TIMEOUT:-3600}"
 asc_poll_interval="${ASC_POLL_INTERVAL:-30}"
+asc_upload_timeout="${ASC_UPLOAD_TIMEOUT:-1800}"
 
 timestamp() {
   date '+%H:%M:%S'
@@ -87,6 +88,8 @@ Environment:
   APP_STORE_LOCALE  App Store What's New locale. Defaults to en-US.
   ASC_PROCESSING_TIMEOUT  Seconds to wait for processing. Defaults to 3600.
   ASC_POLL_INTERVAL      Poll interval in seconds. Defaults to 30.
+  ASC_UPLOAD_TIMEOUT     Seconds to allow xcodebuild's upload/export phase.
+                         Defaults to 1800; the archive is preserved on timeout.
 
 Post-upload setup requires an App Store Connect API key. Public submission also
 requires complete App Store metadata and an API key role allowed to submit it.
@@ -149,7 +152,7 @@ fi
 
 cd "$ROOT_DIR"
 
-for tool in curl git jq ruby xcodebuild plutil; do
+for tool in curl find git jq pgrep ruby xcodebuild xcrun plutil; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool not found: $tool"
 done
 
@@ -157,6 +160,8 @@ done
   fail "ASC_PROCESSING_TIMEOUT must be a positive integer"
 [[ "$asc_poll_interval" =~ ^[1-9][0-9]*$ ]] || \
   fail "ASC_POLL_INTERVAL must be a positive integer"
+[[ "$asc_upload_timeout" =~ ^[1-9][0-9]*$ ]] || \
+  fail "ASC_UPLOAD_TIMEOUT must be a positive integer"
 if [[ "$configure_beta" == true ]]; then
   [[ -n "$beta_locale" ]] || fail "BETA_LOCALE must not be empty"
 fi
@@ -201,7 +206,7 @@ fi
 
 documented_release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
-text = File.read(path)
+text = File.read(path, encoding: "UTF-8")
 match = text.match(/^### Beta Release Notes\s*$\n(.*?)(?=^###?\s|\z)/m)
 abort "release document is missing a Beta Release Notes section" unless match
 notes = match[1].strip
@@ -215,7 +220,7 @@ app_store_release_notes=""
 if [[ "$submit_public_release" == true ]]; then
   app_store_release_notes="$({ RELEASE_DOC="$RELEASE_DOC" ruby <<'RUBY'
 path = ENV.fetch("RELEASE_DOC")
-text = File.read(path)
+text = File.read(path, encoding: "UTF-8")
 match = text.match(/^### App Store What.s New\s*$\n(.*?)(?=^###?\s|\z)/m)
 abort "release document is missing the App Store release-notes section" unless match
 notes = match[1].strip
@@ -235,7 +240,7 @@ fi
 version_info="$({ PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
 bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID")]
-lines = File.readlines(path)
+lines = File.readlines(path, encoding: "UTF-8")
 builds = []
 versions = []
 
@@ -394,7 +399,7 @@ old_version = ENV.fetch("OLD_VERSION")
 new_version = ENV.fetch("NEW_VERSION")
 old_build = ENV.fetch("OLD_BUILD")
 new_build = ENV.fetch("NEW_BUILD")
-lines = File.readlines(path)
+lines = File.readlines(path, encoding: "UTF-8")
 updated_builds = 0
 updated_versions = 0
 
@@ -432,7 +437,7 @@ new_version = ENV.fetch("NEW_VERSION")
 release_notes = ENV.fetch("RELEASE_NOTES")
 app_store_release_notes = ENV.fetch("APP_STORE_RELEASE_NOTES")
 update_app_store_notes = ENV.fetch("UPDATE_APP_STORE_NOTES") == "true"
-text = File.read(path)
+text = File.read(path, encoding: "UTF-8")
 replacements = {
   "# TestFlight and App Store #{old_version} Submission Sheet" => "# TestFlight and App Store #{new_version} Submission Sheet",
   "- Version: `#{old_version}`" => "- Version: `#{new_version}`",
@@ -522,13 +527,17 @@ fi
 export_options="$(mktemp /tmp/plainstride-testflight-export.XXXXXX)"
 export_path="$(mktemp -d /tmp/plainstride-testflight-output.XXXXXX)"
 trap 'rm -f "$export_options"' EXIT
+export_destination="upload"
+if [[ "$use_asc_api_key" == true ]]; then
+  export_destination="export"
+fi
 cat >"$export_options" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>destination</key>
-  <string>upload</string>
+  <string>${export_destination}</string>
   <key>method</key>
   <string>app-store-connect</string>
   <key>signingStyle</key>
@@ -545,15 +554,104 @@ cat >"$export_options" <<PLIST
 </plist>
 PLIST
 
-log "Uploading build ${next_build} to App Store Connect..."
-if ! xcodebuild \
-  -exportArchive \
-  -archivePath "$archive_path" \
-  -exportPath "$export_path" \
-  -exportOptionsPlist "$export_options" \
-  -allowProvisioningUpdates \
-  ${authentication_args[@]+"${authentication_args[@]}"}; then
-  printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
+terminate_process_tree() {
+  local process_id="$1"
+  local signal="$2"
+  local child_id
+
+  while IFS= read -r child_id; do
+    [[ -n "$child_id" ]] || continue
+    terminate_process_tree "$child_id" "$signal"
+  done < <(pgrep -P "$process_id" 2>/dev/null || true)
+
+  kill "-$signal" "$process_id" 2>/dev/null || true
+}
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  local operation="$2"
+  shift 2
+  local process_id elapsed
+
+  "$@" &
+  process_id="$!"
+  elapsed=0
+  while kill -0 "$process_id" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      log "${operation} exceeded ${timeout_seconds}s; stopping it and preserving the archive"
+      terminate_process_tree "$process_id" TERM
+      sleep 2
+      terminate_process_tree "$process_id" KILL
+      wait "$process_id" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    (( elapsed += 1 ))
+  done
+
+  wait "$process_id"
+}
+
+if [[ "$use_asc_api_key" == true ]]; then
+  log "Exporting signed IPA for App Store Connect (timeout: ${asc_upload_timeout}s)..."
+  export_status=0
+  if run_with_timeout "$asc_upload_timeout" "IPA export" xcodebuild \
+    -exportArchive \
+    -archivePath "$archive_path" \
+    -exportPath "$export_path" \
+    -exportOptionsPlist "$export_options" \
+    -allowProvisioningUpdates; then
+    export_status=0
+  else
+    export_status=$?
+  fi
+  if (( export_status != 0 )); then
+    if (( export_status == 124 )); then
+      printf '\nIPA export timed out after %ss, but the verified Organizer archive was preserved:\n  %s\n\n' "$asc_upload_timeout" "$archive_path" >&2
+    else
+      printf '\nIPA export failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
+    fi
+    exit 1
+  fi
+
+  ipa_path="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' -print -quit)"
+  [[ -n "$ipa_path" ]] || fail "Xcode export did not produce an IPA in $export_path"
+  log "Uploading build ${next_build} with altool (timeout: ${asc_upload_timeout}s)..."
+  upload_status=0
+  if run_with_timeout "$asc_upload_timeout" "App Store Connect upload" xcrun altool \
+    --upload-package "$ipa_path" \
+    --platform ios \
+    --apple-id "$APP_BUNDLE_ID" \
+    --bundle-id "$APP_BUNDLE_ID" \
+    --bundle-version "$next_build" \
+    --bundle-short-version-string "$marketing_version" \
+    --api-key "$asc_key_id" \
+    --api-issuer "$asc_issuer_id" \
+    --p8-file-path "$asc_key_path"; then
+    upload_status=0
+  else
+    upload_status=$?
+  fi
+else
+  log "Uploading build ${next_build} to App Store Connect (timeout: ${asc_upload_timeout}s)..."
+  upload_status=0
+  if run_with_timeout "$asc_upload_timeout" "Xcode export/upload" xcodebuild \
+    -exportArchive \
+    -archivePath "$archive_path" \
+    -exportPath "$export_path" \
+    -exportOptionsPlist "$export_options" \
+    -allowProvisioningUpdates; then
+    upload_status=0
+  else
+    upload_status=$?
+  fi
+fi
+if (( upload_status != 0 )); then
+  if (( upload_status == 124 )); then
+    printf '\nUpload timed out after %ss, but the verified Organizer archive was preserved:\n  %s\n\n' "$asc_upload_timeout" "$archive_path" >&2
+  else
+    printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
+  fi
   printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
   if [[ "$use_asc_api_key" == false ]]; then
     printf 'For reliable command-line uploads, set ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID to an App Store Connect API key.\n' >&2
