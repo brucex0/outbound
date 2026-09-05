@@ -6,7 +6,7 @@ Open this when changing the remaining Firebase Analytics, Messaging, storage, or
 
 The iOS app does not use Firebase Authentication. Sign in with Apple is performed by `AuthenticationServices`; the Apple credential is verified by the Plainstride backend, which returns first-party access and refresh tokens. `FirebaseAuth` is not linked into the iOS target.
 
-Firebase remains in the iOS app for Analytics and Messaging. The backend may use Firebase Admin for push delivery, Firebase-backed media storage, and temporary verification of legacy beta Firebase ID tokens.
+Firebase remains in the iOS app for Analytics and Messaging. Analytics collection is disabled by default and enabled only after the first-party backend session supplies an opaque account ID; it is disabled again on sign-out. The backend may use Firebase Admin for push delivery, Firebase-backed media storage, and temporary verification of legacy beta Firebase ID tokens.
 
 Product event taxonomy, privacy boundaries, provider evaluation, and the provider-neutral switching strategy live in `docs/product-analytics.md`. Keep this document focused on Firebase configuration rather than duplicating that policy.
 

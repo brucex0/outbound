@@ -6,7 +6,9 @@ actor FirebaseAnalyticsProvider: AnalyticsService {
 
     func initialize() async {
         guard !isInitialized, FirebaseBootstrap.configureIfAvailable() else { return }
-        Analytics.setAnalyticsCollectionEnabled(true)
+        // Info.plist also disables automatic collection before Firebase is
+        // configured. Keep this explicit for builds/configurations that omit it.
+        Analytics.setAnalyticsCollectionEnabled(false)
         isInitialized = true
     }
 

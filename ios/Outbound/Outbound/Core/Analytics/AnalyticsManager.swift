@@ -5,8 +5,11 @@ import SwiftUI
 actor AnalyticsManager {
     private var providers: [ObjectIdentifier: any AnalyticsService] = [:]
     private var isInitialized = false
-    private var isCollectionEnabled = true
+    // Firebase collection is opt-in: only authenticated account activity should
+    // contribute to the product's active-user metrics.
+    private var isCollectionEnabled = false
     private var isAuthenticated = false
+    private var authenticationRevision: UInt = 0
 
     init(providers: [any AnalyticsService] = []) {
         for provider in providers {
@@ -56,18 +59,45 @@ actor AnalyticsManager {
     }
 
     func setUserId(userId: String?) async {
+        authenticationRevision &+= 1
+        let revision = authenticationRevision
         isAuthenticated = userId != nil
+        // Fail closed while providers transition between identities. This keeps
+        // events from being attributed to the previous account or to no account.
+        isCollectionEnabled = false
         await initialize()
+        guard authenticationRevision == revision else { return }
+
+        for provider in providers.values {
+            await provider.setCollectionEnabled(false)
+            guard authenticationRevision == revision else { return }
+        }
         for provider in providers.values {
             await provider.setUserId(userId: userId)
+            guard authenticationRevision == revision else { return }
         }
+
+        // Do not collect anonymous app-open/session activity. Enable collection
+        // only after the provider has received the stable first-party account ID.
+        let shouldCollect = userId != nil
+        if shouldCollect {
+            for provider in providers.values {
+                await provider.setCollectionEnabled(true)
+                guard authenticationRevision == revision else { return }
+            }
+        }
+        isCollectionEnabled = shouldCollect
     }
 
     func setCollectionEnabled(_ enabled: Bool) async {
-        isCollectionEnabled = enabled
+        // Even callers that request collection cannot opt an anonymous device in.
+        let revision = authenticationRevision
+        isCollectionEnabled = enabled && isAuthenticated
         await initialize()
+        guard authenticationRevision == revision else { return }
         for provider in providers.values {
-            await provider.setCollectionEnabled(enabled)
+            await provider.setCollectionEnabled(isCollectionEnabled)
+            guard authenticationRevision == revision else { return }
         }
     }
 

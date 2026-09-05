@@ -4,7 +4,7 @@ Read this after `CLAUDE.md`. Open only the detail docs needed for the current ta
 
 ## Current Product Shape
 
-Plainstride (internally still named Outbound in targets and source paths) is an iOS fitness recording app. Login uses Firebase-backed Apple and Google provider accounts when the app has a local `GoogleService-Info.plist`.
+Plainstride (internally still named Outbound in targets and source paths) is an iOS fitness recording app. Login uses native Sign in with Apple verified by the Plainstride backend; Firebase is used for Analytics and Messaging when the app has a local `GoogleService-Info.plist`.
 
 Primary flow:
 
