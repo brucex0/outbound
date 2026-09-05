@@ -142,7 +142,9 @@ struct CameraHUDView: View {
         .onPreferenceChange(ShutterFramePreferenceKey.self) { shutterFrame = $0 }
         .onPreferenceChange(PhotoStackFramePreferenceKey.self) { photoStackFrame = $0 }
         .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
-            statusCardHeight = height
+            if height > 0 {
+                statusCardHeight = height
+            }
         }
         .onAppear { camera.start() }
         .onDisappear { camera.stop() }
@@ -629,28 +631,30 @@ struct SessionStatusCard: View {
     }
 
     private var panelGrabber: some View {
-        Button {
-            setExpanded(!isExpanded)
-        } label: {
-            VStack(spacing: 3) {
-                Capsule()
-                    .fill(Color.secondary.opacity(0.38))
-                    .frame(width: 42, height: 5)
+        VStack(spacing: 3) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.38))
+                .frame(width: 42, height: 5)
 
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 28)
-            .contentShape(Rectangle())
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .frame(height: 28)
+        .contentShape(Rectangle())
         .padding(.top, isExpanded ? 48 : 0)
+        .onTapGesture {
+            setExpanded(!isExpanded)
+        }
+        .gesture(panelDragGesture)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(isExpanded
             ? String(localized: "session.panel.collapse.accessibility", defaultValue: "Collapse workout dashboard")
             : String(localized: "session.panel.expand.accessibility", defaultValue: "Expand workout dashboard"))
-        .simultaneousGesture(panelDragGesture)
+        .accessibilityAction {
+            setExpanded(!isExpanded)
+        }
     }
 
     private var panelDragGesture: some Gesture {
@@ -680,9 +684,7 @@ struct SessionStatusCard: View {
 
     private func setExpanded(_ expanded: Bool) {
         guard expanded != isExpanded else { return }
-        withAnimation(panelAnimation) {
-            isExpanded = expanded
-        }
+        isExpanded = expanded
     }
 
     private var expandedDashboard: some View {

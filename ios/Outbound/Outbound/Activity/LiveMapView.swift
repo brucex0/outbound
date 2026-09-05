@@ -60,10 +60,14 @@ struct LiveMapView: View {
                 if state == .idle { framePlannedRoute(including: locationManager.location?.coordinate) }
             }
             .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
-                statusCardHeight = height
+                if height > 0 {
+                    statusCardHeight = height
+                }
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
-                bottomOverlayHeight = max(height, statusCardHeight + 18)
+                if height > 0 {
+                    bottomOverlayHeight = max(height, statusCardHeight + 18)
+                }
             }
         }
     }
@@ -204,7 +208,14 @@ struct LiveMapView: View {
                     .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
                     .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
             }
-            .reportsMapAttributionOcclusionHeight()
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: MapAttributionOcclusionHeightPreferenceKey.self,
+                        value: isWorkoutPanelExpanded ? 0 : proxy.size.height
+                    )
+                }
+            }
         }
     }
 
