@@ -90,6 +90,7 @@ struct RecordView: View {
     @AppStorage("music_discovery_tip_dismissed_v1") private var hasDismissedMusicDiscoveryTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
+    @State private var isLiveWorkoutPanelExpanded = false
     @State private var capturedPhotos: [(UIImage, PhotoMetadata)] = []
     @State private var isPreActivityCameraPresented = false
     @State private var isPreActivityPhotoPreviewPresented = false
@@ -387,6 +388,7 @@ struct RecordView: View {
         .overlay(alignment: .topTrailing) {
             if isVisible,
                pendingActivity == nil,
+               !isLiveWorkoutPanelExpanded,
                !isEmbeddedInToday || showCamera || recorder.state != .idle {
                 Button {
                     isAssistantPresented = true
@@ -645,6 +647,7 @@ struct RecordView: View {
                     capturedPhotoCount: capturedPhotos.count,
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
+                    isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
                     onStart: startRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -670,6 +673,7 @@ struct RecordView: View {
                     capturedPhotoCount: capturedPhotos.count,
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
+                    isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
                     onStart: startRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -714,7 +718,7 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isEmbeddedInToday {
+            if isEmbeddedInToday, !isLiveWorkoutPanelExpanded {
                 embeddedActivityAssistantButton
             }
         }
@@ -829,6 +833,7 @@ struct RecordView: View {
             return
         }
         activePage = preferredSessionPage
+        isLiveWorkoutPanelExpanded = false
         showCamera = true
         ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=recording")
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
@@ -876,6 +881,7 @@ struct RecordView: View {
         activeIntent = intent
         selectedRouteDistanceMeters = nil
         activePage = .map
+        isLiveWorkoutPanelExpanded = false
         capturedPhotos = []
         pendingActivity = nil
         showCamera = true
@@ -935,6 +941,7 @@ struct RecordView: View {
         ActiveSessionPhotoJournal.replace(with: capturedPhotos)
         pendingActivity = nil
         activePage = preferredSessionPage
+        isLiveWorkoutPanelExpanded = false
         activeIntent = plannedIntent
 #if DEBUG
         if !isRunSimulationEnabled {
@@ -1335,6 +1342,7 @@ struct RecordView: View {
     private func clearPending(recoveryReason: ActiveSessionClearReason) {
         cancelStartCountdown(returnToSetup: true)
         pendingActivity = nil
+        isLiveWorkoutPanelExpanded = false
         capturedPhotos = []
         isCapturingSessionPhoto = false
         clearSessionRecoveryArtifacts(reason: recoveryReason)
@@ -1369,6 +1377,20 @@ struct RecordView: View {
 
     private var preferredSessionPage: SessionPage {
         SessionPage(rawValue: preferredSessionPageRawValue) ?? .map
+    }
+
+    private func liveWorkoutPanelBinding(source: SessionPage) -> Binding<Bool> {
+        Binding(
+            get: { isLiveWorkoutPanelExpanded },
+            set: { isExpanded in
+                guard isExpanded != isLiveWorkoutPanelExpanded else { return }
+                isLiveWorkoutPanelExpanded = isExpanded
+                track(.init(.liveWorkoutPanelDisplayChanged, properties: [
+                    .selectionType: .string(isExpanded ? "expanded" : "collapsed"),
+                    .sourceType: .string(source.rawValue),
+                ]))
+            }
+        )
     }
 
     private var activityCloseSystemImage: String {

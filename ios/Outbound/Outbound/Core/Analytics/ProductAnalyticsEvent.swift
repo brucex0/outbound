@@ -39,6 +39,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySimulationStarted = "activity_simulation_started"
     case activitySimulationControlUsed = "activity_simulation_control_used"
     case liveActivityReconciled = "live_activity_reconciled"
+    case liveWorkoutPanelDisplayChanged = "live_workout_panel_display_changed"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case connectionsOpened = "connections_opened"
     case connectionsSearchCompleted = "connections_search_completed"
@@ -257,6 +258,7 @@ enum ProductAnalyticsSchema {
         .activitySimulationStarted: [.sourceType, .distanceBucket, .selectionType],
         .activitySimulationControlUsed: [.control, .selectionType],
         .liveActivityReconciled: [.result],
+        .liveWorkoutPanelDisplayChanged: [.selectionType, .sourceType],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .connectionsOpened: [.entrySource],
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],

@@ -15,6 +15,7 @@ struct LiveMapView: View {
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
+    @Binding var isWorkoutPanelExpanded: Bool
     let onStart: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
@@ -30,222 +31,241 @@ struct LiveMapView: View {
     @State private var cachedPlannedRouteCoordinates: [CLLocationCoordinate2D] = []
 
     var body: some View {
-        ZStack {
-            Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
-                if plannedRouteCoordinates.count > 1 {
-                    MapPolyline(coordinates: plannedRouteCoordinates)
-                        .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
-                    MapPolyline(coordinates: plannedRouteCoordinates)
-                        .stroke(selectedRouteColor, style: selectedRouteStyle)
+        GeometryReader { geometry in
+            ZStack {
+                mapSurface
+                bottomControls(expandedHeight: geometry.size.height)
+                if !isWorkoutPanelExpanded {
+                    rightControls
                 }
-                if let routeStartCoordinate {
-                    Annotation(
-                        routeEndpointsOverlap
-                            ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
-                            : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
-                        coordinate: routeStartCoordinate
-                    ) {
-                        RouteEndpointPin(
-                            systemImage: routeEndpointsOverlap ? "flag.checkered" : "flag.fill",
-                            color: routeEndpointsOverlap ? .orange : .green
-                        )
-                    }
+            }
+            .onReceive(locationManager.$location) { loc in
+                guard let loc else { return }
+                if recorder.state == .idle, !plannedRouteCoordinates.isEmpty {
+                    framePlannedRoute(including: loc.coordinate)
+                } else if isFollowingUser {
+                    updateMapCamera(for: loc, animated: true)
                 }
-                if !routeEndpointsOverlap, let routeFinishCoordinate {
-                    Annotation(
-                        String(localized: "route.guidance.map.finish", defaultValue: "Route finish"),
-                        coordinate: routeFinishCoordinate
-                    ) {
-                        RouteEndpointPin(systemImage: "flag.checkered", color: .orange)
-                    }
+            }
+            .onAppear {
+                cachePlannedRouteCoordinates()
+                guard !plannedRouteCoordinates.isEmpty else { return }
+                framePlannedRoute(including: locationManager.location?.coordinate)
+                trackRouteDisplayIfNeeded()
+            }
+            .onChange(of: plannedRouteCacheKey) { _, _ in
+                cachePlannedRouteCoordinates()
+            }
+            .onChange(of: recorder.state) { _, state in
+                if state == .idle { framePlannedRoute(including: locationManager.location?.coordinate) }
+            }
+            .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
+                statusCardHeight = height
+            }
+            .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
+                bottomOverlayHeight = max(height, statusCardHeight + 18)
+            }
+        }
+    }
+
+    private var mapSurface: some View {
+        Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
+            if plannedRouteCoordinates.count > 1 {
+                MapPolyline(coordinates: plannedRouteCoordinates)
+                    .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
+                MapPolyline(coordinates: plannedRouteCoordinates)
+                    .stroke(selectedRouteColor, style: selectedRouteStyle)
+            }
+            if let routeStartCoordinate {
+                Annotation(
+                    routeEndpointsOverlap
+                        ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
+                        : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
+                    coordinate: routeStartCoordinate
+                ) {
+                    RouteEndpointPin(
+                        systemImage: routeEndpointsOverlap ? "flag.checkered" : "flag.fill",
+                        color: routeEndpointsOverlap ? .orange : .green
+                    )
                 }
-                if plannedRouteCoordinates.isEmpty, let startCoordinate {
-                    Annotation("Trail Start", coordinate: startCoordinate) {
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 14, height: 14)
-                            .overlay {
-                                Circle()
-                                    .stroke(.white, lineWidth: 3)
-                            }
-                            .shadow(radius: 4)
-                    }
+            }
+            if !routeEndpointsOverlap, let routeFinishCoordinate {
+                Annotation(
+                    String(localized: "route.guidance.map.finish", defaultValue: "Route finish"),
+                    coordinate: routeFinishCoordinate
+                ) {
+                    RouteEndpointPin(systemImage: "flag.checkered", color: .orange)
                 }
-                ForEach(Array(trailCoordinateSegments.enumerated()), id: \.offset) { _, segment in
-                    if segment.count > 1 {
-                        MapPolyline(coordinates: segment)
-                            .stroke(.black.opacity(0.2), lineWidth: 8)
-                        MapPolyline(coordinates: segment)
-                            .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                    }
-                }
-                if let currentCoordinate {
-                    Annotation("Current Position", coordinate: currentCoordinate) {
-                        Circle()
-                            .fill(.orange)
-                            .frame(width: 16, height: 16)
-                            .overlay {
-                                Circle()
-                                    .stroke(.white, lineWidth: 3)
-                            }
-                            .shadow(radius: 4)
-                    }
-                }
-                ForEach(liveGroupStore.visibleParticipants) { participant in
-                    if let coordinate = participant.coordinate {
-                        Annotation(participant.displayName, coordinate: coordinate) {
-                            LiveGroupParticipantPin(participant: participant)
-                                .onTapGesture {
-                                    focusedParticipantID = participant.id
-                                    isFollowingUser = false
-                                    updateMapCamera(for: coordinate, animated: true)
-                                }
+            }
+            if plannedRouteCoordinates.isEmpty, let startCoordinate {
+                Annotation("Trail Start", coordinate: startCoordinate) {
+                    Circle()
+                        .fill(.green)
+                        .frame(width: 14, height: 14)
+                        .overlay {
+                            Circle()
+                                .stroke(.white, lineWidth: 3)
                         }
-                    }
+                        .shadow(radius: 4)
                 }
             }
-            .safeAreaPadding(.bottom, bottomOverlayHeight + 8)
-            .onMapCameraChange(frequency: .onEnd) { _ in
-                if mapPosition.positionedByUser {
-                    isFollowingUser = false
+            ForEach(Array(trailCoordinateSegments.enumerated()), id: \.offset) { _, segment in
+                if segment.count > 1 {
+                    MapPolyline(coordinates: segment)
+                        .stroke(.black.opacity(0.2), lineWidth: 8)
+                    MapPolyline(coordinates: segment)
+                        .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                 }
             }
-            .ignoresSafeArea()
-
-            VStack {
-                Spacer()
-
-                VStack(spacing: 12) {
-                    if liveGroupStore.isSharing {
-                        LiveGroupManagementPanel(
-                            title: liveGroupStore.displayTitle,
-                            statusSummary: liveGroupStore.statusSummary,
-                            participants: liveGroupStore.participants,
-                            isExpanded: $isGroupManagementExpanded,
-                            isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
-                            onInvite: {
-                                Task {
-                                    guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
-                                    await SystemSharePresenter.present(activityItems: presentation.activityItems)
-                                }
-                            },
-                            onStop: {
-                                liveGroupStore.stopFromManagementControl()
-                            }
-                        )
-                        .padding(.horizontal, 16)
-                    }
-
-                    if !liveGroupStore.visibleParticipants.isEmpty {
-                        LiveGroupRunnerStrip(
-                            participants: liveGroupStore.visibleParticipants,
-                            currentCoordinate: currentCoordinate,
-                            unitSystem: measurementPreferences.unitSystem,
-                            focusedParticipantID: focusedParticipantID,
-                            onSelect: { participant in
-                                guard let coordinate = participant.coordinate else { return }
+            if let currentCoordinate {
+                Annotation("Current Position", coordinate: currentCoordinate) {
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 16, height: 16)
+                        .overlay {
+                            Circle()
+                                .stroke(.white, lineWidth: 3)
+                        }
+                        .shadow(radius: 4)
+                }
+            }
+            ForEach(liveGroupStore.visibleParticipants) { participant in
+                if let coordinate = participant.coordinate {
+                    Annotation(participant.displayName, coordinate: coordinate) {
+                        LiveGroupParticipantPin(participant: participant)
+                            .onTapGesture {
                                 focusedParticipantID = participant.id
                                 isFollowingUser = false
                                 updateMapCamera(for: coordinate, animated: true)
                             }
-                        )
-                        .padding(.horizontal, 16)
                     }
+                }
+            }
+        }
+        .safeAreaPadding(.bottom, bottomOverlayHeight + 8)
+        .onMapCameraChange(frequency: .onEnd) { _ in
+            if mapPosition.positionedByUser {
+                isFollowingUser = false
+            }
+        }
+        .ignoresSafeArea()
+    }
 
-                    if let routeGuidance = recorder.routeGuidanceSnapshot {
-                        RouteGuidanceStatusView(
-                            snapshot: routeGuidance,
-                            unitSystem: measurementPreferences.unitSystem
-                        )
-                        .padding(.horizontal, 16)
-                    }
+    private func bottomControls(expandedHeight: CGFloat) -> some View {
+        VStack {
+            Spacer()
 
-                    SessionStatusCard(
-                        state: recorder.state,
-                        isCompact: false,
-                        intent: intent,
-                        elapsedText: recorder.elapsedSeconds.formatted(),
-                        elapsedSeconds: recorder.elapsedSeconds,
-                        paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
-                        paceText: sessionPaceText,
-                        distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
-                        distanceMeters: recorder.distanceMeters,
-                        energyKilocalories: estimatedEnergyKilocalories,
-                        walkingStepCount: recorder.walkingStepCount,
-                        distanceLabel: measurementPreferences.unitSystem.distanceLabel,
-                        elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
-                        elevationLabel: measurementPreferences.unitSystem.elevationLabel,
-                        heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
-                        guideMessage: guideMessage,
-                        musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
-                        showsMusicDisabledState: musicStore.hasDeveloperTokenError,
-                        musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
-                        onTogglePlayback: {
-                            trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
-                            Task { await musicStore.togglePlayback() }
+            VStack(spacing: 12) {
+                if !isWorkoutPanelExpanded, liveGroupStore.isSharing {
+                    LiveGroupManagementPanel(
+                        title: liveGroupStore.displayTitle,
+                        statusSummary: liveGroupStore.statusSummary,
+                        participants: liveGroupStore.participants,
+                        isExpanded: $isGroupManagementExpanded,
+                        isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
+                        onInvite: {
+                            Task {
+                                guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
+                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                            }
                         },
-                        onSkipTrack: {
-                            trackMusicControl("skip")
-                            Task { await musicStore.skipToNext() }
-                        },
-                        onStart: onStart,
-                        onPause: pauseActivity,
-                        onResume: onResume,
-                        onFinish: onFinish,
-                        isFinishEnabled: isFinishEnabled
-                    )
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: SessionStatusCardHeightPreferenceKey.self,
-                                value: proxy.size.height
-                            )
+                        onStop: {
+                            liveGroupStore.stopFromManagementControl()
                         }
-                    }
+                    )
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 18)
                 }
-                .reportsMapAttributionOcclusionHeight()
+
+                if !isWorkoutPanelExpanded, !liveGroupStore.visibleParticipants.isEmpty {
+                    LiveGroupRunnerStrip(
+                        participants: liveGroupStore.visibleParticipants,
+                        currentCoordinate: currentCoordinate,
+                        unitSystem: measurementPreferences.unitSystem,
+                        focusedParticipantID: focusedParticipantID,
+                        onSelect: { participant in
+                            guard let coordinate = participant.coordinate else { return }
+                            focusedParticipantID = participant.id
+                            isFollowingUser = false
+                            updateMapCamera(for: coordinate, animated: true)
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                if !isWorkoutPanelExpanded, let routeGuidance = recorder.routeGuidanceSnapshot {
+                    RouteGuidanceStatusView(
+                        snapshot: routeGuidance,
+                        unitSystem: measurementPreferences.unitSystem
+                    )
+                    .padding(.horizontal, 16)
+                }
+
+                statusCard(expandedHeight: expandedHeight)
+                    .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
+                    .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
             }
+            .reportsMapAttributionOcclusionHeight()
+        }
+    }
 
+    private func statusCard(expandedHeight: CGFloat) -> some View {
+        SessionStatusCard(
+            state: recorder.state,
+            isExpanded: $isWorkoutPanelExpanded,
+            expandedHeight: expandedHeight,
+            intent: intent,
+            elapsedText: recorder.elapsedSeconds.formatted(),
+            elapsedSeconds: recorder.elapsedSeconds,
+            paceLabel: recorder.state == .paused
+                ? String(localized: "session.metric.average_pace", defaultValue: "Avg. pace")
+                : String(localized: "session.metric.pace", defaultValue: "Pace"),
+            paceText: sessionPaceText,
+            distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
+            distanceMeters: recorder.distanceMeters,
+            energyKilocalories: estimatedEnergyKilocalories,
+            walkingStepCount: recorder.walkingStepCount,
+            distanceLabel: measurementPreferences.unitSystem.distanceLabel,
+            elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
+            elevationLabel: measurementPreferences.unitSystem.elevationLabel,
+            heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
+            guideMessage: guideMessage,
+            musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
+            showsMusicDisabledState: musicStore.hasDeveloperTokenError,
+            musicErrorMessage: musicStore.hasDeveloperTokenError ? nil : musicStore.lastErrorMessage,
+            onTogglePlayback: {
+                trackMusicControl(musicStore.playback.isPlaying ? "pause" : "resume")
+                Task { await musicStore.togglePlayback() }
+            },
+            onSkipTrack: {
+                trackMusicControl("skip")
+                Task { await musicStore.skipToNext() }
+            },
+            onStart: onStart,
+            onPause: pauseActivity,
+            onResume: onResume,
+            onFinish: onFinish,
+            isFinishEnabled: isFinishEnabled
+        )
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SessionStatusCardHeightPreferenceKey.self,
+                    value: isWorkoutPanelExpanded ? 0 : proxy.size.height
+                )
+            }
+        }
+    }
 
-            VStack {
+    private var rightControls: some View {
+        VStack {
+            Spacer()
+
+            HStack {
                 Spacer()
-
-                HStack {
-                    Spacer()
-
-                    rightControlRail
-                }
-                .padding(.trailing, 16)
-                .padding(.bottom, railBottomPadding)
+                rightControlRail
             }
-        }
-        .onReceive(locationManager.$location) { loc in
-            guard let loc else { return }
-            if recorder.state == .idle, !plannedRouteCoordinates.isEmpty {
-                framePlannedRoute(including: loc.coordinate)
-            } else if isFollowingUser {
-                updateMapCamera(for: loc, animated: true)
-            }
-        }
-        .onAppear {
-            cachePlannedRouteCoordinates()
-            guard !plannedRouteCoordinates.isEmpty else { return }
-            framePlannedRoute(including: locationManager.location?.coordinate)
-            trackRouteDisplayIfNeeded()
-        }
-        .onChange(of: plannedRouteCacheKey) { _, _ in
-            cachePlannedRouteCoordinates()
-        }
-        .onChange(of: recorder.state) { _, state in
-            if state == .idle { framePlannedRoute(including: locationManager.location?.coordinate) }
-        }
-        .onPreferenceChange(SessionStatusCardHeightPreferenceKey.self) { height in
-            statusCardHeight = height
-        }
-        .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
-            bottomOverlayHeight = max(height, statusCardHeight + 18)
+            .padding(.trailing, 16)
+            .padding(.bottom, railBottomPadding)
         }
     }
 

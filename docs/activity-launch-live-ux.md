@@ -59,7 +59,7 @@ Primary live metrics follow the selected mode:
 | Time | Elapsed time / target |
 | Calories | Estimated calories / target |
 
-Keep map, current guidance, Pause, and Finish primary. Pause reveals separate Resume and Finish actions. Finish requires confirmation before handing off to post-run review. Expanding the map preserves compact time, pace, and distance plus an obvious return to full metrics.
+Keep map, current guidance, Pause, and Finish primary. The camera and map share one compact bottom workout panel by default. Its grabber and chevron support both an upward drag and a tap to open a full-screen workout dashboard with a large goal-aware primary metric, progress, supporting metrics, structured-workout and route context, the latest live-coach message, and persistent session controls. The expanded dashboard uses only compact and full-screen states, remains synchronized while switching between camera and map, and can drag or tap down only to collapse; it cannot dismiss or minimize the active workout. Pause reveals separate Resume and Finish actions. Finish requires confirmation before handing off to post-run review.
 
 Keep the Apple Maps logo and Legal attribution fully visible on both Today and the live map. Each map uses the measured height of its bottom cards and controls as safe-area padding, so attribution moves above every app-owned overlay while map imagery continues beneath the UI.
 
@@ -109,6 +109,8 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Countdown cancel preserves setup; only entry into live recording persists targets and advances default learning.
 - Edge-to-edge countdown and live backgrounds keep their top controls below the device status area.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
+- Camera and map use the same compact-by-default workout panel state; tapping or dragging its grabber expands a full-screen dashboard, and dragging down collapses only the dashboard rather than the activity.
+- The full-screen dashboard keeps the goal-aware primary metric, supporting metrics, workout step or route context, coaching message, Pause/Resume, and paused-only Finish usable at compact phone heights and with larger accessibility text.
 - Interrupted-session recovery opens the paused live surface directly.
 - Setup and live photos survive interrupted-session recovery and remain available on the finish page.
 - Cold-launch recovery renders the retained live surface directly, without a child modal or disabled fallback layer.

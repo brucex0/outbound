@@ -19,6 +19,7 @@ struct CameraHUDView: View {
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
+    @Binding var isWorkoutPanelExpanded: Bool
     let onStart: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
@@ -63,16 +64,16 @@ struct CameraHUDView: View {
                     cameraPermissionMessage
                 }
 
-                VStack(spacing: 12) {
-                    Spacer()
-
-                    SessionStatusCard(
+                SessionStatusCard(
                         state: recorder.state,
-                        isCompact: true,
+                        isExpanded: $isWorkoutPanelExpanded,
+                        expandedHeight: geometry.size.height,
                         intent: intent,
                         elapsedText: recorder.elapsedSeconds.formatted(),
                         elapsedSeconds: recorder.elapsedSeconds,
-                        paceLabel: recorder.state == .paused ? "Avg. pace" : "Pace",
+                        paceLabel: recorder.state == .paused
+                            ? String(localized: "session.metric.average_pace", defaultValue: "Avg. pace")
+                            : String(localized: "session.metric.pace", defaultValue: "Pace"),
                         paceText: sessionPaceText,
                         distanceText: measurementPreferences.unitSystem.distanceValueString(meters: recorder.distanceMeters),
                         distanceMeters: recorder.distanceMeters,
@@ -104,24 +105,26 @@ struct CameraHUDView: View {
                         GeometryReader { proxy in
                             Color.clear.preference(
                                 key: SessionStatusCardHeightPreferenceKey.self,
-                                value: proxy.size.height
+                                value: isWorkoutPanelExpanded ? 0 : proxy.size.height
                             )
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 18)
-                }
+                    .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
+                    .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
-                VStack {
-                    Spacer()
-
-                    HStack {
+                if !isWorkoutPanelExpanded {
+                    VStack {
                         Spacer()
 
-                        rightControlRail
+                        HStack {
+                            Spacer()
+
+                            rightControlRail
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, railBottomPadding)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, railBottomPadding)
                 }
 
                 if let flyingCapturedPhoto {
@@ -562,10 +565,13 @@ struct ShutterButton: View {
 struct SessionStatusCard: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var connectivityStore: ConnectivityStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.outboundTheme) private var theme
 
     let state: RecordingState
-    let isCompact: Bool
+    @Binding var isExpanded: Bool
+    let expandedHeight: CGFloat
     let intent: SessionIntent?
     let elapsedText: String
     let elapsedSeconds: Int
@@ -590,33 +596,294 @@ struct SessionStatusCard: View {
     let onResume: () -> Void
     let onFinish: () -> Void
     let isFinishEnabled: Bool
+    @GestureState private var dragTranslation: CGFloat = 0
+
+    private let collapsedHeight: CGFloat = 92
 
     var body: some View {
-        Group {
-            if isCompact {
+        VStack(spacing: 0) {
+            panelGrabber
+
+            if isExpanded {
+                expandedDashboard
+                    .transition(.opacity)
+            } else {
                 compactRow
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-            } else {
-                VStack(spacing: 10) {
-                    topRow
-                    if connectivityStore.isOffline {
-                        OfflineStatusBanner(compact: true)
-                    }
-                    extraCountdownStrip
-                    controlMetricsLayout
-                }
-                .padding(12)
+                    .padding(.bottom, 10)
+                    .transition(.opacity)
             }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: isExpanded ? expandedHeight : collapsedHeight, alignment: .top)
         .background(OutboundPalette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: isExpanded ? 0 : 20, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: isExpanded ? 0 : 20, style: .continuous)
                 .strokeBorder(theme.accentColor.opacity(0.18), lineWidth: 1)
         }
         .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: 8)
+        .offset(y: panelDragOffset)
+        .animation(panelAnimation, value: isExpanded)
         .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private var panelGrabber: some View {
+        Button {
+            setExpanded(!isExpanded)
+        } label: {
+            VStack(spacing: 3) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.38))
+                    .frame(width: 42, height: 5)
+
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, isExpanded ? 48 : 0)
+        .accessibilityLabel(isExpanded
+            ? String(localized: "session.panel.collapse.accessibility", defaultValue: "Collapse workout dashboard")
+            : String(localized: "session.panel.expand.accessibility", defaultValue: "Expand workout dashboard"))
+        .simultaneousGesture(panelDragGesture)
+    }
+
+    private var panelDragGesture: some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
+            .updating($dragTranslation) { value, state, _ in
+                let translation = value.translation.height
+                state = isExpanded ? max(0, translation) : min(0, translation)
+            }
+            .onEnded { value in
+                let projected = value.predictedEndTranslation.height
+                if isExpanded, projected > 56 {
+                    setExpanded(false)
+                } else if !isExpanded, projected < -56 {
+                    setExpanded(true)
+                }
+            }
+    }
+
+    private var panelDragOffset: CGFloat {
+        guard !reduceMotion else { return 0 }
+        return dragTranslation * (isExpanded ? 0.24 : 0.32)
+    }
+
+    private var panelAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.16) : .snappy(duration: 0.3)
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        guard expanded != isExpanded else { return }
+        withAnimation(panelAnimation) {
+            isExpanded = expanded
+        }
+    }
+
+    private var expandedDashboard: some View {
+        VStack(spacing: 0) {
+            topRow
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+
+            if connectivityStore.isOffline {
+                OfflineStatusBanner()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+            }
+
+            ScrollView {
+                VStack(spacing: 18) {
+                    heroMetric
+
+                    LazyVGrid(
+                        columns: Array(
+                            repeating: GridItem(.flexible(), spacing: 10),
+                            count: dynamicTypeSize.isAccessibilitySize ? 2 : 3
+                        ),
+                        spacing: 10
+                    ) {
+                        ExpandedSessionMetric(
+                            value: displayedElapsedText,
+                            label: String(localized: "summary.stats.time", defaultValue: "Time")
+                        )
+                        ExpandedSessionMetric(
+                            value: displayedDistanceText,
+                            label: String(localized: "summary.stats.distance", defaultValue: "Distance")
+                        )
+                        ExpandedSessionMetric(value: paceText, label: paceLabel)
+                        ExpandedSessionMetric(value: movementDetailValue, label: movementDetailLabel)
+                        ExpandedSessionMetric(
+                            value: heartRateText,
+                            label: String(localized: "session.metric.heart_rate", defaultValue: "Heart rate")
+                        )
+                    }
+
+                    extraCountdownStrip
+
+                    if let guideMessage, state != .idle {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(theme.accentColor)
+                                .frame(width: 32, height: 32)
+                                .background(theme.accentColor.opacity(0.12), in: Circle())
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(String(localized: "session.dashboard.coach", defaultValue: "Live coach"))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(guideMessage)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(14)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+            .scrollIndicators(.hidden)
+
+            expandedControls
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 24)
+                .background(OutboundPalette.surface)
+        }
+    }
+
+    private var heroMetric: some View {
+        VStack(spacing: 8) {
+            Text(heroMetricValue)
+                .font(.system(size: 54, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+
+            Text(heroMetricLabel)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let progress = heroProgress {
+                ProgressView(value: progress)
+                    .tint(theme.accentColor)
+                    .frame(maxWidth: 260)
+                    .accessibilityLabel(heroMetricLabel)
+                    .accessibilityValue(Text("\(Int((progress * 100).rounded()))%"))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+    }
+
+    private var heroMetricValue: String {
+        switch displayIntent.activityGoal {
+        case .timeSeconds:
+            displayedElapsedText
+        case .calories:
+            displayedDistanceText
+        case .distanceMeters, .freestyle:
+            displayedDistanceText
+        }
+    }
+
+    private var heroMetricLabel: String {
+        switch displayIntent.activityGoal {
+        case .timeSeconds:
+            String(localized: "record.goal.time", defaultValue: "Time")
+        case .calories:
+            String(localized: "record.goal.calories", defaultValue: "Calories")
+        case .distanceMeters, .freestyle:
+            String(localized: "record.goal.distance", defaultValue: "Distance")
+        }
+    }
+
+    private var heroProgress: Double? {
+        switch displayIntent.activityGoal {
+        case .freestyle:
+            return nil
+        case .distanceMeters(let target):
+            guard target > 0 else { return nil }
+            return min(max(distanceMeters / target, 0), 1)
+        case .timeSeconds(let target):
+            guard target > 0 else { return nil }
+            return min(max(Double(elapsedSeconds) / Double(target), 0), 1)
+        case .calories(let target):
+            guard target > 0 else { return nil }
+            return min(max((energyKilocalories ?? 0) / Double(target), 0), 1)
+        }
+    }
+
+    private var expandedControls: some View {
+        HStack(spacing: 12) {
+            Button(action: expandedPrimaryAction) {
+                Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
+                    .font(.headline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 62)
+                    .foregroundStyle(.white)
+                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(expandedPrimaryAccessibilityLabel)
+
+            if state == .paused {
+                Button(action: onFinish) {
+                    Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
+                        .font(.headline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 62)
+                        .foregroundStyle(.white)
+                        .background(theme.secondaryColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isFinishEnabled)
+                .opacity(isFinishEnabled ? 1 : 0.55)
+                .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
+            }
+        }
+    }
+
+    private var expandedPrimaryTitle: String {
+        switch state {
+        case .idle: String(localized: "session.action.start", defaultValue: "Start")
+        case .active: String(localized: "session.action.pause", defaultValue: "Pause")
+        case .paused: String(localized: "session.action.resume", defaultValue: "Resume")
+        }
+    }
+
+    private var expandedPrimarySymbol: String {
+        switch state {
+        case .idle: "record.circle.fill"
+        case .active: "pause.fill"
+        case .paused: "play.fill"
+        }
+    }
+
+    private var expandedPrimaryAccessibilityLabel: String {
+        switch state {
+        case .idle: String(localized: "session.action.start.accessibility", defaultValue: "Start activity")
+        case .active: String(localized: "session.action.pause.accessibility", defaultValue: "Pause activity")
+        case .paused: String(localized: "session.action.resume.accessibility", defaultValue: "Resume activity")
+        }
+    }
+
+    private func expandedPrimaryAction() {
+        switch state {
+        case .idle: onStart()
+        case .active: onPause()
+        case .paused: onResume()
+        }
     }
 
     private var compactRow: some View {
@@ -679,56 +946,9 @@ struct SessionStatusCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if state == .paused {
-                Button(action: onFinish) {
-                    Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
-                }
-                .disabled(!isFinishEnabled)
-                .opacity(isFinishEnabled ? 1 : 0.55)
-                .buttonStyle(SessionMiniCapsuleButtonStyle(background: theme.actionColor, foreground: .white))
-            }
-
             musicMenu
         }
         .frame(minHeight: 34)
-    }
-
-    private var controlMetricsLayout: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 8) {
-                VStack(spacing: 8) {
-                    SessionMetricColumn(value: displayedElapsedText, label: nil)
-                    SessionMetricColumn(value: displayedDistanceText, label: nil)
-                }
-                .frame(maxWidth: .infinity)
-
-                primaryControl()
-                    .fixedSize()
-
-                VStack(spacing: 8) {
-                    SessionMetricColumn(value: paceText, label: paceLabel)
-                    HStack(spacing: 8) {
-                        SessionMetricColumn(value: movementDetailValue, label: movementDetailLabel)
-                        SessionMetricColumn(value: heartRateText, label: "HR")
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-
-            VStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    SessionMetricColumn(value: displayedElapsedText, label: nil)
-                    SessionMetricColumn(value: displayedDistanceText, label: nil)
-                    SessionMetricColumn(value: paceText, label: paceLabel)
-                }
-
-                HStack(spacing: 10) {
-                    SessionMetricColumn(value: movementDetailValue, label: movementDetailLabel)
-                    primaryControl()
-                    SessionMetricColumn(value: heartRateText, label: "HR")
-                }
-            }
-        }
     }
 
     private var movementDetailValue: String {
@@ -863,17 +1083,13 @@ struct SessionStatusCard: View {
     }
 
     private var headerText: String {
-        if let guideMessage, state != .idle {
-            return guideMessage
-        }
-
         switch state {
         case .idle:
-            return "Ready"
+            return String(localized: "session.status.ready", defaultValue: "Ready")
         case .active:
-            return "In progress"
+            return String(localized: "session.status.in_progress", defaultValue: "In progress")
         case .paused:
-            return "Paused"
+            return String(localized: "session.status.paused", defaultValue: "Paused")
         }
     }
 
@@ -1037,6 +1253,32 @@ private struct SessionMetricColumn: View {
     }
 }
 
+private struct ExpandedSessionMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, minHeight: 72)
+        .padding(.horizontal, 6)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct SessionStepCountdown: View {
     let progressText: String
     let title: String
@@ -1104,24 +1346,6 @@ private struct SessionIconButtonStyle: ButtonStyle {
             .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Circle())
             .foregroundStyle(foreground)
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-private struct SessionMiniCapsuleButtonStyle: ButtonStyle {
-    let background: Color
-    let foreground: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.caption.weight(.bold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.78)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(background.opacity(configuration.isPressed ? 0.82 : 1), in: Capsule())
-            .foregroundStyle(foreground)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

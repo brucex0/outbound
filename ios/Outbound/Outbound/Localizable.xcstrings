@@ -13651,6 +13651,18 @@
         }
       }
     },
+    "session.action.pause" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Pausar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂停" } } } },
+    "session.action.resume" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Resume" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Reanudar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续" } } } },
+    "session.action.start" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Start" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Iniciar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始" } } } },
+    "session.dashboard.coach" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Live coach" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenador en vivo" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "实时教练" } } } },
+    "session.metric.average_pace" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Avg. pace" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo medio" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "平均配速" } } } },
+    "session.metric.heart_rate" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Heart rate" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Frecuencia cardíaca" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "心率" } } } },
+    "session.metric.pace" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Pace" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Ritmo" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "配速" } } } },
+    "session.panel.collapse.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Collapse workout dashboard" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Contraer el panel de entrenamiento" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收起训练面板" } } } },
+    "session.panel.expand.accessibility" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Expand workout dashboard" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Ampliar el panel de entrenamiento" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "展开训练面板" } } } },
+    "session.status.in_progress" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "In progress" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "En curso" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "进行中" } } } },
+    "session.status.paused" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Paused" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "En pausa" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已暂停" } } } },
+    "session.status.ready" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready" } }, "es" : { "stringUnit" : { "state" : "translated", "value" : "Listo" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "准备就绪" } } } },
     "session.action.finish" : {
       "comment": "A button that finishes a session.",
       "extractionState": "extracted_with_value",
