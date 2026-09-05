@@ -58,9 +58,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case circleProgressOpened = "circle_progress_opened"
     case circleCheerSent = "circle_cheer_sent"
     case circleCheerRemoved = "circle_cheer_removed"
-    case circlePlanRunStarted = "circle_plan_run_started"
-    case circlePlanRunCompleted = "circle_plan_run_completed"
-    case circleRunContributionReconciled = "circle_run_contribution_reconciled"
+    case circlePlanActivityStarted = "circle_plan_activity_started"
+    case circlePlanActivityCompleted = "circle_plan_activity_completed"
+    case circleActivityContributionReconciled = "circle_activity_contribution_reconciled"
     case circleWeeklyFocusCompleted = "circle_weekly_focus_completed"
     case circlePrimaryChanged = "circle_primary_changed"
     case circleNotificationsChanged = "circle_notifications_changed"
@@ -275,9 +275,9 @@ enum ProductAnalyticsSchema {
         .circleProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
         .circleCheerSent: [.selectionType],
         .circleCheerRemoved: [.selectionType],
-        .circlePlanRunStarted: [.entrySource, .participantCountBucket],
-        .circlePlanRunCompleted: [.participantCountBucket, .result],
-        .circleRunContributionReconciled: [.selectionType, .participantCountBucket, .result],
+        .circlePlanActivityStarted: [.entrySource, .participantCountBucket],
+        .circlePlanActivityCompleted: [.participantCountBucket, .result],
+        .circleActivityContributionReconciled: [.selectionType, .participantCountBucket, .result],
         .circleWeeklyFocusCompleted: [.selectionType, .participantCountBucket],
         .circlePrimaryChanged: [.entrySource],
         .circleNotificationsChanged: [.selectionType],

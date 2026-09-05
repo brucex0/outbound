@@ -94,11 +94,11 @@ Track:
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
 | Group runs | group control exposed -> create/join attempted -> invitation shared/opened -> joined -> activity started -> activity saved |
-| Your Circle | eligible section exposure -> creation -> invitation -> acceptance -> active Circle -> focus configured -> run contributed -> Cheer or run planned -> following-week contribution |
+| Your Circle | eligible section exposure -> creation -> invitation -> acceptance -> active Circle -> focus configured -> activity contributed -> Cheer or activity planned -> following-week contribution |
 | Live Guidance | coaching level selected -> semantic moment detected -> cue spoken -> cue outcome evaluated -> optional challenge completed -> post-run feedback submitted |
 | Assistant launcher | eligible exposure -> animation shown -> launcher opened -> suggestion selected or message sent |
 
-Your Circle uses the typed `circle_*` events defined in `ProductAnalyticsEvent.swift` for section exposure; creation; invitation send/accept/decline/cancel; activation; focus and coarse target changes; progress; Cheer send/remove; run planning; confirmed contribution; weekly completion; primary/mute/member/ownership lifecycle outcomes; and normalized failures. The allowlist accepts only entry/source/result categories, focus selection, and coarse participant/target buckets. IDs, names, activity facts, locations, free text, notification text, and exact counts are rejected from this event family.
+Your Circle uses the typed `circle_*` events defined in `ProductAnalyticsEvent.swift` for section exposure; creation; invitation send/accept/decline/cancel; activation; focus and coarse target changes; progress; Cheer send/remove; activity planning; confirmed activity contribution; weekly completion; primary/mute/member/ownership lifecycle outcomes; and normalized failures. The allowlist accepts only entry/source/result categories, focus selection, and coarse participant/target buckets. IDs, names, activity facts, locations, free text, notification text, and exact counts are rejected from this event family.
 
 Exposure matters: a missing action means something only when the runner actually saw the relevant control. Use explicit exposure events for optional features and compare exposed users with adopters.
 

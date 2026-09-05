@@ -1187,6 +1187,7 @@ model Circle {
   owner             User           @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   name              String
   lifecycle         String         @default("awaiting_members") // awaiting_members | active | archived
+  memberLimit       Int            @default(6) // snapshotted from backend Circle policy when created
   resetWeekday      Int            @default(1) // ISO weekday, 1 = Monday
   timeZone          String
   defaultFocusMode  String         @default("personal_targets") // personal_targets | shared_target | none

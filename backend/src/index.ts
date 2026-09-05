@@ -25,6 +25,7 @@ import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { assertLiveCoachConfiguration } from "./services/liveCoach/liveCoachFeatureConfig.js";
+import { configuredCircleMemberLimit } from "./services/circles.js";
 
 const app = new Hono<AppEnv>();
 
@@ -33,6 +34,7 @@ if (process.env.NODE_ENV === "production" && process.env.AUTH_ENABLE_DEBUG_PERSO
 }
 
 assertLiveCoachConfiguration();
+configuredCircleMemberLimit();
 
 app.use("*", cors({ origin: "*" }));
 app.use("*", localeMiddleware);

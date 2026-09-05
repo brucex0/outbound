@@ -3,6 +3,11 @@ import Foundation
 struct CircleListResponseDTO: Codable, Sendable {
     let circles: [CircleDTO]
     let primaryCircleId: String?
+    let policy: CirclePolicyDTO
+}
+
+struct CirclePolicyDTO: Codable, Sendable {
+    let memberLimit: Int
 }
 
 struct CircleDTO: Codable, Identifiable, Sendable {
@@ -13,6 +18,7 @@ struct CircleDTO: Codable, Identifiable, Sendable {
     let owner: CirclePersonDTO
     let resetWeekday: Int
     let timeZone: String
+    let memberLimit: Int
     let memberCount: Int
     let eligibleForToday: Bool
     let members: [CircleMemberDTO]
@@ -45,6 +51,19 @@ struct CircleMemberDTO: Codable, Identifiable, Sendable {
     let isCurrentUser: Bool
     let commitment: CircleCommitmentDTO?
     let contributedCount: Int
+    let recentActivity: CircleActivitySummaryDTO?
+}
+
+struct CircleActivitySummaryDTO: Codable, Sendable {
+    let type: String
+    let title: String?
+    let startedAt: Date
+    let durationSecs: Int?
+    let distanceM: Double?
+    let elevationM: Double?
+    let avgPace: Double?
+    let avgHeartRate: Int?
+    let energyKilocalories: Int?
 }
 
 struct CircleCommitmentDTO: Codable, Sendable {

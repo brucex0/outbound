@@ -236,7 +236,7 @@ Use three buckets instead of one flat backlog.
 ### Core differentiators to build hard
 
 - adaptive relationship guide that remembers mood, consistency, and context
-- private Circles that turn individual, flexible weekly commitments into supportive shared progress
+- trusted Circles that turn varied workouts and flexible weekly commitments into supportive shared progress with family and friends
 - camera-first run storytelling during and after the activity
 - emotionally smart home screen with daily spark, readiness, suggested action, and comeback mode
 - socially expressive lightweight competition: relays, rivals, club moments, crew pulse
@@ -279,7 +279,7 @@ Use three buckets instead of one flat backlog.
 
 ### V3 social engine
 
-- private Circles with optional personal/shared weekly focus, Cheers, and run planning
+- trusted Circles with optional personal/shared weekly focus, workout sharing, Cheers, and activity planning
 - real clubs with membership and recurring runs
 - rivals leaderboard with weekly reset
 - relay invitations and live presence
@@ -354,7 +354,7 @@ Goal:
 - users come back because their people and status live here
 
 Ship:
-- private Circles from `docs/your-circle.md`
+- invitation-only Circles from `docs/your-circle.md`
 - real clubs
 - rivals weekly league
 - relays
@@ -423,7 +423,7 @@ Outbound should own:
 
 If only five things can happen next, choose these:
 
-1. private Circles with flexible weekly focus, Cheer, run planning, and post-run contribution
+1. trusted Circles with flexible weekly focus, workout sharing, Cheer, activity planning, and post-activity contribution
 2. trusted live sharing plus shareable activity posts with route and photo support
 3. motivation-first Today with context-aware companion discovery and suggested actions
 4. goals, weekly recap, comeback/momentum logic, and practical runner logbook utilities

@@ -15,7 +15,8 @@ import {
   circleWeekInterval,
   createCircle,
   CircleDomainError,
-  CIRCLE_CAPACITY,
+  CIRCLE_MEMBER_LIMIT_MAXIMUM,
+  configuredCircleMemberLimit,
   ensureCurrentWeek,
   refreshWeekState,
   reconcileActivityToCircles,
@@ -28,7 +29,7 @@ const focusMode = z.enum(["personal_targets", "shared_target", "none"]);
 const presetType = z.enum(["encouragement", "celebration", "support"]);
 const createSchema = z.object({
   name: z.string().trim().max(80).optional(),
-  memberUserIds: z.array(z.string().min(1)).max(CIRCLE_CAPACITY - 1).default([]),
+  memberUserIds: z.array(z.string().min(1)).max(CIRCLE_MEMBER_LIMIT_MAXIMUM - 1).default([]),
   timeZone: z.string().trim().max(100).optional(),
   resetWeekday: z.number().int().min(1).max(7).optional(),
 });
@@ -38,7 +39,7 @@ const focusSchema = z.object({
   apply: z.enum(["now", "next_week"]).default("now"),
 });
 const commitmentSchema = z.object({ targetCount: z.number().int().min(1).max(100).nullable().optional(), skipped: z.boolean().default(false) });
-const inviteSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(CIRCLE_CAPACITY - 1), idempotencyKey: z.string().min(1).max(128).optional() });
+const inviteSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(CIRCLE_MEMBER_LIMIT_MAXIMUM - 1), idempotencyKey: z.string().min(1).max(128).optional() });
 const renameSchema = z.object({ name: z.string().trim().min(1).max(80) });
 const calendarSchema = z.object({ resetWeekday: z.number().int().min(1).max(7), timeZone: z.string().trim().max(100), apply: z.enum(["now", "next_week"]).default("next_week") });
 const transferSchema = z.object({ recipientUserId: z.string().min(1) });
@@ -61,7 +62,11 @@ router.get("/", async (c) => {
   const primaryIsValid = visibleCircles.some((circle) => circle.id === storedPrimary && circle.eligibleForToday);
   const primaryCircleId = primaryIsValid ? storedPrimary : (visibleCircles.find((circle) => circle.eligibleForToday)?.id ?? null);
   if (storedPrimary !== primaryCircleId) await prisma.user.update({ where: { id: user.id }, data: { primaryCircleId } });
-  return c.json({ circles: visibleCircles, primaryCircleId });
+  return c.json({
+    circles: visibleCircles,
+    primaryCircleId,
+    policy: { memberLimit: configuredCircleMemberLimit() },
+  });
 });
 
 router.post("/", zValidator("json", createSchema), async (c) => {
@@ -111,7 +116,7 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
   if (!circle) return c.json({ error: "Circle not found." }, 404);
   const ids = [...new Set(c.req.valid("json").recipientUserIds.filter((id) => id !== user.id))];
   const newRecipientIDs = ids.filter((id) => !circle.members.some((member) => member.userId === id) && !circle.invitations.some((invitation) => invitation.recipientId === id));
-  if (circle.members.length + circle.invitations.length + newRecipientIDs.length > CIRCLE_CAPACITY) return c.json({ error: "Those invitations would exceed Circle capacity." }, 409);
+  if (circle.members.length + circle.invitations.length + newRecipientIDs.length > circle.memberLimit) return c.json({ error: "Those invitations would exceed this Circle’s current capacity." }, 409);
   const results = [];
   for (const recipientId of ids) {
     try { await assertAcceptedConnection(user.id, recipientId); } catch (error) { results.push({ recipientUserId: recipientId, status: error instanceof CircleDomainError ? error.code : "rejected" }); continue; }
@@ -168,7 +173,7 @@ router.post("/invitations/:invitationId/accept", async (c) => {
     await assertNoBlockedCircleMember(invitation.circleId, user.id);
     const result = await prisma.$transaction(async (tx) => {
       const activeCount = await tx.circleMember.count({ where: { circleId: invitation.circleId, status: "active" } });
-      if (activeCount >= CIRCLE_CAPACITY) throw new CircleDomainError("capacity", "This Circle is full.");
+      if (activeCount >= invitation.circle.memberLimit) throw new CircleDomainError("capacity", "This Circle is full.");
       await tx.circleInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "accepted", acceptedAt: new Date() } });
       await tx.circleMember.upsert({ where: { circleId_userId: { circleId: invitation.circleId, userId: user.id } }, create: { circleId: invitation.circleId, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", role: "member", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
       const count = await tx.circleMember.count({ where: { circleId: invitation.circleId, status: "active" } });
@@ -275,7 +280,7 @@ router.put("/:id/calendar", zValidator("json", calendarSchema), async (c) => {
       where: { id: currentWeek!.id },
       data: { startsAt: interval.startsAt, endsAt: interval.endsAt, resetWeekday: value.resetWeekday, timeZone: value.timeZone },
     });
-    const activities = await getPrismaClient().activity.findMany({ where: { userId: { in: (await getPrismaClient().circleMember.findMany({ where: { circleId: circle.id, status: "active" }, select: { userId: true } })).map((member) => member.userId) }, type: "running", deletedAt: null, startedAt: { gte: new Date(Date.now() - 8 * 86400000) } }, select: { id: true, userId: true } });
+    const activities = await getPrismaClient().activity.findMany({ where: { userId: { in: (await getPrismaClient().circleMember.findMany({ where: { circleId: circle.id, status: "active" }, select: { userId: true } })).map((member) => member.userId) }, deletedAt: null, startedAt: { gte: new Date(Date.now() - 8 * 86400000) } }, select: { id: true, userId: true } });
     for (const activity of activities) await reconcileActivityToCircles(activity.userId, activity.id);
   }
   return c.json(await circlePayload(circle.id, user.id, true));

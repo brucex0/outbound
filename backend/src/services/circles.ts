@@ -2,8 +2,19 @@ import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 import type { SupportedLocale } from "../middleware/locale.js";
 
-export const CIRCLE_CAPACITY = 6;
+export const CIRCLE_MEMBER_LIMIT_DEFAULT = 6;
+export const CIRCLE_MEMBER_LIMIT_MAXIMUM = 100;
 const shareSafeMemberSelect = { id: true, displayName: true, avatarUrl: true } as const;
+
+export function configuredCircleMemberLimit(env: NodeJS.ProcessEnv = process.env) {
+  const raw = env.CIRCLE_MEMBER_LIMIT?.trim();
+  if (!raw) return CIRCLE_MEMBER_LIMIT_DEFAULT;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 2 || value > CIRCLE_MEMBER_LIMIT_MAXIMUM) {
+    throw new Error(`CIRCLE_MEMBER_LIMIT must be an integer from 2 to ${CIRCLE_MEMBER_LIMIT_MAXIMUM}.`);
+  }
+  return value;
+}
 
 export type CircleInput = {
   name?: string;
@@ -63,9 +74,10 @@ export async function assertNoBlockedCircleMember(circleId: string, userId: stri
 }
 
 export async function createCircle(ownerId: string, input: CircleInput) {
+  const memberLimit = configuredCircleMemberLimit();
   const memberIds = [...new Set(input.memberUserIds.filter((id) => id !== ownerId))];
   if (memberIds.length === 0) throw new CircleDomainError("members_required", "Choose at least one accepted connection.");
-  if (memberIds.length > CIRCLE_CAPACITY - 1) throw new CircleDomainError("capacity", "A Circle can include up to five connections.");
+  if (memberIds.length > memberLimit - 1) throw new CircleDomainError("capacity", "That is more people than this Circle can currently include.");
   const timeZone = validTimeZone(input.timeZone) ? input.timeZone! : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const resetWeekday = boundedWeekday(input.resetWeekday ?? 1);
   const prisma = getPrismaClient();
@@ -78,7 +90,7 @@ export async function createCircle(ownerId: string, input: CircleInput) {
     const circle = await tx.circle.create({
       data: {
         ownerId, name: resolvedName, lifecycle: memberIds.length ? "awaiting_members" : "awaiting_members",
-        resetWeekday, timeZone,
+        memberLimit, resetWeekday, timeZone,
         members: { create: { userId: ownerId, role: "owner", displayNameSnapshot: owner.displayName, avatarUrlSnapshot: owner.avatarUrl } },
       },
     });
@@ -110,7 +122,7 @@ export async function reconcileActivityToCircles(userId: string, activityId: str
       where: { activityId: activity.id },
       select: { weekId: true, week: { select: { circleId: true } } },
     });
-    const candidateMemberships = deleted || activity.deletedAt || activity.type !== "running"
+    const candidateMemberships = deleted || activity.deletedAt
       ? []
       : await prisma.circleMember.findMany({
           where: { userId, status: "active", joinedAt: { lte: activity.startedAt }, circle: { lifecycle: { not: "archived" } } },
@@ -146,7 +158,7 @@ export async function reconcileActivityToCircles(userId: string, activityId: str
         }
       }
     });
-    if (deleted || activity.deletedAt || activity.type !== "running") return [];
+    if (deleted || activity.deletedAt) return [];
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { primaryCircleId: true } });
     const summaries = await Promise.all([...affectedCircleIds].map(async (circleId): Promise<CircleContributionSummary | null> => {
       const payload = await circlePayload(circleId, userId);
@@ -226,7 +238,26 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
     circle.ownerId === viewerId ? prisma.circleInvitation.findMany({ where: { circleId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, circle: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
     prisma.activityEvent.findMany({ where: { sourceCircleId: circleId, participants: { some: { userId: viewerId, status: "going" } } }, select: { id: true, title: true, startsAt: true, status: true }, orderBy: { startsAt: "desc" }, take: 5 }),
   ]);
-  const contributions = await prisma.circleContribution.findMany({ where: { weekId: week.id }, select: { memberId: true } });
+  const contributions = await prisma.circleContribution.findMany({
+    where: { weekId: week.id },
+    select: {
+      memberId: true,
+      activity: {
+        select: {
+          type: true,
+          title: true,
+          startedAt: true,
+          durationSecs: true,
+          distanceM: true,
+          elevationM: true,
+          avgPace: true,
+          avgHeartRate: true,
+          energyKilocalories: true,
+        },
+      },
+    },
+    orderBy: { activity: { startedAt: "desc" } },
+  });
   const counts = new Map<string, number>();
   for (const contribution of contributions) counts.set(contribution.memberId, (counts.get(contribution.memberId) ?? 0) + 1);
   const activeCount = circle.members.length;
@@ -238,11 +269,20 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
     owner: circle.owner,
     resetWeekday: circle.resetWeekday,
     timeZone: circle.timeZone,
+    memberLimit: circle.memberLimit,
     memberCount: activeCount,
     eligibleForToday: activeCount >= 2 && circle.lifecycle === "active",
     members: circle.members.map((member) => {
       const commitment = commitments.find((item) => item.memberId === member.id);
-      return { id: member.id, user: member.user, role: member.role, isCurrentUser: member.userId === viewerId, commitment: commitment ? { targetCount: commitment.targetCount, skipped: commitment.skipped } : null, contributedCount: counts.get(member.id) ?? 0 };
+      return {
+        id: member.id,
+        user: member.user,
+        role: member.role,
+        isCurrentUser: member.userId === viewerId,
+        commitment: commitment ? { targetCount: commitment.targetCount, skipped: commitment.skipped } : null,
+        contributedCount: counts.get(member.id) ?? 0,
+        recentActivity: contributions.find((contribution) => contribution.memberId === member.id)?.activity ?? null,
+      };
     }),
     upcomingFocus: { mode: circle.defaultFocusMode, focusConfigured: circle.defaultFocusConfigured, sharedTarget: circle.defaultTarget },
     week: { id: week.id, startsAt: week.startsAt, endsAt: week.endsAt, focusMode: week.focusMode, focusConfigured: week.focusConfigured, sharedTarget: week.sharedTarget, state: week.state, contributedCount: contributions.length, targetCount: !week.focusConfigured ? null : week.focusMode === "shared_target" ? week.sharedTarget : commitments.filter((c) => !c.skipped).reduce((sum, c) => sum + (c.targetCount ?? 0), 0) || null },
@@ -291,8 +331,8 @@ function zonedLocalToUTC(localDate: Date, timeZone: string) {
 
 function generatedCircleName(names: string[], locale: SupportedLocale) {
   const firstNames = names.map((name) => name.trim().split(/\s+/)[0]).filter(Boolean).slice(0, 3);
-  if (!firstNames.length) return locale === "es" ? "Tu círculo" : locale === "zh-Hans" ? "你的跑友圈" : "Your Circle";
-  if (locale === "zh-Hans") return `${firstNames.join("、")}的跑友圈`;
+  if (!firstNames.length) return locale === "es" ? "Tu círculo" : locale === "zh-Hans" ? "你的活力圈" : "Your Circle";
+  if (locale === "zh-Hans") return `${firstNames.join("、")}的活力圈`;
   if (locale === "es") return `Círculo de ${firstNames.join(", ")}`;
   return `${firstNames.join(", ")}’s Circle`;
 }

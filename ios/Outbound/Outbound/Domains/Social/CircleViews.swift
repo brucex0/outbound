@@ -34,12 +34,12 @@ struct CircleCompactCard: View {
         if !circle.week.focusConfigured {
             return personalCount > 0
                 ? String(localized: "circle.today.personal_contribution", defaultValue: "You contributed \(personalCount) this week")
-                : String(localized: "circle.today.plan_run", defaultValue: "Plan a run together")
+                : String(localized: "circle.today.plan_activity", defaultValue: "Plan something active together")
         }
         if circle.week.focusMode == "none" {
             return personalCount > 0
                 ? String(localized: "circle.today.personal_contribution", defaultValue: "You contributed \(personalCount) this week")
-                : String(localized: "circle.today.no_target", defaultValue: "No numeric goal · Plan a run")
+                : String(localized: "circle.today.no_target", defaultValue: "No numeric goal · Move together")
         }
         if let target = circle.week.targetCount {
             return String(localized: "circle.today.progress", defaultValue: "You: \(personalCount) · Together: \(circle.week.contributedCount) of \(target)")
@@ -58,52 +58,122 @@ struct CircleCreateView: View {
     @State private var isSubmitting = false
 
     private var connections: [SocialConnectionDTO] { socialStore.connections.filter { $0.status == "accepted" } }
+    private var inviteLimit: Int { max(1, circleStore.memberLimit - 1) }
 
     var body: some View {
         Group {
             if let createdCircle {
-                CircleDetailView(circle: createdCircle)
+                CircleCreatedView(circle: createdCircle)
             } else {
-                Form {
-                    Section {
-                        TextField(String(localized: "circle.create.name_placeholder", defaultValue: "Circle name (optional)"), text: $name)
-                    } header: { Text(String(localized: "circle.create.name", defaultValue: "Name")) }
-                    footer: { Text(String(localized: "circle.create.name_help", defaultValue: "Leave this blank and Plainstride will suggest a name.")) }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                        creationHero
 
-                    Section(String(localized: "circle.create.people", defaultValue: "Choose 1–5 connections")) {
-                        ForEach(connections) { connection in
-                            Button { toggle(connection.person.id) } label: {
-                                HStack(spacing: 12) {
-                                    SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
-                                    Text(connection.person.displayName).foregroundStyle(.primary)
-                                    Spacer()
-                                    Image(systemName: selectedIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
-                                        .font(.title3).foregroundStyle(selectedIDs.contains(connection.person.id) ? OutboundPalette.companion : .secondary)
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                Text(String(localized: "circle.create.people", defaultValue: "Who helps you keep moving?"))
+                                    .font(.headline)
+                                Spacer()
+                                if !selectedIDs.isEmpty {
+                                    Text(String(localized: "circle.create.selected", defaultValue: "\(selectedIDs.count) selected"))
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(OutboundPalette.companion)
                                 }
-                                .frame(minHeight: 44)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(!selectedIDs.contains(connection.person.id) && selectedIDs.count >= 5)
+                            Text(String(localized: "circle.create.people_help", defaultValue: "Choose at least one friend or family member. You can invite more later."))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                    }
 
-                    Section {
-                        Button { Task { await create() } } label: {
-                            HStack { Spacer(); if isSubmitting { ProgressView() } else { Text(String(localized: "circle.create.action", defaultValue: "Create Circle")).fontWeight(.semibold) }; Spacer() }
-                                .frame(minHeight: 44)
+                        OutboundCard {
+                            VStack(spacing: 0) {
+                                ForEach(Array(connections.enumerated()), id: \.element.id) { index, connection in
+                                    Button { toggle(connection.person.id) } label: {
+                                        HStack(spacing: 12) {
+                                            SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
+                                            Text(connection.person.displayName).foregroundStyle(.primary)
+                                            Spacer()
+                                            Image(systemName: selectedIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
+                                                .font(.title3)
+                                                .foregroundStyle(selectedIDs.contains(connection.person.id) ? OutboundPalette.companion : .secondary)
+                                        }
+                                        .frame(minHeight: 52)
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(!selectedIDs.contains(connection.person.id) && selectedIDs.count >= inviteLimit)
+                                    if index < connections.count - 1 { Divider().padding(.leading, 52) }
+                                }
+                            }
                         }
-                        .disabled(isSubmitting || selectedIDs.isEmpty)
-                    } footer: {
-                        Text(String(localized: "circle.create.focus_later", defaultValue: "You can choose a weekly focus after invitations are sent."))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(String(localized: "circle.create.name", defaultValue: "Name your Circle · Optional"))
+                                .font(.headline)
+                            TextField(String(localized: "circle.create.name_placeholder", defaultValue: "Weekend energy, Family movers…"), text: $name)
+                                .textInputAutocapitalization(.words)
+                                .padding(12)
+                                .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            Text(String(localized: "circle.create.name_help", defaultValue: "Leave it blank and Plainstride will suggest a name."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Label(
+                            String(localized: "circle.create.closeness", defaultValue: "Made for the family and friends who know you best."),
+                            systemImage: "heart.fill"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
+                    .padding(OutboundSpacing.screen)
                 }
-                .navigationTitle(String(localized: "circle.create.navigation", defaultValue: "New Circle"))
+                .background(OutboundPalette.background)
+                .safeAreaInset(edge: .bottom) {
+                    Button { Task { await create() } } label: {
+                        HStack {
+                            Spacer()
+                            if isSubmitting { ProgressView() } else { Text(String(localized: "circle.create.action", defaultValue: "Create your Circle")).fontWeight(.semibold) }
+                            Spacer()
+                        }
+                        .frame(minHeight: 50)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(OutboundPalette.companion)
+                    .disabled(isSubmitting || selectedIDs.isEmpty)
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.vertical, 10)
+                    .background(.bar)
+                }
+                .navigationTitle(String(localized: "circle.create.navigation", defaultValue: "Create your Circle"))
+                .navigationBarTitleDisplayMode(.inline)
             }
         }
         .task {
             await analyticsManager?.track(.init(.circleCreationStarted, properties: [.entrySource: .string("social")]))
             if socialStore.connections.isEmpty { await socialStore.refreshConnections() }
             await socialStore.loadRemainingConnections()
+        }
+    }
+
+    private var creationHero: some View {
+        OutboundCard(style: .companion) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    ForEach(["figure.walk", "figure.run", "figure.outdoor.cycle"], id: \.self) { symbol in
+                        Image(systemName: symbol)
+                            .font(.title2)
+                            .foregroundStyle(OutboundPalette.companion)
+                            .frame(width: 44, height: 44)
+                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    }
+                }
+                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Live well, together."))
+                    .font(.title2.bold())
+                Text(String(localized: "circle.create.inspiration_detail", defaultValue: "Build a more active, positive life with family and friends. Every workout can add to the momentum—whatever activity works for each person."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -122,12 +192,90 @@ struct CircleCreateView: View {
     }
 }
 
+private struct CircleCreatedView: View {
+    @EnvironmentObject private var circleStore: CircleStore
+    let circle: CircleDTO
+    @State private var showsFocus = false
+
+    private var current: CircleDTO { circleStore.circles.first(where: { $0.id == circle.id }) ?? circle }
+    private var invitedPeople: [CirclePersonDTO] {
+        [current.owner] + current.invitations.compactMap(\.recipient)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 22) {
+                Image(systemName: "heart.circle.fill")
+                    .font(.system(size: 66))
+                    .foregroundStyle(OutboundPalette.companion)
+                VStack(spacing: 8) {
+                    Text(String(localized: "circle.created.title", defaultValue: "A healthier week starts together."))
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+                    Text(String(localized: "circle.created.detail", defaultValue: "Your invitations are on the way. When someone joins, activities can begin building shared momentum."))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                HStack(spacing: -8) {
+                    ForEach(invitedPeople) { person in
+                        SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
+                            .overlay(Circle().stroke(OutboundPalette.background, lineWidth: 2))
+                    }
+                }
+                VStack(spacing: 0) {
+                    createdBenefit(icon: "figure.mixed.cardio", text: String(localized: "circle.created.benefit_activity", defaultValue: "Walking, running, riding, hiking, and swimming all count."))
+                    Divider().padding(.leading, 48)
+                    createdBenefit(icon: "heart.fill", text: String(localized: "circle.created.benefit_cheer", defaultValue: "Notice the effort and send a Cheer."))
+                    Divider().padding(.leading, 48)
+                    createdBenefit(icon: "chart.xyaxis.line", text: String(localized: "circle.created.benefit_details", defaultValue: "See the workout behind the progress and celebrate it together."))
+                }
+                .padding(.horizontal, 14)
+                .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                VStack(spacing: 10) {
+                    Button(String(localized: "circle.created.choose_focus", defaultValue: "Choose a weekly focus")) { showsFocus = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(OutboundPalette.companion)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                    NavigationLink {
+                        CircleDetailView(circle: current)
+                    } label: {
+                        Text(String(localized: "circle.created.open", defaultValue: "Open Circle"))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    Text(String(localized: "circle.created.focus_optional", defaultValue: "A numeric goal is optional. You can simply encourage each other."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(current.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsFocus) { NavigationStack { CircleFocusEditor(circle: current) } }
+    }
+
+    private func createdBenefit(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).foregroundStyle(OutboundPalette.companion).frame(width: 28)
+            Text(text).font(.subheadline)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 54)
+    }
+}
+
 struct CircleDetailView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let circle: CircleDTO
-    @State private var showsPlanRun = false
+    @State private var showsPlanActivity = false
     @State private var showsFocus = false
 
     private var current: CircleDTO { circleStore.circles.first(where: { $0.id == circle.id }) ?? circle }
@@ -139,8 +287,8 @@ struct CircleDetailView: View {
                 header
                 focusCard
                 membersSection
-                Button { showsPlanRun = true; track(.circlePlanRunStarted, [.entrySource: .string("circle_detail"), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } label: {
-                    Label(String(localized: "circle.plan_run", defaultValue: "Plan a run"), systemImage: "calendar.badge.plus")
+                Button { showsPlanActivity = true; track(.circlePlanActivityStarted, [.entrySource: .string("circle_detail"), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } label: {
+                    Label(String(localized: "circle.plan_activity", defaultValue: "Plan an activity"), systemImage: "calendar.badge.plus")
                         .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
@@ -158,13 +306,13 @@ struct CircleDetailView: View {
             NavigationLink { CircleManagementView(circle: current) } label: { Image(systemName: "gearshape") }
                 .accessibilityLabel(String(localized: "circle.management", defaultValue: "Circle settings"))
         }
-        .sheet(isPresented: $showsPlanRun) {
+        .sheet(isPresented: $showsPlanActivity) {
             CreateActivityEventView(
                 sourceCircleID: current.id,
                 preselectedConnectionIDs: Set(invitees.map(\.id)),
                 additionalInvitees: invitees
             ) {
-                track(.circlePlanRunCompleted, [.participantCountBucket: .string(ProductAnalyticsBucket.count(invitees.count + 1)), .result: .string("success")])
+                track(.circlePlanActivityCompleted, [.participantCountBucket: .string(ProductAnalyticsBucket.count(invitees.count + 1)), .result: .string("success")])
             }
             .environmentObject(socialStore)
         }
@@ -178,8 +326,10 @@ struct CircleDetailView: View {
     private var header: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(current.lifecycle == "awaiting_members" ? String(localized: "circle.status.awaiting", defaultValue: "Waiting for someone to join") : String(localized: "circle.private", defaultValue: "Private Circle"))
+                Text(current.lifecycle == "awaiting_members" ? String(localized: "circle.status.awaiting", defaultValue: "Waiting for someone to join") : String(localized: "circle.private", defaultValue: "Trusted Circle"))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(String(localized: "circle.detail.inspiration", defaultValue: "Building a positive life, one activity at a time."))
+                    .font(.headline)
                 HStack(spacing: -8) { ForEach(current.members.prefix(6)) { SocialAvatar(name: $0.user.displayName, avatarURL: $0.user.avatarUrl).overlay(Circle().stroke(OutboundPalette.background, lineWidth: 2)) } }
                 Text(String(localized: "circle.members.count", defaultValue: "\(current.memberCount) members")).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -202,10 +352,10 @@ struct CircleDetailView: View {
                     Text(String(localized: "circle.focus.unconfigured", defaultValue: "Choose a flexible focus when the Circle is ready."))
                         .font(.subheadline).foregroundStyle(.secondary)
                 } else if current.week.focusMode == "none" {
-                    Text(String(localized: "circle.focus.none.detail", defaultValue: "No numeric goal this week. Cheer each other on or plan a run."))
+                    Text(String(localized: "circle.focus.none.detail", defaultValue: "No numeric goal this week. Cheer each other on or plan something active."))
                 } else if let target = current.week.targetCount {
                     ProgressView(value: min(Double(current.week.contributedCount) / Double(max(target, 1)), 1)).tint(OutboundPalette.companion)
-                    Text(String(localized: "circle.progress.format", defaultValue: "\(current.week.contributedCount) of \(target) runs this week")).font(.subheadline).foregroundStyle(.secondary)
+                    Text(String(localized: "circle.progress.format", defaultValue: "\(current.week.contributedCount) of \(target) activities this week")).font(.subheadline).foregroundStyle(.secondary)
                 }
             }
         }
@@ -218,7 +368,21 @@ struct CircleDetailView: View {
                 OutboundCard {
                     HStack(spacing: 12) {
                         SocialAvatar(name: member.user.displayName, avatarURL: member.user.avatarUrl)
-                        VStack(alignment: .leading, spacing: 3) { Text(member.user.displayName).font(.headline); Text(memberStatus(member)).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(member.user.displayName).font(.headline)
+                            Text(memberStatus(member)).font(.caption).foregroundStyle(.secondary)
+                            if let activity = member.recentActivity {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(activityTitle(activity))
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(activitySummary(activity))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
+                                .padding(.top, 5)
+                            }
+                        }
                         Spacer()
                         if !member.isCurrentUser {
                             Menu {
@@ -268,6 +432,45 @@ struct CircleDetailView: View {
         if let target = member.commitment?.targetCount { return String(localized: "circle.member.progress", defaultValue: "\(member.contributedCount) of \(target)") }
         return String(localized: "circle.member.contributed", defaultValue: "Contributed \(member.contributedCount)")
     }
+    private func activityTypeTitle(_ type: String) -> String {
+        switch type {
+        case "cycling": return String(localized: "circle.activity.ride", defaultValue: "Ride")
+        case "hiking": return String(localized: "circle.activity.hike", defaultValue: "Hike")
+        case "walking": return String(localized: "circle.activity.walk", defaultValue: "Walk")
+        case "swimming": return String(localized: "circle.activity.swim", defaultValue: "Swim")
+        default: return String(localized: "circle.activity.run", defaultValue: "Run")
+        }
+    }
+    private func activityTitle(_ activity: CircleActivitySummaryDTO) -> String {
+        let title = activity.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? activityTypeTitle(activity.type) : title
+    }
+    private func activitySummary(_ activity: CircleActivitySummaryDTO) -> String {
+        var parts = [activity.startedAt.formatted(date: .abbreviated, time: .shortened)]
+        if let distance = activity.distanceM, distance > 0 {
+            parts.append(measurementPreferences.unitSystem.distanceString(meters: distance, fractionDigits: 1))
+        }
+        if let elevation = activity.elevationM, elevation > 0 {
+            parts.append(measurementPreferences.unitSystem.elevationString(meters: elevation))
+        }
+        if let duration = activity.durationSecs, duration > 0 {
+            let hours = duration / 3_600
+            let minutes = max(1, (duration % 3_600) / 60)
+            parts.append(hours > 0
+                ? String(localized: "circle.activity.duration.hours_minutes", defaultValue: "\(hours) hr \(minutes) min")
+                : String(localized: "circle.activity.duration.minutes", defaultValue: "\(minutes) min"))
+        }
+        if let pace = activity.avgPace, pace > 0 {
+            parts.append(pace.paceString(for: measurementPreferences.unitSystem))
+        }
+        if let heartRate = activity.avgHeartRate, heartRate > 0 {
+            parts.append(String(localized: "circle.activity.heart_rate", defaultValue: "\(heartRate) bpm"))
+        }
+        if let calories = activity.energyKilocalories, calories > 0 {
+            parts.append(String(localized: "circle.activity.calories", defaultValue: "\(calories) cal"))
+        }
+        return parts.joined(separator: " · ")
+    }
     private func cheerTitle(_ preset: String) -> String {
         switch preset {
         case "celebration": return String(localized: "circle.cheer.celebration", defaultValue: "Celebrate")
@@ -282,9 +485,9 @@ struct CircleDetailView: View {
 
     private func momentText(_ moment: CircleMomentDTO) -> String {
         switch moment.type {
-        case "planned_run": return moment.title ?? String(localized: "circle.moment.run_planned", defaultValue: "Run planned")
+        case "planned_run": return moment.title ?? String(localized: "circle.moment.activity_planned", defaultValue: "Activity planned")
         case "weekly_completion": return String(localized: "circle.moment.completed", defaultValue: "Weekly focus completed")
-        default: return String(localized: "circle.moment.cheer", defaultValue: "A private Cheer was sent")
+        default: return String(localized: "circle.moment.cheer", defaultValue: "A Cheer was sent")
         }
     }
     private func track(_ event: ProductEventName, _ properties: [ProductPropertyKey: AnalyticsValue]) { Task { await analyticsManager?.track(.init(event, properties: properties)) } }
@@ -319,7 +522,7 @@ struct CircleFocusEditor: View {
                 if mode == "shared_target" {
                     Section {
                         targetPresets(selection: $sharedTarget)
-                        Stepper(String(localized: "circle.focus.shared_count", defaultValue: "\(sharedTarget) runs together"), value: $sharedTarget, in: 1...100)
+                        Stepper(String(localized: "circle.focus.shared_count", defaultValue: "\(sharedTarget) activities together"), value: $sharedTarget, in: 1...100)
                     }
                 }
                 Section { Picker(String(localized: "circle.focus.apply", defaultValue: "Apply"), selection: $apply) { Text(String(localized: "circle.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "circle.apply.next", defaultValue: "Next week")).tag("next_week") } }
@@ -327,7 +530,7 @@ struct CircleFocusEditor: View {
             if editsCurrentPersonalFocus {
                 Section(String(localized: "circle.commitment.mine", defaultValue: "My target")) {
                     targetPresets(selection: $personalTarget)
-                    Stepper(String(localized: "circle.commitment.count", defaultValue: "\(personalTarget) runs"), value: $personalTarget, in: 1...100)
+                    Stepper(String(localized: "circle.commitment.count", defaultValue: "\(personalTarget) activities"), value: $personalTarget, in: 1...100)
                     Toggle(String(localized: "circle.commitment.skip", defaultValue: "Skip this week"), isOn: $skip)
                 }
             }
@@ -348,7 +551,7 @@ struct CircleFocusEditor: View {
                         .buttonStyle(.bordered)
                         .tint(selection.wrappedValue == value ? OutboundPalette.companion : .secondary)
                         .frame(minWidth: 44, minHeight: 44)
-                        .accessibilityLabel(String(localized: "circle.focus.preset_accessibility", defaultValue: "\(value) runs"))
+                        .accessibilityLabel(String(localized: "circle.focus.preset_accessibility", defaultValue: "\(value) activities"))
                 }
             }
         }
@@ -443,7 +646,7 @@ struct CircleManagementView: View {
                     Section(String(localized: "circle.invitations.pending", defaultValue: "Pending invitations")) {
                         ForEach(current.invitations) { invitation in
                             HStack {
-                                Text(invitation.recipient?.displayName ?? String(localized: "circle.invitation.pending_person", defaultValue: "Invited runner"))
+                                Text(invitation.recipient?.displayName ?? String(localized: "circle.invitation.pending_person", defaultValue: "Invited person"))
                                 Spacer()
                                 Button(String(localized: "circle.invitation.cancel", defaultValue: "Cancel"), role: .destructive) {
                                     Task {
@@ -512,7 +715,7 @@ private struct CircleInviteView: View {
     let circle: CircleDTO
     @State private var selected: Set<String> = []
     private var eligible: [SocialConnectionDTO] { let existing = Set(circle.members.map { $0.user.id }); return socialStore.connections.filter { $0.status == "accepted" && !existing.contains($0.person.id) } }
-    var body: some View { NavigationStack { List(eligible) { connection in Button { if selected.contains(connection.person.id) { selected.remove(connection.person.id) } else { selected.insert(connection.person.id) } } label: { HStack { SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl); Text(connection.person.displayName).foregroundStyle(.primary); Spacer(); Image(systemName: selected.contains(connection.person.id) ? "checkmark.circle.fill" : "circle") } }.disabled(!selected.contains(connection.person.id) && selected.count >= max(0, 6 - circle.memberCount - circle.invitations.count)) }.navigationTitle(String(localized: "circle.invite.more", defaultValue: "Invite connections")).toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button(String(localized: "circle.invitation.send", defaultValue: "Send")) { Task { let invitationCount = selected.count; if await circleStore.invite(Array(selected), to: circle) != nil { await analyticsManager?.track(.init(.circleInvitationSent, properties: [.entrySource: .string("circle_settings"), .participantCountBucket: .string(ProductAnalyticsBucket.count(invitationCount)), .result: .string("success")])); dismiss() } } }.disabled(selected.isEmpty) } }.task { await socialStore.loadRemainingConnections() } } }
+    var body: some View { NavigationStack { List(eligible) { connection in Button { if selected.contains(connection.person.id) { selected.remove(connection.person.id) } else { selected.insert(connection.person.id) } } label: { HStack { SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl); Text(connection.person.displayName).foregroundStyle(.primary); Spacer(); Image(systemName: selected.contains(connection.person.id) ? "checkmark.circle.fill" : "circle") } }.disabled(!selected.contains(connection.person.id) && selected.count >= max(0, circle.memberLimit - circle.memberCount - circle.invitations.count)) }.navigationTitle(String(localized: "circle.invite.more", defaultValue: "Invite connections")).toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button(String(localized: "circle.invitation.send", defaultValue: "Send")) { Task { let invitationCount = selected.count; if await circleStore.invite(Array(selected), to: circle) != nil { await analyticsManager?.track(.init(.circleInvitationSent, properties: [.entrySource: .string("circle_settings"), .participantCountBucket: .string(ProductAnalyticsBucket.count(invitationCount)), .result: .string("success")])); dismiss() } } }.disabled(selected.isEmpty) } }.task { await socialStore.loadRemainingConnections() } } }
 }
 
 struct CircleCompletionCelebrationView: View {

@@ -283,21 +283,27 @@ struct SocialHomeView: View {
                         CircleCreateView()
                     } label: {
                         OutboundCard(style: .companion) {
-                            HStack(spacing: OutboundSpacing.standard) {
-                                Image(systemName: "person.3.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(OutboundPalette.companion)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(String(localized: "circle.create.title", defaultValue: "Create a private Circle"))
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
-                                    Text(String(localized: "circle.create.detail", defaultValue: "Choose a few connections to share weekly momentum."))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 10) {
+                                    ForEach(["figure.walk", "figure.run", "figure.outdoor.cycle"], id: \.self) { symbol in
+                                        Image(systemName: symbol)
+                                            .foregroundStyle(OutboundPalette.companion)
+                                            .frame(width: 36, height: 36)
+                                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.right")
+                                        .foregroundStyle(OutboundPalette.companion)
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(.tertiary)
+                                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Live well, together."))
+                                    .font(.title3.bold())
+                                    .foregroundStyle(.primary)
+                                Text(String(localized: "circle.create.detail", defaultValue: "Build a more active, positive life with family and friends. Share workouts, weekly momentum, and encouragement in one Circle."))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Text(String(localized: "circle.create.start", defaultValue: "Create your Circle"))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(OutboundPalette.companion)
                             }
                         }
                     }
@@ -336,6 +342,8 @@ struct SocialHomeView: View {
                 ))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                Text(String(localized: "circle.invitation.promise", defaultValue: "Share workouts, encourage each other, and build a healthier week together."))
+                    .font(.subheadline)
                 HStack {
                     Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
                         Task {

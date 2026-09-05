@@ -17,6 +17,7 @@ final class CircleStore: ObservableObject {
     @Published private(set) var circles: [CircleDTO] = []
     @Published private(set) var primaryCircleID: String?
     @Published private(set) var invitations: [CircleInvitationDTO] = []
+    @Published private(set) var memberLimit = 6
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var toastMessage: String?
@@ -65,12 +66,14 @@ final class CircleStore: ObservableObject {
         circles = []
         primaryCircleID = nil
         invitations = []
+        memberLimit = 6
         errorMessage = nil
         toastMessage = nil
         lastConfirmedContribution = nil
         guard let userID,
               let cached = decode(CircleListResponseDTO.self, from: defaults.data(forKey: cacheKey(userID))) else { return }
         primaryCircleID = cached.primaryCircleId
+        memberLimit = cached.policy.memberLimit
         circles = ordered(cached.circles, primaryID: cached.primaryCircleId)
     }
 
@@ -83,6 +86,7 @@ final class CircleStore: ObservableObject {
             let response = try await api.fetchCircles()
             guard generation == authGeneration, activeUserID == userID else { return }
             primaryCircleID = response.primaryCircleId ?? fallbackPrimaryID(in: response.circles)
+            memberLimit = response.policy.memberLimit
             circles = ordered(response.circles, primaryID: primaryCircleID)
             persistCurrentState()
             errorMessage = nil
@@ -300,9 +304,9 @@ final class CircleStore: ObservableObject {
         let contribution = receipt.primary
         let primaryMessage: String
         if let target = contribution.targetCount {
-            primaryMessage = String(localized: "circle.contribution.confirmed_progress", defaultValue: "This counted for Your Circle. \(contribution.contributedCount) of \(target) runs complete this week.")
+            primaryMessage = String(localized: "circle.contribution.confirmed_progress", defaultValue: "You moved your Circle forward. \(contribution.contributedCount) of \(target) activities complete this week.")
         } else {
-            primaryMessage = String(localized: "circle.contribution.confirmed", defaultValue: "This counted for Your Circle.")
+            primaryMessage = String(localized: "circle.contribution.confirmed", defaultValue: "You moved your Circle forward.")
         }
         guard receipt.additionalCircleCount > 0 else { return primaryMessage }
         let additional = String(localized: "circle.contribution.additional", defaultValue: "It also counted for \(receipt.additionalCircleCount) other Circles.")
@@ -311,7 +315,7 @@ final class CircleStore: ObservableObject {
 
     private func persistCurrentState() {
         guard let activeUserID else { return }
-        defaults.set(try? encode(CircleListResponseDTO(circles: circles, primaryCircleId: primaryCircleID)), forKey: cacheKey(activeUserID))
+        defaults.set(try? encode(CircleListResponseDTO(circles: circles, primaryCircleId: primaryCircleID, policy: .init(memberLimit: memberLimit))), forKey: cacheKey(activeUserID))
     }
 
     private func cacheKey(_ userID: String) -> String { cachePrefix + userID }

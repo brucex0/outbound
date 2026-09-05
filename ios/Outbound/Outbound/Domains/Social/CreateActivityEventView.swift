@@ -44,7 +44,7 @@ struct CreateActivityEventView: View {
                     planStep
                 }
             }
-            .navigationTitle(created == nil ? String(localized: "Plan a run") : String(localized: "Invite friends"))
+            .navigationTitle(created == nil ? planningTitle : String(localized: "Invite friends"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -74,10 +74,10 @@ struct CreateActivityEventView: View {
     private var planStep: some View {
         Form {
             Section {
-                TextField(String(localized: "social.event.title.placeholder", defaultValue: "Saturday easy run"), text: $title)
+                TextField(eventTitlePlaceholder, text: $title)
                     .textInputAutocapitalization(.sentences)
             } header: {
-                Text(String(localized: "social.event.run_name", defaultValue: "Run name"))
+                Text(eventNameLabel)
             }
 
             Section(String(localized: "social.event.date_time", defaultValue: "Date and time")) {
@@ -169,8 +169,8 @@ struct CreateActivityEventView: View {
                 Text(String(localized: "social.event.location.detail", defaultValue: "Friends can meet here or join from anywhere."))
             }
 
-            Section(String(localized: "social.event.pace_note", defaultValue: "Pace / note")) {
-                TextField(String(localized: "social.event.note.placeholder", defaultValue: "Easy, conversational pace"), text: $note, axis: .vertical)
+            Section(noteLabel) {
+                TextField(notePlaceholder, text: $note, axis: .vertical)
                     .lineLimit(2...4)
             }
 
@@ -221,7 +221,7 @@ struct CreateActivityEventView: View {
                 )
             }
 
-            Section(String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")) {
+            Section(inviteFriendsLabel) {
                 ForEach(socialStore.connections.filter { $0.status == "accepted" }) { connection in
                     Button {
                         if selectedConnectionIDs.contains(connection.person.id) {
@@ -306,6 +306,42 @@ struct CreateActivityEventView: View {
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
             sourceCircleId: sourceCircleID
         ))
+    }
+
+    private var planningTitle: String {
+        sourceCircleID == nil
+            ? String(localized: "Plan a run")
+            : String(localized: "circle.event.plan", defaultValue: "Plan an activity")
+    }
+
+    private var eventNameLabel: String {
+        sourceCircleID == nil
+            ? String(localized: "social.event.run_name", defaultValue: "Run name")
+            : String(localized: "circle.event.name", defaultValue: "Activity name")
+    }
+
+    private var eventTitlePlaceholder: String {
+        sourceCircleID == nil
+            ? String(localized: "social.event.title.placeholder", defaultValue: "Saturday easy run")
+            : String(localized: "circle.event.title.placeholder", defaultValue: "Saturday morning workout")
+    }
+
+    private var noteLabel: String {
+        sourceCircleID == nil
+            ? String(localized: "social.event.pace_note", defaultValue: "Pace / note")
+            : String(localized: "circle.event.note", defaultValue: "Plan / note")
+    }
+
+    private var notePlaceholder: String {
+        sourceCircleID == nil
+            ? String(localized: "social.event.note.placeholder", defaultValue: "Easy, conversational pace")
+            : String(localized: "circle.event.note.placeholder", defaultValue: "Walk, ride, gym session—anything that feels good")
+    }
+
+    private var inviteFriendsLabel: String {
+        sourceCircleID == nil
+            ? String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")
+            : String(localized: "circle.event.invite", defaultValue: "Invite your Circle")
     }
 
     private func select(_ completion: MKLocalSearchCompletion) async {

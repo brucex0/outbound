@@ -111,6 +111,8 @@ Useful overrides:
 
 The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, concurrency 100, scale-to-zero enabled, and a one-instance ceiling, then prints the service URL and checks `/health`. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed. These remain the minimal-cost script defaults. Production live coaching currently overrides them with `CLOUD_RUN_MIN_INSTANCES=1` and `CLOUD_RUN_MAX_INSTANCES=3` so one server is warm for the sub-second audio path.
 
+`CIRCLE_MEMBER_LIMIT` controls the capacity assigned to newly created Circles and defaults to `6`. The backend accepts values from `2` through `100`, returns the active policy to clients, and snapshots the value onto each Circle so later experiments do not unexpectedly shrink or expand existing groups.
+
 Raw command equivalent:
 
 ```sh
