@@ -182,17 +182,23 @@ struct OutboundCard<Content: View>: View {
     }
 
     let style: Style
+    let contentPadding: CGFloat?
     let content: Content
 
-    init(style: Style = .standard, @ViewBuilder content: () -> Content) {
+    init(
+        style: Style = .standard,
+        contentPadding: CGFloat? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
         self.style = style
+        self.contentPadding = contentPadding
         self.content = content()
     }
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(style == .companion ? 22 : 16)
+            .padding(contentPadding ?? (style == .companion ? 22 : 16))
             .foregroundStyle(style == .companion ? theme.heroForegroundColor : OutboundPalette.primaryText)
             .background(backgroundStyle, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(

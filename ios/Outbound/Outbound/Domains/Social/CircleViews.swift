@@ -12,17 +12,59 @@ struct CircleCompactCard: View {
 }
 
 struct CircleCompactContent: View {
+    @Environment(\.outboundTheme) private var theme
     let circle: CircleDTO
     let isPrimary: Bool
-    var isMinimized = false
+    var isSingleRow = false
     var showsNavigationIndicator = true
 
     var body: some View {
-        HStack(spacing: isMinimized ? OutboundSpacing.compact : OutboundSpacing.standard) {
+        Group {
+            if isSingleRow {
+                singleRowContent
+            } else {
+                detailedContent
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var singleRowContent: some View {
+        HStack(spacing: OutboundSpacing.compact) {
             Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
-                .font(isMinimized ? .subheadline : .title2)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(theme.heroForegroundColor)
+                .frame(width: 34, height: 34)
+                .background(theme.heroForegroundColor.opacity(0.14), in: Circle())
+
+            HStack(spacing: 4) {
+                Text(circle.name)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(verbatim: "(\(circle.memberCount))")
+                    .fixedSize()
+            }
+            .font(.headline)
+            .foregroundStyle(theme.heroForegroundColor)
+
+            Spacer(minLength: 16)
+
+            compactProgress
+                .fixedSize()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(circle.name), \(String(localized: "circle.members.count", defaultValue: "\(circle.memberCount) members")), \(statusText)"
+        )
+    }
+
+    private var detailedContent: some View {
+        HStack(spacing: OutboundSpacing.standard) {
+            Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
+                .font(.title2)
                 .foregroundStyle(OutboundPalette.companion)
-                .frame(width: isMinimized ? 34 : 44, height: isMinimized ? 34 : 44)
+                .frame(width: 44, height: 44)
                 .background(OutboundPalette.companion.opacity(0.12), in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -30,19 +72,44 @@ struct CircleCompactContent: View {
                     if isPrimary { Image(systemName: "star.fill").font(.caption2).foregroundStyle(OutboundPalette.companion) }
                 }
                 Text(statusText)
-                    .font(isMinimized ? .caption : .subheadline)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(isMinimized ? 1 : 2)
-                    .minimumScaleFactor(isMinimized ? 0.8 : 1)
+                    .lineLimit(2)
             }
             Spacer(minLength: 8)
             if showsNavigationIndicator {
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var compactProgress: some View {
+        let contributedCount = circle.week.contributedCount
+        if let targetCount = circle.week.targetCount, targetCount > 0 {
+            HStack(spacing: 6) {
+                ProgressView(
+                    value: Double(min(contributedCount, targetCount)),
+                    total: Double(targetCount)
+                )
+                .progressViewStyle(.linear)
+                .tint(theme.heroForegroundColor)
+                .frame(width: 38)
+
+                Text(verbatim: "\(contributedCount)/\(targetCount)")
+                    .font(.caption.weight(.bold).monospacedDigit())
+                    .foregroundStyle(theme.heroForegroundColor)
+            }
+        } else {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                Text(verbatim: "\(contributedCount)")
+                    .monospacedDigit()
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(theme.heroForegroundColor)
+        }
     }
 
     private var statusText: String {

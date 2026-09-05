@@ -3901,22 +3901,6 @@
         }
       }
     },
-    "Collapse Circle card" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contraer tarjeta del Círculo"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "收起跑圈卡片"
-          }
-        }
-      }
-    },
     "Collapse group run" : {
       "localizations" : {
         "es" : {
@@ -6118,22 +6102,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "精力：%lld/5"
-          }
-        }
-      }
-    },
-    "Expand Circle card" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expandir tarjeta del Círculo"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "展开跑圈卡片"
           }
         }
       }

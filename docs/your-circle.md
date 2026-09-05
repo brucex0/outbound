@@ -129,8 +129,8 @@ Invitation rules:
 Keep the existing Today hierarchy and the planned-workout card's established display rules. Circle is an independent row rather than a replacement for another eligible card.
 
 - Show one compact card for the member's primary active Circle below any currently visible workout or activity-event card.
-- Default Circle to minimized while retaining its weekly progress summary. Let the member expand it and remember the choice.
-- When manual goal pills are visible, move Circle above that row instead of allowing the two surfaces to overlap.
+- Keep Circle to one tappable row: truncating name, member count in parentheses, breathing room, then trailing weekly progress.
+- When manual goal pills are visible, move Circle above that row with a narrow gap instead of allowing the two surfaces to overlap.
 - Do not show Circle creation on Today.
 - An imminent joined activity event keeps its existing priority within the non-Circle opportunity slot.
 - If the primary Circle has no Weekly Focus, the card may show a recent Cheer or a restrained `Plan an activity` action instead of numeric progress.

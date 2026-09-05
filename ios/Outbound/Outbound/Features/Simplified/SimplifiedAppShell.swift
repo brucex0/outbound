@@ -844,7 +844,6 @@ private struct SimplifiedTodayView: View {
     @AppStorage("activity_overflow_tip_dismissed_v1") private var hasDismissedActivityOverflowTip = false
     @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
     @AppStorage("today_planned_workout_card_minimized_v1") private var isPlannedWorkoutCardMinimized = false
-    @AppStorage("today_circle_card_minimized_v1") private var isCircleCardMinimized = true
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
     let isActivityFullscreenVisible: Bool
@@ -1229,8 +1228,8 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPeerCardsBottomPadding: CGFloat {
-        ActivityLaunchLayout.peerCardGap
-            + (launchGoalMode == .planned ? 0 : ActivityLaunchLayout.goalPillRowHeight)
+        guard launchGoalMode != .planned else { return ActivityLaunchLayout.peerCardGap }
+        return ActivityLaunchLayout.goalPillRowHeight + (ActivityLaunchLayout.peerCardGap / 2)
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
@@ -1331,35 +1330,18 @@ private struct SimplifiedTodayView: View {
     }
 
     private func todayCircleCard(_ circle: CircleDTO) -> some View {
-        OutboundCard(style: .companion) {
-            HStack(spacing: OutboundSpacing.compact) {
-                NavigationLink {
-                    CircleDetailView(circle: circle)
-                } label: {
-                    CircleCompactContent(
-                        circle: circle,
-                        isPrimary: true,
-                        isMinimized: isCircleCardMinimized,
-                        showsNavigationIndicator: false
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Button(action: toggleCircleCard) {
-                    Image(systemName: isCircleCardMinimized ? "chevron.down" : "chevron.up")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(theme.heroForegroundColor)
-                        .frame(width: 32, height: 32)
-                        .background(theme.heroForegroundColor.opacity(0.14), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(
-                    isCircleCardMinimized
-                        ? String(localized: "Expand Circle card")
-                        : String(localized: "Collapse Circle card")
+        OutboundCard(style: .companion, contentPadding: 14) {
+            NavigationLink {
+                CircleDetailView(circle: circle)
+            } label: {
+                CircleCompactContent(
+                    circle: circle,
+                    isPrimary: true,
+                    isSingleRow: true,
+                    showsNavigationIndicator: false
                 )
             }
-            .animation(.snappy, value: isCircleCardMinimized)
+            .buttonStyle(.plain)
         }
     }
 
@@ -1369,14 +1351,6 @@ private struct SimplifiedTodayView: View {
             isPlannedWorkoutCardMinimized = isMinimized
         }
         trackTodayCardDisplay(sourceType: "planned_workout", isMinimized: isMinimized)
-    }
-
-    private func toggleCircleCard() {
-        let isMinimized = !isCircleCardMinimized
-        withAnimation(.snappy) {
-            isCircleCardMinimized = isMinimized
-        }
-        trackTodayCardDisplay(sourceType: "circle", isMinimized: isMinimized)
     }
 
     private func trackTodayCardDisplay(sourceType: String, isMinimized: Bool) {
