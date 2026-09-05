@@ -200,6 +200,8 @@ When a numeric Weekly Focus reaches completion:
 
 Use one clear Circle settings screen.
 
+Settings fields and Weekly Focus controls save automatically after changes, with transient success or failure feedback; they do not use explicit Save buttons.
+
 Owner controls:
 
 - rename Circle;
