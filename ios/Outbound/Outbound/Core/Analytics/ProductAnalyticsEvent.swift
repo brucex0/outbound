@@ -34,6 +34,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySyncFailed = "activity_sync_failed"
     case recognitionSyncCompleted = "recognition_sync_completed"
     case recognitionSyncFailed = "recognition_sync_failed"
+    case recognitionAwarded = "recognition_awarded"
     case activityRecordingQuality = "activity_recording_quality"
     case activityFeedLoaded = "activity_feed_loaded"
     case activityRecoveryPresentation = "activity_recovery_presentation"
@@ -251,6 +252,7 @@ enum ProductAnalyticsSchema {
         .activitySyncFailed: [.sourceType, .routeSelected, .errorCategory],
         .recognitionSyncCompleted: [.countBucket, .sourceType],
         .recognitionSyncFailed: [.sourceType, .errorCategory],
+        .recognitionAwarded: [.countBucket, .sourceType],
         .activityRecordingQuality: [
             .sourceType, .countBucket, .result, .locationQuality, .precisionMode,
             .filterRatioBucket, .distanceCorrectionBucket, .segmentCountBucket,

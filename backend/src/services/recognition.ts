@@ -4,13 +4,13 @@ import { getPrismaClient } from "./prisma.js";
 
 export const recognitionBadgeIds = [
   "firstStep",
-  "shortCounts",
   "backInMotion",
-  "weekClosedWell",
-  "threeThisWeek",
-  "keptItEasy",
-  "finishedWhatYouStarted",
-  "steadyReturn",
+  "weeklyFocusComplete",
+  "fourWeekRhythm",
+  "first5K",
+  "first10K",
+  "firstHalfMarathon",
+  "firstMarathon",
   "goodTeammate",
   "relayPlayer",
   "rivalEdge",
@@ -27,13 +27,13 @@ type RecognitionDefinition = {
 
 const definitions: Record<RecognitionBadgeId, RecognitionDefinition> = {
   firstStep: { family: "showedUp", shareEligible: false, ruleVersion: 1 },
-  shortCounts: { family: "showedUp", shareEligible: false, ruleVersion: 1 },
   backInMotion: { family: "showedUp", shareEligible: true, ruleVersion: 1 },
-  weekClosedWell: { family: "showedUp", shareEligible: false, ruleVersion: 1 },
-  threeThisWeek: { family: "momentum", shareEligible: true, ruleVersion: 1 },
-  keptItEasy: { family: "momentum", shareEligible: false, ruleVersion: 1 },
-  finishedWhatYouStarted: { family: "momentum", shareEligible: false, ruleVersion: 1 },
-  steadyReturn: { family: "momentum", shareEligible: false, ruleVersion: 1 },
+  weeklyFocusComplete: { family: "momentum", shareEligible: true, ruleVersion: 1 },
+  fourWeekRhythm: { family: "momentum", shareEligible: false, ruleVersion: 1 },
+  first5K: { family: "momentum", shareEligible: true, ruleVersion: 1 },
+  first10K: { family: "momentum", shareEligible: true, ruleVersion: 1 },
+  firstHalfMarathon: { family: "momentum", shareEligible: true, ruleVersion: 1 },
+  firstMarathon: { family: "momentum", shareEligible: true, ruleVersion: 1 },
   goodTeammate: { family: "social", shareEligible: false, ruleVersion: 1 },
   relayPlayer: { family: "social", shareEligible: false, ruleVersion: 1 },
   rivalEdge: { family: "social", shareEligible: true, ruleVersion: 1 },
@@ -49,8 +49,10 @@ type AwardInput = {
 
 type ActivityForRecognition = {
   clientActivityId: string | null;
+  type: string;
   startedAt: Date;
   durationSecs: number | null;
+  distanceM: number | null;
   createdAt: Date;
   clientData: Prisma.JsonValue | null;
 };
@@ -112,8 +114,10 @@ export async function backfillActivityRecognitions(
       where: { userId, deletedAt: null },
       select: {
         clientActivityId: true,
+        type: true,
         startedAt: true,
         durationSecs: true,
+        distanceM: true,
         createdAt: true,
         clientData: true,
       },
@@ -132,14 +136,16 @@ export async function backfillActivityRecognitions(
   for (const activity of activities) {
     const candidates = new Set<RecognitionBadgeId>(claimedActivityBadges(activity.clientData));
     if (prior.length === 0) candidates.add("firstStep");
-    if ((activity.durationSecs ?? Number.MAX_SAFE_INTEGER) < 15 * 60) candidates.add("shortCounts");
     if (isComeback(activity, prior, timeZone)) candidates.add("backInMotion");
-    if (isFinalDayOfWeek(activity.startedAt, timeZone, normalizedFirstWeekday)) candidates.add("weekClosedWell");
-    if (activitiesInWeek(prior, activity.startedAt, timeZone, normalizedFirstWeekday) + 1 >= 3) {
-      candidates.add("finishedWhatYouStarted");
+    if (hasFourWeekRhythm(activity.startedAt, prior, timeZone, normalizedFirstWeekday)) {
+      candidates.add("fourWeekRhythm");
     }
-    if (spansTwoWeeksWithinReturnWindow(activity.startedAt, prior, timeZone, normalizedFirstWeekday)) {
-      candidates.add("steadyReturn");
+    if (["running", "walking", "hiking"].includes(activity.type)) {
+      const distanceM = activity.distanceM ?? 0;
+      if (distanceM >= 5_000) candidates.add("first5K");
+      if (distanceM >= 10_000) candidates.add("first10K");
+      if (distanceM >= 21_097.5) candidates.add("firstHalfMarathon");
+      if (distanceM >= 42_195) candidates.add("firstMarathon");
     }
 
     for (const badgeId of candidates) {
@@ -281,7 +287,11 @@ export async function evaluateGoodTeammate(
 
 export async function recognitionAwards(userId: string, shareableOnly = false) {
   const awards = await getPrismaClient().recognitionAward.findMany({
-    where: { userId, ...(shareableOnly ? { shareEligible: true } : {}) },
+    where: {
+      userId,
+      badgeId: { in: [...recognitionBadgeIds] },
+      ...(shareableOnly ? { shareEligible: true } : {}),
+    },
     orderBy: [{ earnedAt: "desc" }, { createdAt: "desc" }],
   });
   return awards.map((award) => ({
@@ -321,20 +331,6 @@ function normalizeFirstWeekday(value: number) {
   return Number.isInteger(value) && value >= 1 && value <= 7 ? value : 2;
 }
 
-function isFinalDayOfWeek(date: Date, timeZone: string, firstWeekday: number) {
-  return localDayIndex(date, timeZone) - weekMarker(date, timeZone, firstWeekday) === 6;
-}
-
-function activitiesInWeek(
-  activities: ActivityForRecognition[],
-  date: Date,
-  timeZone: string,
-  firstWeekday: number,
-) {
-  const marker = weekMarker(date, timeZone, firstWeekday);
-  return activities.filter((activity) => weekMarker(activity.startedAt, timeZone, firstWeekday) === marker).length;
-}
-
 function isComeback(candidate: ActivityForRecognition, prior: ActivityForRecognition[], timeZone: string) {
   const candidateDay = localDayIndex(candidate.startedAt, timeZone);
   const earlierDayDifferences = prior
@@ -344,18 +340,16 @@ function isComeback(candidate: ActivityForRecognition, prior: ActivityForRecogni
     && earlierDayDifferences.every((dayDifference) => dayDifference > 7);
 }
 
-function spansTwoWeeksWithinReturnWindow(
+function hasFourWeekRhythm(
   date: Date,
   prior: ActivityForRecognition[],
   timeZone: string,
   firstWeekday: number,
 ) {
-  const startWindow = date.getTime() - 21 * 86_400_000;
-  const markers = new Set([weekMarker(date, timeZone, firstWeekday)]);
+  const currentWeek = weekMarker(date, timeZone, firstWeekday);
+  const markers = new Set<number>([currentWeek]);
   for (const activity of prior) {
-    if (activity.startedAt.getTime() >= startWindow && activity.startedAt <= date) {
-      markers.add(weekMarker(activity.startedAt, timeZone, firstWeekday));
-    }
+    markers.add(weekMarker(activity.startedAt, timeZone, firstWeekday));
   }
-  return markers.size >= 2;
+  return [0, 1, 2, 3].every((offset) => markers.has(currentWeek - offset * 7));
 }

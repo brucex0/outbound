@@ -9,22 +9,22 @@ enum RecognitionFamily: String, Codable, CaseIterable {
     var title: String {
         switch self {
         case .showedUp:
-            String(localized: "recognition.family.showed_up", defaultValue: "Showed Up")
+            String(localized: "recognition.family.showed_up", defaultValue: "Beginnings")
         case .momentum:
-            String(localized: "recognition.family.momentum", defaultValue: "Momentum")
+            String(localized: "recognition.family.momentum", defaultValue: "Progress")
         }
     }
 }
 
 enum RecognitionBadgeID: String, Codable, CaseIterable, Identifiable {
     case firstStep
-    case shortCounts
     case backInMotion
-    case weekClosedWell
-    case threeThisWeek
-    case keptItEasy
-    case finishedWhatYouStarted
-    case steadyReturn
+    case weeklyFocusComplete
+    case fourWeekRhythm
+    case first5K
+    case first10K
+    case firstHalfMarathon
+    case firstMarathon
 
     var id: String { rawValue }
 }
@@ -79,11 +79,6 @@ struct RecognitionPreview: Identifiable, Equatable {
     let guideLine: String
 
     var id: RecognitionBadgeID { badgeID }
-}
-
-struct RecognitionWeekMarker: Hashable {
-    let yearForWeekOfYear: Int
-    let weekOfYear: Int
 }
 
 @MainActor
@@ -209,6 +204,26 @@ final class RecognitionStore: ObservableObject {
 
     func previewPostRunRecognition(
         summary: ActivitySummary,
+        activityType: ActivityType,
+        priorActivities: [SavedActivity],
+        goalProgress: GoalProgressSnapshot?
+    ) -> [RecognitionPreview] {
+        let candidate = ActivityCandidate(
+            activityType: activityType,
+            startedAt: summary.startedAt,
+            distanceM: summary.distanceM
+        )
+
+        return candidateBadgeIDs(
+            for: candidate,
+            priorActivities: priorActivities,
+            goalProgress: goalProgress
+        )
+        .map(preview(for:))
+    }
+
+    func previewPostRunRecognition(
+        summary: ActivitySummary,
         priorActivities: [SavedActivity],
         readiness: DailyReadiness?,
         intent: SessionIntent?,
@@ -216,22 +231,47 @@ final class RecognitionStore: ObservableObject {
         photoCount: Int,
         now: Date = Date()
     ) -> [RecognitionPreview] {
+        previewPostRunRecognition(
+            summary: summary,
+            activityType: intent?.resolvedActivityType ?? .running,
+            priorActivities: priorActivities,
+            goalProgress: goalProgress
+        )
+    }
+
+    func recordSavedActivity(
+        _ activity: SavedActivity,
+        priorActivities: [SavedActivity],
+        goalProgress: GoalProgressSnapshot?,
+        now: Date = Date()
+    ) -> [RecognitionAward] {
         let candidate = ActivityCandidate(
-            sourceActivityID: nil,
-            startedAt: summary.startedAt,
-            durationSecs: summary.durationSecs,
-            photoCount: photoCount
+            activityType: activity.activityType,
+            startedAt: activity.startedAt,
+            distanceM: activity.distanceM
         )
 
-        return candidateBadgeIDs(
+        let newAwards = candidateBadgeIDs(
             for: candidate,
             priorActivities: priorActivities,
-            readiness: readiness,
-            intent: intent,
-            goalProgress: goalProgress,
-            now: now
+            goalProgress: goalProgress
         )
-        .map(preview(for:))
+        .compactMap { awardBadgeIfNeeded($0, sourceActivityID: activity.id, now: now) }
+
+        if !newAwards.isEmpty {
+            persistAwards()
+            scheduleSync()
+            Task {
+                await analyticsManager?.track(.init(
+                    .recognitionAwarded,
+                    properties: [
+                        .countBucket: .string(ProductAnalyticsBucket.count(newAwards.count)),
+                        .sourceType: .string("activity")
+                    ]
+                ))
+            }
+        }
+        return newAwards
     }
 
     func recordSavedActivity(
@@ -242,28 +282,12 @@ final class RecognitionStore: ObservableObject {
         goalProgress: GoalProgressSnapshot?,
         now: Date = Date()
     ) -> [RecognitionAward] {
-        let candidate = ActivityCandidate(
-            sourceActivityID: activity.id,
-            startedAt: activity.startedAt,
-            durationSecs: activity.durationSecs,
-            photoCount: activity.photos.count
-        )
-
-        let newAwards = candidateBadgeIDs(
-            for: candidate,
+        recordSavedActivity(
+            activity,
             priorActivities: priorActivities,
-            readiness: readiness,
-            intent: intent,
             goalProgress: goalProgress,
             now: now
         )
-        .compactMap { awardBadgeIfNeeded($0, sourceActivityID: activity.id, now: now) }
-
-        if !newAwards.isEmpty {
-            persistAwards()
-            scheduleSync()
-        }
-        return newAwards
     }
 
     func preview(for badgeID: RecognitionBadgeID) -> RecognitionPreview {
@@ -278,10 +302,7 @@ final class RecognitionStore: ObservableObject {
     private func candidateBadgeIDs(
         for candidate: ActivityCandidate,
         priorActivities: [SavedActivity],
-        readiness: DailyReadiness?,
-        intent: SessionIntent?,
-        goalProgress: GoalProgressSnapshot?,
-        now: Date
+        goalProgress: GoalProgressSnapshot?
     ) -> [RecognitionBadgeID] {
         var badgeIDs: [RecognitionBadgeID] = []
 
@@ -289,41 +310,32 @@ final class RecognitionStore: ObservableObject {
             badgeIDs.append(.firstStep)
         }
 
-        if candidate.durationSecs < 15 * 60 {
-            badgeIDs.append(.shortCounts)
-        }
-
         if isComeback(candidate.startedAt, priorActivities: priorActivities) {
             badgeIDs.append(.backInMotion)
         }
 
-        if isFinalDayOfWeek(candidate.startedAt) {
-            badgeIDs.append(.weekClosedWell)
-        }
-
         if goalProgress?.isComplete == true {
-            badgeIDs.append(.threeThisWeek)
+            badgeIDs.append(.weeklyFocusComplete)
         }
 
-        if isEasyEffort(readiness: readiness, intent: intent) {
-            badgeIDs.append(.keptItEasy)
+        if hasFourWeekRhythm(candidate.startedAt, priorActivities: priorActivities) {
+            badgeIDs.append(.fourWeekRhythm)
         }
 
-        if activitiesThisWeek(priorActivities, containing: candidate.startedAt) + 1 >= 3 {
-            badgeIDs.append(.finishedWhatYouStarted)
-        }
-
-        if spansTwoWeeksWithinReturnWindow(candidate.startedAt, priorActivities: priorActivities) {
-            badgeIDs.append(.steadyReturn)
+        if [.running, .walking, .hiking].contains(candidate.activityType) {
+            let distanceMilestones: [(RecognitionBadgeID, Double)] = [
+                (.first5K, 5_000),
+                (.first10K, 10_000),
+                (.firstHalfMarathon, 21_097.5),
+                (.firstMarathon, 42_195),
+            ]
+            badgeIDs.append(contentsOf: distanceMilestones.compactMap { badgeID, threshold in
+                candidate.distanceM >= threshold ? badgeID : nil
+            })
         }
 
         let notYetEarned = badgeIDs.filter { !hasAwarded($0) }
         return notYetEarned.sorted { Self.definition(for: $0).priority > Self.definition(for: $1).priority }
-    }
-
-    private func activitiesThisWeek(_ activities: [SavedActivity], containing date: Date) -> Int {
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: date) else { return 0 }
-        return activities.filter { week.contains($0.startedAt) }.count
     }
 
     private func isComeback(_ date: Date, priorActivities: [SavedActivity]) -> Bool {
@@ -337,44 +349,18 @@ final class RecognitionStore: ObservableObject {
         }
     }
 
-    private func isFinalDayOfWeek(_ date: Date) -> Bool {
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: date),
-              let lastDay = calendar.date(byAdding: .day, value: 6, to: week.start) else {
-            return false
+    private func hasFourWeekRhythm(_ date: Date, priorActivities: [SavedActivity]) -> Bool {
+        guard let currentWeek = calendar.dateInterval(of: .weekOfYear, for: date) else { return false }
+        let activeWeekStarts = Set(priorActivities.compactMap {
+            calendar.dateInterval(of: .weekOfYear, for: $0.startedAt)?.start
+        }).union([currentWeek.start])
+
+        return (0..<4).allSatisfy { offset in
+            guard let requiredWeek = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeek.start) else {
+                return false
+            }
+            return activeWeekStarts.contains(requiredWeek)
         }
-        return calendar.isDate(date, inSameDayAs: lastDay)
-    }
-
-    private func isEasyEffort(readiness: DailyReadiness?, intent: SessionIntent?) -> Bool {
-        if readiness == .lowEnergy || readiness == .stressed {
-            return true
-        }
-
-        guard let intent else { return false }
-        let haystack = "\(intent.id) \(intent.title) \(intent.detail) \(intent.guideLine)".lowercased()
-        let hints = ["easy", "reset", "fresh", "comeback", "light", "walk", "recovery"]
-        return hints.contains { haystack.contains($0) }
-    }
-
-    private func spansTwoWeeksWithinReturnWindow(_ date: Date, priorActivities: [SavedActivity]) -> Bool {
-        guard let startWindow = calendar.date(byAdding: .day, value: -21, to: date) else { return false }
-
-        var markers = Set<RecognitionWeekMarker>()
-        markers.insert(weekMarker(for: date))
-
-        for activity in priorActivities where activity.startedAt >= startWindow && activity.startedAt <= date {
-            markers.insert(weekMarker(for: activity.startedAt))
-        }
-
-        return markers.count >= 2
-    }
-
-    private func weekMarker(for date: Date) -> RecognitionWeekMarker {
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-        return RecognitionWeekMarker(
-            yearForWeekOfYear: components.yearForWeekOfYear ?? 0,
-            weekOfYear: components.weekOfYear ?? 0
-        )
     }
 
     private func hasAwarded(_ badgeID: RecognitionBadgeID) -> Bool {
@@ -468,15 +454,6 @@ final class RecognitionStore: ObservableObject {
                 shareEligible: false,
                 priority: 70
             )
-        case .shortCounts:
-            return RecognitionDefinition(
-                id: badgeID,
-                family: .showedUp,
-                title: String(localized: "recognition.badge.short_counts.title", defaultValue: "Short Counts"),
-                symbolName: "bolt.heart.fill",
-                shareEligible: false,
-                priority: 65
-            )
         case .backInMotion:
             return RecognitionDefinition(
                 id: badgeID,
@@ -486,50 +463,59 @@ final class RecognitionStore: ObservableObject {
                 shareEligible: true,
                 priority: 100
             )
-        case .weekClosedWell:
-            return RecognitionDefinition(
-                id: badgeID,
-                family: .showedUp,
-                title: String(localized: "recognition.badge.week_closed_well.title", defaultValue: "Week Closed Well"),
-                symbolName: "calendar.badge.checkmark",
-                shareEligible: false,
-                priority: 60
-            )
-        case .threeThisWeek:
+        case .weeklyFocusComplete:
             return RecognitionDefinition(
                 id: badgeID,
                 family: .momentum,
-                title: String(localized: "recognition.badge.three_this_week.title", defaultValue: "Three This Week"),
+                title: String(localized: "recognition.badge.weekly_focus_complete.title", defaultValue: "Weekly Focus Complete"),
                 symbolName: "target",
                 shareEligible: true,
                 priority: 90
             )
-        case .keptItEasy:
+        case .fourWeekRhythm:
             return RecognitionDefinition(
                 id: badgeID,
                 family: .momentum,
-                title: String(localized: "recognition.badge.kept_it_easy.title", defaultValue: "Kept It Easy"),
-                symbolName: "leaf.fill",
+                title: String(localized: "recognition.badge.four_week_rhythm.title", defaultValue: "Four-Week Rhythm"),
+                symbolName: "calendar.badge.checkmark",
                 shareEligible: false,
-                priority: 75
+                priority: 85
             )
-        case .finishedWhatYouStarted:
+        case .first5K:
             return RecognitionDefinition(
                 id: badgeID,
                 family: .momentum,
-                title: String(localized: "recognition.badge.finished_what_you_started.title", defaultValue: "Finished What You Started"),
-                symbolName: "checkmark.seal.fill",
-                shareEligible: false,
-                priority: 80
+                title: String(localized: "recognition.badge.first_5k.title", defaultValue: "First 5K"),
+                symbolName: "5.circle.fill",
+                shareEligible: true,
+                priority: 82
             )
-        case .steadyReturn:
+        case .first10K:
             return RecognitionDefinition(
                 id: badgeID,
                 family: .momentum,
-                title: String(localized: "recognition.badge.steady_return.title", defaultValue: "Steady Return"),
-                symbolName: "waveform.path.ecg",
-                shareEligible: false,
-                priority: 72
+                title: String(localized: "recognition.badge.first_10k.title", defaultValue: "First 10K"),
+                symbolName: "10.circle.fill",
+                shareEligible: true,
+                priority: 84
+            )
+        case .firstHalfMarathon:
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.first_half_marathon.title", defaultValue: "First Half Marathon"),
+                symbolName: "medal.fill",
+                shareEligible: true,
+                priority: 92
+            )
+        case .firstMarathon:
+            return RecognitionDefinition(
+                id: badgeID,
+                family: .momentum,
+                title: String(localized: "recognition.badge.first_marathon.title", defaultValue: "First Marathon"),
+                symbolName: "trophy.fill",
+                shareEligible: true,
+                priority: 95
             )
         }
     }
@@ -541,50 +527,49 @@ final class RecognitionStore: ObservableObject {
                 localized: "recognition.badge.first_step.detail",
                 defaultValue: "You turned the first session into something real."
             )
-        case .shortCounts:
-            return String(
-                localized: "recognition.badge.short_counts.detail",
-                defaultValue: "You didn't wait for a bigger window. You used the one you had."
-            )
         case .backInMotion:
             return String(
                 localized: "recognition.badge.back_in_motion.detail",
                 defaultValue: "You came back before it felt perfect. That's real momentum."
             )
-        case .weekClosedWell:
+        case .weeklyFocusComplete:
             return String(
-                localized: "recognition.badge.week_closed_well.detail",
-                defaultValue: "You gave the week a clean finish instead of letting it drift."
-            )
-        case .threeThisWeek:
-            return String(
-                localized: "recognition.badge.three_this_week.detail",
+                localized: "recognition.badge.weekly_focus_complete.detail",
                 defaultValue: "You followed through on the week you were trying to build."
             )
-        case .keptItEasy:
+        case .fourWeekRhythm:
             return String(
-                localized: "recognition.badge.kept_it_easy.detail",
-                defaultValue: "You kept the effort honest. That kind of restraint builds trust."
+                localized: "recognition.badge.four_week_rhythm.detail",
+                defaultValue: "You showed up across four straight weeks. That is a rhythm you can build on."
             )
-        case .finishedWhatYouStarted:
+        case .first5K:
             return String(
-                localized: "recognition.badge.finished_what_you_started.detail",
-                defaultValue: "You kept the pattern alive long enough for it to feel like rhythm."
+                localized: "recognition.badge.first_5k.detail",
+                defaultValue: "Five kilometers in one activity. You have a real distance marker now."
             )
-        case .steadyReturn:
+        case .first10K:
             return String(
-                localized: "recognition.badge.steady_return.detail",
-                defaultValue: "This isn't a one-off anymore. You're building your way back."
+                localized: "recognition.badge.first_10k.detail",
+                defaultValue: "Ten kilometers changes what the next finish line can look like."
+            )
+        case .firstHalfMarathon:
+            return String(
+                localized: "recognition.badge.first_half_marathon.detail",
+                defaultValue: "You carried the effort through 21.1 kilometers. That belongs in your history."
+            )
+        case .firstMarathon:
+            return String(
+                localized: "recognition.badge.first_marathon.detail",
+                defaultValue: "42.2 kilometers, start to finish. You earned a milestone that lasts."
             )
         }
     }
 }
 
 private struct ActivityCandidate {
-    let sourceActivityID: UUID?
+    let activityType: ActivityType
     let startedAt: Date
-    let durationSecs: Int
-    let photoCount: Int
+    let distanceM: Double
 }
 
 struct RecognitionPill: View {
@@ -695,13 +680,13 @@ struct RecognitionEmptyState: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(String(
                     localized: "recognition.empty.title",
-                    defaultValue: "Your first moment is waiting"
+                    defaultValue: "Your first milestone is ahead"
                 ))
                 .font(.subheadline.weight(.semibold))
 
                 Text(String(
                     localized: "recognition.empty.detail",
-                    defaultValue: "Save an activity and Plainstride will notice the effort that mattered."
+                    defaultValue: "Save activities and meaningful firsts, distance, consistency, and comebacks will appear here."
                 ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -721,7 +706,7 @@ struct RecognitionHistoryView: View {
             LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                 Text(String(
                     localized: "recognition.history.intro",
-                    defaultValue: "Plainstride notices beginnings, comebacks, and momentum—not points or streaks."
+                    defaultValue: "The moments here mark meaningful beginnings, distance, consistency, and comebacks."
                 ))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -757,7 +742,7 @@ struct RecognitionHistoryView: View {
             .padding(OutboundSpacing.screen)
         }
         .background(OutboundPalette.background)
-        .navigationTitle(String(localized: "recognition.title", defaultValue: "Recognition"))
+        .navigationTitle(String(localized: "recognition.title", defaultValue: "Milestones"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await analyticsManager?.track(.init(.featureExposed, properties: [
@@ -787,7 +772,7 @@ struct RecognitionHeroBadge: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(preview.title)
                         .font(.headline)
-                    Text("A moment worth noticing")
+                    Text(String(localized: "recognition.hero.eyebrow", defaultValue: "Milestone reached"))
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.orange)
                 }
@@ -801,7 +786,10 @@ struct RecognitionHeroBadge: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if secondaryCount > 0 {
-                Text("+\(secondaryCount) more recognition\(secondaryCount == 1 ? "" : "s") ready when you save.")
+                Text(String(
+                    localized: "recognition.hero.more",
+                    defaultValue: "More milestones are ready when you save."
+                ))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }

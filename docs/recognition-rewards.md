@@ -4,32 +4,24 @@ Open this when designing or building badges, milestones, post-run recognition, o
 
 ## Product Goal
 
-Make progress feel noticed, not scored.
-
-Outbound should not use rewards as a generic gamification layer. Recognition should feel like the guide and the product noticing effort, momentum, and participation in a way that helps the user come back tomorrow.
+Keep durable milestones meaningful while letting the guide encourage everyday effort without turning every positive moment into a collectible.
 
 ## Positioning
 
-Use `recognition` as the main product language.
+Use two deliberately different product concepts:
 
-Why:
-- it fits the guide relationship better than `achievement`
-- it can include short sessions, comeback days, and social participation
-- it avoids the cold tone of points, levels, and grind-heavy systems
+- `Milestone`: a durable achievement the runner should still care about months later. Milestones are account-backed and appear in Me history.
+- `Encouragement`: timely guide feedback such as noticing a short session or an appropriately easy day. Encouragement belongs in post-run reflection or Today and is not stored in the milestone collection.
 
-Use `badge` as the internal and UI object when the product needs a compact collectible artifact.
-
-Example mapping:
-- user sees: `Recognition`, `Noticed this week`, `Guide noticed this`
-- app tracks: `BadgeDefinition`, `BadgeAward`, `RecognitionFeedItem`
+Social recognition remains its own lightweight system and should not determine what appears in the runner's personal Milestones history.
 
 ## Principles
 
-- Reward showing up, not only performance.
-- Short sessions count.
+- Preserve encouragement for showing up without minting a permanent badge for every positive behavior.
+- A milestone must represent a clear first, meaningful distance, sustained consistency, completed focus, or genuine comeback.
 - Missed days should not create punishment mechanics.
-- Rewards should feed the next action, not end in a trophy case.
-- The guide should frame why a badge mattered.
+- Encouragement should feed the next action; milestones should preserve meaningful history.
+- The guide should frame why a milestone mattered.
 - Social rewards should feel expressive and lightweight, not cutthroat.
 - V1 should prefer a small set of meaningful badges over a large catalog.
 
@@ -51,7 +43,7 @@ What Outbound should not copy directly:
 
 Treat rewards as a `recognition layer`, not a separate badge shelf.
 
-Recognition should appear in four places:
+Milestones appear in four places:
 
 1. post-run reflection
 2. Today follow-up state on the next app open
@@ -65,7 +57,7 @@ This lets rewards influence behavior immediately instead of becoming a dead arch
 ## V1 Scope
 
 Ship:
-- a curated set of 8-12 badges
+- a curated set of eight durable personal milestones
 - immediate on-device unlock evaluation for the save experience
 - account-backed awards that restore after reinstall or sign-in on another device
 - guide-framed unlock messaging
@@ -81,33 +73,30 @@ Defer:
 - seasonal challenge engine
 - badge rarity economy
 
-## V1 Badge Families
+## Personal Milestone Families
 
-Start with three families so the system is easy to understand.
+Use two personal milestone families; keep Social recognition separate.
 
-### 1. Showed Up
+### 1. Beginnings
 
 Purpose:
-- reward beginnings, re-entry, and small wins
+- preserve meaningful beginnings and returns
 
 Examples:
 - `First Step`: save first activity
-- `Short Counts`: finish a session under 15 minutes
 - `Back In Motion`: save an activity after 7 or more inactive days
-- `Week Closed Well`: save any activity on the final day of the current week
 
-### 2. Momentum
+### 2. Progress
 
 Purpose:
-- reinforce realistic consistency without hard streak pressure
+- preserve meaningful distance, completed focus, and sustained consistency
 
 Examples:
-- `Three This Week`: complete weekly focus
-- `Kept It Easy`: complete an easy-day or low-pressure suggestion
-- `Finished What You Started`: complete 3 saved activities in one week
-- `Steady Return`: complete 2 separate weeks with at least one saved activity
+- `Weekly Focus Complete`: complete the runner's configured weekly focus
+- `Four-Week Rhythm`: save at least one activity in each of four consecutive local calendar weeks
+- `First 5K`, `First 10K`, `First Half Marathon`, and `First Marathon`: reach the distance in one run, walk, or hike
 
-### 3. Social
+### Separate Social Recognition
 
 Purpose:
 - make Social feel participatory, supportive, and alive
@@ -118,24 +107,22 @@ Examples:
 - `Rival Edge`: finish ahead of a rival in a weekly reset
 - `Photo Finish`: share a saved activity with a photo
 
-## V1 Badge Definitions
+## V1 Personal Milestone Definitions
 
 Recommended launch set:
 
 | Badge | Family | Unlock rule | Why it matters |
 | --- | --- | --- | --- |
-| `First Step` | Showed Up | first saved activity | turns first use into an identity moment |
-| `Short Counts` | Showed Up | save activity under 15 minutes | teaches that small sessions count |
-| `Back In Motion` | Showed Up | save activity after 7+ inactive days | supports comeback psychology |
-| `Week Closed Well` | Showed Up | save an activity on the last day of week | promotes gentle weekly closure |
-| `Three This Week` | Momentum | reach weekly focus target | connects goals to recognition |
-| `Kept It Easy` | Momentum | complete low-energy or easy suggestion | rewards restraint and self-awareness |
-| `Finished What You Started` | Momentum | save 3 activities in one calendar week | encourages rhythm without a streak |
-| `Steady Return` | Momentum | active in 2 separate weeks within 21 days | rewards rebuilding consistency |
-| `Good Teammate` | Social | 3 cheers/comments in a week | rewards support, not just output |
-| `Relay Player` | Social | join one social challenge or relay | activates social loops |
-| `Rival Edge` | Social | place ahead of one rival at weekly reset | gives Rivals a payoff |
-| `Photo Finish` | Social | share activity with photo attached | rewards Outbound's camera identity |
+| `First Step` | Beginnings | first saved activity | turns first use into an identity moment |
+| `Back In Motion` | Beginnings | save activity after 7+ inactive days | supports comeback psychology |
+| `Weekly Focus Complete` | Progress | reach the configured weekly focus target | connects an explicit goal to recognition |
+| `Four-Week Rhythm` | Progress | activity in four consecutive local weeks | represents sustained consistency without daily streak pressure |
+| `First 5K` | Progress | reach 5,000 m in one run, walk, or hike | marks a recognizable distance first |
+| `First 10K` | Progress | reach 10,000 m in one run, walk, or hike | marks a recognizable distance first |
+| `First Half Marathon` | Progress | reach 21,097.5 m in one run, walk, or hike | preserves a major endurance achievement |
+| `First Marathon` | Progress | reach 42,195 m in one run, walk, or hike | preserves a major endurance achievement |
+
+`Short Counts`, `Kept It Easy`, and calendar-day closure copy remain eligible themes for the existing post-run reflection engine, but they never create account awards or appear in Milestones. The former `Finished What You Started` rule is removed because it duplicated weekly-focus completion, and the former two-week consistency rule is replaced by `Four-Week Rhythm`.
 
 ## Unlock Logic Guidance
 
@@ -147,9 +134,6 @@ Recommended launch set:
 
 Suggested inactivity rule:
 - `Back In Motion` triggers when no saved activity exists in the previous 7 full days.
-
-Suggested short-session rule:
-- `Short Counts` triggers for any saved activity with duration under 15 minutes, with no minimum pace or distance requirement.
 
 Suggested social rule:
 - Count distinct support actions on distinct activities to avoid spammy farming.
@@ -166,8 +150,8 @@ You came back before it felt perfect. That's real momentum.
 ```
 
 ```text
-Short Counts
-You didn't wait for a big window. You used the one you had.
+First 5K
+Five kilometers in one activity. You have a real distance marker now.
 ```
 
 ```text
@@ -210,8 +194,8 @@ You came back before it felt perfect.
 The next app open should reflect the badge in the spark or momentum area.
 
 Examples:
-- spark subtext: `Guide noticed: Back In Motion`
-- momentum chip: `Short sessions count. You proved it yesterday.`
+- spark subtext: `Milestone reached: Back In Motion`
+- reflection copy may still say `Short sessions count.` without creating a milestone
 - suggestion framing: `Let's build on that, not top it.`
 
 Purpose:
@@ -221,11 +205,10 @@ Purpose:
 
 Only some badges should be shareable.
 
-Recommended shareable set:
+Recommended personal shareable set:
 - `Back In Motion`
-- `Three This Week`
-- `Rival Edge`
-- `Photo Finish`
+- `Weekly Focus Complete`
+- distance milestones
 
 Share behavior:
 - use story-card presentation, not a generic trophy tile
@@ -234,7 +217,7 @@ Share behavior:
 
 ### 4. Profile / History
 
-Me now includes a compact `Milestones` section beneath weekly progress. It shows up to four recent earned badge icons and a trailing disclosure arrow; tapping the card opens the full Recognition destination grouped by family. When nothing has been earned yet, one neutral sparkles icon keeps the row lightweight without exposing locked badges.
+Me includes a compact `Milestones` section beneath weekly progress. It shows up to four recent durable milestone icons and a trailing disclosure arrow; tapping the card opens the full Milestones destination grouped by family. When nothing has been earned yet, one neutral sparkles icon keeps the row lightweight without exposing locked milestones.
 
 The profile/history surface:
 - group by family
@@ -280,7 +263,7 @@ The iOS stores keep an account-scoped `UserDefaults` cache so earned moments ren
 2. fetch the canonical server collection; and
 3. replace the account cache with that response.
 
-The activity save request includes the badge IDs earned from exact client context plus the user's time-zone and calendar-week convention. Authenticated API requests also carry that calendar context so weekly Social rules use the same local-week boundary. The backend backfills rules derivable from synchronized activity history, which restores awards such as `First Step`, `Short Counts`, `Back In Motion`, `Week Closed Well`, `Finished What You Started`, and `Steady Return` even after reinstall. Context-dependent awards such as `Three This Week` and `Kept It Easy` require the saved client claim because historical activities alone do not contain the goal/check-in intent needed to reproduce them accurately.
+The activity save request includes milestone IDs earned from exact client context plus the user's time-zone and calendar-week convention. The backend restores `First Step`, `Back In Motion`, `Four-Week Rhythm`, and distance milestones from synchronized activity history. `Weekly Focus Complete` requires the saved client claim because historical activities alone do not contain the configured goal context.
 
 Social mutations evaluate server-owned rules for `Good Teammate`, `Relay Player`, and `Photo Finish`, while recognition refresh also derives those awards from historical server interactions, memberships, event participation, and photo shares. `Rival Edge` stays dormant until a backend-owned rivalry result exists. Another runner's profile exposes only awards marked shareable, and only to that runner or an accepted connection; the full award collection remains private.
 
@@ -292,7 +275,7 @@ Award deletion does not follow activity deletion. Recognition is a durable accou
 - `GET /v1/recognition` returns the canonical collection and performs safe historical backfill.
 - `POST /v1/recognition/claims` migrates exact-context awards detected by the client.
 - `RecognitionStore` and `SocialRecognitionStore` provide the account-scoped offline cache and reconcile it with the server.
-- Post-run, Today, Me, History, and accepted-connection profiles render from those reconciled awards.
+- Post-run, Today, Me, History, and accepted-connection profiles render from those reconciled durable awards. Existing obsolete award rows are filtered from API responses.
 
 Apply the schema before deploying the API:
 
@@ -324,7 +307,6 @@ Avoid:
 
 ## Open Questions
 
-- Should `Photo Finish` belong to Social or a future Story family once media loops deepen?
-- Should `Week Closed Well` use Sunday specifically or the locale-aware last day of week?
-- Does `Kept It Easy` require a guided suggestion start, or can guide intent be inferred from check-in state?
+- Should `Photo Finish` remain Social recognition or become a transient Story encouragement once media loops deepen?
+- Which personal-best milestones should join the distance-first set once comparable effort calculations are canonical?
 - When multiple badges unlock at once, which family gets display priority in post-run?
