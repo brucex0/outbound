@@ -6,6 +6,11 @@ struct SocialPeopleSearchOutcome: Sendable {
     let matchMode: String
 }
 
+struct ConnectionLinkConsumptionOutcome: Sendable {
+    let shouldClearPendingURL: Bool
+    let analyticsResult: String
+}
+
 @MainActor
 final class TogetherStore: ObservableObject {
     @Published private(set) var state: TogetherResponseDTO
@@ -26,6 +31,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var blocks: [SocialBlockDTO] = []
     @Published private(set) var resultsByActivityEventID: [String: ActivityEventResultDTO] = [:]
     @Published private(set) var recordingActivityEventID: String?
+    @Published private(set) var connectionLinkToast: String?
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -257,6 +263,53 @@ final class TogetherStore: ObservableObject {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+
+    func consumeConnectionLink(code: String) async -> ConnectionLinkConsumptionOutcome {
+        do {
+            let response = try await api.requestConnection(linkCode: code)
+            connectionLinkToast = switch response.result {
+            case "requested":
+                String(localized: "Connection request sent")
+            case "already_pending":
+                String(localized: "Connection request already sent")
+            case "incoming_pending":
+                String(localized: "This runner already sent you a connection request")
+            case "already_connected":
+                String(localized: "You’re already connected")
+            case "self":
+                String(localized: "This is your QR code")
+            default:
+                String(localized: "Connection request updated")
+            }
+            errorMessage = nil
+            if response.result != "self" {
+                await refreshConnections()
+                await refreshNotifications()
+                await refresh()
+            }
+            return ConnectionLinkConsumptionOutcome(
+                shouldClearPendingURL: true,
+                analyticsResult: Self.analyticsConnectionLinkResult(response.result)
+            )
+        } catch {
+            connectionLinkToast = String(localized: "Could not send the connection request. Try again.")
+            let isPermanentFailure: Bool
+            if let apiError = error as? APIError,
+               case let .http(statusCode, _, _) = apiError {
+                isPermanentFailure = (400..<500).contains(statusCode)
+            } else {
+                isPermanentFailure = false
+            }
+            return ConnectionLinkConsumptionOutcome(
+                shouldClearPendingURL: isPermanentFailure,
+                analyticsResult: isPermanentFailure ? "invalid" : "failure"
+            )
+        }
+    }
+
+    func clearConnectionLinkToast() {
+        connectionLinkToast = nil
     }
 
     func react(to post: TogetherPostDTO) async {
@@ -573,8 +626,16 @@ final class TogetherStore: ObservableObject {
         blocks = []
         resultsByActivityEventID = [:]
         recordingActivityEventID = nil
+        connectionLinkToast = nil
         nextConnectionsCursor = nil
         latestPeopleSearchQuery = ""
+    }
+
+    nonisolated private static func analyticsConnectionLinkResult(_ result: String) -> String {
+        switch result {
+        case "requested", "already_pending", "incoming_pending", "already_connected", "self": result
+        default: "unknown"
+        }
     }
 
     private func loadUITestState() {
@@ -961,4 +1022,14 @@ struct ReferralLinkResponseDTO: Decodable {
 struct ReferralClaimResponseDTO: Decodable {
     let claimed: Bool
     let reason: String?
+}
+
+struct ConnectionLinkResponseDTO: Decodable, Sendable {
+    let code: String
+    let url: URL
+}
+
+struct ConnectionLinkRequestResponseDTO: Decodable, Sendable {
+    let result: String
+    let person: SocialPersonDTO
 }

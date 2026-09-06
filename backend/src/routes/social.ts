@@ -384,30 +384,43 @@ function isMissingTrigramExtension(error: unknown): boolean {
 router.post("/connections", zValidator("json", z.object({ userId: z.string().min(1) })), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const addresseeId = c.req.valid("json").userId;
-  if (addresseeId === user.id) return c.json({ error: "You cannot connect to yourself." }, 400);
-  const addressee = await getPrismaClient().user.findUnique({
-    where: { id: addresseeId },
-    select: { id: true },
+  const outcome = await createConnectionRequest(user, c.req.valid("json").userId);
+  if (!outcome.ok) return c.json({ error: outcome.error }, outcome.status);
+  return c.json(outcome.connection, outcome.created ? 201 : 200);
+});
+
+router.post("/connection-links", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const existing = await getPrismaClient().referralLink.findUnique({ where: { creatorId: user.id } });
+  const link = existing ?? await getPrismaClient().referralLink.create({
+    data: { creatorId: user.id, code: randomBytes(12).toString("base64url") },
   });
-  if (!addressee) return c.json({ error: "Person not found." }, 404);
-  if ((await blockedUserIDs(user.id)).includes(addresseeId)) {
-    return c.json({ error: "Person not found." }, 404);
+  return c.json({
+    code: link.code,
+    url: `${publicWebBaseURL()}/connect/${link.code}`,
+  }, existing ? 200 : 201);
+});
+
+router.post("/connection-links/:code/request", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const code = c.req.param("code");
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(code)) {
+    return c.json({ error: "Connection link not found." }, 404);
   }
-  const existing = await getPrismaClient().connection.findFirst({
-    where: {
-      OR: [
-        { requesterId: user.id, addresseeId },
-        { requesterId: addresseeId, addresseeId: user.id },
-      ],
-    },
+  const link = await getPrismaClient().referralLink.findUnique({
+    where: { code },
+    include: { creator: { select: socialPersonSelect } },
   });
-  if (existing) return c.json(existing, 200);
-  const connection = await getPrismaClient().connection.create({
-    data: { requesterId: user.id, addresseeId },
-  });
-  await createSocialNotification(addresseeId, user.id, "connectionRequest", connection.id, `${user.displayName} wants to connect.`);
-  return c.json(connection, 201);
+  if (!link) return c.json({ error: "Connection link not found." }, 404);
+  if (link.creatorId === user.id) {
+    return c.json({ result: "self", person: link.creator });
+  }
+
+  const outcome = await createConnectionRequest(user, link.creatorId);
+  if (!outcome.ok) return c.json({ error: "Connection link not found." }, outcome.status);
+  return c.json({ result: outcome.result, person: link.creator }, outcome.created ? 201 : 200);
 });
 
 router.post("/connections/:id/accept", async (c) => {
@@ -1020,6 +1033,58 @@ async function blockedUserIDs(userId: string) {
     select: { blockerId: true, blockedId: true },
   });
   return blocks.map((block) => block.blockerId === userId ? block.blockedId : block.blockerId);
+}
+
+type ConnectionRequestOutcome =
+  | {
+      ok: true;
+      connection: Awaited<ReturnType<ReturnType<typeof getPrismaClient>["connection"]["create"]>>;
+      created: boolean;
+      result: "requested" | "already_pending" | "incoming_pending" | "already_connected";
+    }
+  | { ok: false; status: 400 | 404; error: string };
+
+async function createConnectionRequest(
+  requester: { id: string; displayName: string },
+  addresseeId: string
+): Promise<ConnectionRequestOutcome> {
+  if (addresseeId === requester.id) {
+    return { ok: false, status: 400, error: "You cannot connect to yourself." };
+  }
+  const addressee = await getPrismaClient().user.findUnique({
+    where: { id: addresseeId },
+    select: { id: true },
+  });
+  if (!addressee || (await blockedUserIDs(requester.id)).includes(addresseeId)) {
+    return { ok: false, status: 404, error: "Person not found." };
+  }
+  const existing = await getPrismaClient().connection.findFirst({
+    where: {
+      OR: [
+        { requesterId: requester.id, addresseeId },
+        { requesterId: addresseeId, addresseeId: requester.id },
+      ],
+    },
+  });
+  if (existing) {
+    const result = existing.status === "accepted"
+      ? "already_connected"
+      : existing.requesterId === requester.id
+        ? "already_pending"
+        : "incoming_pending";
+    return { ok: true, connection: existing, created: false, result };
+  }
+  const connection = await getPrismaClient().connection.create({
+    data: { requesterId: requester.id, addresseeId },
+  });
+  await createSocialNotification(
+    addresseeId,
+    requester.id,
+    "connectionRequest",
+    connection.id,
+    `${requester.displayName} wants to connect.`
+  );
+  return { ok: true, connection, created: true, result: "requested" };
 }
 
 async function createSocialNotification(recipientId: string, actorId: string, type: string, objectId: string, message: string) {

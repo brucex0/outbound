@@ -175,6 +175,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     @EnvironmentObject private var circleStore: CircleStore
+    @EnvironmentObject private var socialStore: TogetherStore
     @Binding var selection: SimplifiedAppTab
     let activitySessionState: ActivitySessionPortalState
     let isActivityFullscreenVisible: Bool
@@ -200,6 +201,7 @@ struct SimplifiedAppShell: View {
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
     @State private var completionCircle: CircleDTO?
     @State private var circleToast: String?
+    @State private var connectionToast: String?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -266,8 +268,11 @@ struct SimplifiedAppShell: View {
             .padding(.bottom, 40)
         }
         .overlay(alignment: .top) {
-            if let circleToast {
-                Label(circleToast, systemImage: "person.3.fill")
+            if let toast = circleToast ?? connectionToast {
+                Label(
+                    toast,
+                    systemImage: circleToast == nil ? "person.badge.plus" : "person.3.fill"
+                )
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(.regularMaterial, in: Capsule())
@@ -277,11 +282,18 @@ struct SimplifiedAppShell: View {
             }
         }
         .animation(.snappy, value: circleToast)
+        .animation(.snappy, value: connectionToast)
         .task(id: circleToast) {
             guard circleToast != nil else { return }
             try? await Task.sleep(for: .seconds(3.6))
             guard !Task.isCancelled else { return }
             circleToast = nil
+        }
+        .task(id: connectionToast) {
+            guard connectionToast != nil else { return }
+            try? await Task.sleep(for: .seconds(3.6))
+            guard !Task.isCancelled else { return }
+            connectionToast = nil
         }
         .fullScreenCover(item: $completionCircle) { circle in
             CircleCompletionCelebrationView(circle: circle) {
@@ -446,6 +458,12 @@ struct SimplifiedAppShell: View {
             guard completionCircle == nil, let message else { return }
             circleToast = message
             circleStore.clearToast()
+        }
+        .onChange(of: socialStore.connectionLinkToast, initial: true) { _, message in
+            guard let message else { return }
+            selection = .social
+            connectionToast = message
+            socialStore.clearConnectionLinkToast()
         }
         .onChange(of: preActivityRoute) { _, route in
             selectedRouteName = route?.name
@@ -3394,7 +3412,7 @@ private struct SimplifiedMyQRCodeView: View {
     let displayName: String
     let username: String?
     let avatarURL: String?
-    @State private var referralURL: URL?
+    @State private var connectionURL: URL?
     @State private var isLoading = true
     @State private var hasError = false
 
@@ -3418,8 +3436,8 @@ private struct SimplifiedMyQRCodeView: View {
 
                 OutboundCard {
                     VStack(spacing: OutboundSpacing.standard) {
-                        if let referralURL,
-                           let qrImage = QRCodeRenderer.image(for: referralURL) {
+                        if let connectionURL,
+                           let qrImage = QRCodeRenderer.image(for: connectionURL) {
                             Image(uiImage: qrImage)
                                 .interpolation(.none)
                                 .resizable()
@@ -3464,7 +3482,7 @@ private struct SimplifiedMyQRCodeView: View {
                 .entrySource: .string("me_profile_card")
             ]))
             do {
-                referralURL = try await APIClient.shared.createReferralLink().url
+                connectionURL = try await APIClient.shared.createConnectionLink().url
             } catch {
                 hasError = true
             }

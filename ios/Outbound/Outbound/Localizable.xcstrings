@@ -18615,6 +18615,48 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "我的二维码" } }
       }
     },
+    "Connection request sent" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solicitud de conexión enviada" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已发送连接请求" } }
+      }
+    },
+    "Connection request already sent" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ya enviaste una solicitud de conexión" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接请求已发送" } }
+      }
+    },
+    "This runner already sent you a connection request" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta persona ya te envió una solicitud de conexión" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "对方已向你发送连接请求" } }
+      }
+    },
+    "You’re already connected" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ya están conectados" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你们已经建立连接" } }
+      }
+    },
+    "This is your QR code" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este es tu código QR" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这是你自己的二维码" } }
+      }
+    },
+    "Connection request updated" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solicitud de conexión actualizada" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接请求已更新" } }
+      }
+    },
+    "Could not send the connection request. Try again." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo enviar la solicitud de conexión. Inténtalo de nuevo." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法发送连接请求，请重试。" } }
+      }
+    },
     "Show my QR code" : {
       "localizations" : {
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar mi código QR" } },

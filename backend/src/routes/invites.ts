@@ -19,6 +19,7 @@ router.get("/.well-known/apple-app-site-association", (c) => {
           components: [
             { "/": "/invite", comment: "Plainstride app invitation" },
             { "/": "/invite/*", comment: "Plainstride run invitations" },
+            { "/": "/connect/*", comment: "Plainstride connection links" },
             { "/": "/live/group/*", comment: "Plainstride live group invitations" },
           ],
         },
@@ -50,6 +51,7 @@ router.get("/.well-known/assetlinks.json", (c) => {
 
 router.get("/invite", inviteLanding);
 router.get("/invite/*", inviteLanding);
+router.get("/connect/:token", inviteLanding);
 router.get("/live/group/:token", inviteLanding);
 
 async function inviteLanding(c: Context<AppEnv>) {

@@ -507,6 +507,14 @@ final class APIClient {
         try await post("/social/connections", body: SocialConnectionRequestDTO(userId: userID))
     }
 
+    func createConnectionLink() async throws -> ConnectionLinkResponseDTO {
+        try await post("/social/connection-links", body: EmptyBody())
+    }
+
+    func requestConnection(linkCode: String) async throws -> ConnectionLinkRequestResponseDTO {
+        try await post("/social/connection-links/\(linkCode)/request", body: EmptyBody())
+    }
+
     func acceptSocialConnection(id: String) async throws -> SocialConnectionMutationDTO {
         try await post("/social/connections/\(id)/accept", body: EmptyBody())
     }

@@ -11,6 +11,14 @@ enum PlainstrideLinks {
             .appending(path: token)
     }
 
+    static func connectionCode(from url: URL) -> String? {
+        guard url.scheme == "https", url.host == webOrigin.host else { return nil }
+        let components = url.pathComponents.filter { $0 != "/" }
+        guard components.count == 2,
+              components[0] == "connect" else { return nil }
+        return components[1]
+    }
+
     static func liveGroupToken(from url: URL) -> String? {
         guard url.scheme == "https", url.host == webOrigin.host else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
