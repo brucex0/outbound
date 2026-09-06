@@ -18609,6 +18609,48 @@
         }
       }
     },
+    "My QR Code" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mi código QR" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "我的二维码" } }
+      }
+    },
+    "Show my QR code" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar mi código QR" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示我的二维码" } }
+      }
+    },
+    "My Plainstride QR code" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mi código QR de Plainstride" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "我的 Plainstride 二维码" } }
+      }
+    },
+    "Scan this QR code to join me on Plainstride." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escanea este código QR para unirte a mí en Plainstride." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "扫描此二维码，和我一起使用 Plainstride。" } }
+      }
+    },
+    "QR code unavailable" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Código QR no disponible" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "二维码不可用" } }
+      }
+    },
+    "Try again when you have a connection." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inténtalo de nuevo cuando tengas conexión." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "联网后请重试。" } }
+      }
+    },
+    "Change profile photo" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cambiar foto de perfil" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更换头像" } }
+      }
+    },
     "Change plan" : {
       "localizations" : {
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Cambiar plan" } },

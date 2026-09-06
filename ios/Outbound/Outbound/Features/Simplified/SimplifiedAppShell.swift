@@ -2573,6 +2573,7 @@ private struct SimplifiedMeView: View {
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
     @State private var showsConnections = false
+    @State private var showsQRCode = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
     @State private var hasTrackedCalorieExposure = false
@@ -2582,38 +2583,55 @@ private struct SimplifiedMeView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 LazyVStack(spacing: OutboundSpacing.standard) {
-                    NavigationLink {
-                        SimplifiedProfileView(
-                            profile: profile,
-                            onProfileUpdated: { profile = $0 },
-                            onTrainingProfileUpdated: applyTrainingProfile
-                        )
-                    } label: {
-                        OutboundCard {
-                            HStack(spacing: 14) {
-                                UserAvatarView(
-                                    url: profile?.avatarUrl,
-                                    name: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
-                                    size: 58
+                    OutboundCard {
+                        HStack(spacing: 12) {
+                            NavigationLink {
+                                SimplifiedProfileView(
+                                    profile: profile,
+                                    onProfileUpdated: { profile = $0 },
+                                    onTrainingProfileUpdated: applyTrainingProfile
                                 )
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(profile?.displayName ?? authStore.currentLoginLabel ?? "Your profile")
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
-                                    if let username = profile?.username {
-                                        Text("@\(username)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                            } label: {
+                                HStack(spacing: 14) {
+                                    UserAvatarView(
+                                        url: profile?.avatarUrl,
+                                        name: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
+                                        size: 58
+                                    )
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(profile?.displayName ?? authStore.currentLoginLabel ?? "Your profile")
+                                            .font(.headline)
+                                            .foregroundStyle(.primary)
+                                        if let username = profile?.username {
+                                            Text("@\(username)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+
+                            Spacer(minLength: 0)
+
+                            Button {
+                                showsQRCode = true
+                            } label: {
+                                Image(systemName: "qrcode")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "Show my QR code"))
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
                         }
                     }
-                    .buttonStyle(.plain)
                     connectionsPreview
                     Button(action: onOpenPlan) {
                         OutboundCard {
@@ -2781,6 +2799,13 @@ private struct SimplifiedMeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
+            .navigationDestination(isPresented: $showsQRCode) {
+                SimplifiedMyQRCodeView(
+                    displayName: profile?.displayName ?? authStore.currentLoginLabel ?? String(localized: "Your profile"),
+                    username: profile?.username,
+                    avatarURL: profile?.avatarUrl
+                )
+            }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
             }
@@ -3364,6 +3389,90 @@ private struct SimplifiedProfileView: View {
     }
 }
 
+private struct SimplifiedMyQRCodeView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    let displayName: String
+    let username: String?
+    let avatarURL: String?
+    @State private var referralURL: URL?
+    @State private var isLoading = true
+    @State private var hasError = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: OutboundSpacing.standard) {
+                OutboundCard {
+                    VStack(spacing: OutboundSpacing.compact) {
+                        UserAvatarView(url: avatarURL, name: displayName, size: 64)
+                        Text(displayName)
+                            .font(.headline)
+                        if let username, !username.isEmpty {
+                            Text("@\(username)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+
+                OutboundCard {
+                    VStack(spacing: OutboundSpacing.standard) {
+                        if let referralURL,
+                           let qrImage = QRCodeRenderer.image(for: referralURL) {
+                            Image(uiImage: qrImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 280, height: 280)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .accessibilityLabel(String(localized: "My Plainstride QR code"))
+
+                            Text(String(
+                                localized: "Scan this QR code to join me on Plainstride.",
+                                defaultValue: "Scan this QR code to join me on Plainstride."
+                            ))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        } else if isLoading {
+                            ProgressView()
+                                .frame(width: 280, height: 280)
+                        } else if hasError {
+                            ContentUnavailableView(
+                                String(localized: "QR code unavailable"),
+                                systemImage: "qrcode",
+                                description: Text(String(
+                                    localized: "Try again when you have a connection.",
+                                    defaultValue: "Try again when you have a connection."
+                                ))
+                            )
+                            .frame(height: 280)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(String(localized: "My QR Code"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await analyticsManager?.track(.init(.profileQRCodeOpened, properties: [
+                .entrySource: .string("me_profile_card")
+            ]))
+            do {
+                referralURL = try await APIClient.shared.createReferralLink().url
+            } catch {
+                hasError = true
+            }
+            isLoading = false
+        }
+    }
+}
+
 private struct SimplifiedProfileEditorView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
@@ -3418,22 +3527,34 @@ private struct SimplifiedProfileEditorView: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    UserAvatarView(
-                        url: avatarUrl,
-                        name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
-                        size: 58,
-                        isProfileLoading: isLoading
-                    )
+                    PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
+                        UserAvatarView(
+                            url: avatarUrl,
+                            name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
+                            size: 58,
+                            isProfileLoading: isLoading
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(localized: "Change profile photo"))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
                     }
                     Spacer()
-                    PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
-                        Text(isUploadingAvatar ? "Uploading…" : "Change photo")
-                            .font(.subheadline.weight(.semibold))
+                    NavigationLink {
+                        SimplifiedMyQRCodeView(
+                            displayName: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
+                            username: username.isEmpty ? nil : username,
+                            avatarURL: avatarUrl
+                        )
+                    } label: {
+                        Image(systemName: "qrcode")
+                            .font(.headline.weight(.semibold))
+                            .frame(width: 44, height: 44)
                     }
                     .disabled(isUploadingAvatar)
+                    .accessibilityLabel(String(localized: "Show my QR code"))
                 }
             }
             Section {

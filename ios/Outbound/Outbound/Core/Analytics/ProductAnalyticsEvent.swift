@@ -47,6 +47,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionsOpened = "connections_opened"
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
+    case profileQRCodeOpened = "profile_qr_code_opened"
     case socialOperationFailed = "social_operation_failed"
     case circleSectionExposed = "circle_section_exposed"
     case circleCreationStarted = "circle_creation_started"
@@ -269,6 +270,7 @@ enum ProductAnalyticsSchema {
         .connectionsOpened: [.entrySource],
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
+        .profileQRCodeOpened: [.entrySource],
         .socialOperationFailed: [.sourceType, .errorCategory],
         .circleSectionExposed: [.entrySource, .participantCountBucket],
         .circleCreationStarted: [.entrySource],
