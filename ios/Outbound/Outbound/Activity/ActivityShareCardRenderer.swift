@@ -160,84 +160,84 @@ private struct ActivityShareCardView: View {
         VStack {
             Spacer()
 
-            HStack(alignment: .bottom, spacing: 52) {
-                VStack(alignment: .leading, spacing: 34) {
-                    Image(systemName: "figure.run.circle.fill")
-                        .font(.system(size: 78, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
+            VStack(alignment: .leading, spacing: 34) {
+                Image(systemName: "figure.run.circle.fill")
+                    .font(.system(size: 78, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(activity.title)
+                        .font(.system(size: 62, weight: .bold))
                         .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(activity.title)
-                            .font(.system(size: 62, weight: .bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.72)
+                    Text(dateText.uppercased())
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.76))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Text(dateText.uppercased())
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.76))
-                    }
-
+                HStack(alignment: .bottom, spacing: 52) {
                     statsStack
-                }
-                .frame(width: 500, alignment: .leading)
+                        .frame(width: 500, alignment: .leading)
 
-                Spacer()
+                    Spacer()
 
-                VStack(alignment: .center, spacing: 20) {
-                    if let qrCodeImage {
-                        Text("Run With Me")
-                            .font(.system(size: 32, weight: .heavy))
-                            .tracking(1.6)
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.9)
-                            .frame(width: 264, height: 52, alignment: .center)
+                    VStack(alignment: .center, spacing: 20) {
+                        if let qrCodeImage {
+                            Text("Run With Me")
+                                .font(.system(size: 32, weight: .heavy))
+                                .tracking(1.6)
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
+                                .frame(width: 264, height: 52, alignment: .center)
 
-                        ZStack {
-                            Image(uiImage: qrCodeImage)
-                                .interpolation(.none)
-                                .resizable()
-                                .frame(width: 264, height: 264)
-
-                            if let avatarImage {
-                                Circle()
-                                    .fill(.white)
-                                    .frame(width: 106, height: 106)
-
-                                Image(uiImage: avatarImage)
+                            ZStack {
+                                Image(uiImage: qrCodeImage)
+                                    .interpolation(.none)
                                     .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 96, height: 96)
-                                    .clipShape(Circle())
-                                    .overlay {
-                                        Circle()
-                                            .stroke(.white, lineWidth: 3)
-                                    }
+                                    .frame(width: 264, height: 264)
+
+                                if let avatarImage {
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: 106, height: 106)
+
+                                    Image(uiImage: avatarImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 96, height: 96)
+                                        .clipShape(Circle())
+                                        .overlay {
+                                            Circle()
+                                                .stroke(.white, lineWidth: 3)
+                                        }
+                                }
                             }
-                        }
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    }
-
-                    HStack(spacing: 16) {
-                        if let appLogoImage {
-                            Image(uiImage: appLogoImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 58, height: 58)
-                                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                         }
 
-                        Text("Plainstride")
-                            .font(.system(size: 34, weight: .medium))
-                            .tracking(1.1)
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
+                        HStack(spacing: 16) {
+                            if let appLogoImage {
+                                Image(uiImage: appLogoImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 58, height: 58)
+                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                            }
+
+                            Text("Plainstride")
+                                .font(.system(size: 34, weight: .medium))
+                                .tracking(1.1)
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
                     }
                 }
-                .padding(.bottom, 168)
             }
             .padding(.horizontal, 104)
             .padding(.bottom, 128)
