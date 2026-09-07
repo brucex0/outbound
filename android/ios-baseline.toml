@@ -1,0 +1,15 @@
+schema_version = 1
+commit = "cc5d3011755e35aa89263c78cb6f830e3ed09ea9"
+recorded_at = "2026-09-06"
+android_branch = "codex/android-port"
+
+# These paths define the iOS product and shared-server surface that must be
+# reviewed for parity after the initial Android public-release plan is complete.
+tracked_paths = [
+  "ios/",
+  "backend/",
+  "contracts/",
+  "Package.swift",
+  "Tests/",
+  "docs/",
+]

@@ -10,6 +10,8 @@ Open this when configuring the Android toolchain, building the phone or Wear OS 
 - Android SDK Build Tools 36.0.0
 - The checked-in Gradle wrapper under `android/`
 
+The fixed iOS/shared-server comparison point is stored in `android/ios-baseline.toml`. Do not update it during the Android phase plan; audit and advance it only after the post-Phase-9 parity catch-up is complete.
+
 Set `ANDROID_HOME` or create an untracked `android/local.properties` with the local SDK path. Never commit a machine-specific SDK path.
 
 ## Build-Only Verification
