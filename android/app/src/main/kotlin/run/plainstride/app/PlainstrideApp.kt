@@ -180,10 +180,12 @@ private fun SignedInApp(
     }
     val cycleViewModel:CycleAwareViewModel=hiltViewModel()
     val cycleState by cycleViewModel.state.collectAsStateWithLifecycle()
+    val healthViewModel:HealthIntegrationViewModel=hiltViewModel()
+    val healthPermissions by healthViewModel.permissions.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it) } }
+    LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
@@ -299,7 +301,7 @@ private fun SignedInApp(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
                     onSaved = { review: RecordedActivityReview ->
-                        integrationViewModel.export(review)
+                        healthViewModel.export(review)
                         integrationViewModel.completePlannedWorkout(recordingLaunch, review)
                         navController.navigate(TopLevelDestination.Me.route) {
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
@@ -325,7 +327,7 @@ private fun SignedInApp(
             composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
             composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute) }
             composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget) }
-            composable(HEALTH_ROUTE) { HealthDestination(integration.health, integrationViewModel::refreshHealth) }
+            composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
         }
     }
@@ -353,10 +355,13 @@ private fun recordingLocationPermission(context: android.content.Context): Locat
     else -> LocationPermissionState.DENIED
 }
 
-@Composable private fun HealthDestination(snapshot: HealthPermissionSnapshot?, refresh:()->Unit) {
+@Composable private fun HealthDestination(snapshot: HealthPermissionSnapshot?, refresh:()->Unit, dismiss:()->Unit) {
     val context=LocalContext.current
     val launcher=rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()){refresh()}
-    if(snapshot==null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()} else HealthConnectEducation(snapshot,{launcher.launch(it)},{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))},{})
+    if(snapshot==null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()} else HealthConnectEducation(snapshot,{launcher.launch(it)},{
+        val intent=Intent(androidx.health.connect.client.HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+        runCatching{context.startActivity(intent)}.getOrElse{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))}
+    },dismiss)
 }
 
 @StringRes

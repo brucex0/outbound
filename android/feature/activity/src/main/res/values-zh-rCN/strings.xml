@@ -46,4 +46,8 @@
     <string name="activity_updated">活动已更新</string>
     <string name="activity_deleted">活动已删除</string>
     <string name="activity_failed">无法更新活动，请重试。</string>
+    <string name="activity_share_preview">预览活动卡片</string>
+    <string name="activity_share_preview_description">包含路线、数据和 Plainstride 链接的活动分享卡片</string>
+    <string name="activity_save_image">保存图片</string>
+    <string name="activity_share">分享</string>
 </resources>

@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("com.google.zxing:core:3.5.3")
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.hilt.android)

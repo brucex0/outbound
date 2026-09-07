@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -158,31 +160,57 @@ class ActivityViewModel @Inject constructor(
     fun shareCard(activity: SavedActivity): ActivityExport? = runCatching {
         val directory = File(context.cacheDir, "activity_exports").apply { mkdirs() }
         val target = File(directory, "plainstride-${activity.id.filter(Char::isLetterOrDigit).take(64)}.png")
-        val bitmap = Bitmap.createBitmap(1200, 630, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.rgb(24, 28, 24))
+        drawRouteBackdrop(canvas, activity)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         paint.textSize = 42f
         canvas.drawText("PLAINSTRIDE", 72f, 90f, paint)
         paint.isFakeBoldText = true
         paint.textSize = 70f
-        canvas.drawText(activity.title.take(28), 72f, 210f, paint)
+        canvas.drawText(activity.title.take(24), 72f, 1240f, paint)
         paint.isFakeBoldText = false
         paint.color = Color.rgb(232, 126, 62)
         paint.textSize = 58f
-        canvas.drawText(context.getString(R.string.activity_share_distance_value, activity.distanceM / 1_000), 72f, 360f, paint)
-        canvas.drawText(formatDurationForCard(activity.durationSecs), 455f, 360f, paint)
-        activity.averagePaceSecsPerKm?.let { canvas.drawText(context.getString(R.string.activity_share_pace_value, it.toInt() / 60, it.toInt() % 60), 785f, 360f, paint) }
+        canvas.drawText(context.getString(R.string.activity_share_distance_value, activity.distanceM / 1_000), 72f, 1400f, paint)
+        canvas.drawText(formatDurationForCard(activity.durationSecs), 390f, 1400f, paint)
+        activity.averagePaceSecsPerKm?.let { canvas.drawText(context.getString(R.string.activity_share_pace_value, it.toInt() / 60, it.toInt() % 60), 700f, 1400f, paint) }
         paint.color = Color.LTGRAY
         paint.textSize = 30f
-        canvas.drawText(context.getString(R.string.activity_distance).uppercase(), 72f, 415f, paint)
-        canvas.drawText(context.getString(R.string.activity_time).uppercase(), 455f, 415f, paint)
-        canvas.drawText(context.getString(R.string.activity_avg_pace).uppercase(), 785f, 415f, paint)
+        canvas.drawText(context.getString(R.string.activity_distance).uppercase(), 72f, 1460f, paint)
+        canvas.drawText(context.getString(R.string.activity_time).uppercase(), 390f, 1460f, paint)
+        canvas.drawText(context.getString(R.string.activity_avg_pace).uppercase(), 700f, 1460f, paint)
+        drawQr(canvas, "https://run.plainstride.com/invite", 790, 1600, 220)
         target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 95, it) }
         bitmap.recycle()
         analytics.record(AnalyticsEvent("activity_share_card_created", mapOf(AnalyticsProperty.Result to "success")))
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), "image/png", target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
+
+    private fun drawRouteBackdrop(canvas: Canvas, activity: SavedActivity) {
+        val points = activity.track
+        if (points.size < 2) return
+        val minLat = points.minOf { it.latitude }; val maxLat = points.maxOf { it.latitude }
+        val minLon = points.minOf { it.longitude }; val maxLon = points.maxOf { it.longitude }
+        val latSpan = (maxLat - minLat).coerceAtLeast(0.00001); val lonSpan = (maxLon - minLon).coerceAtLeast(0.00001)
+        val route = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(244, 132, 63); strokeWidth = 14f; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+        val path = android.graphics.Path()
+        points.forEachIndexed { index, point ->
+            val x = 70f + ((point.longitude - minLon) / lonSpan * 940f).toFloat()
+            val y = 160f + ((maxLat - point.latitude) / latSpan * 900f).toFloat()
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        canvas.drawPath(path, Paint(route).apply { color = Color.argb(100, 0, 0, 0); strokeWidth = 26f })
+        canvas.drawPath(path, route)
+    }
+
+    private fun drawQr(canvas: Canvas, value: String, left: Int, top: Int, size: Int) {
+        val matrix = MultiFormatWriter().encode(value, BarcodeFormat.QR_CODE, size, size)
+        val qr = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        for (y in 0 until size) for (x in 0 until size) qr.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+        canvas.drawBitmap(qr, left.toFloat(), top.toFloat(), null); qr.recycle()
+    }
 
     fun photoBytes(relativePath: String): ByteArray? = runCatching { mediaStore.read(relativePath) }.getOrNull()
 

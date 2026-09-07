@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
+    implementation(project(":feature:recording"))
     implementation(libs.androidx.health.connect)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

@@ -26,6 +26,10 @@
     <string name="activity_edit_title">Edit title</string>
     <string name="activity_title">Title</string>
     <string name="activity_share_card">Share activity</string>
+    <string name="activity_share_preview">Preview activity card</string>
+    <string name="activity_share_preview_description">Activity share card with route, statistics, and Plainstride link</string>
+    <string name="activity_save_image">Save image</string>
+    <string name="activity_share">Share</string>
     <string name="activity_share_distance_value">%1$.2f km</string>
     <string name="activity_share_pace_value">%1$d:%2$02d /km</string>
     <string name="activity_delete">Delete activity</string>

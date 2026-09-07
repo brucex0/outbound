@@ -3,6 +3,8 @@ package run.plainstride.feature.activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.content.ContentValues
+import android.provider.MediaStore
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -196,12 +198,13 @@ private fun ActivityDetailScreen(
     val context = LocalContext.current
     var edit by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
+    var sharePreview by remember { mutableStateOf<ActivityExport?>(null) }
     Scaffold(modifier, contentWindowInsets = WindowInsets.safeDrawing, topBar = { TopAppBar(
         title = { Text(activity.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.activity_back)) } },
         actions = {
             IconButton(onClick = { edit = true }) { Icon(Icons.Outlined.Edit, stringResource(R.string.activity_edit)) }
-            IconButton(onClick = { onShareCard()?.let(context::shareExport) }) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
+            IconButton(onClick = { sharePreview = onShareCard() }) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
         },
     ) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -257,6 +260,18 @@ private fun ActivityDetailScreen(
         text = { Text(stringResource(R.string.activity_delete_body)) },
         confirmButton = { TextButton(onClick = { delete = false; onDelete() }) { Text(stringResource(R.string.activity_delete)) } },
         dismissButton = { TextButton(onClick = { delete = false }) { Text(stringResource(R.string.activity_cancel)) } })
+    sharePreview?.let { export -> SharePreviewDialog(export, { sharePreview = null }, { context.saveImage(export) }, { context.shareExport(export) }) }
+}
+
+@Composable private fun SharePreviewDialog(export: ActivityExport, close:()->Unit, save:()->Unit, share:()->Unit) {
+    val context=LocalContext.current
+    val bitmap=remember(export.uri){context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream)}
+    AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.activity_share_preview))},text={bitmap?.let{Image(it.asImageBitmap(),stringResource(R.string.activity_share_preview_description),Modifier.fillMaxWidth().aspectRatio(9f/16f))}},confirmButton={Button({share();close()}){Text(stringResource(R.string.activity_share))}},dismissButton={Row{TextButton(save){Text(stringResource(R.string.activity_save_image))};TextButton(close){Text(stringResource(R.string.activity_cancel))}}})
+}
+
+private fun Context.saveImage(export:ActivityExport){
+    val values=ContentValues().apply{put(MediaStore.Images.Media.DISPLAY_NAME,export.fileName);put(MediaStore.Images.Media.MIME_TYPE,"image/png");put(MediaStore.Images.Media.RELATIVE_PATH,"Pictures/Plainstride")}
+    contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values)?.let{destination->contentResolver.openInputStream(export.uri)?.use{input->contentResolver.openOutputStream(destination)?.use(input::copyTo)}}
 }
 
 @Composable private fun RouteChart(points: List<ActivityTrackPoint>, modifier: Modifier) {

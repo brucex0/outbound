@@ -46,4 +46,8 @@
     <string name="activity_updated">Actividad actualizada</string>
     <string name="activity_deleted">Actividad eliminada</string>
     <string name="activity_failed">No se pudo actualizar la actividad. Inténtalo de nuevo.</string>
+    <string name="activity_share_preview">Vista previa de la tarjeta</string>
+    <string name="activity_share_preview_description">Tarjeta de actividad con ruta, estadísticas y enlace de Plainstride</string>
+    <string name="activity_save_image">Guardar imagen</string>
+    <string name="activity_share">Compartir</string>
 </resources>
