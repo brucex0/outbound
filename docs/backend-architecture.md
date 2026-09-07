@@ -331,6 +331,7 @@ Rules:
 Recommended early API shape:
 
 - `POST /v1/safety/live-shares`
+- `GET /v1/safety/live-shares/:id` (authenticated owner-only app lookup)
 - `PATCH /v1/safety/live-shares/:id/location`
 - `POST /v1/safety/live-shares/:id/end`
 - `GET /live/:token`

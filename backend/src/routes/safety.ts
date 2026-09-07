@@ -88,6 +88,28 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
   );
 });
 
+router.get("/live-shares/:id", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required." }, 401);
+
+  const prisma = getPrismaClient();
+  const share = await prisma.safetyLiveShare.findFirst({
+    where: { id: c.req.param("id"), userId: user.id },
+  });
+  // Do not distinguish another user's share from a nonexistent identifier.
+  if (!share) return c.json({ error: "Live share not found." }, 404);
+
+  const now = new Date();
+  if (share.status === "active" && share.expiresAt <= now) {
+    await prisma.safetyLiveShare.update({ where: { id: share.id }, data: { status: "expired" } });
+    return c.json({ error: "Live share has expired." }, 410);
+  }
+  return c.json(liveShareAppPayload(share));
+});
+
 router.patch("/live-shares/:id/location", zValidator("json", liveLocationSchema), async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;

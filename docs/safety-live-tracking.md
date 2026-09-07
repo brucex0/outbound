@@ -104,11 +104,14 @@ Current trusted contacts are local-first on iOS. The backend accepts delivery ta
 Initial API:
 
 - `POST /v1/safety/live-shares`
+- `GET /v1/safety/live-shares/:id`
 - `PATCH /v1/safety/live-shares/:id/location`
 - `POST /v1/safety/live-shares/:id/end`
 - `GET /live/:token`
 
 `POST /v1/safety/live-shares` accepts optional `recipientLabel` and `deliveryTargets` entries with `sms` or `push` channels. Current server delivery returns `stubbed` results so the API contract is ready for SMS/push providers later without changing the client flow.
+
+`GET /v1/safety/live-shares/:id` is an authenticated app lookup for notification routing. It is owner-scoped, returns only the live-share status and timestamps needed by the app, returns `404` for both unknown and unauthorized IDs, and returns `410` after expiry.
 
 Rules:
 
