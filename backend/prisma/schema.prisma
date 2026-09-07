@@ -57,6 +57,8 @@ model User {
   agentActions                AgentAction[]
   agentOutcomes               AgentOutcome[]
   safetyLiveShares            SafetyLiveShare[]
+  liveShareInvitations        SafetyLiveShareRecipient[]   @relation("LiveShareRecipient")
+  liveShareCheersSent         SafetyLiveShareCheer[]       @relation("LiveShareCheerSender")
   liveGroupSessionsCreated    LiveGroupSession[]           @relation("LiveGroupSessionCreator")
   liveGroupParticipants       LiveGroupParticipant[]
   posts                       Post[]
@@ -176,13 +178,13 @@ model AuthSession {
 }
 
 model IdentityLinkIntent {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  expiresAt DateTime
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
   consumedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([userId, consumedAt])
   @@index([expiresAt])
@@ -452,30 +454,62 @@ model RouteBookmark {
 }
 
 model SafetyLiveShare {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId     String?
-  tokenHash      String    @unique
-  status         String    @default("active")
-  recipientLabel String?
-  sport          String?
-  title          String?
-  startedAt      DateTime  @default(now())
-  expiresAt      DateTime
-  endedAt        DateTime?
-  lastLocationAt DateTime?
-  lastLocation   Json?
-  routePreview   Json      @default("[]")
-  elapsedSeconds Int       @default(0)
-  distanceM      Float     @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId           String?
+  tokenHash            String    @unique
+  status               String    @default("active")
+  recipientLabel       String?
+  sport                String?
+  title                String?
+  startedAt            DateTime  @default(now())
+  expiresAt            DateTime
+  endedAt              DateTime?
+  lastLocationAt       DateTime?
+  lastLocation         Json?
+  routePreview         Json      @default("[]")
+  elapsedSeconds       Int       @default(0)
+  distanceM            Float     @default(0)
+  currentPaceSecsPerKm Float?
+  heartRate            Int?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  points SafetyLiveSharePoint[]
+  points     SafetyLiveSharePoint[]
+  recipients SafetyLiveShareRecipient[]
+  cheers     SafetyLiveShareCheer[]
 
   @@index([userId, status])
   @@index([expiresAt])
+}
+
+model SafetyLiveShareRecipient {
+  id          String          @id @default(cuid())
+  shareId     String
+  share       SafetyLiveShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User            @relation("LiveShareRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+
+  @@unique([shareId, recipientId])
+  @@index([recipientId, createdAt])
+}
+
+model SafetyLiveShareCheer {
+  id          String          @id @default(cuid())
+  shareId     String
+  share       SafetyLiveShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User            @relation("LiveShareCheerSender", fields: [senderId], references: [id], onDelete: Cascade)
+  audio       Bytes
+  contentType String          @default("audio/mp4")
+  durationMs  Int
+  createdAt   DateTime        @default(now())
+  playedAt    DateTime?
+
+  @@index([shareId, createdAt])
+  @@index([senderId, createdAt])
 }
 
 model SafetyLiveSharePoint {

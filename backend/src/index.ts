@@ -13,7 +13,7 @@ import planning from "./routes/planning.js";
 import personalization from "./routes/personalization.js";
 import companion from "./routes/companion.js";
 import notifications from "./routes/notifications.js";
-import safety, { liveShareViewer } from "./routes/safety.js";
+import safety from "./routes/safety.js";
 import invites from "./routes/invites.js";
 import marketing from "./routes/marketing.js";
 import feedback from "./routes/feedback.js";
@@ -59,7 +59,6 @@ app.use("/v1/transcribe/*", rateLimit({ name: "transcribe", limit: 10, windowMs:
 app.use("/waitlist/*", rateLimit({ name: "public-waitlist", limit: 5, windowMs: 60_000, key: "ip" }));
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
-app.get("/live/:token", liveShareViewer);
 app.route("/", marketing);
 app.route("/", invites);
 

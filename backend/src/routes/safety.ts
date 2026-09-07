@@ -6,23 +6,14 @@ import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
+import { deliverPushNotification } from "../services/pushNotifications.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
 
 const createLiveShareSchema = z.object({
+  recipientUserIds: z.array(z.string().min(1).max(128)).min(1).max(5),
   activityId: z.string().min(1).max(128).optional(),
-  recipientLabel: z.string().trim().min(1).max(80).optional(),
-  deliveryTargets: z
-    .array(
-      z.object({
-        channel: z.enum(["sms", "push"]),
-        label: z.string().trim().min(1).max(80).optional(),
-        address: z.string().trim().min(1).max(160).optional(),
-      })
-    )
-    .max(5)
-    .optional(),
   sport: z.string().trim().min(1).max(32).optional(),
   title: z.string().trim().min(1).max(120).optional(),
   expiresInSeconds: z.number().int().min(300).max(8 * 60 * 60).optional(),
@@ -36,6 +27,14 @@ const liveLocationSchema = z.object({
   accuracyM: z.number().finite().optional().nullable(),
   elapsedSeconds: z.number().int().min(0),
   distanceM: z.number().finite().min(0),
+  currentPaceSecsPerKm: z.number().finite().min(60).max(3600).optional().nullable(),
+  heartRate: z.number().int().min(30).max(240).optional().nullable(),
+});
+
+const cheerSchema = z.object({
+  audioBase64: z.string().min(1).max(1_500_000),
+  contentType: z.literal("audio/mp4"),
+  durationMs: z.number().int().min(250).max(15_000),
 });
 
 router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c) => {
@@ -49,6 +48,20 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
 
   const body = c.req.valid("json");
   const prisma = getPrismaClient();
+  const recipientIds = [...new Set(body.recipientUserIds)].filter((id) => id !== user.id);
+  const acceptedConnections = await prisma.connection.findMany({
+    where: {
+      status: "accepted",
+      OR: [
+        { requesterId: user.id, addresseeId: { in: recipientIds } },
+        { addresseeId: user.id, requesterId: { in: recipientIds } },
+      ],
+    },
+  });
+  const connectedIds = new Set(acceptedConnections.map((connection) => connection.requesterId === user.id ? connection.addresseeId : connection.requesterId));
+  if (recipientIds.length === 0 || recipientIds.some((id) => !connectedIds.has(id))) {
+    return c.json({ error: "Every invited person must be an accepted connection." }, 403);
+  }
   const token = randomToken();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + (body.expiresInSeconds ?? 4 * 60 * 60) * 1000);
@@ -58,34 +71,76 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
       userId: user.id,
       activityId: body.activityId,
       tokenHash: hashToken(token),
-      recipientLabel: body.recipientLabel,
       sport: body.sport,
       title: body.title,
       startedAt,
       expiresAt,
+      recipients: { create: recipientIds.map((recipientId) => ({ recipientId })) },
     },
   });
 
-  const shareURL = publicLiveURL(c.req.url, token);
-  const deliveries = await deliverLiveShareStub({
-    shareId: share.id,
-    shareURL,
-    title: share.title ?? "Live run",
-    targets: body.deliveryTargets ?? [],
-  });
+  await Promise.all(recipientIds.map(async (recipientId) => {
+    const notification = await prisma.socialNotification.create({
+      data: { recipientId, actorId: user.id, type: "liveCheerInvitation", objectId: share.id, message: `${user.displayName} invited you to cheer them on.` },
+    });
+    void deliverPushNotification(notification).catch(() => undefined);
+  }));
 
   return c.json(
     {
       id: share.id,
-      token,
-      shareURL,
       status: share.status,
       startedAt: share.startedAt,
       expiresAt: share.expiresAt,
-      deliveries,
     },
     201
   );
+});
+
+router.get("/live-shares/invited", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const shares = await getPrismaClient().safetyLiveShare.findMany({
+    where: { recipients: { some: { recipientId: user.id } }, status: "active", expiresAt: { gt: new Date() } },
+    include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
+    orderBy: { startedAt: "desc" }, take: 10,
+  });
+  return c.json({ sessions: shares.map(followerPayload) });
+});
+
+router.get("/live-shares/invited/:id", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const share = await getPrismaClient().safetyLiveShare.findFirst({
+    where: { id: c.req.param("id"), recipients: { some: { recipientId: user.id } } },
+    include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
+  });
+  if (!share) return c.json({ error: "Live session not found." }, 404);
+  return c.json(followerPayload(share));
+});
+
+router.post("/live-shares/invited/:id/cheers", zValidator("json", cheerSchema), async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const prisma = getPrismaClient();
+  const share = await prisma.safetyLiveShare.findFirst({ where: { id: c.req.param("id"), status: "active", expiresAt: { gt: new Date() }, recipients: { some: { recipientId: user.id } } } });
+  if (!share) return c.json({ error: "Live session is not active." }, 404);
+  const body = c.req.valid("json");
+  const audio = Buffer.from(body.audioBase64, "base64");
+  if (audio.length === 0 || audio.length > 1_000_000) return c.json({ error: "Voice cheer is too large." }, 413);
+  const cheer = await prisma.safetyLiveShareCheer.create({ data: { shareId: share.id, senderId: user.id, audio, contentType: body.contentType, durationMs: body.durationMs } });
+  return c.json({ id: cheer.id, createdAt: cheer.createdAt }, 201);
+});
+
+router.get("/live-shares/:id/cheers", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const prisma = getPrismaClient();
+  const share = await prisma.safetyLiveShare.findFirst({ where: { id: c.req.param("id"), userId: user.id } });
+  if (!share) return c.json({ error: "Live share not found." }, 404);
+  const cheers = await prisma.safetyLiveShareCheer.findMany({ where: { shareId: share.id, playedAt: null }, orderBy: { createdAt: "asc" }, take: 10 });
+  if (cheers.length > 0) await prisma.safetyLiveShareCheer.updateMany({ where: { id: { in: cheers.map((cheer) => cheer.id) } }, data: { playedAt: new Date() } });
+  return c.json({ cheers: cheers.map((cheer) => ({ id: cheer.id, audioBase64: Buffer.from(cheer.audio).toString("base64"), contentType: cheer.contentType, durationMs: cheer.durationMs, createdAt: cheer.createdAt })) });
 });
 
 router.get("/live-shares/:id", async (c) => {
@@ -172,6 +227,8 @@ router.patch("/live-shares/:id/location", zValidator("json", liveLocationSchema)
         routePreview,
         elapsedSeconds: body.elapsedSeconds,
         distanceM: body.distanceM,
+        currentPaceSecsPerKm: body.currentPaceSecsPerKm ?? undefined,
+        heartRate: body.heartRate ?? undefined,
       },
     });
   });
@@ -223,6 +280,10 @@ export async function liveShareViewer(c: Context<AppEnv>) {
   }
 
   return c.html(liveShareHTML(token, payload));
+}
+
+function followerPayload(share: any) {
+  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate };
 }
 
 async function publicLiveSharePayload(token: string) {
