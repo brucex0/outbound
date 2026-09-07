@@ -13,8 +13,26 @@ android {
         applicationId = "run.plainstride.app.wear"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()
+        versionName = providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orElse("1.0").get()
+    }
+
+    val releaseStoreFile = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PATH")
+    val releaseStorePassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD")
+    val releaseKeyAlias = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_ALIAS")
+    val releaseKeyPassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_PASSWORD")
+    val releaseSigningReady = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it.isPresent && it.get().isNotBlank() }
+    signingConfigs {
+        if (releaseSigningReady) create("release") {
+            storeFile = file(releaseStoreFile.get())
+            storePassword = releaseStorePassword.get()
+            keyAlias = releaseKeyAlias.get()
+            keyPassword = releaseKeyPassword.get()
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
     }
 
     buildTypes {
@@ -22,8 +40,24 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
         }
     }
+}
+
+tasks.register("verifyWearPlayReleaseConfiguration") {
+    group = "verification"
+    doLast {
+        val versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orNull?.toIntOrNull()
+        check(versionCode != null && versionCode > 0) { "A positive PLAINSTRIDE_VERSION_CODE is required for Wear Play artifacts." }
+        check(!providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orNull.isNullOrBlank()) { "PLAINSTRIDE_VERSION_NAME is required for Wear Play artifacts." }
+        check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { !providers.environmentVariable(it).orNull.isNullOrBlank() }) { "All Plainstride Android upload-signing variables are required for Wear Play artifacts." }
+        check(file(providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PATH").get()).isFile) { "PLAINSTRIDE_ANDROID_KEYSTORE_PATH must point to a readable keystore." }
+    }
+}
+
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    dependsOn("verifyWearPlayReleaseConfiguration")
 }
 
 dependencies {
