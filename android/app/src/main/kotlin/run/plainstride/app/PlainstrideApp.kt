@@ -53,6 +53,15 @@ import run.plainstride.feature.today.TodayViewModel
 import run.plainstride.feature.settings.MeRoute
 import run.plainstride.feature.settings.SettingsMessage
 import run.plainstride.feature.settings.SettingsViewModel
+import run.plainstride.feature.recording.ActivityKind
+import run.plainstride.feature.recording.RecordedActivityReview
+import run.plainstride.feature.recording.RecordingGoal
+import run.plainstride.feature.recording.RecordingGoalType
+import run.plainstride.feature.recording.RecordingLaunchConfiguration
+import run.plainstride.feature.recording.RecordingRoute
+import run.plainstride.feature.recording.StructuredWorkoutStep
+import run.plainstride.feature.today.WorkoutLaunchIntent
+import run.plainstride.core.model.Modality
 import kotlinx.coroutines.launch
 
 private enum class TopLevelDestination(
@@ -107,12 +116,14 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
+    var hasActiveSession by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            NavigationBar {
+            if (currentDestination?.route != RECORDING_ROUTE) NavigationBar {
                 TopLevelDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any {
@@ -143,11 +154,19 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                         val todayViewModel: TodayViewModel = hiltViewModel()
                         TodayRoute(
                             viewModel = todayViewModel,
-                            activeSession = false,
+                            activeSession = hasActiveSession,
                             completedToday = false,
-                            onStartWorkout = { /* Recorder navigation is connected in the activity phase. */ },
-                            onStartFreestyle = { /* Recorder navigation is connected in the activity phase. */ },
-                            onReturnToSession = { /* No session exists before recorder integration. */ },
+                            onStartWorkout = { intent ->
+                                recordingLaunch = intent.toRecordingLaunch()
+                                hasActiveSession = true
+                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                            },
+                            onStartFreestyle = {
+                                recordingLaunch = RecordingLaunchConfiguration()
+                                hasActiveSession = true
+                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                            },
+                            onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { /* Plan setup is connected by the planning flow. */ },
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
@@ -172,6 +191,24 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                     }
                 }
             }
+            composable(RECORDING_ROUTE) {
+                RecordingRoute(
+                    accountId = "authenticated_account",
+                    launch = recordingLaunch,
+                    onSaved = { _: RecordedActivityReview ->
+                        hasActiveSession = false
+                        navController.navigate(TopLevelDestination.Me.route) {
+                            popUpTo(RECORDING_ROUTE) { inclusive = true }
+                        }
+                    },
+                    onExit = {
+                        hasActiveSession = false
+                        navController.navigate(TopLevelDestination.Today.route) {
+                            popUpTo(RECORDING_ROUTE) { inclusive = true }
+                        }
+                    },
+                )
+            }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
@@ -180,6 +217,29 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
         text = { Text(stringResource(R.string.delete_account_body)) },
         confirmButton = { TextButton(onClick = authViewModel::deleteAccount) { Text(stringResource(R.string.delete_account_confirm)) } },
         dismissButton = { TextButton(onClick = authViewModel::cancelDeletion) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+private const val RECORDING_ROUTE = "recording"
+
+private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguration {
+    val goal = when {
+        targetCalories != null -> RecordingGoal(RecordingGoalType.CALORIES, targetCalories = targetCalories)
+        distanceMeters != null -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
+        steps.isNotEmpty() -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = durationSeconds.toLong())
+        else -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds.toLong())
+    }
+    return RecordingLaunchConfiguration(
+        activityKind = when (modality) {
+            Modality.walk -> ActivityKind.WALKING
+            Modality.bike -> ActivityKind.CYCLING
+            Modality.swim -> ActivityKind.SWIMMING
+            else -> ActivityKind.RUNNING
+        },
+        title = title,
+        goal = goal,
+        workoutSteps = steps.map { StructuredWorkoutStep(it) },
+        entrySource = source,
     )
 }
 

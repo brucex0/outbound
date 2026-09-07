@@ -61,6 +61,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:weather"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:recording"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:today"))
 
