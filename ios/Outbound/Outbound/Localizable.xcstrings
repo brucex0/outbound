@@ -13442,6 +13442,66 @@
         }
       }
     },
+    "Connection updated" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conexión actualizada" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跑友关系已更新" } }
+      }
+    },
+    "Could not update connection. Try again." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo actualizar la conexión. Inténtalo de nuevo." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法更新跑友关系，请重试。" } }
+      }
+    },
+    "Enter a name or username." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Escribe un nombre o nombre de usuario." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "输入姓名或用户名。" } }
+      }
+    },
+    "No people found" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se encontraron personas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未找到用户" } }
+      }
+    },
+    "Search failed" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La búsqueda falló" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索失败" } }
+      }
+    },
+    "Search failed. Try again." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La búsqueda falló. Inténtalo de nuevo." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索失败，请重试。" } }
+      }
+    },
+    "Search for people" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscar personas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索用户" } }
+      }
+    },
+    "Search people" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscar personas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索用户" } }
+      }
+    },
+    "Searching for people" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscando personas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在搜索用户" } }
+      }
+    },
+    "See all results" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver todos los resultados" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看全部结果" } }
+      }
+    },
     "Search name or username" : {
       "localizations" : {
         "es" : {

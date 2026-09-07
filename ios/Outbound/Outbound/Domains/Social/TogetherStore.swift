@@ -531,22 +531,26 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func requestConnection(to person: SocialPersonSearchResultDTO) async {
+    @discardableResult
+    func requestConnection(to person: SocialPersonSearchResultDTO) async -> Bool {
         do {
             _ = try await api.requestSocialConnection(userID: person.id)
             await refreshConnections()
             await searchPeople(person.username)
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
-    func acceptConnection(_ connection: SocialConnectionDTO) async {
-        guard pendingConnectionIDs.insert(connection.id).inserted else { return }
+    @discardableResult
+    func acceptConnection(_ connection: SocialConnectionDTO) async -> Bool {
+        guard pendingConnectionIDs.insert(connection.id).inserted else { return false }
         defer { pendingConnectionIDs.remove(connection.id) }
         if isUITestSeedData {
             replaceConnection(connection, status: "accepted", direction: "incoming")
-            return
+            return true
         }
         do {
             _ = try await api.acceptSocialConnection(id: connection.id)
@@ -556,17 +560,20 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             await refreshConnections()
             await refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
-    func removeConnection(_ connection: SocialConnectionDTO) async {
-        guard pendingConnectionIDs.insert(connection.id).inserted else { return }
+    @discardableResult
+    func removeConnection(_ connection: SocialConnectionDTO) async -> Bool {
+        guard pendingConnectionIDs.insert(connection.id).inserted else { return false }
         defer { pendingConnectionIDs.remove(connection.id) }
         if isUITestSeedData {
             connections.removeAll { $0.id == connection.id }
-            return
+            return true
         }
         do {
             _ = try await api.removeSocialConnection(id: connection.id)
@@ -576,8 +583,10 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             await refreshConnections()
             await refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 

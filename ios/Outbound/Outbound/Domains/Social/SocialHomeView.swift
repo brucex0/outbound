@@ -1743,7 +1743,13 @@ struct SocialConnectionsView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var searchQuery = ""
     @State private var paginationToast: String?
+    @State private var searchToast: String?
     @State private var lastRequestedSearchQuery: String?
+    @State private var autocompleteResults: [SocialPersonSearchResultDTO] = []
+    @State private var isAutocompleteLoading = false
+    @State private var autocompleteFailed = false
+    @State private var submittedSearchQuery = ""
+    @State private var showsSearchResults = false
     @State private var showsQRCode = false
     @State private var showsScanner = false
     @FocusState private var isSearchFocused: Bool
@@ -1765,36 +1771,178 @@ struct SocialConnectionsView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Search name or username", text: $searchQuery)
-                        .focused($isSearchFocused)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.search)
-                        .onSubmit {
-                            isSearchFocused = false
-                            Task {
-                                await Task.yield()
-                                await performPeopleSearch(source: "submitted")
-                            }
-                        }
-                    if !searchQuery.isEmpty {
-                        Button {
-                            searchQuery = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Clear search")
-                    }
+        VStack(spacing: 0) {
+            peopleSearchField
+            Divider()
+            ZStack(alignment: .top) {
+                connectionsList
+                if showsAutocomplete {
+                    autocompleteDropdown
+                        .zIndex(1)
                 }
             }
+        }
+        .navigationTitle("Connections")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showsScanner = true
+                    } label: {
+                        Label(String(localized: "Scan QR code", table: "ConnectionQRCode"), systemImage: "qrcode.viewfinder")
+                    }
 
+                    Button {
+                        showsQRCode = true
+                    } label: {
+                        Label("Show my QR code", systemImage: "qrcode")
+                    }
+
+                    Button {
+                        Task { await inviteByLink() }
+                    } label: {
+                        Label("Invite by link", systemImage: "square.and.arrow.up")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add connection")
+            }
+        }
+        .task {
+            await socialStore.refreshConnections()
+            await socialStore.refreshBlocks()
+        }
+        .navigationDestination(isPresented: $showsQRCode) {
+            SocialConnectionQRCodeView()
+        }
+        .navigationDestination(isPresented: $showsSearchResults) {
+            SocialPeopleSearchResultsView(initialQuery: submittedSearchQuery)
+        }
+        .fullScreenCover(isPresented: $showsScanner) {
+            SocialConnectionQRScannerView()
+        }
+        .task(id: searchQuery) {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            await performAutocompleteSearch()
+        }
+        .overlay(alignment: .top) {
+            if let message = searchToast ?? paginationToast {
+                Label(message, systemImage: "exclamationmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: paginationToast)
+        .animation(.snappy, value: searchToast)
+        .task(id: paginationToast) {
+            guard paginationToast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            paginationToast = nil
+        }
+        .task(id: searchToast) {
+            guard searchToast != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            searchToast = nil
+        }
+    }
+
+    private var peopleSearchField: some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search name or username", text: $searchQuery)
+                .focused($isSearchFocused)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .onSubmit { openSubmittedSearch() }
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                    autocompleteResults = []
+                    autocompleteFailed = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, OutboundSpacing.screen)
+        .frame(minHeight: 52)
+        .background(.bar)
+    }
+
+    private var showsAutocomplete: Bool {
+        isSearchFocused && !TogetherStore.normalizedPeopleSearchQuery(searchQuery).isEmpty
+    }
+
+    private var autocompleteDropdown: some View {
+        VStack(spacing: 0) {
+            if isAutocompleteLoading && autocompleteResults.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .accessibilityLabel(String(localized: "Searching for people"))
+            } else if autocompleteFailed {
+                Button {
+                    Task { await performAutocompleteSearch(force: true) }
+                } label: {
+                    Label(String(localized: "Search failed. Try again."), systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(.plain)
+            } else if autocompleteResults.isEmpty {
+                Text(String(localized: "No people found"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            } else {
+                ForEach(Array(autocompleteResults.prefix(5).enumerated()), id: \.element.id) { index, person in
+                    SocialPeopleSearchRow(person: person, compact: true) { succeeded in
+                        await handleSearchMutation(succeeded: succeeded)
+                    }
+                    if index < min(autocompleteResults.count, 5) - 1 {
+                        Divider().padding(.leading, 58)
+                    }
+                }
+                Button {
+                    openSubmittedSearch()
+                } label: {
+                    HStack {
+                        Text(String(localized: "See all results"))
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, OutboundSpacing.standard)
+                    .frame(minHeight: 46)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+        .padding(.horizontal, OutboundSpacing.screen)
+        .padding(.top, 8)
+    }
+
+    private var connectionsList: some View {
+        List {
             if !incomingRequests.isEmpty {
                 Section("Requests") {
                     ForEach(incomingRequests) { connection in
@@ -1894,67 +2042,6 @@ struct SocialConnectionsView: View {
                 }
             }
 
-            if !socialStore.peopleResults.isEmpty {
-                Section("People") {
-                    ForEach(socialStore.peopleResults) { person in
-                        HStack(spacing: OutboundSpacing.compact) {
-                            SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(person.displayName).font(.headline)
-                                Text("@\(person.username)").font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            relationshipAction(for: person)
-                        }
-                    }
-                }
-            } else if !TogetherStore.normalizedPeopleSearchQuery(searchQuery).isEmpty,
-                      !socialStore.isConnectionsLoading {
-                ContentUnavailableView.search(text: searchQuery)
-            }
-
-        }
-        .navigationTitle("Connections")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        showsScanner = true
-                    } label: {
-                        Label(String(localized: "Scan QR code", table: "ConnectionQRCode"), systemImage: "qrcode.viewfinder")
-                    }
-
-                    Button {
-                        showsQRCode = true
-                    } label: {
-                        Label("Show my QR code", systemImage: "qrcode")
-                    }
-
-                    Button {
-                        Task { await inviteByLink() }
-                    } label: {
-                        Label("Invite by link", systemImage: "square.and.arrow.up")
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add connection")
-            }
-        }
-        .task {
-            await socialStore.refreshConnections()
-            await socialStore.refreshBlocks()
-        }
-        .navigationDestination(isPresented: $showsQRCode) {
-            SocialConnectionQRCodeView()
-        }
-        .fullScreenCover(isPresented: $showsScanner) {
-            SocialConnectionQRScannerView()
-        }
-        .task(id: searchQuery) {
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            await performPeopleSearch(source: "debounced")
         }
         .refreshable { await socialStore.refreshConnections() }
         .overlay {
@@ -1962,52 +2049,61 @@ struct SocialConnectionsView: View {
                 ProgressView()
             }
         }
-        .overlay(alignment: .top) {
-            if let paginationToast {
-                Label(paginationToast, systemImage: "exclamationmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .animation(.snappy, value: paginationToast)
-        .task(id: paginationToast) {
-            guard paginationToast != nil else { return }
-            try? await Task.sleep(for: .seconds(2.2))
-            guard !Task.isCancelled else { return }
-            paginationToast = nil
-        }
     }
 
-    private func performPeopleSearch(source: String) async {
+    private func performAutocompleteSearch(force: Bool = false) async {
         let normalizedQuery = TogetherStore.normalizedPeopleSearchQuery(searchQuery)
         guard !normalizedQuery.isEmpty else {
             lastRequestedSearchQuery = nil
+            autocompleteResults = []
+            autocompleteFailed = false
             await socialStore.searchPeople("")
             return
         }
-        guard normalizedQuery != lastRequestedSearchQuery else { return }
+        guard force || normalizedQuery != lastRequestedSearchQuery else { return }
         lastRequestedSearchQuery = normalizedQuery
+        isAutocompleteLoading = true
+        autocompleteFailed = false
 
         let outcome = await socialStore.searchPeople(normalizedQuery)
         guard lastRequestedSearchQuery == normalizedQuery,
               TogetherStore.normalizedPeopleSearchQuery(searchQuery) == normalizedQuery else { return }
 
+        isAutocompleteLoading = false
+        autocompleteFailed = outcome == nil
+        if outcome != nil {
+            autocompleteResults = socialStore.peopleResults
+        }
+
         if outcome == nil {
             lastRequestedSearchQuery = nil
         }
         await analyticsManager?.track(.init(.connectionsSearchCompleted, properties: [
-            .sourceType: .string(source),
+            .sourceType: .string("autocomplete"),
             .inputScript: .string(Self.searchInputScript(normalizedQuery)),
             .queryLengthBucket: .string(ProductAnalyticsBucket.count(normalizedQuery.count)),
             .countBucket: .string(ProductAnalyticsBucket.count(outcome?.count ?? 0)),
             .matchMode: .string(outcome?.matchMode ?? "unavailable"),
             .result: .string(outcome == nil ? "failure" : "success")
         ]))
+    }
+
+    private func openSubmittedSearch() {
+        let normalizedQuery = TogetherStore.normalizedPeopleSearchQuery(searchQuery)
+        guard !normalizedQuery.isEmpty else { return }
+        submittedSearchQuery = normalizedQuery
+        isSearchFocused = false
+        showsSearchResults = true
+    }
+
+    private func handleSearchMutation(succeeded: Bool) async {
+        searchToast = succeeded
+            ? String(localized: "Connection updated")
+            : String(localized: "Could not update connection. Try again.")
+        if succeeded {
+            lastRequestedSearchQuery = nil
+            await performAutocompleteSearch(force: true)
+        }
     }
 
     nonisolated private static func searchInputScript(_ query: String) -> String {
@@ -2066,23 +2162,259 @@ struct SocialConnectionsView: View {
         ])
     }
 
+}
+
+private struct SocialPeopleSearchResultsView: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    @Environment(\.analyticsManager) private var analyticsManager
+    @State private var query: String
+    @State private var results: [SocialPersonSearchResultDTO] = []
+    @State private var isLoading = false
+    @State private var searchFailed = false
+    @State private var toastMessage: String?
+    @State private var lastRequestedQuery: String?
+    @State private var hasPerformedInitialSearch = false
+    @FocusState private var isSearchFocused: Bool
+
+    init(initialQuery: String) {
+        _query = State(initialValue: initialQuery)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: OutboundSpacing.compact) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search name or username", text: $query)
+                    .focused($isSearchFocused)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .onSubmit { Task { await search(trigger: "submitted", force: true) } }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                        results = []
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, OutboundSpacing.screen)
+            .frame(minHeight: 52)
+            .background(.bar)
+
+            Divider()
+
+            List(results) { person in
+                SocialPeopleSearchRow(person: person, compact: false) { succeeded in
+                    toastMessage = succeeded
+                        ? String(localized: "Connection updated")
+                        : String(localized: "Could not update connection. Try again.")
+                    if succeeded { await search(trigger: "submitted", force: true) }
+                }
+            }
+            .listStyle(.plain)
+            .overlay {
+                if isLoading && results.isEmpty {
+                    ProgressView().accessibilityLabel(String(localized: "Searching for people"))
+                } else if searchFailed {
+                    ContentUnavailableView {
+                        Label(String(localized: "Search failed"), systemImage: "wifi.exclamationmark")
+                    } actions: {
+                        Button("Try again") { Task { await search(trigger: "submitted", force: true) } }
+                    }
+                } else if !TogetherStore.normalizedPeopleSearchQuery(query).isEmpty && results.isEmpty {
+                    ContentUnavailableView.search(text: query)
+                } else if TogetherStore.normalizedPeopleSearchQuery(query).isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "Search for people"),
+                        systemImage: "person.2",
+                        description: Text(String(localized: "Enter a name or username."))
+                    )
+                }
+            }
+        }
+        .navigationTitle(String(localized: "Search people"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: query) {
+            let trigger = hasPerformedInitialSearch ? "autocomplete" : "submitted"
+            if hasPerformedInitialSearch {
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            guard !Task.isCancelled else { return }
+            await search(trigger: trigger, force: !hasPerformedInitialSearch)
+            hasPerformedInitialSearch = true
+        }
+        .overlay(alignment: .top) {
+            if let toastMessage {
+                Label(toastMessage, systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                    .padding(.top, 8)
+            }
+        }
+        .task(id: toastMessage) {
+            guard toastMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            toastMessage = nil
+        }
+    }
+
+    private func search(trigger: String, force: Bool = false) async {
+        let normalizedQuery = TogetherStore.normalizedPeopleSearchQuery(query)
+        guard !normalizedQuery.isEmpty else {
+            lastRequestedQuery = nil
+            results = []
+            searchFailed = false
+            return
+        }
+        guard force || normalizedQuery != lastRequestedQuery else { return }
+        lastRequestedQuery = normalizedQuery
+        isLoading = true
+        searchFailed = false
+
+        let outcome = await socialStore.searchPeople(normalizedQuery)
+        guard lastRequestedQuery == normalizedQuery,
+              TogetherStore.normalizedPeopleSearchQuery(query) == normalizedQuery else { return }
+        isLoading = false
+        searchFailed = outcome == nil
+        if let outcome {
+            results = socialStore.peopleResults
+            await analyticsManager?.track(.init(.connectionsSearchCompleted, properties: [
+                .sourceType: .string(trigger),
+                .inputScript: .string(Self.searchInputScript(normalizedQuery)),
+                .queryLengthBucket: .string(ProductAnalyticsBucket.count(normalizedQuery.count)),
+                .countBucket: .string(ProductAnalyticsBucket.count(outcome.count)),
+                .matchMode: .string(outcome.matchMode),
+                .result: .string("success")
+            ]))
+        } else {
+            lastRequestedQuery = nil
+            await analyticsManager?.track(.init(.connectionsSearchCompleted, properties: [
+                .sourceType: .string(trigger),
+                .inputScript: .string(Self.searchInputScript(normalizedQuery)),
+                .queryLengthBucket: .string(ProductAnalyticsBucket.count(normalizedQuery.count)),
+                .countBucket: .string(ProductAnalyticsBucket.count(0)),
+                .matchMode: .string("unavailable"),
+                .result: .string("failure")
+            ]))
+        }
+    }
+
+    nonisolated private static func searchInputScript(_ query: String) -> String {
+        let meaningfulScalars = query.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }
+        let hasHan = meaningfulScalars.contains { $0.properties.isIdeographic }
+        let hasNonHan = meaningfulScalars.contains { !$0.properties.isIdeographic }
+        if hasHan && hasNonHan { return "mixed" }
+        if hasHan { return "han" }
+        if meaningfulScalars.allSatisfy(\.isASCII) { return "latin" }
+        return "other"
+    }
+}
+
+private struct SocialPeopleSearchRow: View {
+    @EnvironmentObject private var socialStore: TogetherStore
+    let person: SocialPersonSearchResultDTO
+    let compact: Bool
+    let onMutation: (Bool) async -> Void
+    @State private var isMutating = false
+
+    private var socialPerson: SocialPersonDTO {
+        SocialPersonDTO(id: person.id, username: person.username, displayName: person.displayName, avatarUrl: person.avatarUrl)
+    }
+
+    private var connection: SocialConnectionDTO? {
+        guard let relationship = person.relationship else { return nil }
+        return SocialConnectionDTO(
+            id: relationship.id,
+            status: relationship.status,
+            direction: relationship.direction,
+            person: socialPerson
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: OutboundSpacing.compact) {
+            SocialProfileLink(person: socialPerson, entrySource: compact ? "connections_autocomplete" : "connections_search_results") {
+                HStack(spacing: OutboundSpacing.compact) {
+                    SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(person.displayName).font(.headline).foregroundStyle(.primary)
+                        Text("@\(person.username)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            Spacer(minLength: 8)
+            relationshipAction
+        }
+        .padding(.horizontal, compact ? OutboundSpacing.standard : 0)
+        .frame(minHeight: 56)
+        .disabled(isMutating)
+        .opacity(isMutating ? 0.6 : 1)
+    }
+
     @ViewBuilder
-    private func relationshipAction(for person: SocialPersonSearchResultDTO) -> some View {
+    private var relationshipAction: some View {
         switch (person.relationship?.status, person.relationship?.direction) {
         case ("accepted", _):
-            Text("Connected").font(.caption).foregroundStyle(.secondary)
+            if compact {
+                Text("Connected").font(.caption).foregroundStyle(.secondary)
+            } else if let connection {
+                Menu {
+                    Button("Remove connection", role: .destructive) { mutate { await socialStore.removeConnection(connection) } }
+                } label: {
+                    Image(systemName: "ellipsis").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Connection actions")
+            }
         case ("pending", "outgoing"):
-            Text("Sent").font(.caption).foregroundStyle(.secondary)
+            if compact {
+                Text("Sent").font(.caption).foregroundStyle(.secondary)
+            } else if let connection {
+                Button(role: .destructive) { mutate { await socialStore.removeConnection(connection) } } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(SocialIconButtonStyle(tint: .red))
+                .accessibilityLabel(String(localized: "Cancel connection request"))
+            }
         case ("pending", "incoming"):
-            Text("Requested").font(.caption).foregroundStyle(.secondary)
+            if let connection {
+                Button { mutate { await socialStore.acceptConnection(connection) } } label: {
+                    Image(systemName: "checkmark")
+                }
+                .buttonStyle(SocialIconButtonStyle())
+                .accessibilityLabel(String(localized: "Accept connection request"))
+                if !compact {
+                    Button(role: .destructive) { mutate { await socialStore.removeConnection(connection) } } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(SocialIconButtonStyle(tint: .red))
+                    .accessibilityLabel(String(localized: "Decline connection request"))
+                }
+            }
         default:
-            Button {
-                Task { await socialStore.requestConnection(to: person) }
-            } label: {
+            Button { mutate { await socialStore.requestConnection(to: person) } } label: {
                 Image(systemName: "person.badge.plus")
             }
             .buttonStyle(SocialIconButtonStyle())
-            .accessibilityLabel("Connect with \(person.displayName)")
+            .accessibilityLabel(String(localized: "Connect with \(person.displayName)"))
+        }
+    }
+
+    private func mutate(_ operation: @escaping () async -> Bool) {
+        guard !isMutating else { return }
+        isMutating = true
+        Task {
+            let succeeded = await operation()
+            isMutating = false
+            await onMutation(succeeded)
         }
     }
 }
