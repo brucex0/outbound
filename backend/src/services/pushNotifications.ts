@@ -27,7 +27,9 @@ export async function deliverPushNotification(notification: PushNotificationPayl
     if (platformDevices.length === 0) continue;
     const result = await getMessaging(getFirebaseApp()).sendEachForMulticast({
       tokens: platformDevices.map((device) => device.token),
-      notification: { title: "Plainstride", body: notification.message },
+      // Keep user-authored/social content out of lock-screen payloads. The client
+      // fetches the authenticated inbox after the user opens the generic notice.
+      notification: { title: "Plainstride", body: "You have a new update." },
       data: {
         notificationId: notification.id,
         type: notification.type,

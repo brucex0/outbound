@@ -134,7 +134,6 @@ function legacyClientData(activity: {
 }
 
 const createSchema = z.object({
-  userId: z.string().optional(),
   clientActivityId: z.string().min(1).max(128).optional(),
   syncSource: z.string().min(1).max(64).optional(),
   type: z.enum(activityTypes).default("running"),
@@ -234,10 +233,10 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   const prisma = getPrismaClient();
   const body = c.req.valid("json");
   const authenticatedUser = await getAuthenticatedAppUser(c);
-  const resolvedUserId = authenticatedUser?.id ?? body.userId;
+  const resolvedUserId = authenticatedUser?.id;
 
   if (!resolvedUserId) {
-    return c.json({ error: "Authentication or legacy userId is required." }, 401);
+    return c.json({ error: "Authentication is required." }, 401);
   }
 
   let resolvedFollowedRouteId: string | undefined;
