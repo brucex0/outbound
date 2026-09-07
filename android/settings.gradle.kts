@@ -32,6 +32,7 @@ include(
     ":core:weather",
     ":feature:onboarding",
     ":feature:activity",
+    ":feature:assistant",
     ":feature:progress",
     ":feature:health",
     ":feature:livecoach",

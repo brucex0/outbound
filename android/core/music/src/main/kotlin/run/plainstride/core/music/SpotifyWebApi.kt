@@ -24,3 +24,12 @@ interface SpotifyWebApi {
 
 internal val SpotifyJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }
 fun createSpotifyWebApi(client: OkHttpClient): SpotifyWebApi = Retrofit.Builder().baseUrl("https://api.spotify.com/").client(client).addConverterFactory(SpotifyJson.asConverterFactory("application/json".toMediaType())).build().create(SpotifyWebApi::class.java)
+
+class SpotifyCatalog(private val api: SpotifyWebApi, private val authorizations: SpotifyAuthorizationStore) {
+    suspend fun search(query: String): Result<List<MusicItem>> = runCatching {
+        val token = authorizations.load()?.takeIf { it.expiresAtEpochMs > System.currentTimeMillis() } ?: error("reauthorization_required")
+        val response = api.search("Bearer ${token.accessToken}", query.trim().take(100))
+        check(response.isSuccessful)
+        response.body()?.tracks?.items.orEmpty().map { MusicItem(it.uri, it.name, it.artists.joinToString { artist -> artist.name }, it.album?.images?.firstOrNull()?.url) }
+    }
+}
