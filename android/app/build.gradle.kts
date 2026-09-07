@@ -85,6 +85,7 @@ tasks.register("verifyPlayReleaseConfiguration") {
         check(providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").isPresent) { "PLAINSTRIDE_VERSION_CODE is required for Play artifacts." }
         check(providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").isPresent) { "PLAINSTRIDE_VERSION_NAME is required for Play artifacts." }
         check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { providers.environmentVariable(it).isPresent }) { "All Plainstride Android upload-signing variables are required for Play artifacts." }
+        check(providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").isPresent) { "PLAINSTRIDE_MAPS_API_KEY is required for Play artifacts." }
     }
 }
 

@@ -81,6 +81,8 @@ import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import run.plainstride.core.designsystem.MapCoordinate
+import run.plainstride.core.designsystem.PlainstrideRouteMap
 
 data class RecordedActivityReview(
     val snapshot: RecordingSnapshot,
@@ -109,6 +111,7 @@ fun RecordingRoute(
     var showLocationEducation by remember { mutableStateOf(false) }
     var showCameraEducation by remember { mutableStateOf(false) }
     val saveSnackbar = remember { SnackbarHostState() }
+    val saveFailedMessage = stringResource(R.string.recording_save_failed)
 
     LaunchedEffect(launch) { viewModel.configure(launch) }
 
@@ -190,7 +193,7 @@ fun RecordingRoute(
                             viewModel.markSaved()
                             onSaved(review)
                         } else {
-                            saveSnackbar.showSnackbar(context.getString(R.string.recording_save_failed))
+                            saveSnackbar.showSnackbar(saveFailedMessage)
                         }
                     }
                 },
@@ -208,6 +211,7 @@ fun RecordingRoute(
                     } else viewModel.setMode(mode)
                 },
                 onTakePhoto = ::capturePhoto,
+                onPhotoCaptured = viewModel::setPhotoPath,
                 onPause = viewModel::pause,
                 onResume = {
                     val permission = permissionState()
@@ -319,6 +323,7 @@ private fun LiveRecordingScreen(
     photoPath: String?,
     onMode: (RecordingSurfaceMode) -> Unit,
     onTakePhoto: () -> Unit,
+    onPhotoCaptured: (String) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: () -> Unit,
@@ -326,7 +331,7 @@ private fun LiveRecordingScreen(
 ) {
     Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot.track, Modifier.fillMaxSize())
-        else CameraSurface(photoPath, onTakePhoto, Modifier.fillMaxSize())
+        else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto, Modifier.fillMaxSize())
 
         Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(shape = CircleShape, tonalElevation = 6.dp) {
@@ -342,29 +347,7 @@ private fun LiveRecordingScreen(
 
 @Composable
 private fun TrackMap(track: List<RecordedLocationSample>, modifier: Modifier = Modifier) {
-    val routeColor = MaterialTheme.colorScheme.primary
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
-    Canvas(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
-        val step = size.minDimension / 8
-        var position = 0f
-        while (position < size.maxDimension) {
-            drawLine(gridColor, Offset(position, 0f), Offset(position, size.height), strokeWidth = 1f)
-            drawLine(gridColor, Offset(0f, position), Offset(size.width, position), strokeWidth = 1f)
-            position += step
-        }
-        if (track.size > 1) {
-            val minLat = track.minOf { it.latitude }; val maxLat = track.maxOf { it.latitude }
-            val minLon = track.minOf { it.longitude }; val maxLon = track.maxOf { it.longitude }
-            val latRange = (maxLat - minLat).coerceAtLeast(0.00001)
-            val lonRange = (maxLon - minLon).coerceAtLeast(0.00001)
-            val points = track.map {
-                Offset(((it.longitude - minLon) / lonRange * size.width * .8 + size.width * .1).toFloat(),
-                    ((maxLat - it.latitude) / latRange * size.height * .65 + size.height * .1).toFloat())
-            }
-            points.zipWithNext().forEach { (a, b) -> drawLine(routeColor, a, b, strokeWidth = 10f) }
-            drawCircle(routeColor, 12f, points.last(), style = Stroke(6f))
-        }
-    }
+    PlainstrideRouteMap(track.map { MapCoordinate(it.latitude, it.longitude) }, modifier)
     Box(modifier, contentAlignment = Alignment.Center) {
         if (track.isEmpty()) Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.MyLocation, null)
@@ -374,17 +357,11 @@ private fun TrackMap(track: List<RecordedLocationSample>, modifier: Modifier = M
 }
 
 @Composable
-private fun CameraSurface(photoPath: String?, onTakePhoto: () -> Unit, modifier: Modifier = Modifier) {
+private fun CameraSurface(photoPath: String?, onCaptured: (String) -> Unit, onTakePhoto: () -> Unit, modifier: Modifier = Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
         val bitmap = remember(photoPath) { photoPath?.let { BitmapFactory.decodeFile(it) } }
         if (bitmap != null) Image(bitmap.asImageBitmap(), contentDescription = stringResource(R.string.recording_activity_photo), modifier = Modifier.fillMaxSize())
-        else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Default.CameraAlt, null, tint = Color.White, modifier = Modifier.size(48.dp))
-            Text(stringResource(R.string.recording_camera_ready), color = Color.White)
-        }
-        FilledIconButton(onClick = onTakePhoto, modifier = Modifier.align(Alignment.CenterEnd).padding(24.dp).size(64.dp)) {
-            Icon(Icons.Default.CameraAlt, stringResource(R.string.recording_capture_photo))
-        }
+        else InAppCamera(onCaptured, onTakePhoto, Modifier.fillMaxSize())
     }
 }
 

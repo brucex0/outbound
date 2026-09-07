@@ -8,6 +8,7 @@ Open this for Play Console preparation, signed bundles, release policy, privacy 
 - `PLAINSTRIDE_VERSION_NAME` is the user-facing semantic version. A rollback build still receives a new version code.
 - Enroll in Play App Signing and protect the upload key separately. Never commit a keystore or password.
 - Supply `PLAINSTRIDE_ANDROID_KEYSTORE_PATH`, `PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD`, `PLAINSTRIDE_ANDROID_KEY_ALIAS`, and `PLAINSTRIDE_ANDROID_KEY_PASSWORD` only through the CI secret store or local environment.
+- Supply `PLAINSTRIDE_MAPS_API_KEY` as a Gradle property from CI (`ORG_GRADLE_PROJECT_PLAINSTRIDE_MAPS_API_KEY`). Restrict it in Google Cloud to the release application ID and Play signing certificate. Missing keys render an accessible “Map unavailable” state and `verifyPlayReleaseConfiguration` fails closed.
 - Ordinary `assembleRelease` remains unsigned when secrets are absent so source verification is reproducible. Run `verifyPlayReleaseConfiguration` before any Play bundle.
 
 ```sh

@@ -73,6 +73,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import run.plainstride.core.designsystem.MapCoordinate
+import run.plainstride.core.designsystem.PlainstrideRouteMap
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.Instant
@@ -256,17 +258,7 @@ private fun ActivityDetailScreen(
 }
 
 @Composable private fun RouteChart(points: List<ActivityTrackPoint>, modifier: Modifier) {
-    val route = MaterialTheme.colorScheme.primary
-    val surface = MaterialTheme.colorScheme.surfaceVariant
-    val description = stringResource(R.string.activity_route_description)
-    Canvas(modifier.background(surface, RoundedCornerShape(20.dp)).semantics { contentDescription = description }) {
-        val minLat = points.minOf { it.latitude }; val maxLat = points.maxOf { it.latitude }
-        val minLon = points.minOf { it.longitude }; val maxLon = points.maxOf { it.longitude }
-        val latRange = (maxLat - minLat).coerceAtLeast(.00001); val lonRange = (maxLon - minLon).coerceAtLeast(.00001)
-        val offsets = points.map { Offset(((it.longitude - minLon) / lonRange * size.width * .82 + size.width * .09).toFloat(), ((maxLat - it.latitude) / latRange * size.height * .82 + size.height * .09).toFloat()) }
-        offsets.zipWithNext().forEach { (a, b) -> drawLine(route, a, b, 9f) }
-        drawCircle(route, 11f, offsets.first()); drawCircle(route, 13f, offsets.last())
-    }
+    PlainstrideRouteMap(points.map { MapCoordinate(it.latitude, it.longitude) }, modifier)
 }
 
 @Composable private fun ElevationChart(points: List<ActivityTrackPoint>, modifier: Modifier) {

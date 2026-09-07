@@ -15,6 +15,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:designsystem"))
     implementation(project(":core:analytics"))
     api(project(":core:location"))
     implementation(project(":core:database"))
@@ -36,5 +37,8 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.hilt.android)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
     ksp(libs.hilt.compiler)
 }
