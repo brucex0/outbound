@@ -113,6 +113,8 @@ The script runs a local backend build first, deploys `backend/` to Cloud Run wit
 
 `CIRCLE_MEMBER_LIMIT` controls the capacity assigned to newly created Circles and defaults to `6`. The backend accepts values from `2` through `100`, returns the active policy to clients, and snapshots the value onto each Circle so later experiments do not unexpectedly shrink or expand existing groups.
 
+Android weather uses the authenticated `GET /v1/weather/current` proxy. The proxy rounds coordinates to two decimals, keeps account/locale/location results in memory for 30 minutes, honors MET Norway conditional responses, and never logs coordinates. It uses the keyless global Locationforecast API because Google Weather requires billing and a server credential; the provider boundary can move to Google without changing the Android contract. Set `WEATHER_PROVIDER_USER_AGENT` to an identifying application/domain plus support contact before production deployment (for example `Plainstride/1.0 https://plainstride.run`). Display the response attribution wherever weather data appears; the response is derived from MET Norway data licensed under CC BY 4.0.
+
 Raw command equivalent:
 
 ```sh
