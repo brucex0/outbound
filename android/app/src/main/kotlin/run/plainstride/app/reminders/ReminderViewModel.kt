@@ -16,5 +16,7 @@ class ReminderViewModel @Inject constructor(@ApplicationContext context: Context
     private val preferences = context.getSharedPreferences(WorkoutReminderScheduler.PREFS, Context.MODE_PRIVATE)
     private val mutableEnabled = MutableStateFlow(preferences.getBoolean(WorkoutReminderScheduler.ENABLED, false))
     val enabled = mutableEnabled.asStateFlow()
-    fun setEnabled(enabled: Boolean) { if (enabled) scheduler.schedule(7, 0) else scheduler.cancel(); mutableEnabled.value = enabled; analytics.record(AnalyticsEvent("workout_reminder_changed", mapOf(AnalyticsProperty.Enabled to enabled))) }
+    private val mutableTime = MutableStateFlow(preferences.getInt(WorkoutReminderScheduler.HOUR,7) to preferences.getInt(WorkoutReminderScheduler.MINUTE,0));val time=mutableTime.asStateFlow()
+    fun setEnabled(enabled: Boolean) { if (enabled) scheduler.schedule(mutableTime.value.first,mutableTime.value.second) else scheduler.cancel(); mutableEnabled.value = enabled; analytics.record(AnalyticsEvent("workout_reminder_changed", mapOf(AnalyticsProperty.Enabled to enabled))) }
+    fun setTime(hour:Int,minute:Int){mutableTime.value=hour to minute;if(mutableEnabled.value)scheduler.schedule(hour,minute);analytics.record(AnalyticsEvent("workout_reminder_time_changed"))}
 }

@@ -98,6 +98,7 @@ data class GearCollection(
 }
 
 interface GearRepository {
+    suspend fun configure(accountId: String) {}
     suspend fun collection(): GearCollection
     suspend fun replace(collection: GearCollection)
     suspend fun activityDistances(): List<ActivityGearDistance>

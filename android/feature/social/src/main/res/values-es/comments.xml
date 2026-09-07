@@ -1,0 +1,3 @@
+<resources>
+    <string name="social_comments">Abrir comentarios</string><string name="social_comments_for">Comentarios en la publicación de %1$s</string><string name="social_add_comment">Añadir un comentario</string><string name="social_post_comment">Publicar</string><string name="social_delete_comment">Eliminar comentario</string><string name="social_award_badge">Insignia de logro</string>
+</resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notification_generic_body">你有一条新动态。</string>
-    <string name="reminder_channel">训练提醒</string><string name="reminder_title">准备好动起来了吗？</string><string name="reminder_body">你的训练计划已准备好，随时可以开始。</string><string name="reminder_setting">每日训练提醒</string><string name="reminder_setting_body">按当前时区每天 7:00 提醒</string><string name="shortcut_start">开始训练</string><string name="shortcut_assistant">询问运动伙伴</string>
+    <string name="reminder_channel">训练提醒</string><string name="reminder_title">准备好动起来了吗？</string><string name="reminder_body">你的训练计划已准备好，随时可以开始。</string><string name="reminder_setting">训练提醒</string><string name="reminder_setting_body">仅在计划训练日的 %1$s 提醒</string><string name="shortcut_start">开始训练</string><string name="shortcut_assistant">询问运动伙伴</string>
     <string name="notification_channel_social">社交动态</string>
     <string name="progress_destination">进度与装备</string><string name="routes_destination">社区路线</string><string name="health_destination">健康数据同步</string><string name="safety_destination">安全与实时位置</string><string name="notifications_destination">通知</string>
     <string name="app_name">Plainstride</string>

@@ -13,6 +13,7 @@ import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
 import net.openid.appauth.AuthorizationServiceConfiguration
 import net.openid.appauth.ResponseTypeValues
+import net.openid.appauth.TokenRequest
 import run.plainstride.app.BuildConfig
 import run.plainstride.core.music.*
 
@@ -28,12 +29,24 @@ class SpotifyOAuthClient @Inject constructor(@ApplicationContext private val con
         val response = AuthorizationResponse.fromIntent(deferred.await()) ?: return Result.failure(IllegalStateException("spotify_authorization_failed"))
         return exchange(response)
     }
-    override suspend fun refresh(authorization: SpotifyAuthorization): Result<SpotifyAuthorization> = Result.failure(IllegalStateException("spotify_reauthorization_required"))
+    override suspend fun refresh(authorization: SpotifyAuthorization): Result<SpotifyAuthorization> {
+        val refreshToken = authorization.refreshToken ?: return Result.failure(IllegalStateException("spotify_reauthorization_required"))
+        val config = AuthorizationServiceConfiguration(Uri.parse("https://accounts.spotify.com/authorize"), Uri.parse("https://accounts.spotify.com/api/token"))
+        val request = TokenRequest.Builder(config, BuildConfig.SPOTIFY_CLIENT_ID).setGrantType("refresh_token").setRefreshToken(refreshToken).setScope(authorization.scopes.joinToString(" ")).build()
+        return exchange(request, refreshToken, authorization.scopes)
+    }
     private suspend fun exchange(response: AuthorizationResponse): Result<SpotifyAuthorization> = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
         AuthorizationService(context).performTokenRequest(response.createTokenExchangeRequest()) { token, error ->
             val access = token?.accessToken
             if (access != null) continuation.resume(Result.success(SpotifyAuthorization(access, token.accessTokenExpirationTime ?: System.currentTimeMillis() + 3_600_000, token.refreshToken, token.scope.orEmpty().split(' ').filter(String::isNotBlank).toSet())), null)
             else continuation.resume(Result.failure(error ?: IllegalStateException("spotify_token_exchange_failed")), null)
+        }
+    }
+    private suspend fun exchange(request: TokenRequest, fallbackRefreshToken: String, scopes: Set<String>): Result<SpotifyAuthorization> = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        AuthorizationService(context).performTokenRequest(request) { token, error ->
+            val access = token?.accessToken
+            if (access != null) continuation.resume(Result.success(SpotifyAuthorization(access, token.accessTokenExpirationTime ?: System.currentTimeMillis() + 3_600_000, token.refreshToken ?: fallbackRefreshToken, token.scope?.split(' ')?.filter(String::isNotBlank)?.toSet() ?: scopes)), null)
+            else continuation.resume(Result.failure(error ?: IllegalStateException("spotify_refresh_failed")), null)
         }
     }
     companion object { const val CALLBACK = "run.plainstride.spotify.CALLBACK"; private val pending = AtomicReference<CompletableDeferred<Intent>?>(null); fun complete(intent: Intent): Boolean = pending.getAndSet(null)?.let { it.complete(intent) } ?: false }

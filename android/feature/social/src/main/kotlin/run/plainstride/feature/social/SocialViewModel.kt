@@ -16,6 +16,7 @@ data class SocialUiState(
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
     val selectedProfile: SocialPerson? = null, val selectedCircle: CircleSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
+    val selectedEvent:SocialEvent?=null,val selectedGroup:SocialGroup?=null,val selectedInvitation:SocialInvitation?=null,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
@@ -58,6 +59,8 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person) }; analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social"))) }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null) }
+    fun openTarget(type:String,id:String){when(type){"activity","post"->mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id}?.let(::openComments);"event"->mutableState.update{state->state.copy(selectedEvent=state.home.upcomingRuns.firstOrNull{it.id==id})};"circle"->mutableState.value.home.circles.firstOrNull{it.id==id}?.let(::openCircle);"group"->mutableState.update{state->state.copy(selectedGroup=state.home.groups.firstOrNull{it.id==id})};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
+    fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroup=null,selectedInvitation=null)}
     fun openCircle(circle: CircleSummary) = viewModelScope.launch { repository.circle(circle.id).onSuccess { value -> mutableState.update { it.copy(selectedCircle = value) } } }
     fun closeCircle() = mutableState.update { it.copy(selectedCircle = null) }
     fun joinGroup(group: SocialGroup) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, !group.joined).getOrThrow(); refresh() }

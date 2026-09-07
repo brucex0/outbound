@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
-import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -23,15 +22,17 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import java.time.ZonedDateTime
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import run.plainstride.app.MainActivity
 import run.plainstride.app.R
 
 class WorkoutReminderScheduler @Inject constructor(@ApplicationContext private val context: Context) {
-    fun schedule(hour: Int, minute: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(ENABLED, true).putInt(HOUR, hour).putInt(MINUTE, minute).apply()
-        val trigger = next(hour, minute)
+    fun schedule(hour: Int, minute: Int, workoutDate: LocalDate? = null, workoutId: String? = null) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(ENABLED, true).putInt(HOUR, hour).putInt(MINUTE, minute).putString(WORKOUT_DATE, workoutDate?.toString()).putString(WORKOUT_ID, workoutId).apply()
+        val trigger = next(hour, minute, workoutDate)
         val alarm = context.getSystemService(AlarmManager::class.java)
         if (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()) {
             alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.toInstant().toEpochMilli(), pending(context))
@@ -49,11 +50,16 @@ class WorkoutReminderScheduler @Inject constructor(@ApplicationContext private v
 
     fun restore() {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(ENABLED, false)) schedule(prefs.getInt(HOUR, 7), prefs.getInt(MINUTE, 0))
+        if (prefs.getBoolean(ENABLED, false)) schedule(
+            prefs.getInt(HOUR, 7),
+            prefs.getInt(MINUTE, 0),
+            prefs.getString(WORKOUT_DATE, null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            prefs.getString(WORKOUT_ID, null),
+        )
     }
 
-    private fun next(hour: Int, minute: Int): ZonedDateTime = ZonedDateTime.now().let { now ->
-        now.withHour(hour).withMinute(minute).withSecond(0).withNano(0).let { if (it.isAfter(now)) it else it.plusDays(1) }
+    private fun next(hour: Int, minute: Int, date: LocalDate?): ZonedDateTime = ZonedDateTime.now().let { now ->
+        (date?.atTime(hour, minute)?.atZone(now.zone) ?: now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)).let { if (it.isAfter(now)) it else it.plusDays(1) }
     }
 
     companion object {
@@ -62,6 +68,8 @@ class WorkoutReminderScheduler @Inject constructor(@ApplicationContext private v
         const val HOUR = "hour"
         const val MINUTE = "minute"
         const val WORK = "daily_workout_reminder"
+        const val WORKOUT_DATE = "workout_date"
+        const val WORKOUT_ID = "workout_id"
         fun pending(context: Context) = PendingIntent.getBroadcast(context, 70, Intent(context, WorkoutReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 }
@@ -81,8 +89,12 @@ class WorkoutReminderWorker @AssistedInject constructor(@Assisted context: Conte
 }
 
 private fun showReminder(context: Context) {
+    val preferences = context.getSharedPreferences(WorkoutReminderScheduler.PREFS, Context.MODE_PRIVATE)
+    val scheduledDate = preferences.getString(WorkoutReminderScheduler.WORKOUT_DATE, null)
+    if (scheduledDate != null && scheduledDate != LocalDate.now().toString()) return
     val manager = context.getSystemService(NotificationManager::class.java)
     manager.createNotificationChannel(NotificationChannel("workout_reminders", context.getString(R.string.reminder_channel), NotificationManager.IMPORTANCE_DEFAULT))
-    val open = PendingIntent.getActivity(context, 71, Intent(context, MainActivity::class.java).apply { data = android.net.Uri.parse("plainstride://notification/today"); flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    val workoutId = preferences.getString(WorkoutReminderScheduler.WORKOUT_ID, null)
+    val open = PendingIntent.getActivity(context, 71, Intent(context, MainActivity::class.java).apply { data = android.net.Uri.Builder().scheme("plainstride").authority("notification").appendPath("today").appendQueryParameter("workout", workoutId).build(); flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     if (NotificationManagerCompat.from(context).areNotificationsEnabled()) manager.notify(71, NotificationCompat.Builder(context, "workout_reminders").setSmallIcon(R.drawable.ic_notification).setContentTitle(context.getString(R.string.reminder_title)).setContentText(context.getString(R.string.reminder_body)).setContentIntent(open).setAutoCancel(true).build())
 }

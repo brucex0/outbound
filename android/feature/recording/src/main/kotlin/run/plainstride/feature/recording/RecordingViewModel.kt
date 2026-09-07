@@ -177,6 +177,7 @@ class RecordingViewModel @Inject constructor(
                 ReflectionChoice.TOUGH -> R.string.recording_reflection_tough
             })
             activities.save(base.copy(
+                gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
                 reflection = ActivityReflection(
                     title = context.getString(R.string.recording_reflection_title),
                     body = reflectionLabel,

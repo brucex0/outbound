@@ -76,6 +76,8 @@ import run.plainstride.feature.community.createCommunityRoutesApi
 import run.plainstride.feature.safety.SafetyApi
 import run.plainstride.feature.safety.createSafetyApi
 import run.plainstride.app.analytics.FirebaseAnalyticsSink
+import run.plainstride.app.gear.PersistentGearRepository
+import run.plainstride.feature.progress.GearRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -154,6 +156,7 @@ object FoundationModule {
     @Provides @Singleton fun spotifyCatalog(api: SpotifyWebApi, store: SpotifyAuthorizationStore) = SpotifyCatalog(api, store)
     @Provides @Singleton fun musicScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Provides @Singleton fun musicProvider(remote: SpotifyAppRemoteTransport, client: SpotifyAuthorizationClient, store: SpotifyAuthorizationStore, state: MusicStateStore, scope: CoroutineScope): MusicProvider = SpotifyMusicProvider(remote, client, store, state, scope)
+    @Provides @Singleton fun gearRepository(repository: PersistentGearRepository): GearRepository = repository
 
     @Provides @Singleton fun activityMediaStore(@ApplicationContext context: Context): ActivityMediaStore =
         ActivityMediaStore(context)

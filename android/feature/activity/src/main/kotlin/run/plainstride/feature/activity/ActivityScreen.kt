@@ -107,6 +107,7 @@ fun RecentActivitiesRoute(
 @Composable
 fun ActivityHistoryRoute(
     accountId: String,
+    initialActivityId: String? = null,
     onBack: () -> Unit,
     onMessage: suspend (ActivityMessage) -> Unit,
     modifier: Modifier = Modifier,
@@ -114,6 +115,7 @@ fun ActivityHistoryRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { viewModel.start(accountId) }
+    LaunchedEffect(initialActivityId, state.loading) { if (!state.loading && initialActivityId != null) viewModel.open(initialActivityId) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     val selected = state.selected
     if (selected == null) ActivityHistoryScreen(state, viewModel::open, viewModel::loadMore, viewModel::createManual, onBack, modifier)

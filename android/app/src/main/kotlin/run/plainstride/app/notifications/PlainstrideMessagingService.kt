@@ -27,6 +27,8 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
             "cheer", "comment" -> "activity"
             "runInvitation", "invitationAccepted", "activityEventJoined" -> "event"
             "circleInvitation", "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred" -> "circle"
+            "groupRunInvitation", "groupRunStarted", "groupRunUpdated" -> "group"
+            "liveShare", "liveShareStarted", "liveShareUpdated" -> "live"
             else -> "inbox"
         }
         val intent = Intent(this, MainActivity::class.java).apply {
