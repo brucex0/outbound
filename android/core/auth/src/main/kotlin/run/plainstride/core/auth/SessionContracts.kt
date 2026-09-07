@@ -8,6 +8,12 @@ data class SessionCredentials(
     val accessTokenExpiresAtEpochMilliseconds: Long,
     val refreshToken: String,
     val refreshTokenExpiresAtEpochMilliseconds: Long,
+    val account: SessionAccount? = null,
+)
+
+data class SessionAccount(
+    val id: String,
+    val onboardingCompleted: Boolean?,
 )
 
 interface SecureSessionStore {

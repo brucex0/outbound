@@ -76,4 +76,8 @@ private fun SessionResponseDto.credentials() = SessionCredentials(
     accessTokenExpiresAtEpochMilliseconds = Instant.parse(accessTokenExpiresAt).toEpochMilli(),
     refreshToken = refreshToken,
     refreshTokenExpiresAtEpochMilliseconds = Instant.parse(refreshTokenExpiresAt).toEpochMilli(),
+    account = SessionAccount(
+        id = user.id,
+        onboardingCompleted = user.onboardingCompleted,
+    ),
 )

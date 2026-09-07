@@ -21,13 +21,18 @@ class DefaultOnboardingRepository @Inject constructor(
     override suspend fun currentAccount(): OnboardingAccount {
         val authorization = authorization()
         val account = apiCall { accounts.currentAccount(authorization) }.valueOrThrow()
-        val snapshot = apiCall { personalization.personalization(authorization) }.valueOrThrow()
-        return OnboardingAccount(account.id, account.displayName, account.username, account.normalizedEmail, snapshot.calibration.status.name != "notStarted")
+        return OnboardingAccount(
+            account.id,
+            account.displayName,
+            account.username,
+            account.normalizedEmail,
+            account.onboardingCompleted == true,
+        )
     }
 
     override suspend fun updateIdentity(displayName: String, username: String, contactEmail: String?): Result<OnboardingAccount> = runCatching {
         val account = apiCall { accounts.updateAccount(authorization(), UpdateAccountRequest(username, displayName, contactEmail)) }.valueOrThrow()
-        OnboardingAccount(account.id, account.displayName, account.username, account.normalizedEmail, false)
+        OnboardingAccount(account.id, account.displayName, account.username, account.normalizedEmail, account.onboardingCompleted == true)
     }
 
     override suspend fun updateTrainingProfile(input: TrainingProfileInput): Result<Unit> = runCatching {

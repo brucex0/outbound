@@ -11,7 +11,14 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.PATCH
 
-@Serializable data class AccountDto(val id: String, val username: String? = null, val displayName: String? = null, val normalizedEmail: String? = null, val contactEmail: String? = null)
+@Serializable data class AccountDto(
+    val id: String,
+    val username: String? = null,
+    val displayName: String? = null,
+    val normalizedEmail: String? = null,
+    val contactEmail: String? = null,
+    val onboardingCompleted: Boolean? = null,
+)
 @Serializable data class UpdateAccountRequest(val username: String? = null, val displayName: String, val contactEmail: String? = null)
 
 interface AccountApiService {

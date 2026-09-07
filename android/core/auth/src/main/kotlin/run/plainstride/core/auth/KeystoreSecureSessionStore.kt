@@ -67,10 +67,25 @@ class KeystoreSecureSessionStore(context: Context) : SecureSessionStore {
         val accessTokenExpiresAtEpochMilliseconds: Long,
         val refreshToken: String,
         val refreshTokenExpiresAtEpochMilliseconds: Long,
+        val accountId: String? = null,
+        val onboardingCompleted: Boolean? = null,
     ) {
-        fun toCredentials() = SessionCredentials(accessToken, accessTokenExpiresAtEpochMilliseconds, refreshToken, refreshTokenExpiresAtEpochMilliseconds)
+        fun toCredentials() = SessionCredentials(
+            accessToken,
+            accessTokenExpiresAtEpochMilliseconds,
+            refreshToken,
+            refreshTokenExpiresAtEpochMilliseconds,
+            accountId?.let { SessionAccount(it, onboardingCompleted) },
+        )
         companion object {
-            fun from(value: SessionCredentials) = StoredSession(value.accessToken, value.accessTokenExpiresAtEpochMilliseconds, value.refreshToken, value.refreshTokenExpiresAtEpochMilliseconds)
+            fun from(value: SessionCredentials) = StoredSession(
+                value.accessToken,
+                value.accessTokenExpiresAtEpochMilliseconds,
+                value.refreshToken,
+                value.refreshTokenExpiresAtEpochMilliseconds,
+                value.account?.id,
+                value.account?.onboardingCompleted,
+            )
         }
     }
 
