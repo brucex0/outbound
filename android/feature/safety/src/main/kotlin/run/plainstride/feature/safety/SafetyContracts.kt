@@ -1,0 +1,28 @@
+package run.plainstride.feature.safety
+
+import kotlinx.serialization.Serializable
+import retrofit2.Response
+import retrofit2.http.*
+
+@Serializable data class TrustedContact(val id:String,val displayName:String,val channel:String,val address:String,val isDefault:Boolean=false)
+@Serializable data class DeliveryTarget(val channel:String,val label:String?=null,val address:String?=null)
+@Serializable data class CreateLiveShareRequest(val activityId:String?=null,val recipientLabel:String?=null,val deliveryTargets:List<DeliveryTarget> = emptyList(),val sport:String?=null,val title:String?=null,val expiresInSeconds:Int=14400)
+@Serializable data class LiveShare(val id:String,val shareURL:String?=null,val status:String,val startedAt:String,val expiresAt:String,val stale:Boolean=false)
+@Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double)
+@Serializable data class PushDeviceRequest(val token:String,val platform:String="android",val appBundle:String,val locale:String?=null)
+@Serializable data class InboxActor(val id:String,val displayName:String,val avatarUrl:String?=null)
+@Serializable data class InboxNotification(val id:String,val type:String,val objectId:String,val message:String,val readAt:String?=null,val actor:InboxActor?=null)
+@Serializable data class InboxResponse(val notifications:List<InboxNotification> = emptyList())
+
+interface SafetyApi {
+ @POST("v1/safety/live-shares") suspend fun create(@Header("Authorization") auth:String,@Body body:CreateLiveShareRequest):Response<LiveShare>
+ @PATCH("v1/safety/live-shares/{id}/location") suspend fun update(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:LiveLocation):Response<LiveShare>
+ @POST("v1/safety/live-shares/{id}/end") suspend fun end(@Header("Authorization") auth:String,@Path("id") id:String):Response<LiveShare>
+ @PUT("v1/notifications/devices") suspend fun register(@Header("Authorization") auth:String,@Body body:PushDeviceRequest):Response<Unit>
+ @DELETE("v1/notifications/devices/{token}") suspend fun unregister(@Header("Authorization") auth:String,@Path("token") token:String):Response<Unit>
+ @GET("v1/social/notifications") suspend fun inbox(@Header("Authorization") auth:String):Response<InboxResponse>
+ @POST("v1/social/notifications/read-all") suspend fun readAll(@Header("Authorization") auth:String):Response<Unit>
+}
+
+sealed interface NotificationDestination { data object Connections:NotificationDestination; data object Inbox:NotificationDestination; data class Post(val id:String):NotificationDestination; data class Event(val id:String):NotificationDestination; data class Circle(val id:String):NotificationDestination }
+fun routeNotification(type:String,objectId:String):NotificationDestination=when(type){"connectionRequest","connectionAccepted"->NotificationDestination.Connections;"cheer","comment"->NotificationDestination.Post(objectId);"runInvitation","invitationAccepted","activityEventJoined"->NotificationDestination.Event(objectId);"circleInvitation","circleInvitationAccepted","circleCheer","circleWeeklyGoalCompleted","circleOwnershipTransferred"->NotificationDestination.Circle(objectId);else->NotificationDestination.Inbox}
