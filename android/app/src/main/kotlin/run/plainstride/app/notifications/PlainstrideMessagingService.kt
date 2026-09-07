@@ -22,11 +22,13 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
         val notificationId = message.data["notificationId"]?.take(160).orEmpty()
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL_SOCIAL, getString(R.string.notification_channel_social), NotificationManager.IMPORTANCE_DEFAULT))
-        val destination = when (type) {
+        val destination = message.data["targetType"]?.takeIf { it in setOf("invitation","event") } ?: when (type) {
             "connectionRequest", "connectionAccepted" -> "connections"
             "cheer", "comment" -> "activity"
-            "runInvitation", "invitationAccepted", "activityEventJoined" -> "event"
-            "circleInvitation", "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred" -> "circle"
+            "runInvitation" -> "invitation"
+            "invitationAccepted", "activityEventJoined" -> "event"
+            "circleInvitation" -> "invitation"
+            "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred" -> "circle"
             "groupRunInvitation", "groupRunStarted", "groupRunUpdated" -> "group"
             "liveShare", "liveShareStarted", "liveShareUpdated" -> "live"
             else -> "inbox"

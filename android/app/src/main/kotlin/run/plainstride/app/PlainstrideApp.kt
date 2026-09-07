@@ -148,10 +148,14 @@ private fun SignedInApp(
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
+    val signedInAccountId = when (val session = authState.session) { is SessionState.SignedIn -> session.accountId; is SessionState.Refreshing -> session.accountId; else -> null }
+    val onboardingCycleViewModel:CycleAwareViewModel=hiltViewModel()
+    LaunchedEffect(signedInAccountId){signedInAccountId?.let{onboardingCycleViewModel.start(it)}}
     if (!onboardingResolved) {
         OnboardingRoute(
             onComplete = { onboardingResolved = true },
             forceReplay = forceOnboardingReplay,
+            optionalPrivateSetup = { signedInAccountId?.let { CycleAwareSection(it,onboardingCycleViewModel) } },
             onMessage = { effect ->
                 val message = when (effect) {
                     OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
@@ -170,7 +174,8 @@ private fun SignedInApp(
     var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
     var socialTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
     var activityTarget by remember { mutableStateOf<String?>(null) }
-    var safetyTarget by remember { mutableStateOf<String?>(null) }
+    var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
+    var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     val accountId = when (val session = authState.session) {
@@ -192,12 +197,12 @@ private fun SignedInApp(
     LaunchedEffect(navigationUri) {
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         when (destination) {
-            "today" -> navController.navigate(TopLevelDestination.Today.route)
+            "today" -> { reminderWorkoutId=navigationUri.getQueryParameter("workout");navController.navigate(TopLevelDestination.Today.route) }
             "assistant" -> navController.navigate(TopLevelDestination.Assistant.route)
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
             "connections", "event", "circle", "group", "post", "invitation" -> { socialTarget=destination to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(TopLevelDestination.Social.route) }
-            "live" -> { safetyTarget=navigationUri.getQueryParameter("id");navController.navigate(SAFETY_ROUTE) }
+            "live" -> { safetyTarget="live" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
             else -> navController.navigate(NOTIFICATIONS_ROUTE)
         }
         onNavigationUriConsumed()
@@ -256,6 +261,7 @@ private fun SignedInApp(
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },
                             guidanceContent = { CycleTodayGuidance(cycleState,onKeep={},{ todayViewModel.state.value.primarySuggestion?.let{suggestion->cycleViewModel.requestGentler(suggestion.plannedWorkoutId?:suggestion.id)} }) },
+                            initialWorkoutId = reminderWorkoutId,
                         )
                     } else if (destination == TopLevelDestination.Me) {
                         MeRoute(
@@ -326,9 +332,9 @@ private fun SignedInApp(
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
             composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
             composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute) }
-            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget) }
+            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group") }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
-            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
+            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
         }
     }
     if (authState.confirmDeletion) AlertDialog(

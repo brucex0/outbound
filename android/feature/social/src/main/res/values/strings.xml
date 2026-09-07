@@ -8,4 +8,5 @@
     <string name="social_safety_title">Safety options</string><string name="social_safety_body">Reports are private. Blocking also removes the connection and hides each person’s content.</string><string name="social_report">Report post</string><string name="social_block">Block person</string>
     <string name="social_milestones">%1$d shared milestones</string><string name="social_done">Done</string><string name="social_circle_progress">%1$d of %2$d activities this week</string><string name="social_cheer">Send a private Cheer</string>
     <string name="social_relationship">Relationship: %1$s</string><string name="social_connect">Connect</string><string name="social_share_award">Share award</string><string name="social_share_award_text">%1$s earned an award on Plainstride</string>
+    <string name="social_circle_create">Create Circle</string><string name="social_remove_connection">Remove connection</string><string name="social_circle_reactivate">Reactivate</string><string name="social_invite">Invite</string><string name="social_invite_person">Invite %1$s</string>
 </resources>

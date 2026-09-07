@@ -8,4 +8,5 @@
     <string name="social_safety_title">安全选项</string><string name="social_safety_body">举报内容会保密。屏蔽后双方将解除好友关系，并互相隐藏内容。</string><string name="social_report">举报动态</string><string name="social_block">屏蔽此人</string>
     <string name="social_milestones">%1$d 个公开里程碑</string><string name="social_done">完成</string><string name="social_circle_progress">本周已完成 %1$d/%2$d 次活动</string><string name="social_cheer">发送私密鼓励</string>
     <string name="social_relationship">关系：%1$s</string><string name="social_connect">添加好友</string><string name="social_share_award">分享成就</string><string name="social_share_award_text">%1$s 在 Plainstride 获得了一项成就</string>
+    <string name="social_circle_create">创建圈子</string><string name="social_remove_connection">解除好友关系</string><string name="social_circle_reactivate">重新启用</string><string name="social_invite">邀请</string><string name="social_invite_person">邀请 %1$s</string>
 </resources>

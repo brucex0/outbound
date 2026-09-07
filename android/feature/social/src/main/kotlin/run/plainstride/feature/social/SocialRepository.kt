@@ -65,13 +65,14 @@ class OfflineFirstSocialRepository @Inject constructor(
             val connections = async { apiCall { api.connections(auth, null) } }
             val circles = async { apiCall { api.circles(auth) } }
             val awards = async { apiCall { api.awards(auth) } }
+            val circleInvitations = async { apiCall { api.circleInvitations(auth) } }
             when (val core = home.await()) {
                 is ApiResult.Failure -> core
                 is ApiResult.Success -> {
                     val circleResult = circles.await()
                     ApiResult.Success(core.value.copy(
-                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout) },
-                    invitations = core.value.invitations,
+                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
+                    invitations = (core.value.invitations + (circleInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"circle",it.circle.name,it.sender,it.circle.id) }).distinctBy(SocialInvitation::id),
                     recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
                     circles = (circleResult as? ApiResult.Success)?.value?.circles.orEmpty(),
                 )) }
@@ -83,7 +84,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     }
 
     override suspend fun loadFeed(cursor: String?) = authenticated { apiCall { api.feed(it, cursor) } }.map { SocialPage(it.posts, it.nextCursor) }
-    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout) }, response.nextCursor) }
+    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) }, response.nextCursor) }
     override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
     override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
@@ -111,7 +112,7 @@ class OfflineFirstSocialRepository @Inject constructor(
         invitation.kind=="circle"&&accept->apiCall{api.acceptCircleInvitation(auth,invitation.id)}.map{Unit}
         invitation.kind=="circle"->apiCall{api.declineCircleInvitation(auth,invitation.id)}
         accept->apiCall{api.acceptEventInvitation(auth,invitation.id)}
-        else->ApiResult.Failure(ApiFailure(ApiErrorCode.InvalidRequest,false))
+        else->apiCall{api.declineEventInvitation(auth,invitation.id)}
     }}
 
     private suspend fun <T : Any> authenticated(call: suspend (String) -> ApiResult<T>): Result<T> {

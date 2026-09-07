@@ -12,6 +12,8 @@ import kotlinx.serialization.json.JsonElement
     val relationship: String = "none",
     val isActive: Boolean = false,
     val recognitions: List<RecognitionAward> = emptyList(),
+    val connectionId: String? = null,
+    val connectionDirection: String? = null,
 )
 @Serializable data class RecognitionAward(val badgeId: String, val awardedAt: String, val shareable: Boolean = false)
 @Serializable data class RoutePoint(val latitude: Double, val longitude: Double)

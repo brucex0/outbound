@@ -71,6 +71,7 @@ fun TodayRoute(
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onMessage: suspend (TodayMessage) -> Unit,
+    initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -101,6 +102,7 @@ fun TodayRoute(
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         guidanceContent = guidanceContent,
+        initialWorkoutId = initialWorkoutId,
         modifier = modifier,
     )
 }
@@ -117,11 +119,15 @@ fun TodayScreen(
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     guidanceContent: @Composable () -> Unit = {},
+    initialWorkoutId: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
     val suggestion = state.primarySuggestion
+    LaunchedEffect(initialWorkoutId, suggestion?.id, suggestion?.plannedWorkoutId) {
+        if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
+    }
 
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),

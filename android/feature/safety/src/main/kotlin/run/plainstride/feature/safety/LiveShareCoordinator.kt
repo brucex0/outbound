@@ -28,6 +28,7 @@ class LiveShareCoordinator @Inject constructor(private val api:SafetyApi,private
  suspend fun createGroupRun(request:CreateGroupRunRequest)=authenticated{apiCall{api.createGroupRun(it,request)}}.onSuccess(::saveGroup)
  suspend fun joinGroupRun(invite:String)=authenticated{apiCall{api.joinGroupRun(it,JoinGroupRunRequest(invite.trim()))}}.onSuccess(::saveGroup)
  suspend fun groupRun(id:String)=authenticated{apiCall{api.groupRun(it,id)}}.onSuccess(::saveGroup)
+ suspend fun liveShare(id:String)=authenticated{apiCall{api.liveShare(it,id)}}.onSuccess{mutableActive.value=it;preferences.edit().putString(ACTIVE,PlainstrideJson.encodeToString(it)).apply()}
  suspend fun updateGroupRun(id:String,point:GroupLocationUpdate)=authenticated{apiCall{api.updateGroupLocation(it,id,point)}}.onSuccess(::saveGroup)
  suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{clearGroup()}
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?){update(point);mutableGroup.value?.let{group->updateGroupRun(group.id,GroupLocationUpdate(point.recordedAt,point.latitude,point.longitude,point.altitudeM,point.accuracyM,point.elapsedSeconds,point.distanceM,paceSecondsPerKilometer))}}

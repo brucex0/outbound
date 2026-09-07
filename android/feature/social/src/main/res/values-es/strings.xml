@@ -8,4 +8,5 @@
     <string name="social_safety_title">Opciones de seguridad</string><string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string><string name="social_report">Reportar publicación</string><string name="social_block">Bloquear persona</string>
     <string name="social_milestones">%1$d logros compartidos</string><string name="social_done">Listo</string><string name="social_circle_progress">%1$d de %2$d actividades esta semana</string><string name="social_cheer">Enviar un ánimo privado</string>
     <string name="social_relationship">Relación: %1$s</string><string name="social_connect">Conectar</string><string name="social_share_award">Compartir logro</string><string name="social_share_award_text">%1$s consiguió un logro en Plainstride</string>
+    <string name="social_circle_create">Crear Círculo</string><string name="social_remove_connection">Eliminar conexión</string><string name="social_circle_reactivate">Reactivar</string><string name="social_invite">Invitar</string><string name="social_invite_person">Invitar a %1$s</string>
 </resources>

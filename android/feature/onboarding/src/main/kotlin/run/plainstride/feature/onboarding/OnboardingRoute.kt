@@ -55,6 +55,7 @@ fun OnboardingRoute(
     onMessage: (OnboardingEffect) -> Unit,
     forceReplay: Boolean = false,
     viewModel: OnboardingViewModel = hiltViewModel(),
+    optionalPrivateSetup: @Composable () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
@@ -64,7 +65,7 @@ fun OnboardingRoute(
     }
     LaunchedEffect(forceReplay) { if (forceReplay) viewModel.restartForDebug() }
     OnboardingScreen(state, viewModel::update, viewModel::back, viewModel::next,
-        viewModel::skipTrainingProfile, viewModel::importHealth)
+        viewModel::skipTrainingProfile, viewModel::importHealth, optionalPrivateSetup)
 }
 
 @Composable
@@ -75,6 +76,7 @@ private fun OnboardingScreen(
     next: () -> Unit,
     skipProfile: () -> Unit,
     importHealth: () -> Unit,
+    optionalPrivateSetup: @Composable () -> Unit,
 ) {
     val draft = state.draft
     if (state.loading || draft == null) {
@@ -107,7 +109,7 @@ private fun OnboardingScreen(
                 OnboardingStep.Baseline -> BaselineStep(draft, update)
                 OnboardingStep.Week -> WeekStep(draft, update)
                 OnboardingStep.Profile -> ProfileStep(draft, state.healthImporting, update, importHealth)
-                OnboardingStep.Ready -> ReadyStep(draft)
+                OnboardingStep.Ready -> { ReadyStep(draft); optionalPrivateSetup() }
             }
         }
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

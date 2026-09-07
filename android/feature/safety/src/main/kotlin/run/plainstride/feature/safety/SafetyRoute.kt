@@ -18,15 +18,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /** Feature-owned Android integration for contact picking, permissions, and safe link sharing. */
 @Composable
-fun SafetyRoute(targetId: String? = null, viewModel: SafetySettingsViewModel = hiltViewModel()) {
+fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewModel: SafetySettingsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
-    androidx.compose.runtime.LaunchedEffect(targetId) { targetId?.takeIf(String::isNotBlank)?.let(viewModel::openGroup) }
-    var permission by remember { mutableStateOf(notificationPermissionState(context)) }
+    androidx.compose.runtime.LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
+    val permissionPrefs=remember{context.getSharedPreferences("notification_permission",android.content.Context.MODE_PRIVATE)}
+    var requested by remember { mutableStateOf(permissionPrefs.getBoolean("requested",false)) }
+    val activity = context.findActivity()
+    var permission by remember { mutableStateOf(notificationPermissionState(context,requested,activity?.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)==true)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        permission = notificationPermissionState(context)
+        requested = true;permissionPrefs.edit().putBoolean("requested",true).apply()
+        permission = notificationPermissionState(context, requested, activity?.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)==true)
     }
     val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         result.data?.data?.let { uri ->
@@ -47,7 +51,7 @@ fun SafetyRoute(targetId: String? = null, viewModel: SafetySettingsViewModel = h
     SafetySettingsScreen(
         contacts = contacts,
         permission = permission,
-        onRequestPermission = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+        onRequestPermission = { requested=true;permissionPrefs.edit().putBoolean("requested",true).apply();permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
         onOpenSettings = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))) },
         onAdd = { contactPicker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
         onRemove = viewModel::remove,
@@ -61,9 +65,10 @@ fun SafetyRoute(targetId: String? = null, viewModel: SafetySettingsViewModel = h
     )
 }
 
-private fun notificationPermissionState(context: android.content.Context): NotificationPermissionState =
+private fun notificationPermissionState(context: android.content.Context, requested:Boolean=false, rationale:Boolean=false): NotificationPermissionState =
     if (android.os.Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
         NotificationPermissionState.GRANTED
     } else {
-        NotificationPermissionState.DENIED
+        if(requested&&!rationale) NotificationPermissionState.PERMANENTLY_DENIED else NotificationPermissionState.DENIED
     }
+private tailrec fun android.content.Context.findActivity():android.app.Activity?=when(this){is android.app.Activity->this;is android.content.ContextWrapper->baseContext.findActivity();else->null}
