@@ -6,6 +6,7 @@ PROJECT_PATH="ios/Outbound/Outbound.xcodeproj"
 PROJECT_FILE="${PROJECT_PATH}/project.pbxproj"
 SCHEME="Outbound"
 APP_BUNDLE_ID="plainstride.outbound"
+APP_APPLE_ID="6800191455"
 EXTENSION_BUNDLE_ID="${APP_BUNDLE_ID}.liveactivity"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
 RELEASE_DOC="docs/testflight-1.0.md"
@@ -162,6 +163,8 @@ done
   fail "ASC_POLL_INTERVAL must be a positive integer"
 [[ "$asc_upload_timeout" =~ ^[1-9][0-9]*$ ]] || \
   fail "ASC_UPLOAD_TIMEOUT must be a positive integer"
+[[ "$APP_APPLE_ID" =~ ^[0-9]+$ ]] || \
+  fail "APP_APPLE_ID must be the numeric App Store Connect Apple ID"
 if [[ "$configure_beta" == true ]]; then
   [[ -n "$beta_locale" ]] || fail "BETA_LOCALE must not be empty"
 fi
@@ -621,7 +624,7 @@ if [[ "$use_asc_api_key" == true ]]; then
   if run_with_timeout "$asc_upload_timeout" "App Store Connect upload" xcrun altool \
     --upload-package "$ipa_path" \
     --platform ios \
-    --apple-id "$APP_BUNDLE_ID" \
+    --apple-id "$APP_APPLE_ID" \
     --bundle-id "$APP_BUNDLE_ID" \
     --bundle-version "$next_build" \
     --bundle-short-version-string "$marketing_version" \
