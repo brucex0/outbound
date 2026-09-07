@@ -99,6 +99,7 @@ const createSessionSchema = z.object({
 const liveStateSchema = z.object({
   elapsedSeconds: z.number().int().min(0).max(24 * 60 * 60),
   distanceMeters: z.number().finite().min(0).max(1_000_000),
+  remainingDistanceMeters: z.number().finite().min(0).max(1_000_000).optional(),
   currentPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
   rollingPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
   targetPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),

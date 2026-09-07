@@ -49,6 +49,7 @@ export type ProviderCapabilities = {
 export type LiveCoachLiveState = {
   elapsedSeconds: number;
   distanceMeters: number;
+  remainingDistanceMeters?: number;
   currentPaceSecondsPerKilometer?: number;
   rollingPaceSecondsPerKilometer?: number;
   targetPaceSecondsPerKilometer?: number;

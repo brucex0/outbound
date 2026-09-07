@@ -110,6 +110,9 @@ function progressTranscript(
   state: LiveCoachLiveState,
   unitSystem: "metric" | "imperial"
 ): string {
+  if (state.remainingDistanceMeters != null) {
+    return remainingDistanceTranscript(locale, state.remainingDistanceMeters, unitSystem);
+  }
   const distance = unitSystem === "imperial" ? state.distanceMeters / 1_609.344 : state.distanceMeters / 1_000;
   const elapsed = durationParts(state.elapsedSeconds);
   const paceSecondsPerKilometer = usablePace(state.rollingPaceSecondsPerKilometer)
@@ -137,6 +140,26 @@ function progressTranscript(
   const paceUnit = unitSystem === "imperial" ? "per mile" : "per kilometer";
   const paceText = pace ? `, pace ${englishDuration(pace)} ${paceUnit}` : "";
   return validateLiveCoachOutput(`${distanceText} ${distanceUnit}, ${englishDuration(elapsed)}${paceText}.`);
+}
+
+function remainingDistanceTranscript(
+  locale: SupportedAILocale,
+  remainingMeters: number,
+  unitSystem: "metric" | "imperial"
+): string {
+  const distance = unitSystem === "imperial" ? remainingMeters / 1_609.344 : remainingMeters;
+  const rounded = unitSystem === "imperial"
+    ? Math.max(0.01, Math.round(distance * 100) / 100)
+    : Math.max(1, Math.round(distance));
+  if (locale === "zh-Hans") {
+    return validateLiveCoachOutput(`还剩${rounded}${unitSystem === "imperial" ? "英里" : "米"}。`);
+  }
+  if (locale === "es") {
+    const unit = unitSystem === "imperial" ? (rounded === 1 ? "milla" : "millas") : "metros";
+    return validateLiveCoachOutput(`Quedan ${rounded} ${unit}.`);
+  }
+  const unit = unitSystem === "imperial" ? (rounded === 1 ? "mile" : "miles") : "meters";
+  return validateLiveCoachOutput(`${rounded} ${unit} to go.`);
 }
 
 function durationParts(secondsValue: number): { minutes: number; seconds: number } {
