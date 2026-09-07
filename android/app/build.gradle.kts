@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":core:media"))
     implementation(project(":core:model"))
     implementation(project(":core:network"))
+    implementation(project(":core:weather"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:today"))
@@ -81,5 +82,6 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.play.services.location)
     debugImplementation(libs.compose.ui.tooling)
 }

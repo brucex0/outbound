@@ -1,0 +1,17 @@
+<resources>
+    <string name="weather_headline_unsafe">户外跑步可能不安全</string>
+    <string name="weather_guidance_unsafe">请选择室内训练，或等雷暴过去后再跑。</string>
+    <string name="weather_headline_heat">高温会增加体感强度</string>
+    <string name="weather_guidance_heat">按体感强度而不是配速跑，带好饮水，并考虑缩短训练或改到更凉爽的时段。</string>
+    <string name="weather_headline_cold">天气非常寒冷</string>
+    <string name="weather_guidance_cold">先在室内热身，遮盖裸露皮肤，开始几分钟尤其要放轻松。</string>
+    <string name="weather_headline_wind">附近风力较强</string>
+    <string name="weather_guidance_wind">按体感强度而不是配速跑，并尽量选择避风路线。</string>
+    <string name="weather_headline_slippery">路面可能湿滑</string>
+    <string name="weather_guidance_slippery">请选择清晰安全的路线，或改为室内训练。</string>
+    <string name="weather_headline_rain">很可能下雨</string>
+    <string name="weather_guidance_rain">训练仍然合适；请穿醒目的衣物，并注意湿滑路面。</string>
+    <string name="weather_headline_good">今天适合跑步</string>
+    <string name="weather_attribution">天气数据来自 MET Norway · CC BY 4.0</string>
+    <string name="weather_location_explanation">Plainstride 使用大致位置提供此预报。天气建议不会自动更改你的训练计划。</string>
+</resources>

@@ -1,0 +1,17 @@
+<resources>
+    <string name="weather_headline_unsafe">Correr al aire libre puede ser peligroso</string>
+    <string name="weather_guidance_unsafe">Elige una opción bajo techo o espera a que pase la tormenta.</string>
+    <string name="weather_headline_heat">El calor aumentará el esfuerzo</string>
+    <string name="weather_guidance_heat">Guíate por el esfuerzo, no por el ritmo; lleva líquidos y considera un horario más fresco o una sesión más corta.</string>
+    <string name="weather_headline_cold">Hace mucho frío</string>
+    <string name="weather_guidance_cold">Calienta bajo techo, cubre la piel expuesta y empieza con especial suavidad.</string>
+    <string name="weather_headline_wind">Hay viento fuerte cerca</string>
+    <string name="weather_guidance_wind">Guíate por el esfuerzo, no por el ritmo, y elige una ruta protegida si es posible.</string>
+    <string name="weather_headline_slippery">Puede haber superficies resbaladizas</string>
+    <string name="weather_guidance_slippery">Elige una ruta despejada o entrena bajo techo.</string>
+    <string name="weather_headline_rain">Es probable que llueva</string>
+    <string name="weather_guidance_rain">El entrenamiento sigue siendo adecuado; usa prendas visibles y ten cuidado con las superficies resbaladizas.</string>
+    <string name="weather_headline_good">Buenas condiciones para correr hoy</string>
+    <string name="weather_attribution">Datos meteorológicos de MET Norway · CC BY 4.0</string>
+    <string name="weather_location_explanation">Plainstride usa una ubicación aproximada para este pronóstico. Los consejos meteorológicos no cambian tu plan automáticamente.</string>
+</resources>

@@ -45,6 +45,13 @@ import run.plainstride.core.network.PlanningApiService
 import run.plainstride.core.network.createAccountApi
 import run.plainstride.core.network.createAuthApi
 import run.plainstride.core.network.createPlanningApi
+import com.google.android.gms.location.LocationServices
+import run.plainstride.core.weather.DefaultWeatherRepository
+import run.plainstride.core.weather.FusedWeatherLocationSource
+import run.plainstride.core.weather.WeatherApiService
+import run.plainstride.core.weather.WeatherLocationSource
+import run.plainstride.core.weather.WeatherRepository
+import run.plainstride.core.weather.createWeatherApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -103,6 +110,20 @@ object FoundationModule {
 
     @Provides @Singleton fun planningApi(client: OkHttpClient): PlanningApiService =
         createPlanningApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun weatherApi(client: OkHttpClient): WeatherApiService =
+        createWeatherApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun weatherLocationSource(@ApplicationContext context: Context): WeatherLocationSource =
+        FusedWeatherLocationSource(context, LocationServices.getFusedLocationProviderClient(context))
+
+    @Provides @Singleton fun weatherRepository(
+        locationSource: WeatherLocationSource,
+        api: WeatherApiService,
+        accessTokens: AccessTokenProvider,
+        dataStore: DataStore<Preferences>,
+        analytics: ProductAnalytics,
+    ): WeatherRepository = DefaultWeatherRepository(locationSource, api, accessTokens, dataStore, analytics)
 
     @Provides @Singleton fun secureSessionStore(@ApplicationContext context: Context): SecureSessionStore =
         KeystoreSecureSessionStore(context)

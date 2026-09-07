@@ -38,10 +38,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -55,17 +59,6 @@ import java.util.Date
 import run.plainstride.core.model.ActivitySuggestion
 import run.plainstride.core.model.AdjustmentProposal
 
-interface TodayWeatherPolicy {
-    /** Must return guidance only; missing permission/provider never changes the workout. */
-    suspend fun guidance(): WeatherGuidance?
-}
-
-data class WeatherGuidance(val headline: String, val detail: String)
-
-object NoOpTodayWeatherPolicy : TodayWeatherPolicy {
-    override suspend fun guidance(): WeatherGuidance? = null
-}
-
 @Composable
 fun TodayRoute(
     viewModel: TodayViewModel,
@@ -76,13 +69,19 @@ fun TodayRoute(
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onMessage: suspend (TodayMessage) -> Unit,
-    weatherPolicy: TodayWeatherPolicy = NoOpTodayWeatherPolicy,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var weather by remember { mutableStateOf<WeatherGuidance?>(null) }
+    val weather by viewModel.weather.collectAsStateWithLifecycle()
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        viewModel.refreshWeather()
+    }
     LaunchedEffect(activeSession, completedToday) { viewModel.updateSessionState(activeSession, completedToday) }
-    LaunchedEffect(weatherPolicy) { weather = weatherPolicy.guidance() }
+    LaunchedEffect(viewModel) {
+        viewModel.weatherPermissionRequests.collect {
+            permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     TodayScreen(
         state = state,
@@ -185,6 +184,7 @@ private fun WorkoutRecommendationCard(
     onOpen: () -> Unit,
     onChange: () -> Unit,
 ) {
+    val uriHandler = LocalUriHandler.current
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(Modifier.clickable(role = Role.Button, onClick = onOpen).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -199,7 +199,15 @@ private fun WorkoutRecommendationCard(
                 TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_why)) }
             }
             PhasePreview(suggestion.steps)
-            weather?.let { Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            weather?.let {
+                Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    it.attribution,
+                    modifier = Modifier.clickable(role = Role.Button) { uriHandler.openUri(it.attributionUrl) },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             if (stale) Text(
                 stringResource(
                     R.string.today_cached_at,

@@ -83,6 +83,7 @@ sealed interface TodayMessage {
 class TodayViewModel @Inject constructor(
     private val repository: TodayRepository,
     private val analytics: ProductAnalytics,
+    private val weatherPolicy: TodayWeatherPolicy,
 ) : ViewModel() {
     // A single encrypted session is active at a time; account bootstrap can later provide the
     // opaque server account ID without exposing identity details to this feature.
@@ -93,6 +94,9 @@ class TodayViewModel @Inject constructor(
     private val refreshError = MutableStateFlow<TodayDataError?>(null)
     private val sessionState = MutableStateFlow(false to false)
     val messages = MutableSharedFlow<TodayMessage>(extraBufferCapacity = 1)
+    private val mutableWeather = MutableStateFlow<WeatherGuidance?>(null)
+    val weather = mutableWeather
+    val weatherPermissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val state = combine(
         repository.observePlanning(accountScopeKey, localeTag),
@@ -104,7 +108,18 @@ class TodayViewModel @Inject constructor(
         TodayUiState(planning, suggestion, personalization, catalog, meta.refreshing, meta.mutating, meta.error, meta.session.first, meta.session.second)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
-    init { refresh() }
+    init {
+        refresh()
+        refreshWeather()
+    }
+
+    fun refreshWeather() = viewModelScope.launch {
+        when (val result = weatherPolicy.guidance()) {
+            is TodayWeatherResult.Available -> mutableWeather.value = result.guidance
+            TodayWeatherResult.PermissionRequired -> weatherPermissionRequests.emit(Unit)
+            TodayWeatherResult.Unavailable -> Unit
+        }
+    }
 
     fun updateSessionState(active: Boolean, completedToday: Boolean) {
         sessionState.value = active to completedToday

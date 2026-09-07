@@ -26,6 +26,7 @@ include(
     ":core:media",
     ":core:model",
     ":core:network",
+    ":core:weather",
     ":feature:onboarding",
     ":feature:settings",
     ":feature:today",
