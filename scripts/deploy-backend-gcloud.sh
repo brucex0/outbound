@@ -23,29 +23,29 @@ Environment overrides:
   IOS_APP_STORE_URL       default: Plainstride's direct App Store listing
   CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
   CLOUD_RUN_CONCURRENCY   default: 100
-  CLOUD_RUN_MIN_INSTANCES default: 0 (scale to zero before public release)
-  CLOUD_RUN_MAX_INSTANCES default: 1
+  CLOUD_RUN_MIN_INSTANCES default: 1 for production; 0 otherwise
+  CLOUD_RUN_MAX_INSTANCES default: 3 for production; 1 otherwise
   CIRCLE_MEMBER_LIMIT     default: 6; snapshotted on newly created Circles (2-100)
-  LIVE_COACH_SERVER_AUDIO_MODE default: disabled
-  LIVE_COACH_ACCESS_MODE       default: open_beta (production uses founding_trial)
-  LIVE_COACH_CONFIG_VERSION    default: 1
+  LIVE_COACH_SERVER_AUDIO_MODE default: dynamic for production; disabled otherwise
+  LIVE_COACH_ACCESS_MODE       default: founding_trial for production; open_beta otherwise
+  LIVE_COACH_CONFIG_VERSION    default: 2 for production; 1 otherwise
   LIVE_COACH_CATALOG_VERSION   default: 2026-09-01.1
   LIVE_COACH_ENABLED_LOCALES   default: en,zh-Hans
   LIVE_COACH_ENABLED_PERSONAS  default: supportive,focused product IDs
   LIVE_COACH_ENABLED_VOICE_PROFILES default: one female and one male product voice ID
-  LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT default: 0
+  LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT default: 100 for production; 0 otherwise
   LIVE_COACH_FOUNDING_USER_LIMIT default: 1000
   LIVE_COACH_TRIAL_RUN_LIMIT      default: 3
   LIVE_COACH_CUE_VALIDITY_MILLISECONDS default: 5000
   LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS default: 1500
-  LIVE_COACH_PLANNER_ENABLED  default: false; set true only for approved planner rollout
+  LIVE_COACH_PLANNER_ENABLED  default: true for production; false otherwise
   GEMINI_LIVE_COACH_PLANNER_MODEL default: gemini-3.1-pro-preview
   GEMINI_VERTEX_PROJECT_ID    default: PROJECT_ID
   GEMINI_VERTEX_LOCATION      default: global
   GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS default: 20000
-  LIVE_COACH_AUDIO_PACK_PUBLISHED default: false
-  LIVE_COACH_AUDIO_MANIFEST_URL optional immutable HTTPS manifest URL
-  LIVE_COACH_AUDIO_ASSET_BASE_URL optional immutable HTTPS asset base URL
+  LIVE_COACH_AUDIO_PACK_PUBLISHED default: true for production; false otherwise
+  LIVE_COACH_AUDIO_MANIFEST_URL defaults to the approved production pack in production
+  LIVE_COACH_AUDIO_ASSET_BASE_URL defaults to the approved production pack in production
   GOOGLE_CLOUD_TTS_ENABLED     default: true
   GOOGLE_CLOUD_TTS_API_ENDPOINT default: us-texttospeech.googleapis.com
   GOOGLE_CLOUD_TTS_ENDPOINT_KEY default: google-cloud-tts-us
@@ -53,7 +53,7 @@ Environment overrides:
   GOOGLE_CLOUD_TTS_MODEL       optional override; default: chirp3-hd
   GOOGLE_CLOUD_TTS_VOICE_MAP   optional override; default: approved female/male Chirp 3 HD map
   ALIBABA_AI_ENABLED           default: false
-  AI_ROUTE_POLICY_VERSION      default: 1
+  AI_ROUTE_POLICY_VERSION      default: 2 for production; 1 otherwise
   ALIBABA_AI_ENDPOINT_KEY      default: alibaba-sg-ws-i638drcm5lthrc29
   ALIBABA_AI_DEPLOYMENT_REGION default: ap-southeast-1
   ALIBABA_AI_BASE_URL          default: approved Singapore workspace compatible-mode/v1 URL
@@ -85,6 +85,36 @@ PROJECT_ID="${PROJECT_ID:-outbound-494602}"
 GCLOUD_ACCOUNT="${GCLOUD_ACCOUNT:-bruce.xia74@gmail.com}"
 REGION="${REGION:-us-central1}"
 SERVICE="${SERVICE:-outbound-api}"
+if [[ "$PROJECT_ID" == "outbound-494602" && "$SERVICE" == "outbound-api" ]]; then
+  production_profile=1
+else
+  production_profile=0
+fi
+if [[ "$production_profile" == "1" ]]; then
+  default_min_instances=1
+  default_max_instances=3
+  default_live_coach_mode=dynamic
+  default_live_coach_access=founding_trial
+  default_live_coach_config_version=2
+  default_live_coach_rollout_percent=100
+  default_live_coach_planner_enabled=true
+  default_live_coach_pack_published=true
+  default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-01.1/manifest.json"
+  default_live_coach_asset_base_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-01.1/assets"
+  default_ai_route_policy_version=2
+else
+  default_min_instances=0
+  default_max_instances=1
+  default_live_coach_mode=disabled
+  default_live_coach_access=open_beta
+  default_live_coach_config_version=1
+  default_live_coach_rollout_percent=0
+  default_live_coach_planner_enabled=false
+  default_live_coach_pack_published=false
+  default_live_coach_manifest_url=""
+  default_live_coach_asset_base_url=""
+  default_ai_route_policy_version=1
+fi
 RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-outbound-api-runtime@$PROJECT_ID.iam.gserviceaccount.com}"
 APPLE_CLIENT_ID="${APPLE_CLIENT_ID:-plainstride.outbound}"
 APPLE_TEAM_ID="${APPLE_TEAM_ID:-WT54K7D7VH}"
@@ -93,29 +123,29 @@ AUTH_ACCESS_KEY_ID="${AUTH_ACCESS_KEY_ID:-production-v1}"
 IOS_APP_STORE_URL="${IOS_APP_STORE_URL:-https://apps.apple.com/us/app/plainstride/id6800191455}"
 CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
-CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
-CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-1}"
+CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-$default_min_instances}"
+CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-$default_max_instances}"
 CIRCLE_MEMBER_LIMIT="${CIRCLE_MEMBER_LIMIT:-6}"
-LIVE_COACH_SERVER_AUDIO_MODE="${LIVE_COACH_SERVER_AUDIO_MODE:-disabled}"
-LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-open_beta}"
-LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-1}"
+LIVE_COACH_SERVER_AUDIO_MODE="${LIVE_COACH_SERVER_AUDIO_MODE:-$default_live_coach_mode}"
+LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-$default_live_coach_access}"
+LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-$default_live_coach_config_version}"
 LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-09-01.1}"
 LIVE_COACH_ENABLED_LOCALES="${LIVE_COACH_ENABLED_LOCALES:-en,zh-Hans}"
 LIVE_COACH_ENABLED_PERSONAS="${LIVE_COACH_ENABLED_PERSONAS:-plainstride_supportive_v1,plainstride_focused_v1}"
 LIVE_COACH_ENABLED_VOICE_PROFILES="${LIVE_COACH_ENABLED_VOICE_PROFILES:-plainstride_warm_1,plainstride_clear_1}"
-LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT="${LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT:-0}"
+LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT="${LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT:-$default_live_coach_rollout_percent}"
 LIVE_COACH_FOUNDING_USER_LIMIT="${LIVE_COACH_FOUNDING_USER_LIMIT:-1000}"
 LIVE_COACH_TRIAL_RUN_LIMIT="${LIVE_COACH_TRIAL_RUN_LIMIT:-3}"
 LIVE_COACH_CUE_VALIDITY_MILLISECONDS="${LIVE_COACH_CUE_VALIDITY_MILLISECONDS:-5000}"
 LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS="${LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS:-1500}"
-LIVE_COACH_PLANNER_ENABLED="${LIVE_COACH_PLANNER_ENABLED:-false}"
+LIVE_COACH_PLANNER_ENABLED="${LIVE_COACH_PLANNER_ENABLED:-$default_live_coach_planner_enabled}"
 GEMINI_LIVE_COACH_PLANNER_MODEL="${GEMINI_LIVE_COACH_PLANNER_MODEL:-gemini-3.1-pro-preview}"
 GEMINI_VERTEX_PROJECT_ID="${GEMINI_VERTEX_PROJECT_ID:-$PROJECT_ID}"
 GEMINI_VERTEX_LOCATION="${GEMINI_VERTEX_LOCATION:-global}"
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS="${GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS:-20000}"
-LIVE_COACH_AUDIO_PACK_PUBLISHED="${LIVE_COACH_AUDIO_PACK_PUBLISHED:-false}"
-LIVE_COACH_AUDIO_MANIFEST_URL="${LIVE_COACH_AUDIO_MANIFEST_URL:-}"
-LIVE_COACH_AUDIO_ASSET_BASE_URL="${LIVE_COACH_AUDIO_ASSET_BASE_URL:-}"
+LIVE_COACH_AUDIO_PACK_PUBLISHED="${LIVE_COACH_AUDIO_PACK_PUBLISHED:-$default_live_coach_pack_published}"
+LIVE_COACH_AUDIO_MANIFEST_URL="${LIVE_COACH_AUDIO_MANIFEST_URL:-$default_live_coach_manifest_url}"
+LIVE_COACH_AUDIO_ASSET_BASE_URL="${LIVE_COACH_AUDIO_ASSET_BASE_URL:-$default_live_coach_asset_base_url}"
 GOOGLE_CLOUD_TTS_ENABLED="${GOOGLE_CLOUD_TTS_ENABLED:-true}"
 GOOGLE_CLOUD_TTS_API_ENDPOINT="${GOOGLE_CLOUD_TTS_API_ENDPOINT:-us-texttospeech.googleapis.com}"
 GOOGLE_CLOUD_TTS_ENDPOINT_KEY="${GOOGLE_CLOUD_TTS_ENDPOINT_KEY:-google-cloud-tts-us}"
@@ -123,7 +153,7 @@ GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION="${GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION:-us}"
 GOOGLE_CLOUD_TTS_MODEL="${GOOGLE_CLOUD_TTS_MODEL:-}"
 GOOGLE_CLOUD_TTS_VOICE_MAP="${GOOGLE_CLOUD_TTS_VOICE_MAP:-}"
 ALIBABA_AI_ENABLED="${ALIBABA_AI_ENABLED:-false}"
-AI_ROUTE_POLICY_VERSION="${AI_ROUTE_POLICY_VERSION:-1}"
+AI_ROUTE_POLICY_VERSION="${AI_ROUTE_POLICY_VERSION:-$default_ai_route_policy_version}"
 ALIBABA_AI_ENDPOINT_KEY="${ALIBABA_AI_ENDPOINT_KEY:-alibaba-sg-ws-i638drcm5lthrc29}"
 ALIBABA_AI_DEPLOYMENT_REGION="${ALIBABA_AI_DEPLOYMENT_REGION:-ap-southeast-1}"
 ALIBABA_AI_BASE_URL="${ALIBABA_AI_BASE_URL:-https://ws-i638drcm5lthrc29.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1}"
@@ -291,6 +321,22 @@ fi
 
 echo "Deploying $SERVICE to Cloud Run project=$PROJECT_ID region=$REGION account=$GCLOUD_ACCOUNT"
 "$GCLOUD_BIN" "${deploy_args[@]}" "$@"
+
+deploy_without_traffic=0
+for extra_arg in "$@"; do
+  if [[ "$extra_arg" == "--no-traffic" ]]; then
+    deploy_without_traffic=1
+    break
+  fi
+done
+if [[ "$deploy_without_traffic" == "0" ]]; then
+  echo "Routing production traffic to the latest ready revision"
+  "$GCLOUD_BIN" run services update-traffic "$SERVICE" \
+    "--project=$PROJECT_ID" \
+    "--region=$REGION" \
+    --to-latest \
+    --quiet
+fi
 
 service_url="$("$GCLOUD_BIN" run services describe "$SERVICE" \
   "--project=$PROJECT_ID" \
