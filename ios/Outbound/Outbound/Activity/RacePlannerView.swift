@@ -66,10 +66,10 @@ struct RacePlannerView: View {
     let onUsePlan: (RaceExecutionIntent) -> Void
 
     @State private var distanceMeters = 21_097.5
-    @State private var usesTarget = true
     @State private var strategy: RacePacingStrategy = .negativeSplit
     @State private var targetHours = 2
     @State private var targetMinutes = 0
+    @State private var showsTimePicker = false
 
     private var recommendation: RacePlanRecommendation {
         .make(distanceMeters: distanceMeters, activities: activities)
@@ -95,14 +95,10 @@ struct RacePlannerView: View {
                             recommendation.evidenceCount,
                             durationLabel(recommendation.raceIntent.goalTimeSeconds ?? 0)
                         ))
-                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Time goal"), isOn: $usesTarget)
                     } else {
                         Text(String(localized: "race.planner.no_history", defaultValue: "There isn’t enough comparable training history for a responsible time target. Race by effort and focus on finishing well."))
-                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Time goal"), isOn: $usesTarget)
                     }
-                    if usesTarget {
-                        durationPicker
-                    }
+                    timeGoalRow
                 }
 
                 Section(String(localized: "race.planner.strategy", defaultValue: "Pacing strategy")) {
@@ -123,19 +119,23 @@ struct RacePlannerView: View {
                         onUsePlan(resolvedIntent)
                         dismiss()
                     }
-                    .disabled(usesTarget && targetDurationSeconds == nil)
+                    .disabled(targetDurationSeconds == nil)
                 }
             }
             .onAppear { seedRecommendation() }
             .onChange(of: distanceMeters) { _, _ in seedRecommendation() }
+            .sheet(isPresented: $showsTimePicker) {
+                RaceDurationPicker(
+                    hours: $targetHours,
+                    minutes: $targetMinutes
+                )
+                .presentationDetents([.height(280)])
+            }
         }
     }
 
     private var resolvedIntent: RaceExecutionIntent {
         let recommended = recommendation.raceIntent
-        guard usesTarget else {
-            return RaceExecutionIntent(distanceMeters: distanceMeters, goalMode: .finish, goalTimeSeconds: nil, targetPaceSecondsPerKilometer: nil, pacingStrategy: .effortBased, recommendationSource: recommended.recommendationSource)
-        }
         let seconds = targetDurationSeconds
         return RaceExecutionIntent(
             distanceMeters: distanceMeters,
@@ -147,35 +147,22 @@ struct RacePlannerView: View {
         )
     }
 
-    private var durationPicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(String(localized: "race.planner.goal_time", defaultValue: "Goal time"))
-                .font(.subheadline)
-            HStack(spacing: 6) {
+    private var timeGoalRow: some View {
+        Button {
+            showsTimePicker = true
+        } label: {
+            HStack {
+                Text(String(localized: "race.planner.use_target", defaultValue: "Time goal"))
                 Spacer()
-                Picker(String(localized: "race.planner.hours", defaultValue: "Hours"), selection: $targetHours) {
-                    ForEach(0..<24, id: \.self) { hour in
-                        Text("\(hour)").tag(hour)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(width: 70, height: 120)
-                .clipped()
-                Text(String(localized: "race.planner.hours", defaultValue: "Hours"))
+                Text(durationLabel(targetDurationSeconds ?? 0))
                     .foregroundStyle(.secondary)
-                Picker(String(localized: "race.planner.minutes", defaultValue: "Minutes"), selection: $targetMinutes) {
-                    ForEach(0..<60, id: \.self) { minute in
-                        Text(String(format: "%02d", minute)).tag(minute)
-                    }
-                }
-                .pickerStyle(.wheel)
-                .frame(width: 70, height: 120)
-                .clipped()
-                Text(String(localized: "race.planner.minutes", defaultValue: "Minutes"))
-                    .foregroundStyle(.secondary)
-                Spacer()
+                    .monospacedDigit()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
         }
+        .buttonStyle(.plain)
     }
 
     private var targetDurationSeconds: Int? {
@@ -185,7 +172,6 @@ struct RacePlannerView: View {
 
     private func seedRecommendation() {
         let race = recommendation.raceIntent
-        usesTarget = race.goalTimeSeconds != nil
         strategy = race.pacingStrategy
         targetHours = (race.goalTimeSeconds ?? 2 * 3_600) / 3_600
         targetMinutes = ((race.goalTimeSeconds ?? 2 * 3_600) % 3_600) / 60
@@ -195,6 +181,46 @@ struct RacePlannerView: View {
         let hours = seconds / 3_600
         let minutes = (seconds % 3_600) / 60
         let remainder = seconds % 60
-        return String(format: "%d:%02d:%02d", hours, minutes, remainder)
+        return String(format: "%02d:%02d:%02d", hours, minutes, remainder)
+    }
+}
+
+private struct RaceDurationPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var hours: Int
+    @Binding var minutes: Int
+
+    var body: some View {
+        NavigationStack {
+            HStack(spacing: 4) {
+                Picker("", selection: $hours) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(String(format: "%02d", hour)).tag(hour)
+                    }
+                }
+                .accessibilityLabel(String(localized: "race.planner.hours", defaultValue: "Hours"))
+                .pickerStyle(.wheel)
+                .frame(width: 100)
+
+                Text(":")
+                    .font(.title2.weight(.semibold))
+
+                Picker("", selection: $minutes) {
+                    ForEach(0..<60, id: \.self) { minute in
+                        Text(String(format: "%02d", minute)).tag(minute)
+                    }
+                }
+                .accessibilityLabel(String(localized: "race.planner.minutes", defaultValue: "Minutes"))
+                .pickerStyle(.wheel)
+                .frame(width: 100)
+            }
+            .navigationTitle(String(localized: "race.planner.use_target", defaultValue: "Time goal"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "common.done", defaultValue: "Done")) { dismiss() }
+                }
+            }
+        }
     }
 }
