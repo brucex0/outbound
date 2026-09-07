@@ -49,6 +49,9 @@ interface SyncOutboxDao {
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId")
     fun observeCount(accountId: String): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId")
+    suspend fun count(accountId: String): Int
+
     @Query(
         """UPDATE sync_outbox SET state = 'in_flight'
            WHERE operationId = :operationId AND accountId = :accountId AND state = 'pending'""",

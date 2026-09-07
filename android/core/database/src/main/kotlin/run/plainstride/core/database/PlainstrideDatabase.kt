@@ -11,14 +11,19 @@ import androidx.room.withTransaction
         AccountCacheEntity::class,
         SyncOutboxEntity::class,
         ActiveSessionJournalEntity::class,
+        ActivityEntity::class,
+        ActivityTrackPointEntity::class,
+        ActivitySplitEntity::class,
+        ActivityPhotoEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class PlainstrideDatabase : RoomDatabase() {
     abstract fun accountCacheDao(): AccountCacheDao
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun activeSessionJournalDao(): ActiveSessionJournalDao
+    abstract fun activityDao(): ActivityDao
 }
 
 /** Single construction surface for DI. Database schema upgrades intentionally reset pre-release data. */
@@ -50,6 +55,10 @@ class AccountDatabaseOperations(
             database.accountCacheDao().deleteForAccount(accountId)
             database.syncOutboxDao().deleteForAccount(accountId)
             database.activeSessionJournalDao().deleteForAccount(accountId)
+            database.activityDao().deleteAllTrack(accountId)
+            database.activityDao().deleteAllSplits(accountId)
+            database.activityDao().deleteAllPhotos(accountId)
+            database.activityDao().deleteForAccount(accountId)
         }
     }
 

@@ -1,7 +1,9 @@
 package run.plainstride.core.model.activity
 
 import java.time.Instant
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class ActivityType {
     running,
     cycling,
