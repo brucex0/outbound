@@ -519,7 +519,7 @@ struct RecordView: View {
                     .padding(.vertical, 12)
                     .background(.regularMaterial, in: Capsule())
                     .shadow(radius: 8, y: 3)
-                    .padding(.top, 62)
+                    .padding(.top, isEmbeddedInToday && recorder.state == .idle ? 112 : 62)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .accessibilityAddTraits(.isStaticText)
             }

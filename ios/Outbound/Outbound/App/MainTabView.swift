@@ -44,7 +44,7 @@ struct MainTabView: View {
             if !isActivityFullscreenVisible && (selectedAppTab != .today || !isActivityVisible) {
                 GlobalConnectivityBanner()
                     .padding(.horizontal, 16)
-                    .padding(.top, 56)
+                    .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(10)
             }
