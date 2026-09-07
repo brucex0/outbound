@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Policy
@@ -79,6 +80,8 @@ fun MeRoute(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
+    onActivityHistory: () -> Unit,
+    activityContent: @Composable () -> Unit = {},
     onMessage: suspend (SettingsMessage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -86,7 +89,7 @@ fun MeRoute(
     var page by rememberSaveable { mutableStateOf(MePage.Overview) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     when (page) {
-        MePage.Overview -> MeOverview(state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh, modifier)
+        MePage.Overview -> MeOverview(state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh, onActivityHistory, activityContent, modifier)
         MePage.Settings -> SettingsScreen(
             state = state,
             appVersion = appVersion,
@@ -109,7 +112,7 @@ fun MeRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh: () -> Unit, modifier: Modifier) {
+private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh: () -> Unit, onActivityHistory: () -> Unit, activityContent: @Composable () -> Unit, modifier: Modifier) {
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.me_title)) }, actions = {
@@ -146,6 +149,15 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
                     }
                 }
             }
+            item { SectionTitle(stringResource(R.string.activity_history_title)) }
+            item { activityContent() }
+            item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onActivityHistory)) {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.activity_history_title)) },
+                    supportingContent = { Text(stringResource(R.string.activity_history_body)) },
+                    leadingContent = { Icon(Icons.Outlined.History, null) },
+                )
+            } }
             item { Button(onClick = onSettings, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Outlined.Settings, null); Text(stringResource(R.string.open_settings), Modifier.padding(start = 8.dp)) } }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         }

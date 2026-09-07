@@ -15,4 +15,5 @@
     <string name="replay_onboarding">Run onboarding flow</string><string name="version">Version</string>
     <string name="privacy_note">Plainstride keeps private health details out of Social and never includes them in analytics.</string><string name="delete_account">Delete account</string>
     <string name="settings_refreshed">Account refreshed.</string><string name="settings_saved">Saved.</string><string name="settings_save_failed">Saved on this device. Cloud sync will retry when you reconnect.</string><string name="settings_refresh_failed">Couldn’t refresh. Showing saved settings.</string>
+    <string name="activity_history_title">Activity history</string><string name="activity_history_body">Review maps, splits, photos, and progress from every activity.</string>
 </resources>

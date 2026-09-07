@@ -29,6 +29,7 @@ include(
     ":core:network",
     ":core:weather",
     ":feature:onboarding",
+    ":feature:activity",
     ":feature:progress",
     ":feature:health",
     ":feature:recording",

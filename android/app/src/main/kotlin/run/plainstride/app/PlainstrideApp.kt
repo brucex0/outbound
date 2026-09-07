@@ -45,6 +45,9 @@ import run.plainstride.app.auth.AuthOperation
 import run.plainstride.app.auth.AuthUiState
 import run.plainstride.app.auth.AuthViewModel
 import run.plainstride.core.auth.SessionState
+import run.plainstride.feature.activity.ActivityHistoryRoute
+import run.plainstride.feature.activity.ActivityMessage
+import run.plainstride.feature.activity.RecentActivitiesRoute
 import run.plainstride.feature.onboarding.OnboardingEffect
 import run.plainstride.feature.onboarding.OnboardingRoute
 import run.plainstride.feature.today.TodayMessage
@@ -128,7 +131,7 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
         contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (currentDestination?.route != RECORDING_ROUTE) NavigationBar {
+            if (currentDestination?.route != RECORDING_ROUTE && currentDestination?.route != ACTIVITY_HISTORY_ROUTE) NavigationBar {
                 TopLevelDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any {
@@ -189,6 +192,10 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                                 forceOnboardingReplay = true
                                 onboardingResolved = false
                             },
+                            onActivityHistory = { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } },
+                            activityContent = {
+                                accountId?.let { id -> RecentActivitiesRoute(id, { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } }) }
+                            },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else {
@@ -214,6 +221,13 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                     },
                 )
             }
+            composable(ACTIVITY_HISTORY_ROUTE) {
+                ActivityHistoryRoute(
+                    accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
+                    onBack = { navController.popBackStack() },
+                    onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
+                )
+            }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
@@ -226,6 +240,16 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
 }
 
 private const val RECORDING_ROUTE = "recording"
+private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
+
+@StringRes
+private fun activityMessageResource(message: ActivityMessage): Int = when (message) {
+    ActivityMessage.SAVED -> run.plainstride.feature.activity.R.string.activity_saved
+    ActivityMessage.UPDATED -> run.plainstride.feature.activity.R.string.activity_updated
+    ActivityMessage.DELETED -> run.plainstride.feature.activity.R.string.activity_deleted
+    ActivityMessage.FAILED -> run.plainstride.feature.activity.R.string.activity_failed
+    ActivityMessage.EXPORT_UNAVAILABLE -> run.plainstride.feature.activity.R.string.activity_export_unavailable
+}
 
 private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguration {
     val goal = when {
