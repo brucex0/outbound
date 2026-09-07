@@ -30,6 +30,7 @@ model User {
   activities                  Activity[]
   authIdentities              AuthIdentity[]
   authSessions                AuthSession[]
+  identityLinkIntents         IdentityLinkIntent[]
   activeWorkoutPresence       ActiveWorkoutPresence?
   guideProfile                GuideProfile?
   preferences                 UserPreferences?
@@ -171,6 +172,19 @@ model AuthSession {
   @@index([userId, revokedAt])
   @@index([familyId])
   @@index([previousRefreshTokenHash])
+  @@index([expiresAt])
+}
+
+model IdentityLinkIntent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, consumedAt])
   @@index([expiresAt])
 }
 

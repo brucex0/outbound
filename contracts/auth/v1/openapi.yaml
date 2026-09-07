@@ -3,6 +3,33 @@ info:
   title: Plainstride authentication API
   version: 1.0.0
 paths:
+  /v1/auth/link-intents:
+    post:
+      operationId: createIdentityLinkIntent
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Short-lived single-use account transfer intent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityLinkIntent' }
+  /v1/auth/link-intents/redeem/google:
+    post:
+      operationId: redeemGoogleIdentityLinkIntent
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoogleLinkRedemptionRequest' }
+      responses:
+        '200':
+          description: Plainstride session for the existing account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '401': { description: Invalid or expired transfer intent or provider credential }
+        '409': { description: Google identity belongs to another account }
   /v1/auth/google:
     post:
       operationId: signInWithGoogle
@@ -73,6 +100,24 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
   schemas:
+    IdentityLinkIntent:
+      type: object
+      additionalProperties: false
+      required: [code, url, expiresAt]
+      properties:
+        code: { type: string, pattern: '^[2-9A-Z]{4}(-[2-9A-Z]{4}){3}$' }
+        url: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+    GoogleLinkRedemptionRequest:
+      type: object
+      additionalProperties: false
+      required: [identityToken, code, platform, termsVersion]
+      properties:
+        identityToken: { type: string, minLength: 1 }
+        code: { type: string, minLength: 16, maxLength: 32 }
+        platform: { type: string, const: android }
+        deviceLabel: { type: [string, 'null'], maxLength: 100 }
+        termsVersion: { type: integer, minimum: 1 }
     GoogleCredential:
       type: object
       additionalProperties: false
@@ -122,4 +167,4 @@ components:
         error: { type: string }
         code:
           type: string
-          enum: [authentication_required, invalid_provider_credential, provider_identity_in_use, provider_unavailable, authentication_unavailable, terms_version_outdated]
+          enum: [authentication_required, invalid_link_intent, invalid_provider_credential, provider_identity_in_use, provider_unavailable, authentication_unavailable, terms_version_outdated]

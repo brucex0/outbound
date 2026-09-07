@@ -45,6 +45,8 @@ app.use("/v1/*", authMiddleware);
 app.use("/v1/auth/*", rateLimit({ name: "auth", limit: 30, windowMs: 60_000 }));
 app.use("/v1/auth/google", rateLimit({ name: "auth-google", limit: 10, windowMs: 60_000, key: "ip" }));
 app.use("/v1/auth/link/google", rateLimit({ name: "auth-google-link", limit: 10, windowMs: 60_000, key: "identity" }));
+app.use("/v1/auth/link-intents", rateLimit({ name: "auth-link-intent", limit: 5, windowMs: 60_000, key: "identity" }));
+app.use("/v1/auth/link-intents/redeem/google", rateLimit({ name: "auth-link-redeem", limit: 5, windowMs: 60_000, key: "ip" }));
 app.use("/v1/auth/refresh", rateLimit({ name: "auth-refresh", limit: 10, windowMs: 60_000, key: "ip" }));
 app.use("/v1/assistant/*", rateLimit({ name: "assistant", limit: 20, windowMs: 60_000 }));
 app.use("/v1/companion/*", rateLimit({ name: "companion", limit: 20, windowMs: 60_000 }));

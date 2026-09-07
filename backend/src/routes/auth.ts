@@ -18,6 +18,7 @@ import { issueSession, rotateSession, revokeRefreshToken, revokeSession } from "
 import { Prisma } from "@prisma/client";
 import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
 import { changeUsername, UsernameChangeError } from "../services/usernames.js";
+import { consumeGoogleIdentityLinkIntent, createIdentityLinkIntent, IdentityLinkIntentError } from "../services/identityLinkIntents.js";
 
 const router = new Hono<AppEnv>();
 
@@ -168,6 +169,40 @@ router.post("/link/google", zValidator("json", googleCredential.strict()), async
   } catch (error) {
     if (error instanceof Error && error.message === "provider_identity_in_use") {
       return c.json({ error: "That Google identity is already linked to another account.", code: error.message }, 409);
+    }
+    return authError(c, error);
+  }
+});
+
+router.post("/link-intents", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  return c.json(await createIdentityLinkIntent(user.id), 201);
+});
+
+router.post("/link-intents/redeem/google", zValidator("json", sessionClient.extend({
+  ...googleCredential.shape,
+  code: z.string().trim().min(16).max(32),
+}).strict()), async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const body = c.req.valid("json");
+  try {
+    const claims = await verifyGoogleIdentityToken(body.identityToken);
+    const user = await consumeGoogleIdentityLinkIntent({
+      code: body.code, providerSubject: claims.sub, email: claims.email ?? null,
+      emailVerified: claims.email_verified === true, displayName: claims.name ?? null,
+    });
+    const acceptedUser = body.termsVersion === CURRENT_TERMS_VERSION
+      ? await acceptCurrentTerms(user, body.termsVersion)
+      : user;
+    return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
+  } catch (error) {
+    if (error instanceof IdentityLinkIntentError) {
+      const message = error.code === "provider_identity_in_use"
+        ? "That Google identity is already linked to another account."
+        : "That transfer code is invalid or expired.";
+      return c.json({ error: message, code: error.code }, error.code === "provider_identity_in_use" ? 409 : 401);
     }
     return authError(c, error);
   }
