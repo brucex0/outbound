@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Plainstride.Starting" parent="Theme.Plainstride">
+        <item name="android:windowSplashScreenBackground">@color/plainstride_splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_plainstride_splash</item>
+    </style>
+</resources>
