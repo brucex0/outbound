@@ -5,30 +5,30 @@ struct RacePlanRecommendation: Equatable {
     let evidenceCount: Int
 
     static func make(distanceMeters: Double, activities: [SavedActivity]) -> RacePlanRecommendation {
-        let candidates = activities
+        let eligible = activities
             .filter {
                 $0.activityType == .running && $0.distanceM >= 2_000 && $0.durationSecs >= 10 * 60
-                    && $0.distanceM <= distanceMeters * 1.25
+                    && $0.distanceM >= distanceMeters * 0.5
+                    && $0.distanceM <= distanceMeters * 1.1
             }
             .prefix(30)
+        guard let longestDistance = eligible.map(\.distanceM).max() else {
+            return finishRecommendation(distanceMeters: distanceMeters)
+        }
+        let comparable = eligible.filter { $0.distanceM >= longestDistance * 0.9 }
+        let candidates = comparable
             .compactMap { activity -> Double? in
                 let ratio = distanceMeters / activity.distanceM
-                guard ratio <= 4 else { return nil }
-                return Double(activity.durationSecs) * pow(ratio, 1.06) * 1.04
+                guard ratio >= 0.9, ratio <= 2 else { return nil }
+                let projected = Double(activity.durationSecs) * pow(ratio, 1.08)
+                if activity.distanceM >= distanceMeters * 0.95 {
+                    return max(projected, Double(activity.durationSecs))
+                }
+                return projected * 1.05
             }
             .sorted()
         guard let prediction = candidates.first else {
-            return RacePlanRecommendation(
-                raceIntent: RaceExecutionIntent(
-                    distanceMeters: distanceMeters,
-                    goalMode: .finish,
-                    goalTimeSeconds: nil,
-                    targetPaceSecondsPerKilometer: nil,
-                    pacingStrategy: .effortBased,
-                    recommendationSource: "insufficient_history"
-                ),
-                evidenceCount: 0
-            )
+            return finishRecommendation(distanceMeters: distanceMeters)
         }
         let seconds = Int((prediction / 60).rounded() * 60)
         return RacePlanRecommendation(
@@ -40,7 +40,21 @@ struct RacePlanRecommendation: Equatable {
                 pacingStrategy: .negativeSplit,
                 recommendationSource: "training_history"
             ),
-            evidenceCount: candidates.count
+            evidenceCount: comparable.count
+        )
+    }
+
+    private static func finishRecommendation(distanceMeters: Double) -> RacePlanRecommendation {
+        RacePlanRecommendation(
+            raceIntent: RaceExecutionIntent(
+                distanceMeters: distanceMeters,
+                goalMode: .finish,
+                goalTimeSeconds: nil,
+                targetPaceSecondsPerKilometer: nil,
+                pacingStrategy: .effortBased,
+                recommendationSource: "insufficient_history"
+            ),
+            evidenceCount: 0
         )
     }
 }
@@ -54,7 +68,8 @@ struct RacePlannerView: View {
     @State private var distanceMeters = 21_097.5
     @State private var usesTarget = true
     @State private var strategy: RacePacingStrategy = .negativeSplit
-    @State private var targetTimeText = ""
+    @State private var targetHours = 2
+    @State private var targetMinutes = 0
 
     private var recommendation: RacePlanRecommendation {
         .make(distanceMeters: distanceMeters, activities: activities)
@@ -80,14 +95,13 @@ struct RacePlannerView: View {
                             recommendation.evidenceCount,
                             durationLabel(recommendation.raceIntent.goalTimeSeconds ?? 0)
                         ))
-                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Race toward a time target"), isOn: $usesTarget)
+                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Time goal"), isOn: $usesTarget)
                     } else {
                         Text(String(localized: "race.planner.no_history", defaultValue: "There isn’t enough comparable training history for a responsible time target. Race by effort and focus on finishing well."))
-                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Race toward a time target"), isOn: $usesTarget)
+                        Toggle(String(localized: "race.planner.use_target", defaultValue: "Time goal"), isOn: $usesTarget)
                     }
                     if usesTarget {
-                        TextField(String(localized: "race.planner.time_format", defaultValue: "Goal time (H:MM:SS)"), text: $targetTimeText)
-                            .keyboardType(.numbersAndPunctuation)
+                        durationPicker
                     }
                 }
 
@@ -109,7 +123,7 @@ struct RacePlannerView: View {
                         onUsePlan(resolvedIntent)
                         dismiss()
                     }
-                    .disabled(usesTarget && parsedDuration(targetTimeText) == nil && recommendation.raceIntent.goalTimeSeconds == nil)
+                    .disabled(usesTarget && targetDurationSeconds == nil)
                 }
             }
             .onAppear { seedRecommendation() }
@@ -122,22 +136,59 @@ struct RacePlannerView: View {
         guard usesTarget else {
             return RaceExecutionIntent(distanceMeters: distanceMeters, goalMode: .finish, goalTimeSeconds: nil, targetPaceSecondsPerKilometer: nil, pacingStrategy: .effortBased, recommendationSource: recommended.recommendationSource)
         }
-        let seconds = parsedDuration(targetTimeText) ?? recommended.goalTimeSeconds
+        let seconds = targetDurationSeconds
         return RaceExecutionIntent(
             distanceMeters: distanceMeters,
             goalMode: seconds == nil ? .finish : .targetTime,
             goalTimeSeconds: seconds,
             targetPaceSecondsPerKilometer: seconds.map { Double($0) / (distanceMeters / 1_000) },
             pacingStrategy: strategy,
-            recommendationSource: parsedDuration(targetTimeText) == nil ? recommended.recommendationSource : "manual"
+            recommendationSource: seconds == recommended.goalTimeSeconds ? recommended.recommendationSource : "manual"
         )
+    }
+
+    private var durationPicker: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(String(localized: "race.planner.goal_time", defaultValue: "Goal time"))
+                .font(.subheadline)
+            HStack(spacing: 6) {
+                Spacer()
+                Picker(String(localized: "race.planner.hours", defaultValue: "Hours"), selection: $targetHours) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text("\(hour)").tag(hour)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(width: 70, height: 120)
+                .clipped()
+                Text(String(localized: "race.planner.hours", defaultValue: "Hours"))
+                    .foregroundStyle(.secondary)
+                Picker(String(localized: "race.planner.minutes", defaultValue: "Minutes"), selection: $targetMinutes) {
+                    ForEach(0..<60, id: \.self) { minute in
+                        Text(String(format: "%02d", minute)).tag(minute)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(width: 70, height: 120)
+                .clipped()
+                Text(String(localized: "race.planner.minutes", defaultValue: "Minutes"))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+
+    private var targetDurationSeconds: Int? {
+        let seconds = targetHours * 3_600 + targetMinutes * 60
+        return (5 * 60...24 * 60 * 60).contains(seconds) ? seconds : nil
     }
 
     private func seedRecommendation() {
         let race = recommendation.raceIntent
         usesTarget = race.goalTimeSeconds != nil
         strategy = race.pacingStrategy
-        targetTimeText = race.goalTimeSeconds.map(durationLabel) ?? ""
+        targetHours = (race.goalTimeSeconds ?? 2 * 3_600) / 3_600
+        targetMinutes = ((race.goalTimeSeconds ?? 2 * 3_600) % 3_600) / 60
     }
 
     private func durationLabel(_ seconds: Int) -> String {
@@ -145,12 +196,5 @@ struct RacePlannerView: View {
         let minutes = (seconds % 3_600) / 60
         let remainder = seconds % 60
         return String(format: "%d:%02d:%02d", hours, minutes, remainder)
-    }
-
-    private func parsedDuration(_ text: String) -> Int? {
-        let parts = text.split(separator: ":").compactMap { Int($0) }
-        guard parts.count == 2 || parts.count == 3 else { return nil }
-        let seconds = parts.count == 3 ? parts[0] * 3_600 + parts[1] * 60 + parts[2] : parts[0] * 60 + parts[1]
-        return (5 * 60...24 * 60 * 60).contains(seconds) ? seconds : nil
     }
 }
