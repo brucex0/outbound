@@ -16,6 +16,7 @@ struct SessionAnalysisRequest {
     let momentType: LiveGuidanceMomentType?
     let instructionID: String?
     let preferredMessage: String?
+    let remainingDistanceMeters: Double?
     let routeGuidanceActive: Bool
 
     init(
@@ -28,6 +29,7 @@ struct SessionAnalysisRequest {
         momentType: LiveGuidanceMomentType? = nil,
         instructionID: String? = nil,
         preferredMessage: String? = nil,
+        remainingDistanceMeters: Double? = nil,
         routeGuidanceActive: Bool = false
     ) {
         self.profile = profile
@@ -39,6 +41,7 @@ struct SessionAnalysisRequest {
         self.momentType = momentType
         self.instructionID = instructionID
         self.preferredMessage = preferredMessage
+        self.remainingDistanceMeters = remainingDistanceMeters
         self.routeGuidanceActive = routeGuidanceActive
     }
 }

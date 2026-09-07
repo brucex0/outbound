@@ -80,6 +80,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             liveState: .init(
                 elapsedSeconds: request.snapshot.elapsedSeconds,
                 distanceMeters: request.snapshot.distanceMeters,
+                remainingDistanceMeters: request.remainingDistanceMeters,
                 currentPaceSecondsPerKilometer: validPace(request.snapshot.currentPaceSecsPerKm),
                 rollingPaceSecondsPerKilometer: rollingPace(request.recentSnapshots),
                 targetPaceSecondsPerKilometer: targetPace,

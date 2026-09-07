@@ -192,6 +192,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
     let evaluationDelaySeconds: Int
     let preferredMessage: String?
     let instructionID: String?
+    let remainingDistanceMeters: Double?
 
     init(
         type: LiveGuidanceMomentType,
@@ -200,7 +201,8 @@ struct DetectedLiveGuidanceMoment: Equatable {
         targetPaceSecondsPerKilometer: Double? = nil,
         evaluationDelaySeconds: Int = 75,
         preferredMessage: String? = nil,
-        instructionID: String? = nil
+        instructionID: String? = nil,
+        remainingDistanceMeters: Double? = nil
     ) {
         self.type = type
         self.detectedAtElapsedSeconds = detectedAtElapsedSeconds
@@ -209,6 +211,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
         self.evaluationDelaySeconds = evaluationDelaySeconds
         self.preferredMessage = preferredMessage
         self.instructionID = instructionID
+        self.remainingDistanceMeters = remainingDistanceMeters
     }
 }
 

@@ -375,6 +375,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             momentType: moment.type,
             instructionID: moment.instructionID,
             preferredMessage: moment.preferredMessage,
+            remainingDistanceMeters: moment.remainingDistanceMeters,
             routeGuidanceActive: routeSpeechQuietUntil.map { Date() < $0 } ?? false
         )
         isAnalyzing = true
@@ -451,7 +452,8 @@ final class VirtualGuide: NSObject, ObservableObject {
                 targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
                 evaluationDelaySeconds: moment.evaluationDelaySeconds,
                 preferredMessage: message,
-                instructionID: moment.instructionID
+                instructionID: moment.instructionID,
+                remainingDistanceMeters: moment.remainingDistanceMeters
             )
             return
         }
@@ -484,7 +486,8 @@ final class VirtualGuide: NSObject, ObservableObject {
                 targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
                 evaluationDelaySeconds: moment.evaluationDelaySeconds,
                 preferredMessage: message,
-                instructionID: moment.instructionID
+                instructionID: moment.instructionID,
+                remainingDistanceMeters: moment.remainingDistanceMeters
             )
         }
     }
@@ -500,7 +503,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             targetPaceSecondsPerKilometer: moment.targetPaceSecondsPerKilometer,
             evaluationDelaySeconds: moment.evaluationDelaySeconds,
             preferredMessage: moment.preferredMessage,
-            instructionID: moment.instructionID
+            instructionID: moment.instructionID,
+            remainingDistanceMeters: moment.remainingDistanceMeters
         )
         _ = momentDirector.recordSpoken(spokenMoment)
         sessionReport = momentDirector.report(finalizing: false)
@@ -579,15 +583,27 @@ final class VirtualGuide: NSObject, ObservableObject {
 
             let announcement = goalProgressAnnouncement(for: goalMilestone, snapshot: snapshot)
             if isFinishCue {
-                guard speakPriorityIfNeeded(
-                    announcement,
-                    isPriority: true,
-                    fixedCueKey: Self.fixedCueKey(for: goalMilestone)
-                ) else { return }
-                spokenGoalMilestones.insert(goalMilestone)
-                rememberProgressMilestones(for: snapshot)
-                lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
-                rememberGuideSpeech(at: snapshot.elapsedSeconds)
+                if let remainingDistanceMeters = remainingDistanceForCloudVoice(goalMilestone) {
+                    audioPlayer.stopSpeaking(at: .immediate)
+                    spokenGoalMilestones.insert(goalMilestone)
+                    rememberProgressMilestones(for: snapshot)
+                    lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+                    requestProgressAnalysis(
+                        for: snapshot,
+                        localAnnouncement: announcement,
+                        remainingDistanceMeters: remainingDistanceMeters
+                    )
+                } else {
+                    guard speakPriorityIfNeeded(
+                        announcement,
+                        isPriority: true,
+                        fixedCueKey: Self.fixedCueKey(for: goalMilestone)
+                    ) else { return }
+                    spokenGoalMilestones.insert(goalMilestone)
+                    rememberProgressMilestones(for: snapshot)
+                    lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+                    rememberGuideSpeech(at: snapshot.elapsedSeconds)
+                }
             } else {
                 spokenGoalMilestones.insert(goalMilestone)
                 rememberProgressMilestones(for: snapshot)
@@ -719,13 +735,15 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func requestProgressAnalysis(
         for snapshot: ActiveSessionSnapshot,
-        localAnnouncement: String
+        localAnnouncement: String,
+        remainingDistanceMeters: Double? = nil
     ) {
         lastNudge = localAnnouncement
         let moment = DetectedLiveGuidanceMoment(
             type: .progress,
             detectedAtElapsedSeconds: snapshot.elapsedSeconds,
-            preferredMessage: localAnnouncement
+            preferredMessage: localAnnouncement,
+            remainingDistanceMeters: remainingDistanceMeters
         )
         guidanceEventHandler?(.momentDetected(
             type: .progress,
@@ -733,6 +751,17 @@ final class VirtualGuide: NSObject, ObservableObject {
         ))
         enqueue(moment)
         processPendingMoment(using: snapshot)
+    }
+
+    private func remainingDistanceForCloudVoice(_ milestone: GoalMilestone) -> Double? {
+        switch milestone {
+        case .distance300MetersRemaining:
+            unitSystem == .metric ? 300 : 402.336
+        case .distance100MetersRemaining:
+            unitSystem == .metric ? 100 : 160.9344
+        default:
+            nil
+        }
     }
 
     private func canAnnounceProgress(at elapsedSeconds: Int) -> Bool {

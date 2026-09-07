@@ -256,6 +256,7 @@ struct LiveCoachCueRequest: Encodable {
     struct LiveState: Encodable {
         let elapsedSeconds: Int
         let distanceMeters: Double
+        let remainingDistanceMeters: Double?
         let currentPaceSecondsPerKilometer: Double?
         let rollingPaceSecondsPerKilometer: Double?
         let targetPaceSecondsPerKilometer: Double?
