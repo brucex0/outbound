@@ -18,9 +18,13 @@ class WearSessionGatewayImpl(private val context: Context) : WearSessionGateway 
         Wearable.getNodeClient(context).connectedNodes.await().forEach { Wearable.getMessageClient(context).sendMessage(it.id, COMMAND_PATH, bytes).await() }
     }
     companion object {
-        const val COMMAND_PATH = "/plainstride/session/command"; const val STATE_PATH = "/plainstride/session/state"; const val STATE_DATA_KEY = "state"
+        const val COMMAND_PATH = "/plainstride/session/command"; const val STATE_PATH = "/plainstride/session/state"; const val TRACK_PATH = "/plainstride/session/track"; const val STATE_DATA_KEY = "state"; const val TRACK_DATA_KEY = "track"
         suspend fun publish(context: Context, state: SessionStateEnvelope) {
             val request = PutDataMapRequest.create(STATE_PATH).apply { dataMap.putString(STATE_DATA_KEY, Json.encodeToString(state)); dataMap.putLong("revision", state.revision) }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request).await()
+        }
+        suspend fun publishTrack(context: Context, chunk: WearTrackChunk) {
+            val request = PutDataMapRequest.create("$TRACK_PATH/${chunk.sessionId}/${chunk.index}").apply { dataMap.putString(TRACK_DATA_KEY, Json.encodeToString(chunk)) }.asPutDataRequest().setUrgent()
             Wearable.getDataClient(context).putDataItem(request).await()
         }
     }

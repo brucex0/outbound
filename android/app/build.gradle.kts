@@ -95,6 +95,10 @@ tasks.register("verifyPlayReleaseConfiguration") {
     }
 }
 
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    dependsOn("verifyPlayReleaseConfiguration")
+}
+
 dependencies {
     implementation(project(":core:analytics"))
     implementation(project(":core:assistant"))

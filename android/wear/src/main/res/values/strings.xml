@@ -4,4 +4,5 @@
     <string name="ready">Ready</string><string name="active">Active</string><string name="paused">Paused</string><string name="finished">Finished</string>
     <string name="start">Start</string><string name="pause">Pause</string><string name="resume">Resume</string><string name="finish">Finish</string>
     <string name="elapsed_distance">%1$d s · %2$.2f km</string><string name="heart_rate">%1$d bpm</string><string name="workout_in_progress">Workout in progress</string><string name="workout_channel">Workout</string>
+    <string name="permissions_required">Location and health permissions are required to record.</string>
 </resources>

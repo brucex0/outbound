@@ -28,10 +28,8 @@ class ExerciseService : LifecycleService() {
             val heartRate = update.latestMetrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value ?: old.heartRateBpm
             val location = update.latestMetrics.getData(DataType.LOCATION).lastOrNull()
             val now = System.currentTimeMillis()
-            val track = location?.value?.let { fix ->
-                (old.track + WearTrackPoint(now, fix.latitude, fix.longitude, fix.altitude.takeIf { it.isFinite() && it in -500.0..10_000.0 })).takeLast(750)
-            } ?: old.track
-            store(old.copy(distanceMeters = distance, heartRateBpm = heartRate, elapsedSeconds = (now - old.startedAtEpochMs) / 1000, revision = old.revision + 1, updatedAtEpochMs = now, track = track))
+            location?.value?.let { fix -> trackFile(old.sessionId).appendText(Json.encodeToString(WearTrackPoint(now, fix.latitude, fix.longitude, fix.altitude.takeIf { it.isFinite() && it in -500.0..10_000.0 })) + "\n") }
+            store(old.copy(distanceMeters = distance, heartRateBpm = heartRate, elapsedSeconds = (now - old.startedAtEpochMs) / 1000, revision = old.revision + 1, updatedAtEpochMs = now))
         }
         override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) = Unit
         override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) = Unit
@@ -57,16 +55,29 @@ class ExerciseService : LifecycleService() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { when (command.command) {
                 SessionProtocolCommand.START, SessionProtocolCommand.CLAIM_OWNER -> {
+                    trackFile(command.sessionId).delete()
                     client.startExerciseAsync(ExerciseConfig.builder(ExerciseType.RUNNING).setDataTypes(setOf(DataType.DISTANCE_TOTAL, DataType.HEART_RATE_BPM, DataType.LOCATION)).setIsAutoPauseAndResumeEnabled(false).build()).get()
                     store(SessionStateEnvelope(command.sessionId, SessionOwner.WATCH, SessionPhase.ACTIVE, command.revision, System.currentTimeMillis(), 0, 0.0, null, System.currentTimeMillis(), listOf(command.commandId)))
                 }
                 SessionProtocolCommand.PAUSE -> { client.pauseExerciseAsync().get(); transition(command, SessionPhase.PAUSED) }
                 SessionProtocolCommand.RESUME -> { client.resumeExerciseAsync().get(); transition(command, SessionPhase.ACTIVE) }
-                SessionProtocolCommand.FINISH, SessionProtocolCommand.RELEASE_OWNER -> { client.endExerciseAsync().get(); transition(command, SessionPhase.FINISHED); stopSelf() }
+                SessionProtocolCommand.FINISH, SessionProtocolCommand.RELEASE_OWNER -> { client.endExerciseAsync().get(); finish(command); stopSelf() }
             } }
         }
     }
     private fun transition(command: SessionCommandEnvelope, phase: SessionPhase) = state?.let { store(it.copy(phase = phase, revision = maxOf(it.revision + 1, command.revision), updatedAtEpochMs = System.currentTimeMillis(), handledCommandIds = (it.handledCommandIds + command.commandId).takeLast(64))) }
+    private suspend fun finish(command: SessionCommandEnvelope) {
+        val current = state ?: return
+        val points = trackFile(current.sessionId).takeIf { it.exists() }?.useLines { lines -> lines.mapNotNull { runCatching { Json.decodeFromString<WearTrackPoint>(it) }.getOrNull() }.toList() }.orEmpty()
+        val chunks = points.chunked(200)
+        chunks.forEachIndexed { index, chunk -> WearSessionGatewayImpl.publishTrack(this, WearTrackChunk(current.sessionId, index, chunk)) }
+        val finished = current.copy(phase = SessionPhase.FINISHED, revision = maxOf(current.revision + 1, command.revision), updatedAtEpochMs = System.currentTimeMillis(), handledCommandIds = (current.handledCommandIds + command.commandId).takeLast(64), trackChunkCount = chunks.size)
+        state = finished
+        WearSessionStateStore.state.value = finished
+        prefs.edit().putString("state", Json.encodeToString(finished)).commit()
+        WearSessionGatewayImpl.publish(this, finished)
+    }
+    private fun trackFile(sessionId: String) = java.io.File(filesDir, "track-$sessionId.jsonl")
     private fun store(value: SessionStateEnvelope) {
         state = value; WearSessionStateStore.state.value = value
         prefs.edit().putString("state", Json.encodeToString(value)).apply()

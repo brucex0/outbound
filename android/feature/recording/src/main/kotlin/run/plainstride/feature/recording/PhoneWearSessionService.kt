@@ -35,6 +35,7 @@ class PhoneWearSessionService : WearableListenerService() {
                 publish(phoneState!!)
             }
         } }
+        scope.launch { sessions.state.collectLatest { if (it is SessionState.SignedIn) replayPending() } }
     }
 
     override fun onMessageReceived(event: MessageEvent) {
@@ -64,6 +65,13 @@ class PhoneWearSessionService : WearableListenerService() {
 
     override fun onDataChanged(events: DataEventBuffer) {
         events.forEach { event ->
+            if (event.dataItem.uri.path?.startsWith(TRACK_PATH) == true && event.type == DataEvent.TYPE_CHANGED) {
+                val encoded = DataMapItem.fromDataItem(event.dataItem).dataMap.getString(TRACK_KEY) ?: return@forEach
+                val chunk = runCatching { Json.decodeFromString<WearTrackChunk>(encoded) }.getOrNull() ?: return@forEach
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString("track_${chunk.sessionId}_${chunk.index}", encoded).apply()
+                scope.launch { replayPending() }
+                return@forEach
+            }
             if (event.dataItem.uri.path != STATE_PATH || event.type != DataEvent.TYPE_CHANGED) return@forEach
             val encoded = DataMapItem.fromDataItem(event.dataItem).dataMap.getString(STATE_KEY) ?: return@forEach
             val state = runCatching { Json.decodeFromString<SessionStateEnvelope>(encoded) }.getOrNull() ?: return@forEach
@@ -78,19 +86,28 @@ class PhoneWearSessionService : WearableListenerService() {
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         if (prefs.getStringSet(IMPORTED, emptySet())?.contains(state.sessionId) == true) return
         val accountId = (sessions.state.value as? SessionState.SignedIn)?.accountId ?: return
+        val chunks = (0 until state.trackChunkCount).mapNotNull { index -> prefs.getString("track_${state.sessionId}_$index", null)?.let { runCatching { Json.decodeFromString<WearTrackChunk>(it) }.getOrNull() } }
+        if (chunks.size != state.trackChunkCount) return
+        val fullTrack = chunks.sortedBy { it.index }.flatMap { it.points } + state.track
         val saved = RecordedActivityFactory.create(RecordedActivityDraft(
             sessionId = state.sessionId, accountId = accountId, type = run.plainstride.core.model.activity.ActivityType.running,
             title = getString(R.string.recording_default_activity_title), startedAtEpochMs = state.startedAtEpochMs,
             endedAtEpochMs = state.updatedAtEpochMs, durationSecs = state.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             distanceM = state.distanceMeters, elevationGainM = 0.0,
-            track = state.track.mapIndexed { index, point -> RecordedTrackPointDraft(point.timestampEpochMs, point.latitude, point.longitude, point.altitudeMeters, null, index == 0) },
+            track = fullTrack.mapIndexed { index, point -> RecordedTrackPointDraft(point.timestampEpochMs, point.latitude, point.longitude, point.altitudeMeters, null, index == 0) },
         ), Instant.now()).copy(averageHeartRateBpm = state.heartRateBpm?.toInt())
         activities.save(saved)
         prefs.edit().putStringSet(IMPORTED, (prefs.getStringSet(IMPORTED, emptySet()).orEmpty() + state.sessionId).toList().takeLast(128).toSet()).apply()
         sync.schedule(accountId)
     }
 
-    override fun onPeerConnected(peer: Node) { phoneState?.let { scope.launch { publish(it) } } }
+    private suspend fun replayPending() {
+        val encoded = getSharedPreferences(PREFS, MODE_PRIVATE).getString(WATCH_STATE, null) ?: return
+        val state = runCatching { Json.decodeFromString<SessionStateEnvelope>(encoded) }.getOrNull() ?: return
+        if (state.phase == SessionPhase.FINISHED) importFinished(state)
+    }
+
+    override fun onPeerConnected(peer: Node) { scope.launch { replayPending(); phoneState?.let { publish(it) } } }
     private suspend fun publish(state: SessionStateEnvelope) {
         val request = PutDataMapRequest.create(STATE_PATH).apply { dataMap.putString(STATE_KEY, Json.encodeToString(state)); dataMap.putLong("revision", state.revision) }.asPutDataRequest().setUrgent()
         Wearable.getDataClient(this).putDataItem(request).await()
@@ -107,7 +124,7 @@ class PhoneWearSessionService : WearableListenerService() {
     )
 
     companion object {
-        const val COMMAND_PATH = "/plainstride/session/command"; const val STATE_PATH = "/plainstride/session/state"; const val STATE_KEY = "state"
+        const val COMMAND_PATH = "/plainstride/session/command"; const val STATE_PATH = "/plainstride/session/state"; const val TRACK_PATH = "/plainstride/session/track"; const val STATE_KEY = "state"; const val TRACK_KEY = "track"
         private const val PREFS = "phone_wear_session"; private const val HANDLED = "handled"; private const val WATCH_STATE = "watch_state"; private const val IMPORTED = "imported_sessions"
     }
 }
