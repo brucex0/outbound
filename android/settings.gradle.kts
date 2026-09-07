@@ -30,6 +30,7 @@ include(
     ":core:weather",
     ":feature:onboarding",
     ":feature:progress",
+    ":feature:health",
     ":feature:recording",
     ":feature:settings",
     ":feature:today",
