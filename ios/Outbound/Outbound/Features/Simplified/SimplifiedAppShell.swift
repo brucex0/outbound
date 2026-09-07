@@ -2591,7 +2591,6 @@ private struct SimplifiedMeView: View {
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
     @State private var showsConnections = false
-    @State private var showsQRCode = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
     @State private var hasTrackedCalorieExposure = false
@@ -2626,22 +2625,16 @@ private struct SimplifiedMeView: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                     }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-
-                            Button {
-                                showsQRCode = true
-                            } label: {
-                                Image(systemName: "qrcode")
-                                    .font(.headline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(String(localized: "Show my QR code"))
                         }
                     }
                     connectionsPreview
@@ -2811,13 +2804,6 @@ private struct SimplifiedMeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
-            .navigationDestination(isPresented: $showsQRCode) {
-                SimplifiedMyQRCodeView(
-                    displayName: profile?.displayName ?? authStore.currentLoginLabel ?? String(localized: "Your profile"),
-                    username: profile?.username,
-                    avatarURL: profile?.avatarUrl
-                )
-            }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
             }
@@ -3519,6 +3505,7 @@ private struct SimplifiedProfileEditorView: View {
     @State private var preferredRunGoalType: PreferredRunGoalType = .time
     @State private var preservedTrainingProfile: TrainingProfileDTO?
     @State private var toast: ProfileToast?
+    @State private var showsQRCode = false
 
     init(
         initialProfile: AppUserProfileDTO? = nil,
@@ -3559,17 +3546,14 @@ private struct SimplifiedProfileEditorView: View {
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
                     }
                     Spacer()
-                    NavigationLink {
-                        SimplifiedMyQRCodeView(
-                            displayName: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
-                            username: username.isEmpty ? nil : username,
-                            avatarURL: avatarUrl
-                        )
+                    Button {
+                        showsQRCode = true
                     } label: {
                         Image(systemName: "qrcode")
                             .font(.headline.weight(.semibold))
                             .frame(width: 44, height: 44)
                     }
+                    .buttonStyle(.plain)
                     .disabled(isUploadingAvatar)
                     .accessibilityLabel(String(localized: "Show my QR code"))
                 }
@@ -3667,6 +3651,13 @@ private struct SimplifiedProfileEditorView: View {
         }
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $showsQRCode) {
+            SimplifiedMyQRCodeView(
+                displayName: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
+                username: username.isEmpty ? nil : username,
+                avatarURL: avatarUrl
+            )
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(isSaving ? "Saving…" : "Save") { Task { await save() } }
