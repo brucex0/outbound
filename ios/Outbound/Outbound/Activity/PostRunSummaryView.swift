@@ -5,6 +5,7 @@ import UIKit
 struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var personalizationStore: PersonalizationStore
+    @Environment(\.analyticsManager) private var analyticsManager
     let summary: ActivitySummary
     let activityType: ActivityType
     let weightKilograms: Double?
@@ -14,7 +15,6 @@ struct PostRunSummaryView: View {
     let guidanceReport: LiveGuidanceSessionReport
     let workoutID: String
     let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
-    let onDiscardPrompted: () -> Void
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
@@ -23,7 +23,7 @@ struct PostRunSummaryView: View {
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
     @State private var isSubmitting = false
-    @State private var isDiscardConfirmationPresented = false
+    @State private var didTrackSaveIneligible = false
 
     init(
         summary: ActivitySummary,
@@ -35,7 +35,6 @@ struct PostRunSummaryView: View {
         guidanceReport: LiveGuidanceSessionReport = .empty,
         workoutID: String = "freestyle-run",
         onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
-        onDiscardPrompted: @escaping () -> Void = {},
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
@@ -48,10 +47,36 @@ struct PostRunSummaryView: View {
         self.guidanceReport = guidanceReport
         self.workoutID = workoutID
         self.onGuidanceFeedback = onGuidanceFeedback
-        self.onDiscardPrompted = onDiscardPrompted
         self.onSave = onSave
         self.onDiscard = onDiscard
         _draftPhotos = State(initialValue: photos.map(PostRunPhoto.init))
+    }
+
+    private var saveEligibility: ActivitySaveEligibility {
+        ActivitySaveEligibility.evaluate(
+            durationSecs: summary.durationSecs,
+            distanceM: summary.distanceM
+        )
+    }
+
+    private var isSaveEligible: Bool {
+        saveEligibility == .eligible
+    }
+
+    private var saveButtonTitle: String {
+        isSaveEligible
+            ? String(localized: "common.save", defaultValue: "Save")
+            : String(localized: "summary.action.too_short", defaultValue: "Too short to save")
+    }
+
+    private var saveButtonAccessibilityLabel: String {
+        isSaveEligible
+            ? String(localized: "summary.action.save", defaultValue: "Save activity")
+            : String(localized: "summary.action.too_short", defaultValue: "Too short to save")
+    }
+
+    private var ineligibleExplanation: String {
+        String(localized: "summary.save.ineligible.explanation", defaultValue: "Record at least 5 minutes or 500 meters to save this activity.")
     }
 
     var body: some View {
@@ -59,20 +84,36 @@ struct PostRunSummaryView: View {
             VStack(spacing: 0) {
                 mediaPager
                 reflectionSection
-                feedbackSection
-                if guidanceReport.spokenCueCount > 0 {
-                    guidanceFeedbackSection
+                if isSaveEligible {
+                    feedbackSection
+                    if guidanceReport.spokenCueCount > 0 {
+                        guidanceFeedbackSection
+                    }
                 }
                 photoReviewSection
                 if let primaryRecognition = recognitionPreviews.first {
                     recognitionSection(primaryRecognition)
                 }
                 statsSection
+                if !isSaveEligible {
+                    saveEligibilitySection
+                }
                 motivationSection
             }
             .padding(.bottom, 24)
         }
         .ignoresSafeArea(edges: .top)
+        .onAppear {
+            guard !isSaveEligible, !didTrackSaveIneligible else { return }
+            didTrackSaveIneligible = true
+            Task {
+                await analyticsManager?.track(.init(.activitySaveIneligibleShown, properties: [
+                    .activityType: .string(activityType.rawValue),
+                    .durationBucket: .string(ProductAnalyticsBucket.duration(seconds: summary.durationSecs)),
+                    .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: summary.distanceM))
+                ]))
+            }
+        }
         .overlay(alignment: .top) {
             HStack {
                 closeButton
@@ -88,27 +129,12 @@ struct PostRunSummaryView: View {
                 photoMetadata: finishPhotoMetadata
             )
         }
-        .alert(
-            String(localized: "summary.discard.confirmation.title", defaultValue: "Discard unsaved activity?"),
-            isPresented: $isDiscardConfirmationPresented
-        ) {
-            Button(String(localized: "summary.action.discard", defaultValue: "Discard activity"), role: .destructive) {
-                onDiscard()
-            }
-            Button(String(localized: "summary.discard.confirmation.keep_editing", defaultValue: "Keep editing"), role: .cancel) {}
-        } message: {
-            Text(String(
-                localized: "summary.discard.confirmation.message",
-                defaultValue: "This activity hasn’t been saved. If you close now, it will be permanently discarded."
-            ))
-        }
     }
 
     private var closeButton: some View {
         Button {
             guard !isSubmitting else { return }
-            onDiscardPrompted()
-            isDiscardConfirmationPresented = true
+            onDiscard()
         } label: {
             Image(systemName: "xmark")
                 .font(.system(size: 16, weight: .bold))
@@ -121,7 +147,7 @@ struct PostRunSummaryView: View {
         .background(.ultraThinMaterial, in: Circle())
         .overlay(Circle().stroke(.white.opacity(0.22), lineWidth: 1))
         .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
-        .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+        .accessibilityLabel(String(localized: "summary.action.discard", defaultValue: "Discard activity"))
         .accessibilityIdentifier("ClosePostRunSummaryButton")
     }
 
@@ -445,9 +471,20 @@ struct PostRunSummaryView: View {
         .accessibilityIdentifier("PostRunPhotoReviewSection")
     }
 
+    private var saveEligibilitySection: some View {
+        Text(ineligibleExplanation)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 32)
+            .padding(.top, 12)
+            .accessibilityIdentifier("PostRunSaveEligibilityExplanation")
+    }
+
     private var saveButton: some View {
         Button {
-            guard !isSubmitting else { return }
+            guard !isSubmitting, isSaveEligible else { return }
             isSubmitting = true
             if let selectedEffort {
                 Task {
@@ -470,7 +507,7 @@ struct PostRunSummaryView: View {
             }
         } label: {
             ZStack {
-                Text(String(localized: "common.save", defaultValue: "Save"))
+                Text(saveButtonTitle)
                     .font(.subheadline.weight(.bold))
                     .opacity(isSubmitting ? 0 : 1)
 
@@ -483,12 +520,12 @@ struct PostRunSummaryView: View {
             .padding(.horizontal, 12)
             .frame(height: 44)
         }
-        .disabled(isSubmitting)
+        .disabled(isSubmitting || !isSaveEligible)
         .buttonStyle(.plain)
-        .foregroundStyle(.white)
-        .background(Color.orange, in: Capsule())
+        .foregroundStyle(isSaveEligible ? .white : .secondary)
+        .background(isSaveEligible ? Color.orange : Color(.tertiarySystemFill), in: Capsule())
         .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
-        .accessibilityLabel(String(localized: "summary.action.save", defaultValue: "Save activity"))
+        .accessibilityLabel(saveButtonAccessibilityLabel)
         .accessibilityIdentifier("SavePostRunSummaryButton")
     }
 }

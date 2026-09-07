@@ -618,11 +618,6 @@ struct RecordView: View {
             guidanceReport: activity.guidanceReport,
             workoutID: (activeIntent ?? plannedIntent)?.id ?? "freestyle-run",
             onGuidanceFeedback: handleGuidanceFeedback,
-            onDiscardPrompted: {
-                var properties = outcomeProperties(for: activity.summary)
-                properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(activity.photos.count))
-                track(.init(.activityDiscardPrompted, properties: properties))
-            },
             onSave: { selectedPhotos, reflection in
                 await savePendingActivity(activity, photos: selectedPhotos, reflection: reflection)
             },
@@ -1137,9 +1132,16 @@ struct RecordView: View {
         guard !isCapturingSessionPhoto else { return }
         cancelStartCountdown(returnToSetup: true)
         let summary = recorder.finish()
+        let eligibility = ActivitySaveEligibility.evaluate(
+            durationSecs: summary.durationSecs,
+            distanceM: summary.distanceM
+        )
+        let isSaveEligible = eligibility == .eligible
         let guidanceReport = guide.finalizedSessionReport()
         if !recoveredAfterFinish {
-            guideCatalog.recordGuidanceReport(guidanceReport)
+            if isSaveEligible {
+                guideCatalog.recordGuidanceReport(guidanceReport)
+            }
             track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
             let locationDiagnostics = recorder.locationManager.recordingDiagnostics
             track(.init(.activityRecordingQuality, properties: [
@@ -1175,16 +1177,18 @@ struct RecordView: View {
             priorActivities: activityStore.activities,
             readiness: checkInStore.readiness,
             intent: activeIntent,
-            goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities)
+            goalProgress: isSaveEligible
+                ? goalStore.previewProgress(with: summary, activities: activityStore.activities)
+                : nil
         )
-        let recognitionPreviews = recognitionStore.previewPostRunRecognition(
-            summary: summary,
-            priorActivities: activityStore.activities,
-            readiness: checkInStore.readiness,
-            intent: activeIntent,
-            goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities),
-            photoCount: capturedPhotos.count
-        )
+        let recognitionPreviews = isSaveEligible
+            ? recognitionStore.previewPostRunRecognition(
+                summary: summary,
+                activityType: activeIntent?.resolvedActivityType ?? .running,
+                priorActivities: activityStore.activities,
+                goalProgress: goalStore.previewProgress(with: summary, activities: activityStore.activities)
+            )
+            : []
         let finishedActivity = PendingFinishedActivity(
             summary: summary,
             photos: capturedPhotos,
@@ -1226,6 +1230,18 @@ struct RecordView: View {
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection
     ) async -> Bool {
+        let eligibility = ActivitySaveEligibility.evaluate(
+            durationSecs: activity.summary.durationSecs,
+            distanceM: activity.summary.distanceM
+        )
+        guard eligibility == .eligible else {
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Post-run save blocked eligibility=too_short duration=\(ActivityDiagnosticLog.durationBucket(seconds: activity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: activity.summary.distanceM))"
+            )
+            return false
+        }
+
         let priorActivities = activityStore.activities
         let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
         let savedActivityType = activeIntent?.resolvedActivityType ?? .running
@@ -1326,8 +1342,6 @@ struct RecordView: View {
         _ = recognitionStore.recordSavedActivity(
             savedActivity,
             priorActivities: priorActivities,
-            readiness: checkInStore.readiness,
-            intent: activeIntent,
             goalProgress: previewProgress
         )
         goalStore.refresh(
@@ -2770,7 +2784,10 @@ struct RecordView: View {
         guard recorder.state != .idle, let ratio = goalCompletionRatio(
             distanceMeters: snapshot.distanceMeters,
             durationSeconds: snapshot.elapsedSeconds
-        ) else { return }
+        ), ActivitySaveEligibility.evaluate(
+            durationSecs: snapshot.elapsedSeconds,
+            distanceM: snapshot.distanceMeters
+        ) == .eligible else { return }
 
         for threshold in [25, 50, 75, 100]
         where ratio * 100 >= Double(threshold) && reachedGoalThresholds.insert(threshold).inserted {

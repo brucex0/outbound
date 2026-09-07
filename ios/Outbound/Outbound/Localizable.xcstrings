@@ -15744,6 +15744,22 @@
         }
       }
     },
+    "summary.action.too_short" : {
+      "comment": "A disabled save button label shown when an activity does not meet the minimum save threshold.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Too short to save" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Demasiado corta para guardar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "时间太短，无法保存" } }
+      }
+    },
+    "summary.save.ineligible.explanation" : {
+      "comment": "Explains the minimum duration-or-distance requirement for saving an activity.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Record at least 5 minutes or 500 meters to save this activity." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Registra al menos 5 minutos o 500 metros para guardar esta actividad." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "记录至少 5 分钟或 500 米，才能保存此活动。" } }
+      }
+    },
     "summary.action.save" : {
       "comment": "A label for the button that saves the user's workout.",
       "extractionState": "extracted_with_value",

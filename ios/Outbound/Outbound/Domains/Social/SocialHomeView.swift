@@ -2419,8 +2419,6 @@ struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let person: TogetherPersonDTO
     var username: String? = nil
-    var showsRemoveConnection = false
-    var onRemoveConnection: (() -> Void)?
     @State private var sharedRecognitions: [RecognitionAwardDTO] = []
 
     private var posts: [TogetherPostDTO] {
@@ -2439,17 +2437,6 @@ struct SocialPersonProfileView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, OutboundSpacing.standard)
-
-                if showsRemoveConnection {
-                    Button(role: .destructive) {
-                        onRemoveConnection?()
-                    } label: {
-                        Label("Remove connection", systemImage: "person.crop.circle.badge.minus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("Remove connection")
-                }
 
                 if !sharedRecognitions.isEmpty {
                     Text(String(localized: "social.profile.milestones", defaultValue: "MILESTONES"))

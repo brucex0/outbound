@@ -69,12 +69,21 @@ private struct SocialProfileDestination: View {
     @State private var isRemovingConnection = false
 
     var body: some View {
-        SocialPersonProfileView(
-            person: person,
-            username: username,
-            showsRemoveConnection: connection?.status == "accepted",
-            onRemoveConnection: { showsRemoveConfirmation = true }
-        )
+        SocialPersonProfileView(person: person, username: username)
+            .toolbar {
+                if connection?.status == "accepted" {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Button("Remove connection", role: .destructive) {
+                                showsRemoveConfirmation = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                        }
+                        .accessibilityLabel("Profile actions")
+                    }
+                }
+            }
         .onAppear {
             guard !hasTrackedOpen else { return }
             hasTrackedOpen = true
