@@ -1,0 +1,48 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "profile.username.cooldown" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You can change your username once every 30 days." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Puedes cambiar tu nombre de usuario una vez cada 30 días." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "用户名每 30 天只能更改一次。" } }
+      }
+    },
+    "profile.username.help" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your name, username, and bio may appear in Together. You can change your username once every 30 days." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu nombre, nombre de usuario y biografía pueden aparecer en Juntos. Puedes cambiar tu nombre de usuario una vez cada 30 días." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你的姓名、用户名和简介可能会显示在“一起跑”中。用户名每 30 天只能更改一次。" } }
+      }
+    },
+    "profile.username.invalid" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use 3–30 letters, numbers, underscores, or hyphens." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usa entre 3 y 30 letras, números, guiones bajos o guiones." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请使用 3–30 个字母、数字、下划线或连字符。" } }
+      }
+    },
+    "profile.username.label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Username" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nombre de usuario" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "用户名" } }
+      }
+    },
+    "profile.username.reserved" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That username is reserved. Try another one." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ese nombre de usuario está reservado. Prueba con otro." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "该用户名为保留名称，请换一个。" } }
+      }
+    },
+    "profile.username.taken" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That username is already taken." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ese nombre de usuario ya está en uso." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "该用户名已被使用。" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

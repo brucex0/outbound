@@ -3509,10 +3509,8 @@ private struct SimplifiedProfileEditorView: View {
     @State private var bio = ""
     @State private var contactEmail = ""
     @State private var contactPhone = ""
-    @State private var savedContactEmail = ""
-    @State private var savedContactPhone = ""
-    @State private var isEditingContactDetails = false
     @State private var username = ""
+    @State private var savedUsername = ""
     @State private var avatarUrl = UserAvatarPersistence.url(for: AuthStore.currentUserId)
     @State private var selectedAvatarItem: PhotosPickerItem?
     @State private var isUploadingAvatar = false
@@ -3539,9 +3537,8 @@ private struct SimplifiedProfileEditorView: View {
         _bio = State(initialValue: initialProfile?.bio ?? "")
         _contactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
         _contactPhone = State(initialValue: initialProfile?.contactPhone ?? "")
-        _savedContactEmail = State(initialValue: initialProfile?.contactEmail ?? "")
-        _savedContactPhone = State(initialValue: initialProfile?.contactPhone ?? "")
         _username = State(initialValue: initialProfile?.username ?? "")
+        _savedUsername = State(initialValue: initialProfile?.username ?? "")
         _avatarUrl = State(
             initialValue: initialProfile?.avatarUrl
                 ?? UserAvatarPersistence.url(for: AuthStore.currentUserId)
@@ -3586,14 +3583,19 @@ private struct SimplifiedProfileEditorView: View {
             Section {
                 TextField("Display name", text: $displayName)
                     .textInputAutocapitalization(.words)
+                TextField(
+                    String(localized: "profile.username.label", defaultValue: "Username"),
+                    text: $username
+                )
+                .textInputAutocapitalization(.never)
+                .textContentType(.username)
+                .autocorrectionDisabled()
+                .onChange(of: username) { _, value in
+                    let normalized = value.lowercased()
+                    if normalized != value { username = normalized }
+                }
                 TextField("Running bio", text: $bio, axis: .vertical)
                     .lineLimit(2...4)
-            } header: {
-                Text("About you")
-            } footer: {
-                Text("Your name and bio may appear to people you connect with in Together.")
-            }
-            Section {
                 Picker("Sex assigned at birth", selection: $sexAtBirth) {
                     Text("Not provided").tag(nil as TrainingProfileSex?)
                     ForEach(TrainingProfileSex.allCases) { value in
@@ -3601,19 +3603,8 @@ private struct SimplifiedProfileEditorView: View {
                     }
                 }
                 .disabled(preservedTrainingProfile == nil)
-            } header: {
-                Text("Private")
-            } footer: {
-                Text(String(
-                    localized: "profile.health_details.privacy",
-                    defaultValue: "Sex assigned at birth is optional. Plainstride uses it only to show relevant private health features and never shares it in Together."
-                ))
-            }
-            Section {
-                Text("These optional details help Plainstride personalize training load, recovery advice, and estimates. They stay private and are never shown in Together.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
                 Toggle("Add birthday", isOn: $hasBirthDate)
+                    .disabled(preservedTrainingProfile == nil)
                 if hasBirthDate {
                     DatePicker(
                         "Birthday",
@@ -3621,27 +3612,31 @@ private struct SimplifiedProfileEditorView: View {
                         in: oldestBirthDate...latestBirthDate,
                         displayedComponents: .date
                     )
+                    .disabled(preservedTrainingProfile == nil)
                 }
-            } header: {
-                Text(String(localized: "profile.training_details", defaultValue: "Training details"))
-            } footer: {
-                Text(String(
-                    localized: "profile.training_details.birthday_footer",
-                    defaultValue: "Birthday is stored instead of age so your details stay accurate over time."
-                ))
-            }
-            .disabled(preservedTrainingProfile == nil)
-            Section {
                 TextField(heightLabel, text: $heightText)
                     .keyboardType(.decimalPad)
+                    .disabled(preservedTrainingProfile == nil)
                 TextField(weightLabel, text: $weightText)
                     .keyboardType(.decimalPad)
+                    .disabled(preservedTrainingProfile == nil)
+                TextField("Email", text: $contactEmail)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                TextField("Phone number", text: $contactPhone)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
             } header: {
-                Text("Body measurements")
+                Text("About you")
             } footer: {
-                Text("Leave a field blank to remove it. You can update these values whenever they change.")
+                Text(
+                    usernameIsValid
+                        ? String(localized: "profile.about_you.footer", defaultValue: "Your name, username, and bio may appear in Together. Your other details stay private. You can change your username once every 30 days.")
+                        : String(localized: "profile.username.invalid", defaultValue: "Use 3–30 letters, numbers, underscores, or hyphens.")
+                )
             }
-            .disabled(preservedTrainingProfile == nil)
             Section {
                 Picker(
                     String(localized: "profile.motivation.title", defaultValue: "Primary motivation"),
@@ -3669,35 +3664,6 @@ private struct SimplifiedProfileEditorView: View {
             }
             .disabled(preservedTrainingProfile == nil)
             Section {
-                if isEditingContactDetails || savedContactEmail.isEmpty {
-                    TextField("Email", text: $contactEmail)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .autocorrectionDisabled()
-                } else {
-                    LabeledContent("Email", value: savedContactEmail)
-                }
-                if isEditingContactDetails || savedContactPhone.isEmpty {
-                    TextField("Phone number", text: $contactPhone)
-                        .keyboardType(.phonePad)
-                        .textContentType(.telephoneNumber)
-                } else {
-                    LabeledContent("Phone number", value: savedContactPhone)
-                }
-            } header: {
-                HStack {
-                    Text("Contact details")
-                    Spacer()
-                    if hasSavedContactDetails && !isEditingContactDetails {
-                        Button("Edit") { isEditingContactDetails = true }
-                            .textCase(nil)
-                    }
-                }
-            } footer: {
-                Text("These profile details do not change how you sign in.")
-            }
-            Section {
                 NavigationLink {
                     CompanionMemoryView()
                 } label: {
@@ -3713,6 +3679,7 @@ private struct SimplifiedProfileEditorView: View {
                     .disabled(
                         isSaving
                             || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || !usernameIsValid
                             || !measurementsAreValid
                     )
             }
@@ -3747,10 +3714,8 @@ private struct SimplifiedProfileEditorView: View {
             bio = profile.bio ?? ""
             contactEmail = profile.contactEmail ?? ""
             contactPhone = profile.contactPhone ?? ""
-            savedContactEmail = contactEmail
-            savedContactPhone = contactPhone
-            isEditingContactDetails = false
             username = profile.username
+            savedUsername = profile.username
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
         } catch {
@@ -3794,6 +3759,7 @@ private struct SimplifiedProfileEditorView: View {
             }
             let profile = try await APIClient.shared.updateMyProfile(
                 AppUserProfileUpdateDTO(
+                    username: cleanedUsername == savedUsername ? nil : cleanedUsername,
                     displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
                     bio: nilIfEmpty(bio),
                     contactEmail: nilIfEmpty(contactEmail),
@@ -3801,23 +3767,54 @@ private struct SimplifiedProfileEditorView: View {
                 )
             )
             displayName = profile.displayName
+            let usernameChanged = profile.username != savedUsername
+            username = profile.username
+            savedUsername = profile.username
             bio = profile.bio ?? ""
             contactEmail = profile.contactEmail ?? ""
             contactPhone = profile.contactPhone ?? ""
-            savedContactEmail = contactEmail
-            savedContactPhone = contactPhone
-            isEditingContactDetails = false
             avatarUrl = profile.avatarUrl
             UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
+            authStore.applyProfileIdentity(username: profile.username, displayName: profile.displayName)
             onProfileUpdated?(profile)
+            if usernameChanged {
+                await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                    .changeType: .string("username"),
+                    .selectionType: .string("changed")
+                ]))
+            }
             showToast(String(localized: "Profile saved"), style: .success)
         } catch {
-            showToast(String(localized: "Could not save profile. Try again."), style: .error)
+            showToast(usernameErrorMessage(for: error), style: .error)
         }
     }
 
-    private var hasSavedContactDetails: Bool {
-        !savedContactEmail.isEmpty || !savedContactPhone.isEmpty
+    private var cleanedUsername: String {
+        username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var usernameIsValid: Bool {
+        if cleanedUsername == savedUsername { return true }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_-")
+        return (3...30).contains(cleanedUsername.count)
+            && cleanedUsername.unicodeScalars.allSatisfy(allowed.contains)
+    }
+
+    private func usernameErrorMessage(for error: Error) -> String {
+        guard let apiError = error as? APIError,
+              case let .http(_, _, code) = apiError else {
+            return String(localized: "Could not save profile. Try again.")
+        }
+        switch code {
+        case "username_taken":
+            return String(localized: "profile.username.taken", defaultValue: "That username is already taken.")
+        case "username_reserved":
+            return String(localized: "profile.username.reserved", defaultValue: "That username is reserved. Try another one.")
+        case "username_change_too_soon":
+            return String(localized: "profile.username.cooldown", defaultValue: "You can change your username once every 30 days.")
+        default:
+            return String(localized: "Could not save profile. Try again.")
+        }
     }
 
     private var usesMetric: Bool {
