@@ -30,6 +30,7 @@ export type RunningWeatherSnapshot = {
 
 type CacheEntry = {
   storedAt: number;
+  expiresAt: number;
   lastModified: string | null;
   snapshot: RunningWeatherSnapshot;
 };
@@ -51,7 +52,8 @@ export async function getRunningWeather(input: {
   const cached = cache.get(key);
   const now = Date.now();
 
-  if (!input.force && cached && now - cached.storedAt < CACHE_TTL_MS) {
+  // A forced client refresh still respects the upstream provider's minimum cache window.
+  if (cached && now < Math.max(cached.storedAt + CACHE_TTL_MS, cached.expiresAt)) {
     return { snapshot: cached.snapshot, cacheStatus: "fresh" };
   }
 
@@ -71,6 +73,8 @@ export async function getRunningWeather(input: {
     const response = await fetch(url, { headers, redirect: "follow", signal: AbortSignal.timeout(8_000) });
     if (response.status === 304 && cached) {
       cached.storedAt = now;
+      cached.expiresAt = parsedExpiry(response, now);
+      cached.snapshot = { ...cached.snapshot, fetchedAt: new Date(now).toISOString() };
       return { snapshot: cached.snapshot, cacheStatus: "revalidated" };
     }
     if (!response.ok) throw new Error(`weather_provider_${response.status}`);
@@ -79,6 +83,7 @@ export async function getRunningWeather(input: {
     const snapshot = normalizeForecast(payload, now);
     cache.set(key, {
       storedAt: now,
+      expiresAt: parsedExpiry(response, now),
       lastModified: response.headers.get("last-modified"),
       snapshot,
     });
@@ -163,6 +168,10 @@ function bestRunningWindow(hours: MetTimeseries[], nowMs: number): string | null
   let best: { index: number; score: number } | null = null;
   for (let index = 0; index + 2 < upcoming.length; index += 1) {
     const window = upcoming.slice(index, index + 3);
+    const firstSymbol = window[0].data.next_1_hours?.summary.symbol_code
+      ?? window[0].data.next_6_hours?.summary.symbol_code
+      ?? "";
+    if (firstSymbol.endsWith("_night")) continue;
     const averageRain = window.reduce((sum, hour) => sum + precipitation(hour), 0) / window.length;
     const averageTemperature = window.reduce((sum, hour) => sum + hour.data.instant.details.air_temperature, 0) / window.length;
     const score = averageRain * 2 + Math.abs(averageTemperature - 14) / 20;
@@ -209,6 +218,10 @@ function cacheKey(userId: string, locale: string, lat: number, lon: number, alti
 function pruneCache(now: number) {
   if (cache.size < 2_000) return;
   for (const [key, value] of cache) if (now - value.storedAt >= STALE_TTL_MS) cache.delete(key);
+}
+function parsedExpiry(response: Response, now: number) {
+  const value = Date.parse(response.headers.get("expires") ?? "");
+  return Number.isFinite(value) && value > now ? value : now + CACHE_TTL_MS;
 }
 
 type MetForecast = { properties?: { timeseries?: MetTimeseries[] } };
