@@ -1092,7 +1092,12 @@ async function createSocialNotification(recipientId: string, actorId: string, ty
     data: { recipientId, actorId, type, objectId, message },
   });
   void deliverPushNotification(notification).catch((error) => {
-    console.error("[push] notification delivery failed", { notificationId: notification.id, error });
+    console.error("[push] notification delivery failed", {
+      notificationId: notification.id,
+      category: "provider_unavailable",
+      retryable: true,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
   });
 }
 

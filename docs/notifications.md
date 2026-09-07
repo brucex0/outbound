@@ -21,13 +21,13 @@ Open this when changing notification creation, delivery, device registration, fo
 ```json
 {
   "token": "FCM registration token",
-  "platform": "ios",
-  "appBundle": "plainstride.outbound",
+  "platform": "android",
+  "appBundle": "run.plainstride",
   "locale": "en_US"
 }
 ```
 
-The operation is authenticated and idempotent by token. It updates ownership, locale, enabled state, and `lastSeenAt`.
+`platform` accepts `ios` or `android`. The operation is authenticated and idempotent by FCM registration token. It updates ownership, locale, enabled state, and `lastSeenAt`.
 
 ### Remove a device
 
@@ -37,7 +37,7 @@ Only the authenticated owner can remove the token.
 
 ### Delivery payload
 
-Firebase Admin sends visible notification content plus these string data fields:
+Firebase Admin routes each registered device by platform. iOS receives the APNs sound and badge payload through FCM; Android receives a high-priority FCM notification on the `social` channel. Both receive visible notification content plus these string data fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -69,7 +69,14 @@ gcloud logging read \
   --format=json
 ```
 
-Each failed Firebase response includes its error code and message, device index, and whether the token was classified as stale. Registration tokens are intentionally omitted from logs.
+Delivery logs contain only platform, a stable category (`invalid_token`, `credentials`, `rate_limited`, `provider_unavailable`, `invalid_payload`, or `unknown`), retryability, and aggregate counts. Registration tokens, user IDs, provider error messages, notification text, and object IDs are intentionally omitted. Invalid or unregistered tokens are deleted automatically.
+
+## Android Contract
+
+- The app creates the `social` notification channel before token registration and uses notification importance appropriate for invitations and responses.
+- FCM token refresh registers the replacement token after authentication. Sign-out removes the current token when connectivity permits; server ownership also moves idempotently if the same token later registers to another account.
+- Permission denial never removes the durable in-app inbox. Android 13 and later request `POST_NOTIFICATIONS` only from contextual notification education UI.
+- Taps use the same bounded `type`, `objectId`, and `destination` routing contract as iOS. Push payloads never contain health, plan, readiness, location, route, or cycle data.
 
 ## iOS Contract
 
@@ -85,10 +92,10 @@ Each failed Firebase response includes its error code and message, device index,
 ## Configuration and Rollout
 
 1. Apply the schema: `cd backend && npm run db:push`.
-2. In Firebase Console, upload the APNs authentication key for the iOS app `plainstride.outbound`.
-3. Ensure the Apple Developer App ID and provisioning profiles include Push Notifications.
-4. Deploy the backend with Firebase/Google application-default credentials that can send Firebase Cloud Messaging messages.
-5. Validate on a physical device; the simulator and local Firebase Auth emulator do not provide a production delivery check.
+2. Register both Firebase apps: iOS `plainstride.outbound` and Android `run.plainstride`. Download `google-services.json` for the Android build through the normal secret/configuration path; do not commit production credentials.
+3. In Firebase Console, upload the APNs authentication key for the iOS app and ensure its App ID/provisioning profiles include Push Notifications.
+4. Deploy the backend with `FIREBASE_PROJECT_ID` (or `GOOGLE_CLOUD_PROJECT`) and application-default credentials whose service account can send Firebase Cloud Messaging messages. No FCM server key belongs in source or client configuration.
+5. Validate APNs and Android FCM independently on physical devices; simulators and the local Firebase Auth emulator do not provide a production delivery check.
 
 ## Local Workout Reminders
 

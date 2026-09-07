@@ -16,6 +16,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - The `User` schema stores the current Terms version and acceptance time. Deploy `prisma db push` before releasing an iOS build that sends `termsVersion` or presents the reacceptance gate.
 - User-uploaded avatars use the `outbound-494602-avatars` GCS bucket in `us-central1`; Cloud Run sets `AVATAR_STORAGE_BUCKET=outbound-494602-avatars` and its runtime service account has object access there. Private activity photos use `MEDIA_STORAGE_BUCKET` when set and otherwise fall back to `<project-id>.firebasestorage.app`.
 - Activity photos use the private `activity-photos/<user-id>/<activity-id>/` prefix. The API validates JPEGs up to 5 MB, owns all object keys, authenticates each download, and redirects it to a 15-minute signed URL; bucket objects must not be made public. A full Cloud CDN layer remains optional until media egress justifies it.
+- Push delivery uses Firebase Admin with `FIREBASE_PROJECT_ID` (falling back to `GOOGLE_CLOUD_PROJECT`) and the Cloud Run runtime service account's application-default credentials. Register the iOS and Android Firebase apps in that same project and grant the runtime identity permission to send FCM messages. Never put a legacy FCM server key in Cloud Run environment variables, source control, or either client app. Delivery logs retain only stable aggregate error categories and exclude tokens, user IDs, notification text, and routing object IDs.
 
 ## Local Backend Run
 

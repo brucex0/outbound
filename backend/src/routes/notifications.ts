@@ -9,7 +9,7 @@ import type { AppEnv } from "../types/hono.js";
 const router = new Hono<AppEnv>();
 const registrationSchema = z.object({
   token: z.string().min(20).max(4096),
-  platform: z.literal("ios"),
+  platform: z.enum(["ios", "android"]),
   appBundle: z.string().min(1).max(255),
   locale: z.string().min(2).max(32).optional(),
 });
