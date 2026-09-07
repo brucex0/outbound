@@ -152,6 +152,7 @@ struct RecordView: View {
     @State private var isAddShoePresented = false
     @State private var showsTrustedContacts = false
     @State private var showsCuratedWorkouts = false
+    @State private var showsRacePlanner = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
     @State private var showsRouteLibrary = false
@@ -482,6 +483,13 @@ struct RecordView: View {
                     .selectionType: .string(workout.sport.rawValue),
                 ]))
             }
+        }
+        .sheet(isPresented: $showsRacePlanner) {
+            RacePlannerView(
+                activities: activityStore.activities,
+                unitSystem: measurementPreferences.unitSystem,
+                onUsePlan: applyRacePlan
+            )
         }
         .fullScreenCover(isPresented: $isPreActivityCameraPresented) {
             PostRunCameraView { image in
@@ -1575,6 +1583,8 @@ struct RecordView: View {
             ]))
             if selectedGoalMode == .curated {
                 openCuratedWorkoutPicker()
+            } else if selectedGoalMode == .race {
+                showsRacePlanner = true
             } else if selectedGoalMode != .freestyle {
                 isGoalChooserPresented.toggle()
             }
@@ -1966,7 +1976,7 @@ struct RecordView: View {
                             isGoalChooserPresented = false
                         }
                     }
-                case .planned, .curated, .freestyle:
+                case .planned, .curated, .freestyle, .race:
                     EmptyView()
                 }
 
@@ -2002,6 +2012,10 @@ struct RecordView: View {
         if selectedGoalMode == .curated {
             return curatedWorkoutIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
         }
+        if selectedGoalMode == .race {
+            return plannedIntent?.raceIntent.map(racePlanSummary)
+                ?? String(localized: "race.planner.start", defaultValue: "Plan a race effort")
+        }
         if selectedGoalMode == .freestyle {
             return String(localized: "record.goal.no_target", defaultValue: "No target")
         }
@@ -2016,6 +2030,8 @@ struct RecordView: View {
             return String(localized: "record.goal.tap_change_workout", defaultValue: "Tap to change workout")
         case .freestyle:
             return String(localized: "record.goal.freestyle.short_hint", defaultValue: "Start and move by feel")
+        case .race:
+            return String(localized: "race.planner.tap_change", defaultValue: "Tap to adjust race strategy")
         case .calories:
             return calorieEditorEstimateLabel
                 ?? String(localized: "record.goal.tap_change", defaultValue: "Tap to change")
@@ -2038,6 +2054,15 @@ struct RecordView: View {
         isGoalChooserPresented = false
         if mode == .curated {
             openCuratedWorkoutPicker()
+            return
+        }
+        if mode == .race {
+            guard selectedManualSport == .run else { return }
+            showsRacePlanner = true
+            track(.init(.planningSurfaceOpened, properties: [
+                .sourceType: .string("race"),
+                .entrySource: .string("manual_mode_row"),
+            ]))
             return
         }
         guard let sport = selectedManualSport else { return }
@@ -2881,6 +2906,7 @@ struct RecordView: View {
 
     private var analyticsGoalType: String {
         let intent = activeIntent ?? plannedIntent ?? .freestyleRun
+        if intent.raceIntent != nil { return "race" }
         if !intent.workoutSteps.isEmpty { return "workout" }
         switch intent.activityGoal {
         case .freestyle: return "freestyle"
@@ -3477,6 +3503,7 @@ struct RecordView: View {
                 goalModeButton(.distance)
                 goalModeButton(.time)
                 if plannedIntent?.sport == .run {
+                    goalModeButton(.race)
                     goalModeButton(.calories)
                 }
             }
@@ -3499,6 +3526,16 @@ struct RecordView: View {
                 } label: {
                     Text(String(localized: "record.goal.use_freestyle", defaultValue: "Use Freestyle"))
                         .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+            case .race:
+                Button(String(localized: "race.planner.open", defaultValue: "Open race planner")) {
+                    setupSheet = nil
+                    Task { @MainActor in
+                        await Task.yield()
+                        showsRacePlanner = true
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
@@ -3886,6 +3923,14 @@ struct RecordView: View {
 
     private func selectGoalModeFromEditor(_ mode: SessionGoalMode) {
         dismissInlineCustomGoalInput()
+        if mode == .race {
+            setupSheet = nil
+            Task { @MainActor in
+                await Task.yield()
+                showsRacePlanner = true
+            }
+            return
+        }
         guard mode == .calories else {
             selectedGoalMode = mode
             return
@@ -4010,9 +4055,65 @@ struct RecordView: View {
     }
 
     private var availableManualGoalModes: [SessionGoalMode] {
-        selectedManualSport == .run || selectedManualSport == .walk
-            ? SessionGoalMode.manualCases
-            : SessionGoalMode.manualCases.filter { $0 != .calories }
+        if selectedManualSport == .run { return SessionGoalMode.manualCases }
+        if selectedManualSport == .walk { return SessionGoalMode.manualCases.filter { $0 != .race } }
+        return SessionGoalMode.manualCases.filter { $0 != .calories && $0 != .race }
+    }
+
+    private func applyRacePlan(_ race: RaceExecutionIntent) {
+        let intent = SessionIntent(
+            id: "race-\(Int(race.distanceMeters.rounded()))",
+            sport: .run,
+            title: String(localized: "race.planner.race_day", defaultValue: "Race day"),
+            detail: racePlanSummary(race),
+            guideLine: String(localized: "race.planner.guide", defaultValue: "Start patiently, execute your plan, and build only when the effort remains controlled."),
+            startLabel: String(localized: "race.planner.start_race", defaultValue: "Start race"),
+            targetDistanceMeters: race.distanceMeters,
+            coachingTarget: race.targetPaceSecondsPerKilometer.map {
+                SessionCoachingTarget(
+                    phase: .work,
+                    pace: SessionPaceTarget(
+                        reference: .absolute,
+                        targetSecondsPerKilometer: $0,
+                        fasterToleranceSeconds: 15,
+                        slowerToleranceSeconds: 20
+                    ),
+                    recognizesTargetLock: true
+                )
+            } ?? .work,
+            raceIntent: race
+        )
+        if let route = plannedIntent?.preparedRoute {
+            plannedIntent = routeIntent(route, appliedTo: intent)
+        } else {
+            plannedIntent = intent
+        }
+        selectedWorkoutChoice = .sport(.run)
+        selectedGoalMode = .race
+        selectedGuidanceChallenge = .off
+        manualActivityGoal = .distanceMeters(race.distanceMeters)
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("race_plan"),
+            .goalType: .string("race"),
+            .sourceType: .string(race.recommendationSource),
+            .targetBucket: .string(ProductAnalyticsBucket.distance(meters: race.distanceMeters)),
+        ]))
+    }
+
+    private func racePlanSummary(_ race: RaceExecutionIntent) -> String {
+        let distance = measurementPreferences.unitSystem.distanceString(meters: race.distanceMeters, fractionDigits: 1)
+        guard let seconds = race.goalTimeSeconds else {
+            return String(
+                format: String(localized: "race.planner.finish_summary", defaultValue: "%@ · finish by feel"),
+                locale: .autoupdatingCurrent,
+                distance
+            )
+        }
+        return "\(distance) · \(Self.raceDurationLabel(seconds))"
+    }
+
+    private static func raceDurationLabel(_ seconds: Int) -> String {
+        String(format: "%d:%02d:%02d", seconds / 3_600, (seconds % 3_600) / 60, seconds % 60)
     }
 
     private func calorieGoalLabel(_ calories: Int) -> String {
@@ -4367,6 +4468,7 @@ struct RecordView: View {
                 coachingTarget: restoredBase.coachingTarget,
                 workoutReference: restoredBase.workoutReference,
                 workoutCues: restoredBase.workoutCues,
+                raceIntent: restoredBase.raceIntent,
                 activityEvent: restoredBase.activityEvent
             )
             intentBeforeSelectedRoute = nil
@@ -4405,6 +4507,7 @@ struct RecordView: View {
             coachingTarget: preservesBaseStructure ? baseIntent.coachingTarget : nil,
             workoutReference: preservesBaseStructure ? baseIntent.workoutReference : nil,
             workoutCues: preservesBaseStructure ? baseIntent.workoutCues : [],
+            raceIntent: preservesBaseStructure ? baseIntent.raceIntent : nil,
             activityEvent: preservesBaseStructure ? baseIntent.activityEvent : nil
         )
     }
@@ -4463,6 +4566,7 @@ struct RecordView: View {
             coachingTarget: currentIntent.coachingTarget,
             workoutReference: currentIntent.workoutReference,
             workoutCues: currentIntent.workoutCues,
+            raceIntent: currentIntent.raceIntent,
             activityEvent: currentIntent.activityEvent
         )
         track(.init(.activityConfigurationChanged, properties: [
@@ -4839,6 +4943,7 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
     case distance
     case time
     case calories
+    case race
 
     init(goal: ActivityGoal) {
         switch goal {
@@ -4867,16 +4972,18 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
             return String(localized: "record.goal.time", defaultValue: "Time")
         case .calories:
             return String(localized: "record.goal.calories", defaultValue: "Calories")
+        case .race:
+            return String(localized: "race.planner.mode", defaultValue: "Race")
         }
     }
 
-    static let manualCases: [SessionGoalMode] = [.curated, .freestyle, .distance, .time, .calories]
+    static let manualCases: [SessionGoalMode] = [.curated, .race, .freestyle, .distance, .time, .calories]
 
     var pillTitle: String {
         switch self {
         case .freestyle:
             String(localized: "record.goal.free", defaultValue: "Free")
-        case .planned, .curated, .distance, .time, .calories:
+        case .planned, .curated, .distance, .time, .calories, .race:
             title
         }
     }
@@ -4889,6 +4996,7 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         case .distance: return "point.topleft.down.to.point.bottomright.curvepath.fill"
         case .time: return "clock.fill"
         case .calories: return "flame.fill"
+        case .race: return "flag.checkered"
         }
     }
 
@@ -4906,6 +5014,8 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
             return String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout")
         case .freestyle:
             return String(localized: "activity.goal.freestyle", defaultValue: "Freestyle")
+        case .race:
+            return String(localized: "race.planner.title", defaultValue: "Plan this race")
         }
     }
 
@@ -4914,7 +5024,7 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         case .distance: return .distance
         case .time: return .time
         case .calories: return .calories
-        case .planned, .curated, .freestyle: return nil
+        case .planned, .curated, .freestyle, .race: return nil
         }
     }
 
@@ -4937,6 +5047,8 @@ enum SessionGoalMode: String, CaseIterable, Equatable {
         case .calories:
             return goal?.targetCalories.map { ActivityGoal.calories($0).label(unitSystem: .metric) }
                 ?? String(localized: "record.goal.default_calories", defaultValue: "300 kcal")
+        case .race:
+            return String(localized: "race.planner.start", defaultValue: "Plan a race effort")
         }
     }
 }

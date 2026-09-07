@@ -120,6 +120,16 @@ struct CreateLiveCoachSessionRequest: Encodable {
     struct SessionIntentDTO: Encodable {
         let activityType: String
         let goalType: String
+        let race: RaceDTO?
+
+        struct RaceDTO: Encodable {
+            let distanceMeters: Double
+            let goalMode: String
+            let goalTimeSeconds: Int?
+            let targetPaceSecondsPerKilometer: Double?
+            let pacingStrategy: String
+            let recommendationSource: String
+        }
     }
 
     struct WorkoutReferenceDTO: Encodable {

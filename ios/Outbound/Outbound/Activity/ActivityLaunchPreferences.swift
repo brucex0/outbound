@@ -35,7 +35,7 @@ struct ActivityManualSetupDraft: Equatable {
         defaultCalories: Int
     ) -> ActivityGoal {
         switch mode {
-        case .freestyle, .planned, .curated:
+        case .freestyle, .planned, .curated, .race:
             return .freestyle
         case .distance:
             return .distanceMeters(distanceMeters ?? defaultDistanceMeters)
@@ -73,7 +73,7 @@ struct ActivitySportLaunchPreference: Codable, Equatable {
             return calories.map(ActivityGoal.calories)
         case .freestyle:
             return .freestyle
-        case .planned, .curated:
+        case .planned, .curated, .race:
             return nil
         }
     }
@@ -183,7 +183,7 @@ extension SessionGoalMode {
         switch self {
         case .freestyle, .distance, .time, .calories:
             return true
-        case .planned, .curated:
+        case .planned, .curated, .race:
             return false
         }
     }

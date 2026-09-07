@@ -86,6 +86,12 @@ enum LiveGuidanceMomentType: String, Codable, CaseIterable, Hashable {
     case crestRecovery = "crest_recovery"
     case segmentTransition = "segment_transition"
     case finishOpportunity = "finish_opportunity"
+    case raceStartRestraint = "race_start_restraint"
+    case racePaceLocked = "race_pace_locked"
+    case raceHalfwayAssessment = "race_halfway_assessment"
+    case raceLateFade = "race_late_fade"
+    case raceLateStrength = "race_late_strength"
+    case raceFinalKilometer = "race_final_kilometer"
     case challengeStart = "challenge_start"
     case challengeComplete = "challenge_complete"
     case workoutInstruction = "workout_instruction"
@@ -284,6 +290,11 @@ final class LiveGuidanceDirector {
             return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
         }
 
+        if let raceBoundary = raceBoundaryMoment(snapshot: snapshot, intent: intent) {
+            lastMomentElapsedSeconds = snapshot.elapsedSeconds
+            return LiveGuidanceDirectorUpdate(nextMoment: raceBoundary, evaluatedCues: evaluation.records)
+        }
+
         guard let cooldown = contract.coachingCooldownSeconds,
               lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= cooldown }) ?? true
         else {
@@ -298,6 +309,7 @@ final class LiveGuidanceDirector {
             intent: intent,
             gradePercent: gradePercent
         )
+            ?? raceMoment(snapshot: snapshot, intent: intent, gradePercent: gradePercent)
             ?? earlyOverpaceMoment(
                 snapshot: snapshot,
                 activeSegment: activeSegment,
@@ -333,6 +345,61 @@ final class LiveGuidanceDirector {
             lastMomentElapsedSeconds = snapshot.elapsedSeconds
         }
         return LiveGuidanceDirectorUpdate(nextMoment: moment, evaluatedCues: evaluation.records)
+    }
+
+    private func raceMoment(
+        snapshot: ActiveSessionSnapshot,
+        intent: SessionIntent?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard let race = intent?.raceIntent, race.distanceMeters >= 1_000 else { return nil }
+        let progress = snapshot.distanceMeters / race.distanceMeters
+
+        guard !isMeaningfulGrade(gradePercent), let target = race.targetPaceSecondsPerKilometer else { return nil }
+        if progress >= 0.15, progress < 0.70,
+           !emittedOneShotMoments.contains(.racePaceLocked),
+           let recent = averagePace(from: snapshot.elapsedSeconds - 180, through: snapshot.elapsedSeconds),
+           abs(recent - target) <= 12 {
+            emittedOneShotMoments.insert(.racePaceLocked)
+            return DetectedLiveGuidanceMoment(type: .racePaceLocked, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
+        }
+        if progress >= 0.70,
+           !emittedOneShotMoments.contains(.raceLateFade),
+           let recent = averagePace(from: snapshot.elapsedSeconds - 120, through: snapshot.elapsedSeconds),
+           recent - target >= 20 {
+            emittedOneShotMoments.insert(.raceLateFade)
+            return DetectedLiveGuidanceMoment(type: .raceLateFade, detectedAtElapsedSeconds: snapshot.elapsedSeconds, baselinePaceSecondsPerKilometer: recent, targetPaceSecondsPerKilometer: target)
+        }
+        if progress >= 0.76, race.pacingStrategy != .effortBased,
+           !emittedOneShotMoments.contains(.raceLateStrength),
+           !emittedOneShotMoments.contains(.raceLateFade),
+           let recent = averagePace(from: snapshot.elapsedSeconds - 180, through: snapshot.elapsedSeconds),
+           recent <= target + 10 {
+            emittedOneShotMoments.insert(.raceLateStrength)
+            return DetectedLiveGuidanceMoment(type: .raceLateStrength, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
+        }
+        return nil
+    }
+
+    private func raceBoundaryMoment(
+        snapshot: ActiveSessionSnapshot,
+        intent: SessionIntent?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard let race = intent?.raceIntent, race.distanceMeters >= 1_000 else { return nil }
+        let progress = snapshot.distanceMeters / race.distanceMeters
+        if !emittedOneShotMoments.contains(.raceStartRestraint), snapshot.elapsedSeconds >= 75, progress < 0.15 {
+            emittedOneShotMoments.insert(.raceStartRestraint)
+            return DetectedLiveGuidanceMoment(type: .raceStartRestraint, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
+        }
+        if !emittedOneShotMoments.contains(.raceHalfwayAssessment), progress >= 0.49 {
+            emittedOneShotMoments.insert(.raceHalfwayAssessment)
+            return DetectedLiveGuidanceMoment(type: .raceHalfwayAssessment, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
+        }
+        if !emittedOneShotMoments.contains(.raceFinalKilometer), race.distanceMeters - snapshot.distanceMeters <= 1_000 {
+            emittedOneShotMoments.insert(.raceFinalKilometer)
+            return DetectedLiveGuidanceMoment(type: .raceFinalKilometer, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
+        }
+        return nil
     }
 
     func recordSpoken(_ moment: DetectedLiveGuidanceMoment) -> LiveGuidanceCueRecord {
@@ -590,6 +657,7 @@ final class LiveGuidanceDirector {
         intent: SessionIntent?
     ) -> DetectedLiveGuidanceMoment? {
         guard !suppressedMomentTypes.contains(.finishOpportunity),
+              intent?.raceIntent == nil,
               !emittedOneShotMoments.contains(.finishOpportunity),
               snapshot.elapsedSeconds >= 300,
               isInFinishWindow(snapshot: snapshot, intent: intent)

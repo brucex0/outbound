@@ -188,6 +188,7 @@ extension SessionIntent {
                 coachingTarget: coachingTarget,
                 workoutReference: workoutReference,
                 workoutCues: usesCalories ? [] : workoutCues,
+                raceIntent: usesCalories ? nil : raceIntent,
                 activityEvent: activityEvent
             )
         }
@@ -211,6 +212,7 @@ extension SessionIntent {
             coachingTarget: coachingTarget,
             workoutReference: workoutReference,
             workoutCues: usesCalories ? [] : workoutCues,
+            raceIntent: usesCalories ? nil : raceIntent,
             activityEvent: activityEvent
         )
     }
@@ -238,6 +240,7 @@ extension SessionIntent {
             coachingTarget: base.coachingTarget,
             workoutReference: base.workoutReference,
             workoutCues: [],
+            raceIntent: nil,
             activityEvent: base.activityEvent
         )
     }

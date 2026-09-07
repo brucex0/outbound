@@ -37,6 +37,12 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `crest_recovery` | A detected climb has eased enough to reset effort and rhythm. | Active climb state and rolling grade at or below 1.25%. | On transition out of a climb, subject to coaching cooldown. |
 | `segment_transition` | A timed workout step ended and another began. | Cumulative duration boundary from structured workout steps. | Each segment boundary. |
 | `finish_opportunity` | A planned finish is near enough for an optional controlled lift, but not an immediate finish command. | After 5 active minutes; 300-800 m or up to 12% remains for distance goals, or 2-5 minutes or up to 12% remains for time goals. | Once per session. |
+| `race_start_restraint` | Establishes patience at the beginning of an explicitly planned race. | Typed race intent; after 75 active seconds and before 15% progress. Does not claim a pacing error. | Once per race, including Quiet. |
+| `race_pace_locked` | Confirms a validated race target has been held. | Typed target pace; 15-70% progress; three-minute average within 12 s/km; suppressed on meaningful grade. | Once per race. |
+| `race_halfway_assessment` | Marks halfway and favors patient execution rather than an automatic surge. | Typed race distance and at least 49% measured progress. | Once per race, including Quiet. |
+| `race_late_fade` | Helps restore sustainable rhythm when pace is persistently outside the race target late. | At least 70% progress; two-minute average at least 20 s/km slower than target; suppressed on meaningful grade. | Once per race. |
+| `race_late_strength` | Offers a conditional gradual build when target execution remains controlled late. | At least 76% progress; three-minute average no more than 10 s/km slower than target; no prior fade; not effort-only; suppressed on meaningful grade. | Once per race. |
+| `race_final_kilometer` | Starts final-kilometer execution without issuing a sprint command. | Typed race distance with no more than 1,000 measured meters remaining. | Once per race, including Quiet. |
 | `challenge_start` | The runner explicitly enabled a 2- or 3-minute lift and enough workout remains. | After 6 active minutes; baseline pace exists; at least challenge duration plus 60 seconds remains when the goal is bounded. | Once per selected challenge. |
 | `challenge_complete` | The selected challenge duration elapsed after its cue was spoken. | Challenge start was spoken and the selected duration elapsed. | Once per selected challenge. |
 | `workout_instruction` | A selected standalone workout reached a catalog-authored execution boundary. | Exact instruction ID plus a distance or elapsed-time trigger carried in the cached workout; the server-issued phrase plan carries the matching ID and trigger. | Once per instruction ID; stale crossings are skipped. |
@@ -119,7 +125,7 @@ The implemented list is intentionally smaller than what a human running coach ma
 | Breathing and perceived effort | `talk_test_above_target`, `rpe_above_target`, `rpe_below_target`, `breathing_settled` | Explicit runner voice/tap input or validated acoustic feature with consent |
 | Fuel and hydration | `fuel_window`, `hydration_window`, `fuel_overdue`, `post_fuel_check` | Planned duration, runner strategy, weather, intake logging; reminders rather than medical claims |
 | Environment | `heat_adjustment`, `cold_start`, `headwind_effort`, `poor_air_quality`, `low_light_awareness` | Fresh weather/AQI/light data, region-aware safety rules, no location in analytics |
-| Race craft | `start_congestion`, `race_pace_locked`, `midrace_patience`, `passing_surge`, `final_kilometer`, `kick_available` | Race intent, course position/grade, validated goal pace, runner preference |
+| Race craft | `start_congestion`, `midrace_patience`, `passing_surge`, `kick_available` | Better course-position context, runner input, and validated safe finish-location evidence |
 | Motivation | `rough_patch`, `comeback_confirmed`, `milestone`, `personal_best_possible`, `goal_complete` | Personal history, privacy-safe comparison, careful non-guaranteed wording |
 | Safety | `runner_reported_pain`, `runner_reported_dizziness`, `runner_reported_chest_symptom`, `runner_requests_stop` | Explicit runner input and deterministic fixed responses; these must not be generative diagnoses |
 

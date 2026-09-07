@@ -200,6 +200,32 @@ struct ActiveSessionCoachingSegment: Hashable {
     let durationSeconds: Int?
 }
 
+enum RaceGoalMode: String, Codable, Hashable {
+    case finish
+    case targetTime = "target_time"
+    case targetPace = "target_pace"
+}
+
+enum RacePacingStrategy: String, Codable, Hashable {
+    case even
+    case negativeSplit = "negative_split"
+    case effortBased = "effort_based"
+}
+
+struct RaceExecutionIntent: Codable, Hashable {
+    let distanceMeters: Double
+    let goalMode: RaceGoalMode
+    let goalTimeSeconds: Int?
+    let targetPaceSecondsPerKilometer: Double?
+    let pacingStrategy: RacePacingStrategy
+    let recommendationSource: String
+
+    var hasValidatedPaceTarget: Bool {
+        guard let pace = targetPaceSecondsPerKilometer else { return false }
+        return pace.isFinite && (120...1_200).contains(pace)
+    }
+}
+
 struct SessionIntent: Identifiable, Hashable {
     let id: String
     let sport: SportType
@@ -220,6 +246,7 @@ struct SessionIntent: Identifiable, Hashable {
     let coachingTarget: SessionCoachingTarget?
     let workoutReference: SessionWorkoutReference?
     let workoutCues: [SessionWorkoutCue]
+    let raceIntent: RaceExecutionIntent?
     let activityEvent: ActivityEventLaunchContext?
     let startedFromWorkoutReminder: Bool
 
@@ -243,6 +270,7 @@ struct SessionIntent: Identifiable, Hashable {
         coachingTarget: SessionCoachingTarget? = nil,
         workoutReference: SessionWorkoutReference? = nil,
         workoutCues: [SessionWorkoutCue] = [],
+        raceIntent: RaceExecutionIntent? = nil,
         activityEvent: ActivityEventLaunchContext? = nil,
         startedFromWorkoutReminder: Bool = false
     ) {
@@ -265,6 +293,7 @@ struct SessionIntent: Identifiable, Hashable {
         self.coachingTarget = coachingTarget
         self.workoutReference = workoutReference
         self.workoutCues = workoutCues
+        self.raceIntent = raceIntent
         self.activityEvent = activityEvent
         self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }

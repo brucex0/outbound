@@ -52,7 +52,17 @@ final class LiveCoachSessionController {
             measurementUnitSystem: unitSystem.rawValue,
             sessionIntent: .init(
                 activityType: activityType(for: intent?.sport ?? persona.template.sport),
-                goalType: goalType(for: intent)
+                goalType: goalType(for: intent),
+                race: intent?.raceIntent.map {
+                    .init(
+                        distanceMeters: $0.distanceMeters,
+                        goalMode: $0.goalMode.rawValue,
+                        goalTimeSeconds: $0.goalTimeSeconds,
+                        targetPaceSecondsPerKilometer: $0.targetPaceSecondsPerKilometer,
+                        pacingStrategy: $0.pacingStrategy.rawValue,
+                        recommendationSource: $0.recommendationSource
+                    )
+                }
             ),
             clientWorkout: clientWorkout(for: intent, profile: profile),
             environment: environment(weatherSnapshot: weatherSnapshot, isIndoor: isIndoor)
@@ -172,6 +182,7 @@ final class LiveCoachSessionController {
         guard response.effectiveMode == .dynamic, response.planner.status == "generated" else { return }
         let preferredMoments = [
             "early_overpace", "pace_above_target", "pace_below_target", "pace_drift",
+            "race_start_restraint", "race_halfway_assessment", "race_late_fade", "race_final_kilometer",
             "recovery_too_hard", "climb_start", "segment_transition", "finish_opportunity"
         ]
         let workoutPhrases = response.guidancePlan.cues
@@ -207,7 +218,7 @@ final class LiveCoachSessionController {
 
     private func urgency(for moment: String) -> String {
         moment == "unexpected_stop" ? "caution"
-            : ["progress", "target_locked", "rhythm_recovery", "resume_after_break", "crest_recovery", "challenge_complete"].contains(moment)
+            : ["progress", "target_locked", "rhythm_recovery", "resume_after_break", "crest_recovery", "challenge_complete", "race_pace_locked", "race_halfway_assessment"].contains(moment)
                 ? "steady"
                 : "opportunity"
     }
@@ -224,6 +235,7 @@ final class LiveCoachSessionController {
 
     private func goalType(for intent: SessionIntent?) -> String {
         guard let intent else { return "freestyle" }
+        if intent.raceIntent != nil { return "race" }
         if intent.resolvedTargetCalories != nil { return "calories" }
         if intent.workoutReference != nil || !intent.workoutSteps.isEmpty { return "workout" }
         if intent.resolvedTargetDistanceMeters != nil { return "distance" }

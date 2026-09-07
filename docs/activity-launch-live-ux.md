@@ -2,6 +2,15 @@
 
 Open this when changing the Today launch dock, activity goal selection, countdown, or live-run controls. The clickable reference is `docs/prototypes/activity-start-live-wireframe.html`; the production flow is implemented in `RecordView.swift`, `ActivityGoal.swift`, `LiveMapView.swift`, and `CameraHUDView.swift`.
 
+## Ad-hoc race mode
+
+- Run setup exposes Race as a peer of Curated, Freestyle, Distance, Time, and Calories. Selecting it opens the race planner immediately.
+- V1 supports 5K, 10K, half marathon, and marathon efforts. The runner may use Plainstride's suggested finish time, edit it, or race by feel.
+- The suggestion uses up to 30 comparable saved runs, a Riegel distance projection, and a conservative four-percent buffer. It excludes runs shorter than 2 km, sessions shorter than ten minutes, and extrapolations beyond four times the source distance.
+- Without a responsible comparison, the planner defaults to an effort-based finish and does not invent a pace.
+- Applying a plan creates typed `RaceExecutionIntent`. Distance remains the saved activity goal; race goal mode, time/pace, strategy, and recommendation source remain live-guidance context.
+- Training toward a future race date is deferred. This mode plans the race being started now.
+
 ## Navigation Decision
 
 The launch surface is the Today page itself; there is no separate start-activity setup page. Reuse the center Today position contextually while retaining the production icons, order, labels, and theme tint.

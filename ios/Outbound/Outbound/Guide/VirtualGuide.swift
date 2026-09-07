@@ -546,13 +546,14 @@ final class VirtualGuide: NSObject, ObservableObject {
         switch type {
         case .progress: .progress
         case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
-             .paceDrift, .recoveryTooHard: .paceAdjustment
+             .paceDrift, .recoveryTooHard, .raceLateFade: .paceAdjustment
         case .targetLocked, .rhythmRecovery, .crestRecovery,
-             .challengeStart, .challengeComplete: .hype
+             .challengeStart, .challengeComplete, .racePaceLocked, .raceLateStrength: .hype
         case .unexpectedStop, .resumeAfterBreak: .breakStatus
         case .climbStart: .form
-        case .segmentTransition, .workoutInstruction: .segment
-        case .finishOpportunity: .finish
+        case .segmentTransition, .workoutInstruction, .raceStartRestraint,
+             .raceHalfwayAssessment: .segment
+        case .finishOpportunity, .raceFinalKilometer: .finish
         }
     }
 

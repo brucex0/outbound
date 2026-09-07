@@ -69,7 +69,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
                 athleteReferencePace: athleteReferencePace
             )
         } else {
-            targetPace = athleteReferencePace
+            targetPace = request.sessionIntent?.raceIntent?.targetPaceSecondsPerKilometer ?? athleteReferencePace
         }
         let cueRequest = LiveCoachCueRequest(
             cueRequestId: UUID(),
@@ -297,11 +297,12 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
     private static func urgency(for moment: LiveGuidanceMomentType) -> SessionAnalysisUrgency {
         switch moment {
         case .progress, .targetLocked, .rhythmRecovery, .resumeAfterBreak,
-             .crestRecovery, .challengeComplete:
+             .crestRecovery, .challengeComplete, .racePaceLocked, .raceHalfwayAssessment:
             .steady
         case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
              .paceDrift, .recoveryTooHard, .climbStart, .segmentTransition,
-             .finishOpportunity, .challengeStart, .workoutInstruction:
+             .finishOpportunity, .challengeStart, .workoutInstruction, .raceStartRestraint,
+             .raceLateFade, .raceLateStrength, .raceFinalKilometer:
             .opportunity
         case .unexpectedStop:
             .caution
@@ -329,6 +330,11 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         case .crestRecovery: key = "coach.crest_reset"
         case .segmentTransition: key = "workout.segment_start"
         case .finishOpportunity: key = "coach.strong_finish"
+        case .raceStartRestraint: key = "coach.early_settle"
+        case .racePaceLocked: key = "progress.steady"
+        case .raceHalfwayAssessment: key = "progress.halfway"
+        case .raceLateFade: key = "coach.rebuild_rhythm"
+        case .raceLateStrength, .raceFinalKilometer: key = "coach.strong_finish"
         case .challengeStart: key = "challenge.start"
         case .challengeComplete: key = "challenge.complete"
         case .workoutInstruction: key = "workout.segment_start"
