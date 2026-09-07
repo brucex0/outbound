@@ -1,0 +1,10 @@
+<resources>
+    <string name="social_title">Social</string><string name="social_refresh">Refresh Social</string><string name="social_notifications">Notifications</string><string name="social_offline">Showing saved Social activity</string>
+    <string name="social_search_people">Search people</string><string name="social_connections">Connections</string><string name="social_connections_empty">Better together. Find people you know and make movement feel shared.</string>
+    <string name="social_circle">Your Circle</string><string name="social_circle_empty">Active. Positive. Together. Create a private Circle with people who help you keep moving.</string>
+    <string name="social_upcoming">Upcoming</string><string name="social_upcoming_empty">No upcoming activities yet.</string><string name="social_groups">Groups</string><string name="social_feed">Recent activity</string>
+    <string name="social_load_more">Load more</string><string name="social_invited_by">Invited by %1$s</string><string name="social_review">Review</string><string name="social_hybrid">Meet up or join from anywhere</string>
+    <string name="social_members">%1$d members</string><string name="social_leave">Leave</string><string name="social_join">Join</string><string name="social_more">More actions</string><string name="social_route">Activity route</string>
+    <string name="social_safety_title">Safety options</string><string name="social_safety_body">Reports are private. Blocking also removes the connection and hides each person’s content.</string><string name="social_report">Report post</string><string name="social_block">Block person</string>
+    <string name="social_milestones">%1$d shared milestones</string><string name="social_done">Done</string><string name="social_circle_progress">%1$d of %2$d activities this week</string><string name="social_cheer">Send a private Cheer</string>
+</resources>

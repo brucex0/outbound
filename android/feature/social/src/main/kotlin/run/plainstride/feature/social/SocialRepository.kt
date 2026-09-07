@@ -1,0 +1,111 @@
+package run.plainstride.feature.social
+
+import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import run.plainstride.core.database.AccountCacheDao
+import run.plainstride.core.database.AccountCacheEntity
+import run.plainstride.core.network.*
+
+sealed interface CachedSocialHome {
+    data object Empty : CachedSocialHome
+    data class Available(val value: SocialHome, val stale: Boolean) : CachedSocialHome
+}
+
+interface SocialRepository {
+    fun observeHome(accountId: String, localeTag: String): Flow<CachedSocialHome>
+    suspend fun refresh(accountId: String, localeTag: String): Result<Unit>
+    suspend fun loadFeed(cursor: String?): Result<SocialPage<SocialPost>>
+    suspend fun loadConnections(cursor: String?): Result<SocialPage<SocialPerson>>
+    suspend fun searchPeople(query: String): Result<List<SocialPerson>>
+    suspend fun profile(id: String): Result<SocialPerson>
+    suspend fun setCheer(postId: String, cheered: Boolean): Result<Unit>
+    suspend fun connect(personId: String): Result<Unit>
+    suspend fun accept(connectionId: String): Result<Unit>
+    suspend fun removeConnection(connectionId: String): Result<Unit>
+    suspend fun setGroupMembership(groupId: String, joined: Boolean): Result<Unit>
+    suspend fun reportPost(postId: String, reason: String): Result<Unit>
+    suspend fun block(personId: String): Result<Unit>
+    suspend fun circles(): Result<List<CircleSummary>>
+    suspend fun circle(id: String): Result<CircleSummary>
+    suspend fun cheerCircle(id: String, recipientId: String, preset: String): Result<Unit>
+    suspend fun awards(): Result<List<RecognitionAward>>
+}
+
+class OfflineFirstSocialRepository @Inject constructor(
+    private val api: SocialApiService,
+    private val tokens: AccessTokenProvider,
+    private val cache: AccountCacheDao,
+) : SocialRepository {
+    private val mutex = Mutex()
+
+    override fun observeHome(accountId: String, localeTag: String) = cache.observe(accountId, NAMESPACE, HOME, localeTag).map { entity ->
+        val value = entity?.payloadJson?.let { runCatching { PlainstrideJson.decodeFromString<SocialHome>(it) }.getOrNull() }
+        if (value == null) CachedSocialHome.Empty else CachedSocialHome.Available(value, entity.expiresAtEpochMs?.let { it <= System.currentTimeMillis() } == true)
+    }
+
+    override suspend fun refresh(accountId: String, localeTag: String) = mutex.withLock {
+        authenticated { auth -> coroutineScope {
+            val home = async { apiCall { api.home(auth) } }
+            val connections = async { apiCall { api.connections(auth, null) } }
+            val circles = async { apiCall { api.circles(auth) } }
+            val awards = async { apiCall { api.awards(auth) } }
+            when (val core = home.await()) {
+                is ApiResult.Failure -> core
+                is ApiResult.Success -> {
+                    val circleResult = circles.await()
+                    ApiResult.Success(core.value.copy(
+                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout) },
+                    invitations = core.value.invitations,
+                    recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
+                    circles = (circleResult as? ApiResult.Success)?.value?.circles.orEmpty(),
+                )) }
+            }
+        } }.onSuccess { home ->
+            val now = System.currentTimeMillis()
+            cache.upsert(AccountCacheEntity(accountId, NAMESPACE, HOME, localeTag, PlainstrideJson.encodeToString(home), null, now, now + CACHE_TTL))
+        }.map { Unit }
+    }
+
+    override suspend fun loadFeed(cursor: String?) = authenticated { apiCall { api.feed(it, cursor) } }.map { SocialPage(it.posts, it.nextCursor) }
+    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout) }, response.nextCursor) }
+    override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
+    override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
+    override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
+    override suspend fun connect(personId: String) = authenticated { apiCall { api.connect(it, IdBody(personId)) } }
+    override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
+    override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }
+    override suspend fun setGroupMembership(groupId: String, joined: Boolean) = authenticated { auth -> apiCall { if (joined) api.joinGroup(auth, groupId) else api.leaveGroup(auth, groupId) } }
+    override suspend fun reportPost(postId: String, reason: String) = authenticated { apiCall { api.reportPost(it, ReportBody("post", postId, reason)) } }
+    override suspend fun block(personId: String) = authenticated { apiCall { api.block(it, personId) } }
+    override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
+    override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }
+    override suspend fun cheerCircle(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.circleCheer(it, id, CheerBody(recipientId, preset)) } }
+    override suspend fun awards() = authenticated { apiCall { api.awards(it) } }.map { it.awards }
+
+    private suspend fun <T : Any> authenticated(call: suspend (String) -> ApiResult<T>): Result<T> {
+        val token = tokens.validAccessToken() ?: return Result.failure(SocialException(SocialError.SIGNED_OUT))
+        return when (val response = call("Bearer $token")) {
+            is ApiResult.Success -> Result.success(response.value)
+            is ApiResult.Failure -> Result.failure(SocialException(response.error.toSocialError()))
+        }
+    }
+
+    private companion object { const val NAMESPACE = "social.home"; const val HOME = "current"; const val CACHE_TTL = 5 * 60_000L }
+}
+
+private fun ApiFailure.toSocialError() = when (code) {
+    ApiErrorCode.Unauthenticated -> SocialError.SIGNED_OUT
+    ApiErrorCode.NetworkUnavailable -> SocialError.OFFLINE
+    ApiErrorCode.Forbidden -> SocialError.FORBIDDEN
+    ApiErrorCode.NotFound -> SocialError.NOT_FOUND
+    ApiErrorCode.Conflict -> SocialError.CONFLICT
+    ApiErrorCode.RateLimited -> SocialError.RATE_LIMITED
+    ApiErrorCode.ServerUnavailable -> SocialError.SERVER
+    ApiErrorCode.InvalidRequest, ApiErrorCode.InvalidResponse -> SocialError.INVALID_RESPONSE
+    ApiErrorCode.Cancelled, ApiErrorCode.Unknown -> SocialError.UNEXPECTED
+}

@@ -36,6 +36,7 @@ include(
     ":feature:health",
     ":feature:livecoach",
     ":feature:recording",
+    ":feature:social",
     ":feature:settings",
     ":feature:today",
     ":wear",

@@ -1,0 +1,52 @@
+package run.plainstride.feature.social
+
+import kotlinx.serialization.Serializable
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.http.*
+import run.plainstride.core.network.PlainstrideJson
+
+@Serializable data class FeedResponse(val posts: List<SocialPost> = emptyList(), val nextCursor: String? = null)
+@Serializable data class ConnectionDto(val id: String, val status: String, val direction: String, val person: SocialPerson, val isInActiveWorkout: Boolean = false)
+@Serializable data class ConnectionsResponse(val connections: List<ConnectionDto> = emptyList(), val nextCursor: String? = null)
+@Serializable data class PeopleResponse(val people: List<SocialPerson> = emptyList())
+@Serializable data class ProfileResponse(val person: SocialPerson, val recognitions: List<RecognitionAward> = emptyList())
+@Serializable data class GroupsResponse(val groups: List<SocialGroup> = emptyList())
+@Serializable data class CirclesResponse(val circles: List<CircleSummary> = emptyList(), val primaryCircleId: String? = null)
+@Serializable data class AwardsResponse(val awards: List<RecognitionAward> = emptyList())
+@Serializable data class IdBody(val userId: String)
+@Serializable data class CaptionBody(val caption: String? = null, val visibility: String = "connections")
+@Serializable data class ReportBody(val targetType: String, val targetId: String, val reason: String)
+@Serializable data class CheerBody(val recipientUserId: String, val presetType: String = "encouragement")
+
+interface SocialApiService {
+    @GET("v1/social/home") suspend fun home(@Header("Authorization") auth: String): Response<SocialHome>
+    @GET("v1/social/home") suspend fun feed(@Header("Authorization") auth: String, @Query("feedCursor") cursor: String? = null): Response<SocialHome>
+    @GET("v1/social/connections") suspend fun connections(@Header("Authorization") auth: String, @Query("cursor") cursor: String? = null): Response<ConnectionsResponse>
+    @GET("v1/social/people/search") suspend fun search(@Header("Authorization") auth: String, @Query("q") query: String): Response<PeopleResponse>
+    @GET("v1/social/users/{id}/profile") suspend fun profile(@Header("Authorization") auth: String, @Path("id") id: String): Response<ProfileResponse>
+    @POST("v1/social/connections") suspend fun connect(@Header("Authorization") auth: String, @Body body: IdBody): Response<Unit>
+    @POST("v1/social/connections/{id}/accept") suspend fun accept(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @DELETE("v1/social/connections/{id}") suspend fun removeConnection(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @GET("v1/social/groups") suspend fun groups(@Header("Authorization") auth: String): Response<GroupsResponse>
+    @POST("v1/social/groups/{id}/membership") suspend fun joinGroup(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @DELETE("v1/social/groups/{id}/membership") suspend fun leaveGroup(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @PUT("v1/social/posts/{id}/cheer") suspend fun cheer(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @DELETE("v1/social/posts/{id}/cheer") suspend fun removeCheer(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @DELETE("v1/social/posts/{id}") suspend fun deletePost(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @POST("v1/social/reports") suspend fun reportPost(@Header("Authorization") auth: String, @Body body: ReportBody): Response<Unit>
+    @POST("v1/social/users/{id}/block") suspend fun block(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @GET("v1/circles") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
+    @GET("v1/circles/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
+    @POST("v1/circles/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
+    @GET("v1/recognition") suspend fun awards(@Header("Authorization") auth: String): Response<AwardsResponse>
+}
+
+fun createSocialApi(baseUrl: String, client: OkHttpClient): SocialApiService = Retrofit.Builder()
+    .baseUrl(if (baseUrl.endsWith('/')) baseUrl else "$baseUrl/")
+    .client(client)
+    .addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType()))
+    .build().create(SocialApiService::class.java)
