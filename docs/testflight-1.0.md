@@ -8,7 +8,7 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.4`
-- Build: `38`
+- Build: `39`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,12 +54,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- Isolate assistant launcher animation
-- Tighten Your Circle introduction copy
-- Reframe Your Circle around shared activity
-- Defer Circle setting sync until close
-- Auto-save Circle settings
-- Plus 3 more fixes and improvements
+- Relocate delete connection
+- [iOS] Correct profile navigation affordances
+- [iOS] Fix Me profile card actions
+- [iOS] Consolidate profile details section
+- [iOS] Add username editing to profile
+- Plus 23 more fixes and improvements
 
 ### App Store What's New
 
@@ -178,6 +178,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.4 (38)`, validate, and upload from Xcode Organizer.
+- Archive `1.4 (39)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
