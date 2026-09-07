@@ -3,7 +3,9 @@ import SwiftUI
 import UIKit
 
 struct LiveMapView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.outboundTheme) private var theme
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var onboardingStore: OnboardingStore
@@ -28,6 +30,7 @@ struct LiveMapView: View {
     @State private var focusedParticipantID: String?
     @State private var isGroupManagementExpanded = false
     @State private var hasTrackedRouteDisplay = false
+    @State private var hasTrackedActivityAvatarDisplay = false
     @State private var cachedPlannedRouteCoordinates: [CLLocationCoordinate2D] = []
 
     var body: some View {
@@ -41,6 +44,7 @@ struct LiveMapView: View {
             }
             .onReceive(locationManager.$location) { loc in
                 guard let loc else { return }
+                trackActivityAvatarDisplayIfNeeded()
                 if recorder.state == .idle, !plannedRouteCoordinates.isEmpty {
                     framePlannedRoute(including: loc.coordinate)
                 } else if isFollowingUser {
@@ -122,15 +126,17 @@ struct LiveMapView: View {
                 }
             }
             if let currentCoordinate {
-                Annotation("Current Position", coordinate: currentCoordinate) {
-                    Circle()
-                        .fill(.orange)
-                        .frame(width: 16, height: 16)
-                        .overlay {
-                            Circle()
-                                .stroke(.white, lineWidth: 3)
-                        }
-                        .shadow(radius: 4)
+                Annotation(
+                    String(localized: "map.annotation.current_activity", defaultValue: "Current activity position"),
+                    coordinate: currentCoordinate
+                ) {
+                    LiveActivityAvatar(
+                        activityType: activityType,
+                        tint: theme.accentColor,
+                        course: locationManager.location?.course,
+                        isMoving: recorder.state == .active,
+                        reduceMotion: reduceMotion
+                    )
                 }
             }
             ForEach(liveGroupStore.visibleParticipants) { participant in
@@ -389,6 +395,22 @@ struct LiveMapView: View {
         locationManager.location?.coordinate ?? trailCoordinates.last
     }
 
+    private var activityType: ActivityType {
+        intent?.resolvedActivityType ?? .running
+    }
+
+    private func trackActivityAvatarDisplayIfNeeded() {
+        guard !hasTrackedActivityAvatarDisplay,
+              recorder.state != .idle,
+              let analyticsManager else { return }
+        hasTrackedActivityAvatarDisplay = true
+        Task {
+            await analyticsManager.track(.init(.featureExposed, properties: [
+                .feature: .string("live_map_activity_avatar")
+            ]))
+        }
+    }
+
     private var rightControlRail: some View {
         VStack(spacing: 14) {
             CapturedPhotoStackView(
@@ -472,6 +494,56 @@ struct LiveMapView: View {
     private func updateMapCamera(for coordinate: CLLocationCoordinate2D, animated: Bool) {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         updateMapCamera(for: location, animated: animated)
+    }
+}
+
+private struct LiveActivityAvatar: View {
+    let activityType: ActivityType
+    let tint: Color
+    let course: CLLocationDirection?
+    let isMoving: Bool
+    let reduceMotion: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 15.0, paused: !isMoving || reduceMotion)) { context in
+            let phase = context.date.timeIntervalSinceReferenceDate * animationFrequency
+            let stride = reduceMotion || !isMoving ? 0 : sin(phase * .pi * 2)
+
+            Image(systemName: systemImage)
+                .font(.system(size: 19, weight: .bold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(tint)
+                .rotationEffect(.degrees(validCourse))
+                .offset(y: stride * animationAmplitude)
+                .frame(width: 38, height: 38)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().stroke(.white, lineWidth: 2.5))
+                .shadow(color: .black.opacity(0.28), radius: 4, y: 2)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var systemImage: String {
+        switch activityType {
+        case .running: "figure.run"
+        case .cycling: "bicycle"
+        case .hiking: "figure.hiking"
+        case .walking: "figure.walk"
+        case .swimming: "figure.open.water.swim"
+        }
+    }
+
+    private var validCourse: Double {
+        guard let course, course >= 0, course.isFinite else { return 0 }
+        return course
+    }
+
+    private var animationFrequency: Double {
+        activityType == .cycling ? 2.2 : 1.65
+    }
+
+    private var animationAmplitude: Double {
+        activityType == .cycling ? 0.8 : 1.5
     }
 }
 

@@ -8640,6 +8640,29 @@
         }
       }
     },
+    "map.annotation.current_activity" : {
+      "comment" : "Accessibility label for the athlete's current position on the live activity map.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current activity position"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición actual de la actividad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前活动位置"
+          }
+        }
+      }
+    },
     "Mark up screenshot" : {
       "localizations" : {
         "es" : {
