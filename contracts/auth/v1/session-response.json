@@ -1,0 +1,17 @@
+{
+  "accessToken": "plainstride-access-token",
+  "accessTokenExpiresAt": "2026-09-07T12:15:00.000Z",
+  "refreshToken": "plainstride-refresh-token-with-at-least-32-bytes",
+  "refreshTokenExpiresAt": "2026-10-07T12:00:00.000Z",
+  "refreshRecovery": false,
+  "currentTermsVersion": 3,
+  "user": {
+    "id": "cmexampleuser",
+    "username": "runner",
+    "displayName": "Runner",
+    "avatarUrl": null,
+    "email": "runner@example.com",
+    "onboardingCompleted": false,
+    "termsAcceptedVersion": 3
+  }
+}

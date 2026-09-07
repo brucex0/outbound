@@ -208,7 +208,7 @@ Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-
 
 ## Secret Manager Plan
 
-First-party authentication additionally requires `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `AUTH_ACCESS_KEY_ID`, `AUTH_ACCESS_PRIVATE_KEY`, and `AUTH_ACCESS_PUBLIC_KEYS` (a JSON map containing the current and immediately previous ES256 public keys). Store private keys in Secret Manager. Set `AUTH_ACCEPT_LEGACY_FIREBASE=true` only during beta migration.
+First-party authentication additionally requires `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `AUTH_ACCESS_KEY_ID`, `AUTH_ACCESS_PRIVATE_KEY`, and `AUTH_ACCESS_PUBLIC_KEYS` (a JSON map containing the current and immediately previous ES256 public keys). Android Google sign-in requires `GOOGLE_AUTH_CLIENT_IDS`, a comma-separated allowlist of OAuth client IDs whose audiences the backend accepts; include the Android production credential's server client ID and any separately approved debug/review client ID. Production startup fails when this allowlist is empty. Store private keys in Secret Manager. Set `AUTH_ACCEPT_LEGACY_FIREBASE=true` only during beta migration.
 
 Local stack startup generates an ephemeral ES256 access-token key pair in memory when those auth variables are not supplied. Do not create or commit development PEM files; set the environment variables explicitly only when stable local keys are required across restarts.
 

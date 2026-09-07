@@ -68,7 +68,7 @@ This separation lets a future Android client submit a Google ID token to a Googl
 - `createdAt`
 - `updatedAt`
 
-The pair `(provider, providerSubject)` is unique. Provider subjects, rather than email addresses, are authoritative for returning sign-in. A verified email may help an explicit linking flow but must not silently merge two established accounts. Apple private-relay email is treated as an ordinary provider email and is never inferred to match a different visible email.
+The pair `(provider, providerSubject)` is unique. Provider subjects, rather than email addresses, are authoritative for returning sign-in. A verified email may help an explicit linking flow but must not silently merge two established accounts. Apple private-relay email is treated as an ordinary provider email and is never inferred to match a different visible email. Android links Google only through authenticated `POST /v1/auth/link/google`; ordinary Google sign-in never links by email.
 
 Legacy Firebase metadata remains only where required for migration, then can be removed in a later cleanup.
 
@@ -157,6 +157,12 @@ Errors use stable machine codes and localizable client presentation:
 - malformed input: `invalid_request`
 - server configuration failure: `authentication_unavailable`
 
+### Google authentication and linking
+
+`POST /v1/auth/google` accepts a Credential Manager Google ID token plus the same platform, device-label, and terms fields as Apple sign-in. The backend verifies its signature, issuer, expiry, and audience against `GOOGLE_AUTH_CLIENT_IDS`, then resolves `(google, sub)` and issues the standard Plainstride session response.
+
+`POST /v1/auth/link/google` requires a valid Plainstride access token and a fresh Google ID token. It attaches that exact Google subject to the authenticated internal user. It is idempotent for the same account and returns `provider_identity_in_use` when the subject belongs to another account. Matching email addresses never trigger linking. `GET /v1/auth/me/identities` exposes provider names and display-safe email metadata for account settings without exposing provider subjects.
+
 ### `POST /v1/auth/refresh`
 
 Accepts the refresh token in the JSON body over TLS, rotates it transactionally, and returns a replacement access/refresh pair. The endpoint is strictly rate-limited by IP and session family.
@@ -167,7 +173,7 @@ Requires a valid access token or refresh token and revokes that installation's s
 
 ### `DELETE /v1/auth/me`
 
-Requires a recent Apple reauthorization payload. It verifies the fresh credential, revokes Apple authorization using the newly obtained revocation material, revokes all application sessions, removes media where currently supported, and deletes the relational user. If Apple revocation fails transiently, account data deletion still proceeds and the response reports that external revocation could not be confirmed without restoring the account.
+Requires a recent credential for an identity already attached to the account. The legacy Apple payload remains accepted without a provider discriminator; Android sends `{ provider: "google", identityToken }`. Apple deletion also attempts provider authorization revocation using the newly obtained authorization code. Google ID tokens contain no revocable grant, so Google deletion confirms the Plainstride deletion and reports external-revocation status as unavailable. In either case, the backend revokes sessions through relational cascade, removes media where currently supported, and deletes the relational user.
 
 ### Debug persona endpoint
 

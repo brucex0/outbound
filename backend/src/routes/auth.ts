@@ -13,6 +13,7 @@ import { deleteFirebaseUser } from "../services/firebaseAuth.js";
 import { deleteAvatar, saveAvatar, signedAvatarURL } from "../services/avatarStorage.js";
 import { deleteUserActivityPhotos } from "../services/activityPhotoStorage.js";
 import { verifyAppleIdentityToken, revokeAppleAuthorization } from "../services/appleAuth.js";
+import { verifyGoogleIdentityToken } from "../services/googleAuth.js";
 import { issueSession, rotateSession, revokeRefreshToken, revokeSession } from "../services/authSessions.js";
 import { Prisma } from "@prisma/client";
 import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
@@ -25,6 +26,8 @@ const sessionClient = z.object({
   deviceLabel: z.string().trim().max(100).nullish(),
   termsVersion: z.number().int().positive(),
 });
+
+const googleCredential = z.object({ identityToken: z.string().min(1) });
 
 const gearItemSchema = z.object({
   id: z.string().uuid(),
@@ -100,6 +103,90 @@ router.post("/apple", zValidator("json", sessionClient.extend({
     }
     return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
   } catch (error) { return authError(c, error); }
+});
+
+router.post("/google", zValidator("json", sessionClient.extend(googleCredential.shape).strict()), async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const body = c.req.valid("json");
+  try {
+    const claims = await verifyGoogleIdentityToken(body.identityToken);
+    const user = await resolveAuthenticatedAppUser({
+      subject: claims.sub,
+      authenticationKind: "provider",
+      provider: "google",
+      providerSubject: claims.sub,
+      internalUserId: null,
+      sessionId: null,
+      email: claims.email ?? null,
+      emails: claims.email ? [claims.email] : [],
+      emailVerified: claims.email_verified === true,
+      name: claims.name ?? null,
+      picture: claims.picture ?? null,
+      phoneNumber: null,
+      phoneNumbers: [],
+    });
+    if (!user) throw new Error("authentication_unavailable");
+    const acceptedUser = body.termsVersion === CURRENT_TERMS_VERSION
+      ? await acceptCurrentTerms(user, body.termsVersion)
+      : user;
+    if (body.termsVersion < CURRENT_TERMS_VERSION) {
+      console.info("[auth] authenticated client requires terms reacceptance", {
+        code: "terms_reacceptance_required",
+        presentedTermsVersion: body.termsVersion,
+        currentTermsVersion: CURRENT_TERMS_VERSION,
+        provider: "google",
+      });
+    }
+    return c.json(await issueSession(acceptedUser, body.platform, body.deviceLabel));
+  } catch (error) { return authError(c, error); }
+});
+
+router.post("/link/google", zValidator("json", googleCredential.strict()), async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  try {
+    const claims = await verifyGoogleIdentityToken(c.req.valid("json").identityToken);
+    const normalizedEmail = claims.email?.trim().toLowerCase() || null;
+    const identity = await getPrismaClient().$transaction(async (tx) => {
+      const existing = await tx.authIdentity.findUnique({
+        where: { provider_providerSubject: { provider: "google", providerSubject: claims.sub } },
+      });
+      if (existing && existing.userId !== user.id) throw new Error("provider_identity_in_use");
+      return existing
+        ? tx.authIdentity.update({ where: { id: existing.id }, data: {
+          email: claims.email ?? null, normalizedEmail, emailVerified: claims.email_verified === true,
+          displayName: claims.name ?? null,
+        } })
+        : tx.authIdentity.create({ data: {
+          userId: user.id, provider: "google", providerSubject: claims.sub,
+          email: claims.email ?? null, normalizedEmail, emailVerified: claims.email_verified === true,
+          displayName: claims.name ?? null,
+        } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    return c.json({ linked: true, identity: { provider: identity.provider, email: identity.email } });
+  } catch (error) {
+    if (error instanceof Error && error.message === "provider_identity_in_use") {
+      return c.json({ error: "That Google identity is already linked to another account.", code: error.message }, 409);
+    }
+    return authError(c, error);
+  }
+});
+
+router.get("/me/identities", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  const identities = await getPrismaClient().authIdentity.findMany({
+    where: { userId: user.id },
+    select: { provider: true, email: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return c.json({ identities: identities.map((identity) => ({
+    provider: identity.provider,
+    email: identity.email,
+    linkedAt: identity.createdAt.toISOString(),
+  })) });
 });
 
 router.post("/refresh", zValidator("json", z.object({ refreshToken: z.string().min(32) })), async (c) => {
@@ -346,7 +433,12 @@ router.patch(
   }
 );
 
-router.delete("/me", zValidator("json", z.object({ identityToken: z.string().min(1), authorizationCode: z.string().min(1), rawNonce: z.string().min(16) })), async (c) => {
+const appleDeletionCredential = z.object({
+  provider: z.literal("apple").optional(), identityToken: z.string().min(1), authorizationCode: z.string().min(1), rawNonce: z.string().min(16),
+}).strict();
+const googleDeletionCredential = googleCredential.extend({ provider: z.literal("google") }).strict();
+
+router.delete("/me", zValidator("json", z.union([googleDeletionCredential, appleDeletionCredential])), async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;
 
@@ -356,13 +448,20 @@ router.delete("/me", zValidator("json", z.object({ identityToken: z.string().min
   }
 
   const body = c.req.valid("json");
-  let appleSubject: string;
-  try { appleSubject = (await verifyAppleIdentityToken(body.identityToken, body.rawNonce)).sub; } catch (error) { return authError(c, error); }
+  const provider = body.provider === "google" ? "google" : "apple";
+  let providerSubject: string;
+  try {
+    if (body.provider === "google") {
+      providerSubject = (await verifyGoogleIdentityToken(body.identityToken)).sub;
+    } else {
+      providerSubject = (await verifyAppleIdentityToken(body.identityToken, body.rawNonce)).sub;
+    }
+  } catch (error) { return authError(c, error); }
   const prisma = getPrismaClient();
   const user = await getAuthenticatedAppUser(c);
 
-  if (!user || !(await prisma.authIdentity.findFirst({ where: { userId: user.id, provider: "apple", providerSubject: appleSubject } }))) {
-    return c.json({ error: "Recent Apple reauthorization is required.", code: "invalid_provider_credential" }, 401);
+  if (!user || !(await prisma.authIdentity.findFirst({ where: { userId: user.id, provider, providerSubject } }))) {
+    return c.json({ error: "Recent provider reauthorization is required.", code: "invalid_provider_credential" }, 401);
   }
 
   if (user) {
@@ -374,10 +473,18 @@ router.delete("/me", zValidator("json", z.object({ identityToken: z.string().min
     await prisma.user.delete({ where: { id: user.id } });
   }
 
-  let appleRevocationConfirmed = true;
-  try { await revokeAppleAuthorization(body.authorizationCode); } catch { appleRevocationConfirmed = false; }
+  let appleRevocationConfirmed: boolean | null = null;
+  if (body.provider !== "google") {
+    appleRevocationConfirmed = true;
+    try { await revokeAppleAuthorization(body.authorizationCode); } catch { appleRevocationConfirmed = false; }
+  }
   if (auth.provider === "firebase") { try { await deleteFirebaseUser(auth.providerSubject); } catch { /* relational deletion remains final */ } }
-  return c.json({ deleted: true, appleRevocationConfirmed });
+  return c.json({
+    deleted: true,
+    provider,
+    providerRevocationConfirmed: appleRevocationConfirmed,
+    appleRevocationConfirmed,
+  });
 });
 
 function authError(c: any, error: unknown) {

@@ -1,0 +1,125 @@
+openapi: 3.1.0
+info:
+  title: Plainstride authentication API
+  version: 1.0.0
+paths:
+  /v1/auth/google:
+    post:
+      operationId: signInWithGoogle
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoogleSignInRequest' }
+      responses:
+        '200':
+          description: Plainstride session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '401': { $ref: '#/components/responses/InvalidProviderCredential' }
+        '503': { $ref: '#/components/responses/AuthenticationUnavailable' }
+  /v1/auth/link/google:
+    post:
+      operationId: linkGoogleIdentity
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GoogleCredential' }
+      responses:
+        '200':
+          description: Identity linked
+        '409':
+          description: Google subject belongs to another account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/auth/me/identities:
+    get:
+      operationId: listLinkedIdentities
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Display-safe linked identity metadata }
+  /v1/auth/me:
+    delete:
+      operationId: deleteAccount
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - { $ref: '#/components/schemas/GoogleDeletionCredential' }
+                - { $ref: '#/components/schemas/AppleDeletionCredential' }
+      responses:
+        '200': { description: Account deleted }
+        '401': { $ref: '#/components/responses/InvalidProviderCredential' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    InvalidProviderCredential:
+      description: Invalid, expired, or account-mismatched provider credential
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AuthenticationUnavailable:
+      description: Provider or server authentication is temporarily unavailable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    GoogleCredential:
+      type: object
+      additionalProperties: false
+      required: [identityToken]
+      properties:
+        identityToken: { type: string, minLength: 1 }
+    GoogleSignInRequest:
+      type: object
+      additionalProperties: false
+      required: [identityToken, platform, termsVersion]
+      properties:
+        identityToken: { type: string, minLength: 1 }
+        platform: { type: string, const: android }
+        deviceLabel: { type: [string, 'null'], maxLength: 100 }
+        termsVersion: { type: integer, minimum: 1 }
+    GoogleDeletionCredential:
+      type: object
+      additionalProperties: false
+      required: [provider, identityToken]
+      properties:
+        provider: { type: string, const: google }
+        identityToken: { type: string, minLength: 1 }
+    AppleDeletionCredential:
+      type: object
+      additionalProperties: false
+      required: [identityToken, authorizationCode, rawNonce]
+      properties:
+        provider: { type: string, const: apple }
+        identityToken: { type: string, minLength: 1 }
+        authorizationCode: { type: string, minLength: 1 }
+        rawNonce: { type: string, minLength: 16 }
+    SessionResponse:
+      type: object
+      required: [accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt, refreshRecovery, currentTermsVersion, user]
+      properties:
+        accessToken: { type: string }
+        accessTokenExpiresAt: { type: string, format: date-time }
+        refreshToken: { type: string }
+        refreshTokenExpiresAt: { type: string, format: date-time }
+        refreshRecovery: { type: boolean }
+        currentTermsVersion: { type: integer }
+        user: { type: object, additionalProperties: true }
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string }
+        code:
+          type: string
+          enum: [authentication_required, invalid_provider_credential, provider_identity_in_use, provider_unavailable, authentication_unavailable, terms_version_outdated]
