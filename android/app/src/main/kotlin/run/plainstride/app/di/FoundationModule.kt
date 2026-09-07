@@ -16,6 +16,9 @@ import run.plainstride.core.analytics.ProductAnalytics
 import run.plainstride.core.analytics.SanitizedAnalyticsEvent
 import run.plainstride.core.database.DataStoreDurableStateStore
 import run.plainstride.core.database.DurableStateStore
+import run.plainstride.core.database.AccountCacheDao
+import run.plainstride.core.database.PlainstrideDatabase
+import run.plainstride.core.database.PlainstrideDatabaseFactory
 import run.plainstride.core.model.AndroidMonotonicClock
 import run.plainstride.core.model.AppEnvironment
 import run.plainstride.core.model.EpochClock
@@ -36,6 +39,7 @@ import run.plainstride.core.auth.SecureSessionStore
 import run.plainstride.core.auth.SessionCoordinator
 import run.plainstride.core.auth.SessionRefresher
 import run.plainstride.core.network.AuthApiService
+import run.plainstride.core.network.AccessTokenProvider
 import run.plainstride.core.network.AccountApiService
 import run.plainstride.core.network.PlanningApiService
 import run.plainstride.core.network.createAccountApi
@@ -72,6 +76,12 @@ object FoundationModule {
     fun durableStateStore(dataStore: DataStore<Preferences>): DurableStateStore =
         DataStoreDurableStateStore(dataStore)
 
+    @Provides @Singleton fun database(@ApplicationContext context: Context): PlainstrideDatabase =
+        PlainstrideDatabaseFactory.create(context)
+
+    @Provides fun accountCacheDao(database: PlainstrideDatabase): AccountCacheDao =
+        database.accountCacheDao()
+
     @Provides
     @Singleton
     fun analytics(): ProductAnalytics = ProductAnalytics(NoOpAnalyticsSink)
@@ -104,6 +114,11 @@ object FoundationModule {
         refresher: SessionRefresher,
         clock: EpochClock,
     ): SessionCoordinator = DefaultSessionCoordinator(store, refresher, clock)
+
+    @Provides fun accessTokenProvider(sessions: SessionCoordinator): AccessTokenProvider =
+        object : AccessTokenProvider {
+            override suspend fun validAccessToken(): String? = sessions.validAccessToken()
+        }
 
     @Provides @Singleton fun authRepository(api: AuthApiService, sessions: SessionCoordinator): AuthRepository =
         DefaultAuthRepository(api, sessions)

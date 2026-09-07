@@ -47,6 +47,9 @@ import run.plainstride.app.auth.AuthViewModel
 import run.plainstride.core.auth.SessionState
 import run.plainstride.feature.onboarding.OnboardingEffect
 import run.plainstride.feature.onboarding.OnboardingRoute
+import run.plainstride.feature.today.TodayMessage
+import run.plainstride.feature.today.TodayRoute
+import run.plainstride.feature.today.TodayViewModel
 import kotlinx.coroutines.launch
 
 private enum class TopLevelDestination(
@@ -131,7 +134,23 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, sn
         ) {
             TopLevelDestination.entries.forEach { destination ->
                 composable(destination.route) {
-                    FoundationScreen(destination, authState, authViewModel)
+                    if (destination == TopLevelDestination.Today) {
+                        val todayViewModel: TodayViewModel = hiltViewModel()
+                        TodayRoute(
+                            viewModel = todayViewModel,
+                            activeSession = false,
+                            completedToday = false,
+                            onStartWorkout = { /* Recorder navigation is connected in the activity phase. */ },
+                            onStartFreestyle = { /* Recorder navigation is connected in the activity phase. */ },
+                            onReturnToSession = { /* No session exists before recorder integration. */ },
+                            onSetUpPlan = { /* Plan setup is connected by the planning flow. */ },
+                            onMessage = { message ->
+                                snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
+                            },
+                        )
+                    } else {
+                        FoundationScreen(destination, authState, authViewModel)
+                    }
                 }
             }
         }
@@ -256,4 +275,12 @@ private fun authMessageResource(message: AuthMessage) = when (message) {
     AuthMessage.Transferred -> R.string.transfer_complete
     AuthMessage.SignedOut -> R.string.auth_signed_out
     AuthMessage.Deleted -> R.string.auth_deleted
+}
+
+@StringRes
+private fun todayMessageResource(message: TodayMessage) = when (message) {
+    TodayMessage.CouldNotRefresh -> run.plainstride.feature.today.R.string.today_refresh_failed
+    TodayMessage.CouldNotAdjust -> run.plainstride.feature.today.R.string.today_adjust_failed
+    TodayMessage.AdjustmentApplied -> run.plainstride.feature.today.R.string.today_adjust_applied
+    TodayMessage.OriginalKept -> run.plainstride.feature.today.R.string.today_original_kept
 }

@@ -16,7 +16,7 @@ import run.plainstride.core.network.WorkoutFeedbackRequest
 
 sealed interface CachedResource<out T> {
     data object Loading : CachedResource<Nothing>
-    data class Available<T>(val value: T, val isStale: Boolean) : CachedResource<T>
+    data class Available<T>(val value: T, val isStale: Boolean, val updatedAtEpochMs: Long) : CachedResource<T>
     data class Failed<T>(val error: TodayDataError, val cachedValue: T? = null) : CachedResource<T>
 }
 
@@ -45,6 +45,7 @@ interface TodayRepository {
     suspend fun clearPlan(accountId: String, localeTag: String): Result<PlanningState>
     suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest): Result<PersonalizationSnapshot>
     suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest): Result<PersonalizationSnapshot>
+    suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit>
     suspend fun submitFeedback(accountId: String, localeTag: String, request: WorkoutFeedbackRequest): Result<PersonalizationSnapshot>
     suspend fun trainingProfile(): Result<TrainingProfile>
     suspend fun updateTrainingProfile(request: TrainingProfileRequest): Result<TrainingProfile>

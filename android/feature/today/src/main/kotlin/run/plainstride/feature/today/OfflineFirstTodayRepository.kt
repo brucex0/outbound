@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
+import javax.inject.Inject
 import run.plainstride.core.database.AccountCacheDao
 import run.plainstride.core.database.AccountCacheEntity
 import run.plainstride.core.model.ActivitySuggestionEnvelope
@@ -15,6 +16,7 @@ import run.plainstride.core.model.PlanningState
 import run.plainstride.core.model.StandaloneWorkoutCatalog
 import run.plainstride.core.model.TrainingProfile
 import run.plainstride.core.network.AccessTokenProvider
+import run.plainstride.core.network.AdjustmentDecisionRequest
 import run.plainstride.core.network.ApiErrorCode
 import run.plainstride.core.network.ApiFailure
 import run.plainstride.core.network.ApiResult
@@ -31,11 +33,10 @@ import run.plainstride.core.network.WorkoutFeedbackRequest
 import run.plainstride.core.network.apiCall
 
 /** Account- and locale-scoped cache; workout IDs and launch prescriptions remain server-authored. */
-class OfflineFirstTodayRepository(
+class OfflineFirstTodayRepository @Inject constructor(
     private val api: PlanningApiService,
     private val tokens: AccessTokenProvider,
     private val cache: AccountCacheDao,
-    private val nowEpochMs: () -> Long = System::currentTimeMillis,
 ) : TodayRepository {
     private val refreshMutex = Mutex()
 
@@ -67,6 +68,16 @@ class OfflineFirstTodayRepository(
     override suspend fun clearPlan(accountId: String, localeTag: String) = planningMutation(accountId, localeTag) { apiCall { api.clearPlan(it) } }
     override suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.updateProfile(it, request) } }
     override suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.submitReadiness(it, request) } }
+    override suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit> =
+        authenticated { authorization ->
+            apiCall {
+                api.adjustmentDecision(
+                    authorization,
+                    adjustmentId,
+                    AdjustmentDecisionRequest(if (accept) "accept" else "reject"),
+                )
+            }
+        }.map { Unit }.onSuccess { refresh(accountId, localeTag) }
     override suspend fun submitFeedback(accountId: String, localeTag: String, request: WorkoutFeedbackRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.feedback(it, request.workoutId, request) } }
     override suspend fun trainingProfile() = authenticated { apiCall { api.trainingProfile(it) } }
     override suspend fun updateTrainingProfile(request: TrainingProfileRequest) = authenticated { apiCall { api.updateTrainingProfile(it, request) } }
@@ -96,7 +107,7 @@ class OfflineFirstTodayRepository(
             if (entity == null) return@map CachedResource.Loading
             val value = runCatching { PlainstrideJson.decodeFromString(serializer, entity.payloadJson) }.getOrNull()
                 ?: return@map CachedResource.Failed(TodayDataError.InvalidServerResponse)
-            CachedResource.Available(value, entity.expiresAtEpochMs?.let { it <= nowEpochMs() } == true)
+            CachedResource.Available(value, entity.expiresAtEpochMs?.let { it <= System.currentTimeMillis() } == true, entity.updatedAtEpochMs)
         }
 
     private suspend fun <T : Any> persistResult(accountId: String, localeTag: String, namespace: String, result: ApiResult<T>, serializer: KSerializer<T>, ttlMs: Long): TodayDataError? = when (result) {
@@ -105,7 +116,7 @@ class OfflineFirstTodayRepository(
     }
 
     private suspend fun <T : Any> persist(accountId: String, localeTag: String, namespace: String, value: T, serializer: KSerializer<T>, ttlMs: Long) {
-        val now = nowEpochMs()
+        val now = System.currentTimeMillis()
         cache.upsert(AccountCacheEntity(accountId, namespace, DEFAULT_KEY, localeTag, PlainstrideJson.encodeToString(serializer, value), null, now, now + ttlMs))
     }
 
