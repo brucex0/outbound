@@ -142,7 +142,7 @@ Completion and profile keys are namespaced by the stable Plainstride account ID:
 - Local sessions: `AuthStore.localSessionLabel`.
 - Fallback: `local`.
 
-The auth session also stores an optional `onboardingCompleted` value. A missing value means an older session or partial rollout, not an incomplete account. Completing onboarding updates the local flag and Keychain session immediately, queues a retryable runner-profile write, and lets later login or refresh responses confirm the server result.
+The auth session also stores an optional `onboardingCompleted` value. A missing value means an older session or partial rollout, not an incomplete account. `GET /v1/auth/me` returns the same authoritative boolean, derived from `RunnerProfile.completedAt`, so clients never infer onboarding completion from calibration or plan state. Completing onboarding updates the local flag and Keychain session immediately, queues a retryable runner-profile write, and lets later login, refresh, or account responses confirm the server result.
 
 ## Debugging
 

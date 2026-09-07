@@ -332,12 +332,19 @@ router.get("/me", async (c) => {
 
   const userWithProfile = await prisma.user.findUnique({
     where: { id: user.id },
-    include: { guideProfile: true },
+    include: {
+      guideProfile: true,
+      runnerProfile: { select: { completedAt: true } },
+    },
   });
   if (!userWithProfile) {
     return c.json({ error: "Authenticated user has not been registered yet." }, 404);
   }
-  return c.json(userWithProfile);
+  const { runnerProfile, ...account } = userWithProfile;
+  return c.json({
+    ...account,
+    onboardingCompleted: runnerProfile?.completedAt != null,
+  });
 });
 
 router.get("/me/preferences", async (c) => {
