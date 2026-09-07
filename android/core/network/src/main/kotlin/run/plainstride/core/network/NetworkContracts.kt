@@ -4,7 +4,7 @@ import kotlinx.serialization.json.Json
 
 enum class ApiErrorCode {
     InvalidRequest, Unauthenticated, Forbidden, NotFound, Conflict, RateLimited,
-    ServerUnavailable, NetworkUnavailable, InvalidResponse, Unknown,
+    ServerUnavailable, NetworkUnavailable, InvalidResponse, Cancelled, Unknown,
 }
 
 data class ApiFailure(

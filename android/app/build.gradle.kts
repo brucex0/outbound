@@ -19,6 +19,8 @@ android {
         versionName = "1.0"
         buildConfigField("String", "API_BASE_URL", "\"https://api.outbound.run\"")
         buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "false")
+        val googleServerClientId = providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").orElse("")
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${googleServerClientId.get()}\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
     }
 
@@ -62,11 +64,19 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.retrofit.core)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
     debugImplementation(libs.compose.ui.tooling)
 }

@@ -24,6 +24,19 @@ import run.plainstride.core.model.MonotonicClock
 import run.plainstride.core.model.StaticFeatureFlags
 import run.plainstride.core.model.SystemEpochClock
 import javax.inject.Singleton
+import androidx.credentials.CredentialManager
+import okhttp3.OkHttpClient
+import run.plainstride.app.auth.GoogleServerClientId
+import run.plainstride.core.auth.ApiSessionRefresher
+import run.plainstride.core.auth.AuthRepository
+import run.plainstride.core.auth.DefaultAuthRepository
+import run.plainstride.core.auth.DefaultSessionCoordinator
+import run.plainstride.core.auth.KeystoreSecureSessionStore
+import run.plainstride.core.auth.SecureSessionStore
+import run.plainstride.core.auth.SessionCoordinator
+import run.plainstride.core.auth.SessionRefresher
+import run.plainstride.core.network.AuthApiService
+import run.plainstride.core.network.createAuthApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -58,6 +71,32 @@ object FoundationModule {
     @Provides
     @Singleton
     fun analytics(): ProductAnalytics = ProductAnalytics(NoOpAnalyticsSink)
+
+    @Provides @Singleton fun credentialManager(@ApplicationContext context: Context): CredentialManager =
+        CredentialManager.create(context)
+
+    @Provides @GoogleServerClientId fun googleServerClientId(): String = BuildConfig.GOOGLE_SERVER_CLIENT_ID
+
+    @Provides @Singleton fun httpClient(): OkHttpClient = OkHttpClient.Builder()
+        .retryOnConnectionFailure(true)
+        .build()
+
+    @Provides @Singleton fun authApi(client: OkHttpClient): AuthApiService =
+        createAuthApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun secureSessionStore(@ApplicationContext context: Context): SecureSessionStore =
+        KeystoreSecureSessionStore(context)
+
+    @Provides @Singleton fun sessionRefresher(api: AuthApiService): SessionRefresher = ApiSessionRefresher(api)
+
+    @Provides @Singleton fun sessionCoordinator(
+        store: SecureSessionStore,
+        refresher: SessionRefresher,
+        clock: EpochClock,
+    ): SessionCoordinator = DefaultSessionCoordinator(store, refresher, clock)
+
+    @Provides @Singleton fun authRepository(api: AuthApiService, sessions: SessionCoordinator): AuthRepository =
+        DefaultAuthRepository(api, sessions)
 
     @Provides
     fun epochClock(): EpochClock = SystemEpochClock

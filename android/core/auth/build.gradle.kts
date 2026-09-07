@@ -13,4 +13,5 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:network"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
 }

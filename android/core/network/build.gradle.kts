@@ -12,5 +12,8 @@ android {
 
 dependencies {
     api(project(":core:model"))
-    implementation(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.serialization.json)
+    api(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
 }

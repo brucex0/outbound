@@ -30,6 +30,7 @@ interface SessionRefresher {
 
 interface SessionCoordinator {
     val state: StateFlow<SessionState>
+    suspend fun restore()
     suspend fun install(credentials: SessionCredentials)
     suspend fun validAccessToken(): String?
     suspend fun signOut()

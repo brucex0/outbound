@@ -10,4 +10,26 @@
     <string name="today_body">Your workout, readiness, and companion will meet you here.</string>
     <string name="me_headline">Your running story</string>
     <string name="me_body">Progress, activities, gear, and settings will live here.</string>
+    <string name="auth_welcome">Welcome to Plainstride</string>
+    <string name="auth_welcome_body">Personal coaching and your running story, together in one private account.</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="signing_in">Signing in…</string>
+    <string name="auth_terms_notice">By continuing, you accept the current Terms of Service and Privacy Policy.</string>
+    <string name="link_google">Link Google account</string>
+    <string name="sign_out">Sign out</string>
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_title">Delete your account?</string>
+    <string name="delete_account_body">This permanently removes your Plainstride account and cloud data. Sign in with Google again to confirm.</string>
+    <string name="delete_account_confirm">Delete permanently</string>
+    <string name="cancel">Cancel</string>
+    <string name="auth_cancelled">Sign-in was cancelled.</string>
+    <string name="auth_configuration_error">Google sign-in is not configured for this build.</string>
+    <string name="auth_invalid_credential">Google could not verify this account. Please try again.</string>
+    <string name="auth_identity_conflict">That Google account is linked to another Plainstride account.</string>
+    <string name="auth_offline">You’re offline. Your saved runs remain available.</string>
+    <string name="auth_unavailable">Sign-in is temporarily unavailable. Please try again.</string>
+    <string name="auth_generic_error">Something went wrong. Please try again.</string>
+    <string name="auth_linked">Google account linked.</string>
+    <string name="auth_signed_out">Signed out.</string>
+    <string name="auth_deleted">Account deleted.</string>
 </resources>

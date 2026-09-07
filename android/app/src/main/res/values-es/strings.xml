@@ -10,4 +10,26 @@
     <string name="today_body">Aquí te esperan tu entrenamiento, tu estado de preparación y tu compañero.</string>
     <string name="me_headline">Tu historia como corredor</string>
     <string name="me_body">Aquí encontrarás tu progreso, actividades, equipamiento y ajustes.</string>
+    <string name="auth_welcome">Te damos la bienvenida a Plainstride</string>
+    <string name="auth_welcome_body">Tu entrenamiento personalizado y tu historia como corredor, reunidos en una cuenta privada.</string>
+    <string name="continue_with_google">Continuar con Google</string>
+    <string name="signing_in">Iniciando sesión…</string>
+    <string name="auth_terms_notice">Al continuar, aceptas las Condiciones del Servicio y la Política de Privacidad vigentes.</string>
+    <string name="link_google">Vincular cuenta de Google</string>
+    <string name="sign_out">Cerrar sesión</string>
+    <string name="delete_account">Eliminar cuenta</string>
+    <string name="delete_account_title">¿Quieres eliminar tu cuenta?</string>
+    <string name="delete_account_body">Se eliminarán definitivamente tu cuenta de Plainstride y tus datos en la nube. Vuelve a identificarte con Google para confirmar.</string>
+    <string name="delete_account_confirm">Eliminar definitivamente</string>
+    <string name="cancel">Cancelar</string>
+    <string name="auth_cancelled">Se canceló el inicio de sesión.</string>
+    <string name="auth_configuration_error">El acceso con Google no está configurado en esta versión.</string>
+    <string name="auth_invalid_credential">Google no pudo verificar esta cuenta. Inténtalo de nuevo.</string>
+    <string name="auth_identity_conflict">Esa cuenta de Google está vinculada a otra cuenta de Plainstride.</string>
+    <string name="auth_offline">No tienes conexión. Tus carreras guardadas siguen disponibles.</string>
+    <string name="auth_unavailable">El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo.</string>
+    <string name="auth_generic_error">Algo salió mal. Inténtalo de nuevo.</string>
+    <string name="auth_linked">Cuenta de Google vinculada.</string>
+    <string name="auth_signed_out">Sesión cerrada.</string>
+    <string name="auth_deleted">Cuenta eliminada.</string>
 </resources>

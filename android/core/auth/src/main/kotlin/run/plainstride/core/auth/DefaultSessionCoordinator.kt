@@ -17,6 +17,17 @@ class DefaultSessionCoordinator(
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Loading)
     override val state: StateFlow<SessionState> = mutableState.asStateFlow()
 
+    override suspend fun restore() = sessionMutex.withLock {
+        val credentials = store.load()
+        if (credentials == null || credentials.refreshTokenExpiresAtEpochMilliseconds <= clock.nowEpochMilliseconds()) {
+            store.clear()
+            mutableState.value = SessionState.SignedOut
+        } else {
+            // Preserve offline access to local data. Network-bound callers refresh lazily.
+            mutableState.value = credentials.signedInState()
+        }
+    }
+
     override suspend fun install(credentials: SessionCredentials) = sessionMutex.withLock {
         store.replace(credentials)
         mutableState.value = credentials.signedInState()
