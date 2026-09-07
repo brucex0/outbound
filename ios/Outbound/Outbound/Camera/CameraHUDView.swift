@@ -598,34 +598,48 @@ struct SessionStatusCard: View {
     let onResume: () -> Void
     let onFinish: () -> Void
     let isFinishEnabled: Bool
-    @GestureState private var dragTranslation: CGFloat = 0
+    @State private var panelDragHeight: CGFloat?
 
     private let collapsedHeight: CGFloat = 92
 
     var body: some View {
+        let panelHeight = resolvedPanelHeight
+        let expansionProgress = panelExpansionProgress(for: panelHeight)
+
         VStack(spacing: 0) {
             panelGrabber
 
-            if isExpanded {
+            if expansionProgress > 0.08 {
                 expandedDashboard
-                    .transition(.opacity)
+                    .opacity(expansionProgress)
+                    .allowsHitTesting(isExpanded && panelDragHeight == nil)
             } else {
                 compactRow
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
-                    .transition(.opacity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        setExpanded(true)
+                    }
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: isExpanded ? expandedHeight : collapsedHeight, alignment: .top)
+        .frame(height: panelHeight, alignment: .top)
         .background(OutboundPalette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: isExpanded ? 0 : 20, style: .continuous))
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 20 * (1 - expansionProgress),
+                topTrailingRadius: 20 * (1 - expansionProgress)
+            )
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: isExpanded ? 0 : 20, style: .continuous)
-                .strokeBorder(theme.accentColor.opacity(0.18), lineWidth: 1)
+            UnevenRoundedRectangle(
+                topLeadingRadius: 20 * (1 - expansionProgress),
+                topTrailingRadius: 20 * (1 - expansionProgress)
+            )
+            .strokeBorder(theme.accentColor.opacity(0.18), lineWidth: 1)
         }
-        .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: 8)
-        .offset(y: panelDragOffset)
+        .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: -6)
         .animation(panelAnimation, value: isExpanded)
         .accessibilityIdentifier("CameraDataOverlay")
     }
@@ -659,23 +673,48 @@ struct SessionStatusCard: View {
 
     private var panelDragGesture: some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .global)
-            .updating($dragTranslation) { value, state, _ in
-                let translation = value.translation.height
-                state = isExpanded ? max(0, translation) : min(0, translation)
+            .onChanged { value in
+                let baseHeight = isExpanded ? maximumPanelHeight : collapsedHeight
+                let proposedHeight = baseHeight - value.translation.height
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    panelDragHeight = min(max(proposedHeight, collapsedHeight), maximumPanelHeight)
+                }
             }
             .onEnded { value in
-                let projected = value.predictedEndTranslation.height
-                if isExpanded, projected > 56 {
-                    setExpanded(false)
-                } else if !isExpanded, projected < -56 {
-                    setExpanded(true)
+                let baseHeight = isExpanded ? maximumPanelHeight : collapsedHeight
+                let projectedHeight = min(
+                    max(baseHeight - value.predictedEndTranslation.height, collapsedHeight),
+                    maximumPanelHeight
+                )
+                let midpoint = collapsedHeight + ((maximumPanelHeight - collapsedHeight) * 0.5)
+                let shouldExpand = projectedHeight >= midpoint
+                withAnimation(panelAnimation) {
+                    panelDragHeight = shouldExpand ? maximumPanelHeight : collapsedHeight
+                } completion: {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        isExpanded = shouldExpand
+                        panelDragHeight = nil
+                    }
                 }
             }
     }
 
-    private var panelDragOffset: CGFloat {
-        guard !reduceMotion else { return 0 }
-        return dragTranslation * (isExpanded ? 0.24 : 0.32)
+    private var maximumPanelHeight: CGFloat {
+        max(expandedHeight, collapsedHeight)
+    }
+
+    private var resolvedPanelHeight: CGFloat {
+        panelDragHeight ?? (isExpanded ? maximumPanelHeight : collapsedHeight)
+    }
+
+    private func panelExpansionProgress(for height: CGFloat) -> CGFloat {
+        let range = maximumPanelHeight - collapsedHeight
+        guard range > 0 else { return isExpanded ? 1 : 0 }
+        return min(max((height - collapsedHeight) / range, 0), 1)
     }
 
     private var panelAnimation: Animation {
@@ -692,6 +731,10 @@ struct SessionStatusCard: View {
             topRow
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    setExpanded(false)
+                }
 
             if connectivityStore.isOffline {
                 OfflineStatusBanner()

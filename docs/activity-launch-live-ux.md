@@ -109,7 +109,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Countdown cancel preserves setup; only entry into live recording persists targets and advances default learning.
 - Edge-to-edge countdown and live backgrounds keep their top controls below the device status area.
 - Active and paused live recording cannot be minimized by a button, gesture, assistant action, or tab navigation.
-- Camera and map use the same compact-by-default workout panel state; tapping or dragging its grabber expands a full-screen dashboard, and dragging down collapses only the dashboard rather than the activity.
+- Camera and map use the same compact-by-default, two-detent workout bottom sheet. Dragging its grabber interactively follows the finger and snaps between compact and full-screen states; tapping the compact card surface expands it, while tapping the expanded header or grabber collapses it without ending the activity.
 - The full-screen dashboard keeps the goal-aware primary metric, supporting metrics, workout step or route context, coaching message, Pause/Resume, and paused-only Finish usable at compact phone heights and with larger accessibility text.
 - Interrupted-session recovery opens the paused live surface directly.
 - Setup and live photos survive interrupted-session recovery and remain available on the finish page.
