@@ -18,11 +18,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /** Feature-owned Android integration for contact picking, permissions, and safe link sharing. */
 @Composable
-fun SafetyRoute(viewModel: SafetySettingsViewModel = hiltViewModel()) {
+fun SafetyRoute(targetId: String? = null, viewModel: SafetySettingsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(targetId) { targetId?.takeIf(String::isNotBlank)?.let(viewModel::openGroup) }
     var permission by remember { mutableStateOf(notificationPermissionState(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permission = notificationPermissionState(context)

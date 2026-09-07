@@ -22,6 +22,10 @@ import run.plainstride.core.auth.SessionState
 import run.plainstride.core.network.ApiErrorCode
 import run.plainstride.core.network.ApiResult
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import run.plainstride.app.notifications.PlainstrideMessagingService
+import run.plainstride.feature.safety.LiveShareCoordinator
 import run.plainstride.core.database.AccountDatabaseOperations
 
 data class AuthUiState(
@@ -39,7 +43,9 @@ class AuthViewModel @Inject constructor(
     private val sessions: SessionCoordinator,
     private val google: GoogleCredentialProvider,
     private val analytics: ProductAnalytics,
+    private val push: LiveShareCoordinator,
     private val accountData: AccountDatabaseOperations,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val operation = MutableStateFlow<AuthOperation?>(null)
     private val confirmDeletion = MutableStateFlow(false)
@@ -76,6 +82,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun signOut() = perform(AuthOperation.SignOut, "auth_sign_out", AuthMessage.SignedOut) {
+        unregisterPush()
         sessions.signOut()
         google.clear()
         ApiResult.Success(Unit)
@@ -88,11 +95,18 @@ class AuthViewModel @Inject constructor(
         perform(AuthOperation.Delete, "auth_delete_account", AuthMessage.Deleted) {
             val accountId = (sessions.state.value as? SessionState.SignedIn)?.accountId
                 ?: (sessions.state.value as? SessionState.Refreshing)?.accountId
+            unregisterPush()
             google.identityToken().fold(
                 onSuccess = { token -> repository.deleteAccount(token).also { result -> if (result is ApiResult.Success && accountId != null) accountData.clearAccount(accountId) } },
                 onFailure = { credentialFailure(it) },
             )
         }
+    }
+
+    private suspend fun unregisterPush() {
+        val preferences = context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES, Context.MODE_PRIVATE)
+        preferences.getString(PlainstrideMessagingService.TOKEN, null)?.let { push.unregisterToken(it) }
+        preferences.edit().clear().apply()
     }
 
     private fun perform(operationValue: AuthOperation, event: String, successMessage: AuthMessage? = null, block: suspend () -> ApiResult<Unit>) {

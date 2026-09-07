@@ -22,6 +22,7 @@ class LiveShareCoordinator @Inject constructor(private val api:SafetyApi,private
  suspend fun end():Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{clear();Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
  fun clear(){armed=null;mutableActive.value=null;lastPoint=null;lastSentAt=0;preferences.edit().clear().apply()}
  suspend fun registerToken(token:String,bundle:String,locale:String)=authenticated{apiCall{api.register(it,PushDeviceRequest(token,appBundle=bundle,locale=locale))}}.map{Unit}
+ suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}
  suspend fun markInboxRead()=authenticated{apiCall{api.readAll(it)}}.map{Unit}
  suspend fun createGroupRun(request:CreateGroupRunRequest)=authenticated{apiCall{api.createGroupRun(it,request)}}.onSuccess(::saveGroup)

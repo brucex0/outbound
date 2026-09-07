@@ -105,7 +105,8 @@ class TodayViewModel @Inject constructor(
         accountScope.flatMapLatest { repository.observeStandaloneWorkouts(it.first, it.second) },
         combine(refreshing, mutationInFlight, refreshError, sessionState) { a, b, c, d -> Meta(a, b, c, d) },
     ) { planning, suggestion, personalization, catalog, meta ->
-        TodayUiState(planning, suggestion, personalization, catalog, meta.refreshing, meta.mutating, meta.error, meta.session.first, meta.session.second)
+        val plannedCompletion = (planning as? CachedResource.Available)?.value?.today?.status == "completed"
+        TodayUiState(planning, suggestion, personalization, catalog, meta.refreshing, meta.mutating, meta.error, meta.session.first, plannedCompletion)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
     init { refreshWeather() }

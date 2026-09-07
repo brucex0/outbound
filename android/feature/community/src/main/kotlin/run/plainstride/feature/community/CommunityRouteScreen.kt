@@ -17,11 +17,13 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(run.plainstride.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit) {
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(run.plainstride.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->}) {
  var query by remember { mutableStateOf("") }
  var selected by remember { mutableStateOf<CommunityRoute?>(null) }
+ var publish by remember { mutableStateOf<Pair<String,String>?>(null) }
  LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
   item { Row { Text(stringResource(R.string.routes_title), style=MaterialTheme.typography.headlineMedium, fontWeight=FontWeight.Bold, modifier=Modifier.weight(1f)); IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))} } }
+  if(scope==RouteScope.MINE&&publishableActivities.isNotEmpty())item{publishableActivities.forEach{activity->TextButton({publish=activity}){Icon(Icons.Outlined.Publish,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.routes_publish_activity,activity.second))}}}
   item { SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()){ RouteScope.entries.forEachIndexed { index,item->SegmentedButton(item==scope,{onScope(item)},SegmentedButtonDefaults.itemShape(index,RouteScope.entries.size)){Text(stringResource(when(item){RouteScope.DISCOVERY->R.string.routes_discover;RouteScope.MINE->R.string.routes_mine;RouteScope.NEARBY->R.string.routes_nearby}))} } } }
   if(scope==RouteScope.DISCOVERY) item { OutlinedTextField(query,{query=it;onSearch(it)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.routes_search))},leadingIcon={Icon(Icons.Outlined.Search,null)}) }
   if(library.stale) item { Text(stringResource(R.string.routes_offline),style=MaterialTheme.typography.labelMedium) }
@@ -29,6 +31,7 @@ import java.io.File
   if(library.routes.isEmpty()) item { Text(stringResource(R.string.routes_empty),Modifier.padding(24.dp)) }
  }
  selected?.let { route -> RouteDetailDialog(route,{selected=null}) { reverse -> selected=null;onFollow(CommunityRecordingCoordinator.launch(route,reverse)) } }
+ publish?.let{activity->var name by remember(activity){mutableStateOf(activity.second)};var description by remember(activity){mutableStateOf("")};AlertDialog({publish=null},title={Text(stringResource(R.string.routes_publish))},text={Column{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.routes_publish_name))});OutlinedTextField(description,{description=it.take(300)},label={Text(stringResource(R.string.routes_publish_description))})}},confirmButton={TextButton({onPublish(activity.first,name,description.takeIf(String::isNotBlank));publish=null},enabled=name.isNotBlank()){Text(stringResource(R.string.routes_publish))}},dismissButton={TextButton({publish=null}){Text(stringResource(R.string.routes_close))}})}
 }
 
 @Composable private fun RouteDetailDialog(route:CommunityRoute,close:()->Unit,follow:(Boolean)->Unit){val context=LocalContext.current;var reverse by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=close,title={Text(route.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){route.description?.let{Text(it)};route.coordinates().takeIf{it.size>1}?.let{PlainstrideRouteMap(if(reverse)it.reversed() else it,Modifier.fillMaxWidth().height(220.dp))};Row{Text(stringResource(R.string.routes_reverse),Modifier.weight(1f));Switch(reverse,{reverse=it})};TextButton({shareRoute(context,route)}){Text(stringResource(R.string.routes_export))}}},confirmButton={Button({follow(reverse)}){Text(stringResource(R.string.routes_follow))}},dismissButton={TextButton(close){Text(stringResource(R.string.routes_close))}})}

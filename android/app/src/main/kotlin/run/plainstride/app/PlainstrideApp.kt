@@ -280,12 +280,13 @@ private fun SignedInApp(
                                 ListItem(headlineContent = { Text(stringResource(R.string.health_destination)) }, modifier = Modifier.clickable { navController.navigate(HEALTH_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
+                                ListItem(headlineContent={Text(stringResource(R.string.push_notifications_setting))},supportingContent={Text(stringResource(R.string.push_notifications_body))},trailingContent={Switch(integration.pushEnabled,integrationViewModel::setPushEnabled)})
                                 ReminderSettingsRow(reminderViewModel)
                             },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second)
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)})
                     } else if (destination == TopLevelDestination.Assistant && accountId != null) {
                         AssistantRoute(accountId, onClose = { navController.navigate(TopLevelDestination.Today.route) })
                     } else {
@@ -322,10 +323,10 @@ private fun SignedInApp(
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
             composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
-            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark) }
-            composable(SAFETY_ROUTE) { SafetyRoute() }
+            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute) }
+            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget) }
             composable(HEALTH_ROUTE) { HealthDestination(integration.health, integrationViewModel::refreshHealth) }
-            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {socialTarget="group" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Live -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
+            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
         }
     }
     if (authState.confirmDeletion) AlertDialog(

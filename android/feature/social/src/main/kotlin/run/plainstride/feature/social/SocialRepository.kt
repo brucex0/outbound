@@ -43,6 +43,8 @@ interface SocialRepository {
     suspend fun inviteToCircle(circleId:String,memberIds:List<String>,idempotencyKey:String):Result<CircleSummary>
     suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean):Result<CircleSummary>
     suspend fun setCircleArchived(circleId:String,archived:Boolean):Result<CircleSummary>
+    suspend fun event(id:String):Result<SocialEvent>
+    suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean):Result<Unit>
 }
 
 class OfflineFirstSocialRepository @Inject constructor(
@@ -104,6 +106,13 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun inviteToCircle(circleId:String,memberIds:List<String>,idempotencyKey:String)=authenticated{apiCall{api.inviteCircle(it,circleId,CircleInviteBody(memberIds.distinct(),idempotencyKey))}}.map{it.circle}
     override suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusCircle(it,circleId,CircleFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
     override suspend fun setCircleArchived(circleId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveCircle(auth,circleId)else api.reactivateCircle(auth,circleId)}}
+    override suspend fun event(id:String)=authenticated{apiCall{api.event(it,id)}}
+    override suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=authenticated{auth->when{
+        invitation.kind=="circle"&&accept->apiCall{api.acceptCircleInvitation(auth,invitation.id)}.map{Unit}
+        invitation.kind=="circle"->apiCall{api.declineCircleInvitation(auth,invitation.id)}
+        accept->apiCall{api.acceptEventInvitation(auth,invitation.id)}
+        else->ApiResult.Failure(ApiFailure(ApiErrorCode.InvalidRequest,false))
+    }}
 
     private suspend fun <T : Any> authenticated(call: suspend (String) -> ApiResult<T>): Result<T> {
         val token = tokens.validAccessToken() ?: return Result.failure(SocialException(SocialError.SIGNED_OUT))

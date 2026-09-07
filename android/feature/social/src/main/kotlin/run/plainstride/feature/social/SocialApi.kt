@@ -53,6 +53,8 @@ interface SocialApiService {
     @POST("v1/social/activity-events/{id}/rsvp") suspend fun rsvp(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody):Response<Unit>
     @DELETE("v1/social/activity-events/{id}/rsvp") suspend fun leaveEvent(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @POST("v1/social/activity-events/{id}/invitations") suspend fun inviteEvent(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:EventInviteBody):Response<EventInvitation>
+    @GET("v1/social/activity-events/{id}") suspend fun event(@Header("Authorization") auth:String,@Path("id") id:String):Response<SocialEvent>
+    @POST("v1/social/invitations/{id}/accept") suspend fun acceptEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody=AttendanceBody()):Response<Unit>
     @GET("v1/circles") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
     @GET("v1/circles/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
     @POST("v1/circles/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
@@ -61,6 +63,8 @@ interface SocialApiService {
     @POST("v1/circles/{id}/focus") suspend fun focusCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleFocusBody):Response<CircleSummary>
     @POST("v1/circles/{id}/archive") suspend fun archiveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
     @POST("v1/circles/{id}/reactivate") suspend fun reactivateCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/circles/invitations/{id}/accept") suspend fun acceptCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/circles/invitations/{id}/decline") suspend fun declineCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/recognition") suspend fun awards(@Header("Authorization") auth: String): Response<AwardsResponse>
 }
 

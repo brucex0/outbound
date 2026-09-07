@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
  fun arm(){val targets=mutableContacts.value.map{DeliveryTarget(it.channel,it.displayName,it.address)};if(targets.isNotEmpty())liveShare.arm(CreateLiveShareRequest(recipientLabel=targets.first().label,deliveryTargets=targets))}
  fun createGroup()=viewModelScope.launch{liveShare.createGroupRun(CreateGroupRunRequest())}
  fun joinGroup(invite:String)=viewModelScope.launch{liveShare.joinGroupRun(invite)}
+ fun openGroup(id:String)=viewModelScope.launch{liveShare.groupRun(id)}
  fun leaveGroup()=viewModelScope.launch{liveShare.group.value?.let{liveShare.leaveGroupRun(it.id,false)}}
  private fun reload()=viewModelScope.launch{mutableContacts.value=contacts.contacts()}
 }

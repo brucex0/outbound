@@ -42,12 +42,12 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class SocialGroup(val id: String, val name: String, val description: String? = null, val memberCount: Int = 0, val joined: Boolean = false)
 @Serializable data class SocialEvent(
     val id: String,
-    val name: String,
+    @SerialName("title") val name: String,
     val startsAt: String,
     val endsAt: String? = null,
     val locationName: String? = null,
     val participationMode: String = "hybrid",
-    val joined: Boolean = false,
+    @SerialName("currentUserGoing") val joined: Boolean = false,
 )
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
 @Serializable data class CircleMember(val person: SocialPerson, val completed: Int = 0, val target: Int? = null, val skipped: Boolean = false)

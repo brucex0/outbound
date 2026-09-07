@@ -40,6 +40,7 @@ class SpotifyMusicProvider(
 
     override suspend fun disconnect() = mutex.withLock {
         remote.disconnect()
+        authorizationStore.clear()
         mutableState.value = mutableState.value.copy(connection = MusicConnectionState.Disconnected, playback = mutableState.value.playback.copy(isPlaying = false))
     }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
@@ -30,6 +31,8 @@ data class P0IntegrationState(
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()), emptyList()),
     val completedToday: Boolean = false,
     val defaultGearId: String? = null,
+    val publishableActivities: List<Pair<String,String>> = emptyList(),
+    val pushEnabled: Boolean = true,
 )
 
 @HiltViewModel class P0IntegrationViewModel @Inject constructor(
@@ -40,17 +43,27 @@ data class P0IntegrationState(
     private val reminderCoordinator: PlannedWorkoutReminderCoordinator,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val mutable = MutableStateFlow(P0IntegrationState()); val state = mutable.asStateFlow()
+    private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
-    fun start(accountId:String,locale:String){if(this.accountId==accountId&&this.locale==locale)return;this.accountId=accountId;this.locale=locale;observeRoutes();reminderCoordinator.observe(viewModelScope,accountId,locale);viewModelScope.launch{gear.configure(accountId);mutable.update{it.copy(defaultGearId=gear.collection().defaultShoe?.id?.toString())}};viewModelScope.launch{activities.observePage(accountId,limit=200).collect{page->val items=page.activities.map{ProgressActivity(it.id,it.title,Instant.parse(it.startedAt),it.durationSecs,it.distanceM,it.elevationGainM,it.averageHeartRateBpm)};val zone=java.time.ZoneId.systemDefault();val today=java.time.LocalDate.now(zone);mutable.update{s->s.copy(progress=ProgressScreenState(ProgressStatsEngine.snapshot(items),emptyList()),completedToday=page.activities.any{runCatching{Instant.parse(it.endedAt).atZone(zone).toLocalDate()==today}.getOrDefault(false)})}}};refreshRoutes();refreshInbox();refreshHealth();registerPush()}
+    fun start(accountId:String,locale:String){if(this.accountId==accountId&&this.locale==locale)return;this.accountId=accountId;this.locale=locale;observeRoutes();reminderCoordinator.observe(viewModelScope,accountId,locale);viewModelScope.launch{gear.configure(accountId);mutable.update{it.copy(defaultGearId=gear.collection().defaultShoe?.id?.toString())}};viewModelScope.launch{activities.observePage(accountId,limit=200).collect{page->val items=page.activities.map{ProgressActivity(it.id,it.title,Instant.parse(it.startedAt),it.durationSecs,it.distanceM,it.elevationGainM,it.averageHeartRateBpm)};mutable.update{s->s.copy(progress=ProgressScreenState(ProgressStatsEngine.snapshot(items),emptyList()),publishableActivities=page.activities.filter{it.track.size>1}.take(20).map{it.id to it.title})}}};refreshRoutes();refreshInbox();refreshHealth();registerPush()}
     fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value)};observeRoutes();refreshRoutes()}
     fun search(value:String){if(value.length==1||value.length%3==0)refreshRoutes(value)}
-    fun refreshRoutes(query:String=""){val id=accountId?:return;viewModelScope.launch{routes.refresh(id,locale,mutable.value.routeScope,query)}}
+    fun refreshRoutes(query:String=""){val id=accountId?:return;viewModelScope.launch(Dispatchers.IO){
+        val location=if(mutable.value.routeScope==RouteScope.NEARBY&&(
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED
+        ))runCatching{Tasks.await(LocationServices.getFusedLocationProviderClient(context).lastLocation)}.getOrNull() else null
+        fun coarse(value:Double?)=value?.let{kotlin.math.round(it*100.0)/100.0}
+        routes.refresh(id,locale,mutable.value.routeScope,query,coarse(location?.latitude),coarse(location?.longitude))
+    }}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
+    fun publishRoute(activityId:String,name:String,description:String?)=viewModelScope.launch{routes.publish(activityId,name,description).onSuccess{refreshRoutes()}}
     fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)};safety.markInboxRead()}}
     fun refreshHealth()=viewModelScope.launch{mutable.update{it.copy(health=health.permissionSnapshot())}}
     fun export(review:RecordedActivityReview)=viewModelScope.launch{val snapshot=review.snapshot;val start=snapshot.startedAtEpochMilliseconds?:return@launch;val end=snapshot.recordedAtEpochMilliseconds.takeIf{it>start}?:System.currentTimeMillis();health.write(HealthActivity(HealthSourceIdentity(context.packageName,snapshot.sessionId?:return@launch),when(snapshot.activityKind){ActivityKind.WALKING->HealthActivityType.WALK;ActivityKind.CYCLING->HealthActivityType.CYCLE;else->HealthActivityType.RUN},null,Instant.ofEpochMilli(start),Instant.ofEpochMilli(end),snapshot.distanceMeters,route=snapshot.track.map{HealthRoutePoint(Instant.ofEpochMilli(it.capturedAtEpochMilliseconds),it.latitude,it.longitude,it.altitudeMeters,it.horizontalAccuracyMeters,it.verticalAccuracyMeters)}))}
     fun completePlannedWorkout(launch: RecordingLaunchConfiguration, review: RecordedActivityReview) { val id=accountId?:return; val workoutId=launch.plannedWorkoutId?:return; viewModelScope.launch { today.completeWorkout(id,locale,workoutId,PlannedWorkoutCompletionRequest(completedAt=Instant.now().toString(),durationSeconds=review.snapshot.elapsedSeconds.toInt(),distanceMeters=review.snapshot.distanceMeters,completionQuality=review.reflection.name.lowercase())) } }
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
-    private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val cached=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}
+    private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);if(!preferences.getBoolean(PUSH_ENABLED,true))return@launch;val cached=preferences.getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}
+    fun setPushEnabled(enabled:Boolean)=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);preferences.edit().putBoolean(PUSH_ENABLED,enabled).apply();mutable.update{it.copy(pushEnabled=enabled)};val token=preferences.getString(PlainstrideMessagingService.TOKEN,null)?:return@launch;if(enabled)safety.registerToken(token,context.packageName,locale)else safety.unregisterToken(token)}
+    private companion object{const val PUSH_ENABLED="push_enabled"}
 }
