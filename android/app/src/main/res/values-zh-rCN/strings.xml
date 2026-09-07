@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Plainstride</string>
+    <string name="tab_social">社群</string>
+    <string name="tab_today">今天</string>
+    <string name="tab_me">我的</string>
+    <string name="social_headline">一起跑，更有动力</string>
+    <string name="social_body">你可以在这里查看好友、跑步圈和大家分享的活动。</string>
+    <string name="today_headline">从今天出发</string>
+    <string name="today_body">你可以在这里查看今日训练、准备状态和跑步伙伴的建议。</string>
+    <string name="me_headline">你的跑步足迹</string>
+    <string name="me_body">你可以在这里查看进展、活动、装备和设置。</string>
+</resources>

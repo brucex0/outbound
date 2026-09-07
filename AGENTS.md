@@ -50,6 +50,7 @@ Treat documents like code:
 ## Repo Layout
 
 - `ios/Outbound/Outbound.xcodeproj`: main Xcode project.
+- `android/`: native Kotlin/Compose phone and Wear OS apps; see `docs/android-port.md` and `docs/android-build.md`.
 - `ios/Outbound/Outbound`: iOS app source. Xcode uses file-system-synchronized groups, so new Swift files under this folder are picked up automatically.
 - `ios/Outbound/SupportFiles`: app plist and entitlements.
 - `Tests/OutboundSessionAnalysisTests`: Swift Package tests for the on-device session-analysis module.

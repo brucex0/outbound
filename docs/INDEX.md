@@ -26,6 +26,7 @@ Primary flow:
 | --- | --- | --- |
 | App flow, Swift files, recording, camera, persistence, guide analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI guide shape |
 | Android public-release port, parity contract, platform substitutions, phases, and release gates | `docs/android-port.md` | Full-scope Kotlin/Compose architecture, cross-platform contract strategy, phase deliverables, verification gates, and release definition of done |
+| Android toolchain, variants, build-only checks, lint, and local SDK setup | `docs/android-build.md` | Copy-pasteable phone/Wear build commands, environment requirements, and release-safe variant rules |
 | App themes, palette contract, theme picker, discovery tip | `docs/themes.md` | Nine theme definitions, adaptive colors, reactive application rules, and extension checklist |
 | App localization, translations, formatting, backend locale, speech | `docs/localization.md` | English, Simplified Chinese, and Spanish localization architecture, rollout, and acceptance criteria |
 | Future mainland China launch, login availability, backend reachability, Android push channels | `docs/mainland-china-readiness.md` | Deferred-market decision, authentication findings, infrastructure risks, notification-provider strategy, and revisit sequence |

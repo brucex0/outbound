@@ -1,0 +1,15 @@
+plugins {
+    alias(libs.plugins.android.library)
+}
+
+android {
+    namespace = "run.plainstride.core.database"
+    compileSdk = 36
+    compileSdkMinor = 1
+    defaultConfig { minSdk = 26 }
+}
+
+dependencies {
+    api(project(":core:model"))
+    api(libs.androidx.datastore.preferences)
+}
