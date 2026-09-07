@@ -80,8 +80,10 @@ class DefaultSettingsRepository @Inject constructor(
         if (remotePreferences is ApiResult.Success) {
             syncMutex.withLock {
                 val localDirty = dataStore.data.first()[DirtyKey] == true
-                remotePreferences.value.preferences?.takeUnless { localDirty }?.let {
-                    serverSnapshot = it
+                remotePreferences.value.preferences?.let { remote ->
+                    serverSnapshot = remote
+                    remote.takeUnless { localDirty }
+                }?.let {
                     applyLocal(it)
                 } ?: uploadCurrentLocked(token)
             }
