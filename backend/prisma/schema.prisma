@@ -10,21 +10,22 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  firebaseUid     String?  @unique
-  normalizedEmail String?
-  normalizedPhone String?
-  username        String   @unique
-  displayName     String
-  avatarUrl       String?
-  bio             String?
-  contactEmail    String?
-  contactPhone    String?
-  verified        Boolean  @default(false)
+  id                   String    @id @default(cuid())
+  firebaseUid          String?   @unique
+  normalizedEmail      String?
+  normalizedPhone      String?
+  username             String    @unique
+  usernameChangedAt    DateTime?
+  displayName          String
+  avatarUrl            String?
+  bio                  String?
+  contactEmail         String?
+  contactPhone         String?
+  verified             Boolean   @default(false)
   termsAcceptedVersion Int?
   termsAcceptedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   activities                  Activity[]
   authIdentities              AuthIdentity[]
@@ -88,6 +89,7 @@ model User {
   pushDevices                 PushDevice[]
   activityEventParticipants   ActivityEventParticipant[]
   routesOwned                 Route[]
+  usernameReservations        UsernameReservation[]
   routeBookmarks              RouteBookmark[]
   liveCoachSessions           LiveCoachSession[]
   featureEntitlements         FeatureEntitlement[]
@@ -98,6 +100,17 @@ model User {
   @@index([normalizedPhone])
   @@index([displayName(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_displayName_trgm_idx")
   @@index([username(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_username_trgm_idx")
+}
+
+model UsernameReservation {
+  username  String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model AndroidWaitlistEntry {
@@ -114,7 +127,7 @@ model UserPreferences {
   userId String @id
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  schemaVersion Int  @default(1)
+  schemaVersion Int      @default(1)
   data          Json
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -136,9 +149,9 @@ model AuthIdentity {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([provider, providerSubject])
   @@index([userId])
   @@index([normalizedEmail])
-  @@unique([provider, providerSubject])
 }
 
 model AuthSession {
@@ -207,40 +220,40 @@ model GuideProfile {
 }
 
 model LiveCoachSession {
-  id                  String    @id @default(cuid())
-  userId              String
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientSessionId     String
-  workoutId           String?
-  status              String
-  locale              String
-  market              String
-  coachPersonaId      String
-  personaVersion      Int
-  voiceProfileId      String
-  coachingContract    String
-  effectiveAudioMode  String
-  configVersion       String
-  accessReason        String
-  providerKey         String?
-  providerEndpointKey String?
-  providerModel       String?
-  providerVoice       String?
-  routePolicyVersion  String?
-  compiledContext     Json
-  contextHash         String
-  contextVersion      Int
-  guidancePlan        Json
-  guidancePlanHash    String
-  plannerStatus       String
-  plannerModel        String?
-  plannerPromptVersion  String
-  dynamicCueLimit     Int
-  dynamicCueCount     Int       @default(0)
-  expiresAt           DateTime
-  endedAt             DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                   String         @id @default(cuid())
+  userId               String
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientSessionId      String
+  workoutId            String?
+  status               String
+  locale               String
+  market               String
+  coachPersonaId       String
+  personaVersion       Int
+  voiceProfileId       String
+  coachingContract     String
+  effectiveAudioMode   String
+  configVersion        String
+  accessReason         String
+  providerKey          String?
+  providerEndpointKey  String?
+  providerModel        String?
+  providerVoice        String?
+  routePolicyVersion   String?
+  compiledContext      Json
+  contextHash          String
+  contextVersion       Int
+  guidancePlan         Json
+  guidancePlanHash     String
+  plannerStatus        String
+  plannerModel         String?
+  plannerPromptVersion String
+  dynamicCueLimit      Int
+  dynamicCueCount      Int            @default(0)
+  expiresAt            DateTime
+  endedAt              DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
   cues                 LiveCoachCue[]
 
   @@unique([userId, clientSessionId])
@@ -276,7 +289,7 @@ model FeatureEntitlement {
   status              String
   sourceReferenceHash String?   @unique
   startsAt            DateTime
-  expiresAt            DateTime?
+  expiresAt           DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -308,15 +321,15 @@ model Activity {
 
   // Extensible canonical endurance-sport value. Current values are
   // running | cycling | hiking | walking | swimming.
-  type         String
-  title        String?
-  startedAt    DateTime
-  endedAt      DateTime?
-  durationSecs Int?
-  distanceM    Float?
-  elevationM   Float?
-  avgPace      Float? // secs/km
-  avgHeartRate Int?
+  type               String
+  title              String?
+  startedAt          DateTime
+  endedAt            DateTime?
+  durationSecs       Int?
+  distanceM          Float?
+  elevationM         Float?
+  avgPace            Float? // secs/km
+  avgHeartRate       Int?
   energyKilocalories Int?
 
   route                      Json? // GeoJSON Feature with LineString geometry
@@ -333,7 +346,7 @@ model Activity {
   circleContributions        CircleContribution[]
   publishedRoute             Route?
   followedRouteId            String?
-  followedRoute              Route?                   @relation("FollowedRouteActivities", fields: [followedRouteId], references: [id], onDelete: SetNull)
+  followedRoute              Route?                    @relation("FollowedRouteActivities", fields: [followedRouteId], references: [id], onDelete: SetNull)
   routeCompletion            RouteCompletion?
 
   // AI guide analysis generated after activity
@@ -377,7 +390,7 @@ model Route {
   activityType     String
   visibility       String   @default("public") // public | unlisted | private
   status           String   @default("active") // active | archived
-  geometry         Json     // share-safe GeoJSON LineString; never contains timestamps
+  geometry         Json // share-safe GeoJSON LineString; never contains timestamps
   distanceM        Float
   elevationGainM   Float?
   routeShape       String   @default("point_to_point")
@@ -728,25 +741,25 @@ model WorkoutStep {
 }
 
 model WorkoutCompletion {
-  id                String         @id @default(cuid())
-  plannedWorkoutId  String
-  plannedWorkout    PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId        String?
-  activity          Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  completedAt       DateTime       @default(now())
-  durationSeconds   Int?
-  distanceMeters    Float?
-  targetCalories    Int?
+  id                 String         @id @default(cuid())
+  plannedWorkoutId   String
+  plannedWorkout     PlannedWorkout @relation(fields: [plannedWorkoutId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId         String?
+  activity           Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  completedAt        DateTime       @default(now())
+  durationSeconds    Int?
+  distanceMeters     Float?
+  targetCalories     Int?
   energyKilocalories Int?
-  avgPace           Float?
-  avgHeartRate      Int?
-  avgPower          Float?
-  perceivedEffort   Int?
-  completionQuality String         @default("completed")
-  notes             String?
-  createdAt         DateTime       @default(now())
+  avgPace            Float?
+  avgHeartRate       Int?
+  avgPower           Float?
+  perceivedEffort    Int?
+  completionQuality  String         @default("completed")
+  notes              String?
+  createdAt          DateTime       @default(now())
 
   @@index([userId, completedAt])
   @@index([plannedWorkoutId])
@@ -1182,45 +1195,45 @@ model Connection {
 }
 
 model Circle {
-  id                String         @id @default(cuid())
-  ownerId           String
-  owner             User           @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  name              String
-  lifecycle         String         @default("awaiting_members") // awaiting_members | active | archived
-  memberLimit       Int            @default(6) // snapshotted from backend Circle policy when created
-  resetWeekday      Int            @default(1) // ISO weekday, 1 = Monday
-  timeZone          String
-  defaultFocusMode  String         @default("personal_targets") // personal_targets | shared_target | none
-  defaultFocusConfigured Boolean   @default(false)
-  defaultTarget     Int?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  members           CircleMember[]
-  invitations       CircleInvitation[]
-  weeks             CircleWeek[]
-  cheers            CircleCheer[]
-  primaryUsers      User[]         @relation("PrimaryCircle")
-  activityEvents    ActivityEvent[]
+  id                     String             @id @default(cuid())
+  ownerId                String
+  owner                  User               @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name                   String
+  lifecycle              String             @default("awaiting_members") // awaiting_members | active | archived
+  memberLimit            Int                @default(6) // snapshotted from backend Circle policy when created
+  resetWeekday           Int                @default(1) // ISO weekday, 1 = Monday
+  timeZone               String
+  defaultFocusMode       String             @default("personal_targets") // personal_targets | shared_target | none
+  defaultFocusConfigured Boolean            @default(false)
+  defaultTarget          Int?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  members                CircleMember[]
+  invitations            CircleInvitation[]
+  weeks                  CircleWeek[]
+  cheers                 CircleCheer[]
+  primaryUsers           User[]             @relation("PrimaryCircle")
+  activityEvents         ActivityEvent[]
 
   @@index([ownerId, lifecycle])
 }
 
 model CircleMember {
-  id                String              @id @default(cuid())
-  circleId          String
-  circle            Circle              @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role              String              @default("member") // owner | member
-  status            String              @default("active") // active | removed | left
-  notificationMuted Boolean             @default(false)
+  id                  String               @id @default(cuid())
+  circleId            String
+  circle              Circle               @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                String               @default("member") // owner | member
+  status              String               @default("active") // active | removed | left
+  notificationMuted   Boolean              @default(false)
   displayNameSnapshot String
-  avatarUrlSnapshot String?
-  joinedAt          DateTime            @default(now())
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  commitments       CircleCommitment[]
-  contributions     CircleContribution[]
+  avatarUrlSnapshot   String?
+  joinedAt            DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  commitments         CircleCommitment[]
+  contributions       CircleContribution[]
 
   @@unique([circleId, userId])
   @@index([userId, status])
@@ -1228,21 +1241,21 @@ model CircleMember {
 }
 
 model CircleInvitation {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   circleId       String
-  circle         Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  circle         Circle    @relation(fields: [circleId], references: [id], onDelete: Cascade)
   senderId       String
-  sender         User     @relation("CircleInvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sender         User      @relation("CircleInvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId    String
-  recipient      User     @relation("CircleInvitationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  status         String   @default("pending") // pending | accepted | declined | cancelled | expired
-  idempotencyKey String?  @unique
+  recipient      User      @relation("CircleInvitationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status         String    @default("pending") // pending | accepted | declined | cancelled | expired
+  idempotencyKey String?   @unique
   expiresAt      DateTime?
   acceptedAt     DateTime?
   declinedAt     DateTime?
   cancelledAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([circleId, recipientId])
   @@index([recipientId, status])
@@ -1250,24 +1263,24 @@ model CircleInvitation {
 }
 
 model CircleWeek {
-  id               String              @id @default(cuid())
-  circleId         String
-  circle           Circle              @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  startsAt         DateTime
-  endsAt           DateTime
-  timeZone         String
-  resetWeekday     Int
-  focusMode        String
-  focusConfigured  Boolean             @default(false)
-  sharedTarget     Int?
-  state            String              @default("open") // open | completed | closed
-  completedAt      DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  commitments      CircleCommitment[]
-  contributions    CircleContribution[]
-  cheers           CircleCheer[]
-  presentations    CircleWeekPresentation[]
+  id              String                   @id @default(cuid())
+  circleId        String
+  circle          Circle                   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  startsAt        DateTime
+  endsAt          DateTime
+  timeZone        String
+  resetWeekday    Int
+  focusMode       String
+  focusConfigured Boolean                  @default(false)
+  sharedTarget    Int?
+  state           String                   @default("open") // open | completed | closed
+  completedAt     DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  commitments     CircleCommitment[]
+  contributions   CircleContribution[]
+  cheers          CircleCheer[]
+  presentations   CircleWeekPresentation[]
 
   @@unique([circleId, startsAt])
   @@index([circleId, startsAt, endsAt])
@@ -1289,14 +1302,14 @@ model CircleCommitment {
 }
 
 model CircleContribution {
-  id         String       @id @default(cuid())
-  weekId     String
-  week       CircleWeek   @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  memberId   String
-  member     CircleMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  activityId String
-  activity   Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  contributedAt DateTime   @default(now())
+  id            String       @id @default(cuid())
+  weekId        String
+  week          CircleWeek   @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  memberId      String
+  member        CircleMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  activityId    String
+  activity      Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  contributedAt DateTime     @default(now())
 
   @@unique([weekId, activityId])
   @@index([memberId, contributedAt])
@@ -1304,30 +1317,30 @@ model CircleContribution {
 }
 
 model CircleWeekPresentation {
-  id         String     @id @default(cuid())
-  weekId     String
-  week       CircleWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  weekId      String
+  week        CircleWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   presentedAt DateTime?
-  createdAt  DateTime   @default(now())
+  createdAt   DateTime   @default(now())
 
   @@unique([weekId, userId])
   @@index([userId, presentedAt])
 }
 
 model CircleCheer {
-  id           String       @id @default(cuid())
-  circleId     String
-  circle       Circle       @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  weekId       String
-  week         CircleWeek   @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  senderId     String
-  sender       User         @relation("CircleCheerSender", fields: [senderId], references: [id], onDelete: Cascade)
-  recipientId  String
-  recipient    User         @relation("CircleCheerRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  presetType   String
-  createdAt    DateTime     @default(now())
+  id          String     @id @default(cuid())
+  circleId    String
+  circle      Circle     @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  weekId      String
+  week        CircleWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User       @relation("CircleCheerSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User       @relation("CircleCheerRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  presetType  String
+  createdAt   DateTime   @default(now())
 
   @@unique([weekId, senderId, recipientId, presetType])
   @@index([recipientId, createdAt])
@@ -1541,17 +1554,17 @@ model SocialNotification {
 }
 
 model PushDevice {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  platform  String
-  appBundle String
-  locale    String?
-  enabled   Boolean  @default(true)
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  appBundle  String
+  locale     String?
+  enabled    Boolean  @default(true)
   lastSeenAt DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId, enabled])
 }

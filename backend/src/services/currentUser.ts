@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 import type { AppEnv, AuthContext } from "../types/hono.js";
+import { isReservedUsername } from "./usernames.js";
 
 type RegistrationProfile = { username?: string; displayName?: string };
 
@@ -57,10 +58,14 @@ function usernameCandidates(explicit: string | undefined, name: string | null, e
 }
 
 async function uniqueUsername(tx: Prisma.TransactionClient, base: string) {
-  if (!(await tx.user.findUnique({ where: { username: base } }))) return base;
+  if (!isReservedUsername(base)
+      && !(await tx.user.findUnique({ where: { username: base } }))
+      && !(await tx.usernameReservation.findUnique({ where: { username: base } }))) return base;
   for (let suffix = 2; suffix < 10_000; suffix += 1) {
     const candidate = `${base.slice(0, 30 - String(suffix).length - 1)}-${suffix}`;
-    if (!(await tx.user.findUnique({ where: { username: candidate } }))) return candidate;
+    if (!isReservedUsername(candidate)
+        && !(await tx.user.findUnique({ where: { username: candidate } }))
+        && !(await tx.usernameReservation.findUnique({ where: { username: candidate } }))) return candidate;
   }
   return `runner-${crypto.randomUUID().slice(0, 8)}`;
 }

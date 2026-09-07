@@ -16,6 +16,7 @@ import { verifyAppleIdentityToken, revokeAppleAuthorization } from "../services/
 import { issueSession, rotateSession, revokeRefreshToken, revokeSession } from "../services/authSessions.js";
 import { Prisma } from "@prisma/client";
 import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
+import { changeUsername, UsernameChangeError } from "../services/usernames.js";
 
 const router = new Hono<AppEnv>();
 
@@ -279,16 +280,35 @@ router.patch(
     const user = await getAuthenticatedAppUser(c);
     if (!user) return c.json({ error: "Authentication required." }, 401);
     const body = c.req.valid("json");
-    return c.json(await getPrismaClient().user.update({
-      where: { id: user.id },
-      data: {
-        ...(body.username ? { username: body.username.toLowerCase() } : {}),
-        displayName: body.displayName,
-        bio: body.bio || null,
-        contactEmail: body.contactEmail || null,
-        contactPhone: body.contactPhone || null,
-      },
-    }));
+    try {
+      const updated = await getPrismaClient().$transaction(async (tx) => {
+        const usernameChange = body.username ? await changeUsername(tx, user, body.username) : null;
+        return tx.user.update({
+          where: { id: user.id },
+          data: {
+            ...(usernameChange ?? {}),
+            displayName: body.displayName,
+            bio: body.bio || null,
+            contactEmail: body.contactEmail || null,
+            contactPhone: body.contactPhone || null,
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return c.json(updated);
+    } catch (error) {
+      if (error instanceof UsernameChangeError) {
+        const message = error.code === "username_taken"
+          ? "That username is already taken."
+          : error.code === "username_reserved"
+            ? "That username is reserved."
+            : "You can change your username once every 30 days.";
+        return c.json({ error: message, code: error.code, retryAt: error.retryAt?.toISOString() }, 409);
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return c.json({ error: "That username is already taken.", code: "username_taken" }, 409);
+      }
+      throw error;
+    }
   }
 );
 
