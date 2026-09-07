@@ -95,4 +95,9 @@ struct DebugPersonaSessionRequest: Encodable {
 }
 struct TermsAcceptanceRequest: Encodable { let termsVersion: Int }
 struct TermsAcceptanceResponse: Decodable { let termsVersion: Int; let acceptedAt: Date }
+struct IdentityLinkIntentResponse: Decodable, Sendable {
+    let code: String
+    let url: URL
+    let expiresAt: Date
+}
 struct DeleteAccountRequest: Encodable { let identityToken: String; let authorizationCode: String; let rawNonce: String }

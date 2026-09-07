@@ -147,6 +147,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case onboardingTrainingProfileViewed = "onboarding_training_profile_viewed"
     case onboardingTrainingProfileCompleted = "onboarding_training_profile_completed"
     case authenticationSessionRecovered = "authentication_session_recovered"
+    case accountTransferIntentCreated = "account_transfer_intent_created"
+    case accountTransferShared = "account_transfer_shared"
     case legalDocumentOpened = "legal_document_opened"
     case termsAcceptancePresented = "terms_acceptance_presented"
     case termsAcceptanceCompleted = "terms_acceptance_completed"
@@ -377,6 +379,8 @@ enum ProductAnalyticsSchema {
         .onboardingTrainingProfileViewed: [],
         .onboardingTrainingProfileCompleted: [.result, .sourceType],
         .authenticationSessionRecovered: [.result],
+        .accountTransferIntentCreated: [.result, .errorCategory],
+        .accountTransferShared: [.sourceType],
         .legalDocumentOpened: [.documentType, .entrySource],
         .termsAcceptancePresented: [.termsVersion],
         .termsAcceptanceCompleted: [.termsVersion, .result],

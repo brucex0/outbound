@@ -707,6 +707,10 @@ final class APIClient {
         try await unauthenticatedPost("/auth/apple", body: request)
     }
 
+    func createIdentityLinkIntent() async throws -> IdentityLinkIntentResponse {
+        try await post("/auth/link-intents", body: EmptyBody())
+    }
+
     func createDebugPersonaSession(_ request: DebugPersonaSessionRequest) async throws -> AuthSession {
         try await unauthenticatedPost("/auth/debug/persona", body: request)
     }

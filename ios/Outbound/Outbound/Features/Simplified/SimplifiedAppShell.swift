@@ -3171,6 +3171,11 @@ private struct SimplifiedSettingsView: View {
                 Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                     confirmsSignOut = true
                 }
+                NavigationLink {
+                    AccountTransferView()
+                } label: {
+                    Label(String(localized: "account_transfer.settings_title", table: "AccountTransfer"), systemImage: "iphone.and.arrow.forward")
+                }
             }
             Section(String(localized: "workout.reminders.section", defaultValue: "Planned workouts")) {
                 NavigationLink {
