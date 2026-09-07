@@ -32,4 +32,11 @@
     <string name="auth_linked">Cuenta de Google vinculada.</string>
     <string name="auth_signed_out">Sesión cerrada.</string>
     <string name="auth_deleted">Cuenta eliminada.</string>
+    <string name="transfer_existing_account">Usar mi cuenta actual del iPhone</string>
+    <string name="transfer_explanation">Pega el código de un solo uso de Plainstride en tu iPhone y elige la misma cuenta de Google que quieras usar aquí.</string>
+    <string name="transfer_code_label">Código de transferencia</string>
+    <string name="transfer_connect">Conectar cuenta actual</string>
+    <string name="transfer_connecting">Conectando…</string>
+    <string name="transfer_invalid">El código de transferencia no es válido o ha caducado. Crea otro en tu iPhone e inténtalo de nuevo.</string>
+    <string name="transfer_complete">Tu cuenta actual de Plainstride está conectada.</string>
 </resources>

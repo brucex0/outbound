@@ -17,12 +17,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -37,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import run.plainstride.app.auth.AuthMessage
+import run.plainstride.app.auth.AuthOperation
 import run.plainstride.app.auth.AuthUiState
 import run.plainstride.app.auth.AuthViewModel
 import run.plainstride.core.auth.SessionState
@@ -53,7 +57,7 @@ private enum class TopLevelDestination(
 }
 
 @Composable
-fun PlainstrideApp() {
+fun PlainstrideApp(transferCode: String? = null, onTransferCodeConsumed: () -> Unit = {}) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -63,7 +67,7 @@ fun PlainstrideApp() {
     }
     when (authState.session) {
         SessionState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        SessionState.SignedOut -> SignInScreen(authState, authViewModel, snackbar)
+        SessionState.SignedOut -> SignInScreen(authState, authViewModel, snackbar, transferCode, onTransferCodeConsumed)
         is SessionState.SignedIn, is SessionState.Refreshing -> SignedInApp(authState, authViewModel, snackbar)
     }
 }
@@ -156,7 +160,21 @@ private fun FoundationScreen(destination: TopLevelDestination, authState: AuthUi
 }
 
 @Composable
-private fun SignInScreen(state: AuthUiState, viewModel: AuthViewModel, snackbar: SnackbarHostState) {
+private fun SignInScreen(
+    state: AuthUiState,
+    viewModel: AuthViewModel,
+    snackbar: SnackbarHostState,
+    initialTransferCode: String?,
+    onTransferCodeConsumed: () -> Unit,
+) {
+    var showsTransfer by remember { mutableStateOf(initialTransferCode != null) }
+    var transferCode by remember { mutableStateOf(initialTransferCode.orEmpty()) }
+    LaunchedEffect(initialTransferCode) {
+        if (initialTransferCode != null) {
+            showsTransfer = true
+            transferCode = initialTransferCode
+        }
+    }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(32.dp),
@@ -168,6 +186,35 @@ private fun SignInScreen(state: AuthUiState, viewModel: AuthViewModel, snackbar:
             Button(onClick = viewModel::signIn, enabled = state.operation == null) {
                 Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in))
             }
+            TextButton(onClick = { showsTransfer = !showsTransfer }, enabled = state.operation == null) {
+                Text(stringResource(R.string.transfer_existing_account))
+            }
+            if (showsTransfer) {
+                Text(
+                    stringResource(R.string.transfer_explanation),
+                    modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                OutlinedTextField(
+                    value = transferCode,
+                    onValueChange = { transferCode = it.take(32) },
+                    label = { Text(stringResource(R.string.transfer_code_label)) },
+                    singleLine = true,
+                    enabled = state.operation == null,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Button(
+                    onClick = {
+                        viewModel.redeemTransfer(transferCode)
+                        onTransferCodeConsumed()
+                    },
+                    enabled = state.operation == null && transferCode.isNotBlank(),
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text(stringResource(if (state.operation == AuthOperation.Redeem) R.string.transfer_connecting else R.string.transfer_connect))
+                }
+            }
             Text(stringResource(R.string.auth_terms_notice), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 16.dp), textAlign = TextAlign.Center)
         }
     }
@@ -178,11 +225,13 @@ private fun authMessageResource(message: AuthMessage) = when (message) {
     AuthMessage.Cancelled -> R.string.auth_cancelled
     AuthMessage.Configuration -> R.string.auth_configuration_error
     AuthMessage.InvalidCredential -> R.string.auth_invalid_credential
+    AuthMessage.InvalidTransfer -> R.string.transfer_invalid
     AuthMessage.Conflict -> R.string.auth_identity_conflict
     AuthMessage.Offline -> R.string.auth_offline
     AuthMessage.Unavailable -> R.string.auth_unavailable
     AuthMessage.Generic -> R.string.auth_generic_error
     AuthMessage.Linked -> R.string.auth_linked
+    AuthMessage.Transferred -> R.string.transfer_complete
     AuthMessage.SignedOut -> R.string.auth_signed_out
     AuthMessage.Deleted -> R.string.auth_deleted
 }

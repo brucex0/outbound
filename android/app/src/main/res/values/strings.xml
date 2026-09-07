@@ -32,4 +32,11 @@
     <string name="auth_linked">Google account linked.</string>
     <string name="auth_signed_out">Signed out.</string>
     <string name="auth_deleted">Account deleted.</string>
+    <string name="transfer_existing_account">Use my existing iPhone account</string>
+    <string name="transfer_explanation">Paste the one-time code from Plainstride on your iPhone, then choose the same Google account you want to use here.</string>
+    <string name="transfer_code_label">Transfer code</string>
+    <string name="transfer_connect">Connect existing account</string>
+    <string name="transfer_connecting">Connecting…</string>
+    <string name="transfer_invalid">That transfer code is invalid or expired. Create a new code on your iPhone and try again.</string>
+    <string name="transfer_complete">Your existing Plainstride account is connected.</string>
 </resources>

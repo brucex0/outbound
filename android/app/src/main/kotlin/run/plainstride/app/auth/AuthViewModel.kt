@@ -29,8 +29,8 @@ data class AuthUiState(
     val confirmDeletion: Boolean = false,
 )
 
-enum class AuthOperation { SignIn, SignOut, Link, Delete }
-enum class AuthMessage { Cancelled, Configuration, InvalidCredential, Conflict, Offline, Unavailable, Generic, Linked, SignedOut, Deleted }
+enum class AuthOperation { SignIn, SignOut, Link, Redeem, Delete }
+enum class AuthMessage { Cancelled, Configuration, InvalidCredential, InvalidTransfer, Conflict, Offline, Unavailable, Generic, Linked, Transferred, SignedOut, Deleted }
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -58,6 +58,17 @@ class AuthViewModel @Inject constructor(
     fun linkGoogle() = perform(AuthOperation.Link, "auth_link_google", AuthMessage.Linked) {
         google.identityToken().fold(
             onSuccess = { repository.linkGoogle(it) },
+            onFailure = { credentialFailure(it) },
+        )
+    }
+
+    fun redeemTransfer(code: String) = perform(AuthOperation.Redeem, "account_transfer_redeemed", AuthMessage.Transferred) {
+        val normalized = code.trim().uppercase().replace(Regex("[^2-9A-Z]"), "")
+        if (normalized.length != 16) return@perform ApiResult.Failure(
+            run.plainstride.core.network.ApiFailure(ApiErrorCode.InvalidRequest, retryable = false)
+        )
+        google.identityToken().fold(
+            onSuccess = { repository.redeemGoogleLink(it, normalized, CURRENT_TERMS_VERSION, Build.MODEL.take(100)) },
             onFailure = { credentialFailure(it) },
         )
     }
@@ -105,7 +116,7 @@ class AuthViewModel @Inject constructor(
     private fun ApiResult.Failure.toMessage() = when (error.code) {
         ApiErrorCode.NetworkUnavailable -> AuthMessage.Offline
         ApiErrorCode.ServerUnavailable, ApiErrorCode.RateLimited -> AuthMessage.Unavailable
-        ApiErrorCode.Unauthenticated -> AuthMessage.InvalidCredential
+        ApiErrorCode.Unauthenticated -> if (operation.value == AuthOperation.Redeem) AuthMessage.InvalidTransfer else AuthMessage.InvalidCredential
         ApiErrorCode.Conflict -> AuthMessage.Conflict
         ApiErrorCode.InvalidRequest -> AuthMessage.Configuration
         ApiErrorCode.Cancelled -> AuthMessage.Cancelled

@@ -21,6 +21,15 @@ data class GoogleSignInRequest(
     val termsVersion: Int,
 )
 
+@Serializable
+data class GoogleLinkRedemptionRequest(
+    val identityToken: String,
+    val code: String,
+    val platform: String = "android",
+    val deviceLabel: String? = null,
+    val termsVersion: Int,
+)
+
 @Serializable data class RefreshRequest(val refreshToken: String)
 @Serializable data class LogoutRequest(val refreshToken: String? = null)
 @Serializable data class GoogleCredentialRequest(val identityToken: String)
@@ -65,6 +74,9 @@ interface AuthApiService {
         @Header("Authorization") authorization: String,
         @Body body: GoogleCredentialRequest,
     ): Response<LinkIdentityResponse>
+    @POST("v1/auth/link-intents/redeem/google") suspend fun redeemGoogleLink(
+        @Body body: GoogleLinkRedemptionRequest,
+    ): Response<SessionResponseDto>
     @GET("v1/auth/me/identities") suspend fun identities(
         @Header("Authorization") authorization: String,
     ): Response<LinkedIdentitiesResponse>

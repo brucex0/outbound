@@ -8,6 +8,7 @@ import run.plainstride.core.network.AuthApiService
 import run.plainstride.core.network.GoogleCredentialRequest
 import run.plainstride.core.network.GoogleDeletionRequest
 import run.plainstride.core.network.GoogleSignInRequest
+import run.plainstride.core.network.GoogleLinkRedemptionRequest
 import run.plainstride.core.network.LogoutRequest
 import run.plainstride.core.network.RefreshRequest
 import run.plainstride.core.network.SessionResponseDto
@@ -17,6 +18,7 @@ import run.plainstride.core.network.map
 interface AuthRepository {
     suspend fun signIn(identityToken: String, termsVersion: Int, deviceLabel: String?): ApiResult<Unit>
     suspend fun linkGoogle(identityToken: String): ApiResult<Unit>
+    suspend fun redeemGoogleLink(identityToken: String, code: String, termsVersion: Int, deviceLabel: String?): ApiResult<Unit>
     suspend fun deleteAccount(identityToken: String): ApiResult<Unit>
 }
 
@@ -31,6 +33,10 @@ class DefaultAuthRepository(
     override suspend fun linkGoogle(identityToken: String): ApiResult<Unit> = authenticated { token ->
         apiCall { api.linkGoogle("Bearer $token", GoogleCredentialRequest(identityToken)) }.map { Unit }
     }
+
+    override suspend fun redeemGoogleLink(identityToken: String, code: String, termsVersion: Int, deviceLabel: String?): ApiResult<Unit> =
+        apiCall { api.redeemGoogleLink(GoogleLinkRedemptionRequest(identityToken, code, deviceLabel = deviceLabel, termsVersion = termsVersion)) }
+            .installSession()
 
     override suspend fun deleteAccount(identityToken: String): ApiResult<Unit> = authenticated { token ->
         when (val result = apiCall { api.deleteAccount("Bearer $token", GoogleDeletionRequest(identityToken = identityToken)) }) {
