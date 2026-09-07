@@ -1,7 +1,6 @@
 package run.plainstride.core.analytics
 
 enum class AnalyticsProperty(val wireName: String) {
-    Platform("platform"),
     Source("source"),
     Result("result"),
     Trigger("trigger"),
@@ -40,17 +39,19 @@ class ProductAnalytics(
         val safeProperties = buildMap {
             put("platform", "android")
             event.properties.forEach { (key, rawValue) ->
-                sanitize(rawValue)?.let { put(key.wireName, it) }
+                sanitize(key, rawValue)?.let { put(key.wireName, it) }
             }
         }
         sink.record(SanitizedAnalyticsEvent(safeName, safeProperties))
     }
 
-    private fun sanitize(value: Any): Any? = when (value) {
+    private fun sanitize(property: AnalyticsProperty, value: Any): Any? = when (value) {
         is Boolean -> value
         is Int -> value.coerceIn(-1_000, 1_000)
         is Long -> value.coerceIn(-1_000, 1_000)
-        is String -> value.takeIf(SAFE_VALUE::matches)?.take(MAX_VALUE_LENGTH)
+        is String -> value.take(MAX_VALUE_LENGTH).takeIf {
+            if (property == AnalyticsProperty.Locale) LOCALE_VALUE.matches(it) else SAFE_VALUE.matches(it)
+        }
         else -> null
     }
 
@@ -58,5 +59,6 @@ class ProductAnalytics(
         const val MAX_VALUE_LENGTH = 40
         val EVENT_NAME = Regex("[a-z][a-z0-9_]{1,39}")
         val SAFE_VALUE = Regex("[a-z0-9_\\-]{1,40}")
+        val LOCALE_VALUE = Regex("[a-z]{2,3}(?:-[A-Za-z]{2,8}){0,2}")
     }
 }

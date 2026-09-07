@@ -9,4 +9,8 @@ android {
     defaultConfig { minSdk = 26 }
 }
 
-dependencies { api(project(":core:model")) }
+dependencies {
+    api(project(":core:model"))
+    api(project(":core:network"))
+    implementation(libs.kotlinx.coroutines.core)
+}

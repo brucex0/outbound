@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -17,6 +19,7 @@ android {
         versionName = "1.0"
         buildConfigField("String", "API_BASE_URL", "\"https://api.outbound.run\"")
         buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "false")
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
     }
 
     buildTypes {
@@ -25,6 +28,7 @@ android {
             versionNameSuffix = "-debug"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8787\"")
             buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "true")
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {
             isMinifyEnabled = true
@@ -59,6 +63,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
