@@ -16,6 +16,12 @@ interface DurableStateStore {
     suspend fun remove(key: String)
 }
 
+/**
+ * Compatibility adapter for the Phase 1 sample state only.
+ *
+ * Domain caches and journals belong in [PlainstrideDatabase]; new features must not add keys here.
+ */
+@Deprecated("Use PlainstrideDatabase for domain state and typed preferences for settings")
 class DataStoreDurableStateStore(
     private val dataStore: DataStore<Preferences>,
 ) : DurableStateStore {
