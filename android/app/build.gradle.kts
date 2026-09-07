@@ -40,7 +40,7 @@ android {
     val releaseStorePassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_ALIAS")
     val releaseKeyPassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_PASSWORD")
-    val releaseSigningReady = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it.isPresent }
+    val releaseSigningReady = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it.isPresent && it.get().isNotBlank() } && file(releaseStoreFile.orNull.orEmpty()).isFile
     signingConfigs {
         if (releaseSigningReady) create("release") {
             storeFile = file(releaseStoreFile.get())
@@ -86,12 +86,14 @@ android {
 tasks.register("verifyPlayReleaseConfiguration") {
     group = "verification"
     doLast {
-        check(providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").isPresent) { "PLAINSTRIDE_VERSION_CODE is required for Play artifacts." }
-        check(providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").isPresent) { "PLAINSTRIDE_VERSION_NAME is required for Play artifacts." }
-        check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { providers.environmentVariable(it).isPresent }) { "All Plainstride Android upload-signing variables are required for Play artifacts." }
-        check(providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").isPresent) { "PLAINSTRIDE_MAPS_API_KEY is required for Play artifacts." }
-        check(providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").isPresent) { "PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID is required for Play artifacts." }
-        check(listOf("PLAINSTRIDE_FIREBASE_APPLICATION_ID", "PLAINSTRIDE_FIREBASE_API_KEY", "PLAINSTRIDE_FIREBASE_PROJECT_ID").all { providers.gradleProperty(it).isPresent }) { "Firebase application ID, API key, and project ID are required for Play artifacts." }
+        val versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orNull?.toIntOrNull()
+        check(versionCode != null && versionCode > 0) { "A positive PLAINSTRIDE_VERSION_CODE is required for Play artifacts." }
+        check(!providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orNull.isNullOrBlank()) { "PLAINSTRIDE_VERSION_NAME is required for Play artifacts." }
+        check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { !providers.environmentVariable(it).orNull.isNullOrBlank() }) { "All Plainstride Android upload-signing variables are required for Play artifacts." }
+        check(file(providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PATH").get()).isFile) { "PLAINSTRIDE_ANDROID_KEYSTORE_PATH must point to a readable keystore." }
+        check(!providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orNull.isNullOrBlank()) { "PLAINSTRIDE_MAPS_API_KEY is required for Play artifacts." }
+        check(!providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").orNull.isNullOrBlank()) { "PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID is required for Play artifacts." }
+        check(listOf("PLAINSTRIDE_FIREBASE_APPLICATION_ID", "PLAINSTRIDE_FIREBASE_API_KEY", "PLAINSTRIDE_FIREBASE_PROJECT_ID").all { !providers.gradleProperty(it).orNull.isNullOrBlank() }) { "Firebase application ID, API key, and project ID are required for Play artifacts." }
     }
 }
 
