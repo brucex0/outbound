@@ -118,6 +118,11 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
     val currentDestination = backStackEntry?.destination
     var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
     var hasActiveSession by remember { mutableStateOf(false) }
+    val accountId = when (val session = authState.session) {
+        is SessionState.SignedIn -> session.accountId
+        is SessionState.Refreshing -> session.accountId
+        else -> null
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -193,7 +198,7 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
-                    accountId = "authenticated_account",
+                    accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
                     onSaved = { _: RecordedActivityReview ->
                         hasActiveSession = false

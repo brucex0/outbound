@@ -46,7 +46,7 @@ class DefaultSessionCoordinator(
             return@withLock credentials.accessToken
         }
 
-        mutableState.value = SessionState.Refreshing(credentials.accessTokenExpiresAtEpochMilliseconds)
+        mutableState.value = SessionState.Refreshing(credentials.accessTokenExpiresAtEpochMilliseconds, credentials.account?.id)
         when (val result = refresher.refresh(credentials.refreshToken)) {
             is ApiResult.Success -> {
                 store.replace(result.value)
@@ -74,7 +74,7 @@ class DefaultSessionCoordinator(
     }
 
     private fun SessionCredentials.signedInState() =
-        SessionState.SignedIn(accessTokenExpiresAtEpochMilliseconds)
+        SessionState.SignedIn(accessTokenExpiresAtEpochMilliseconds, account?.id)
 
     private companion object {
         const val EXPIRY_SKEW_MILLISECONDS = 60_000L

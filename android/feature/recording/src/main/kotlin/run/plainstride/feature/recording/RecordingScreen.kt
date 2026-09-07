@@ -50,6 +50,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -104,6 +106,7 @@ fun RecordingRoute(
     var pendingResume by remember { mutableStateOf(false) }
     var showLocationEducation by remember { mutableStateOf(false) }
     var showCameraEducation by remember { mutableStateOf(false) }
+    val saveSnackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(launch) { viewModel.configure(launch) }
 
@@ -180,10 +183,16 @@ fun RecordingRoute(
                 onSave = {
                     val reflection = ui.reflection ?: return@ReflectionScreen
                     scope.launch {
-                        onSaved(RecordedActivityReview(snapshot, reflection, ui.photoPath))
-                        viewModel.markSaved()
+                        val review = RecordedActivityReview(snapshot, reflection, ui.photoPath)
+                        if (viewModel.saveFinished(review)) {
+                            viewModel.markSaved()
+                            onSaved(review)
+                        } else {
+                            saveSnackbar.showSnackbar(context.getString(R.string.recording_save_failed))
+                        }
                     }
                 },
+                saving = ui.saving,
                 onClose = viewModel::requestDiscard,
             )
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
@@ -210,7 +219,10 @@ fun RecordingRoute(
         }
     }
 
-    Box(modifier.fillMaxSize()) { content() }
+    Box(modifier.fillMaxSize()) {
+        content()
+        SnackbarHost(saveSnackbar, Modifier.align(Alignment.BottomCenter))
+    }
 
     if (showLocationEducation) PermissionEducationDialog(
         title = stringResource(R.string.recording_location_permission_title),
@@ -423,6 +435,7 @@ private fun ReflectionScreen(
     onTakePhoto: () -> Unit,
     onRemovePhoto: () -> Unit,
     onSave: () -> Unit,
+    saving: Boolean,
     onClose: () -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
@@ -464,8 +477,8 @@ private fun ReflectionScreen(
                 }
             }
             item {
-                Button(onClick = onSave, enabled = selected != null, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                    Text(stringResource(R.string.recording_save_activity))
+                Button(onClick = onSave, enabled = selected != null && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                    Text(stringResource(if (saving) R.string.recording_saving_activity else R.string.recording_save_activity))
                 }
                 if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
                     Text(stringResource(R.string.recording_short_activity), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))

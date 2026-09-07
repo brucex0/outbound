@@ -1,6 +1,9 @@
 package run.plainstride.feature.recording
 
 import android.content.Context
+import java.io.File
+import java.security.MessageDigest
+import java.time.Instant
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +18,15 @@ import kotlinx.coroutines.flow.stateIn
 import run.plainstride.core.analytics.AnalyticsEvent
 import run.plainstride.core.analytics.AnalyticsProperty
 import run.plainstride.core.analytics.ProductAnalytics
+import run.plainstride.core.data.ActivityMediaStore
+import run.plainstride.core.data.ActivityRepository
+import run.plainstride.core.data.ActivitySyncScheduler
+import run.plainstride.core.data.RecordedActivityDraft
+import run.plainstride.core.data.RecordedActivityFactory
+import run.plainstride.core.data.RecordedTrackPointDraft
+import run.plainstride.core.model.activity.ActivityPhoto
+import run.plainstride.core.model.activity.ActivityReflection
+import run.plainstride.core.model.activity.ActivityType
 
 data class RecordingUiState(
     val launch: RecordingLaunchConfiguration = RecordingLaunchConfiguration(),
@@ -25,12 +37,16 @@ data class RecordingUiState(
     val showFinishConfirmation: Boolean = false,
     val showDiscardConfirmation: Boolean = false,
     val startRequested: Boolean = false,
+    val saving: Boolean = false,
 )
 
 @HiltViewModel
 class RecordingViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val analytics: ProductAnalytics,
+    private val activities: ActivityRepository,
+    private val media: ActivityMediaStore,
+    private val syncScheduler: ActivitySyncScheduler,
 ) : ViewModel() {
     private val client = RecordingSessionClient(context).apply { connect() }
     private val mutableState = MutableStateFlow(RecordingUiState())
@@ -107,8 +123,85 @@ class RecordingViewModel @Inject constructor(
     fun newCommandId(): String = UUID.randomUUID().toString()
     fun markSaved() = client.markSaved(newCommandId())
 
+    /** Returns only after the activity and its outbox operation are committed to Room. */
+    suspend fun saveFinished(review: RecordedActivityReview): Boolean {
+        if (mutableState.value.saving) return false
+        mutableState.value = mutableState.value.copy(saving = true)
+        val sourcePhoto = review.photoPath?.let(::File)?.takeIf(File::isFile)
+        var persistedPhotoPath: String? = null
+        return runCatching {
+            val snapshot = review.snapshot
+            val accountId = requireNotNull(snapshot.accountId)
+            val sessionId = requireNotNull(snapshot.sessionId)
+            val startedAt = requireNotNull(snapshot.startedAtEpochMilliseconds)
+            val savedAt = Instant.now()
+            val base = RecordedActivityFactory.create(
+                RecordedActivityDraft(
+                    sessionId = sessionId,
+                    accountId = accountId,
+                    type = snapshot.activityKind.toActivityType(),
+                    title = mutableState.value.launch.title ?: context.getString(R.string.recording_default_activity_title),
+                    startedAtEpochMs = startedAt,
+                    endedAtEpochMs = snapshot.recordedAtEpochMilliseconds,
+                    durationSecs = snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                    distanceM = snapshot.distanceMeters,
+                    elevationGainM = snapshot.elevationGainMeters,
+                    track = snapshot.track.mapIndexed { index, point ->
+                        RecordedTrackPointDraft(
+                            timestampEpochMs = point.capturedAtEpochMilliseconds,
+                            latitude = point.latitude,
+                            longitude = point.longitude,
+                            altitude = point.altitudeMeters,
+                            verticalAccuracy = point.verticalAccuracyMeters,
+                            startsNewSegment = index == 0,
+                        )
+                    },
+                ),
+                savedAt,
+            )
+            val photo = sourcePhoto?.let { file ->
+                val bytes = file.readBytes()
+                persistedPhotoPath = media.write(accountId, sessionId, bytes)
+                ActivityPhoto(
+                    id = UUID.randomUUID().toString(),
+                    takenAt = savedAt.toString(),
+                    captureContext = "review",
+                    localRelativePath = persistedPhotoPath,
+                    byteSize = bytes.size.toLong(),
+                    sha256 = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) },
+                )
+            }
+            val reflectionLabel = context.getString(when (review.reflection) {
+                ReflectionChoice.STRONG -> R.string.recording_reflection_strong
+                ReflectionChoice.STEADY -> R.string.recording_reflection_steady
+                ReflectionChoice.TOUGH -> R.string.recording_reflection_tough
+            })
+            activities.save(base.copy(
+                reflection = ActivityReflection(
+                    title = context.getString(R.string.recording_reflection_title),
+                    body = reflectionLabel,
+                    highlight = reflectionLabel,
+                ),
+                photos = listOfNotNull(photo),
+            ))
+            syncScheduler.schedule(accountId)
+            sourcePhoto?.delete()
+            analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(
+                AnalyticsProperty.Result to "success",
+                AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
+            )))
+            true
+        }.getOrElse {
+            persistedPhotoPath?.let(media::delete)
+            analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(AnalyticsProperty.Result to "failure")))
+            false
+        }.also { mutableState.value = mutableState.value.copy(saving = false) }
+    }
+
     override fun onCleared() {
         client.close()
         super.onCleared()
     }
 }
+
+private fun ActivityKind.toActivityType() = ActivityType.valueOf(name.lowercase())

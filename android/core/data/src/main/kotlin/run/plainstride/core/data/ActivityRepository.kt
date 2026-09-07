@@ -55,6 +55,8 @@ interface ActivityRepository {
     suspend fun synchronize(accountId: String): ActivitySyncResult
 }
 
+fun interface ActivitySyncScheduler { fun schedule(accountId: String) }
+
 data class ActivitySyncResult(val uploaded: Int, val downloaded: Int, val pending: Int, val failure: String? = null)
 
 class OfflineFirstActivityRepository(

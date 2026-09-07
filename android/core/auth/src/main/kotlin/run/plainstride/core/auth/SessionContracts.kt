@@ -25,8 +25,8 @@ interface SecureSessionStore {
 sealed interface SessionState {
     data object Loading : SessionState
     data object SignedOut : SessionState
-    data class SignedIn(val accessTokenExpiresAtEpochMilliseconds: Long) : SessionState
-    data class Refreshing(val accessTokenExpiresAtEpochMilliseconds: Long) : SessionState
+    data class SignedIn(val accessTokenExpiresAtEpochMilliseconds: Long, val accountId: String?) : SessionState
+    data class Refreshing(val accessTokenExpiresAtEpochMilliseconds: Long, val accountId: String?) : SessionState
 }
 
 interface SessionRefresher {

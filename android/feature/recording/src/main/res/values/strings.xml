@@ -53,5 +53,9 @@
     <string name="recording_add_photo">Add activity photo</string>
     <string name="recording_remove_photo">Remove photo</string>
     <string name="recording_save_activity">Save activity</string>
+    <string name="recording_saving_activity">Saving…</string>
+    <string name="recording_save_failed">Couldn’t save the activity. Your recording is safe—try again.</string>
+    <string name="recording_default_activity_title">Plainstride activity</string>
+    <string name="recording_reflection_title">Post-activity reflection</string>
     <string name="recording_short_activity">Short activities are saved too. You’re always in control.</string>
 </resources>

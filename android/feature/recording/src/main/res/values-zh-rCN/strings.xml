@@ -53,5 +53,9 @@
     <string name="recording_add_photo">添加活动照片</string>
     <string name="recording_remove_photo">移除照片</string>
     <string name="recording_save_activity">保存活动</string>
+    <string name="recording_saving_activity">正在保存…</string>
+    <string name="recording_save_failed">未能保存活动。记录仍安全保留，请重试。</string>
+    <string name="recording_default_activity_title">Plainstride 活动</string>
+    <string name="recording_reflection_title">活动后感受</string>
     <string name="recording_short_activity">短活动也可以保存，始终由你决定。</string>
 </resources>

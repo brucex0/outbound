@@ -53,5 +53,9 @@
     <string name="recording_add_photo">Añadir foto de la actividad</string>
     <string name="recording_remove_photo">Eliminar foto</string>
     <string name="recording_save_activity">Guardar actividad</string>
+    <string name="recording_saving_activity">Guardando…</string>
+    <string name="recording_save_failed">No se pudo guardar la actividad. Tu registro está a salvo; inténtalo de nuevo.</string>
+    <string name="recording_default_activity_title">Actividad de Plainstride</string>
+    <string name="recording_reflection_title">Reflexión después de la actividad</string>
     <string name="recording_short_activity">También puedes guardar actividades cortas. Tú decides.</string>
 </resources>

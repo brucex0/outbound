@@ -54,6 +54,7 @@ dependencies {
     implementation(project(":core:analytics"))
     implementation(project(":core:auth"))
     implementation(project(":core:database"))
+    implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:location"))
     implementation(project(":core:media"))
@@ -84,5 +85,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.play.services.location)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
     debugImplementation(libs.compose.ui.tooling)
 }

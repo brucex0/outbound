@@ -19,6 +19,11 @@ import run.plainstride.core.database.DurableStateStore
 import run.plainstride.core.database.AccountCacheDao
 import run.plainstride.core.database.PlainstrideDatabase
 import run.plainstride.core.database.PlainstrideDatabaseFactory
+import run.plainstride.core.data.ActivityMediaStore
+import run.plainstride.core.data.ActivityRepository
+import run.plainstride.core.data.OfflineFirstActivityRepository
+import run.plainstride.core.data.ActivitySyncScheduler
+import run.plainstride.app.sync.WorkManagerActivitySyncScheduler
 import run.plainstride.core.model.AndroidMonotonicClock
 import run.plainstride.core.model.AppEnvironment
 import run.plainstride.core.model.EpochClock
@@ -42,9 +47,11 @@ import run.plainstride.core.network.AuthApiService
 import run.plainstride.core.network.AccessTokenProvider
 import run.plainstride.core.network.AccountApiService
 import run.plainstride.core.network.PlanningApiService
+import run.plainstride.core.network.ActivitiesApiService
 import run.plainstride.core.network.createAccountApi
 import run.plainstride.core.network.createAuthApi
 import run.plainstride.core.network.createPlanningApi
+import run.plainstride.core.network.createActivitiesApi
 import com.google.android.gms.location.LocationServices
 import run.plainstride.core.weather.DefaultWeatherRepository
 import run.plainstride.core.weather.FusedWeatherLocationSource
@@ -110,6 +117,21 @@ object FoundationModule {
 
     @Provides @Singleton fun planningApi(client: OkHttpClient): PlanningApiService =
         createPlanningApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun activitiesApi(client: OkHttpClient): ActivitiesApiService =
+        createActivitiesApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun activityMediaStore(@ApplicationContext context: Context): ActivityMediaStore =
+        ActivityMediaStore(context)
+
+    @Provides @Singleton fun activitySyncScheduler(@ApplicationContext context: Context): ActivitySyncScheduler =
+        WorkManagerActivitySyncScheduler(context)
+
+    @Provides @Singleton fun activityRepository(
+        database: PlainstrideDatabase,
+        api: ActivitiesApiService,
+        accessTokens: AccessTokenProvider,
+    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens)
 
     @Provides @Singleton fun weatherApi(client: OkHttpClient): WeatherApiService =
         createWeatherApi(BuildConfig.API_BASE_URL, client)
