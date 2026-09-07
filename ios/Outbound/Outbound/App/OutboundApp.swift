@@ -37,6 +37,8 @@ struct OutboundApp: App {
     @StateObject private var connectivityStore = ConnectivityStore()
     @StateObject private var appearancePreferences = AppearancePreferences()
     @StateObject private var pushNotifications = PushNotificationCoordinator.shared
+    @StateObject private var workoutReminderPreferences = WorkoutReminderPreferences()
+    @StateObject private var workoutNotificationScheduler = WorkoutNotificationScheduler.shared
     @StateObject private var communityRouteStore = CommunityRouteStore()
     @StateObject private var userPreferencesSyncStore = UserPreferencesSyncStore()
     @State private var startupDestination: AppStartupDestination = .launching
@@ -170,6 +172,8 @@ struct OutboundApp: App {
             .environmentObject(situationalWeatherStore)
             .environmentObject(connectivityStore)
             .environmentObject(pushNotifications)
+            .environmentObject(workoutReminderPreferences)
+            .environmentObject(workoutNotificationScheduler)
             .environmentObject(communityRouteStore)
             .task {
                 if let userID = authStore.user?.id {
@@ -206,6 +210,16 @@ struct OutboundApp: App {
                     circleInvitationsRefresh
                 )
                 await consumePendingInviteIfPossible()
+                workoutNotificationScheduler.configure(
+                    analyticsManager: analyticsManager,
+                    accountID: authStore.user?.id
+                )
+                await workoutNotificationScheduler.reschedule(
+                    preferences: workoutReminderPreferences,
+                    activities: activityStore.activities,
+                    workouts: trainingPlanStore.scheduledWorkouts,
+                    reason: "app_activation"
+                )
                 await pushNotifications.activate()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
@@ -218,6 +232,38 @@ struct OutboundApp: App {
                     await circleStore.refreshInvitations()
                     await pushNotifications.activate()
                     await refreshTrainingProfile()
+                    await workoutNotificationScheduler.reschedule(
+                        preferences: workoutReminderPreferences,
+                        activities: activityStore.activities,
+                        workouts: trainingPlanStore.scheduledWorkouts,
+                        reason: "app_activation"
+                    )
+                }
+            }
+            .onChange(of: authStore.user?.id) { _, userID in
+                workoutNotificationScheduler.configure(
+                    analyticsManager: analyticsManager,
+                    accountID: userID
+                )
+            }
+            .onChange(of: trainingPlanStore.scheduledWorkouts) { _, workouts in
+                Task {
+                    await workoutNotificationScheduler.reschedule(
+                        preferences: workoutReminderPreferences,
+                        activities: activityStore.activities,
+                        workouts: workouts,
+                        reason: "plan_changed"
+                    )
+                }
+            }
+            .onChange(of: activityStore.activities) { _, activities in
+                Task {
+                    await workoutNotificationScheduler.reschedule(
+                        preferences: workoutReminderPreferences,
+                        activities: activities,
+                        workouts: trainingPlanStore.scheduledWorkouts,
+                        reason: "activity_saved"
+                    )
                 }
             }
     }
@@ -703,6 +749,7 @@ struct TrainingPlanWorkoutStep: Identifiable, Codable, Hashable {
 
 struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
     let id: String
+    let scheduledDate: Date?
     let title: String
     let kind: TrainingPlanWorkoutKind
     let dayLabel: String
@@ -718,6 +765,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
 
     init(
         id: String,
+        scheduledDate: Date? = nil,
         title: String,
         kind: TrainingPlanWorkoutKind,
         dayLabel: String,
@@ -732,6 +780,7 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
         isOptional: Bool
     ) {
         self.id = id
+        self.scheduledDate = scheduledDate
         self.title = title
         self.kind = kind
         self.dayLabel = dayLabel
@@ -881,6 +930,7 @@ final class TrainingPlanStore: ObservableObject {
     @Published private(set) var currentWeek: TrainingPlanWeekSnapshot?
     @Published private(set) var todaySuggestion: TodayTrainingSuggestion?
     @Published private(set) var activitySuggestion: ActivitySuggestionResponse?
+    @Published private(set) var scheduledWorkouts: [ScheduledWorkoutReminder] = []
     @Published private(set) var isRefreshingPlanRecommendations = false
 
     private let defaults: UserDefaults
@@ -923,6 +973,7 @@ final class TrainingPlanStore: ObservableObject {
             activePlan = cachedState.activePlan ?? persistedActivePlan
             recommendations = cachedState.recommendations
             currentWeek = cachedState.currentWeek
+            scheduledWorkouts = cachedState.scheduledWorkouts
             todaySuggestion = activePlan == nil && cachedActivitySuggestion == nil
                 ? nil
                 : cachedState.todaySuggestion
@@ -1118,6 +1169,7 @@ final class TrainingPlanStore: ObservableObject {
         currentWeek = state.currentWeek
         todaySuggestion = state.todaySuggestion
         activitySuggestion = validActivitySuggestion
+        scheduledWorkouts = activePlan == nil ? [] : state.scheduledWorkouts
         updatePlanOptions(activities: lastActivities, phase: lastPhase, now: now)
         persistState()
     }
@@ -1141,6 +1193,7 @@ final class TrainingPlanStore: ObservableObject {
 
         guard let activePlan else {
             currentWeek = nil
+            scheduledWorkouts = []
             if activitySuggestion?.shouldSuppressLocalSuggestion != true {
                 todaySuggestion = nil
             }
@@ -1149,6 +1202,12 @@ final class TrainingPlanStore: ObservableObject {
         }
 
         currentWeek = Self.makeWeekSnapshot(plan: activePlan, activities: activities, calendar: calendar, now: now)
+        scheduledWorkouts = Self.localReminderSchedule(
+            plan: activePlan,
+            week: currentWeek,
+            calendar: calendar,
+            now: now
+        )
         todaySuggestion = Self.makeTodaySuggestion(
             plan: activePlan,
             week: currentWeek,
@@ -1166,7 +1225,8 @@ final class TrainingPlanStore: ObservableObject {
             recommendations: recommendations,
             currentWeek: currentWeek,
             todaySuggestion: todaySuggestion,
-            activitySuggestion: activitySuggestion
+            activitySuggestion: activitySuggestion,
+            scheduledWorkouts: scheduledWorkouts
         )
 
         if let data = try? JSONEncoder().encode(state) {
@@ -1520,6 +1580,39 @@ private extension TrainingPlanStore {
             scheduledWorkouts: scheduledWeek?.workouts ?? [],
             notes: scheduledWeek?.notes ?? []
         )
+    }
+
+    static func localReminderSchedule(
+        plan: ActiveTrainingPlan,
+        week: TrainingPlanWeekSnapshot?,
+        calendar: Calendar,
+        now: Date
+    ) -> [ScheduledWorkoutReminder] {
+        guard let week else { return [] }
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
+        var seenDays = Set<String>()
+        return week.scheduledWorkouts.compactMap { workout in
+            guard workout.durationSeconds > 0,
+                  !workout.title.localizedCaseInsensitiveContains("rest"),
+                  !workout.isOptional else { return nil }
+            let normalized = workout.dayLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let weekday = calendar.shortWeekdaySymbols.firstIndex {
+                normalized.hasPrefix($0.lowercased()) || $0.lowercased().hasPrefix(normalized)
+            } ?? calendar.firstWeekday - 1
+            let dayOffset = (weekday - (calendar.firstWeekday - 1) + 7) % 7
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) ?? weekStart
+            let dayKey = calendar.startOfDay(for: date).description
+            guard seenDays.insert(dayKey).inserted else { return nil }
+            return ScheduledWorkoutReminder(
+                id: "\(plan.id)-\(workout.id)-\(dayKey)",
+                workoutID: workout.id,
+                date: date,
+                title: workout.title,
+                durationSeconds: workout.durationSeconds,
+                sport: plan.sport,
+                source: "local_plan_cache"
+            )
+        }
     }
 
     static func makeTodaySuggestion(plan: ActiveTrainingPlan, week: TrainingPlanWeekSnapshot?, readiness: DailyReadiness?, calendar: Calendar, now: Date) -> TodayTrainingSuggestion {

@@ -90,10 +90,30 @@ Each failed Firebase response includes its error code and message, device index,
 4. Deploy the backend with Firebase/Google application-default credentials that can send Firebase Cloud Messaging messages.
 5. Validate on a physical device; the simulator and local Firebase Auth emulator do not provide a production delivery check.
 
+## Local Workout Reminders
+
+Workout reminders are an on-device feature owned by `WorkoutNotificationScheduler`. They do not use Firebase, APNs delivery, FCM tokens, backend connectivity, or the Social notification inbox.
+
+- Reminders are off until the runner enables them in Settings.
+- Enabling reminders requests notification authorization contextually. Activation and authentication never request the system prompt.
+- The runner chooses one local reminder time. The scheduler maintains a rolling 14-day set from the cached training-plan schedule and replaces requests idempotently with stable `plainstride.workout.*` identifiers.
+- Only planned workout days are eligible. Rest days, optional/rest entries, removed workouts, and completed days are silent. There is never a missed-workout debt or make-up reminder.
+- The scheduler reconciles after app activation, account changes, plan refresh/change/removal, reminder preference changes, locale-sensitive plan refreshes, and local activity saves. A qualifying activity on the same calendar day cancels the remaining reminder for that day.
+- Lock-screen copy is concise, localized English, Spanish, or Simplified Chinese, and excludes readiness, health, cycle, location, and private plan details. Taps route to Today and the matching start-confirmation context when the cached workout is still available; otherwise they land safely on Today.
+- Local reminder payloads use `type = local_workout_reminder` and remain distinct from durable Social payloads. Social authorization, foreground presentation, APNs registration, FCM token registration, and Social tap routing remain owned by `PushNotificationCoordinator` and `AppDelegate`.
+
+### Local Reminder Analytics
+
+The provider-neutral event contract records setting enabled/disabled, permission result, schedule/cancel outcome with bounded non-sensitive reasons, notification opened, and workout started from a local reminder. It does not claim delivery, log notification text, plan details, health data, or exact scheduled timestamps.
+
+### Platform Limitations
+
+iOS Focus modes, notification settings, Scheduled Summary, device power state, and user-level notification choices can delay, summarize, or suppress a local notification. The app treats a scheduled request as a request only and does not infer delivery from it.
+
 ## Deferred Scope
 
-- Per-category and quiet-hour preferences.
-- Scheduled workout and motivation reminders.
-- Delivery/open analytics and an outbox worker with retries.
+- Per-category and quiet-hour preferences beyond the single workout reminder time.
+- Motivation notifications.
+- Delivery analytics and an outbox worker with retries.
 - Notification Service Extension media or mutable content.
 - Android channel/provider support; see `docs/mainland-china-readiness.md` before choosing that architecture.

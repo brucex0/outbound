@@ -1064,7 +1064,8 @@ private extension PlanningAPIStateResponse {
                 recommendations: recommendations ?? [],
                 currentWeek: nil,
                 todaySuggestion: activitySuggestion?.todayTrainingSuggestion(),
-                activitySuggestion: activitySuggestion
+                activitySuggestion: activitySuggestion,
+                scheduledWorkouts: []
             )
         }
 
@@ -1079,6 +1080,19 @@ private extension PlanningAPIStateResponse {
             ? Array(upcoming.prefix(goal.daysPerWeekTarget ?? fallbackRecommendation?.sessionsPerWeek ?? 3))
             : weekWorkouts
         let scheduledWorkouts = plannedThisWeek.map { $0.trainingPlanWorkout() }
+        let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in
+            guard !["completed", "cancelled", "canceled", "skipped", "rest"].contains(workout.status.lowercased()),
+                  let scheduledDate = APIDateParser.date(from: workout.scheduledDate) else { return nil }
+            return ScheduledWorkoutReminder(
+                id: "\(plan.id)-\(workout.id)",
+                workoutID: workout.id,
+                date: scheduledDate,
+                title: workout.title,
+                durationSeconds: workout.durationSeconds,
+                sport: TrainingPlanSport.apiSport(from: workout.modality),
+                source: "planning_state"
+            )
+        }
         let durationWeeks = fallbackRecommendation?.durationWeeks
             ?? Self.estimatedDurationWeeks(createdAt: createdAt, workouts: upcoming, calendar: calendar)
         let sessionsPerWeek = goal.daysPerWeekTarget
@@ -1152,7 +1166,8 @@ private extension PlanningAPIStateResponse {
             recommendations: [],
             currentWeek: weekSnapshot,
             todaySuggestion: todaySuggestion,
-            activitySuggestion: activitySuggestion
+            activitySuggestion: activitySuggestion,
+            scheduledWorkouts: notificationWorkouts
         )
     }
 
@@ -1266,6 +1281,7 @@ private extension PlanningAPIWorkout {
 
         return TrainingPlanWorkout(
             id: id,
+            scheduledDate: APIDateParser.date(from: scheduledDate),
             title: title,
             kind: stimulus.workoutKind,
             dayLabel: overrideDayLabel ?? APIDateParser.weekdayLabel(from: scheduledDate),
@@ -1532,6 +1548,33 @@ struct TrainingPlanStateResponse: Codable {
     let currentWeek: TrainingPlanWeekSnapshot?
     let todaySuggestion: TodayTrainingSuggestion?
     let activitySuggestion: ActivitySuggestionResponse?
+    let scheduledWorkouts: [ScheduledWorkoutReminder]
+
+    init(
+        activePlan: ActiveTrainingPlan?,
+        recommendations: [TrainingPlanRecommendation],
+        currentWeek: TrainingPlanWeekSnapshot?,
+        todaySuggestion: TodayTrainingSuggestion?,
+        activitySuggestion: ActivitySuggestionResponse?,
+        scheduledWorkouts: [ScheduledWorkoutReminder] = []
+    ) {
+        self.activePlan = activePlan
+        self.recommendations = recommendations
+        self.currentWeek = currentWeek
+        self.todaySuggestion = todaySuggestion
+        self.activitySuggestion = activitySuggestion
+        self.scheduledWorkouts = scheduledWorkouts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        activePlan = try container.decodeIfPresent(ActiveTrainingPlan.self, forKey: .activePlan)
+        recommendations = try container.decodeIfPresent([TrainingPlanRecommendation].self, forKey: .recommendations) ?? []
+        currentWeek = try container.decodeIfPresent(TrainingPlanWeekSnapshot.self, forKey: .currentWeek)
+        todaySuggestion = try container.decodeIfPresent(TodayTrainingSuggestion.self, forKey: .todaySuggestion)
+        activitySuggestion = try container.decodeIfPresent(ActivitySuggestionResponse.self, forKey: .activitySuggestion)
+        scheduledWorkouts = try container.decodeIfPresent([ScheduledWorkoutReminder].self, forKey: .scheduledWorkouts) ?? []
+    }
 }
 
 struct ActivitySuggestionResponse: Codable, Equatable {

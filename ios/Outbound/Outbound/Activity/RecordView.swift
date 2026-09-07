@@ -1052,6 +1052,11 @@ struct RecordView: View {
         reachedGoalThresholds = []
         activityStartedWithGroupRun = liveGroupStore.isSharing
         track(.init(.activityStarted, properties: activityConfigurationProperties))
+        if activeIntent?.startedFromWorkoutReminder == true {
+            track(.init(.workoutStartedFromReminder, properties: [
+                .sourceType: .string("local_notification")
+            ]))
+        }
         updateLiveActivity(
             snapshot: recorder.liveSnapshot,
             state: recorder.state,

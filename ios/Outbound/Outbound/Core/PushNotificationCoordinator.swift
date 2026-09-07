@@ -20,13 +20,8 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
     private var latestToken: String?
 
     func activate() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        if settings.authorizationStatus == .notDetermined {
-            _ = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
-        }
-        let refreshedSettings = await center.notificationSettings()
-        guard refreshedSettings.authorizationStatus == .authorized || refreshedSettings.authorizationStatus == .provisional else { return }
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
         UIApplication.shared.registerForRemoteNotifications()
         if let token = Messaging.messaging().fcmToken { await register(token: token) }
     }

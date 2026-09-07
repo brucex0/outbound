@@ -3191,6 +3191,13 @@ private struct SimplifiedSettingsView: View {
                     confirmsSignOut = true
                 }
             }
+            Section(String(localized: "workout.reminders.section", defaultValue: "Planned workouts")) {
+                NavigationLink {
+                    WorkoutReminderSettingsView()
+                } label: {
+                    Label(String(localized: "workout.reminders.title", defaultValue: "Workout reminders"), systemImage: "bell.badge")
+                }
+            }
             Section("Live Guidance") {
                 NavigationLink {
                     GuideSelectionView()

@@ -221,6 +221,7 @@ struct SessionIntent: Identifiable, Hashable {
     let workoutReference: SessionWorkoutReference?
     let workoutCues: [SessionWorkoutCue]
     let activityEvent: ActivityEventLaunchContext?
+    let startedFromWorkoutReminder: Bool
 
     init(
         id: String,
@@ -242,7 +243,8 @@ struct SessionIntent: Identifiable, Hashable {
         coachingTarget: SessionCoachingTarget? = nil,
         workoutReference: SessionWorkoutReference? = nil,
         workoutCues: [SessionWorkoutCue] = [],
-        activityEvent: ActivityEventLaunchContext? = nil
+        activityEvent: ActivityEventLaunchContext? = nil,
+        startedFromWorkoutReminder: Bool = false
     ) {
         self.id = id
         self.sport = sport
@@ -264,6 +266,7 @@ struct SessionIntent: Identifiable, Hashable {
         self.workoutReference = workoutReference
         self.workoutCues = workoutCues
         self.activityEvent = activityEvent
+        self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }
 
     var systemImage: String { sport.systemImage }

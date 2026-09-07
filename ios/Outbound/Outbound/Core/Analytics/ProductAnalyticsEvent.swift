@@ -136,6 +136,11 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceAudioPlaybackRoute = "live_guidance_audio_playback_route"
     case liveGuidanceVoiceSelected = "live_guidance_voice_selected"
     case pushNotificationOpened = "push_notification_opened"
+    case workoutReminderSettingChanged = "workout_reminder_setting_changed"
+    case workoutReminderPermissionResult = "workout_reminder_permission_result"
+    case workoutReminderScheduleChanged = "workout_reminder_schedule_changed"
+    case workoutReminderOpened = "workout_reminder_opened"
+    case workoutStartedFromReminder = "workout_started_from_reminder"
     case onboardingIdentityPromptViewed = "onboarding_identity_prompt_viewed"
     case onboardingIdentityCompleted = "onboarding_identity_completed"
     case onboardingTrainingProfileViewed = "onboarding_training_profile_viewed"
@@ -360,6 +365,11 @@ enum ProductAnalyticsSchema {
         .liveGuidanceAudioPlaybackRoute: [.sourceType],
         .liveGuidanceVoiceSelected: [.selectionType, .sourceType],
         .pushNotificationOpened: [.sourceType, .selectionType],
+        .workoutReminderSettingChanged: [.selectionType],
+        .workoutReminderPermissionResult: [.result],
+        .workoutReminderScheduleChanged: [.result, .sourceType],
+        .workoutReminderOpened: [.destination],
+        .workoutStartedFromReminder: [.sourceType],
         .onboardingIdentityPromptViewed: [.missingDisplayName, .missingEmail],
         .onboardingIdentityCompleted: [.missingDisplayName, .missingEmail],
         .onboardingTrainingProfileViewed: [],

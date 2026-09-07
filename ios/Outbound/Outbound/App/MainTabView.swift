@@ -14,6 +14,7 @@ struct MainTabView: View {
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var connectivityStore: ConnectivityStore
+    @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -72,6 +73,7 @@ struct MainTabView: View {
             restoreInterruptedActivityIfNeeded()
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
+            handlePendingWorkoutReminder()
         }
         .onChange(of: selectedAppTab) { _, tab in
             guard tab == SimplifiedAppTab.today else { return }
@@ -108,6 +110,9 @@ struct MainTabView: View {
             presentActivity(intent: intent)
             appNavigationStore.consumePreparedActivity()
         }
+        .onChange(of: workoutNotificationScheduler.pendingReminder?.id) { _, _ in
+            handlePendingWorkoutReminder()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             consumeStoredPreparedActivityIfNeeded()
@@ -119,6 +124,26 @@ struct MainTabView: View {
             guard wasOffline, !isOffline else { return }
             Task { await activityStore.syncPendingActivitiesIfNeeded() }
         }
+    }
+
+    private func handlePendingWorkoutReminder() {
+        guard let reminder = workoutNotificationScheduler.pendingReminder else { return }
+        selectedAppTab = .today
+        presentActivity(intent: SessionIntent(
+            id: "reminder-\(reminder.id)",
+            sport: SportType(trainingPlanSport: reminder.sport),
+            title: reminder.title,
+            detail: String(
+                format: String(localized: "workout.reminder.intent_detail", defaultValue: "%d min planned workout"),
+                Int(ceil(Double(reminder.durationSeconds) / 60.0))
+            ),
+            guideLine: String(localized: "workout.reminder.intent_line", defaultValue: "Your planned workout is ready when you are."),
+            startLabel: String(localized: "workout.reminder.start", defaultValue: "Start workout"),
+            targetDurationSeconds: reminder.durationSeconds,
+            workoutReference: SessionWorkoutReference(source: "planned_workout", id: reminder.workoutID, version: nil),
+            startedFromWorkoutReminder: true
+        ))
+        workoutNotificationScheduler.consumePendingReminder()
     }
 
     private func checkForHealthWorkouts(presentWhenFound: Bool) {
@@ -325,6 +350,17 @@ enum ActivitySessionPortalState {
     }
 }
 
+private extension SportType {
+    init(trainingPlanSport: TrainingPlanSport) {
+        switch trainingPlanSport {
+        case .run: self = .run
+        case .walk: self = .walk
+        case .bike: self = .bike
+        case .mixed: self = .run
+        }
+    }
+}
+
 enum MotivationPhase {
     case firstSession
     case steady
@@ -351,6 +387,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
     let plannedWorkoutID: String?
     let routeName: String?
     let workoutSteps: [SessionIntentStep]?
+    let startedFromWorkoutReminder: Bool
 
     init(
         id: String,
@@ -369,7 +406,8 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         allowsCalorieGoal: Bool = false,
         plannedWorkoutID: String? = nil,
         routeName: String? = nil,
-        workoutSteps: [SessionIntentStep]? = nil
+        workoutSteps: [SessionIntentStep]? = nil,
+        startedFromWorkoutReminder: Bool = false
     ) {
         self.id = id
         self.sport = sport
@@ -388,6 +426,7 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
         self.plannedWorkoutID = plannedWorkoutID
         self.routeName = routeName
         self.workoutSteps = workoutSteps
+        self.startedFromWorkoutReminder = startedFromWorkoutReminder
     }
 
     var intent: SessionIntent {
@@ -410,7 +449,8 @@ struct SuggestedSession: Identifiable, Codable, Hashable {
             workoutSteps: targetCalories == nil ? workoutSteps ?? [] : [],
             workoutReference: plannedWorkoutID.map {
                 SessionWorkoutReference(source: "planned_workout", id: $0, version: nil)
-            }
+            },
+            startedFromWorkoutReminder: startedFromWorkoutReminder
         )
     }
 }

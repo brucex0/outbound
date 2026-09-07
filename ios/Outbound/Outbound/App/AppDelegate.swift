@@ -31,6 +31,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        await MainActor.run { PushNotificationCoordinator.shared.receivedNotification(userInfo: response.notification.request.content.userInfo) }
+        let userInfo = response.notification.request.content.userInfo
+        if userInfo["type"] as? String == WorkoutNotificationScheduler.notificationType {
+            await MainActor.run {
+                _ = WorkoutNotificationScheduler.shared.handleNotification(userInfo: userInfo)
+            }
+            return
+        }
+        await MainActor.run { PushNotificationCoordinator.shared.receivedNotification(userInfo: userInfo) }
     }
 }
