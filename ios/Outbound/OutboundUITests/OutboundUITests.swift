@@ -91,6 +91,19 @@ final class OutboundUITests: XCTestCase {
         app.buttons["Accept connection request"].tap()
         XCTAssertTrue(app.buttons["Accept connection request"].waitForNonExistence(timeout: 5))
 
+        app.staticTexts["Maya Chen"].tap()
+        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+        let removeConnectionButton = app.buttons["Remove connection"]
+        XCTAssertTrue(removeConnectionButton.exists)
+        removeConnectionButton.tap()
+        XCTAssertTrue(app.alerts["Remove connection?"].waitForExistence(timeout: 5))
+        app.alerts["Remove connection?"].buttons["Cancel"].tap()
+        XCTAssertTrue(removeConnectionButton.exists)
+        removeConnectionButton.tap()
+        app.alerts["Remove connection?"].buttons["Remove"].tap()
+        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Maya Chen"].exists)
+
         app.navigationBars["Connections"].buttons.firstMatch.tap()
         app.buttons["Social community"].tap()
         app.buttons["Groups"].tap()

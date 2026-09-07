@@ -385,6 +385,7 @@ struct SocialHomeView: View {
                         ForEach(acceptedConnections.prefix(8)) { connection in
                             SocialProfileLink(
                                 person: connection.person,
+                                connection: connection,
                                 entrySource: "social_connections_section"
                             ) {
                                 VStack(spacing: 6) {
@@ -1973,14 +1974,7 @@ struct SocialConnectionsView: View {
                 Section("Connections") {
                     ForEach(acceptedConnections) { connection in
                         connectionRow(connection) {
-                            Menu {
-                                Button("Remove connection", role: .destructive) {
-                                    Task { await socialStore.removeConnection(connection) }
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                            .accessibilityLabel("Connection actions")
+                            EmptyView()
                         }
                     }
                 }
@@ -2140,7 +2134,11 @@ struct SocialConnectionsView: View {
         @ViewBuilder actions: () -> Actions
     ) -> some View {
         HStack(spacing: OutboundSpacing.compact) {
-            SocialProfileLink(person: connection.person, entrySource: "connections") {
+            SocialProfileLink(
+                person: connection.person,
+                connection: connection,
+                entrySource: "connections"
+            ) {
                 HStack(spacing: OutboundSpacing.compact) {
                     SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
@@ -2341,7 +2339,11 @@ private struct SocialPeopleSearchRow: View {
 
     var body: some View {
         HStack(spacing: OutboundSpacing.compact) {
-            SocialProfileLink(person: socialPerson, entrySource: compact ? "connections_autocomplete" : "connections_search_results") {
+            SocialProfileLink(
+                person: socialPerson,
+                connection: connection,
+                entrySource: compact ? "connections_autocomplete" : "connections_search_results"
+            ) {
                 HStack(spacing: OutboundSpacing.compact) {
                     SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
@@ -2364,16 +2366,9 @@ private struct SocialPeopleSearchRow: View {
     private var relationshipAction: some View {
         switch (person.relationship?.status, person.relationship?.direction) {
         case ("accepted", _):
-            if compact {
-                Text("Connected").font(.caption).foregroundStyle(.secondary)
-            } else if let connection {
-                Menu {
-                    Button("Remove connection", role: .destructive) { mutate { await socialStore.removeConnection(connection) } }
-                } label: {
-                    Image(systemName: "ellipsis").frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Connection actions")
-            }
+            Text("Connected")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         case ("pending", "outgoing"):
             if compact {
                 Text("Sent").font(.caption).foregroundStyle(.secondary)
@@ -2424,6 +2419,8 @@ struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let person: TogetherPersonDTO
     var username: String? = nil
+    var showsRemoveConnection = false
+    var onRemoveConnection: (() -> Void)?
     @State private var sharedRecognitions: [RecognitionAwardDTO] = []
 
     private var posts: [TogetherPostDTO] {
@@ -2442,6 +2439,17 @@ struct SocialPersonProfileView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, OutboundSpacing.standard)
+
+                if showsRemoveConnection {
+                    Button(role: .destructive) {
+                        onRemoveConnection?()
+                    } label: {
+                        Label("Remove connection", systemImage: "person.crop.circle.badge.minus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("Remove connection")
+                }
 
                 if !sharedRecognitions.isEmpty {
                     Text(String(localized: "social.profile.milestones", defaultValue: "MILESTONES"))

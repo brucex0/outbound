@@ -2997,6 +2997,7 @@ private struct SimplifiedMeView: View {
                         ForEach(connectionPreview) { connection in
                             SocialProfileLink(
                                 person: connection.person,
+                                connection: connection,
                                 entrySource: "me_connections_preview"
                             ) {
                                 SocialAvatar(
