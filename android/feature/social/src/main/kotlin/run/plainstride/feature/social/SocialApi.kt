@@ -21,6 +21,14 @@ import run.plainstride.core.network.PlainstrideJson
 @Serializable data class CaptionBody(val caption: String? = null, val visibility: String = "connections")
 @Serializable data class ReportBody(val targetType: String, val targetId: String, val reason: String)
 @Serializable data class CheerBody(val recipientUserId: String, val presetType: String = "encouragement")
+@Serializable data class CommentsResponse(val comments:List<SocialComment> = emptyList())
+@Serializable data class CommentBody(val body:String)
+@Serializable data class AttendanceBody(val attendanceMode:String="in_person")
+@Serializable data class EventInviteBody(val recipientUserId:String?=null)
+@Serializable data class CreateCircleBody(val name:String?=null,val memberUserIds:List<String> = emptyList(),val timeZone:String?=null,val resetWeekday:Int?=null)
+@Serializable data class CircleInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
+@Serializable data class CircleFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
+@Serializable data class CircleMutationResponse(val circle:CircleSummary)
 
 interface SocialApiService {
     @GET("v1/social/home") suspend fun home(@Header("Authorization") auth: String): Response<SocialHome>
@@ -39,9 +47,20 @@ interface SocialApiService {
     @DELETE("v1/social/posts/{id}") suspend fun deletePost(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @POST("v1/social/reports") suspend fun reportPost(@Header("Authorization") auth: String, @Body body: ReportBody): Response<Unit>
     @POST("v1/social/users/{id}/block") suspend fun block(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @GET("v1/social/posts/{id}/comments") suspend fun comments(@Header("Authorization") auth:String,@Path("id") id:String):Response<CommentsResponse>
+    @POST("v1/social/posts/{id}/comments") suspend fun comment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CommentBody):Response<SocialComment>
+    @DELETE("v1/social/comments/{id}") suspend fun deleteComment(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @POST("v1/social/activity-events/{id}/rsvp") suspend fun rsvp(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody):Response<Unit>
+    @DELETE("v1/social/activity-events/{id}/rsvp") suspend fun leaveEvent(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @POST("v1/social/activity-events/{id}/invitations") suspend fun inviteEvent(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:EventInviteBody):Response<EventInvitation>
     @GET("v1/circles") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
     @GET("v1/circles/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
     @POST("v1/circles/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
+    @POST("v1/circles") suspend fun createCircle(@Header("Authorization") auth:String,@Body body:CreateCircleBody):Response<CircleSummary>
+    @POST("v1/circles/{id}/invitations") suspend fun inviteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleInviteBody):Response<CircleMutationResponse>
+    @POST("v1/circles/{id}/focus") suspend fun focusCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleFocusBody):Response<CircleSummary>
+    @POST("v1/circles/{id}/archive") suspend fun archiveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/circles/{id}/reactivate") suspend fun reactivateCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
     @GET("v1/recognition") suspend fun awards(@Header("Authorization") auth: String): Response<AwardsResponse>
 }
 

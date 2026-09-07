@@ -74,6 +74,10 @@ import kotlinx.serialization.json.JsonElement
     @SerialName("nextFeedCursor") val nextCursor: String? = null,
 )
 @Serializable data class SocialPage<T>(val items: List<T>, val nextCursor: String? = null)
+@Serializable data class SocialComment(val id:String,val body:String,val author:SocialPerson,val createdAt:String,val canDelete:Boolean=false)
+@Serializable data class EventInvitation(val id:String,val token:String?=null,val status:String="pending")
+
+enum class ReportReason(val wireValue:String){ HARASSMENT("harassment"),HATE("hate"),SPAM("spam"),SEXUAL("sexual"),VIOLENCE("violence"),PRIVACY("privacy"),OTHER("other") }
 
 enum class SocialError { SIGNED_OUT, OFFLINE, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, SERVER, INVALID_RESPONSE, UNEXPECTED }
 class SocialException(val reason: SocialError) : Exception(reason.name)

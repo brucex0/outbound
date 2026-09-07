@@ -13,6 +13,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
@@ -22,7 +24,7 @@ import run.plainstride.core.designsystem.*
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, viewModel::openCircle, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, modifier)
-    state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile) }
+    state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile) { viewModel.connect(it) } }
     state.selectedCircle?.let { CircleDialog(it, viewModel::closeCircle) { recipient, preset -> viewModel.cheerCircle(it, recipient, preset) } }
 }
 
@@ -66,5 +68,8 @@ private fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
     val line = if (raw.firstOrNull() is JsonPrimitive) listOf(raw) else raw.mapNotNull { it as? JsonArray }
     return line.mapNotNull { pair -> val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull; val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull; if(lat!=null&&lon!=null) MapCoordinate(lat,lon) else null }
 }
-@Composable private fun ProfileDialog(person: SocialPerson, close: () -> Unit) = AlertDialog(onDismissRequest = close, icon = { Icon(Icons.Outlined.AccountCircle, null) }, title = { Text(person.displayName) }, text = { Column { person.username?.let { Text("@$it") }; if (person.recognitions.isNotEmpty()) Text(stringResource(R.string.social_milestones, person.recognitions.size), Modifier.padding(top = 12.dp)) } }, confirmButton = { TextButton(close) { Text(stringResource(R.string.social_done)) } })
+@Composable private fun ProfileDialog(person:SocialPerson,close:()->Unit,connect:()->Unit){
+ val context=LocalContext.current;val shareLabel=stringResource(R.string.social_share_award_text,person.displayName)
+ AlertDialog(onDismissRequest=close,icon={Icon(Icons.Outlined.AccountCircle,null)},title={Text(person.displayName)},text={Column{person.username?.let{Text("@$it")};Text(stringResource(R.string.social_relationship,person.relationship),Modifier.padding(top=8.dp));if(person.recognitions.isNotEmpty()){Text(stringResource(R.string.social_milestones,person.recognitions.size),Modifier.padding(top=12.dp));person.recognitions.filter{it.shareable}.forEach{award->TextButton({context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,"$shareLabel · ${award.badgeId}"),null))}){Icon(Icons.Outlined.Share,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.social_share_award))}}}}},confirmButton={Row{if(person.relationship=="none")TextButton(connect){Text(stringResource(R.string.social_connect))};TextButton(close){Text(stringResource(R.string.social_done))}}})
+}
 @Composable private fun CircleDialog(circle: CircleSummary, close: () -> Unit, cheer: (String, String) -> Unit) = AlertDialog(onDismissRequest = close, title = { Text(circle.name) }, text = { LazyColumn { item { Text(stringResource(R.string.social_circle_progress, circle.completed, circle.target ?: 0)) }; items(circle.members, key = { it.person.id }) { member -> Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Text(member.person.displayName, Modifier.weight(1f)); IconButton({ cheer(member.person.id, "encouragement") }) { Icon(Icons.Outlined.FavoriteBorder, stringResource(R.string.social_cheer)) } } } } }, confirmButton = { TextButton(close) { Text(stringResource(R.string.social_done)) } })
