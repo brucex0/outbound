@@ -147,8 +147,8 @@ object FoundationModule {
     @Provides @Singleton fun companionApi(client: OkHttpClient): CompanionApi = createCompanionApi(BuildConfig.API_BASE_URL, client)
     @Provides @Singleton fun companionRepository(api: CompanionApi, tokens: AccessTokenProvider, cache: AccountCacheDao): CompanionRepository = OfflineFirstCompanionRepository(api, tokens, cache)
     @Provides @Singleton fun spotifyAuthorizationStore(@ApplicationContext context: Context): SpotifyAuthorizationStore = SpotifySecureAuthorizationStore(context)
-    @Provides @Singleton fun spotifyAuthorizationClient(): SpotifyAuthorizationClient = UnavailableSpotifyAuthorizationClient()
-    @Provides @Singleton fun spotifyRemote(): SpotifyAppRemoteTransport = UnavailableSpotifyAppRemoteTransport()
+    @Provides @Singleton fun spotifyAuthorizationClient(client: SpotifyOAuthClient): SpotifyAuthorizationClient = client
+    @Provides @Singleton fun spotifyRemote(transport: SpotifyWebPlaybackTransport): SpotifyAppRemoteTransport = transport
     @Provides @Singleton fun musicStateStore(dataStore: DataStore<Preferences>) = MusicStateStore(dataStore)
     @Provides @Singleton fun spotifyWebApi(client: OkHttpClient): SpotifyWebApi = createSpotifyWebApi(client)
     @Provides @Singleton fun spotifyCatalog(api: SpotifyWebApi, store: SpotifyAuthorizationStore) = SpotifyCatalog(api, store)

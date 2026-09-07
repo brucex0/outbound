@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import run.plainstride.core.analytics.AnalyticsEvent
@@ -87,8 +88,7 @@ class TodayViewModel @Inject constructor(
 ) : ViewModel() {
     // A single encrypted session is active at a time; account bootstrap can later provide the
     // opaque server account ID without exposing identity details to this feature.
-    private val accountScopeKey = "authenticated_account"
-    private val localeTag = Locale.getDefault().toLanguageTag()
+    private val accountScope = MutableStateFlow("authenticated_account" to Locale.getDefault().toLanguageTag())
     private val refreshing = MutableStateFlow(false)
     private val mutationInFlight = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<TodayDataError?>(null)
@@ -99,18 +99,21 @@ class TodayViewModel @Inject constructor(
     val weatherPermissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val state = combine(
-        repository.observePlanning(accountScopeKey, localeTag),
-        repository.observeSuggestion(accountScopeKey, localeTag),
-        repository.observePersonalization(accountScopeKey, localeTag),
-        repository.observeStandaloneWorkouts(accountScopeKey, localeTag),
+        accountScope.flatMapLatest { repository.observePlanning(it.first, it.second) },
+        accountScope.flatMapLatest { repository.observeSuggestion(it.first, it.second) },
+        accountScope.flatMapLatest { repository.observePersonalization(it.first, it.second) },
+        accountScope.flatMapLatest { repository.observeStandaloneWorkouts(it.first, it.second) },
         combine(refreshing, mutationInFlight, refreshError, sessionState) { a, b, c, d -> Meta(a, b, c, d) },
     ) { planning, suggestion, personalization, catalog, meta ->
         TodayUiState(planning, suggestion, personalization, catalog, meta.refreshing, meta.mutating, meta.error, meta.session.first, meta.session.second)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
-    init {
+    init { refreshWeather() }
+
+    fun configure(accountId: String, localeTag: String) {
+        if (accountScope.value == accountId to localeTag) return
+        accountScope.value = accountId to localeTag
         refresh()
-        refreshWeather()
     }
 
     fun refreshWeather() = viewModelScope.launch {
@@ -129,7 +132,8 @@ class TodayViewModel @Inject constructor(
         if (refreshing.value) return
         viewModelScope.launch {
             refreshing.value = true
-            refreshError.value = repository.refresh(accountScopeKey, localeTag)
+            val (accountId, localeTag) = accountScope.value
+            refreshError.value = repository.refresh(accountId, localeTag)
             refreshing.value = false
             if (refreshError.value != null) messages.emit(TodayMessage.CouldNotRefresh)
         }
@@ -155,8 +159,9 @@ class TodayViewModel @Inject constructor(
         viewModelScope.launch {
             mutationInFlight.value = true
             analytics.record(AnalyticsEvent("today_adjustment_selected", mapOf(AnalyticsProperty.Result to constraint.wireValue)))
+            val (accountId, localeTag) = accountScope.value
             val result = repository.submitReadiness(
-                accountScopeKey,
+                accountId,
                 localeTag,
                 ReadinessCheckInRequest(UUID.randomUUID().toString(), workoutId, Instant.now().toString(), constraint.wireValue, note?.take(160)),
             )
@@ -169,7 +174,8 @@ class TodayViewModel @Inject constructor(
         if (mutationInFlight.value) return
         viewModelScope.launch {
             mutationInFlight.value = true
-            val result = repository.decideAdjustment(accountScopeKey, localeTag, adjustmentId, accept)
+            val (accountId, localeTag) = accountScope.value
+            val result = repository.decideAdjustment(accountId, localeTag, adjustmentId, accept)
             mutationInFlight.value = false
             if (result.isSuccess) {
                 analytics.record(AnalyticsEvent("today_adjustment_decided", mapOf(AnalyticsProperty.Result to if (accept) "accepted" else "kept_original")))
@@ -183,6 +189,30 @@ class TodayViewModel @Inject constructor(
     fun trackWorkoutStarted(source: String) = analytics.record(
         AnalyticsEvent("workout_started", mapOf(AnalyticsProperty.Source to source)),
     )
+
+    fun setUpPlan() {
+        if (mutationInFlight.value) return
+        viewModelScope.launch {
+            mutationInFlight.value = true
+            val (accountId, localeTag) = accountScope.value
+            val result = repository.createGoal(
+                accountId,
+                localeTag,
+                run.plainstride.core.network.CreateTrainingGoalRequest(
+                    type = "general_fitness",
+                    primaryModality = Modality.run,
+                    daysPerWeekTarget = 3,
+                    maxSessionMinutes = 45,
+                    priority = "balanced",
+                ),
+            )
+            if (result.isSuccess) {
+                analytics.record(AnalyticsEvent("training_plan_created", mapOf(AnalyticsProperty.Source to "today_empty_state")))
+                refresh()
+            } else messages.emit(TodayMessage.CouldNotAdjust)
+            mutationInFlight.value = false
+        }
+    }
 
     private data class Meta(
         val refreshing: Boolean,

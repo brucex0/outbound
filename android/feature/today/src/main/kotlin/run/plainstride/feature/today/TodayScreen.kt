@@ -61,6 +61,8 @@ import run.plainstride.core.model.AdjustmentProposal
 
 @Composable
 fun TodayRoute(
+    accountId: String,
+    localeTag: String,
     viewModel: TodayViewModel,
     activeSession: Boolean,
     completedToday: Boolean,
@@ -71,6 +73,7 @@ fun TodayRoute(
     onMessage: suspend (TodayMessage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    LaunchedEffect(accountId, localeTag) { viewModel.configure(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -93,7 +96,7 @@ fun TodayRoute(
         },
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
-        onSetUpPlan = onSetUpPlan,
+        onSetUpPlan = { viewModel.setUpPlan(); onSetUpPlan() },
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         modifier = modifier,

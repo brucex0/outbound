@@ -285,15 +285,18 @@ private fun SettingsScreen(
     var name by remember(account) { mutableStateOf(account?.displayName.orEmpty()) }
     var username by remember(account) { mutableStateOf(account?.username.orEmpty()) }
     var email by remember(account) { mutableStateOf(account?.contactEmail.orEmpty()) }
+    val cleanedUsername = username.trim().lowercase()
+    val usernameValid = cleanedUsername.isEmpty() || (cleanedUsername.length in 3..30 && cleanedUsername.all { it.isLetterOrDigit() || it == '_' || it == '-' })
+    val usernameChanged = cleanedUsername != account?.username.orEmpty().lowercase()
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(stringResource(R.string.edit_profile)) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(name, { name = it.take(50) }, label = { Text(stringResource(R.string.display_name)) }, singleLine = true)
-            OutlinedTextField(username, { username = it.take(30) }, label = { Text(stringResource(R.string.username)) }, singleLine = true)
+            OutlinedTextField(username, { username = it.lowercase().filter { character -> character.isLetterOrDigit() || character == '_' || character == '-' }.take(30) }, label = { Text(stringResource(R.string.username)) }, supportingText = { Text(stringResource(if (usernameValid) R.string.username_cooldown else R.string.username_invalid)) }, isError = !usernameValid, singleLine = true)
             OutlinedTextField(email, { email = it.take(254) }, label = { Text(stringResource(R.string.contact_email)) }, singleLine = true)
         } },
-        confirmButton = { TextButton(onClick = { save(name.trim(), username, email) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.save)) } },
+        confirmButton = { TextButton(onClick = { save(name.trim(), cleanedUsername.takeIf { it.isNotEmpty() }, email) }, enabled = name.isNotBlank() && usernameValid && (!usernameChanged || cleanedUsername.isNotEmpty())) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

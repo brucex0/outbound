@@ -20,6 +20,8 @@ data class RecordingLaunchConfiguration(
     val goal: RecordingGoal = RecordingGoal(),
     val workoutSteps: List<StructuredWorkoutStep> = emptyList(),
     val entrySource: String = "quick_start",
+    val suggestionId: String? = null,
+    val plannedWorkoutId: String? = null,
 )
 
 enum class RecordingSurfaceMode { MAP, CAMERA }

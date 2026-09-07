@@ -16,4 +16,4 @@
     <string name="privacy_note">Plainstride 不会在社交功能或分析数据中包含你的私密健康信息。</string><string name="delete_account">删除账户</string>
     <string name="settings_refreshed">账户已刷新。</string><string name="settings_saved">已保存。</string><string name="settings_save_failed">已保存在此设备上，联网后会重试云同步。</string><string name="settings_refresh_failed">无法刷新，当前显示已保存的设置。</string>
     <string name="activity_history_title">活动记录</string><string name="activity_history_body">查看每次活动的路线、分段、照片和进展。</string>
-</resources>
+<string name="username_cooldown">用户名每 30 天可更改一次。</string><string name="username_invalid">请输入 3 至 30 个字母、数字、下划线或连字符。</string></resources>

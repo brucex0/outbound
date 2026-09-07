@@ -27,7 +27,11 @@ android {
         buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${firebaseApplicationId.get()}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebaseApiKey.get()}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId.get()}\"")
+        val spotifyClientId = providers.gradleProperty("PLAINSTRIDE_SPOTIFY_CLIENT_ID").orElse("")
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${spotifyClientId.get()}\"")
+        buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"run.plainstride.app://spotify-callback\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["appAuthRedirectScheme"] = "run.plainstride.app"
         val mapsApiKey = providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orElse("")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey.get()
     }
@@ -137,6 +141,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
+    implementation(libs.appauth)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.health.connect)
     implementation(libs.androidx.hilt.work)

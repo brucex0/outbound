@@ -16,6 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import run.plainstride.core.designsystem.PlainstrideTheme
 import run.plainstride.feature.settings.AppearanceMode
 import run.plainstride.feature.settings.SettingsViewModel
+import run.plainstride.app.di.SpotifyOAuthClient
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         transferCode = intent.transferCode()
+        if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
         enableEdgeToEdge()
         setContent {
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         transferCode = intent.transferCode()
+        if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
     }
 

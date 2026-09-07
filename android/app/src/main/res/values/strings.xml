@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reminder_channel">Workout reminders</string><string name="reminder_title">Ready to move?</string><string name="reminder_body">Your plan is ready when you are.</string><string name="reminder_setting">Daily workout reminder</string><string name="reminder_setting_body">At 7:00 AM in your current time zone</string><string name="shortcut_start">Start workout</string><string name="shortcut_assistant">Ask Companion</string>
     <string name="notification_channel_social">Social activity</string>
     <string name="progress_destination">Progress &amp; gear</string><string name="routes_destination">Community routes</string><string name="health_destination">Health Connect</string><string name="safety_destination">Safety &amp; live sharing</string><string name="notifications_destination">Notifications</string>
     <string name="app_name">Plainstride</string>

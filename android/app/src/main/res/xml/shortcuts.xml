@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="start_workout" android:enabled="true" android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_start">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="run.plainstride.app" android:targetClass="run.plainstride.app.MainActivity" android:data="plainstride://notification/today" />
+    </shortcut>
+    <shortcut android:shortcutId="ask_companion" android:enabled="true" android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_assistant">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="run.plainstride.app" android:targetClass="run.plainstride.app.MainActivity" android:data="plainstride://notification/assistant" />
+    </shortcut>
+</shortcuts>

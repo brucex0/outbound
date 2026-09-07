@@ -16,4 +16,4 @@
     <string name="privacy_note">Plainstride mantiene los datos privados de salud fuera de Social y nunca los incluye en los análisis.</string><string name="delete_account">Eliminar cuenta</string>
     <string name="settings_refreshed">Cuenta actualizada.</string><string name="settings_saved">Guardado.</string><string name="settings_save_failed">Guardado en este dispositivo. Se sincronizará al recuperar la conexión.</string><string name="settings_refresh_failed">No se pudo actualizar. Se muestran los ajustes guardados.</string>
     <string name="activity_history_title">Historial de actividades</string><string name="activity_history_body">Consulta mapas, parciales, fotos y tu progreso en cada actividad.</string>
-</resources>
+<string name="username_cooldown">Puedes cambiar tu nombre de usuario una vez cada 30 días.</string><string name="username_invalid">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string></resources>

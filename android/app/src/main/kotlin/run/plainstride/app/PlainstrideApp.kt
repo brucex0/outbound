@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -84,6 +85,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.Intent
 import android.provider.Settings
 import kotlinx.coroutines.launch
+import run.plainstride.app.reminders.ReminderViewModel
 
 private enum class TopLevelDestination(
     val route: String,
@@ -166,11 +168,15 @@ private fun SignedInApp(
         else -> null
     }
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    val reminderViewModel: ReminderViewModel = hiltViewModel()
+    val reminderEnabled by reminderViewModel.enabled.collectAsStateWithLifecycle()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag()) } }
     LaunchedEffect(navigationUri) {
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         when (destination) {
+            "today" -> navController.navigate(TopLevelDestination.Today.route)
+            "assistant" -> navController.navigate(TopLevelDestination.Assistant.route)
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "connections", "activity", "event", "circle", "group" -> navController.navigate(TopLevelDestination.Social.route)
             "live" -> navController.navigate(SAFETY_ROUTE)
@@ -213,9 +219,11 @@ private fun SignedInApp(
                     if (destination == TopLevelDestination.Today) {
                         val todayViewModel: TodayViewModel = hiltViewModel()
                         TodayRoute(
+                            accountId = requireNotNull(accountId),
+                            localeTag = resources.configuration.locales[0].toLanguageTag(),
                             viewModel = todayViewModel,
                             activeSession = hasActiveSession,
-                            completedToday = false,
+                            completedToday = integration.completedToday,
                             onStartWorkout = { intent ->
                                 recordingLaunch = intent.toRecordingLaunch()
                                 hasActiveSession = true
@@ -256,6 +264,7 @@ private fun SignedInApp(
                                 ListItem(headlineContent = { Text(stringResource(R.string.health_destination)) }, modifier = Modifier.clickable { navController.navigate(HEALTH_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.reminder_setting)) }, supportingContent = { Text(stringResource(R.string.reminder_setting_body)) }, trailingContent = { Switch(reminderEnabled, reminderViewModel::setEnabled) })
                             },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
@@ -274,6 +283,7 @@ private fun SignedInApp(
                     launch = recordingLaunch,
                     onSaved = { review: RecordedActivityReview ->
                         integrationViewModel.export(review)
+                        integrationViewModel.completePlannedWorkout(recordingLaunch, review)
                         hasActiveSession = false
                         navController.navigate(TopLevelDestination.Me.route) {
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
@@ -363,6 +373,8 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
         goal = goal,
         workoutSteps = steps.map { StructuredWorkoutStep(it) },
         entrySource = source,
+        suggestionId = suggestionId,
+        plannedWorkoutId = plannedWorkoutId,
     )
 }
 

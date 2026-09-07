@@ -8,6 +8,9 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Body
+import retrofit2.http.PUT
+import retrofit2.http.POST
 import retrofit2.http.Header
 import retrofit2.http.Query
 
@@ -20,7 +23,11 @@ import retrofit2.http.Query
 
 interface SpotifyWebApi {
     @GET("v1/search") suspend fun search(@Header("Authorization") authorization: String, @Query("q") query: String, @Query("type") type: String = "track", @Query("limit") limit: Int = 20): Response<SpotifySearchResponseDto>
+    @PUT("v1/me/player/play") suspend fun play(@Header("Authorization") authorization: String, @Body body: SpotifyPlaybackBody): Response<Unit>
+    @PUT("v1/me/player/pause") suspend fun pause(@Header("Authorization") authorization: String): Response<Unit>
+    @POST("v1/me/player/next") suspend fun next(@Header("Authorization") authorization: String): Response<Unit>
 }
+@Serializable data class SpotifyPlaybackBody(val uris: List<String>)
 
 internal val SpotifyJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; explicitNulls = false }
 fun createSpotifyWebApi(client: OkHttpClient): SpotifyWebApi = Retrofit.Builder().baseUrl("https://api.spotify.com/").client(client).addConverterFactory(SpotifyJson.asConverterFactory("application/json".toMediaType())).build().create(SpotifyWebApi::class.java)

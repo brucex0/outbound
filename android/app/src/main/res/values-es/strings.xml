@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reminder_channel">Recordatorios de entrenamiento</string><string name="reminder_title">¿Listo para moverte?</string><string name="reminder_body">Tu plan está listo cuando tú lo estés.</string><string name="reminder_setting">Recordatorio diario</string><string name="reminder_setting_body">A las 7:00 en tu zona horaria actual</string><string name="shortcut_start">Iniciar entrenamiento</string><string name="shortcut_assistant">Preguntar al compañero</string>
     <string name="notification_channel_social">Actividad social</string>
     <string name="progress_destination">Progreso y equipo</string><string name="routes_destination">Rutas de la comunidad</string><string name="health_destination">Health Connect</string><string name="safety_destination">Seguridad y ubicación en vivo</string><string name="notifications_destination">Notificaciones</string>
     <string name="app_name">Plainstride</string>
