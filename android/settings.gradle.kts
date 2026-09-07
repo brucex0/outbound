@@ -43,4 +43,5 @@ include(
     ":feature:settings",
     ":feature:today",
     ":wear",
+    ":benchmark",
 )

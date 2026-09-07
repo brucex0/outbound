@@ -1,0 +1,3 @@
+Title: Plainstride
+Short description: Personal training, activity recording, and progress for every stride.
+Full description: Build a practical plan, record runs and walks, follow timely coaching, and see progress without turning every activity into a competition. Plainstride keeps health connections, social sharing, live safety links, and coaching controls optional and explicit.

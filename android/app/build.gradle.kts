@@ -15,13 +15,39 @@ android {
         applicationId = "run.plainstride.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()
+        versionName = providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orElse("1.0").get()
         buildConfigField("String", "API_BASE_URL", "\"https://api.outbound.run\"")
         buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "false")
         val googleServerClientId = providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").orElse("")
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${googleServerClientId.get()}\"")
+        val firebaseApplicationId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_APPLICATION_ID").orElse("")
+        val firebaseApiKey = providers.gradleProperty("PLAINSTRIDE_FIREBASE_API_KEY").orElse("")
+        val firebaseProjectId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_PROJECT_ID").orElse("")
+        buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${firebaseApplicationId.get()}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${firebaseApiKey.get()}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId.get()}\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+        val mapsApiKey = providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orElse("")
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey.get()
+    }
+
+    val releaseStoreFile = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PATH")
+    val releaseStorePassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD")
+    val releaseKeyAlias = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_ALIAS")
+    val releaseKeyPassword = providers.environmentVariable("PLAINSTRIDE_ANDROID_KEY_PASSWORD")
+    val releaseSigningReady = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it.isPresent }
+    signingConfigs {
+        if (releaseSigningReady) create("release") {
+            storeFile = file(releaseStoreFile.get())
+            storePassword = releaseStorePassword.get()
+            keyAlias = releaseKeyAlias.get()
+            keyPassword = releaseKeyPassword.get()
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
     }
 
     buildTypes {
@@ -39,6 +65,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
+            isDebuggable = false
+            isJniDebuggable = false
         }
     }
 
@@ -48,6 +77,15 @@ android {
     }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+}
+
+tasks.register("verifyPlayReleaseConfiguration") {
+    group = "verification"
+    doLast {
+        check(providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").isPresent) { "PLAINSTRIDE_VERSION_CODE is required for Play artifacts." }
+        check(providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").isPresent) { "PLAINSTRIDE_VERSION_NAME is required for Play artifacts." }
+        check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { providers.environmentVariable(it).isPresent }) { "All Plainstride Android upload-signing variables are required for Play artifacts." }
+    }
 }
 
 dependencies {
@@ -67,8 +105,10 @@ dependencies {
     implementation(project(":feature:activity"))
     implementation(project(":feature:assistant"))
     implementation(project(":feature:community"))
+    implementation(project(":feature:health"))
     implementation(project(":feature:livecoach"))
     implementation(project(":feature:recording"))
+    implementation(project(":feature:progress"))
     implementation(project(":feature:social"))
     implementation(project(":feature:safety"))
     implementation(project(":feature:settings"))
@@ -93,7 +133,11 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.play.services.location)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.health.connect)
     implementation(libs.androidx.hilt.work)
     debugImplementation(libs.compose.ui.tooling)
 }

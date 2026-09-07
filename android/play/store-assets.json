@@ -1,0 +1,11 @@
+{
+  "source": "Existing Plainstride launcher vectors and owner-approved synthetic in-app screenshots",
+  "outputs": {
+    "icon": { "width": 512, "height": 512, "format": "png", "alpha": false },
+    "featureGraphic": { "width": 1024, "height": 500, "format": "png", "alpha": false },
+    "phoneScreenshots": { "minCount": 4, "maxCount": 8, "format": "png", "syntheticDataOnly": true }
+  },
+  "locales": ["en-US", "es-ES", "zh-CN"],
+  "screens": ["today", "live-recording", "progress", "social", "coach"],
+  "forbiddenContent": ["real routes", "real health data", "access tokens", "private contacts", "production notifications"]
+}
