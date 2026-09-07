@@ -59,6 +59,7 @@ dependencies {
     implementation(project(":core:media"))
     implementation(project(":core:model"))
     implementation(project(":core:network"))
+    implementation(project(":feature:onboarding"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.activity.compose)
