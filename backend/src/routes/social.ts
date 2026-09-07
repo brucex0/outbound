@@ -116,7 +116,7 @@ async function socialHome(c: Context<AppEnv>) {
   const feedCursorValue = c.req.query("feedCursor");
   const feedCursor = feedCursorValue ? decodeFeedCursor(feedCursorValue) : null;
   if (feedCursorValue && !feedCursor) return c.json({ error: "Invalid activity feed cursor." }, 400);
-  const [upcomingRuns, pastEvents, memberships, posts] = await Promise.all([
+  const [upcomingRuns, pastEvents, memberships, posts, invitations] = await Promise.all([
     prisma.activityEvent.findMany({
       where: {
         status: { in: ["scheduled", "active"] },
@@ -163,6 +163,12 @@ async function socialHome(c: Context<AppEnv>) {
       orderBy: [{ activity: { startedAt: "desc" } }, { id: "desc" }],
       take: socialFeedPageSize + 1,
     }),
+    prisma.invitation.findMany({
+      where: { recipientId: user.id, status: "pending", expiresAt: { gt: new Date() }, activityEventId: { not: null } },
+      include: { sender: { select: socialPersonSelect }, activityEvent: { select: { id: true, title: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
   ]);
 
   const feedPosts = posts.slice(0, socialFeedPageSize);
@@ -178,6 +184,7 @@ async function socialHome(c: Context<AppEnv>) {
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
     posts: await Promise.all(feedPosts.map((post) => postPayload(post, user.id))),
+    invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: invitation.sender, objectId: invitation.activityEventId })),
     nextFeedCursor,
   });
 }
@@ -789,6 +796,19 @@ router.post("/invitations/:id/accept", zValidator("json", attendanceModeSchema),
     sourceReferenceId: `activityEvent:${invitation.activityEventId}`,
   });
   return c.json({ ok: true });
+});
+
+router.post("/invitations/:id/decline", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const invitation = await getPrismaClient().invitation.findFirst({ where: { id: c.req.param("id"), recipientId: user.id, status: "pending" } });
+  if (!invitation?.activityEventId) return c.json({ error: "Invitation not found." }, 404);
+  await getPrismaClient().$transaction([
+    getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "declined" } }),
+    getPrismaClient().activityEventParticipant.updateMany({ where: { activityEventId: invitation.activityEventId, userId: user.id }, data: { status: "left", outcome: null, recordedActivityId: null, resolvedAt: new Date() } }),
+    getPrismaClient().socialNotification.deleteMany({ where: { recipientId: user.id, type: "runInvitation", objectId: invitation.id } }),
+  ]);
+  return c.json({ status: "declined", activityEventId: invitation.activityEventId });
 });
 
 router.post("/invitations/token/:token/accept", async (c) => {

@@ -34,6 +34,7 @@ export async function deliverPushNotification(notification: PushNotificationPayl
         notificationId: notification.id,
         type: notification.type,
         objectId: notification.objectId ?? "",
+        targetType: notification.type === "runInvitation" ? "invitation" : notification.type.startsWith("activityEvent") || notification.type === "invitationAccepted" ? "event" : "notification",
         destination: "social.notifications",
       },
       ...(platform === "ios"
