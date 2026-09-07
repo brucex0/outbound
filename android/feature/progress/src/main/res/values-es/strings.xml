@@ -1,0 +1,26 @@
+<resources>
+    <string name="progress_title">Progreso</string>
+    <string name="progress_this_week">Esta semana</string>
+    <string name="progress_distance">Distancia</string>
+    <string name="progress_time">Tiempo</string>
+    <string name="progress_elevation">Desnivel</string>
+    <plurals name="progress_activities_count"><item quantity="one">%d actividad</item><item quantity="other">%d actividades</item></plurals>
+    <string name="progress_four_week_trend">Distancia en cuatro semanas</string>
+    <string name="progress_chart_separator">; </string>
+    <string name="progress_chart_week_value">Semana del %1$s: %2$s</string>
+    <string name="progress_personal_records">Récords personales</string>
+    <string name="progress_race_predictions">Predicciones de carrera</string>
+    <string name="progress_gear">Equipamiento</string>
+    <string name="progress_gear_retired">Retiradas</string>
+    <string name="progress_gear_mileage">%1$s de %2$s</string>
+    <string name="progress_gear_retirement_due">Has alcanzado el objetivo de kilometraje de estas zapatillas.</string>
+    <string name="progress_momentum_today">Hoy cumpliste contigo</string>
+    <string name="progress_momentum_return">De vuelta después de descansar</string>
+    <string name="progress_momentum_rhythm">Estás ganando constancia</string>
+    <string name="progress_momentum_short">Las sesiones cortas también cuentan</string>
+    <plurals name="progress_momentum_week_count"><item quantity="one">%d actividad esta semana</item><item quantity="other">%d actividades esta semana</item></plurals>
+    <string name="progress_momentum_simple">Haz que hoy sea sencillo</string>
+    <string name="progress_confidence_low">Confianza baja</string>
+    <string name="progress_confidence_medium">Confianza media</string>
+    <string name="progress_confidence_high">Confianza alta</string>
+</resources>

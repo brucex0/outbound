@@ -1,0 +1,26 @@
+<resources>
+    <string name="progress_title">Progress</string>
+    <string name="progress_this_week">This week</string>
+    <string name="progress_distance">Distance</string>
+    <string name="progress_time">Time</string>
+    <string name="progress_elevation">Elevation</string>
+    <plurals name="progress_activities_count"><item quantity="one">%d activity</item><item quantity="other">%d activities</item></plurals>
+    <string name="progress_four_week_trend">Four-week distance</string>
+    <string name="progress_chart_separator">; </string>
+    <string name="progress_chart_week_value">Week of %1$s: %2$s</string>
+    <string name="progress_personal_records">Personal records</string>
+    <string name="progress_race_predictions">Race predictions</string>
+    <string name="progress_gear">Gear</string>
+    <string name="progress_gear_retired">Retired</string>
+    <string name="progress_gear_mileage">%1$s of %2$s</string>
+    <string name="progress_gear_retirement_due">You have reached this shoe’s mileage target.</string>
+    <string name="progress_momentum_today">You showed up today</string>
+    <string name="progress_momentum_return">Back after a rest window</string>
+    <string name="progress_momentum_rhythm">You are building rhythm</string>
+    <string name="progress_momentum_short">Short sessions still count</string>
+    <plurals name="progress_momentum_week_count"><item quantity="one">%d activity this week</item><item quantity="other">%d activities this week</item></plurals>
+    <string name="progress_momentum_simple">Keep the day simple</string>
+    <string name="progress_confidence_low">Low confidence</string>
+    <string name="progress_confidence_medium">Medium confidence</string>
+    <string name="progress_confidence_high">High confidence</string>
+</resources>

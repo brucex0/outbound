@@ -1,0 +1,26 @@
+<resources>
+    <string name="progress_title">训练进展</string>
+    <string name="progress_this_week">本周</string>
+    <string name="progress_distance">距离</string>
+    <string name="progress_time">时间</string>
+    <string name="progress_elevation">爬升</string>
+    <plurals name="progress_activities_count"><item quantity="other">%d 次活动</item></plurals>
+    <string name="progress_four_week_trend">四周距离趋势</string>
+    <string name="progress_chart_separator">；</string>
+    <string name="progress_chart_week_value">%1$s 当周：%2$s</string>
+    <string name="progress_personal_records">个人纪录</string>
+    <string name="progress_race_predictions">比赛成绩预测</string>
+    <string name="progress_gear">装备</string>
+    <string name="progress_gear_retired">已退役</string>
+    <string name="progress_gear_mileage">已用 %1$s，共 %2$s</string>
+    <string name="progress_gear_retirement_due">这双跑鞋已达到设定里程。</string>
+    <string name="progress_momentum_today">今天你行动了</string>
+    <string name="progress_momentum_return">休整之后，再次出发</string>
+    <string name="progress_momentum_rhythm">你正在建立稳定节奏</string>
+    <string name="progress_momentum_short">短时间训练也有价值</string>
+    <plurals name="progress_momentum_week_count"><item quantity="other">本周已完成 %d 次活动</item></plurals>
+    <string name="progress_momentum_simple">今天，简单练就好</string>
+    <string name="progress_confidence_low">可信度较低</string>
+    <string name="progress_confidence_medium">可信度中等</string>
+    <string name="progress_confidence_high">可信度较高</string>
+</resources>
