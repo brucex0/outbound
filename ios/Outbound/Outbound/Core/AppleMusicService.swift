@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import MusicKit
 import OSLog
@@ -10,6 +11,22 @@ final class AppleMusicService: MusicService {
     private var currentQuickPick: MusicQuickPick?
     private var currentSelection: [MusicSearchResult] = []
     private var queuedSongs: MusicItemCollection<Song>?
+    private var playbackUpdateHandler: (@MainActor (MusicPlaybackSnapshot) -> Void)?
+    private var playbackObservers: Set<AnyCancellable> = []
+
+    init() {
+        player.state.objectWillChange
+            .sink { [weak self] in
+                self?.publishPlaybackUpdateAfterStateChange()
+            }
+            .store(in: &playbackObservers)
+
+        player.queue.objectWillChange
+            .sink { [weak self] in
+                self?.publishPlaybackUpdateAfterStateChange()
+            }
+            .store(in: &playbackObservers)
+    }
 
     var currentSnapshot: MusicConnectionSnapshot {
         makeSnapshot(
@@ -20,6 +37,10 @@ final class AppleMusicService: MusicService {
 
     var currentPlayback: MusicPlaybackSnapshot {
         playbackSnapshot()
+    }
+
+    func setPlaybackUpdateHandler(_ handler: @escaping @MainActor (MusicPlaybackSnapshot) -> Void) {
+        playbackUpdateHandler = handler
     }
 
     func refreshSnapshot() async -> MusicConnectionSnapshot {
@@ -182,7 +203,7 @@ final class AppleMusicService: MusicService {
     func pause() async -> MusicPlaybackSnapshot {
         Self.logger.info("Pause Apple Music playback.")
         player.pause()
-        return playbackSnapshot()
+        return playbackSnapshot(isPlayingOverride: false)
     }
 
     func stop() async -> MusicPlaybackSnapshot {
@@ -194,7 +215,7 @@ final class AppleMusicService: MusicService {
     func resume() async throws -> MusicPlaybackSnapshot {
         Self.logger.info("Resume Apple Music playback.")
         try await resumeIfPossible()
-        return playbackSnapshot()
+        return playbackSnapshot(isPlayingOverride: true)
     }
 
     func skipToNext() async throws -> MusicPlaybackSnapshot {
@@ -332,8 +353,10 @@ final class AppleMusicService: MusicService {
         }
     }
 
-    private func playbackSnapshot() -> MusicPlaybackSnapshot {
-        let isPlaying = player.state.playbackStatus == .playing
+    private func playbackSnapshot(isPlayingOverride: Bool? = nil) -> MusicPlaybackSnapshot {
+        // MusicKit can briefly report its previous playback status immediately
+        // after pause/play. A completed command is authoritative for the UI.
+        let isPlaying = isPlayingOverride ?? (player.state.playbackStatus == .playing)
         if let song = player.queue.currentEntry?.item as? Song {
             return MusicPlaybackSnapshot(
                 title: song.title,
@@ -355,6 +378,15 @@ final class AppleMusicService: MusicService {
             return MusicPlaybackSnapshot(title: title, subtitle: first.subtitle, isPlaying: isPlaying, hasActiveQueue: true)
         }
         return .empty
+    }
+
+    private func publishPlaybackUpdateAfterStateChange() {
+        // ObservableObject publishes before its properties mutate, so sample the
+        // player on the next main-loop turn rather than inside the notification.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let playbackUpdateHandler else { return }
+            playbackUpdateHandler(playbackSnapshot())
+        }
     }
 
     private func describe(_ error: Error) -> String {

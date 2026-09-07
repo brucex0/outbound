@@ -95,7 +95,7 @@ Implication for Outbound:
 
 - `Me` tab: connect provider, disconnect provider, and set a default provider
 - `RecordView` pre-start page: choose music source and quick-pick recent playlist or station
-- live recorder HUD: compact now-playing row with play/pause and skip
+- live recorder HUD: the expanded dashboard shows a now-playing bar above the activity controls with a marquee title, play/pause, and skip; the collapsed card keeps a waveform playback affordance
 - post-run summary: optionally show what playlist or station was used, but do not make this the focal point
 
 ### V1 User Flow
@@ -191,6 +191,7 @@ Suggested modules:
 - `ActivityRecorder` should not know provider details
 - `VirtualGuide` should not issue provider commands directly
 - camera and recording UI should consume normalized playback state only
+- observe the provider player's playback and queue state so the normalized snapshot follows delayed or externally initiated changes; completed commands may provide immediate feedback, but observed provider state remains authoritative
 - provider auth callbacks should not leak into unrelated app flows
 
 ## App Wiring

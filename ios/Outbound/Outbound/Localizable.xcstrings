@@ -13833,6 +13833,15 @@
         }
       }
     },
+    "session.music.resume" : {
+      "comment" : "A button label that resumes paused workout music.",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "new", "value" : "Resume music" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reanudar música" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续播放音乐" } }
+      }
+    },
     "session.music.skip_track" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

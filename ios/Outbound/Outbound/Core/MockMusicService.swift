@@ -6,6 +6,7 @@ final class MockMusicService: MusicService {
     private var currentIndex = 0
     private var currentQuickPick: MusicQuickPick?
     private var isPlaying = false
+    private var playbackUpdateHandler: (@MainActor (MusicPlaybackSnapshot) -> Void)?
 
     private let quickPickFixtures: [MusicQuickPick] = [
         MusicQuickPick(
@@ -40,6 +41,10 @@ final class MockMusicService: MusicService {
 
     var currentPlayback: MusicPlaybackSnapshot {
         playback()
+    }
+
+    func setPlaybackUpdateHandler(_ handler: @escaping @MainActor (MusicPlaybackSnapshot) -> Void) {
+        playbackUpdateHandler = handler
     }
 
     func refreshSnapshot() async -> MusicConnectionSnapshot {
@@ -111,12 +116,16 @@ final class MockMusicService: MusicService {
 
     func pause() async -> MusicPlaybackSnapshot {
         isPlaying = false
-        return playback()
+        let snapshot = playback()
+        playbackUpdateHandler?(snapshot)
+        return snapshot
     }
 
     func stop() async -> MusicPlaybackSnapshot {
         isPlaying = false
-        return playback()
+        let snapshot = playback()
+        playbackUpdateHandler?(snapshot)
+        return snapshot
     }
 
     func resume() async throws -> MusicPlaybackSnapshot {

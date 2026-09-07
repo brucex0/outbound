@@ -64,6 +64,9 @@ final class MusicStore: ObservableObject {
             MusicQuickPick.self,
             from: defaults.data(forKey: workoutQuickPickKey)
         )
+        self.service.setPlaybackUpdateHandler { [weak self] playback in
+            self?.receivePlaybackUpdate(playback)
+        }
     }
 
     var isConnected: Bool {
@@ -423,6 +426,14 @@ final class MusicStore: ObservableObject {
         }
     }
 
+    private func receivePlaybackUpdate(_ updatedPlayback: MusicPlaybackSnapshot) {
+        playback = updatedPlayback
+        if startedPlaybackForWorkout {
+            shouldResumeWorkoutPlayback = updatedPlayback.isPlaying
+            persistWorkoutPlaybackRecoveryState()
+        }
+    }
+
     func skipToNext() async {
         Self.logger.info("Skip to next music track.")
         lastErrorMessage = nil
@@ -614,6 +625,8 @@ enum WorkoutMusicRecoveryOutcome {
 protocol MusicService: AnyObject {
     var currentSnapshot: MusicConnectionSnapshot { get }
     var currentPlayback: MusicPlaybackSnapshot { get }
+
+    func setPlaybackUpdateHandler(_ handler: @escaping @MainActor (MusicPlaybackSnapshot) -> Void)
 
     func refreshSnapshot() async -> MusicConnectionSnapshot
     func connect() async throws -> MusicConnectionSnapshot

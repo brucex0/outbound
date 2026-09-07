@@ -870,33 +870,79 @@ struct SessionStatusCard: View {
     }
 
     private var expandedControls: some View {
-        HStack(spacing: 12) {
-            Button(action: expandedPrimaryAction) {
-                Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
-                    .font(.headline.weight(.bold))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 62)
-                    .foregroundStyle(.white)
-                    .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        VStack(spacing: 12) {
+            if let musicPlayback {
+                expandedMusicControls(musicPlayback)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(expandedPrimaryAccessibilityLabel)
 
-            if state == .paused {
-                Button(action: onFinish) {
-                    Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
+            HStack(spacing: 12) {
+                Button(action: expandedPrimaryAction) {
+                    Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
                         .font(.headline.weight(.bold))
                         .frame(maxWidth: .infinity)
                         .frame(height: 62)
                         .foregroundStyle(.white)
-                        .background(theme.secondaryColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .disabled(!isFinishEnabled)
-                .opacity(isFinishEnabled ? 1 : 0.55)
-                .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
+                .accessibilityLabel(expandedPrimaryAccessibilityLabel)
+
+                if state == .paused {
+                    Button(action: onFinish) {
+                        Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
+                            .font(.headline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                            .foregroundStyle(.white)
+                            .background(theme.secondaryColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isFinishEnabled)
+                    .opacity(isFinishEnabled ? 1 : 0.55)
+                    .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
+                }
             }
         }
+    }
+
+    private func expandedMusicControls(_ playback: MusicPlaybackSnapshot) -> some View {
+        HStack(spacing: 12) {
+            musicIcon(isPlaying: playback.isPlaying, symbolName: "music.note")
+
+            VStack(alignment: .leading, spacing: 3) {
+                MarqueeText(text: playback.title)
+                    .font(.subheadline.weight(.bold))
+
+                if !playback.subtitle.isEmpty {
+                    Text(playback.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onTogglePlayback) {
+                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.body.weight(.bold))
+            }
+            .buttonStyle(SessionIconButtonStyle(background: theme.accentColor.opacity(0.14), foreground: theme.accentColor, size: 44))
+            .accessibilityLabel(playback.isPlaying
+                ? String(localized: "Pause music")
+                : String(localized: "session.music.resume", defaultValue: "Resume music"))
+
+            Button(action: onSkipTrack) {
+                Image(systemName: "forward.fill")
+                    .font(.body.weight(.bold))
+            }
+            .buttonStyle(SessionIconButtonStyle(background: Color(.secondarySystemBackground), foreground: .primary, size: 44))
+            .accessibilityLabel(String(localized: "session.music.skip_track", defaultValue: "Skip track"))
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 68)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ExpandedMusicControls")
     }
 
     private var expandedPrimaryTitle: String {
@@ -938,6 +984,17 @@ struct SessionStatusCard: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.orange)
                     .accessibilityLabel(String(localized: "session.offline.accessibility", defaultValue: "Offline. Activity saved on this device and will sync later."))
+            }
+
+            if let musicPlayback {
+                Button(action: onTogglePlayback) {
+                    musicIcon(isPlaying: musicPlayback.isPlaying, symbolName: "music.note")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(musicPlayback.isPlaying
+                    ? String(localized: "Pause music")
+                    : String(localized: "session.music.resume", defaultValue: "Resume music"))
+                .accessibilityIdentifier("CollapsedMusicControl")
             }
 
             SessionMetricColumn(value: displayedElapsedText, label: nil)
@@ -991,7 +1048,6 @@ struct SessionStatusCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            musicMenu
         }
         .frame(minHeight: 34)
     }
@@ -1124,6 +1180,53 @@ struct SessionStatusCard: View {
             let phase = time * 5.4 + Double(index) * 0.8
             let normalized = (sin(phase) + 1) / 2
             return 5 + CGFloat(normalized) * 11
+        }
+    }
+
+    private struct MarqueeText: View {
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        let text: String
+        @State private var textWidth: CGFloat = 0
+        @State private var animationStart = Date()
+
+        var body: some View {
+            GeometryReader { proxy in
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion || textWidth <= proxy.size.width)) { context in
+                    Text(text)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .background {
+                            GeometryReader { textProxy in
+                                Color.clear
+                                    .onAppear { textWidth = textProxy.size.width }
+                                    .onChange(of: textProxy.size.width) { _, width in
+                                        textWidth = width
+                                        animationStart = Date()
+                                    }
+                            }
+                        }
+                        .offset(x: marqueeOffset(containerWidth: proxy.size.width, date: context.date))
+                }
+                .clipped()
+            }
+            .frame(height: 20)
+            .accessibilityLabel(text)
+        }
+
+        private func marqueeOffset(containerWidth: CGFloat, date: Date) -> CGFloat {
+            let overflow = max(textWidth - containerWidth, 0)
+            guard overflow > 0, !reduceMotion else { return 0 }
+            let travelDuration = max(Double(overflow) / 24, 2.5)
+            let pauseDuration = 1.2
+            let cycleDuration = (travelDuration + pauseDuration) * 2
+            let elapsed = date.timeIntervalSince(animationStart).truncatingRemainder(dividingBy: cycleDuration)
+
+            if elapsed < pauseDuration { return 0 }
+            if elapsed < pauseDuration + travelDuration {
+                return -overflow * CGFloat((elapsed - pauseDuration) / travelDuration)
+            }
+            if elapsed < (pauseDuration * 2) + travelDuration { return -overflow }
+            return -overflow * CGFloat(1 - ((elapsed - (pauseDuration * 2) - travelDuration) / travelDuration))
         }
     }
 
