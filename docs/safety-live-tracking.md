@@ -12,15 +12,15 @@ This is not just social sharing. It is safety, consent, privacy, and reliability
 
 Outbound should ship live tracking as a trust feature before trying to make it playful.
 
-Near-term promise:
+Promise:
 
-- "Let trusted people follow this run until I finish."
+- "Invite Xia to cheer me on."
 
 Do not lead with public maps, follower broadcasts, or social presence. Those can come later after privacy and identity are solid.
 
 ## User Experience
 
-### V1 Trusted Link
+### In-App Cheer Invitation
 
 Entry points:
 
@@ -30,32 +30,24 @@ Entry points:
 
 Flow:
 
-1. Runner chooses `Share live run`.
-2. Runner selects trusted contacts or creates a time-limited private link.
-3. Outbound shows a clear confirmation before sharing begins.
-4. Recipient opens a lightweight web view with current location, route so far, elapsed time, distance, last update time, and battery-friendly status copy.
-5. Sharing ends automatically when the activity finishes, expires, or is manually stopped.
+1. Runner opens `Invite someone to cheer me on`.
+2. Runner selects one or more accepted Plainstride connections.
+3. The invitees receive an in-app notification and open the live session from Social.
+4. They see precise location, route, elapsed time, distance, pace, and heart rate.
+5. They hold the microphone control to record an original voice cheer of up to 15 seconds.
+6. The recording plays directly through the runner's existing guide-audio path between guide cues.
+7. Sharing and new voice cheers end when the activity finishes or expires.
 
 Default behavior:
 
 - off by default
-- no automatic public sharing
+- app account and accepted connection required
 - do not expose photos, exact home address history, or past activities
 - show the runner an obvious active-sharing indicator during the whole session
 
-### V2 Trusted Contacts
+### Separate Safety Escalation
 
-Add a simple contact list once identity and notification plumbing are reliable:
-
-- named trusted contacts
-- one-tap start sharing with favorites
-- optional expected-finish alert
-- stale-location warning when the phone stops updating
-- server delivery targets for SMS/push, with stub delivery until real providers are configured
-
-### V3 Safety Escalation
-
-Only after V1/V2 prove reliable:
+Outside the cheering experience:
 
 - overdue check-in prompt
 - "I am safe" quick message
@@ -83,7 +75,6 @@ Core tables:
   - `id`
   - `userId`
   - `activityId` nullable until the workout is saved
-  - `tokenHash`
   - `startedAt`
   - `expiresAt`
   - `endedAt`
@@ -92,14 +83,8 @@ Core tables:
   - `lastLocation`
   - `routePreview`
   - `recipientLabel` nullable
-- `TrustedContact`
-  - `id`
-  - `userId`
-  - `displayName`
-  - `deliveryAddressEncrypted` or platform contact reference
-  - `createdAt`
-
-Current trusted contacts are local-first on iOS. The backend accepts delivery targets on live-share creation but does not persist contact addresses yet.
+- `SafetyLiveShareRecipient` authorizes each explicitly invited accepted connection.
+- `SafetyLiveShareCheer` stores a bounded original recording until the runner retrieves it.
 
 Initial API:
 
@@ -109,14 +94,14 @@ Initial API:
 - `POST /v1/safety/live-shares/:id/end`
 - `GET /live/:token`
 
-`POST /v1/safety/live-shares` accepts optional `recipientLabel` and `deliveryTargets` entries with `sms` or `push` channels. Current server delivery returns `stubbed` results so the API contract is ready for SMS/push providers later without changing the client flow.
+`POST /v1/safety/live-shares` requires one to five accepted-connection user IDs and creates in-app notifications for them.
 
 `GET /v1/safety/live-shares/:id` is an authenticated app lookup for notification routing. It is owner-scoped, returns only the live-share status and timestamps needed by the app, returns `404` for both unknown and unauthorized IDs, and returns `410` after expiry.
 
 Rules:
 
 - authenticated app APIs derive user identity from Firebase auth
-- public live link uses an unguessable token, stored hashed server-side
+- follower reads and voice writes require authentication plus an explicit recipient row
 - location updates should be rate-limited and tolerate dropped updates
 - end or expire sessions server-side even if the app crashes
 
@@ -137,7 +122,7 @@ Integration points:
 
 Do not put networking directly in `ActivityRecorder`; keep recording stable even if live-share sync fails.
 
-## Rollout Plan
+## Current Implementation
 
 ### Current Local Slice
 
@@ -154,16 +139,14 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
   - `POST /v1/safety/live-shares`
   - `PATCH /v1/safety/live-shares/:id/location`
   - `POST /v1/safety/live-shares/:id/end`
-- `POST /v1/safety/live-shares` accepts selected trusted-contact delivery targets and returns stubbed SMS/push delivery statuses.
-- Recipient route:
-  - `GET /live/:token`
-  - `GET /live/:token?format=json` for browser polling
-- The public viewer uses a map-first mobile layout: route history is drawn as an orange path, the current point is centered when only one location exists, and distance/elapsed/update stats are compressed below the map.
-- `Settings` has local trusted contacts, default recipient selection, and SMS/push channel labels.
-- `RecordView` creates the server share before countdown when `Share live run` is armed, using the default trusted contact when one exists.
-- iOS presents a prefilled system Share Sheet before countdown; recording starts after the sheet is dismissed.
+- `POST /v1/safety/live-shares` accepts selected accepted-connection user IDs, verifies the relationship, and creates in-app/push invitations.
+- Invitees use authenticated `GET /v1/safety/live-shares/invited` and `GET /v1/safety/live-shares/invited/:id`; no public link is involved in the product flow.
+- Live snapshots include exact route, pace, distance, elapsed time, and heart rate for invited users.
+- `POST /v1/safety/live-shares/invited/:id/cheers` stores a bounded original AAC voice recording; the runner drains pending recordings from `GET /v1/safety/live-shares/:id/cheers`.
+- `RecordView` presents an accepted-connection picker and creates the server share without a Share Sheet.
+- Social shows active invitations in app; the follower screen provides the live map and a hold-to-record voice control.
+- The runner polls for pending recordings and plays the unmodified audio through the live guide audio player.
 - `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.
-- The public page polls every 10 seconds and shows route preview, current/last location, elapsed time, distance, update age, stale state, and ended/expired state.
 - Finish, discard, and the live HUD stop-sharing control call the backend end endpoint.
 - If create or update fails, recording continues and the runner sees local stale/unavailable copy.
 
@@ -175,33 +158,11 @@ npm run db:generate
 npm run db:push
 ```
 
-Real SMS/push provider delivery, route privacy zones, and emergency escalation remain future work.
+Emergency escalation remains outside this feature.
 
-### Milestone 1: Private Live Link
-
-- backend session create/update/end endpoints: shipped
-- minimal public live viewer: shipped
-- iOS start/stop control: shipped
-- active sharing indicator: shipped
-- automatic expiry and finish cleanup: shipped
-
-### Milestone 2: Trusted Contacts
-
-- manage favorites in Settings: shipped locally
-- share via system Share Sheet: shipped
-- server SMS/push delivery contract: shipped with stubbed delivery
-- stale-location and expected-finish copy
-
-### Milestone 3: Route Privacy
-
-- privacy zones
-- reduced precision near sensitive locations
-- default share templates for run, hike, and bike
-
-## Non-Goals For V1
+## Non-Goals
 
 - emergency dispatch
 - public spectator mode
 - social feed live maps
 - rich media in live tracking
-- background push notifications to recipients

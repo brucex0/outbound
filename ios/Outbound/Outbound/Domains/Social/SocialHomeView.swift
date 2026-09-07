@@ -17,6 +17,7 @@ struct SocialHomeView: View {
     @State private var showsNotifications = false
     @State private var showsConnections = false
     @State private var toastMessage: String?
+    @StateObject private var liveCheerStore = LiveCheerStore()
 
     private var shouldShowConnectionPrompt: Bool {
         socialStore.hasLoadedConnections
@@ -37,6 +38,18 @@ struct SocialHomeView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                    if !liveCheerStore.sessions.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Cheer someone on").socialSectionLabel()
+                            ForEach(liveCheerStore.sessions) { session in
+                                NavigationLink {
+                                    LiveCheerView(sessionID: session.id)
+                                } label: {
+                                    liveCheerRow(name: session.runner.displayName)
+                                }
+                            }
+                        }
+                    }
                     if let incomingRequest = socialStore.connections.first(where: {
                         $0.status == "pending" && $0.direction == "incoming"
                     }) {
@@ -106,11 +119,12 @@ struct SocialHomeView: View {
                 _ = await (homeRefresh, connectionsRefresh, circleRefresh, invitationRefresh)
             }
             .task {
+                async let liveCheers: Void = liveCheerStore.refreshSessions()
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
                 async let notificationsRefresh: Void = socialStore.refreshNotifications()
                 async let circleRefresh: Void = circleStore.refresh()
                 async let circleInvitations: Void = circleStore.refreshInvitations()
-                _ = await (connectionsRefresh, notificationsRefresh, circleRefresh, circleInvitations)
+                _ = await (connectionsRefresh, notificationsRefresh, circleRefresh, circleInvitations, liveCheers)
             }
             .onChange(of: shouldShowConnectionPrompt, initial: true) { _, showsPrompt in
                 guard showsPrompt else { return }
@@ -209,6 +223,17 @@ struct SocialHomeView: View {
                     .environmentObject(socialStore)
             }
         }
+    }
+
+    private func liveCheerRow(name: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "waveform.circle.fill")
+            Text(String(format: String(localized: "social.cheer_live.named", defaultValue: "Cheer %@ on"), name))
+        }
+        .font(.headline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func trackPushOpen(type: String, destination: String) {

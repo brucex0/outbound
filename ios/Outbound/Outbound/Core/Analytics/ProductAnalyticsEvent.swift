@@ -127,6 +127,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupRunJoinAttempted = "group_run_join_attempted"
     case groupRunJoined = "group_run_joined"
     case groupRunInviteShared = "group_run_invite_shared"
+    case liveCheerInvitationConfigured = "live_cheer_invitation_configured"
+    case liveCheerFollowerOpened = "live_cheer_follower_opened"
+    case liveVoiceCheerSent = "live_voice_cheer_sent"
+    case liveVoiceCheerPlayed = "live_voice_cheer_played"
     case liveGuidanceMomentDetected = "live_guidance_moment_detected"
     case liveGuidanceCueSpoken = "live_guidance_cue_spoken"
     case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
@@ -283,6 +287,10 @@ enum ProductAnalyticsSchema {
         .profileQRCodeOpened: [.entrySource],
         .connectionQRCodeRequestResult: [.result],
         .socialOperationFailed: [.sourceType, .errorCategory],
+        .liveCheerInvitationConfigured: [.participantCountBucket],
+        .liveCheerFollowerOpened: [.entrySource],
+        .liveVoiceCheerSent: [.result, .durationBucket],
+        .liveVoiceCheerPlayed: [.countBucket],
         .circleSectionExposed: [.entrySource, .participantCountBucket],
         .circleCreationStarted: [.entrySource],
         .circleCreationCompleted: [.entrySource, .participantCountBucket],

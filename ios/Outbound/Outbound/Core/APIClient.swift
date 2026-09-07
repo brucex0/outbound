@@ -746,6 +746,22 @@ final class APIClient {
         try await post("/safety/live-shares/\(shareID)/end", body: EmptyBody())
     }
 
+    func fetchInvitedLiveShares() async throws -> InvitedLiveSharesResponse {
+        try await get("/safety/live-shares/invited")
+    }
+
+    func fetchInvitedLiveShare(id: String) async throws -> InvitedLiveShareDTO {
+        try await get("/safety/live-shares/invited/\(id)")
+    }
+
+    func sendVoiceCheer(shareID: String, audio: Data, durationMs: Int) async throws -> VoiceCheerReceiptDTO {
+        try await post("/safety/live-shares/invited/\(shareID)/cheers", body: VoiceCheerUploadRequest(audioBase64: audio.base64EncodedString(), contentType: "audio/mp4", durationMs: durationMs))
+    }
+
+    func fetchVoiceCheers(shareID: String) async throws -> VoiceCheersResponse {
+        try await get("/safety/live-shares/\(shareID)/cheers")
+    }
+
     func createLiveGroupRun(_ request: LiveGroupCreateRequest) async throws -> LiveGroupSessionResponse {
         try await post("/live/group-runs", body: request)
     }
@@ -2019,37 +2035,17 @@ struct ActivityDeleteResponse: Decodable {
 }
 
 struct LiveShareCreateRequest: Encodable {
-    let recipientLabel: String?
-    let deliveryTargets: [LiveShareDeliveryTarget]?
+    let recipientUserIds: [String]
     let sport: String?
     let title: String?
     let expiresInSeconds: Int?
 }
 
-struct LiveShareDeliveryTarget: Encodable {
-    let channel: String
-    let label: String?
-    let address: String?
-}
-
 struct LiveShareCreateResponse: Decodable {
     let id: String
-    let token: String
-    let shareURL: URL
     let status: String
     let startedAt: Date
     let expiresAt: Date
-    let deliveries: [LiveShareDeliveryResult]?
-}
-
-struct LiveShareDeliveryResult: Decodable, Hashable {
-    let id: String
-    let channel: String
-    let label: String?
-    let addressLast4: String?
-    let status: String
-    let message: String
-    let shareURL: URL
 }
 
 struct LiveShareLocationUpdateRequest: Encodable {
@@ -2060,6 +2056,8 @@ struct LiveShareLocationUpdateRequest: Encodable {
     let accuracyM: Double?
     let elapsedSeconds: Int
     let distanceM: Double
+    let currentPaceSecsPerKm: Double?
+    let heartRate: Int?
 }
 
 struct LiveShareStatusResponse: Decodable {
@@ -2069,6 +2067,26 @@ struct LiveShareStatusResponse: Decodable {
     let expiresAt: Date
     let endedAt: Date?
     let lastLocationAt: Date?
+}
+
+struct InvitedLiveSharesResponse: Decodable { let sessions: [InvitedLiveShareDTO] }
+struct LiveShareRunnerDTO: Decodable { let id: String; let displayName: String; let username: String; let avatarUrl: URL? }
+struct LiveSharePointDTO: Decodable, Identifiable {
+    var id: String { "\(recordedAt.timeIntervalSince1970)-\(latitude)-\(longitude)" }
+    let recordedAt: Date; let latitude: Double; let longitude: Double
+}
+struct InvitedLiveShareDTO: Decodable, Identifiable {
+    let id: String; let status: String; let runner: LiveShareRunnerDTO; let sport: String; let title: String
+    let startedAt: Date; let expiresAt: Date; let endedAt: Date?; let lastLocationAt: Date?
+    let lastLocation: LiveSharePointDTO?; let routePreview: [LiveSharePointDTO]
+    let elapsedSeconds: Int; let distanceM: Double; let currentPaceSecsPerKm: Double?; let heartRate: Int?
+}
+private struct VoiceCheerUploadRequest: Encodable { let audioBase64: String; let contentType: String; let durationMs: Int }
+struct VoiceCheerReceiptDTO: Decodable { let id: String; let createdAt: Date }
+struct VoiceCheersResponse: Decodable { let cheers: [VoiceCheerDTO] }
+struct VoiceCheerDTO: Decodable, Identifiable {
+    let id: String; let audioBase64: String; let contentType: String; let durationMs: Int; let createdAt: Date
+    var audioData: Data? { Data(base64Encoded: audioBase64) }
 }
 
 struct LiveGroupCreateRequest: Encodable {

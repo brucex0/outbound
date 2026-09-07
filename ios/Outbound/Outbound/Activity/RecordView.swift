@@ -261,6 +261,13 @@ struct RecordView: View {
         .onReceive(recorder.$liveSnapshot) { snapshot in
             guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
+            if liveShareStore.isSharing, guide.canPlayVoiceCheers {
+                Task { @MainActor in
+                    let recordings = await liveShareStore.takePendingVoiceCheers()
+                    guide.playVoiceCheers(recordings)
+                    if !recordings.isEmpty { track(.init(.liveVoiceCheerPlayed, properties: [.countBucket: .string(ProductAnalyticsBucket.count(recordings.count))])) }
+                }
+            }
             liveGroupStore.ingest(snapshot)
             updateLiveActivity(
                 snapshot: snapshot,
@@ -451,8 +458,9 @@ struct RecordView: View {
                 .environmentObject(measurementPreferences)
         }
         .sheet(isPresented: $showsTrustedContacts) {
-            NavigationStack { SafetyContactsSettingsView() }
-                .environmentObject(safetyContactStore)
+            CheerInvitationPickerView()
+                .environmentObject(socialStore)
+                .environmentObject(liveShareStore)
         }
         .sheet(isPresented: $showsCuratedWorkouts) {
             StandaloneWorkoutPickerView(sport: selectedManualSport ?? .run) { workout in
@@ -786,16 +794,11 @@ struct RecordView: View {
         guard !connectivityStore.isOffline else { return }
         Task { @MainActor in
             async let brief = try? APIClient.shared.fetchCompanionSessionBrief(workoutID: intent?.id)
-            async let presentation = liveShareStore.beginIfArmed(
-                intent: intent,
-                contact: safetyContactStore.defaultContact
-            )
+            async let liveShare: Void = liveShareStore.beginIfArmed(intent: intent)
             if let companionBrief = await brief {
                 guide.updateCompanionBrief(companionBrief)
             }
-            if let liveSharePresentation = await presentation {
-                await SystemSharePresenter.present(activityItems: liveSharePresentation.activityItems)
-            }
+            await liveShare
         }
     }
 
@@ -1698,11 +1701,7 @@ struct RecordView: View {
                             systemImage: "location.fill",
                             isConfigured: liveShareStore.isArmedForNextActivity
                         ) {
-                            if safetyContactStore.defaultContact == nil {
-                                showsTrustedContacts = true
-                            } else {
-                                liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
-                            }
+                            showsTrustedContacts = true
                         }
 
                         launchShoeControl
@@ -2689,7 +2688,7 @@ struct RecordView: View {
         let intent = plannedIntent ?? .freestyleRun
         musicStore.applyWorkoutSuggestion(title: intent.title, detail: intent.detail, sport: intent.sport)
     }
-    private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (safetyContactStore.defaultContact?.name ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
+    private var liveTrackValue: String { liveShareStore.isArmedForNextActivity ? (liveShareStore.selectedConnections.first?.person.displayName ?? String(localized: "record.live_track.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off") }
     private var indoorOutdoorLabel: String {
         isIndoorSession
             ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
@@ -3142,7 +3141,7 @@ struct RecordView: View {
                     systemImage: "location.circle.fill",
                     isSelected: liveShareStore.isArmedForNextActivity
                 ) {
-                    liveShareStore.armForNextActivity(!liveShareStore.isArmedForNextActivity)
+                    showsTrustedContacts = true
                 }
                 .accessibilityLabel(liveShareStore.isArmedForNextActivity ? "Turn off live sharing" : "Turn on live sharing")
 
@@ -3163,7 +3162,7 @@ struct RecordView: View {
 
             if liveShareStore.isArmedForNextActivity {
                 Label(
-                    safetyContactStore.defaultContact.map { "Recipient: \($0.name) (\($0.deliveryChannel.title) stub + Share Sheet)" } ?? "Recipient: choose in Share Sheet",
+                    liveShareStore.invitationLabel,
                     systemImage: "person.crop.circle.badge.checkmark"
                 )
                 .font(.caption.weight(.semibold))

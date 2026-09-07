@@ -135,6 +135,13 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
+    func playVoiceCheers(_ recordings: [Data]) {
+        guard speechEnabled, !recordings.isEmpty, !audioPlayer.isSpeaking else { return }
+        audioPlayer.playSequence(recordings)
+    }
+
+    var canPlayVoiceCheers: Bool { speechEnabled && !audioPlayer.isSpeaking }
+
     func activate(
         with profile: GuideProfile?,
         persona: GuidePersona? = nil,

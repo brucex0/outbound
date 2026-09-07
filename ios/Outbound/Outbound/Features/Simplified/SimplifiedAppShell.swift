@@ -3260,13 +3260,6 @@ private struct SimplifiedSettingsView: View {
                     Label("Apple Health", systemImage: "heart.text.square")
                 }
             }
-            Section("Safety") {
-                NavigationLink {
-                    SafetyContactsSettingsView()
-                } label: {
-                    Label("Trusted contacts", systemImage: "person.crop.circle.badge.checkmark")
-                }
-            }
             Section {
                 legalDocumentButton(.terms, title: String(localized: "legal.terms.title"), systemImage: "doc.text")
                 legalDocumentButton(.privacy, title: String(localized: "legal.privacy.title"), systemImage: "hand.raised")

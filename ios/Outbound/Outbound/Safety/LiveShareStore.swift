@@ -3,8 +3,6 @@ import Foundation
 
 struct LiveShareSession: Identifiable, Hashable {
     let id: String
-    let token: String
-    let shareURL: URL
     let startedAt: Date
     let expiresAt: Date
     var lastLocationAt: Date?
@@ -16,18 +14,6 @@ struct LiveShareSession: Identifiable, Hashable {
     }
 }
 
-struct LiveShareStartPresentation: Identifiable, Hashable {
-    let id = UUID()
-    let url: URL
-    let message: String
-    let recipientName: String?
-    let deliveries: [LiveShareDeliveryResult]
-
-    var activityItems: [Any] {
-        [message, url]
-    }
-}
-
 @MainActor
 final class LiveShareStore: ObservableObject {
     @Published private(set) var activeSession: LiveShareSession?
@@ -35,11 +21,13 @@ final class LiveShareStore: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var isStarting = false
     @Published private(set) var isUpdating = false
+    @Published var selectedConnections: [SocialConnectionDTO] = []
 
     private let api: APIClient
     private var lastSentAt: Date?
     private var lastSentDistanceM: Double?
     private var updateTask: Task<Void, Never>?
+    private var lastCheerFetchAt: Date?
 
     init(api: APIClient? = nil) {
         self.api = api ?? APIClient.shared
@@ -49,8 +37,12 @@ final class LiveShareStore: ObservableObject {
         activeSession?.isActive == true
     }
 
-    var shareURL: URL? {
-        activeSession?.shareURL
+    var invitationLabel: String {
+        switch selectedConnections.count {
+        case 0: return String(localized: "record.cheer.invite", defaultValue: "Invite someone to cheer me on")
+        case 1: return String(format: String(localized: "record.cheer.invite.named", defaultValue: "Invite %@ to cheer me on"), selectedConnections[0].person.displayName)
+        default: return String(format: String(localized: "record.cheer.invite.count", defaultValue: "Invite %lld people to cheer me on"), selectedConnections.count)
+        }
     }
 
     func armForNextActivity(_ isArmed: Bool) {
@@ -60,27 +52,17 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
-    func beginIfArmed(intent: SessionIntent?, contact: SafetyContact?) async -> LiveShareStartPresentation? {
-        guard isArmedForNextActivity, activeSession == nil else { return nil }
+    func beginIfArmed(intent: SessionIntent?) async {
+        guard isArmedForNextActivity, activeSession == nil else { return }
 
         isStarting = true
         lastErrorMessage = nil
         defer { isStarting = false }
 
         do {
-            let deliveryTargets = contact.map {
-                [
-                    LiveShareDeliveryTarget(
-                        channel: $0.deliveryChannel.rawValue,
-                        label: $0.name,
-                        address: $0.deliveryAddress.isEmpty ? nil : $0.deliveryAddress
-                    )
-                ]
-            }
             let response = try await api.createLiveShare(
                 LiveShareCreateRequest(
-                    recipientLabel: contact?.name,
-                    deliveryTargets: deliveryTargets,
+                    recipientUserIds: selectedConnections.map(\.person.id),
                     sport: intent?.sport.rawValue,
                     title: intent?.title,
                     expiresInSeconds: 4 * 60 * 60
@@ -88,8 +70,6 @@ final class LiveShareStore: ObservableObject {
             )
             activeSession = LiveShareSession(
                 id: response.id,
-                token: response.token,
-                shareURL: response.shareURL,
                 startedAt: response.startedAt,
                 expiresAt: response.expiresAt,
                 lastLocationAt: nil,
@@ -99,17 +79,10 @@ final class LiveShareStore: ObservableObject {
             isArmedForNextActivity = false
             lastSentAt = nil
             lastSentDistanceM = nil
-            return LiveShareStartPresentation(
-                url: response.shareURL,
-                message: shareMessage(url: response.shareURL, intent: intent, contact: contact),
-                recipientName: contact?.name,
-                deliveries: response.deliveries ?? []
-            )
         } catch {
             lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
             isArmedForNextActivity = false
             activeSession = nil
-            return nil
         }
     }
 
@@ -132,7 +105,9 @@ final class LiveShareStore: ObservableObject {
                         altitudeM: location.altitudeMeters.isFinite ? location.altitudeMeters : nil,
                         accuracyM: location.horizontalAccuracyMeters.isFinite ? location.horizontalAccuracyMeters : nil,
                         elapsedSeconds: snapshot.elapsedSeconds,
-                        distanceM: snapshot.distanceMeters
+                        distanceM: snapshot.distanceMeters,
+                        currentPaceSecsPerKm: snapshot.currentPaceSecsPerKm,
+                        heartRate: snapshot.heartRate
                     )
                 )
                 await MainActor.run {
@@ -161,9 +136,21 @@ final class LiveShareStore: ObservableObject {
         isArmedForNextActivity = false
         lastSentAt = nil
         lastSentDistanceM = nil
+        lastCheerFetchAt = nil
 
         Task { [api] in
             _ = try? await api.endLiveShare(shareID: session.id)
+        }
+    }
+
+    func takePendingVoiceCheers(now: Date = Date()) async -> [Data] {
+        guard let session = activeSession, session.isActive else { return [] }
+        if let lastCheerFetchAt, now.timeIntervalSince(lastCheerFetchAt) < 4 { return [] }
+        lastCheerFetchAt = now
+        do {
+            return try await api.fetchVoiceCheers(shareID: session.id).cheers.compactMap(\.audioData)
+        } catch {
+            return []
         }
     }
 
@@ -182,11 +169,8 @@ final class LiveShareStore: ObservableObject {
         activeSession = session
     }
 
-    private func shareMessage(url: URL, intent: SessionIntent?, contact: SafetyContact?) -> String {
-        let sport = intent?.sport.rawValue ?? "run"
-        if let contact {
-            return "Hi \(contact.name), follow my live \(sport) on Plainstride: \(url.absoluteString)"
-        }
-        return "Follow my live \(sport) on Plainstride: \(url.absoluteString)"
+    func setSelectedConnections(_ connections: [SocialConnectionDTO]) {
+        selectedConnections = connections
+        armForNextActivity(!connections.isEmpty)
     }
 }
