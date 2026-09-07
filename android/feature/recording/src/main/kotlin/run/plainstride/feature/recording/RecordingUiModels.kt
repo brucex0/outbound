@@ -1,20 +1,28 @@
 package run.plainstride.feature.recording
 
+import kotlinx.serialization.Serializable
+
 enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
 
-data class RecordingGoal(
+@Serializable data class RecordingGoal(
     val type: RecordingGoalType = RecordingGoalType.FREESTYLE,
     val targetDistanceMeters: Double? = null,
     val targetDurationSeconds: Long? = null,
     val targetCalories: Int? = null,
 )
 
-data class StructuredWorkoutStep(
+@Serializable data class StructuredWorkoutStep(
     val title: String,
     val detail: String? = null,
+    val durationSeconds:Int?=null,
+    val phase:String?=null,
+    val targetPaceSecondsPerKilometer:Double?=null,
 )
 
-data class RecordingLaunchConfiguration(
+@Serializable data class FollowedRouteConfiguration(val id:String,val name:String,val shape:String?=null,val distanceMeters:Double?=null,val elevationGainMeters:Double?=null,val reverse:Boolean=false,val points:List<RecordingRoutePoint> = emptyList())
+@Serializable data class RecordingRoutePoint(val latitude:Double,val longitude:Double,val altitudeMeters:Double?=null)
+
+@Serializable data class RecordingLaunchConfiguration(
     val activityKind: ActivityKind = ActivityKind.RUNNING,
     val title: String? = null,
     val goal: RecordingGoal = RecordingGoal(),
@@ -23,6 +31,9 @@ data class RecordingLaunchConfiguration(
     val suggestionId: String? = null,
     val plannedWorkoutId: String? = null,
     val gearId: String? = null,
+    val workoutDetail: String? = null,
+    val workoutGuideline: String? = null,
+    val followedRoute:FollowedRouteConfiguration?=null,
 )
 
 enum class RecordingSurfaceMode { MAP, CAMERA }

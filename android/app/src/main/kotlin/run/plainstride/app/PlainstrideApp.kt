@@ -318,8 +318,8 @@ private fun SignedInApp(
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
             composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
-            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { route,reverse -> val points=route.guidancePoints();recordingLaunch=RecordingLaunchConfiguration(activityKind=when(route.activityType.lowercase()){ "walking"->ActivityKind.WALKING;"cycling"->ActivityKind.CYCLING;"hiking"->ActivityKind.HIKING;else->ActivityKind.RUNNING},title=route.name,entrySource="community_route",followedRoute=FollowedRouteConfiguration(route.id,route.name,route.routeShape,route.distanceM,route.elevationGainM,reverse,points.map{RecordingRoutePoint(it.latitude,it.longitude,it.altitudeM)}));navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark) }
-            composable(SAFETY_ROUTE) { SafetyDestination(safetyTarget) }
+            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark) }
+            composable(SAFETY_ROUTE) { SafetyRoute() }
             composable(HEALTH_ROUTE) { HealthDestination(integration.health, integrationViewModel::refreshHealth) }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {socialTarget="group" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Live -> {safetyTarget=destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
         }
@@ -342,22 +342,10 @@ private const val SAFETY_ROUTE = "safety"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 
-private fun notificationPermissionState(context: android.content.Context): NotificationPermissionState = if(android.os.Build.VERSION.SDK_INT<33||context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED) NotificationPermissionState.GRANTED else NotificationPermissionState.DENIED
-
 private fun recordingLocationPermission(context: android.content.Context): LocationPermissionState = when {
     context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.PRECISE
     context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.APPROXIMATE
     else -> LocationPermissionState.DENIED
-}
-
-@Composable private fun SafetyDestination(targetId:String?=null) {
-    val context=LocalContext.current
-    val viewModel:SafetySettingsViewModel=hiltViewModel()
-    val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
-    var permission by remember { mutableStateOf(notificationPermissionState(context)) }
-    val launcher=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){permission=notificationPermissionState(context)}
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->result.data?.data?.let{uri->context.contentResolver.query(uri,arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),null,null,null)?.use{cursor->if(cursor.moveToFirst())viewModel.add(PickedContact(cursor.getString(0),cursor.getString(1)))}}}
-    SafetySettingsScreen(contacts,permission,{launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)},{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))},{picker.launch(Intent(Intent.ACTION_PICK,android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI))},viewModel::remove,viewModel::arm)
 }
 
 @Composable private fun HealthDestination(snapshot: HealthPermissionSnapshot?, refresh:()->Unit) {

@@ -31,6 +31,7 @@ import java.util.UUID
 internal fun InAppCamera(
     onCaptured: (String) -> Unit,
     onUnavailable: () -> Unit,
+    onPending:(Boolean)->Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -48,7 +49,7 @@ internal fun InAppCamera(
     }
     Box(modifier) {
         AndroidView(factory = { PreviewView(it).also { view -> view.scaleType = PreviewView.ScaleType.FILL_CENTER; previewView = view } }, modifier = Modifier.fillMaxSize())
-        FilledIconButton(onClick = { capture(context, capture, onCaptured, onUnavailable) }, modifier = Modifier.align(Alignment.CenterEnd).padding(24.dp).size(64.dp)) {
+        FilledIconButton(onClick = { onPending(true);capture(context, capture, onCaptured, onUnavailable) }, modifier = Modifier.align(Alignment.CenterEnd).padding(24.dp).size(64.dp)) {
             Icon(Icons.Default.CameraAlt, stringResource(R.string.recording_capture_photo))
         }
     }

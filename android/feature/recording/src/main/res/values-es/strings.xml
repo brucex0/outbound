@@ -58,4 +58,6 @@
     <string name="recording_default_activity_title">Actividad de Plainstride</string>
     <string name="recording_reflection_title">Reflexión después de la actividad</string>
     <string name="recording_short_activity">También puedes guardar actividades cortas. Tú decides.</string>
+    <string name="recording_voice_command">Usar un comando de voz</string>
+    <string name="recording_spoken_stats">Tiempo %1$s, distancia %2$s, ritmo actual %3$s</string>
 </resources>

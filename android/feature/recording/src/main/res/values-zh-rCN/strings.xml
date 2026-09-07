@@ -58,4 +58,6 @@
     <string name="recording_default_activity_title">Plainstride 活动</string>
     <string name="recording_reflection_title">活动后感受</string>
     <string name="recording_short_activity">短活动也可以保存，始终由你决定。</string>
+    <string name="recording_voice_command">使用语音指令</string>
+    <string name="recording_spoken_stats">用时 %1$s，距离 %2$s，当前配速 %3$s</string>
 </resources>

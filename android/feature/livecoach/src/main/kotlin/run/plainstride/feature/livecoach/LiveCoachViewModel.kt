@@ -88,7 +88,7 @@ class LiveCoachViewModel @Inject constructor(
                 val session = serverSession ?: return
                 val moment = policy.ingest(snapshot.toCoachSnapshot(launch), prefs.contract) ?: return
                 val token = tokens.validAccessToken() ?: return
-                val request = CueRequest(cueRequestId = UUID.randomUUID().toString(), moment = moment.moment, detectedAtElapsedSeconds = moment.detectedAtElapsedSeconds, validForMilliseconds = session.limits.cueValidityMilliseconds, liveState = snapshot.toLiveState())
+                val request = CueRequest(cueRequestId = UUID.randomUUID().toString(), moment = moment.moment, detectedAtElapsedSeconds = moment.detectedAtElapsedSeconds, validForMilliseconds = session.limits.cueValidityMilliseconds, liveState = snapshot.toLiveState(launch))
                 val fallback = LocalizedFallbackPhrases.phrase(context, supportedLocale(), moment.moment)
                 val result = playback.play(token, session.sessionId, request, session.effectiveMode, prefs.selection(), fallback)
                 if (result.played) spokenCount++
@@ -105,7 +105,9 @@ class LiveCoachViewModel @Inject constructor(
             clientSessionId = snapshot.sessionId ?: return, locale = supportedLocale(), coachPersonaId = prefs.personaId,
             voiceProfileId = prefs.voiceProfileId, coachingContract = prefs.contract, measurementUnitSystem = if (Locale.getDefault().country == "US") "imperial" else "metric",
             sessionIntent = SessionIntent(launch.activityKind.name.lowercase(), launch.goal.type.name.lowercase()),
-            clientWorkout = launch.title?.let { ClientWorkout(it, "", "", launch.goal.targetDistanceMeters, launch.goal.targetDurationSeconds?.toInt(), launch.goal.targetCalories, emptyList()) },
+            workoutId=launch.plannedWorkoutId,
+            workoutRef=launch.plannedWorkoutId?.let{WorkoutReference(id=it)},
+            clientWorkout = launch.title?.let { ClientWorkout(it, launch.workoutDetail ?: launch.workoutSteps.mapNotNull{step->step.detail}.joinToString(" · "), launch.workoutGuideline.orEmpty(), launch.goal.targetDistanceMeters, launch.goal.targetDurationSeconds?.toInt(), launch.goal.targetCalories, launch.workoutSteps.map{step->WorkoutStep(step.title,step.durationSeconds?:0,step.detail,step.phase,step.targetPaceSecondsPerKilometer)},launch.followedRoute?.let{route->WorkoutRoute(route.name,route.shape,if(route.reverse)"reverse" else "forward",route.distanceMeters,route.elevationGainMeters,route.points.firstOrNull()?.latitude,route.points.firstOrNull()?.longitude,route.points.firstOrNull()?.altitudeMeters)}) },
         )
         when (val result = repository.createSession(token, request)) {
             is ApiResult.Success -> {
@@ -141,4 +143,4 @@ IUWXep0GWK1xUNtuIIF8P3nGVvnucyHGP/UclpLUmFDXgR1DNAiFJkHXuQ==
 }
 
 private fun RecordingSnapshot.toCoachSnapshot(launch: RecordingLaunchConfiguration) = CoachSnapshot(elapsedSeconds.toInt(), distanceMeters, currentPaceSecondsPerKilometer, targetDistanceMeters = launch.goal.targetDistanceMeters, targetDurationSeconds = launch.goal.targetDurationSeconds?.toInt(), isMoving = status == RecordingStatus.ACTIVE)
-private fun RecordingSnapshot.toLiveState() = LiveState(elapsedSeconds.toInt(), distanceMeters, currentPaceSecondsPerKilometer, currentPaceSecondsPerKilometer, routeGuidanceActive = false)
+private fun RecordingSnapshot.toLiveState(launch:RecordingLaunchConfiguration) = LiveState(elapsedSeconds.toInt(), distanceMeters, currentPaceSecondsPerKilometer, currentPaceSecondsPerKilometer, routeGuidanceActive = launch.followedRoute!=null)

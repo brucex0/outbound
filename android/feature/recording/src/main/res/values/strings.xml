@@ -58,4 +58,6 @@
     <string name="recording_default_activity_title">Plainstride activity</string>
     <string name="recording_reflection_title">Post-activity reflection</string>
     <string name="recording_short_activity">Short activities are saved too. You’re always in control.</string>
+    <string name="recording_voice_command">Use a voice command</string>
+    <string name="recording_spoken_stats">Time %1$s, distance %2$s, current pace %3$s</string>
 </resources>

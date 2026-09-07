@@ -27,6 +27,7 @@ import run.plainstride.core.data.RecordedTrackPointDraft
 import run.plainstride.core.model.activity.ActivityPhoto
 import run.plainstride.core.model.activity.ActivityReflection
 import run.plainstride.core.model.activity.ActivityType
+import kotlinx.serialization.json.Json
 
 data class RecordingUiState(
     val launch: RecordingLaunchConfiguration = RecordingLaunchConfiguration(),
@@ -38,6 +39,7 @@ data class RecordingUiState(
     val showDiscardConfirmation: Boolean = false,
     val startRequested: Boolean = false,
     val saving: Boolean = false,
+    val pendingMedia:Boolean=false,
 )
 
 @HiltViewModel
@@ -47,7 +49,9 @@ class RecordingViewModel @Inject constructor(
     private val activities: ActivityRepository,
     private val media: ActivityMediaStore,
     private val syncScheduler: ActivitySyncScheduler,
+    private val voice: RecordingVoiceCoordinator,
 ) : ViewModel() {
+    private val launchJson=Json{ignoreUnknownKeys=true;explicitNulls=false}
     private val client = RecordingSessionClient(context).apply { connect() }
     private val mutableState = MutableStateFlow(RecordingUiState())
     val state: StateFlow<RecordingUiState> = mutableState.asStateFlow()
@@ -57,14 +61,19 @@ class RecordingViewModel @Inject constructor(
         RecordingSnapshot(),
     )
     private var recoveryAccountId: String? = null
+    val voiceListening: StateFlow<Boolean> = voice.listening
+    init { voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish) }
+    fun listen(permissionGranted: Boolean) = voice.listen(permissionGranted)
 
     fun configure(configuration: RecordingLaunchConfiguration) {
         if (mutableState.value.startRequested) return
-        mutableState.value = mutableState.value.copy(launch = configuration)
+        val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
+        val effective=restored?:configuration
+        mutableState.value = mutableState.value.copy(launch = effective)
         analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
-            AnalyticsProperty.Source to configuration.entrySource,
-            AnalyticsProperty.ActivityType to configuration.activityKind.name.lowercase(),
-            AnalyticsProperty.GoalType to configuration.goal.type.name.lowercase(),
+            AnalyticsProperty.Source to effective.entrySource,
+            AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
+            AnalyticsProperty.GoalType to effective.goal.type.name.lowercase(),
         )))
     }
 
@@ -73,6 +82,7 @@ class RecordingViewModel @Inject constructor(
     fun start(accountId: String, permission: LocationPermissionState) {
         val launch = mutableState.value.launch
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null)
+        context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
         client.start(accountId, launch.activityKind, permission, newCommandId())
         analytics.record(AnalyticsEvent("activity_started", mapOf(
             AnalyticsProperty.Source to launch.entrySource,
@@ -104,6 +114,7 @@ class RecordingViewModel @Inject constructor(
     fun discard() {
         mutableState.value = RecordingUiState(launch = mutableState.value.launch)
         client.discard(newCommandId())
+        clearLaunch()
         analytics.record(AnalyticsEvent("activity_discard_confirmed"))
     }
     fun setMode(mode: RecordingSurfaceMode) {
@@ -112,16 +123,18 @@ class RecordingViewModel @Inject constructor(
     }
     fun setReflection(choice: ReflectionChoice) { mutableState.value = mutableState.value.copy(reflection = choice) }
     fun setPhotoPath(path: String?) {
-        mutableState.value = mutableState.value.copy(photoPath = path)
+        mutableState.value = mutableState.value.copy(photoPath = path,pendingMedia=false)
         analytics.record(AnalyticsEvent(if (path == null) "activity_photo_deleted" else "activity_photo_captured", mapOf(
             AnalyticsProperty.Result to "success",
         )))
     }
+    fun setPendingMedia(pending:Boolean){mutableState.value=mutableState.value.copy(pendingMedia=pending)}
     fun trackPhotoAttempt() = analytics.record(AnalyticsEvent("activity_photo_capture_attempted", mapOf(
         AnalyticsProperty.Source to "recording",
     )))
     fun newCommandId(): String = UUID.randomUUID().toString()
-    fun markSaved() = client.markSaved(newCommandId())
+    fun markSaved(){client.markSaved(newCommandId());clearLaunch()}
+    private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}
 
     /** Returns only after the activity and its outbox operation are committed to Room. */
     suspend fun saveFinished(review: RecordedActivityReview): Boolean {
@@ -178,6 +191,8 @@ class RecordingViewModel @Inject constructor(
             })
             activities.save(base.copy(
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
+                followedRouteId=mutableState.value.launch.followedRoute?.id,
+                followedRouteCompleted=mutableState.value.launch.followedRoute?.let{route->snapshot.latestLocation?.let{last->route.points.lastOrNull()?.let{end->distanceMeters(last.latitude,last.longitude,end.latitude,end.longitude)<=50}}}==true,
                 reflection = ActivityReflection(
                     title = context.getString(R.string.recording_reflection_title),
                     body = reflectionLabel,
@@ -200,9 +215,13 @@ class RecordingViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        voice.close()
         client.close()
         super.onCleared()
     }
+    private companion object{const val LAUNCH_PREFERENCES="recording_launch";const val LAUNCH_KEY="active"}
 }
+
+private fun distanceMeters(aLat:Double,aLon:Double,bLat:Double,bLon:Double):Double{val p1=Math.toRadians(aLat);val p2=Math.toRadians(bLat);val dp=p2-p1;val dl=Math.toRadians(bLon-aLon);val h=kotlin.math.sin(dp/2)*kotlin.math.sin(dp/2)+kotlin.math.cos(p1)*kotlin.math.cos(p2)*kotlin.math.sin(dl/2)*kotlin.math.sin(dl/2);return 6371000*2*kotlin.math.atan2(kotlin.math.sqrt(h),kotlin.math.sqrt(1-h))}
 
 private fun ActivityKind.toActivityType() = ActivityType.valueOf(name.lowercase())

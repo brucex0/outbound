@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -105,6 +106,7 @@ fun RecordingRoute(
     val scope = rememberCoroutineScope()
     val ui by viewModel.state.collectAsStateWithLifecycle()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
+    val voiceListening by viewModel.voiceListening.collectAsStateWithLifecycle()
     sessionEffect(snapshot)
     var askedForLocation by remember { mutableStateOf(false) }
     var pendingResume by remember { mutableStateOf(false) }
@@ -149,11 +151,19 @@ fun RecordingRoute(
         showCameraEducation = !granted
         if (granted) viewModel.setMode(RecordingSurfaceMode.CAMERA)
     }
+    val microphonePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.listen(granted)
+    }
+    fun listenForCommand() {
+        val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (granted) viewModel.listen(true) else microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
     var pendingPhoto by remember { mutableStateOf<File?>(null) }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
         val file = pendingPhoto
         if (saved && file != null) viewModel.setPhotoPath(file.absolutePath) else file?.delete()
         pendingPhoto = null
+        viewModel.setPendingMedia(false)
     }
     fun capturePhoto() {
         viewModel.trackPhotoAttempt()
@@ -164,6 +174,7 @@ fun RecordingRoute(
         val directory = File(context.filesDir, "activity_photos").apply { mkdirs() }
         val file = File(directory, "${UUID.randomUUID()}.jpg")
         pendingPhoto = file
+        viewModel.setPendingMedia(true)
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", file)
         photoLauncher.launch(uri)
     }
@@ -212,6 +223,7 @@ fun RecordingRoute(
                 },
                 onTakePhoto = ::capturePhoto,
                 onPhotoCaptured = viewModel::setPhotoPath,
+                onPhotoPending = viewModel::setPendingMedia,
                 onPause = viewModel::pause,
                 onResume = {
                     val permission = permissionState()
@@ -219,6 +231,9 @@ fun RecordingRoute(
                     else { pendingResume = true; showLocationEducation = true }
                 },
                 onFinish = viewModel::requestFinish,
+                finishEnabled=!ui.pendingMedia,
+                onListen = ::listenForCommand,
+                voiceListening = voiceListening,
                 onDiscard = viewModel::requestDiscard,
             )
             else -> ActivitySetupScreen(ui.launch, permissionState(), onStart = ::beginCountdown, onExit = onExit)
@@ -324,16 +339,29 @@ private fun LiveRecordingScreen(
     onMode: (RecordingSurfaceMode) -> Unit,
     onTakePhoto: () -> Unit,
     onPhotoCaptured: (String) -> Unit,
+    onPhotoPending:(Boolean)->Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: () -> Unit,
+    finishEnabled:Boolean,
+    onListen: () -> Unit,
+    voiceListening: Boolean,
     onDiscard: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot.track, Modifier.fillMaxSize())
-        else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto, Modifier.fillMaxSize())
+        else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
 
         Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(shape = CircleShape, tonalElevation = 6.dp) {
+                IconButton(onClick = onListen) {
+                    Icon(
+                        Icons.Default.Mic,
+                        contentDescription = stringResource(R.string.recording_voice_command),
+                        tint = if (voiceListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
             Surface(shape = CircleShape, tonalElevation = 6.dp) {
                 IconButton(onClick = { onMode(if (mode == RecordingSurfaceMode.MAP) RecordingSurfaceMode.CAMERA else RecordingSurfaceMode.MAP) }) {
                     Icon(if (mode == RecordingSurfaceMode.MAP) Icons.Default.CameraAlt else Icons.Default.Map,
@@ -341,7 +369,7 @@ private fun LiveRecordingScreen(
                 }
             }
         }
-        SessionDashboard(snapshot, configuration, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish, onDiscard)
+        SessionDashboard(snapshot, configuration, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish,finishEnabled, onDiscard)
     }
 }
 
@@ -357,11 +385,11 @@ private fun TrackMap(track: List<RecordedLocationSample>, modifier: Modifier = M
 }
 
 @Composable
-private fun CameraSurface(photoPath: String?, onCaptured: (String) -> Unit, onTakePhoto: () -> Unit, modifier: Modifier = Modifier) {
+private fun CameraSurface(photoPath: String?, onCaptured: (String) -> Unit, onTakePhoto: () -> Unit,onPending:(Boolean)->Unit, modifier: Modifier = Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
         val bitmap = remember(photoPath) { photoPath?.let { BitmapFactory.decodeFile(it) } }
         if (bitmap != null) Image(bitmap.asImageBitmap(), contentDescription = stringResource(R.string.recording_activity_photo), modifier = Modifier.fillMaxSize())
-        else InAppCamera(onCaptured, onTakePhoto, Modifier.fillMaxSize())
+        else InAppCamera({onPending(false);onCaptured(it)},{onPending(false);onTakePhoto()},onPending,Modifier.fillMaxSize())
     }
 }
 
@@ -373,6 +401,7 @@ private fun SessionDashboard(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: () -> Unit,
+    finishEnabled:Boolean,
     onDiscard: () -> Unit,
 ) {
     Card(modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(28.dp), elevation = CardDefaults.cardElevation(10.dp)) {
@@ -392,7 +421,7 @@ private fun SessionDashboard(
                     Icon(if (snapshot.status == RecordingStatus.ACTIVE) Icons.Default.Pause else Icons.Default.PlayArrow, null)
                     Spacer(Modifier.width(8.dp)); Text(stringResource(if (snapshot.status == RecordingStatus.ACTIVE) R.string.recording_pause else R.string.recording_resume))
                 }
-                if (snapshot.status == RecordingStatus.PAUSED) FilledIconButton(onClick = onFinish, modifier = Modifier.size(56.dp)) {
+                if (snapshot.status == RecordingStatus.PAUSED) FilledIconButton(onClick = onFinish,enabled=finishEnabled, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Default.Stop, stringResource(R.string.recording_finish))
                 }
             }
@@ -499,7 +528,7 @@ private fun goalProgress(snapshot: RecordingSnapshot, goal: RecordingGoal): Floa
     else -> null
 }
 
-private fun formatDuration(seconds: Long): String = "%d:%02d:%02d".format(seconds / 3600, seconds / 60 % 60, seconds % 60)
-private fun formatDistance(meters: Double): String = "%.2f km".format(meters / 1_000)
-private fun formatPace(seconds: Double?): String = seconds?.takeIf { it.isFinite() && it < 3_600 }?.let { "%d:%02d /km".format(it.toInt() / 60, it.toInt() % 60) } ?: "—"
+internal fun formatDuration(seconds: Long): String = "%d:%02d:%02d".format(seconds / 3600, seconds / 60 % 60, seconds % 60)
+internal fun formatDistance(meters: Double): String = "%.2f km".format(meters / 1_000)
+internal fun formatPace(seconds: Double?): String = seconds?.takeIf { it.isFinite() && it < 3_600 }?.let { "%d:%02d /km".format(it.toInt() / 60, it.toInt() % 60) } ?: "—"
 private fun Context.openAppSettings() = startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
