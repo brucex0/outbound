@@ -26,5 +26,6 @@ include(
     ":core:media",
     ":core:model",
     ":core:network",
+    ":feature:today",
     ":wear",
 )
