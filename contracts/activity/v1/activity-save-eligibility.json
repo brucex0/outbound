@@ -1,0 +1,10 @@
+{
+  "contractVersion": 1,
+  "algorithm": "ActivitySaveEligibility",
+  "cases": [
+    { "id": "empty", "input": { "durationSeconds": 0, "distanceMeters": 0 }, "expected": "tooShort" },
+    { "id": "below-both-thresholds", "input": { "durationSeconds": 299, "distanceMeters": 499.99 }, "expected": "tooShort" },
+    { "id": "duration-threshold-inclusive", "input": { "durationSeconds": 300, "distanceMeters": 0 }, "expected": "eligible" },
+    { "id": "distance-threshold-inclusive", "input": { "durationSeconds": 0, "distanceMeters": 500 }, "expected": "eligible" }
+  ]
+}

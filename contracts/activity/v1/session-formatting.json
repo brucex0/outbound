@@ -1,0 +1,22 @@
+{
+  "contractVersion": 1,
+  "algorithm": "SessionFormatting",
+  "notes": "Outputs are semantic and locale-free; presentation layers localize decimal separators, abbreviations, and spoken text.",
+  "distanceCases": [
+    { "id": "metric-5k", "input": { "meters": 5000, "unitSystem": "metric" }, "expected": { "value": 5, "unit": "kilometer" } },
+    { "id": "imperial-mile", "input": { "meters": 1609.344, "unitSystem": "imperial" }, "expected": { "value": 1, "unit": "mile" } }
+  ],
+  "elevationCases": [
+    { "id": "metric-elevation", "input": { "meters": 100, "unitSystem": "metric" }, "expected": { "value": 100, "unit": "meter" } },
+    { "id": "imperial-elevation", "input": { "meters": 100, "unitSystem": "imperial" }, "expected": { "value": 328.084, "unit": "foot" } }
+  ],
+  "paceCases": [
+    { "id": "metric-pace", "input": { "secondsPerKilometer": 305.9, "unitSystem": "metric" }, "expected": { "totalSecondsPerUnit": 305, "minutes": 5, "seconds": 5, "unit": "kilometer" } },
+    { "id": "imperial-pace", "input": { "secondsPerKilometer": 300, "unitSystem": "imperial" }, "expected": { "totalSecondsPerUnit": 482, "minutes": 8, "seconds": 2, "unit": "mile" } },
+    { "id": "invalid-pace", "input": { "secondsPerKilometer": 0, "unitSystem": "metric" }, "expected": null }
+  ],
+  "durationCases": [
+    { "id": "under-hour", "input": { "totalSeconds": 754 }, "expected": { "hours": 0, "minutes": 12, "seconds": 34 } },
+    { "id": "over-hour", "input": { "totalSeconds": 3723 }, "expected": { "hours": 1, "minutes": 2, "seconds": 3 } }
+  ]
+}

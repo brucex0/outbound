@@ -1,0 +1,23 @@
+{
+  "contractVersion": 1,
+  "algorithm": "GoalProgressEngine",
+  "zoneId": "America/Los_Angeles",
+  "weekStart": "2026-08-31T07:00:00Z",
+  "weekEnd": "2026-09-07T07:00:00Z",
+  "activities": [
+    { "startedAt": "2026-08-31T07:00:00Z", "durationSeconds": 1201 },
+    { "startedAt": "2026-09-03T18:00:00Z", "durationSeconds": 2399 },
+    { "startedAt": "2026-09-07T07:00:00Z", "durationSeconds": 3600 }
+  ],
+  "progressCases": [
+    { "id": "sessions-end-exclusive", "input": { "kind": "weeklySessions", "theme": "consistency", "targetValue": 3, "addingSummaryDurationSeconds": null }, "expected": { "currentValue": 2, "targetValue": 3, "percentComplete": 0.666666666667, "isComplete": false, "remainingValue": 1 } },
+    { "id": "minutes-round-after-sum", "input": { "kind": "weeklyMinutes", "theme": "lightMovement", "targetValue": 60, "addingSummaryDurationSeconds": null }, "expected": { "currentValue": 60, "targetValue": 60, "percentComplete": 1, "isComplete": true, "remainingValue": 0 } },
+    { "id": "summary-rounds-separately", "input": { "kind": "weeklyMinutes", "theme": "lightMovement", "targetValue": 90, "addingSummaryDurationSeconds": 61 }, "expected": { "currentValue": 62, "targetValue": 90, "percentComplete": 0.688888888889, "isComplete": false, "remainingValue": 28 } }
+  ],
+  "suggestedTargetCases": [
+    { "id": "consistency-from-history", "input": { "theme": "consistency", "phase": "steady" }, "expected": 3 },
+    { "id": "momentum-consistency", "input": { "theme": "consistency", "phase": "momentum" }, "expected": 4 },
+    { "id": "comeback-from-history", "input": { "theme": "comeback", "phase": "comeback" }, "expected": 3 },
+    { "id": "light-movement-baseline", "input": { "theme": "lightMovement", "phase": "steady" }, "expected": 20 }
+  ]
+}

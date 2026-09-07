@@ -1,0 +1,49 @@
+{
+  "contractVersion": 1,
+  "algorithm": "ElevationGainCalculator",
+  "toleranceMeters": 0.001,
+  "locationDefaults": { "longitude": -122.4194, "verticalAccuracyMeters": 5 },
+  "cases": [
+    {
+      "id": "smoothed-climb-and-descent",
+      "input": [
+        { "latitude": 37.7749, "altitudeMeters": 100, "timestampMillis": 0 },
+        { "latitude": 37.7750, "altitudeMeters": 101, "timestampMillis": 10000 },
+        { "latitude": 37.7751, "altitudeMeters": 103, "timestampMillis": 20000 },
+        { "latitude": 37.7752, "altitudeMeters": 106, "timestampMillis": 30000 },
+        { "latitude": 37.7753, "altitudeMeters": 108, "timestampMillis": 40000 },
+        { "latitude": 37.7754, "altitudeMeters": 106, "timestampMillis": 50000 },
+        { "latitude": 37.7755, "altitudeMeters": 104, "timestampMillis": 60000 }
+      ],
+      "expected": { "sanitizedAltitudes": [101, 103, 103, 106, 106, 106, 106], "gainMeters": 6, "rangeMeters": 5 }
+    },
+    {
+      "id": "rejects-inaccurate-and-fast-spikes",
+      "input": [
+        { "latitude": 37.7749, "altitudeMeters": 100, "verticalAccuracyMeters": 5, "timestampMillis": 0 },
+        { "latitude": 37.7750, "altitudeMeters": 150, "verticalAccuracyMeters": 25, "timestampMillis": 10000 },
+        { "latitude": 37.7751, "altitudeMeters": 140, "verticalAccuracyMeters": 5, "timestampMillis": 11000 },
+        { "latitude": 37.7752, "altitudeMeters": 102, "verticalAccuracyMeters": 5, "timestampMillis": 20000 }
+      ],
+      "expected": { "sanitizedAltitudes": [100, 102], "gainMeters": 0, "rangeMeters": 2 }
+    }
+  ],
+  "streamingSegmentCases": [
+    {
+      "id": "segment-break-commits-active-climb",
+      "segments": [
+        [
+          { "latitude": 37.7749, "altitudeMeters": 100, "timestampMillis": 0 },
+          { "latitude": 37.7750, "altitudeMeters": 103, "timestampMillis": 10000 },
+          { "latitude": 37.7751, "altitudeMeters": 106, "timestampMillis": 20000 }
+        ],
+        [
+          { "latitude": 37.7760, "altitudeMeters": 200, "timestampMillis": 30000 },
+          { "latitude": 37.7761, "altitudeMeters": 203, "timestampMillis": 40000 },
+          { "latitude": 37.7762, "altitudeMeters": 206, "timestampMillis": 50000 }
+        ]
+      ],
+      "expected": { "gainMeters": 6 }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "contractVersion": 1,
+  "algorithm": "WorkoutCalorieEstimator",
+  "tolerance": 0.001,
+  "estimateCases": [
+    { "id": "missing-weight", "input": { "activityType": "running", "distanceMeters": 5000, "durationSeconds": 1800, "elevationGainMeters": 0, "weightKilograms": null }, "expected": { "kilocalories": null, "unavailableReason": "missing_weight" } },
+    { "id": "short-sample", "input": { "activityType": "running", "distanceMeters": 1000, "durationSeconds": 299, "elevationGainMeters": 0, "weightKilograms": 70 }, "expected": { "kilocalories": null, "unavailableReason": "insufficient_duration" } },
+    { "id": "implausible-run-speed", "input": { "activityType": "running", "distanceMeters": 10000, "durationSeconds": 600, "elevationGainMeters": 0, "weightKilograms": 70 }, "expected": { "kilocalories": null, "unavailableReason": "implausible_speed" } },
+    { "id": "level-5k-run", "input": { "activityType": "running", "distanceMeters": 5000, "durationSeconds": 1800, "elevationGainMeters": 0, "weightKilograms": 70 }, "expected": { "kilocalories": 350, "unavailableReason": null } },
+    { "id": "steady-walk", "input": { "activityType": "walking", "distanceMeters": 3000, "durationSeconds": 2400, "elevationGainMeters": 0, "weightKilograms": 70 }, "expected": { "kilocalories": 165, "unavailableReason": null } },
+    { "id": "cycling-with-climb", "input": { "activityType": "cycling", "distanceMeters": 20000, "durationSeconds": 3600, "elevationGainMeters": 100, "weightKilograms": 80 }, "expected": { "kilocalories": 715, "unavailableReason": null } }
+  ],
+  "plannedCases": [
+    { "id": "run-by-calories", "operation": "plannedRunByCalories", "input": { "targetCalories": 333, "weightKilograms": 65, "paceSecondsPerKilometer": 360 }, "expected": { "targetCalories": 325, "distanceMeters": 5000, "durationSeconds": 1800 } },
+    { "id": "walk-by-calories", "operation": "plannedWalk", "input": { "targetCalories": 200, "weightKilograms": 70, "speedKilometersPerHour": 4.8 }, "expected": { "targetCalories": 200, "distanceMeters": 3609.022556391, "durationSeconds": 2707 } }
+  ],
+  "learnedPaceCases": [
+    { "id": "not-yet-reliable", "input": { "calibrationCompleted": false, "pacesSecondsPerKilometer": [360, 390] }, "expected": { "secondsPerKilometer": null, "validRunCount": 2, "isReliable": false } },
+    { "id": "median-of-four", "input": { "calibrationCompleted": false, "pacesSecondsPerKilometer": [420, 360, 390, 330] }, "expected": { "secondsPerKilometer": 375, "validRunCount": 4, "isReliable": true } }
+  ]
+}
