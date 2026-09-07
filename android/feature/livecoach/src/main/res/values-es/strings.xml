@@ -1,0 +1,12 @@
+<resources>
+    <string name="live_coach_channel_name">Entrenamiento en vivo</string>
+    <string name="live_coach_notification_title">Entrenador de Plainstride</string>
+    <string name="live_coach_notification_active">El entrenamiento está activo</string>
+    <string name="live_coach_notification_paused">Entrenamiento en pausa</string>
+    <string name="live_coach_cue_steady">Vas estable. Mantén este ritmo.</string>
+    <string name="live_coach_cue_adjust">Haz un pequeño ajuste y mantén la fluidez.</string>
+    <string name="live_coach_cue_climb">Sube por sensaciones y mantén la relajación.</string>
+    <string name="live_coach_cue_finish">Si te sientes bien, aumenta poco a poco hasta el final.</string>
+    <string name="live_coach_cue_pause">Actividad en pausa.</string>
+    <string name="live_coach_cue_resume">Actividad reanudada.</string>
+</resources>

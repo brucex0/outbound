@@ -1,0 +1,12 @@
+<resources>
+    <string name="live_coach_channel_name">Live coaching</string>
+    <string name="live_coach_notification_title">Plainstride coach</string>
+    <string name="live_coach_notification_active">Coaching is active</string>
+    <string name="live_coach_notification_paused">Coaching paused</string>
+    <string name="live_coach_cue_steady">You’re settled. Keep this rhythm.</string>
+    <string name="live_coach_cue_adjust">Make one small adjustment and keep it smooth.</string>
+    <string name="live_coach_cue_climb">Run this climb by effort and stay relaxed.</string>
+    <string name="live_coach_cue_finish">If it feels good, build gradually to the finish.</string>
+    <string name="live_coach_cue_pause">Activity paused.</string>
+    <string name="live_coach_cue_resume">Activity resumed.</string>
+</resources>

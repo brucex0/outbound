@@ -1,0 +1,12 @@
+<resources>
+    <string name="live_coach_channel_name">实时指导</string>
+    <string name="live_coach_notification_title">Plainstride 教练</string>
+    <string name="live_coach_notification_active">指导进行中</string>
+    <string name="live_coach_notification_paused">指导已暂停</string>
+    <string name="live_coach_cue_steady">节奏很稳，继续保持。</string>
+    <string name="live_coach_cue_adjust">小幅调整，保持顺畅。</string>
+    <string name="live_coach_cue_climb">按体感上坡，保持放松。</string>
+    <string name="live_coach_cue_finish">如果感觉不错，逐渐加力完成。</string>
+    <string name="live_coach_cue_pause">活动已暂停。</string>
+    <string name="live_coach_cue_resume">活动已继续。</string>
+</resources>

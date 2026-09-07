@@ -34,6 +34,7 @@ include(
     ":feature:activity",
     ":feature:progress",
     ":feature:health",
+    ":feature:livecoach",
     ":feature:recording",
     ":feature:settings",
     ":feature:today",
