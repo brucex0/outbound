@@ -2627,11 +2627,10 @@ private struct SimplifiedMeView: View {
                                         }
                                     }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-
-                            Spacer(minLength: 0)
 
                             Button {
                                 showsQRCode = true
@@ -2643,11 +2642,6 @@ private struct SimplifiedMeView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(String(localized: "Show my QR code"))
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                                .accessibilityHidden(true)
                         }
                     }
                     connectionsPreview
