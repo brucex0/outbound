@@ -1744,6 +1744,8 @@ struct SocialConnectionsView: View {
     @State private var searchQuery = ""
     @State private var paginationToast: String?
     @State private var lastRequestedSearchQuery: String?
+    @State private var showsQRCode = false
+    @State private var showsScanner = false
     @FocusState private var isSearchFocused: Bool
 
     private static let pageSize = 20
@@ -1917,6 +1919,18 @@ struct SocialConnectionsView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
+                        showsScanner = true
+                    } label: {
+                        Label(String(localized: "Scan QR code", table: "ConnectionQRCode"), systemImage: "qrcode.viewfinder")
+                    }
+
+                    Button {
+                        showsQRCode = true
+                    } label: {
+                        Label("Show my QR code", systemImage: "qrcode")
+                    }
+
+                    Button {
                         Task { await inviteByLink() }
                     } label: {
                         Label("Invite by link", systemImage: "square.and.arrow.up")
@@ -1930,6 +1944,12 @@ struct SocialConnectionsView: View {
         .task {
             await socialStore.refreshConnections()
             await socialStore.refreshBlocks()
+        }
+        .navigationDestination(isPresented: $showsQRCode) {
+            SocialConnectionQRCodeView()
+        }
+        .fullScreenCover(isPresented: $showsScanner) {
+            SocialConnectionQRScannerView()
         }
         .task(id: searchQuery) {
             try? await Task.sleep(for: .milliseconds(300))

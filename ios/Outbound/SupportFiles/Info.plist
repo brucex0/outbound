@@ -67,7 +67,7 @@
     <string>Plainstride tracks your route during activities, even in the background.</string>
 
     <key>NSCameraUsageDescription</key>
-    <string>Plainstride keeps the camera ready so you can capture moments during your run without leaving the app.</string>
+    <string>Plainstride uses the camera to capture moments during your run and scan connection QR codes.</string>
 
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>Plainstride saves activity share images to your photo library when you choose Save Image.</string>

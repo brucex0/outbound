@@ -78,19 +78,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride keeps the camera ready so you can capture moments during your run without leaving the app."
+            "value" : "Plainstride uses the camera to capture moments during your run and scan connection QR codes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride mantiene la cámara lista para que puedas capturar momentos durante tu carrera sin salir de la app."
+            "value" : "Plainstride usa la cámara para capturar momentos durante tu carrera y escanear códigos QR de contactos."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平步青云会准备好相机，让你无需离开应用即可记录跑步中的精彩时刻。"
+            "value" : "平步青云会使用相机记录跑步中的精彩时刻，并扫描跑友二维码。"
           }
         }
       }
