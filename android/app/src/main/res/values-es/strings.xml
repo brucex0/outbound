@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_channel_social">Actividad social</string>
+    <string name="progress_destination">Progreso y equipo</string><string name="routes_destination">Rutas de la comunidad</string><string name="health_destination">Health Connect</string><string name="safety_destination">Seguridad y ubicación en vivo</string><string name="notifications_destination">Notificaciones</string>
     <string name="app_name">Plainstride</string>
     <string name="tab_social">Social</string>
     <string name="tab_today">Hoy</string>

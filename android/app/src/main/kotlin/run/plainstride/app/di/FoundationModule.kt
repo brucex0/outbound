@@ -75,6 +75,7 @@ import run.plainstride.feature.community.CommunityRoutesApi
 import run.plainstride.feature.community.createCommunityRoutesApi
 import run.plainstride.feature.safety.SafetyApi
 import run.plainstride.feature.safety.createSafetyApi
+import run.plainstride.app.analytics.FirebaseAnalyticsSink
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -114,7 +115,7 @@ object FoundationModule {
 
     @Provides
     @Singleton
-    fun analytics(): ProductAnalytics = ProductAnalytics(NoOpAnalyticsSink)
+    fun analytics(sink: FirebaseAnalyticsSink): ProductAnalytics = ProductAnalytics(sink)
 
     @Provides @Singleton fun credentialManager(@ApplicationContext context: Context): CredentialManager =
         CredentialManager.create(context)
@@ -204,8 +205,4 @@ object FoundationModule {
 
     @Provides
     fun monotonicClock(): MonotonicClock = AndroidMonotonicClock
-}
-
-private object NoOpAnalyticsSink : AnalyticsSink {
-    override fun record(event: SanitizedAnalyticsEvent) = Unit
 }

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_channel_social">社交动态</string>
+    <string name="progress_destination">进度与装备</string><string name="routes_destination">社区路线</string><string name="health_destination">健康数据同步</string><string name="safety_destination">安全与实时位置</string><string name="notifications_destination">通知</string>
     <string name="app_name">Plainstride</string>
     <string name="tab_social">社群</string>
     <string name="tab_today">今天</string>

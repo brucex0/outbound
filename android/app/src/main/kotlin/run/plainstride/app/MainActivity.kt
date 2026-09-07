@@ -20,10 +20,12 @@ import run.plainstride.feature.settings.SettingsViewModel
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var transferCode by mutableStateOf<String?>(null)
+    private var navigationUri by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         transferCode = intent.transferCode()
+        navigationUri = intent.navigationUri()
         enableEdgeToEdge()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -38,6 +40,8 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     transferCode = transferCode,
                     onTransferCodeConsumed = { transferCode = null },
+                    navigationUri = navigationUri,
+                    onNavigationUriConsumed = { navigationUri = null },
                 )
             }
         }
@@ -47,11 +51,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         transferCode = intent.transferCode()
+        navigationUri = intent.navigationUri()
     }
 
     private fun Intent.transferCode(): String? {
         val uri: Uri = data ?: return null
         if (uri.scheme != "https" || uri.host != "run.plainstride.com" || uri.path != "/account-link") return null
         return uri.getQueryParameter("code")?.take(32)
+    }
+
+    private fun Intent.navigationUri(): Uri? = data?.takeIf { uri ->
+        uri.scheme == "plainstride" && uri.host == "notification"
     }
 }

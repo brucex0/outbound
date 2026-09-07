@@ -35,11 +35,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalContext
+import android.content.pm.PackageManager
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import run.plainstride.app.auth.AuthMessage
@@ -72,6 +75,14 @@ import run.plainstride.feature.assistant.MusicRoute
 import run.plainstride.feature.social.SocialRoute
 import run.plainstride.feature.today.WorkoutLaunchIntent
 import run.plainstride.core.model.Modality
+import run.plainstride.feature.community.CommunityRouteScreen
+import run.plainstride.feature.health.*
+import run.plainstride.feature.progress.ProgressScreen
+import run.plainstride.feature.safety.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.content.Intent
+import android.provider.Settings
 import kotlinx.coroutines.launch
 
 private enum class TopLevelDestination(
@@ -87,7 +98,13 @@ private enum class TopLevelDestination(
 }
 
 @Composable
-fun PlainstrideApp(settingsViewModel: SettingsViewModel, transferCode: String? = null, onTransferCodeConsumed: () -> Unit = {}) {
+fun PlainstrideApp(
+    settingsViewModel: SettingsViewModel,
+    transferCode: String? = null,
+    onTransferCodeConsumed: () -> Unit = {},
+    navigationUri: android.net.Uri? = null,
+    onNavigationUriConsumed: () -> Unit = {},
+) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -98,12 +115,26 @@ fun PlainstrideApp(settingsViewModel: SettingsViewModel, transferCode: String? =
     when (authState.session) {
         SessionState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         SessionState.SignedOut -> SignInScreen(authState, authViewModel, snackbar, transferCode, onTransferCodeConsumed)
-        is SessionState.SignedIn, is SessionState.Refreshing -> SignedInApp(authState, authViewModel, settingsViewModel, snackbar)
+        is SessionState.SignedIn, is SessionState.Refreshing -> SignedInApp(
+            authState,
+            authViewModel,
+            settingsViewModel,
+            snackbar,
+            navigationUri,
+            onNavigationUriConsumed,
+        )
     }
 }
 
 @Composable
-private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, settingsViewModel: SettingsViewModel, snackbar: SnackbarHostState) {
+private fun SignedInApp(
+    authState: AuthUiState,
+    authViewModel: AuthViewModel,
+    settingsViewModel: SettingsViewModel,
+    snackbar: SnackbarHostState,
+    navigationUri: android.net.Uri?,
+    onNavigationUriConsumed: () -> Unit,
+) {
     var onboardingResolved by remember { mutableStateOf(false) }
     var forceOnboardingReplay by remember { mutableStateOf(false) }
     val resources = LocalResources.current
@@ -133,6 +164,19 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
         is SessionState.SignedIn -> session.accountId
         is SessionState.Refreshing -> session.accountId
         else -> null
+    }
+    val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    val integration by integrationViewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag()) } }
+    LaunchedEffect(navigationUri) {
+        val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
+        when (destination) {
+            "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
+            "connections", "activity", "event", "circle", "group" -> navController.navigate(TopLevelDestination.Social.route)
+            "live" -> navController.navigate(SAFETY_ROUTE)
+            else -> navController.navigate(NOTIFICATIONS_ROUTE)
+        }
+        onNavigationUriConsumed()
     }
 
     Scaffold(
@@ -207,6 +251,11 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                             settingsContent = {
                                 LiveCoachSettingsSection()
                                 ListItem(headlineContent = { Text(stringResource(R.string.music_settings_title)) }, supportingContent = { Text(stringResource(R.string.music_settings_body)) }, modifier = Modifier.clickable { navController.navigate(MUSIC_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.progress_destination)) }, modifier = Modifier.clickable { navController.navigate(PROGRESS_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.routes_destination)) }, modifier = Modifier.clickable { navController.navigate(COMMUNITY_ROUTES_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.health_destination)) }, modifier = Modifier.clickable { navController.navigate(HEALTH_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
+                                ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
                             },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
@@ -223,7 +272,8 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                 RecordingRoute(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
-                    onSaved = { _: RecordedActivityReview ->
+                    onSaved = { review: RecordedActivityReview ->
+                        integrationViewModel.export(review)
                         hasActiveSession = false
                         navController.navigate(TopLevelDestination.Me.route) {
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
@@ -246,6 +296,11 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                 )
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
+            composable(PROGRESS_ROUTE) { ProgressScreen(integration.progress) }
+            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, {}, integrationViewModel::bookmark) }
+            composable(SAFETY_ROUTE) { SafetyDestination() }
+            composable(HEALTH_ROUTE) { HealthDestination(integration.health, integrationViewModel::refreshHealth) }
+            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> navController.navigate(TopLevelDestination.Social.route); is NotificationDestination.Post -> navController.navigate(TopLevelDestination.Social.route); is NotificationDestination.Event -> navController.navigate(TopLevelDestination.Social.route); is NotificationDestination.Circle -> navController.navigate(TopLevelDestination.Social.route); NotificationDestination.Inbox -> Unit } } }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
@@ -260,6 +315,26 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
 private const val RECORDING_ROUTE = "recording"
 private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
+private const val PROGRESS_ROUTE = "progress"
+private const val COMMUNITY_ROUTES_ROUTE = "community_routes"
+private const val SAFETY_ROUTE = "safety"
+private const val HEALTH_ROUTE = "health"
+private const val NOTIFICATIONS_ROUTE = "notifications"
+
+private fun notificationPermissionState(context: android.content.Context): NotificationPermissionState = if(android.os.Build.VERSION.SDK_INT<33||context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED) NotificationPermissionState.GRANTED else NotificationPermissionState.DENIED
+
+@Composable private fun SafetyDestination() {
+    val context=LocalContext.current
+    var permission by remember { mutableStateOf(notificationPermissionState(context)) }
+    val launcher=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){permission=notificationPermissionState(context)}
+    SafetySettingsScreen(emptyList(),permission,{launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)},{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))},{},{})
+}
+
+@Composable private fun HealthDestination(snapshot: HealthPermissionSnapshot?, refresh:()->Unit) {
+    val context=LocalContext.current
+    val launcher=rememberLauncherForActivityResult(androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()){refresh()}
+    if(snapshot==null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()} else HealthConnectEducation(snapshot,{launcher.launch(it)},{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))},{})
+}
 
 @StringRes
 private fun activityMessageResource(message: ActivityMessage): Int = when (message) {

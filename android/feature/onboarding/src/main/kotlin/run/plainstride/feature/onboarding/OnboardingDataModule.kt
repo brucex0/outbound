@@ -9,5 +9,5 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 abstract class OnboardingDataModule {
     @Binds abstract fun onboardingRepository(implementation: DefaultOnboardingRepository): OnboardingRepository
-    @Binds abstract fun healthProfileImporter(implementation: UnavailableHealthProfileImporter): HealthProfileImporter
+    @Binds abstract fun healthProfileImporter(implementation: HealthConnectProfileImporter): HealthProfileImporter
 }
