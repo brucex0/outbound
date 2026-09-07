@@ -65,7 +65,15 @@ export type LiveCoachCompiledContext = {
   runnerModelVersion: string;
   locale: SupportedAILocale;
   activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
-  goalType: "workout" | "distance" | "time" | "calories" | "freestyle";
+  goalType: "workout" | "distance" | "time" | "calories" | "freestyle" | "race";
+  race: {
+    distanceMeters: number;
+    goalMode: "finish" | "target_time" | "target_pace";
+    goalTimeSeconds: number | null;
+    targetPaceSecondsPerKilometer: number | null;
+    pacingStrategy: "even" | "negative_split" | "effort_based";
+    recommendationSource: "training_history" | "manual" | "insufficient_history";
+  } | null;
   bio: {
     biography: string | null;
     ageYears: number | null;

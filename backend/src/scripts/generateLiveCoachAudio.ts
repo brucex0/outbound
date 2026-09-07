@@ -217,7 +217,8 @@ for (const voiceProfileId of voiceProfileIds) {
               runnerModelVersion: "fixed-asset",
               locale,
               activityType: "running",
-              goalType: "workout",
+            goalType: "workout",
+            race: null,
               bio: {
                 biography: null, ageYears: null, sexAtBirth: null, heightCentimeters: null,
                 weightKilograms: null, goalSummary: null, scheduleSummary: null,

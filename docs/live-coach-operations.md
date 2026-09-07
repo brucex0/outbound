@@ -4,6 +4,8 @@ Open this when generating or publishing live-coach audio, changing the Google TT
 
 ## Current Architecture
 
+Ad-hoc Race mode supplies typed race distance, goal mode, optional target time/pace, pacing strategy, and a bounded recommendation source to the start planner. Runtime detection remains on device. Race moments use the same planned-cache and streaming route as other semantic cues. Until a reviewed successor pack adds purpose-built race assets, fixed fallback reuses the closest reviewed early-settle, halfway, rebuild-rhythm, steady, and strong-finish assets; semantics and analytics remain race-specific.
+
 Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
 
 1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. A standalone selection is sent as a catalog reference; the backend resolves its guide-relevant execution projection before Gemini returns a strict-JSON phase-aware and instruction-ID-aware phrase plan.

@@ -87,13 +87,25 @@ const createSessionSchema = z.object({
   measurementUnitSystem: z.enum(["metric", "imperial"]),
   sessionIntent: z.object({
     activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),
-    goalType: z.enum(["workout", "distance", "time", "calories", "freestyle"]),
+    goalType: z.enum(["workout", "distance", "time", "calories", "freestyle", "race"]),
+    race: z.object({
+      distanceMeters: z.number().finite().min(1_000).max(100_000),
+      goalMode: z.enum(["finish", "target_time", "target_pace"]),
+      goalTimeSeconds: z.number().int().min(5 * 60).max(24 * 60 * 60).optional(),
+      targetPaceSecondsPerKilometer: z.number().finite().min(120).max(1_200).optional(),
+      pacingStrategy: z.enum(["even", "negative_split", "effort_based"]),
+      recommendationSource: z.enum(["training_history", "manual", "insufficient_history"]),
+    }).strict().optional(),
   }).strict(),
   clientWorkout: clientWorkoutSchema.optional(),
   environment: environmentSchema.optional(),
   appDistributionHint: z.literal("global").optional(),
 }).strict().refine((value) => !(value.workoutId && value.workoutRef), {
   message: "workoutId and workoutRef are mutually exclusive",
+}).refine((value) => value.sessionIntent.goalType !== "race" || value.sessionIntent.race != null, {
+  message: "race intent is required when goalType is race",
+}).refine((value) => value.sessionIntent.goalType === "race" || value.sessionIntent.race == null, {
+  message: "race intent is allowed only when goalType is race",
 });
 
 const liveStateSchema = z.object({

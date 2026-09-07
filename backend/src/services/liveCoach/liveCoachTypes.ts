@@ -17,6 +17,12 @@ export const LIVE_COACH_REACTIVE_MOMENTS = [
   "crest_recovery",
   "segment_transition",
   "finish_opportunity",
+  "race_start_restraint",
+  "race_pace_locked",
+  "race_halfway_assessment",
+  "race_late_fade",
+  "race_late_strength",
+  "race_final_kilometer",
   "challenge_start",
   "challenge_complete",
 ] as const;
@@ -46,7 +52,18 @@ export type CreateLiveCoachSessionInput = {
   voiceProfileId: string;
   coachingContract: CoachingContract;
   measurementUnitSystem: "metric" | "imperial";
-  sessionIntent: { activityType: "running" | "walking" | "cycling" | "hiking" | "swimming"; goalType: "workout" | "distance" | "time" | "calories" | "freestyle" };
+  sessionIntent: {
+    activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
+    goalType: "workout" | "distance" | "time" | "calories" | "freestyle" | "race";
+    race?: {
+      distanceMeters: number;
+      goalMode: "finish" | "target_time" | "target_pace";
+      goalTimeSeconds?: number;
+      targetPaceSecondsPerKilometer?: number;
+      pacingStrategy: "even" | "negative_split" | "effort_based";
+      recommendationSource: "training_history" | "manual" | "insufficient_history";
+    };
+  };
   clientWorkout?: LiveCoachClientWorkout;
   environment?: LiveCoachEnvironmentInput;
   appDistributionHint?: "global";

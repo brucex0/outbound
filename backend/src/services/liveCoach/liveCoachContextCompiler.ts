@@ -97,6 +97,14 @@ export async function compileLiveCoachContext(
     locale: input.locale,
     activityType: input.sessionIntent.activityType,
     goalType: input.sessionIntent.goalType,
+    race: input.sessionIntent.race ? {
+      distanceMeters: input.sessionIntent.race.distanceMeters,
+      goalMode: input.sessionIntent.race.goalMode,
+      goalTimeSeconds: input.sessionIntent.race.goalTimeSeconds ?? null,
+      targetPaceSecondsPerKilometer: input.sessionIntent.race.targetPaceSecondsPerKilometer ?? null,
+      pacingStrategy: input.sessionIntent.race.pacingStrategy,
+      recommendationSource: input.sessionIntent.race.recommendationSource,
+    } : null,
     bio: {
       biography: nullableClip(user?.bio, 600),
       ageYears: ageYears(runnerProfile?.birthDate, now),

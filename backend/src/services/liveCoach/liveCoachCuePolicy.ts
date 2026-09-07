@@ -17,6 +17,12 @@ const dynamicMoments = new Set<LiveCoachMoment>([
   "crest_recovery",
   "segment_transition",
   "finish_opportunity",
+  "race_start_restraint",
+  "race_pace_locked",
+  "race_halfway_assessment",
+  "race_late_fade",
+  "race_late_strength",
+  "race_final_kilometer",
   "challenge_start",
   "challenge_complete",
   "workout_instruction",
@@ -45,6 +51,10 @@ export function urgencyForMoment(moment: LiveCoachMoment): "steady" | "opportuni
     case "climb_start":
     case "crest_recovery":
     case "finish_opportunity":
+    case "race_start_restraint":
+    case "race_late_fade":
+    case "race_late_strength":
+    case "race_final_kilometer":
     case "segment_transition":
     case "workout_instruction":
     case "challenge_start":
