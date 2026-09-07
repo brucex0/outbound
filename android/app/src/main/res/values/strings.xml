@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Plainstride</string>
+    <string name="tab_social">Social</string>
+    <string name="tab_today">Today</string>
+    <string name="tab_me">Me</string>
+    <string name="social_headline">Run together</string>
+    <string name="social_body">Your connections, Circles, and shared activities will live here.</string>
+    <string name="today_headline">Today starts here</string>
+    <string name="today_body">Your workout, readiness, and companion will meet you here.</string>
+    <string name="me_headline">Your running story</string>
+    <string name="me_body">Progress, activities, gear, and settings will live here.</string>
+</resources>

@@ -23,6 +23,28 @@ Mainland China remains a separate market and infrastructure project. The first A
 - Treat Android background execution and device variation as core product constraints, not late QA concerns.
 - Prefer clean current contracts over backward compatibility with pre-release local or backend data.
 
+## iOS Baseline And Later Parity Catch-Up
+
+`android/ios-baseline.toml` records the immutable repository commit used as the iOS and shared-backend baseline for this Android port. The initial baseline is `cc5d3011755e35aa89263c78cb6f830e3ed09ea9`.
+
+Do not advance this marker during the phase plan. Keeping it fixed makes iOS features, behavior changes, contract changes, and fixes added during Android development discoverable after the current plan completes.
+
+After Phase 9, compare the baseline to the then-current integration commit:
+
+```sh
+git diff --name-status cc5d3011755e35aa89263c78cb6f830e3ed09ea9..<integration-commit> -- ios backend contracts Package.swift Tests docs
+git log --reverse --oneline cc5d3011755e35aa89263c78cb6f830e3ed09ea9..<integration-commit> -- ios backend contracts Package.swift Tests docs
+```
+
+Review each result as one of:
+
+- Android parity work required;
+- shared backend or contract work already consumed by Android;
+- iOS-only platform behavior with an Android equivalent required;
+- documentation or tooling with no product parity impact.
+
+Complete and commit the resulting catch-up work before moving the marker to the audited integration commit. A baseline update must never be bundled with unreviewed iOS changes.
+
 ## Release Parity Contract
 
 The following table is the release checklist. A row may use an Android-native replacement, but it may not be omitted without an explicit product decision recorded in this document.
