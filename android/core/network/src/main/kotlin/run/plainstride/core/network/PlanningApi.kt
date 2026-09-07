@@ -48,6 +48,8 @@ data class CreateTrainingGoalRequest(
 @Serializable data class RunnerProfileRequest(val goalSummary: String? = null, val scheduleSummary: String? = null, val comfortableDurationMinutes: Int? = null, val recentSessionsPerWeek: Int? = null, val targetSessionsPerWeek: Int? = null, val preferredLongRunDay: String? = null, val guidanceDetail: String? = null, val primaryMotivation: PrimaryMotivation? = null, val preferredRunGoalType: RunGoalType? = null, val constraints: Map<String, String>? = null, val complete: Boolean? = null)
 @Serializable data class TrainingProfileRequest(val sexAtBirth: String? = null, val birthDate: String? = null, val heightCentimeters: Double? = null, val weightKilograms: Double? = null, val primaryMotivation: PrimaryMotivation, val preferredRunGoalType: RunGoalType)
 @Serializable data class AdjustmentDecisionRequest(val decision: String)
+@Serializable data class CycleTrainingSignalRequest(val signal:String,val workoutId:String?=null,val day:String,val idempotencyKey:String)
+@Serializable data class CycleTrainingSignalResponse(val workoutId:String?=null,val day:String,val signal:String,val action:String,val explanation:String,val rawHealthDataStored:Boolean)
 @Serializable data class PersonalizationMutationResponse(val accepted: Boolean? = null, val adjustment: AdjustmentProposal? = null, val personalization: PersonalizationSnapshot)
 
 interface PlanningApiService {
@@ -64,6 +66,7 @@ interface PlanningApiService {
     @GET("v1/personalization/profile/training") suspend fun trainingProfile(@Header("Authorization") authorization: String): Response<TrainingProfile>
     @PATCH("v1/personalization/profile/training") suspend fun updateTrainingProfile(@Header("Authorization") authorization: String, @Body body: TrainingProfileRequest): Response<TrainingProfile>
     @POST("v1/personalization/readiness") suspend fun submitReadiness(@Header("Authorization") authorization: String, @Body body: ReadinessCheckInRequest): Response<PersonalizationMutationResponse>
+    @POST("v1/personalization/cycle-signal") suspend fun submitCycleSignal(@Header("Authorization") authorization:String,@Body body:CycleTrainingSignalRequest):Response<CycleTrainingSignalResponse>
     @POST("v1/personalization/workouts/{id}/feedback") suspend fun feedback(@Header("Authorization") authorization: String, @Path("id") workoutId: String, @Body body: WorkoutFeedbackRequest): Response<PersonalizationMutationResponse>
     @POST("v1/personalization/adjustments/{id}/decision") suspend fun adjustmentDecision(@Header("Authorization") authorization: String, @Path("id") adjustmentId: String, @Body body: AdjustmentDecisionRequest): Response<AdjustmentProposal>
 }

@@ -1,0 +1,17 @@
+<resources>
+    <string name="cycle_title">经期感受训练建议</string>
+    <string name="cycle_privacy">此功能可选且内容私密。打卡仅保存在本设备；请求训练建议时只会发送概括性的训练信号。</string>
+    <string name="cycle_checkin_title">今天感觉怎么样？</string>
+    <string name="cycle_period_today">今天处于经期</string>
+    <string name="cycle_energy">精力</string>
+    <string name="cycle_discomfort">不适程度</string>
+    <string name="cycle_rating">%1$s：5 分制中的 %2$d 分</string>
+    <string name="cycle_save">保存私密打卡</string>
+    <string name="cycle_delete">删除经期数据</string>
+    <string name="cycle_agency">是否保持原计划或选择更轻松的方案，始终由你决定。</string>
+    <string name="cycle_no_change">无需调整</string>
+    <string name="cycle_flexible">可以选择更灵活的方案</string>
+    <string name="cycle_reduce">今天可能更适合轻松一些的训练</string>
+    <string name="cycle_rest">今天可能更适合休息或轻柔活动</string>
+    <string name="cycle_today_reason">建议依据今天的私密感受打卡，而不是仅凭经期时间。</string><string name="cycle_keep_plan">保持原训练</string><string name="cycle_choose_gentler">选择轻松方案</string>
+</resources>

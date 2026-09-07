@@ -1,0 +1,17 @@
+<resources>
+    <string name="cycle_title">Cycle-aware guidance</string>
+    <string name="cycle_privacy">Optional and private. Check-ins stay on this device; only a generic training signal is sent when guidance is requested.</string>
+    <string name="cycle_checkin_title">How are you today?</string>
+    <string name="cycle_period_today">Period today</string>
+    <string name="cycle_energy">Energy</string>
+    <string name="cycle_discomfort">Discomfort</string>
+    <string name="cycle_rating">%1$s: %2$d of 5</string>
+    <string name="cycle_save">Save private check-in</string>
+    <string name="cycle_delete">Delete cycle data</string>
+    <string name="cycle_agency">You always choose whether to keep your planned workout or use a gentler option.</string>
+    <string name="cycle_no_change">No change needed</string>
+    <string name="cycle_flexible">A flexible option is available</string>
+    <string name="cycle_reduce">A gentler workout may fit today</string>
+    <string name="cycle_rest">Rest or gentle movement may fit today</string>
+    <string name="cycle_today_reason">Based on today’s private check-in—not cycle timing alone.</string><string name="cycle_keep_plan">Keep planned workout</string><string name="cycle_choose_gentler">Choose a gentler option</string>
+</resources>

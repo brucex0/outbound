@@ -33,6 +33,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val gearId: String? = null,
     val workoutDetail: String? = null,
     val workoutGuideline: String? = null,
+    val privateTrainingSignal: String? = null,
     val followedRoute:FollowedRouteConfiguration?=null,
 )
 

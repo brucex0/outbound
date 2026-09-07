@@ -1,0 +1,17 @@
+<resources>
+    <string name="cycle_title">Orientación según el ciclo</string>
+    <string name="cycle_privacy">Es opcional y privado. Los registros permanecen en este dispositivo; solo se envía una señal general cuando solicitas orientación.</string>
+    <string name="cycle_checkin_title">¿Cómo te encuentras hoy?</string>
+    <string name="cycle_period_today">Tengo el periodo hoy</string>
+    <string name="cycle_energy">Energía</string>
+    <string name="cycle_discomfort">Molestias</string>
+    <string name="cycle_rating">%1$s: %2$d de 5</string>
+    <string name="cycle_save">Guardar registro privado</string>
+    <string name="cycle_delete">Eliminar datos del ciclo</string>
+    <string name="cycle_agency">Tú decides si mantienes el entrenamiento previsto o eliges una opción más suave.</string>
+    <string name="cycle_no_change">No hace falta cambiar nada</string>
+    <string name="cycle_flexible">Hay una opción flexible disponible</string>
+    <string name="cycle_reduce">Hoy puede encajarte un entrenamiento más suave</string>
+    <string name="cycle_rest">Hoy puede encajarte descansar o moverte suavemente</string>
+    <string name="cycle_today_reason">Se basa en tu registro privado de hoy, no solo en el momento del ciclo.</string><string name="cycle_keep_plan">Mantener el entrenamiento</string><string name="cycle_choose_gentler">Elegir una opción más suave</string>
+</resources>

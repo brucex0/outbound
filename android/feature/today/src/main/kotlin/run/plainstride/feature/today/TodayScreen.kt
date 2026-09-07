@@ -71,6 +71,7 @@ fun TodayRoute(
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onMessage: suspend (TodayMessage) -> Unit,
+    guidanceContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(accountId, localeTag) { viewModel.configure(accountId, localeTag) }
@@ -99,6 +100,7 @@ fun TodayRoute(
         onSetUpPlan = { viewModel.setUpPlan(); onSetUpPlan() },
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
+        guidanceContent = guidanceContent,
         modifier = modifier,
     )
 }
@@ -114,6 +116,7 @@ fun TodayScreen(
     onSetUpPlan: () -> Unit,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
+    guidanceContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showsDetail by rememberSaveable { mutableStateOf(false) }
@@ -145,6 +148,7 @@ fun TodayScreen(
                 onRefresh = onRefresh,
             )
         }
+        guidanceContent()
 
         if (state.refreshing) Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)

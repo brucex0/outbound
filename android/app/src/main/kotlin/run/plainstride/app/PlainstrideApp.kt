@@ -178,10 +178,12 @@ private fun SignedInApp(
         is SessionState.Refreshing -> session.accountId
         else -> null
     }
+    val cycleViewModel:CycleAwareViewModel=hiltViewModel()
+    val cycleState by cycleViewModel.state.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag()) } }
+    LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it) } }
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
@@ -239,7 +241,7 @@ private fun SignedInApp(
                             activeSession = hasActiveSession,
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId)
+                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onStartFreestyle = {
@@ -251,6 +253,7 @@ private fun SignedInApp(
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },
+                            guidanceContent = { CycleTodayGuidance(cycleState,onKeep={},{ todayViewModel.state.value.primarySuggestion?.let{suggestion->cycleViewModel.requestGentler(suggestion.plannedWorkoutId?:suggestion.id)} }) },
                         )
                     } else if (destination == TopLevelDestination.Me) {
                         MeRoute(
@@ -270,6 +273,7 @@ private fun SignedInApp(
                             },
                             settingsContent = {
                                 LiveCoachSettingsSection()
+                                accountId?.let { CycleAwareSection(it,cycleViewModel) }
                                 ListItem(headlineContent = { Text(stringResource(R.string.music_settings_title)) }, supportingContent = { Text(stringResource(R.string.music_settings_body)) }, modifier = Modifier.clickable { navController.navigate(MUSIC_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.progress_destination)) }, modifier = Modifier.clickable { navController.navigate(PROGRESS_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.routes_destination)) }, modifier = Modifier.clickable { navController.navigate(COMMUNITY_ROUTES_ROUTE) })

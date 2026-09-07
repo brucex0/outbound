@@ -15,6 +15,10 @@ android {
 
 dependencies {
     implementation(project(":core:analytics"))
+    implementation(project(":core:data"))
+    implementation(project(":core:model"))
+    implementation(project(":core:database"))
+    implementation(project(":core:network"))
     implementation(libs.androidx.health.connect)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
@@ -22,6 +26,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.core)
 }

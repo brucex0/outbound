@@ -1,28 +1,32 @@
 package run.plainstride.app.gear
 
-import android.content.Context
-import android.util.Base64
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
+import androidx.room.withTransaction
 import run.plainstride.core.data.ActivityRepository
+import run.plainstride.core.database.GearEntity
+import run.plainstride.core.database.PlainstrideDatabase
 import run.plainstride.feature.progress.*
 
 class PersistentGearRepository @Inject constructor(
-    @param:ApplicationContext context: Context,
+    private val database: PlainstrideDatabase,
     private val activities: ActivityRepository,
 ) : GearRepository {
-    private val preferences = context.getSharedPreferences("gear_repository_v1", Context.MODE_PRIVATE)
     private var accountId: String? = null
     override suspend fun configure(accountId: String) { this.accountId = accountId }
     override suspend fun collection(): GearCollection {
-        val shoes = preferences.getStringSet("shoes", emptySet()).orEmpty().mapNotNull(::decode).sortedByDescending { it.startedAt }
-        return GearCollection(shoes, preferences.getString("default", null)?.let { runCatching { UUID.fromString(it) }.getOrNull() })
+        val id = accountId ?: return GearCollection()
+        val entities = database.gearDao().forAccount(id)
+        return GearCollection(entities.map(GearEntity::toDomain), entities.firstOrNull { it.isDefault }?.gearId?.let(UUID::fromString))
     }
     override suspend fun replace(collection: GearCollection) {
-        preferences.edit().putStringSet("shoes", collection.shoes.map(::encode).toSet()).putString("default", collection.defaultShoeId?.toString()).apply()
+        val id = accountId ?: return
+        database.withTransaction {
+            database.gearDao().deleteForAccount(id)
+            if (collection.shoes.isNotEmpty()) database.gearDao().upsert(collection.shoes.map { it.toEntity(id, collection.defaultShoeId) })
+        }
     }
     override suspend fun activityDistances(): List<ActivityGearDistance> {
         val id = accountId ?: return emptyList()
@@ -31,9 +35,8 @@ class PersistentGearRepository @Inject constructor(
             ActivityGearDistance(gearId, activity.distanceM, Instant.parse(activity.startedAt))
         }
     }
-    private fun encode(item: GearItem) = listOf(item.id, item.purpose.name, safe(item.name), safe(item.brand), safe(item.model), item.startedAt, item.retiredAt ?: "", item.distanceLimitMeters, safe(item.notes)).joinToString("|")
-    private fun decode(raw: String): GearItem? = runCatching { raw.split('|').let { GearItem(UUID.fromString(it[0]), GearPurpose.valueOf(it[1]), unsafe(it[2]), unsafe(it[3]), unsafe(it[4]), Instant.parse(it[5]), it[6].takeIf(String::isNotBlank)?.let(Instant::parse), it[7].toDouble(), unsafe(it[8])) } }.getOrNull()
-    private fun safe(value: String) = Base64.encodeToString(value.toByteArray(), Base64.NO_WRAP or Base64.URL_SAFE)
-    private fun unsafe(value: String) = String(Base64.decode(value, Base64.NO_WRAP or Base64.URL_SAFE))
     private companion object { val UUID_REGEX = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}") }
 }
+
+private fun GearItem.toEntity(accountId:String,defaultId:UUID?)=GearEntity(accountId,id.toString(),purpose.name,name,brand,model,startedAt.toEpochMilli(),retiredAt?.toEpochMilli(),distanceLimitMeters,notes,id==defaultId)
+private fun GearEntity.toDomain()=GearItem(UUID.fromString(gearId),GearPurpose.valueOf(purpose),name,brand,model,Instant.ofEpochMilli(startedAtEpochMs),retiredAtEpochMs?.let(Instant::ofEpochMilli),distanceLimitMeters,notes)

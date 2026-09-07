@@ -22,6 +22,7 @@ import run.plainstride.core.auth.SessionState
 import run.plainstride.core.network.ApiErrorCode
 import run.plainstride.core.network.ApiResult
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import run.plainstride.core.database.AccountDatabaseOperations
 
 data class AuthUiState(
     val session: SessionState = SessionState.Loading,
@@ -38,6 +39,7 @@ class AuthViewModel @Inject constructor(
     private val sessions: SessionCoordinator,
     private val google: GoogleCredentialProvider,
     private val analytics: ProductAnalytics,
+    private val accountData: AccountDatabaseOperations,
 ) : ViewModel() {
     private val operation = MutableStateFlow<AuthOperation?>(null)
     private val confirmDeletion = MutableStateFlow(false)
@@ -84,8 +86,10 @@ class AuthViewModel @Inject constructor(
     fun deleteAccount() {
         confirmDeletion.value = false
         perform(AuthOperation.Delete, "auth_delete_account", AuthMessage.Deleted) {
+            val accountId = (sessions.state.value as? SessionState.SignedIn)?.accountId
+                ?: (sessions.state.value as? SessionState.Refreshing)?.accountId
             google.identityToken().fold(
-                onSuccess = { repository.deleteAccount(it) },
+                onSuccess = { token -> repository.deleteAccount(token).also { result -> if (result is ApiResult.Success && accountId != null) accountData.clearAccount(accountId) } },
                 onFailure = { credentialFailure(it) },
             )
         }

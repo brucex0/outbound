@@ -15,8 +15,11 @@ import androidx.room.withTransaction
         ActivityTrackPointEntity::class,
         ActivitySplitEntity::class,
         ActivityPhotoEntity::class,
+        GearEntity::class,
+        CyclePreferenceEntity::class,
+        CycleWellbeingEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class PlainstrideDatabase : RoomDatabase() {
@@ -24,6 +27,8 @@ abstract class PlainstrideDatabase : RoomDatabase() {
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun activeSessionJournalDao(): ActiveSessionJournalDao
     abstract fun activityDao(): ActivityDao
+    abstract fun gearDao(): GearDao
+    abstract fun cycleWellbeingDao(): CycleWellbeingDao
 }
 
 /** Single construction surface for DI. Database schema upgrades intentionally reset pre-release data. */
@@ -59,6 +64,9 @@ class AccountDatabaseOperations(
             database.activityDao().deleteAllSplits(accountId)
             database.activityDao().deleteAllPhotos(accountId)
             database.activityDao().deleteForAccount(accountId)
+            database.gearDao().deleteForAccount(accountId)
+            database.cycleWellbeingDao().deleteLogs(accountId)
+            database.cycleWellbeingDao().deletePreference(accountId)
         }
     }
 

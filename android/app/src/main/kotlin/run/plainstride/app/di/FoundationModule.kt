@@ -17,6 +17,7 @@ import run.plainstride.core.analytics.SanitizedAnalyticsEvent
 import run.plainstride.core.database.DataStoreDurableStateStore
 import run.plainstride.core.database.DurableStateStore
 import run.plainstride.core.database.AccountCacheDao
+import run.plainstride.core.database.AccountDatabaseOperations
 import run.plainstride.core.database.PlainstrideDatabase
 import run.plainstride.core.database.PlainstrideDatabaseFactory
 import run.plainstride.core.data.ActivityMediaStore
@@ -111,6 +112,8 @@ object FoundationModule {
 
     @Provides @Singleton fun database(@ApplicationContext context: Context): PlainstrideDatabase =
         PlainstrideDatabaseFactory.create(context)
+
+    @Provides @Singleton fun accountDatabaseOperations(database: PlainstrideDatabase) = AccountDatabaseOperations(database)
 
     @Provides fun accountCacheDao(database: PlainstrideDatabase): AccountCacheDao =
         database.accountCacheDao()

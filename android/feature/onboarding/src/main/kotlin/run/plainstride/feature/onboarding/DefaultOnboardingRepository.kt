@@ -42,7 +42,10 @@ class DefaultOnboardingRepository @Inject constructor(
         Unit
     }
 
-    override suspend fun importHealthProfile(): Result<ImportedHealthProfile> = health.import()
+    override suspend fun importHealthProfile(): Result<ImportedHealthProfile> = runCatching { currentAccount().id }.fold(
+        onSuccess = { health.import(it) },
+        onFailure = { Result.failure(it) },
+    )
 
     override suspend fun completeOnboarding(input: RunnerProfileInput): Result<Unit> = runCatching {
         apiCall {
