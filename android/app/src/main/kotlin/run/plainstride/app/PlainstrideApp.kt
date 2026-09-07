@@ -1,6 +1,7 @@
 package run.plainstride.app
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -63,6 +65,11 @@ import run.plainstride.feature.recording.RecordingGoalType
 import run.plainstride.feature.recording.RecordingLaunchConfiguration
 import run.plainstride.feature.recording.RecordingRoute
 import run.plainstride.feature.recording.StructuredWorkoutStep
+import run.plainstride.feature.livecoach.LiveCoachRecordingEffect
+import run.plainstride.feature.livecoach.LiveCoachSettingsSection
+import run.plainstride.feature.assistant.AssistantRoute
+import run.plainstride.feature.assistant.MusicRoute
+import run.plainstride.feature.social.SocialRoute
 import run.plainstride.feature.today.WorkoutLaunchIntent
 import run.plainstride.core.model.Modality
 import kotlinx.coroutines.launch
@@ -75,6 +82,7 @@ private enum class TopLevelDestination(
 ) {
     Social("social", R.string.tab_social, R.string.social_headline, R.string.social_body),
     Today("today", R.string.tab_today, R.string.today_headline, R.string.today_body),
+    Assistant("assistant", R.string.tab_assistant, R.string.assistant_headline, R.string.assistant_body),
     Me("me", R.string.tab_me, R.string.me_headline, R.string.me_body),
 }
 
@@ -196,8 +204,16 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                             activityContent = {
                                 accountId?.let { id -> RecentActivitiesRoute(id, { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } }) }
                             },
+                            settingsContent = {
+                                LiveCoachSettingsSection()
+                                ListItem(headlineContent = { Text(stringResource(R.string.music_settings_title)) }, supportingContent = { Text(stringResource(R.string.music_settings_body)) }, modifier = Modifier.clickable { navController.navigate(MUSIC_ROUTE) })
+                            },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
+                    } else if (destination == TopLevelDestination.Social && accountId != null) {
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag())
+                    } else if (destination == TopLevelDestination.Assistant && accountId != null) {
+                        AssistantRoute(accountId, onClose = { navController.navigate(TopLevelDestination.Today.route) })
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -219,6 +235,7 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
                         }
                     },
+                    sessionEffect = { LiveCoachRecordingEffect(recordingLaunch) },
                 )
             }
             composable(ACTIVITY_HISTORY_ROUTE) {
@@ -228,6 +245,7 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
                     onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
                 )
             }
+            composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
@@ -240,6 +258,7 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, se
 }
 
 private const val RECORDING_ROUTE = "recording"
+private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
 
 @StringRes

@@ -3,11 +3,14 @@
     <string name="app_name">Plainstride</string>
     <string name="tab_social">Social</string>
     <string name="tab_today">Hoy</string>
+    <string name="tab_assistant">Entrenador</string>
     <string name="tab_me">Yo</string>
     <string name="social_headline">Corre en compañía</string>
     <string name="social_body">Aquí encontrarás tus contactos, Círculos y actividades compartidas.</string>
     <string name="today_headline">Hoy empieza aquí</string>
     <string name="today_body">Aquí te esperan tu entrenamiento, tu estado de preparación y tu compañero.</string>
+    <string name="assistant_headline">Tu entrenador</string><string name="assistant_body">Pregunta sobre entrenamiento, recuperación y tu próxima actividad.</string>
+    <string name="music_settings_title">Música</string><string name="music_settings_body">Conecta Spotify y gestiona la cola para tus actividades.</string>
     <string name="me_headline">Tu historia como corredor</string>
     <string name="me_body">Aquí encontrarás tu progreso, actividades, equipamiento y ajustes.</string>
     <string name="auth_welcome">Te damos la bienvenida a Plainstride</string>

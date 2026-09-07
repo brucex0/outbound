@@ -9,4 +9,7 @@
     <string name="live_coach_cue_finish">如果感觉不错，逐渐加力完成。</string>
     <string name="live_coach_cue_pause">活动已暂停。</string>
     <string name="live_coach_cue_resume">活动已继续。</string>
+    <string name="live_coach_settings_title">实时教练</string><string name="live_coach_enable">运动时开启指导</string><string name="live_coach_enable_detail">运动过程中收听简短、及时的建议。</string>
+    <string name="live_coach_catalog_error">暂时无法获取指导选项，已保存的选择不会改变。</string><string name="live_coach_frequency">提示频率</string><string name="live_coach_quiet">安静</string><string name="live_coach_responsive">适时</string><string name="live_coach_coach_me">积极指导</string>
+    <string name="live_coach_persona">指导风格</string><string name="live_coach_voice">语音</string><string name="live_coach_privacy">每次生成提示时，实时教练只发送有限的运动摘要。分析数据不包含精确位置、心率或语音内容。</string>
 </resources>

@@ -96,12 +96,14 @@ fun RecordingRoute(
     onSaved: (RecordedActivityReview) -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    sessionEffect: @Composable (RecordingSnapshot) -> Unit = {},
     viewModel: RecordingViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val ui by viewModel.state.collectAsStateWithLifecycle()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
+    sessionEffect(snapshot)
     var askedForLocation by remember { mutableStateOf(false) }
     var pendingResume by remember { mutableStateOf(false) }
     var showLocationEducation by remember { mutableStateOf(false) }

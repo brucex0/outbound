@@ -18,4 +18,5 @@ abstract class LiveCoachModule {
     @Binds @Singleton abstract fun repository(implementation: DefaultLiveCoachRepository): LiveCoachRepository
     @Binds @Singleton abstract fun audioPack(implementation: VerifiedAudioPackStore): FixedAudioPackStore
     @Binds @Singleton abstract fun audioOutput(implementation: AndroidCoachAudioOutput): CoachAudioOutput
+    @Binds @Singleton abstract fun preferences(implementation: DataStoreLiveCoachPreferences): LiveCoachPreferencesRepository
 }

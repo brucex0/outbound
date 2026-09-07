@@ -9,4 +9,11 @@
     <string name="live_coach_cue_finish">If it feels good, build gradually to the finish.</string>
     <string name="live_coach_cue_pause">Activity paused.</string>
     <string name="live_coach_cue_resume">Activity resumed.</string>
+    <string name="live_coach_settings_title">Live coach</string>
+    <string name="live_coach_enable">Coach during activities</string>
+    <string name="live_coach_enable_detail">Hear timely, short guidance while you move.</string>
+    <string name="live_coach_catalog_error">Coaching choices aren’t available right now. Your saved choice is unchanged.</string>
+    <string name="live_coach_frequency">Frequency</string><string name="live_coach_quiet">Quiet</string><string name="live_coach_responsive">Responsive</string><string name="live_coach_coach_me">Coach me</string>
+    <string name="live_coach_persona">Coaching style</string><string name="live_coach_voice">Voice</string>
+    <string name="live_coach_privacy">Live coach sends a bounded activity snapshot for each cue. Exact location, heart-rate data, and spoken audio are not included in analytics.</string>
 </resources>

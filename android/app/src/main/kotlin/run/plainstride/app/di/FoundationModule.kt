@@ -34,6 +34,8 @@ import run.plainstride.core.model.SystemEpochClock
 import javax.inject.Singleton
 import androidx.credentials.CredentialManager
 import okhttp3.OkHttpClient
+import run.plainstride.feature.livecoach.network.LiveCoachApi
+import run.plainstride.feature.livecoach.network.createLiveCoachApi
 import run.plainstride.app.auth.GoogleServerClientId
 import run.plainstride.core.auth.ApiSessionRefresher
 import run.plainstride.core.auth.AuthRepository
@@ -59,6 +61,20 @@ import run.plainstride.core.weather.WeatherApiService
 import run.plainstride.core.weather.WeatherLocationSource
 import run.plainstride.core.weather.WeatherRepository
 import run.plainstride.core.weather.createWeatherApi
+import run.plainstride.core.assistant.CompanionApi
+import run.plainstride.core.assistant.CompanionRepository
+import run.plainstride.core.assistant.OfflineFirstCompanionRepository
+import run.plainstride.core.assistant.createCompanionApi
+import run.plainstride.core.music.*
+import run.plainstride.feature.social.SocialApiService
+import run.plainstride.feature.social.createSocialApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import run.plainstride.feature.community.CommunityRoutesApi
+import run.plainstride.feature.community.createCommunityRoutesApi
+import run.plainstride.feature.safety.SafetyApi
+import run.plainstride.feature.safety.createSafetyApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -120,6 +136,23 @@ object FoundationModule {
 
     @Provides @Singleton fun activitiesApi(client: OkHttpClient): ActivitiesApiService =
         createActivitiesApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun liveCoachApi(client: OkHttpClient): LiveCoachApi =
+        createLiveCoachApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun socialApi(client: OkHttpClient): SocialApiService = createSocialApi(BuildConfig.API_BASE_URL, client)
+    @Provides @Singleton fun communityRoutesApi(client: OkHttpClient): CommunityRoutesApi = createCommunityRoutesApi(BuildConfig.API_BASE_URL, client)
+    @Provides @Singleton fun safetyApi(client: OkHttpClient): SafetyApi = createSafetyApi(BuildConfig.API_BASE_URL, client)
+    @Provides @Singleton fun companionApi(client: OkHttpClient): CompanionApi = createCompanionApi(BuildConfig.API_BASE_URL, client)
+    @Provides @Singleton fun companionRepository(api: CompanionApi, tokens: AccessTokenProvider, cache: AccountCacheDao): CompanionRepository = OfflineFirstCompanionRepository(api, tokens, cache)
+    @Provides @Singleton fun spotifyAuthorizationStore(@ApplicationContext context: Context): SpotifyAuthorizationStore = SpotifySecureAuthorizationStore(context)
+    @Provides @Singleton fun spotifyAuthorizationClient(): SpotifyAuthorizationClient = UnavailableSpotifyAuthorizationClient()
+    @Provides @Singleton fun spotifyRemote(): SpotifyAppRemoteTransport = UnavailableSpotifyAppRemoteTransport()
+    @Provides @Singleton fun musicStateStore(dataStore: DataStore<Preferences>) = MusicStateStore(dataStore)
+    @Provides @Singleton fun spotifyWebApi(client: OkHttpClient): SpotifyWebApi = createSpotifyWebApi(client)
+    @Provides @Singleton fun spotifyCatalog(api: SpotifyWebApi, store: SpotifyAuthorizationStore) = SpotifyCatalog(api, store)
+    @Provides @Singleton fun musicScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Provides @Singleton fun musicProvider(remote: SpotifyAppRemoteTransport, client: SpotifyAuthorizationClient, store: SpotifyAuthorizationStore, state: MusicStateStore, scope: CoroutineScope): MusicProvider = SpotifyMusicProvider(remote, client, store, state, scope)
 
     @Provides @Singleton fun activityMediaStore(@ApplicationContext context: Context): ActivityMediaStore =
         ActivityMediaStore(context)

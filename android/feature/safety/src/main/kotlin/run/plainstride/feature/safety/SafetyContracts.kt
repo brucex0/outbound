@@ -3,6 +3,11 @@ package run.plainstride.feature.safety
 import kotlinx.serialization.Serializable
 import retrofit2.Response
 import retrofit2.http.*
+import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import run.plainstride.core.network.PlainstrideJson
 
 @Serializable data class TrustedContact(val id:String,val displayName:String,val channel:String,val address:String,val isDefault:Boolean=false)
 @Serializable data class DeliveryTarget(val channel:String,val label:String?=null,val address:String?=null)
@@ -23,6 +28,7 @@ interface SafetyApi {
  @GET("v1/social/notifications") suspend fun inbox(@Header("Authorization") auth:String):Response<InboxResponse>
  @POST("v1/social/notifications/read-all") suspend fun readAll(@Header("Authorization") auth:String):Response<Unit>
 }
+fun createSafetyApi(baseUrl:String,client:OkHttpClient):SafetyApi=Retrofit.Builder().baseUrl(if(baseUrl.endsWith('/'))baseUrl else "$baseUrl/").client(client).addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType())).build().create(SafetyApi::class.java)
 
 sealed interface NotificationDestination { data object Connections:NotificationDestination; data object Inbox:NotificationDestination; data class Post(val id:String):NotificationDestination; data class Event(val id:String):NotificationDestination; data class Circle(val id:String):NotificationDestination }
 fun routeNotification(type:String,objectId:String):NotificationDestination=when(type){"connectionRequest","connectionAccepted"->NotificationDestination.Connections;"cheer","comment"->NotificationDestination.Post(objectId);"runInvitation","invitationAccepted","activityEventJoined"->NotificationDestination.Event(objectId);"circleInvitation","circleInvitationAccepted","circleCheer","circleWeeklyGoalCompleted","circleOwnershipTransferred"->NotificationDestination.Circle(objectId);else->NotificationDestination.Inbox}

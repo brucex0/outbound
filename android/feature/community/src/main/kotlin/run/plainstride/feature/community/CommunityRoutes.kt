@@ -4,6 +4,11 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonObject
 import retrofit2.Response
 import retrofit2.http.*
+import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import run.plainstride.core.network.PlainstrideJson
 
 @Serializable data class RouteOwner(val id: String, val displayName: String, val username: String? = null, val avatarUrl: String? = null)
 @Serializable data class CommunityRoute(
@@ -24,3 +29,4 @@ interface CommunityRoutesApi {
  @DELETE("v1/routes/{id}/bookmark") suspend fun unbookmark(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
  @DELETE("v1/routes/{id}") suspend fun remove(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
 }
+fun createCommunityRoutesApi(baseUrl:String,client:OkHttpClient):CommunityRoutesApi=Retrofit.Builder().baseUrl(if(baseUrl.endsWith('/'))baseUrl else "$baseUrl/").client(client).addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType())).build().create(CommunityRoutesApi::class.java)

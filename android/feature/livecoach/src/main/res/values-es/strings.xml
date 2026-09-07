@@ -9,4 +9,7 @@
     <string name="live_coach_cue_finish">Si te sientes bien, aumenta poco a poco hasta el final.</string>
     <string name="live_coach_cue_pause">Actividad en pausa.</string>
     <string name="live_coach_cue_resume">Actividad reanudada.</string>
+    <string name="live_coach_settings_title">Entrenador en vivo</string><string name="live_coach_enable">Entrenar durante las actividades</string><string name="live_coach_enable_detail">Escucha indicaciones breves y oportunas mientras te mueves.</string>
+    <string name="live_coach_catalog_error">Las opciones no están disponibles ahora. Tu selección guardada no ha cambiado.</string><string name="live_coach_frequency">Frecuencia</string><string name="live_coach_quiet">Tranquilo</string><string name="live_coach_responsive">Adaptable</string><string name="live_coach_coach_me">Guíame</string>
+    <string name="live_coach_persona">Estilo de entrenamiento</string><string name="live_coach_voice">Voz</string><string name="live_coach_privacy">El entrenador envía un resumen limitado de la actividad para cada indicación. Las analíticas no incluyen la ubicación exacta, el pulso ni el audio hablado.</string>
 </resources>

@@ -3,11 +3,14 @@
     <string name="app_name">Plainstride</string>
     <string name="tab_social">Social</string>
     <string name="tab_today">Today</string>
+    <string name="tab_assistant">Coach</string>
     <string name="tab_me">Me</string>
     <string name="social_headline">Run together</string>
     <string name="social_body">Your connections, Circles, and shared activities will live here.</string>
     <string name="today_headline">Today starts here</string>
     <string name="today_body">Your workout, readiness, and companion will meet you here.</string>
+    <string name="assistant_headline">Your coach</string><string name="assistant_body">Ask about training, recovery, and your next activity.</string>
+    <string name="music_settings_title">Music</string><string name="music_settings_body">Connect Spotify and manage your activity queue.</string>
     <string name="me_headline">Your running story</string>
     <string name="me_body">Progress, activities, gear, and settings will live here.</string>
     <string name="auth_welcome">Welcome to Plainstride</string>

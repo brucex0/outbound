@@ -82,6 +82,7 @@ fun MeRoute(
     onReplayOnboarding: () -> Unit,
     onActivityHistory: () -> Unit,
     activityContent: @Composable () -> Unit = {},
+    settingsContent: @Composable () -> Unit = {},
     onMessage: suspend (SettingsMessage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -105,6 +106,7 @@ fun MeRoute(
             onDeleteAccount = onDeleteAccount,
             onReplayOnboarding = { viewModel.trackOnboardingReplay(); onReplayOnboarding() },
             onLegal = viewModel::trackLegal,
+            settingsContent = settingsContent,
             modifier = modifier,
         )
     }
@@ -186,6 +188,7 @@ private fun SettingsScreen(
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
     onLegal: (String) -> Unit,
+    settingsContent: @Composable () -> Unit,
     modifier: Modifier,
 ) {
     var editProfile by rememberSaveable { mutableStateOf(false) }
@@ -220,6 +223,8 @@ private fun SettingsScreen(
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
             }
+            item { HorizontalDivider() }
+            item { settingsContent() }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.help_and_legal)) }
             item { LegalAction(R.string.terms, "terms", "https://run.plainstride.com/terms", onLegal, uriHandler::openUri) }
