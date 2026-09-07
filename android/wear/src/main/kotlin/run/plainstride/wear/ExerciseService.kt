@@ -26,7 +26,12 @@ class ExerciseService : LifecycleService() {
             val old = state ?: return
             val distance = update.latestMetrics.getData(DataType.DISTANCE_TOTAL)?.total ?: old.distanceMeters
             val heartRate = update.latestMetrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value ?: old.heartRateBpm
-            store(old.copy(distanceMeters = distance, heartRateBpm = heartRate, elapsedSeconds = (System.currentTimeMillis() - old.startedAtEpochMs) / 1000, revision = old.revision + 1, updatedAtEpochMs = System.currentTimeMillis()))
+            val location = update.latestMetrics.getData(DataType.LOCATION).lastOrNull()
+            val now = System.currentTimeMillis()
+            val track = location?.value?.let { fix ->
+                (old.track + WearTrackPoint(now, fix.latitude, fix.longitude, fix.altitude.takeIf { it.isFinite() && it in -500.0..10_000.0 })).takeLast(750)
+            } ?: old.track
+            store(old.copy(distanceMeters = distance, heartRateBpm = heartRate, elapsedSeconds = (now - old.startedAtEpochMs) / 1000, revision = old.revision + 1, updatedAtEpochMs = now, track = track))
         }
         override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) = Unit
         override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) = Unit
@@ -52,7 +57,7 @@ class ExerciseService : LifecycleService() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { when (command.command) {
                 SessionProtocolCommand.START, SessionProtocolCommand.CLAIM_OWNER -> {
-                    client.startExerciseAsync(ExerciseConfig.builder(ExerciseType.RUNNING).setDataTypes(setOf(DataType.DISTANCE_TOTAL, DataType.HEART_RATE_BPM)).setIsAutoPauseAndResumeEnabled(false).build()).get()
+                    client.startExerciseAsync(ExerciseConfig.builder(ExerciseType.RUNNING).setDataTypes(setOf(DataType.DISTANCE_TOTAL, DataType.HEART_RATE_BPM, DataType.LOCATION)).setIsAutoPauseAndResumeEnabled(false).build()).get()
                     store(SessionStateEnvelope(command.sessionId, SessionOwner.WATCH, SessionPhase.ACTIVE, command.revision, System.currentTimeMillis(), 0, 0.0, null, System.currentTimeMillis(), listOf(command.commandId)))
                 }
                 SessionProtocolCommand.PAUSE -> { client.pauseExerciseAsync().get(); transition(command, SessionPhase.PAUSED) }

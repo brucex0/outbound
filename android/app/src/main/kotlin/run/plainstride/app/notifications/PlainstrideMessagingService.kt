@@ -34,8 +34,8 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pending = PendingIntent.getActivity(this, notificationId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val visible = message.notification ?: return
-        manager.notify(notificationId.hashCode(), NotificationCompat.Builder(this, CHANNEL_SOCIAL).setSmallIcon(R.drawable.ic_notification).setContentTitle(visible.title ?: getString(R.string.app_name)).setContentText(visible.body).setAutoCancel(true).setContentIntent(pending).build())
+        if (message.notification == null) return
+        manager.notify(notificationId.hashCode(), NotificationCompat.Builder(this, CHANNEL_SOCIAL).setSmallIcon(R.drawable.ic_notification).setContentTitle(getString(R.string.app_name)).setContentText(getString(R.string.notification_generic_body)).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).setContentIntent(pending).build())
     }
 
     companion object { const val PREFERENCES="push_registration"; const val TOKEN="fcm_token"; const val CHANNEL_SOCIAL="social" }

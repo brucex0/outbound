@@ -61,7 +61,7 @@
         <service android:name=".notifications.PlainstrideMessagingService" android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
-        <receiver android:name=".reminders.WorkoutReminderReceiver" android:exported="true">
+        <receiver android:name=".reminders.WorkoutReminderReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />

@@ -8,9 +8,19 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import run.plainstride.core.model.activity.*
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import java.time.Instant
+import run.plainstride.core.auth.SessionCoordinator
+import run.plainstride.core.auth.SessionState
+import run.plainstride.core.data.*
 
-/** Phone bridge for the pure session protocol. It deliberately has no activity repository dependency. */
+/** Phone bridge that owns protocol coordination and durably imports completed watch workouts. */
+@AndroidEntryPoint
 class PhoneWearSessionService : WearableListenerService() {
+    @Inject lateinit var activities: ActivityRepository
+    @Inject lateinit var sessions: SessionCoordinator
+    @Inject lateinit var sync: ActivitySyncScheduler
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val client by lazy { RecordingSessionClient(this).apply { connect() } }
     private val handled = ConcurrentHashMap.newKeySet<String>()
@@ -52,6 +62,34 @@ class PhoneWearSessionService : WearableListenerService() {
         }
     }
 
+    override fun onDataChanged(events: DataEventBuffer) {
+        events.forEach { event ->
+            if (event.dataItem.uri.path != STATE_PATH || event.type != DataEvent.TYPE_CHANGED) return@forEach
+            val encoded = DataMapItem.fromDataItem(event.dataItem).dataMap.getString(STATE_KEY) ?: return@forEach
+            val state = runCatching { Json.decodeFromString<SessionStateEnvelope>(encoded) }.getOrNull() ?: return@forEach
+            if (state.owner == SessionOwner.WATCH) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(WATCH_STATE, encoded).apply()
+                if (state.phase == SessionPhase.FINISHED) scope.launch { importFinished(state) }
+            }
+        }
+    }
+
+    private suspend fun importFinished(state: SessionStateEnvelope) {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        if (prefs.getStringSet(IMPORTED, emptySet())?.contains(state.sessionId) == true) return
+        val accountId = (sessions.state.value as? SessionState.SignedIn)?.accountId ?: return
+        val saved = RecordedActivityFactory.create(RecordedActivityDraft(
+            sessionId = state.sessionId, accountId = accountId, type = run.plainstride.core.model.activity.ActivityType.running,
+            title = getString(R.string.recording_default_activity_title), startedAtEpochMs = state.startedAtEpochMs,
+            endedAtEpochMs = state.updatedAtEpochMs, durationSecs = state.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            distanceM = state.distanceMeters, elevationGainM = 0.0,
+            track = state.track.mapIndexed { index, point -> RecordedTrackPointDraft(point.timestampEpochMs, point.latitude, point.longitude, point.altitudeMeters, null, index == 0) },
+        ), Instant.now()).copy(averageHeartRateBpm = state.heartRateBpm?.toInt())
+        activities.save(saved)
+        prefs.edit().putStringSet(IMPORTED, (prefs.getStringSet(IMPORTED, emptySet()).orEmpty() + state.sessionId).toList().takeLast(128).toSet()).apply()
+        sync.schedule(accountId)
+    }
+
     override fun onPeerConnected(peer: Node) { phoneState?.let { scope.launch { publish(it) } } }
     private suspend fun publish(state: SessionStateEnvelope) {
         val request = PutDataMapRequest.create(STATE_PATH).apply { dataMap.putString(STATE_KEY, Json.encodeToString(state)); dataMap.putLong("revision", state.revision) }.asPutDataRequest().setUrgent()
@@ -70,6 +108,6 @@ class PhoneWearSessionService : WearableListenerService() {
 
     companion object {
         const val COMMAND_PATH = "/plainstride/session/command"; const val STATE_PATH = "/plainstride/session/state"; const val STATE_KEY = "state"
-        private const val PREFS = "phone_wear_session"; private const val HANDLED = "handled"; private const val WATCH_STATE = "watch_state"
+        private const val PREFS = "phone_wear_session"; private const val HANDLED = "handled"; private const val WATCH_STATE = "watch_state"; private const val IMPORTED = "imported_sessions"
     }
 }

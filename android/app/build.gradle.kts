@@ -17,7 +17,7 @@ android {
         targetSdk = 36
         versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()
         versionName = providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orElse("1.0").get()
-        buildConfigField("String", "API_BASE_URL", "\"https://api.outbound.run\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://outbound-api-186140050970.us-central1.run.app\"")
         buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "false")
         val googleServerClientId = providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").orElse("")
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${googleServerClientId.get()}\"")
@@ -90,6 +90,8 @@ tasks.register("verifyPlayReleaseConfiguration") {
         check(providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").isPresent) { "PLAINSTRIDE_VERSION_NAME is required for Play artifacts." }
         check(listOf("PLAINSTRIDE_ANDROID_KEYSTORE_PATH", "PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD", "PLAINSTRIDE_ANDROID_KEY_ALIAS", "PLAINSTRIDE_ANDROID_KEY_PASSWORD").all { providers.environmentVariable(it).isPresent }) { "All Plainstride Android upload-signing variables are required for Play artifacts." }
         check(providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").isPresent) { "PLAINSTRIDE_MAPS_API_KEY is required for Play artifacts." }
+        check(providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").isPresent) { "PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID is required for Play artifacts." }
+        check(listOf("PLAINSTRIDE_FIREBASE_APPLICATION_ID", "PLAINSTRIDE_FIREBASE_API_KEY", "PLAINSTRIDE_FIREBASE_PROJECT_ID").all { providers.gradleProperty(it).isPresent }) { "Firebase application ID, API key, and project ID are required for Play artifacts." }
     }
 }
 
