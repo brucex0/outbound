@@ -53,6 +53,7 @@ import java.time.ZoneOffset
 fun OnboardingRoute(
     onComplete: () -> Unit,
     onMessage: (OnboardingEffect) -> Unit,
+    forceReplay: Boolean = false,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -61,6 +62,7 @@ fun OnboardingRoute(
             if (it == OnboardingEffect.Completed || it == OnboardingEffect.FailedOpen) onComplete() else onMessage(it)
         }
     }
+    LaunchedEffect(forceReplay) { if (forceReplay) viewModel.restartForDebug() }
     OnboardingScreen(state, viewModel::update, viewModel::back, viewModel::next,
         viewModel::skipTrainingProfile, viewModel::importHealth)
 }

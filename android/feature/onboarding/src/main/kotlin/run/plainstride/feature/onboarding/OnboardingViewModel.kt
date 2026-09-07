@@ -84,6 +84,21 @@ class OnboardingViewModel @Inject constructor(
 
     fun skipTrainingProfile() { moveTo(OnboardingStep.Ready) }
 
+    /** Debug-only caller control. Production never exposes the entry point. */
+    fun restartForDebug() = viewModelScope.launch {
+        val account = runCatching { repository.currentAccount() }.getOrNull() ?: return@launch
+        val initial = OnboardingDraft(
+            accountId = account.id,
+            step = if (account.needsIdentity) OnboardingStep.Identity else OnboardingStep.Goal,
+            displayName = account.displayName.orEmpty(),
+            username = account.username.orEmpty().takeUnless { it == "runner" }.orEmpty(),
+            email = account.verifiedEmail.orEmpty(),
+        )
+        drafts.save(initial)
+        mutableState.value = OnboardingUiState(loading = false, account = account, draft = initial)
+        analytics.record(AnalyticsEvent("onboarding_replay_started", mapOf(AnalyticsProperty.Source to "settings")))
+    }
+
     fun importHealth() {
         if (mutableState.value.healthImporting) return
         viewModelScope.launch {

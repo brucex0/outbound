@@ -27,6 +27,7 @@ include(
     ":core:model",
     ":core:network",
     ":feature:onboarding",
+    ":feature:settings",
     ":feature:today",
     ":wear",
 )

@@ -50,6 +50,9 @@ import run.plainstride.feature.onboarding.OnboardingRoute
 import run.plainstride.feature.today.TodayMessage
 import run.plainstride.feature.today.TodayRoute
 import run.plainstride.feature.today.TodayViewModel
+import run.plainstride.feature.settings.MeRoute
+import run.plainstride.feature.settings.SettingsMessage
+import run.plainstride.feature.settings.SettingsViewModel
 import kotlinx.coroutines.launch
 
 private enum class TopLevelDestination(
@@ -64,7 +67,7 @@ private enum class TopLevelDestination(
 }
 
 @Composable
-fun PlainstrideApp(transferCode: String? = null, onTransferCodeConsumed: () -> Unit = {}) {
+fun PlainstrideApp(settingsViewModel: SettingsViewModel, transferCode: String? = null, onTransferCodeConsumed: () -> Unit = {}) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -75,18 +78,20 @@ fun PlainstrideApp(transferCode: String? = null, onTransferCodeConsumed: () -> U
     when (authState.session) {
         SessionState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         SessionState.SignedOut -> SignInScreen(authState, authViewModel, snackbar, transferCode, onTransferCodeConsumed)
-        is SessionState.SignedIn, is SessionState.Refreshing -> SignedInApp(authState, authViewModel, snackbar)
+        is SessionState.SignedIn, is SessionState.Refreshing -> SignedInApp(authState, authViewModel, settingsViewModel, snackbar)
     }
 }
 
 @Composable
-private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, snackbar: SnackbarHostState) {
+private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, settingsViewModel: SettingsViewModel, snackbar: SnackbarHostState) {
     var onboardingResolved by remember { mutableStateOf(false) }
+    var forceOnboardingReplay by remember { mutableStateOf(false) }
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     if (!onboardingResolved) {
         OnboardingRoute(
             onComplete = { onboardingResolved = true },
+            forceReplay = forceOnboardingReplay,
             onMessage = { effect ->
                 val message = when (effect) {
                     OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
@@ -147,6 +152,20 @@ private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, sn
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },
+                        )
+                    } else if (destination == TopLevelDestination.Me) {
+                        MeRoute(
+                            viewModel = settingsViewModel,
+                            appVersion = BuildConfig.VERSION_NAME,
+                            debugToolsEnabled = BuildConfig.DEBUG,
+                            onLinkGoogle = authViewModel::linkGoogle,
+                            onSignOut = authViewModel::signOut,
+                            onDeleteAccount = authViewModel::requestDeletion,
+                            onReplayOnboarding = {
+                                forceOnboardingReplay = true
+                                onboardingResolved = false
+                            },
+                            onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
@@ -283,4 +302,12 @@ private fun todayMessageResource(message: TodayMessage) = when (message) {
     TodayMessage.CouldNotAdjust -> run.plainstride.feature.today.R.string.today_adjust_failed
     TodayMessage.AdjustmentApplied -> run.plainstride.feature.today.R.string.today_adjust_applied
     TodayMessage.OriginalKept -> run.plainstride.feature.today.R.string.today_original_kept
+}
+
+@StringRes
+private fun settingsMessageResource(message: SettingsMessage) = when (message) {
+    SettingsMessage.Refreshed -> run.plainstride.feature.settings.R.string.settings_refreshed
+    SettingsMessage.Saved -> run.plainstride.feature.settings.R.string.settings_saved
+    SettingsMessage.SaveFailed -> run.plainstride.feature.settings.R.string.settings_save_failed
+    SettingsMessage.RefreshFailed -> run.plainstride.feature.settings.R.string.settings_refresh_failed
 }

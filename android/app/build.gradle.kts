@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:network"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:settings"))
     implementation(project(":feature:today"))
 
     implementation(platform(libs.compose.bom))

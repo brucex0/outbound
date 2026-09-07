@@ -9,8 +9,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import run.plainstride.core.designsystem.PlainstrideTheme
+import run.plainstride.feature.settings.AppearanceMode
+import run.plainstride.feature.settings.SettingsViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -21,8 +26,19 @@ class MainActivity : ComponentActivity() {
         transferCode = intent.transferCode()
         enableEdgeToEdge()
         setContent {
-            PlainstrideTheme {
-                PlainstrideApp(transferCode = transferCode, onTransferCodeConsumed = { transferCode = null })
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settings by settingsViewModel.state.collectAsStateWithLifecycle()
+            val darkTheme = when (settings.preferences.appearance) {
+                AppearanceMode.System -> isSystemInDarkTheme()
+                AppearanceMode.Light -> false
+                AppearanceMode.Dark -> true
+            }
+            PlainstrideTheme(theme = settings.preferences.theme, darkTheme = darkTheme) {
+                PlainstrideApp(
+                    settingsViewModel = settingsViewModel,
+                    transferCode = transferCode,
+                    onTransferCodeConsumed = { transferCode = null },
+                )
             }
         }
     }

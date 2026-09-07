@@ -1,0 +1,18 @@
+<resources>
+    <string name="me_title">我的</string><string name="runner">跑者</string><string name="refresh">刷新</string>
+    <string name="settings_title">设置</string><string name="open_settings">打开设置</string><string name="back">返回</string>
+    <string name="this_week">本周</string><string name="minutes">分钟</string><string name="kilometers">公里</string><string name="consistency">坚持度</string>
+    <string name="current_plan">当前计划</string><string name="no_active_plan">暂无训练计划</string><string name="no_active_plan_body">准备好后，可在“今天”中创建计划。</string><string name="plan_synced">已与你的自适应训练计划同步。</string>
+    <string name="account">账户</string><string name="account_connected">已连接 Plainstride 账户</string><string name="edit_profile">编辑个人资料</string>
+    <string name="display_name">显示名称</string><string name="username">用户名</string><string name="contact_email">联系邮箱</string><string name="save">保存</string>
+    <string name="link_google">关联 Google 账户</string><string name="sign_out">退出登录</string><string name="sign_out_question">要退出 Plainstride 吗？</string><string name="cancel">取消</string>
+    <string name="units">单位</string><string name="measurement">计量单位</string><string name="metric">公制</string><string name="imperial">英制</string>
+    <string name="temperature">温度</string><string name="celsius">摄氏度</string><string name="fahrenheit">华氏度</string>
+    <string name="appearance">外观</string><string name="mode">模式</string><string name="system_mode">跟随系统</string><string name="light_mode">浅色</string><string name="dark_mode">深色</string><string name="theme">主题</string>
+    <string name="theme_victory_gold">胜利金</string><string name="theme_indigo">靛青</string><string name="theme_ocean">海洋</string><string name="theme_forest">森林</string>
+    <string name="theme_rose">玫瑰</string><string name="theme_aurora">极光</string><string name="theme_electric_lime">电光青柠</string><string name="theme_neon_pulse">霓虹脉冲</string>
+    <string name="help_and_legal">帮助与法律信息</string><string name="terms">服务条款</string><string name="privacy">隐私政策</string><string name="support">支持</string>
+    <string name="replay_onboarding">重新体验新手引导</string><string name="version">版本</string>
+    <string name="privacy_note">Plainstride 不会在社交功能或分析数据中包含你的私密健康信息。</string><string name="delete_account">删除账户</string>
+    <string name="settings_refreshed">账户已刷新。</string><string name="settings_saved">已保存。</string><string name="settings_save_failed">已保存在此设备上，联网后会重试云同步。</string><string name="settings_refresh_failed">无法刷新，当前显示已保存的设置。</string>
+</resources>
