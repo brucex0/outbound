@@ -36,7 +36,11 @@ import run.plainstride.core.auth.SecureSessionStore
 import run.plainstride.core.auth.SessionCoordinator
 import run.plainstride.core.auth.SessionRefresher
 import run.plainstride.core.network.AuthApiService
+import run.plainstride.core.network.AccountApiService
+import run.plainstride.core.network.PlanningApiService
+import run.plainstride.core.network.createAccountApi
 import run.plainstride.core.network.createAuthApi
+import run.plainstride.core.network.createPlanningApi
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -83,6 +87,12 @@ object FoundationModule {
 
     @Provides @Singleton fun authApi(client: OkHttpClient): AuthApiService =
         createAuthApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun accountApi(client: OkHttpClient): AccountApiService =
+        createAccountApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun planningApi(client: OkHttpClient): PlanningApiService =
+        createPlanningApi(BuildConfig.API_BASE_URL, client)
 
     @Provides @Singleton fun secureSessionStore(@ApplicationContext context: Context): SecureSessionStore =
         KeystoreSecureSessionStore(context)
