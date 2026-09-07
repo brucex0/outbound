@@ -515,10 +515,9 @@ private struct LiveActivityAvatar: View {
                 .foregroundStyle(tint)
                 .rotationEffect(.degrees(validCourse))
                 .offset(y: stride * animationAmplitude)
-                .frame(width: 38, height: 38)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().stroke(.white, lineWidth: 2.5))
-                .shadow(color: .black.opacity(0.28), radius: 4, y: 2)
+                .frame(width: 30, height: 30)
+                .shadow(color: .white.opacity(0.9), radius: 1.5)
+                .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                 .accessibilityHidden(true)
         }
     }
