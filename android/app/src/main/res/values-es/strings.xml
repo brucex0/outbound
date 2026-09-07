@@ -39,4 +39,7 @@
     <string name="transfer_connecting">Conectando…</string>
     <string name="transfer_invalid">El código de transferencia no es válido o ha caducado. Crea otro en tu iPhone e inténtalo de nuevo.</string>
     <string name="transfer_complete">Tu cuenta actual de Plainstride está conectada.</string>
+    <string name="onboarding_identity_unavailable">No se pudo guardar el perfil. Comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="onboarding_health_unavailable">Health Connect aún no está disponible. Puedes introducir los datos u omitirlos.</string>
+    <string name="onboarding_save_unavailable">Aún no pudimos crear tu semana. Tus respuestas están guardadas; inténtalo cuando tengas conexión.</string>
 </resources>

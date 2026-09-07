@@ -58,7 +58,7 @@ fun OnboardingRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.effects.collect {
-            if (it == OnboardingEffect.Completed) onComplete() else onMessage(it)
+            if (it == OnboardingEffect.Completed || it == OnboardingEffect.FailedOpen) onComplete() else onMessage(it)
         }
     }
     OnboardingScreen(state, viewModel::update, viewModel::back, viewModel::next,

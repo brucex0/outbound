@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,6 +45,9 @@ import run.plainstride.app.auth.AuthOperation
 import run.plainstride.app.auth.AuthUiState
 import run.plainstride.app.auth.AuthViewModel
 import run.plainstride.core.auth.SessionState
+import run.plainstride.feature.onboarding.OnboardingEffect
+import run.plainstride.feature.onboarding.OnboardingRoute
+import kotlinx.coroutines.launch
 
 private enum class TopLevelDestination(
     val route: String,
@@ -74,6 +78,24 @@ fun PlainstrideApp(transferCode: String? = null, onTransferCodeConsumed: () -> U
 
 @Composable
 private fun SignedInApp(authState: AuthUiState, authViewModel: AuthViewModel, snackbar: SnackbarHostState) {
+    var onboardingResolved by remember { mutableStateOf(false) }
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
+    if (!onboardingResolved) {
+        OnboardingRoute(
+            onComplete = { onboardingResolved = true },
+            onMessage = { effect ->
+                val message = when (effect) {
+                    OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
+                    OnboardingEffect.HealthUnavailable -> R.string.onboarding_health_unavailable
+                    OnboardingEffect.SavedOffline -> R.string.onboarding_save_unavailable
+                    OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> return@OnboardingRoute
+                }
+                scope.launch { snackbar.showSnackbar(resources.getString(message)) }
+            },
+        )
+        return
+    }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination

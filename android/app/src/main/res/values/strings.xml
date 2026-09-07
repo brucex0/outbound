@@ -39,4 +39,7 @@
     <string name="transfer_connecting">Connecting…</string>
     <string name="transfer_invalid">That transfer code is invalid or expired. Create a new code on your iPhone and try again.</string>
     <string name="transfer_complete">Your existing Plainstride account is connected.</string>
+    <string name="onboarding_identity_unavailable">Couldn’t save that profile. Check your connection and try again.</string>
+    <string name="onboarding_health_unavailable">Health Connect isn’t available yet. You can enter details or skip.</string>
+    <string name="onboarding_save_unavailable">Couldn’t build your week yet. Your answers are saved; try again when you’re online.</string>
 </resources>

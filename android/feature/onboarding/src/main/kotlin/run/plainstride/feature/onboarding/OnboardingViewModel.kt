@@ -27,6 +27,7 @@ data class OnboardingUiState(
 
 sealed interface OnboardingEffect {
     data object Completed : OnboardingEffect
+    data object FailedOpen : OnboardingEffect
     data object SavedOffline : OnboardingEffect
     data object IdentityUnavailable : OnboardingEffect
     data object HealthUnavailable : OnboardingEffect
@@ -114,7 +115,12 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private suspend fun restore() {
-        val account = repository.currentAccount()
+        val account = runCatching { repository.currentAccount() }.getOrElse {
+            analytics.record(AnalyticsEvent("onboarding_resolution_failed", mapOf(AnalyticsProperty.Result to "fail_open")))
+            mutableState.value = OnboardingUiState(loading = false)
+            mutableEffects.emit(OnboardingEffect.FailedOpen)
+            return
+        }
         if (account.onboardingCompleted) {
             mutableState.value = OnboardingUiState(loading = false, account = account)
             mutableEffects.emit(OnboardingEffect.Completed)

@@ -39,4 +39,7 @@
     <string name="transfer_connecting">正在关联…</string>
     <string name="transfer_invalid">转移码无效或已过期。请在 iPhone 上创建新转移码后重试。</string>
     <string name="transfer_complete">已关联你现有的 Plainstride 账号。</string>
+    <string name="onboarding_identity_unavailable">无法保存个人资料。请检查网络连接后重试。</string>
+    <string name="onboarding_health_unavailable">健康互联暂不可用。你可以手动填写或跳过。</string>
+    <string name="onboarding_save_unavailable">暂时无法制定本周计划。你的回答已保存，请联网后重试。</string>
 </resources>
