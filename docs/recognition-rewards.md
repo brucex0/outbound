@@ -129,6 +129,7 @@ Recommended launch set:
 - Badge rules should be easy to explain in one sentence.
 - One activity can unlock more than one badge.
 - V1 should unlock a badge once, not as a repeatable tier system.
+- Activity-derived milestones use the qualifying activity's start time, including during server backfill and reconciliation.
 - If a rule depends on weekly state, use the user's local calendar week.
 - Avoid hidden formulas or fuzzy scoring in V1.
 
@@ -221,6 +222,7 @@ Me includes a compact `Milestones` section beneath weekly progress. It shows up 
 
 The profile/history surface:
 - group by family
+- order awards by achievement time, with same-activity distance milestones shown from shortest to longest
 - show guide copy and earn date
 - avoid making unearned badges feel like a wall of failure
 

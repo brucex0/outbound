@@ -40,6 +40,16 @@ const definitions: Record<RecognitionBadgeId, RecognitionDefinition> = {
   photoFinish: { family: "social", shareEligible: true, ruleVersion: 1 },
 };
 
+const activityDerivedBadgeIds = new Set<RecognitionBadgeId>([
+  "firstStep",
+  "backInMotion",
+  "fourWeekRhythm",
+  "first5K",
+  "first10K",
+  "firstHalfMarathon",
+  "firstMarathon",
+]);
+
 type AwardInput = {
   earnedAt?: Date;
   sourceType: "activity" | "social" | "clientMigration";
@@ -129,6 +139,7 @@ export async function backfillActivityRecognitions(
     }),
   ]);
   const earnedBadgeIds = new Set(existingAwards.map((award) => award.badgeId));
+  const reconciledActivityBadgeIds = new Set<RecognitionBadgeId>();
   const timeZone = safeTimeZoneIdentifier(timeZoneIdentifier);
   const normalizedFirstWeekday = normalizeFirstWeekday(firstWeekday);
   const prior: ActivityForRecognition[] = [];
@@ -149,9 +160,37 @@ export async function backfillActivityRecognitions(
     }
 
     for (const badgeId of candidates) {
+      if (activityDerivedBadgeIds.has(badgeId) && !reconciledActivityBadgeIds.has(badgeId)) {
+        const definition = definitions[badgeId];
+        await prisma.recognitionAward.upsert({
+          where: { userId_badgeId: { userId, badgeId } },
+          create: {
+            userId,
+            badgeId,
+            family: definition.family,
+            earnedAt: activity.startedAt,
+            sourceType: "activity",
+            sourceActivityClientId: activity.clientActivityId,
+            ruleVersion: definition.ruleVersion,
+            shareEligible: definition.shareEligible,
+          },
+          update: {
+            family: definition.family,
+            earnedAt: activity.startedAt,
+            sourceType: "activity",
+            sourceActivityClientId: activity.clientActivityId,
+            sourceReferenceId: null,
+            ruleVersion: definition.ruleVersion,
+            shareEligible: definition.shareEligible,
+          },
+        });
+        reconciledActivityBadgeIds.add(badgeId);
+        earnedBadgeIds.add(badgeId);
+        continue;
+      }
       if (earnedBadgeIds.has(badgeId)) continue;
       await awardRecognition(userId, badgeId, {
-        earnedAt: activity.createdAt,
+        earnedAt: activity.startedAt,
         sourceType: "activity",
         sourceActivityClientId: activity.clientActivityId,
       });
