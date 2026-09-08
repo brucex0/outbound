@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
@@ -155,6 +155,35 @@ async function seedTestPersonas() {
     4_600,
     378
   );
+  const redmondRoute = await prisma.route.create({
+    data: {
+      ownerId: activeRunner.id,
+      sourceActivityId: activeActivities[2].id,
+      name: "Redmond Harvest Half Marathon",
+      description: "A scenic out-and-back half marathon through Redmond.",
+      activityType: "running",
+      visibility: "public",
+      status: "active",
+      geometry: {
+        type: "LineString",
+        coordinates: redmondHarvestHalfMarathonCoordinates,
+      } as Prisma.InputJsonValue,
+      distanceM: 21_097.5,
+      elevationGainM: 112,
+      routeShape: "out_and_back",
+      startLatitude: 47.6705,
+      startLongitude: -122.1215,
+      minLatitude: 47.6705,
+      maxLatitude: 47.745,
+      minLongitude: -122.161,
+      maxLongitude: -122.1215,
+      bookmarkCount: 1,
+      completionCount: 18,
+    },
+  });
+  await prisma.routeBookmark.create({
+    data: { userId: socialRunner.id, routeId: redmondRoute.id },
+  });
   const circle = await prisma.circle.create({
     data: {
       ownerId: socialRunner.id,
@@ -204,8 +233,26 @@ async function seedTestPersonas() {
   });
   await prisma.user.update({ where: { id: socialRunner.id }, data: { primaryCircleId: circle.id } });
 
-  return { users: values.length, activities: activeActivities.length + 1, clubs: 2, circles: 1 };
+  return { users: values.length, activities: activeActivities.length + 1, clubs: 2, circles: 1, routes: 1 };
 }
+
+const redmondHarvestHalfMarathonCoordinates: number[][] = [
+  [-122.1215, 47.6705, 42],
+  [-122.1215, 47.6730, 42],
+  [-122.1280, 47.6730, 35],
+  [-122.1310, 47.6780, 32],
+  [-122.1395, 47.6900, 30],
+  [-122.1480, 47.7050, 28],
+  [-122.1550, 47.7200, 25],
+  [-122.1580, 47.7350, 24],
+  [-122.1610, 47.7450, 22],
+  [-122.1580, 47.7350, 24],
+  [-122.1550, 47.7200, 25],
+  [-122.1480, 47.7050, 28],
+  [-122.1395, 47.6900, 30],
+  [-122.1310, 47.6780, 32],
+  [-122.1215, 47.6705, 42],
+];
 
 async function createAppUser(persona: (typeof personas)[keyof typeof personas]) {
   const user = await resolveAuthenticatedAppUser(
@@ -338,7 +385,7 @@ function assertLocalOnly() {
 
 try {
   const result = await seedTestPersonas();
-  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, ${result.clubs} clubs, and ${result.circles} Circle.`);
+  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, ${result.clubs} clubs, ${result.circles} Circle, and ${result.routes} route.`);
 } finally {
   await prisma.$disconnect();
 }
