@@ -4,43 +4,48 @@ struct ActivityPhotoThumbnail<Content: View>: View {
     let caption: String
     let isSelected: Bool
     let action: () -> Void
+    let longPressAction: (() -> Void)?
     let content: Content
 
     init(
         caption: String,
         isSelected: Bool,
         action: @escaping () -> Void,
+        longPressAction: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.caption = caption
         self.isSelected = isSelected
         self.action = action
+        self.longPressAction = longPressAction
         self.content = content()
     }
 
     var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .bottomLeading) {
-                content
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.7)],
-                    startPoint: .center,
-                    endPoint: .bottom
-                )
-                Text(caption)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(8)
-            }
-            .frame(width: 116, height: 104)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 3)
-            }
-            .contentShape(Rectangle())
+        ZStack(alignment: .bottomLeading) {
+            content
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.7)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            Text(caption)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(8)
         }
-        .buttonStyle(.plain)
+        .frame(width: 116, height: 104)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 3)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .onLongPressGesture(minimumDuration: 0.35) {
+            longPressAction?()
+        }
+        .accessibilityAddTraits(.isButton)
     }
 }
 
