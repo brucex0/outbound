@@ -519,26 +519,26 @@ struct PostRunSummaryView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
                         ForEach(Array(draftPhotos.enumerated()), id: \.element.id) { index, photo in
-                            ActivityPhotoThumbnail(
-                                caption: finishPhotoCaption(photo, index: index),
-                                isSelected: selectedPhotoIDs.contains(photo.id),
-                                action: { handlePhotoTap(photo) }
-                            ) {
-                                Image(uiImage: photo.image)
-                                    .resizable()
-                                    .scaledToFill()
-                            }
-                            .accessibilityLabel(finishPhotoCaption(photo, index: index))
-                            .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                togglePhotoSelection(photo.id)
-                            }
-                            .draggable(photo.id.uuidString)
-                            .dropDestination(for: String.self) { identifiers, _ in
-                                guard let identifier = identifiers.first,
-                                      let sourceID = UUID(uuidString: identifier)
-                                else { return false }
-                                return movePhoto(sourceID, to: photo.id)
+                            if selectedPhotoIDs.contains(photo.id) {
+                                finishPhotoThumbnail(photo, index: index)
+                                    .draggable(photo.id.uuidString)
+                                    .dropDestination(for: String.self) { identifiers, _ in
+                                        guard let identifier = identifiers.first,
+                                              let sourceID = UUID(uuidString: identifier)
+                                        else { return false }
+                                        return movePhoto(sourceID, to: photo.id)
+                                    }
+                            } else {
+                                finishPhotoThumbnail(photo, index: index)
+                                    .onLongPressGesture(minimumDuration: 0.35) {
+                                        togglePhotoSelection(photo.id)
+                                    }
+                                    .dropDestination(for: String.self) { identifiers, _ in
+                                        guard let identifier = identifiers.first,
+                                              let sourceID = UUID(uuidString: identifier)
+                                        else { return false }
+                                        return movePhoto(sourceID, to: photo.id)
+                                    }
                             }
                         }
                     }
@@ -561,6 +561,20 @@ struct PostRunSummaryView: View {
             get: { previewedPhotoID != nil },
             set: { if !$0 { previewedPhotoID = nil } }
         )
+    }
+
+    private func finishPhotoThumbnail(_ photo: PostRunPhoto, index: Int) -> some View {
+        ActivityPhotoThumbnail(
+            caption: finishPhotoCaption(photo, index: index),
+            isSelected: selectedPhotoIDs.contains(photo.id),
+            action: { handlePhotoTap(photo) }
+        ) {
+            Image(uiImage: photo.image)
+                .resizable()
+                .scaledToFill()
+        }
+        .accessibilityLabel(finishPhotoCaption(photo, index: index))
+        .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
     }
 
     private func handlePhotoTap(_ photo: PostRunPhoto) {
