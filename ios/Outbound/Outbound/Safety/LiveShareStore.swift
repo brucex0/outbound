@@ -19,6 +19,7 @@ final class LiveShareStore: ObservableObject {
     @Published private(set) var activeSession: LiveShareSession?
     @Published var isArmedForNextActivity = false
     @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var lastSuccessMessage: String?
     @Published private(set) var isStarting = false
     @Published private(set) var isUpdating = false
     @Published var selectedConnections: [SocialConnectionDTO] = []
@@ -57,6 +58,7 @@ final class LiveShareStore: ObservableObject {
 
         isStarting = true
         lastErrorMessage = nil
+        lastSuccessMessage = nil
         defer { isStarting = false }
 
         do {
@@ -77,6 +79,7 @@ final class LiveShareStore: ObservableObject {
                 status: response.status
             )
             isArmedForNextActivity = false
+            lastSuccessMessage = String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
             lastSentAt = nil
             lastSentDistanceM = nil
         } catch {
@@ -172,5 +175,10 @@ final class LiveShareStore: ObservableObject {
     func setSelectedConnections(_ connections: [SocialConnectionDTO]) {
         selectedConnections = connections
         armForNextActivity(!connections.isEmpty)
+    }
+
+    func applyDefaultConnections(_ connections: [SocialConnectionDTO]) {
+        guard activeSession == nil else { return }
+        setSelectedConnections(connections)
     }
 }

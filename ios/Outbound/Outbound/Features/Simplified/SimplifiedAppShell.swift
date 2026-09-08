@@ -3184,6 +3184,13 @@ private struct SimplifiedSettingsView: View {
                     Label(String(localized: "workout.reminders.title", defaultValue: "Workout reminders"), systemImage: "bell.badge")
                 }
             }
+            Section("Safety") {
+                NavigationLink {
+                    SafetyContactsSettingsView()
+                } label: {
+                    Label("Trusted Contacts", systemImage: "person.badge.shield.checkmark")
+                }
+            }
             Section("Live Guidance") {
                 NavigationLink {
                     GuideSelectionView()

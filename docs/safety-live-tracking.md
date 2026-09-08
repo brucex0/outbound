@@ -42,6 +42,8 @@ Default behavior:
 
 - off by default
 - app account and accepted connection required
+- Settings > Trusted Contacts lets the runner mark accepted connections as trusted and optionally invite all of them by default for each new activity
+- the cheer picker lists trusted contacts first and preselects them; when none are configured it links directly to Trusted Contacts settings
 - do not expose photos, exact home address history, or past activities
 - show the runner an obvious active-sharing indicator during the whole session
 
@@ -144,6 +146,7 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - Live snapshots include exact route, pace, distance, elapsed time, and heart rate for invited users.
 - `POST /v1/safety/live-shares/invited/:id/cheers` stores a bounded original AAC voice recording; the runner drains pending recordings from `GET /v1/safety/live-shares/:id/cheers`.
 - `RecordView` presents an accepted-connection picker and creates the server share without a Share Sheet.
+- Starting an armed activity sends each selected connection an in-app/push invitation and confirms the invitation with an in-app toast.
 - Social shows active invitations in app; the follower screen provides the live map and a hold-to-record voice control.
 - The runner polls for pending recordings and plays the unmodified audio through the live guide audio player.
 - `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.

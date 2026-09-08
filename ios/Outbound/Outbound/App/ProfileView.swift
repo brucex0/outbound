@@ -4,162 +4,76 @@ import Speech
 import SwiftUI
 
 struct SafetyContactsSettingsView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var safetyContactStore: SafetyContactStore
+    @EnvironmentObject private var socialStore: TogetherStore
+
+    private var connections: [SocialConnectionDTO] {
+        socialStore.connections.filter { $0.status == "accepted" }.sorted(by: SocialConnectionDTO.previewOrder)
+    }
+
     var body: some View {
-        ScrollView {
-            SafetyContactsSettingsCard()
-                .padding()
+        Form {
+            Section {
+                Toggle(
+                    String(localized: "trusted_contacts.default_share", defaultValue: "Cheer me on by default"),
+                    isOn: Binding(
+                        get: { safetyContactStore.sharesWithTrustedContactsByDefault },
+                        set: { enabled in
+                            safetyContactStore.setSharesWithTrustedContactsByDefault(enabled)
+                            trackPreference(type: "trusted_contacts_default_share", selection: enabled ? "on" : "off")
+                        }
+                    )
+                )
+                .disabled(safetyContactStore.trustedConnectionIDs.isEmpty)
+            } footer: {
+                Text("When enabled, your trusted contacts are invited automatically when you start an activity.")
+            }
+
+            Section("Trusted contacts") {
+                if !socialStore.hasLoadedConnections {
+                    ProgressView("Loading your people…")
+                } else if connections.isEmpty {
+                    ContentUnavailableView(
+                        "No connections yet",
+                        systemImage: "person.2",
+                        description: Text("Connect with someone in Together, then return here to make them a trusted contact.")
+                    )
+                    NavigationLink("Open connections") { SocialConnectionsView() }
+                } else {
+                    ForEach(connections) { connection in
+                        Toggle(isOn: Binding(
+                            get: { safetyContactStore.isTrusted(connection.person.id) },
+                            set: { trusted in
+                                safetyContactStore.setTrusted(connection.person.id, isTrusted: trusted)
+                                trackPreference(type: "trusted_contact", selection: trusted ? "added" : "removed")
+                            }
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(connection.person.displayName)
+                                Text("@\(connection.person.username)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .tint(.orange)
+                    }
+                }
+            }
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle("Trusted Contacts")
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct SafetyContactsSettingsCard: View {
-    @EnvironmentObject var safetyContactStore: SafetyContactStore
-    @State private var isAddContactPresented = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Trusted Contacts")
-                        .font(.title3.bold())
-                    Text(safetyContactStore.enabledContacts.isEmpty ? "Share live runs faster" : "\(safetyContactStore.enabledContacts.count) enabled")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button {
-                    isAddContactPresented = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.headline.weight(.semibold))
-                        .frame(width: 34, height: 34)
-                }
-                .buttonStyle(.bordered)
-                .tint(.orange)
-                .accessibilityLabel("Add trusted contact")
-            }
-
-            if safetyContactStore.contacts.isEmpty {
-                Text("Add someone you trust. Plainstride will use them as the default recipient when you turn on Share live run.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(safetyContactStore.contacts) { contact in
-                        SafetyContactRow(contact: contact)
-                            .environmentObject(safetyContactStore)
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color.orange.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .sheet(isPresented: $isAddContactPresented) {
-            AddSafetyContactView()
-                .environmentObject(safetyContactStore)
+        .task {
+            if !socialStore.hasLoadedConnections { await socialStore.refreshConnections() }
         }
     }
-}
 
-private struct SafetyContactRow: View {
-    @EnvironmentObject var safetyContactStore: SafetyContactStore
-    let contact: SafetyContact
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: contact.deliveryChannel == .sms ? "message.fill" : "bell.badge.fill")
-                .foregroundStyle(contact.isEnabledForLiveShare ? .orange : .secondary)
-                .frame(width: 26)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(contact.name)
-                    .font(.subheadline.weight(.semibold))
-                Text("\(contact.deliveryChannel.title) \(contact.displayAddress)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            if contact.isDefault {
-                Text("Default")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.orange)
-            } else if contact.isEnabledForLiveShare {
-                Button("Use") { safetyContactStore.setDefault(contact) }
-                    .font(.caption.weight(.semibold))
-            }
-
-            Toggle("Enabled", isOn: Binding(
-                get: { contact.isEnabledForLiveShare },
-                set: { safetyContactStore.setEnabled(contact, isEnabled: $0) }
-            ))
-            .labelsHidden()
-            .tint(.orange)
-
-            Button {
-                safetyContactStore.remove(contact)
-            } label: {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
-            .accessibilityLabel("Remove trusted contact")
-        }
-        .padding(10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-private struct AddSafetyContactView: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var safetyContactStore: SafetyContactStore
-    @State private var name = ""
-    @State private var channel: SafetyDeliveryChannel = .sms
-    @State private var address = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Contact") {
-                    TextField("Name", text: $name)
-                    Picker("Delivery", selection: $channel) {
-                        ForEach(SafetyDeliveryChannel.allCases) { option in
-                            Text(option.title).tag(option)
-                        }
-                    }
-                    TextField(channel == .sms ? "Phone number" : "Push address or device label", text: $address)
-                        .keyboardType(channel == .sms ? .phonePad : .default)
-                }
-
-                Section {
-                    Text("SMS and push delivery are stubbed on the server for now. Plainstride will still open the system Share Sheet when a live run starts.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("Trusted Contact")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        safetyContactStore.addContact(name: name, channel: channel, address: address)
-                        dismiss()
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
+    private func trackPreference(type: String, selection: String) {
+        Task {
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string(type),
+                .selectionType: .string(selection),
+            ]))
         }
     }
 }

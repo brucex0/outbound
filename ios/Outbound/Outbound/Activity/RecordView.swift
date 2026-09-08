@@ -290,7 +290,9 @@ struct RecordView: View {
             )
             trackRecordingStateTransition(to: state)
             workoutPresence.sync(with: state)
+            if state == .idle { applyTrustedContactDefault() }
         }
+        .onReceive(socialStore.$connections) { _ in applyTrustedContactDefault() }
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
             onElapsedTimeChange?(elapsedSeconds)
         }
@@ -337,6 +339,7 @@ struct RecordView: View {
 #endif
             workoutPresence.sync(with: recorder.state)
             if recorder.state == .idle {
+                applyTrustedContactDefault()
                 recorder.locationManager.requestCurrentLocation()
             }
         }
@@ -346,6 +349,10 @@ struct RecordView: View {
         recordStateSurface
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .task {
+            if safetyContactStore.sharesWithTrustedContactsByDefault, !socialStore.hasLoadedConnections {
+                await socialStore.refreshConnections()
+                applyTrustedContactDefault()
+            }
             await musicStore.refresh()
             await musicStore.loadQuickPicks()
             await guideCatalog.refreshServerCatalog()
@@ -462,6 +469,7 @@ struct RecordView: View {
             CheerInvitationPickerView()
                 .environmentObject(socialStore)
                 .environmentObject(liveShareStore)
+                .environmentObject(safetyContactStore)
         }
         .sheet(isPresented: $showsCuratedWorkouts) {
             StandaloneWorkoutPickerView(sport: selectedManualSport ?? .run) { workout in
@@ -516,6 +524,11 @@ struct RecordView: View {
         .onChange(of: liveShareStore.lastErrorMessage) { _, message in
             showSetupToast(message)
         }
+        .onChange(of: liveShareStore.lastSuccessMessage) { _, message in
+            showSetupToast(message)
+        }
+        .onChange(of: safetyContactStore.trustedConnectionIDs) { _, _ in applyTrustedContactDefault() }
+        .onChange(of: safetyContactStore.sharesWithTrustedContactsByDefault) { _, _ in applyTrustedContactDefault() }
         .onChange(of: liveGroupStore.lastErrorMessage) { _, message in
             showSetupToast(message)
         }
@@ -789,6 +802,16 @@ struct RecordView: View {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
         beginStartRecording()
+    }
+
+    private func applyTrustedContactDefault() {
+        guard recorder.state == .idle,
+              safetyContactStore.sharesWithTrustedContactsByDefault
+        else { return }
+        let trusted = socialStore.connections.filter {
+            $0.status == "accepted" && safetyContactStore.isTrusted($0.person.id)
+        }
+        liveShareStore.applyDefaultConnections(trusted.sorted(by: SocialConnectionDTO.previewOrder))
     }
 
     private func beginStartRecording() {
@@ -1708,7 +1731,7 @@ struct RecordView: View {
                         setupUtilityButton(
                             title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
                             value: liveTrackValue,
-                            systemImage: "location.fill",
+                            systemImage: liveShareStore.isArmedForNextActivity ? "waveform.circle.fill" : "waveform.circle",
                             isConfigured: liveShareStore.isArmedForNextActivity
                         ) {
                             showsTrustedContacts = true
@@ -3164,7 +3187,7 @@ struct RecordView: View {
                 setupOptionButton(
                     title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
                     subtitle: liveShareStore.isArmedForNextActivity ? (liveShareStore.selectedConnections.first?.person.displayName ?? String(localized: "common.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off"),
-                    systemImage: "location.circle.fill",
+                    systemImage: liveShareStore.isArmedForNextActivity ? "waveform.circle.fill" : "waveform.circle",
                     isSelected: liveShareStore.isArmedForNextActivity
                 ) {
                     showsTrustedContacts = true

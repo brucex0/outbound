@@ -70,10 +70,16 @@ struct OutboundApp: App {
                 }
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
+                    safetyContactStore.activate(userID: userID)
                     circleStore.activate(userID: authStore.isAuthenticated ? (userID ?? authStore.localSessionLabel) : nil)
                 }
                 .onChange(of: authStore.isAuthenticated, initial: true) { _, isAuthenticated in
                     togetherStore.activate(
+                        userID: isAuthenticated
+                            ? (authStore.user?.id ?? authStore.localSessionLabel)
+                            : nil
+                    )
+                    safetyContactStore.activate(
                         userID: isAuthenticated
                             ? (authStore.user?.id ?? authStore.localSessionLabel)
                             : nil
