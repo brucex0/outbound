@@ -19,7 +19,8 @@ struct PostRunSummaryView: View {
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
-    @State private var isPhotoManagerPresented = false
+    @State private var selectedPhotoIDs: Set<UUID> = []
+    @State private var previewedPhotoID: UUID?
     @State private var isCameraPresented = false
     @State private var importedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedEffort: RunEffort?
@@ -126,10 +127,10 @@ struct PostRunSummaryView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
-        .sheet(isPresented: $isPhotoManagerPresented) {
-            PostRunPhotoManager(
-                photos: $draftPhotos,
-                photoMetadata: finishPhotoMetadata
+        .fullScreenCover(isPresented: photoViewerPresented) {
+            PostRunPhotoViewer(
+                photos: draftPhotos,
+                initialPhotoID: previewedPhotoID
             )
         }
         .fullScreenCover(isPresented: $isCameraPresented) {
@@ -450,69 +451,102 @@ struct PostRunSummaryView: View {
 
     private var photoReviewSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(spacing: 10) {
                 Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
                     .font(.headline)
 
                 Spacer()
 
-                if !draftPhotos.isEmpty {
+                if !selectedPhotoIDs.isEmpty {
                     Button {
-                        isPhotoManagerPresented = true
+                        removeSelectedPhotos()
                     } label: {
-                        Label(
-                            String(localized: "summary.photos.manage", defaultValue: "Manage"),
-                            systemImage: "slider.horizontal.3"
-                        )
-                        .font(.caption.weight(.semibold))
+                        Image(systemName: "trash")
+                            .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("ManagePhotosButton")
-                }
-            }
+                    .foregroundStyle(.red)
+                    .accessibilityLabel(String(localized: "summary.photos.delete_selected", defaultValue: "Delete selected photos"))
+                    .accessibilityIdentifier("DeleteSelectedFinishPhotosButton")
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(Array(draftPhotos.enumerated()), id: \.element.id) { index, photo in
-                        ActivityPhotoThumbnail(
-                            caption: finishPhotoCaption(photo, index: index),
-                            isSelected: false,
-                            action: { isPhotoManagerPresented = true }
-                        ) {
-                            Image(uiImage: photo.image)
-                                .resizable()
-                                .scaledToFill()
-                        }
-                        .accessibilityLabel(finishPhotoCaption(photo, index: index))
+                    Button {
+                        selectedPhotoIDs.removeAll()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .frame(width: 32, height: 32)
                     }
-
-                    ActivityPhotoCaptureTile {
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(String(localized: "common.cancel", defaultValue: "Cancel"))
+                } else {
+                    Button {
                         Task {
                             await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
                                 .sourceType: .string("finish_review"),
                             ]))
                         }
                         isCameraPresented = true
+                    } label: {
+                        Image(systemName: "camera.fill")
+                            .frame(width: 32, height: 32)
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel(String(localized: "summary.photos.take", defaultValue: "Take Photo"))
+                    .accessibilityIdentifier("TakeFinishPhotoButton")
 
                     PhotosPicker(
                         selection: $importedPhotoItems,
                         matching: .images,
                         photoLibrary: .shared()
                     ) {
-                        ActivityPhotoActionTile(
-                            title: String(localized: "summary.photos.import", defaultValue: "Import Photo"),
-                            systemImage: "photo.on.rectangle.angled"
-                        )
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .frame(width: 32, height: 32)
                     }
                     .buttonStyle(.plain)
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel(String(localized: "summary.photos.import", defaultValue: "Import Photo"))
                     .accessibilityIdentifier("ImportFinishPhotoButton")
                 }
-                .padding(.horizontal, 20)
             }
-            .frame(height: 104)
-            .padding(.horizontal, -20)
+
+            if draftPhotos.isEmpty {
+                Text(String(localized: "summary.photos.empty", defaultValue: "No photo added"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(Array(draftPhotos.enumerated()), id: \.element.id) { index, photo in
+                            ActivityPhotoThumbnail(
+                                caption: finishPhotoCaption(photo, index: index),
+                                isSelected: selectedPhotoIDs.contains(photo.id),
+                                action: { handlePhotoTap(photo) }
+                            ) {
+                                Image(uiImage: photo.image)
+                                    .resizable()
+                                    .scaledToFill()
+                            }
+                            .accessibilityLabel(finishPhotoCaption(photo, index: index))
+                            .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
+                            .onLongPressGesture(minimumDuration: 0.35) {
+                                togglePhotoSelection(photo.id)
+                            }
+                            .draggable(photo.id.uuidString)
+                            .dropDestination(for: String.self) { identifiers, _ in
+                                guard let identifier = identifiers.first,
+                                      let sourceID = UUID(uuidString: identifier)
+                                else { return false }
+                                return movePhoto(sourceID, to: photo.id)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .frame(height: 104)
+                .padding(.horizontal, -20)
+            }
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 20)
@@ -520,6 +554,62 @@ struct PostRunSummaryView: View {
         .padding(.top, 8)
         .padding(.bottom, 8)
         .accessibilityIdentifier("PostRunPhotoReviewSection")
+    }
+
+    private var photoViewerPresented: Binding<Bool> {
+        Binding(
+            get: { previewedPhotoID != nil },
+            set: { if !$0 { previewedPhotoID = nil } }
+        )
+    }
+
+    private func handlePhotoTap(_ photo: PostRunPhoto) {
+        if selectedPhotoIDs.isEmpty {
+            previewedPhotoID = photo.id
+            Task {
+                await analyticsManager?.track(.init(.photoPreviewed, properties: [
+                    .sourceType: .string("finish_review"),
+                ]))
+            }
+        } else {
+            togglePhotoSelection(photo.id)
+        }
+    }
+
+    private func togglePhotoSelection(_ photoID: UUID) {
+        if selectedPhotoIDs.contains(photoID) {
+            selectedPhotoIDs.remove(photoID)
+        } else {
+            selectedPhotoIDs.insert(photoID)
+        }
+    }
+
+    private func removeSelectedPhotos() {
+        let removedCount = selectedPhotoIDs.count
+        draftPhotos.removeAll { selectedPhotoIDs.contains($0.id) }
+        selectedPhotoIDs.removeAll()
+        guard removedCount > 0 else { return }
+        Task {
+            await analyticsManager?.track(.init(.photoRemoved, properties: [
+                .sourceType: .string("finish_review"),
+            ]))
+        }
+    }
+
+    private func movePhoto(_ sourceID: UUID, to destinationID: UUID) -> Bool {
+        guard sourceID != destinationID,
+              let sourceIndex = draftPhotos.firstIndex(where: { $0.id == sourceID }),
+              let destinationIndex = draftPhotos.firstIndex(where: { $0.id == destinationID })
+        else { return false }
+
+        let photo = draftPhotos.remove(at: sourceIndex)
+        draftPhotos.insert(photo, at: min(destinationIndex, draftPhotos.count))
+        Task {
+            await analyticsManager?.track(.init(.photoReordered, properties: [
+                .sourceType: .string("finish_review"),
+            ]))
+        }
+        return true
     }
 
     private func finishPhotoCaption(_ photo: PostRunPhoto, index: Int) -> String {
@@ -635,58 +725,43 @@ struct PostRunPhoto: Identifiable {
     }
 }
 
-struct PostRunPhotoManager: View {
-    @Binding var photos: [PostRunPhoto]
-    let photoMetadata: PhotoMetadata
+struct PostRunPhotoViewer: View {
+    let photos: [PostRunPhoto]
     @Environment(\.dismiss) private var dismiss
-    @State private var isCameraPresented = false
+    @State private var selectedPhotoID: UUID
+
+    init(photos: [PostRunPhoto], initialPhotoID: UUID?) {
+        self.photos = photos
+        _selectedPhotoID = State(initialValue: initialPhotoID ?? photos.first?.id ?? UUID())
+    }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button {
-                        isCameraPresented = true
-                    } label: {
-                        Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
-                    }
-                }
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
 
-                if !photos.isEmpty {
-                    Section(String(localized: "summary.photos.reorder", defaultValue: "Photos — drag to reorder")) {
-                        ForEach(photos) { photo in
-                            HStack(spacing: 12) {
-                                Image(uiImage: photo.image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 72, height: 56)
-                                    .clipped()
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                Text(photo.metadata.takenAt, style: .time)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .onDelete { photos.remove(atOffsets: $0) }
-                        .onMove { photos.move(fromOffsets: $0, toOffset: $1) }
-                    }
+            TabView(selection: $selectedPhotoID) {
+                ForEach(photos) { photo in
+                    Image(uiImage: photo.image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .tag(photo.id)
+                        .accessibilityLabel(String(localized: "summary.photos.preview", defaultValue: "Activity photo"))
                 }
             }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle(String(localized: "summary.photos.manage.title", defaultValue: "Manage Photos"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "common.done", defaultValue: "Done")) {
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
             }
-        }
-        .fullScreenCover(isPresented: $isCameraPresented) {
-            PostRunCameraView { image in
-                photos.append(PostRunPhoto(image: image, metadata: photoMetadata))
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+            .padding(.top, 12)
+            .padding(.trailing, 16)
         }
     }
 }

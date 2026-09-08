@@ -16099,6 +16099,42 @@
         }
       }
     },
+    "summary.photos.delete_selected" : {
+      "comment" : "Accessibility label for deleting selected finish-review photos.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete selected photos" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Eliminar las fotos seleccionadas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除所选照片" } }
+      }
+    },
+    "summary.photos.empty" : {
+      "comment" : "Empty state shown when an activity has no photos.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No photo added" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se añadió ninguna foto" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "尚未添加照片" } }
+      }
+    },
+    "summary.photos.long_press_hint" : {
+      "comment" : "Accessibility hint explaining inline photo selection and reordering.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Long press to select, then drag to reorder" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantén pulsado para seleccionar y arrastra para reordenar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "长按选择，然后拖动排序" } }
+      }
+    },
+    "summary.photos.preview" : {
+      "comment" : "Accessibility label for a photo in the full-screen activity photo viewer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Activity photo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Foto de la actividad" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "活动照片" } }
+      }
+    },
     "summary.photos.manage" : {
       "comment": "A button that opens a view for selecting photos.",
       "extractionState": "extracted_with_value",
