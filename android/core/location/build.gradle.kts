@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.core.location"
+    namespace = "com.plainstride.outbound.core.location"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

@@ -1,5 +1,5 @@
 plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.compose); alias(libs.plugins.hilt); alias(libs.plugins.ksp) }
-android { namespace = "run.plainstride.feature.assistant"; compileSdk = 36; compileSdkMinor = 1; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
+android { namespace = "com.plainstride.outbound.feature.assistant"; compileSdk = 36; compileSdkMinor = 1; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
 dependencies {
     implementation(project(":core:analytics")); implementation(project(":core:assistant")); implementation(project(":core:music"))
     implementation(project(":core:network"))

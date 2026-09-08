@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.core.auth"
+    namespace = "com.plainstride.outbound.core.auth"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

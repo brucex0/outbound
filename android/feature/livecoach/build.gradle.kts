@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.livecoach"
+    namespace = "com.plainstride.outbound.feature.livecoach"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

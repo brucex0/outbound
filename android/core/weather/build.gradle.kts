@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.core.weather"
+    namespace = "com.plainstride.outbound.core.weather"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

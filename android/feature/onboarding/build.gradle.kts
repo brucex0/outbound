@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.onboarding"
+    namespace = "com.plainstride.outbound.feature.onboarding"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

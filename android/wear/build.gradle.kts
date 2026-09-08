@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.wear"
+    namespace = "com.plainstride.outbound.wear"
     compileSdk = 36
     compileSdkMinor = 1
 
     defaultConfig {
-        applicationId = "run.plainstride.app.wear"
+        applicationId = "com.plainstride.outbound.wear"
         minSdk = 30
         targetSdk = 36
         versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()

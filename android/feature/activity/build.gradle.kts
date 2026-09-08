@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.activity"
+    namespace = "com.plainstride.outbound.feature.activity"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

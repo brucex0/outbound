@@ -7,12 +7,12 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.app"
+    namespace = "com.plainstride.outbound"
     compileSdk = 36
     compileSdkMinor = 1
 
     defaultConfig {
-        applicationId = "run.plainstride.app"
+        applicationId = "com.plainstride.outbound"
         minSdk = 26
         targetSdk = 36
         versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()
@@ -29,9 +29,9 @@ android {
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId.get()}\"")
         val spotifyClientId = providers.gradleProperty("PLAINSTRIDE_SPOTIFY_CLIENT_ID").orElse("")
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${spotifyClientId.get()}\"")
-        buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"run.plainstride.app://spotify-callback\"")
+        buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"com.plainstride.outbound://spotify-callback\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        manifestPlaceholders["appAuthRedirectScheme"] = "run.plainstride.app"
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.plainstride.outbound"
         val mapsApiKey = providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orElse("")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey.get()
     }

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.progress"
+    namespace = "com.plainstride.outbound.feature.progress"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

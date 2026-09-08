@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.benchmark"
+    namespace = "com.plainstride.outbound.benchmark"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig {

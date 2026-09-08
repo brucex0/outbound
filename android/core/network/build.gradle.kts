@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.core.network"
+    namespace = "com.plainstride.outbound.core.network"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

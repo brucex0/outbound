@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.health"
+    namespace = "com.plainstride.outbound.feature.health"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

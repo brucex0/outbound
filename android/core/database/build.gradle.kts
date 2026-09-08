@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.core.database"
+    namespace = "com.plainstride.outbound.core.database"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

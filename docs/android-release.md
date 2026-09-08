@@ -9,8 +9,8 @@ Open this for Play Console preparation, signed bundles, release policy, privacy 
 - Enroll in Play App Signing and protect the upload key separately. Never commit a keystore or password.
 - Supply `PLAINSTRIDE_ANDROID_KEYSTORE_PATH`, `PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD`, `PLAINSTRIDE_ANDROID_KEY_ALIAS`, and `PLAINSTRIDE_ANDROID_KEY_PASSWORD` only through the CI secret store or local environment.
 - Supply `PLAINSTRIDE_MAPS_API_KEY` as a Gradle property from CI (`ORG_GRADLE_PROJECT_PLAINSTRIDE_MAPS_API_KEY`). Restrict it in Google Cloud to the release application ID and Play signing certificate. Missing keys render an accessible “Map unavailable” state and `verifyPlayReleaseConfiguration` fails closed.
-- Supply `PLAINSTRIDE_SPOTIFY_CLIENT_ID` as a Gradle property only for builds whose Spotify dashboard allows the exact `run.plainstride.app://spotify-callback` redirect. Without it, Spotify authorization and playback stay disabled with a user-visible configuration state; no client secret is embedded in the app.
-- Phone and Wear use the same CI-supplied version and upload-key variables, while remaining separate application IDs (`run.plainstride.app` and `run.plainstride.app.wear`). Ordinary `assembleRelease` remains unsigned when secrets are absent so source verification is reproducible. Each `bundleRelease` task depends on its fail-closed configuration check.
+- Supply `PLAINSTRIDE_SPOTIFY_CLIENT_ID` as a Gradle property only for builds whose Spotify dashboard allows the exact `com.plainstride.outbound://spotify-callback` redirect. Without it, Spotify authorization and playback stay disabled with a user-visible configuration state; no client secret is embedded in the app.
+- Phone and Wear use the same CI-supplied version and upload-key variables, while remaining separate application IDs (`com.plainstride.outbound` and `com.plainstride.outbound.wear`). Ordinary `assembleRelease` remains unsigned when secrets are absent so source verification is reproducible. Each `bundleRelease` task depends on its fail-closed configuration check.
 
 ```sh
 ./gradlew :app:bundleRelease :wear:bundleRelease
@@ -22,7 +22,7 @@ Before upload, inspect the AAB signature, application ID, version, mapping file,
 
 - Release cleartext traffic is denied. Debug permits only emulator host `10.0.2.2`; never ship the debug manifest/resource overlay.
 - Only `MainActivity` is exported, for launcher and verified `https://run.plainstride.com/account-link` links. Services, receivers, and providers must remain non-exported unless a documented platform contract requires otherwise.
-- Publish and verify `/.well-known/assetlinks.json` for `run.plainstride.app` using the Play signing certificate, not the upload certificate.
+- Publish and verify `/.well-known/assetlinks.json` for `com.plainstride.outbound` using the Play signing certificate, not the upload certificate.
 - Cloud backup and device transfer are disabled for databases, preferences, files, root storage, and external app storage because these contain account sessions, precise activity tracks, health-derived records, and cached coaching/media data.
 - Review the release merged manifest after every dependency update. Confirm permissions match actual UX education and Play declarations.
 

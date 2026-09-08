@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.social"
+    namespace = "com.plainstride.outbound.feature.social"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }

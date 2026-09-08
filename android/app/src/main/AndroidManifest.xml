@@ -55,7 +55,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="run.plainstride.app" android:host="spotify-callback" />
+                <data android:scheme="com.plainstride.outbound" android:host="spotify-callback" />
             </intent-filter>
         </activity>
         <service android:name=".notifications.PlainstrideMessagingService" android:exported="false">

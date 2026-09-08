@@ -22,7 +22,7 @@ Open this when changing notification creation, delivery, device registration, fo
 {
   "token": "FCM registration token",
   "platform": "android",
-  "appBundle": "run.plainstride",
+  "appBundle": "com.plainstride.outbound",
   "locale": "en_US"
 }
 ```
@@ -92,7 +92,7 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 ## Configuration and Rollout
 
 1. Apply the schema: `cd backend && npm run db:push`.
-2. Register both Firebase apps: iOS `plainstride.outbound` and Android `run.plainstride`. Download `google-services.json` for the Android build through the normal secret/configuration path; do not commit production credentials.
+2. Register both Firebase apps: iOS `plainstride.outbound` and Android `com.plainstride.outbound`. Download `google-services.json` for the Android build through the normal secret/configuration path; do not commit production credentials.
 3. In Firebase Console, upload the APNs authentication key for the iOS app and ensure its App ID/provisioning profiles include Push Notifications.
 4. Deploy the backend with `FIREBASE_PROJECT_ID` (or `GOOGLE_CLOUD_PROJECT`) and application-default credentials whose service account can send Firebase Cloud Messaging messages. No FCM server key belongs in source or client configuration.
 5. Validate APNs and Android FCM independently on physical devices; simulators and the local Firebase Auth emulator do not provide a production delivery check.

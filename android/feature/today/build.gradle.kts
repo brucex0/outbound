@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "run.plainstride.feature.today"
+    namespace = "com.plainstride.outbound.feature.today"
     compileSdk = 36
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }
