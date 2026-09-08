@@ -623,32 +623,21 @@ struct ActivityDetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {
                     ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
-                        Button {
-                            if selectedPhotoPage == index {
-                                lightboxPhotoIndex = index
-                            } else {
-                                withAnimation(.snappy) { selectedPhotoPage = index }
-                            }
-                        } label: {
-                            ZStack(alignment: .bottomLeading) {
-                                if let url = activityStore.imageURL(for: photo) {
-                                    LocalImageView(url: url) { Color(.secondarySystemBackground) }
+                        ActivityPhotoThumbnail(
+                            caption: photoCaption(photo, index: index, compact: true),
+                            isSelected: photo.id == selectedPhotoID,
+                            action: {
+                                if selectedPhotoPage == index {
+                                    lightboxPhotoIndex = index
+                                } else {
+                                    withAnimation(.snappy) { selectedPhotoPage = index }
                                 }
-                                LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
-                                Text(photoCaption(photo, index: index, compact: true))
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .padding(8)
                             }
-                            .frame(width: 116, height: 104)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(photo.id == selectedPhotoID ? Color.orange : Color.clear, lineWidth: 3)
+                        ) {
+                            if let url = activityStore.imageURL(for: photo) {
+                                LocalImageView(url: url) { Color(.secondarySystemBackground) }
                             }
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
                         .id(photo.id)
                         .accessibilityLabel(photoCaption(photo, index: index, compact: false))
                         .accessibilityHint(photo.id == selectedPhotoID

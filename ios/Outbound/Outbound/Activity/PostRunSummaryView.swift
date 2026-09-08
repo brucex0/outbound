@@ -19,6 +19,7 @@ struct PostRunSummaryView: View {
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
     @State private var isPhotoManagerPresented = false
+    @State private var isCameraPresented = false
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
@@ -128,6 +129,17 @@ struct PostRunSummaryView: View {
                 photos: $draftPhotos,
                 photoMetadata: finishPhotoMetadata
             )
+        }
+        .fullScreenCover(isPresented: $isCameraPresented) {
+            PostRunCameraView { image in
+                draftPhotos.append(PostRunPhoto(image: image, metadata: finishPhotoMetadata))
+                Task {
+                    await analyticsManager?.track(.init(.photoCaptured, properties: [
+                        .sourceType: .string("finish_review"),
+                        .locationAttached: .boolean(finishPhotoMetadata.coordinate != nil),
+                    ]))
+                }
+            }
         }
     }
 
@@ -432,43 +444,73 @@ struct PostRunSummaryView: View {
 
     private var photoReviewSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
-                        .font(.headline)
-                    Text(draftPhotos.isEmpty
-                         ? String(localized: "summary.photos.empty", defaultValue: "Add a finish photo")
-                         : String(localized: "\(draftPhotos.count) photos"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            HStack {
+                Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
+                    .font(.headline)
 
                 Spacer()
 
-                Button {
-                    isPhotoManagerPresented = true
-                } label: {
-                    Label(
-                        draftPhotos.isEmpty
-                            ? String(localized: "summary.photos.take", defaultValue: "Take Photo")
-                            : String(localized: "summary.photos.manage", defaultValue: "Manage"),
-                        systemImage: draftPhotos.isEmpty ? "camera.fill" : "slider.horizontal.3"
-                    )
-                        .font(.subheadline.weight(.semibold))
+                if !draftPhotos.isEmpty {
+                    Button {
+                        isPhotoManagerPresented = true
+                    } label: {
+                        Label(
+                            String(localized: "summary.photos.manage", defaultValue: "Manage"),
+                            systemImage: "slider.horizontal.3"
+                        )
+                        .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("ManagePhotosButton")
                 }
-                .buttonStyle(.bordered)
-                .tint(.orange)
-                .accessibilityIdentifier("ManagePhotosButton")
             }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(Array(draftPhotos.enumerated()), id: \.element.id) { index, photo in
+                        ActivityPhotoThumbnail(
+                            caption: finishPhotoCaption(photo, index: index),
+                            isSelected: false,
+                            action: { isPhotoManagerPresented = true }
+                        ) {
+                            Image(uiImage: photo.image)
+                                .resizable()
+                                .scaledToFill()
+                        }
+                        .accessibilityLabel(finishPhotoCaption(photo, index: index))
+                    }
+
+                    ActivityPhotoCaptureTile {
+                        Task {
+                            await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
+                                .sourceType: .string("finish_review"),
+                            ]))
+                        }
+                        isCameraPresented = true
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .frame(height: 104)
+            .padding(.horizontal, -20)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 16)
         .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
         .padding(.bottom, 8)
         .accessibilityIdentifier("PostRunPhotoReviewSection")
+    }
+
+    private func finishPhotoCaption(_ photo: PostRunPhoto, index: Int) -> String {
+        if photo.metadata.captureContext == .preActivity {
+            return String(localized: "activity.photos.start", defaultValue: "Start")
+        }
+        if index == draftPhotos.count - 1 || photo.metadata.captureContext == .paused {
+            return String(localized: "activity.photos.finish", defaultValue: "Finish")
+        }
+        return measurementPreferences.unitSystem.distanceString(meters: photo.metadata.distAtShot, fractionDigits: 1)
     }
 
     private var saveEligibilitySection: some View {
