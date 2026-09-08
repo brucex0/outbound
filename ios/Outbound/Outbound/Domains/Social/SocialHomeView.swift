@@ -103,6 +103,7 @@ struct SocialHomeView: View {
 
                     Button {
                         showsNotifications = true
+                        trackSocialInboxOpened(entrySource: "social")
                     } label: {
                         Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
                     }
@@ -251,6 +252,14 @@ struct SocialHomeView: View {
             await analyticsManager?.track(.init(.pushNotificationOpened, properties: [
                 .sourceType: .string(type),
                 .selectionType: .string(destination),
+            ]))
+        }
+    }
+
+    private func trackSocialInboxOpened(entrySource: String) {
+        Task {
+            await analyticsManager?.track(.init(.socialInboxOpened, properties: [
+                .entrySource: .string(entrySource),
             ]))
         }
     }
@@ -1400,7 +1409,7 @@ private struct PastActivityEventRow: View {
     }
 }
 
-private struct SocialNotificationsView: View {
+struct SocialNotificationsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var circleStore: CircleStore

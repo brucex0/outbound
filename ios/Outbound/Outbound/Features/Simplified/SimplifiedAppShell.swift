@@ -895,6 +895,7 @@ private struct SimplifiedTodayView: View {
     @State private var mapAttributionBottomInset: CGFloat = 0
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var lastExposedTodayCircleID: String?
+    @State private var showsSocialInbox = false
 
     var body: some View {
         NavigationStack {
@@ -942,6 +943,7 @@ private struct SimplifiedTodayView: View {
             .ignoresSafeArea(edges: isActivityFullscreenVisible ? [] : .top)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
+            .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .tabBar)
@@ -966,6 +968,9 @@ private struct SimplifiedTodayView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    socialInboxButton(entrySource: "today")
                 }
                 if showsActivityOverflowMenu, activitySessionState == .idle {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -1045,6 +1050,23 @@ private struct SimplifiedTodayView: View {
             ThemeChooserView()
                 .environmentObject(guideCatalog)
         }
+    }
+
+    private func socialInboxButton(entrySource: String) -> some View {
+        Button {
+            showsSocialInbox = true
+            Task {
+                await analyticsManager?.track(.init(.socialInboxOpened, properties: [
+                    .entrySource: .string(entrySource),
+                ]))
+            }
+        } label: {
+            Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
+        }
+        .accessibilityLabel(String(localized: "Social notifications"))
+        .accessibilityValue(socialStore.pendingInvitationCount > 0
+            ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
+            : "")
     }
 
     private var activityOverflowMenu: some View {
@@ -2591,6 +2613,7 @@ private struct SimplifiedMeView: View {
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
     @State private var showsConnections = false
+    @State private var showsSocialInbox = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
     @State private var hasTrackedCalorieExposure = false
@@ -2804,6 +2827,7 @@ private struct SimplifiedMeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
+            .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
             }
@@ -2847,6 +2871,20 @@ private struct SimplifiedMeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     GlobalConditionsButton()
+                    Button {
+                        showsSocialInbox = true
+                        Task {
+                            await analyticsManager?.track(.init(.socialInboxOpened, properties: [
+                                .entrySource: .string("me"),
+                            ]))
+                        }
+                    } label: {
+                        Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
+                    }
+                    .accessibilityLabel(String(localized: "Social notifications"))
+                    .accessibilityValue(socialStore.pendingInvitationCount > 0
+                        ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
+                        : "")
                     NavigationLink {
                         SimplifiedSettingsView(
                             trainingProfileSex: $trainingProfileSex
