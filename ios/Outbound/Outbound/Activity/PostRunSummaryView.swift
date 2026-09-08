@@ -6,6 +6,7 @@ import UIKit
 struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var personalizationStore: PersonalizationStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @Environment(\.analyticsManager) private var analyticsManager
     let summary: ActivitySummary
     let activityType: ActivityType
@@ -28,6 +29,7 @@ struct PostRunSummaryView: View {
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
     @State private var isSubmitting = false
     @State private var didTrackSaveIneligible = false
+    @State private var isWeightInputPresented = false
 
     init(
         summary: ActivitySummary,
@@ -107,6 +109,11 @@ struct PostRunSummaryView: View {
             .padding(.bottom, 24)
         }
         .ignoresSafeArea(edges: .top)
+        .sheet(isPresented: $isWeightInputPresented) {
+            CalorieWeightInputView()
+                .environmentObject(measurementPreferences)
+                .environmentObject(onboardingStore)
+        }
         .onAppear {
             guard !isSaveEligible, !didTrackSaveIneligible else { return }
             didTrackSaveIneligible = true
@@ -241,11 +248,34 @@ struct PostRunSummaryView: View {
                         unit: ""
                     )
                 }
-                if let kilocalories = calorieEstimate.kilocalories {
-                    Divider().frame(height: 48)
+                Divider().frame(height: 48)
+                if calorieEstimate.unavailableReason == .missingWeight {
+                    Button {
+                        isWeightInputPresented = true
+                        Task {
+                            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                                .changeType: .string("calorie_weight_prompt"),
+                                .selectionType: .string("post_run_summary_opened"),
+                            ]))
+                        }
+                    } label: {
+                        SummaryStatColumn(
+                            label: String(localized: "activity.metric.calories", defaultValue: "Calories"),
+                            value: "—",
+                            unit: ""
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(
+                        localized: "activity.calories.add_weight.hint",
+                        defaultValue: "Add your weight to calculate calories"
+                    ))
+                } else {
                     SummaryStatColumn(
                         label: String(localized: "activity.metric.calories", defaultValue: "Calories"),
-                        value: WorkoutCalorieEstimator.calorieValue(kilocalories),
+                        value: calorieEstimate.kilocalories.map { kilocalories in
+                            WorkoutCalorieEstimator.calorieValue(kilocalories)
+                        } ?? "—",
                         unit: ""
                     )
                 }
@@ -268,7 +298,7 @@ struct PostRunSummaryView: View {
         WorkoutCalorieEstimator.estimate(
             for: summary,
             activityType: activityType,
-            weightKilograms: weightKilograms
+            weightKilograms: onboardingStore.latestWeightKilograms ?? weightKilograms
         )
     }
 
@@ -530,9 +560,6 @@ struct PostRunSummaryView: View {
                                     }
                             } else {
                                 finishPhotoThumbnail(photo, index: index)
-                                    .onLongPressGesture(minimumDuration: 0.35) {
-                                        togglePhotoSelection(photo.id)
-                                    }
                                     .dropDestination(for: String.self) { identifiers, _ in
                                         guard let identifier = identifiers.first,
                                               let sourceID = UUID(uuidString: identifier)
@@ -567,7 +594,8 @@ struct PostRunSummaryView: View {
         ActivityPhotoThumbnail(
             caption: finishPhotoCaption(photo, index: index),
             isSelected: selectedPhotoIDs.contains(photo.id),
-            action: { handlePhotoTap(photo) }
+            action: { handlePhotoTap(photo) },
+            longPressAction: { togglePhotoSelection(photo.id) }
         ) {
             Image(uiImage: photo.image)
                 .resizable()
