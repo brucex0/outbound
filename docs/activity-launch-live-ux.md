@@ -53,7 +53,7 @@ Configure launch options from the dock:
 
 The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
-The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. The companion follows valid GPS course, adds subtle movement only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.
+The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. Run, walk, and hike companions use an articulated figure whose arms and legs move with activity-specific cadence and stride; other sports retain their activity symbol. The companion follows valid GPS course, moves only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.
 
 Outdoor GPS acquisition starts with the countdown rather than after it. The countdown shows a compact localized `GPS ready`, `Improving GPS signal`, `Acquiring GPS`, or `Precise Location is off` status without blocking Start indefinitely. A fresh good-quality countdown fix becomes the recording baseline; canceling the countdown stops the temporary high-accuracy acquisition. If iOS has granted only approximate location, the workout purpose may request temporary precise access using the localized bundle explanation.
 

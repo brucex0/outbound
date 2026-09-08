@@ -509,16 +509,30 @@ private struct LiveActivityAvatar: View {
             let phase = context.date.timeIntervalSinceReferenceDate * animationFrequency
             let stride = reduceMotion || !isMoving ? 0 : sin(phase * .pi * 2)
 
-            Image(systemName: systemImage)
-                .font(.system(size: 19, weight: .bold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(tint)
+            avatarContent(stride: stride)
                 .rotationEffect(.degrees(validCourse))
-                .offset(y: stride * animationAmplitude)
+                .offset(y: abs(stride) * -animationAmplitude)
                 .frame(width: 30, height: 30)
                 .shadow(color: .white.opacity(0.9), radius: 1.5)
                 .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                 .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func avatarContent(stride: Double) -> some View {
+        switch activityType {
+        case .running, .walking, .hiking:
+            ArticulatedActivityFigure(
+                tint: tint,
+                stride: stride,
+                strideAngle: strideAngle
+            )
+        case .cycling, .swimming:
+            Image(systemName: systemImage)
+                .font(.system(size: 19, weight: .bold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(tint)
         }
     }
 
@@ -543,6 +557,59 @@ private struct LiveActivityAvatar: View {
 
     private var animationAmplitude: Double {
         activityType == .cycling ? 0.8 : 1.5
+    }
+
+    private var strideAngle: Double {
+        switch activityType {
+        case .running: 38
+        case .walking: 24
+        case .hiking: 28
+        case .cycling, .swimming: 0
+        }
+    }
+}
+
+private struct ArticulatedActivityFigure: View {
+    let tint: Color
+    let stride: Double
+    let strideAngle: Double
+
+    var body: some View {
+        ZStack {
+            limb(length: 9, width: 3, color: .primary.opacity(0.82))
+                .rotationEffect(.degrees(-stride * strideAngle), anchor: .top)
+                .offset(x: -2.2, y: 8)
+
+            limb(length: 9, width: 3, color: .primary.opacity(0.82))
+                .rotationEffect(.degrees(stride * strideAngle), anchor: .top)
+                .offset(x: 2.2, y: 8)
+
+            limb(length: 8, width: 2.5, color: .primary.opacity(0.78))
+                .rotationEffect(.degrees(stride * strideAngle * 0.9), anchor: .top)
+                .offset(x: -4, y: -1)
+
+            limb(length: 8, width: 2.5, color: .primary.opacity(0.78))
+                .rotationEffect(.degrees(-stride * strideAngle * 0.9), anchor: .top)
+                .offset(x: 4, y: -1)
+
+            Capsule(style: .continuous)
+                .fill(tint)
+                .frame(width: 8, height: 12)
+                .offset(y: 1.5)
+
+            Circle()
+                .fill(Color.primary.opacity(0.88))
+                .frame(width: 7, height: 7)
+                .offset(y: -8)
+        }
+        .frame(width: 24, height: 28)
+    }
+
+    private func limb(length: CGFloat, width: CGFloat, color: Color) -> some View {
+        Capsule(style: .continuous)
+            .fill(color)
+            .frame(width: width, height: length)
+            .frame(width: width, height: length, alignment: .top)
     }
 }
 
