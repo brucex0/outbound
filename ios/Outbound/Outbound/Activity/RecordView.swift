@@ -1706,7 +1706,7 @@ struct RecordView: View {
                         }
 
                         setupUtilityButton(
-                            title: String(localized: "record.setup.live_track", defaultValue: "Live Track"),
+                            title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
                             value: liveTrackValue,
                             systemImage: "location.fill",
                             isConfigured: liveShareStore.isArmedForNextActivity
@@ -3162,14 +3162,14 @@ struct RecordView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                 setupOptionButton(
-                    title: "Live",
-                    subtitle: liveShareStore.isArmedForNextActivity ? "Sharing" : "Off",
+                    title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
+                    subtitle: liveShareStore.isArmedForNextActivity ? (liveShareStore.selectedConnections.first?.person.displayName ?? String(localized: "common.on", defaultValue: "On")) : String(localized: "common.off", defaultValue: "Off"),
                     systemImage: "location.circle.fill",
                     isSelected: liveShareStore.isArmedForNextActivity
                 ) {
                     showsTrustedContacts = true
                 }
-                .accessibilityLabel(liveShareStore.isArmedForNextActivity ? "Turn off live sharing" : "Turn on live sharing")
+                .accessibilityLabel(liveShareStore.invitationLabel)
 
                 setupOptionButton(
                     title: "Treadmill",
