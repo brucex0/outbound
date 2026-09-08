@@ -60,7 +60,7 @@ if (!(await exists(path.join(dataDir, "PG_VERSION")))) {
 console.log("[local-stack] Starting embedded Postgres...");
 await postgres.start();
 await ensureDatabase(postgres, dbName);
-await runPrisma(["db", "push", "--skip-generate"]);
+await runPrisma(["db", "push", "--skip-generate", "--accept-data-loss"]);
 await seedTrainingPlanTemplates();
 
 console.log("[local-stack] Starting Outbound API...");

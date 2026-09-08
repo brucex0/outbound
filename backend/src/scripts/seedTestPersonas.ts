@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
 import { activityPhotoSHA256, activityPhotoStorageKey, deleteUserActivityPhotos, saveActivityPhoto } from "../services/activityPhotoStorage.js";
+import { ensureCurrentWeek } from "../services/circles.js";
 
 const prisma = new PrismaClient();
 
@@ -145,7 +146,65 @@ async function seedTestPersonas() {
   });
   await prisma.socialBlock.create({ data: { blockerId: socialRunner.id, blockedId: blockedRunner.id } });
 
-  return { users: values.length, activities: activeActivities.length, clubs: 2 };
+  const socialActivity = await createActivity(
+    socialRunner.id,
+    "a11c7100-0000-4000-8000-000000000004",
+    "Golden Gate recovery run",
+    daysAgo(now, 1),
+    29 * 60,
+    4_600,
+    378
+  );
+  const circle = await prisma.circle.create({
+    data: {
+      ownerId: socialRunner.id,
+      name: "Weekend Crew",
+      lifecycle: "active",
+      timeZone: "America/Los_Angeles",
+      defaultFocusMode: "personal_targets",
+      defaultFocusConfigured: true,
+      members: {
+        create: [
+          { userId: socialRunner.id, role: "owner", displayNameSnapshot: socialRunner.displayName, joinedAt: daysAgo(now, 30) },
+          { userId: activeRunner.id, role: "member", displayNameSnapshot: activeRunner.displayName, joinedAt: daysAgo(now, 30) },
+        ],
+      },
+    },
+    include: { members: true },
+  });
+  const circleWeek = await ensureCurrentWeek(prisma, circle.id, now);
+  await prisma.circleWeek.update({
+    where: { id: circleWeek.id },
+    data: { focusMode: "personal_targets", focusConfigured: true },
+  });
+  await prisma.circleCommitment.createMany({
+    data: circle.members.map((member) => ({
+      weekId: circleWeek.id,
+      memberId: member.id,
+      targetCount: member.userId === socialRunner.id ? 3 : 4,
+    })),
+  });
+  const socialMember = circle.members.find((member) => member.userId === socialRunner.id)!;
+  const activeMember = circle.members.find((member) => member.userId === activeRunner.id)!;
+  await prisma.circleContribution.createMany({
+    data: [
+      { weekId: circleWeek.id, memberId: socialMember.id, activityId: socialActivity.id, contributedAt: socialActivity.startedAt },
+      { weekId: circleWeek.id, memberId: activeMember.id, activityId: activeActivities[0].id, contributedAt: activeActivities[0].startedAt },
+      { weekId: circleWeek.id, memberId: activeMember.id, activityId: activeActivities[1].id, contributedAt: activeActivities[1].startedAt },
+    ],
+  });
+  await prisma.circleCheer.create({
+    data: {
+      circleId: circle.id,
+      weekId: circleWeek.id,
+      senderId: socialRunner.id,
+      recipientId: activeRunner.id,
+      presetType: "encouragement",
+    },
+  });
+  await prisma.user.update({ where: { id: socialRunner.id }, data: { primaryCircleId: circle.id } });
+
+  return { users: values.length, activities: activeActivities.length + 1, clubs: 2, circles: 1 };
 }
 
 async function createAppUser(persona: (typeof personas)[keyof typeof personas]) {
@@ -279,7 +338,7 @@ function assertLocalOnly() {
 
 try {
   const result = await seedTestPersonas();
-  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, and ${result.clubs} clubs.`);
+  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, ${result.clubs} clubs, and ${result.circles} Circle.`);
 } finally {
   await prisma.$disconnect();
 }
