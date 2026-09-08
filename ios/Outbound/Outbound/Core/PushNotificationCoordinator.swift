@@ -17,6 +17,7 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
 
     @Published private(set) var pendingNotificationID: String?
     @Published private(set) var pendingNotificationType: String?
+    @Published private(set) var pendingObjectID: String?
     private var latestToken: String?
 
     func activate() async {
@@ -33,12 +34,15 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
 
     func receivedNotification(userInfo: [AnyHashable: Any]) {
         pendingNotificationType = userInfo["type"] as? String
+        pendingObjectID = userInfo["objectId"] as? String
+        // Publish the notification ID last; views use it as the routing trigger.
         pendingNotificationID = userInfo["notificationId"] as? String
     }
 
     func consumePendingNotification() {
         pendingNotificationID = nil
         pendingNotificationType = nil
+        pendingObjectID = nil
     }
 
     func clearAppIconBadge() async {

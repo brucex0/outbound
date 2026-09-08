@@ -16,6 +16,7 @@ struct SocialHomeView: View {
     @State private var isCreateActivityEventPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
+    @State private var pushedLiveCheerSessionID: String?
     @State private var toastMessage: String?
     @StateObject private var liveCheerStore = LiveCheerStore()
 
@@ -181,9 +182,18 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $showsConnections) {
                 SocialConnectionsView()
             }
+            .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
+                LiveCheerView(sessionID: sessionID, entrySource: "push")
+            }
             .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
                 guard notificationID != nil else { return }
-                if pushNotifications.pendingNotificationType == "connectionRequest" {
+                if pushNotifications.pendingNotificationType == "liveCheerInvitation",
+                   let sessionID = pushNotifications.pendingObjectID,
+                   !sessionID.isEmpty {
+                    pushedLiveCheerSessionID = sessionID
+                    trackPushOpen(type: "live_cheer_invitation", destination: "live_cheer")
+                    pushNotifications.consumePendingNotification()
+                } else if pushNotifications.pendingNotificationType == "connectionRequest" {
                     showsConnections = true
                     trackPushOpen(type: "connection_request", destination: "connections")
                     pushNotifications.consumePendingNotification()
@@ -1446,6 +1456,12 @@ private struct SocialNotificationsView: View {
     @ViewBuilder
     private func notificationDestination(_ notification: SocialNotificationDTO) -> some View {
         switch notification.type {
+        case "liveCheerInvitation":
+            if let sessionID = notification.objectId {
+                LiveCheerView(sessionID: sessionID, entrySource: "notification_inbox")
+            } else {
+                SocialNotificationDetailView(notification: notification)
+            }
         case "connectionRequest", "connectionAccepted":
             SocialConnectionsView()
         case "cheer", "comment":
@@ -1475,6 +1491,7 @@ private struct SocialNotificationsView: View {
 
     private func notificationAccessibilityHint(_ notification: SocialNotificationDTO) -> String {
         switch notification.type {
+        case "liveCheerInvitation": return String(localized: "Opens the live activity")
         case "connectionRequest", "connectionAccepted": return String(localized: "Opens Connections")
         case "cheer", "comment": return String(localized: "Opens the activity")
         case "runInvitation": return String(localized: "Opens the invitation")

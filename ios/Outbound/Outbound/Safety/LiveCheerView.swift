@@ -54,6 +54,7 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
 
 struct LiveCheerView: View {
     let sessionID: String
+    var entrySource = "social"
     @StateObject private var store = LiveCheerStore()
     @Environment(\.analyticsManager) private var analyticsManager
 
@@ -91,7 +92,7 @@ struct LiveCheerView: View {
             } else { ProgressView() }
         }
         .task {
-            await analyticsManager?.track(.init(.liveCheerFollowerOpened, properties: [.entrySource: .string("social")]))
+            await analyticsManager?.track(.init(.liveCheerFollowerOpened, properties: [.entrySource: .string(entrySource)]))
             while !Task.isCancelled {
                 await store.refresh(id: sessionID)
                 try? await Task.sleep(for: .seconds(5))

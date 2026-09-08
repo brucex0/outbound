@@ -147,6 +147,7 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - `POST /v1/safety/live-shares/invited/:id/cheers` stores a bounded original AAC voice recording; the runner drains pending recordings from `GET /v1/safety/live-shares/:id/cheers`.
 - `RecordView` presents an accepted-connection picker and creates the server share without a Share Sheet.
 - Starting an armed activity sends each selected connection an in-app/push invitation and confirms the invitation with an in-app toast.
+- Tapping a live-cheer push opens the authenticated follower screen directly using the share ID in the push payload; tapping the same item in the Social inbox opens the same destination.
 - Social shows active invitations in app; the follower screen provides the live map and a hold-to-record voice control.
 - The runner polls for pending recordings and plays the unmodified audio through the live guide audio player.
 - `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.
