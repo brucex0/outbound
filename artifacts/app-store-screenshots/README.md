@@ -16,6 +16,12 @@ pixels with no alpha channel, matching an App Store Connect-supported size.
 11. `11-fresh-today-light.png` — fresh Today capture from the Social Runner simulator session (light appearance)
 12. `today-light-app-store.png` — manually captured Today screen resized for App Store submission
 12. `12-fresh-today-dark.png` — fresh Today capture from the Social Runner simulator session (dark appearance)
+13. `13-cheer-me-on-dark.png` — live Cheer invitation picker with a seeded connection (dark appearance)
+14. `14-race-planning-dark.png` — history-backed half-marathon recommendation (dark appearance)
+15. `15-circle-detail-progress-dark.png` — seeded Circle weekly and member progress (dark appearance)
+16. `16-cheer-me-on-light.png` — live Cheer invitation picker with a seeded connection (light appearance)
+17. `17-race-planning-light.png` — history-backed half-marathon recommendation (light appearance)
+18. `18-circle-detail-progress-light.png` — seeded Circle weekly and member progress (light appearance)
 
 The screenshots were captured from the Debug-only Social Runner testing account backed
 by the local API's deterministic persona seed. The live 10K state uses the Debug-only
@@ -23,6 +29,9 @@ deterministic recording flag. Release builds do not expose testing personas or a
 the recording fixture. The older `dark-gold` filename suffixes are retained so existing
 App Store upload references remain stable; the current captures use the light Victory
 Gold appearance.
+
+The Circle captures use the Debug-only UI fixture so the same 3-of-7 weekly progress,
+member targets, recent activities, and Cheer are reproducible without a live account.
 
 ## Fresh Capture Workflow
 

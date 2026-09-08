@@ -70,6 +70,12 @@ final class CircleStore: ObservableObject {
         errorMessage = nil
         toastMessage = nil
         lastConfirmedContribution = nil
+        if isUITestSeedData, userID != nil {
+            let fixture = Self.uiTestCircle
+            circles = [fixture]
+            primaryCircleID = fixture.id
+            return
+        }
         guard let userID,
               let cached = decode(CircleListResponseDTO.self, from: defaults.data(forKey: cacheKey(userID))) else { return }
         primaryCircleID = cached.primaryCircleId
@@ -78,6 +84,13 @@ final class CircleStore: ObservableObject {
     }
 
     func refresh() async {
+        if isUITestSeedData {
+            let fixture = Self.uiTestCircle
+            circles = [fixture]
+            primaryCircleID = fixture.id
+            errorMessage = nil
+            return
+        }
         guard let userID = activeUserID else { return }
         let generation = authGeneration
         isLoading = true
@@ -97,6 +110,7 @@ final class CircleStore: ObservableObject {
     }
 
     func refreshInvitations() async {
+        if isUITestSeedData { invitations = []; errorMessage = nil; return }
         let generation = authGeneration
         guard activeUserID != nil else { return }
         do {
@@ -111,6 +125,7 @@ final class CircleStore: ObservableObject {
     }
 
     func refreshCircle(id: String) async {
+        if isUITestSeedData { upsert(Self.uiTestCircle); errorMessage = nil; return }
         let generation = authGeneration
         guard activeUserID != nil else { return }
         do {
@@ -299,6 +314,33 @@ final class CircleStore: ObservableObject {
     }
 
     private func fallbackPrimaryID(in circles: [CircleDTO]) -> String? { circles.first(where: \.eligibleForToday)?.id }
+
+    private var isUITestSeedData: Bool {
+        ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+    }
+
+    private static var uiTestCircle: CircleDTO {
+        let now = Date()
+        let start = Calendar.current.date(byAdding: .day, value: -2, to: now) ?? now
+        let sage = CirclePersonDTO(id: "ui-test-sage", displayName: "Sage Runner", avatarUrl: nil)
+        let avery = CirclePersonDTO(id: "ui-test-avery", displayName: "Avery Runner", avatarUrl: nil)
+        return CircleDTO(
+            id: "ui-test-weekend-crew", name: "Weekend Crew", lifecycle: "active", role: "owner",
+            owner: sage, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 6,
+            memberCount: 2, eligibleForToday: true,
+            members: [
+                CircleMemberDTO(id: "ui-test-circle-sage", user: sage, role: "owner", isCurrentUser: true, commitment: .init(targetCount: 3, skipped: false), contributedCount: 1, recentActivity: .init(type: "running", title: "Golden Gate recovery run", startedAt: now.addingTimeInterval(-86_400), durationSecs: 1_740, distanceM: 4_600, elevationM: 38, avgPace: 378, avgHeartRate: 138, energyKilocalories: 315)),
+                CircleMemberDTO(id: "ui-test-circle-avery", user: avery, role: "member", isCurrentUser: false, commitment: .init(targetCount: 4, skipped: false), contributedCount: 2, recentActivity: .init(type: "running", title: "Easy neighborhood run", startedAt: now.addingTimeInterval(-172_800), durationSecs: 1_920, distanceM: 5_100, elevationM: 42, avgPace: 376, avgHeartRate: 144, energyKilocalories: 510)),
+            ],
+            upcomingFocus: .init(mode: "personal_targets", focusConfigured: true, sharedTarget: nil),
+            week: .init(id: "ui-test-circle-week", startsAt: start, endsAt: start.addingTimeInterval(7 * 86_400), focusMode: "personal_targets", focusConfigured: true, sharedTarget: nil, state: "open", contributedCount: 3, targetCount: 7),
+            currentUserMuted: false, completionPresentationPending: false,
+            cheers: [.init(id: "ui-test-cheer", senderUserId: sage.id, recipientUserId: avery.id, presetType: "encouragement", createdAt: now.addingTimeInterval(-3_600))],
+            invitations: [],
+            recentMoments: [.init(id: "ui-test-moment", type: "cheer", createdAt: now.addingTimeInterval(-3_600), title: "encouragement")],
+            history: []
+        )
+    }
 
     private func contributionMessage(_ receipt: CircleContributionReceipt) -> String {
         let contribution = receipt.primary
