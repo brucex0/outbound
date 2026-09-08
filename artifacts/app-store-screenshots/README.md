@@ -18,6 +18,28 @@ fixture. The activity-detail pair uses the existing coastal-trail, waterfront,
 and park-after-rain photo assets attached to the Active Runner activity in the
 temporary simulator data.
 
+## Recommended Priority Set
+
+Use these ten current, visually demonstrable concepts in this order. Marketing
+headlines can be added during final App Store composition.
+
+1. `01-today-dark.png` — know what to run today
+2. `07-ai-planned-workout-dark.png` — understand and adapt today's workout
+3. `04-progress-dark.png` — build weekly momentum
+4. `05-cheer-live-track-dark.png` — private Live Track and voice cheers
+5. `03-live-redmond-half-dark.png` — follow a route while recording
+6. `10-activity-detail-photos-dark.png` — remember the run with route, stats, and moments
+7. `18-circle-detail-progress-light.png` — stay consistent with a trusted Circle
+8. `06-social-dark.png` — connect, celebrate, and plan together
+9. `17-race-planning-light.png` — plan a race from recent training
+10. `09-more-plans-dg.png` — choose a reviewed training plan
+
+`04-progress-dark.png` and `05-cheer-live-track-dark.png` were freshly captured
+from the current Debug app on September 7, 2026. The route-library screen is not
+included because the deterministic Social Runner currently has no published or
+bookmarked routes; the live route-guidance capture communicates the feature more
+clearly and truthfully.
+
 ## Legacy Capture Set
 
 1. `01-today-dark-gold.png` — testing-account Today overview and current recommendation
