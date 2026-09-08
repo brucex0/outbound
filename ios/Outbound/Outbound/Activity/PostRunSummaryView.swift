@@ -1,4 +1,5 @@
 import MapKit
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -20,6 +21,7 @@ struct PostRunSummaryView: View {
     @State private var draftPhotos: [PostRunPhoto]
     @State private var isPhotoManagerPresented = false
     @State private var isCameraPresented = false
+    @State private var importedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedEffort: RunEffort?
     @State private var continuationCapacity: ContinuationCapacity?
     @State private var selectedGuidanceFeedback: LiveGuidanceFeedback?
@@ -140,6 +142,10 @@ struct PostRunSummaryView: View {
                     ]))
                 }
             }
+        }
+        .onChange(of: importedPhotoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await importPhotos(from: items) }
         }
     }
 
@@ -489,6 +495,19 @@ struct PostRunSummaryView: View {
                         }
                         isCameraPresented = true
                     }
+
+                    PhotosPicker(
+                        selection: $importedPhotoItems,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        ActivityPhotoActionTile(
+                            title: String(localized: "summary.photos.import", defaultValue: "Import Photo"),
+                            systemImage: "photo.on.rectangle.angled"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("ImportFinishPhotoButton")
                 }
                 .padding(.horizontal, 20)
             }
@@ -511,6 +530,34 @@ struct PostRunSummaryView: View {
             return String(localized: "activity.photos.finish", defaultValue: "Finish")
         }
         return measurementPreferences.unitSystem.distanceString(meters: photo.metadata.distAtShot, fractionDigits: 1)
+    }
+
+    private func importPhotos(from items: [PhotosPickerItem]) async {
+        await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
+            .sourceType: .string("finish_photo_library"),
+        ]))
+
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data)
+            else { continue }
+
+            let metadata = PhotoMetadata(
+                takenAt: Date(),
+                paceAtShot: summary.avgPace,
+                hrAtShot: summary.healthMetrics?.averageHeartRateBPM,
+                distAtShot: summary.distanceM,
+                coordinate: nil,
+                captureContext: .paused
+            )
+            draftPhotos.append(PostRunPhoto(image: image, metadata: metadata))
+            await analyticsManager?.track(.init(.photoCaptured, properties: [
+                .sourceType: .string("finish_photo_library"),
+                .locationAttached: .boolean(false),
+            ]))
+        }
+
+        importedPhotoItems = []
     }
 
     private var saveEligibilitySection: some View {

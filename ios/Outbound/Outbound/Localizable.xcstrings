@@ -16075,6 +16075,30 @@
         }
       }
     },
+    "summary.photos.import" : {
+      "comment" : "A button that imports one or more activity photos from the photo library.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Photo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar foto"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入照片"
+          }
+        }
+      }
+    },
     "summary.photos.manage" : {
       "comment": "A button that opens a view for selecting photos.",
       "extractionState": "extracted_with_value",

@@ -49,28 +49,40 @@ struct ActivityPhotoCaptureTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 9) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 21, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(Color.orange.gradient, in: Circle())
-                    .shadow(color: .orange.opacity(0.28), radius: 7, y: 3)
-
-                Text(String(localized: "summary.photos.take", defaultValue: "Take Photo"))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
-            .frame(width: 116, height: 104)
-            .background(Color(.tertiarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.45), lineWidth: 0.5)
-            }
-            .contentShape(Rectangle())
+            ActivityPhotoActionTile(
+                title: String(localized: "summary.photos.take", defaultValue: "Take Photo"),
+                systemImage: "camera.fill"
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("TakeFinishPhotoButton")
+    }
+}
+
+struct ActivityPhotoActionTile: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        VStack(spacing: 9) {
+            Image(systemName: systemImage)
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(Color.orange.gradient, in: Circle())
+                .shadow(color: .orange.opacity(0.28), radius: 7, y: 3)
+
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(width: 116, height: 104)
+        .background(Color(.tertiarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(.separator).opacity(0.45), lineWidth: 0.5)
+        }
+        .contentShape(Rectangle())
     }
 }
