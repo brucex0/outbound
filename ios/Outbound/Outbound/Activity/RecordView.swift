@@ -1729,6 +1729,21 @@ struct RecordView: View {
                         }
 
                         setupUtilityButton(
+                            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
+                            value: isVoiceGuideExplicitlyUnavailable
+                                ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
+                                : (isVoiceGuideEnabled
+                                    ? String(localized: "common.on", defaultValue: "On")
+                                    : String(localized: "common.off", defaultValue: "Off")),
+                            systemImage: voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                            isConfigured: voiceGuideSpeechEnabled
+                        ) {
+                            setVoiceGuideEnabled(
+                                isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
+                            )
+                        }
+
+                        setupUtilityButton(
                             title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
                             value: liveTrackValue,
                             systemImage: liveShareStore.isArmedForNextActivity ? "waveform.circle.fill" : "waveform.circle",
@@ -1750,21 +1765,6 @@ struct RecordView: View {
                                 .changeType: .string("environment"),
                                 .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
                             ]))
-                        }
-
-                        setupUtilityButton(
-                            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
-                            value: isVoiceGuideExplicitlyUnavailable
-                                ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
-                                : (isVoiceGuideEnabled
-                                    ? String(localized: "common.on", defaultValue: "On")
-                                    : String(localized: "common.off", defaultValue: "Off")),
-                            systemImage: voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
-                            isConfigured: voiceGuideSpeechEnabled
-                        ) {
-                            setVoiceGuideEnabled(
-                                isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
-                            )
                         }
                     }
                     .padding(.leading, 16)
