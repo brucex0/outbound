@@ -31,8 +31,10 @@ private object AvatarCache {
 
 @Composable
 fun SocialAvatar(person: SocialPerson, size: Dp = 42.dp, modifier: Modifier = Modifier) {
-    val bitmap by produceState<Bitmap?>(AvatarCache.bitmaps[person.avatarUrl], person.avatarUrl) {
-        val source = person.avatarUrl ?: return@produceState
+    val source = person.avatarUrl
+    val cachedBitmap = source?.let(AvatarCache.bitmaps::get)
+    val bitmap by produceState<Bitmap?>(cachedBitmap, source) {
+        source ?: return@produceState
         if (value == null) value = withContext(Dispatchers.IO) {
             runCatching {
                 val connection = URL(source).openConnection() as HttpURLConnection
