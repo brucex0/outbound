@@ -72,6 +72,16 @@ Recommended layers:
 - Run `npm run planning:maintenance` from `backend/` as a once-daily Cloud Run Job or equivalent quiet-hours schedule. The API does not keep a permanent planning poller alive.
 - Tune defaults with `PLANNING_EVENT_DEBOUNCE_MINUTES`, `PLANNING_NORMAL_EVALUATIONS_PER_DAY`, `PLANNING_MANUAL_COOLDOWN_MINUTES`, and `PLANNING_ACTIVE_USER_WINDOW_DAYS`.
 
+### AI planning evaluation
+
+- Eligible bounded events now run a server-side Gemini evaluation after the deterministic athlete-state projection.
+- The evaluator receives aggregate load, adherence, fatigue, prescribed-versus-completed duration, perceived effort, feedback counts, and the next six workouts. It does not receive free-text notes, identity, GPS, or raw health records.
+- Gemini chooses among deterministic `maintain`, `recover`, `reduce`, and—only when eligible—`progress` candidates using strict JSON.
+- The server validates the selection. Progress is unavailable with elevated fatigue, pain, or a missed workout; progression is capped at eight percent and reductions retain a 15-minute floor.
+- Material changes become a `PersonalizationAdjustment` proposal affecting at most the next three workouts. They require runner confirmation through the existing iOS and Android adjustment flow.
+- Missing credentials, timeout, invalid output, or a disabled AI route falls back to the conservative deterministic selection without blocking planning.
+- Configure with `AI_PLANNING_ENABLED`, `AI_PLANNING_MODEL`, and `AI_PLANNING_DEADLINE_MILLISECONDS`. Vertex uses `GEMINI_VERTEX_PROJECT_ID` and `GEMINI_VERTEX_LOCATION`; credentials remain server-side.
+
 The engine should not regenerate the entire future plan on every event.
 
 Use different adaptation speeds:

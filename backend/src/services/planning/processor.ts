@@ -6,6 +6,7 @@ import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { getPrismaClient } from "../prisma.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { evaluationAdmission } from "./evaluationPolicy.js";
+import { evaluateAndProposePlanAdjustment } from "./aiPlanningEvaluator.js";
 import type {
   ActivityForPlanning,
   PlanningEventResult,
@@ -191,10 +192,18 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           data: { status: "completed", processedAt: new Date() },
         });
       });
+      const aiEvaluation = await evaluateAndProposePlanAdjustment({
+        userId: event.userId,
+        eventType,
+        eventId: event.id,
+        athleteState,
+      });
       return {
         eventId: event.id,
         status: "completed",
-        message: "Reassessed athlete state; no plan version change needed.",
+        message: aiEvaluation.status === "proposed"
+          ? "Reassessed athlete state and prepared a reviewable plan adjustment."
+          : "Reassessed athlete state; no plan version change needed.",
       };
     }
 
