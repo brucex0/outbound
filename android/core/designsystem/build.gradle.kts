@@ -16,4 +16,5 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
 }

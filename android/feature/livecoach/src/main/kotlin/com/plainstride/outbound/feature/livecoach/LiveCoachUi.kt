@@ -28,7 +28,7 @@ import com.plainstride.outbound.feature.livecoach.network.CoachingContract
 import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
 
 @Composable fun LiveCoachRecordingEffect(launch: RecordingLaunchConfiguration, viewModel: LiveCoachViewModel = hiltViewModel()) {
-    LaunchedEffect(viewModel, launch) { viewModel.attachRecording(launch) }
+    if (launch.voiceGuideEnabled) LaunchedEffect(viewModel, launch) { viewModel.attachRecording(launch) }
 }
 
 @Composable fun LiveCoachSettingsSection(viewModel: LiveCoachViewModel = hiltViewModel()) {

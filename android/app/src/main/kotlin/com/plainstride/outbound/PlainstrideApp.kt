@@ -80,6 +80,9 @@ import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
 import com.plainstride.outbound.feature.social.SocialRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
+import com.plainstride.outbound.feature.today.TodayManualLaunch
+import com.plainstride.outbound.feature.today.TodayActivityChoice
+import com.plainstride.outbound.feature.today.TodayGoalChoice
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.feature.community.CommunityRouteScreen
 import com.plainstride.outbound.feature.community.guidancePoints
@@ -247,8 +250,8 @@ private fun SignedInApp(
                             viewModel = todayViewModel,
                             activeSession = hasActiveSession,
                             completedToday = integration.completedToday,
-                            onStartWorkout = { intent ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue)
+                            onStartWorkout = { intent, options ->
+                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onStartFreestyle = {
@@ -257,6 +260,15 @@ private fun SignedInApp(
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { /* Plan setup is connected by the planning flow. */ },
+                            onStartManual = { setup ->
+                                recordingLaunch = setup.toRecordingLaunch(integration.defaultGearId)
+                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                            },
+                            onOpenMusic = { navController.navigate(MUSIC_ROUTE) },
+                            onOpenLiveTrack = { navController.navigate(SAFETY_ROUTE) },
+                            onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
+                            onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
+                            inboxCount = integration.notifications.size,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },
@@ -401,6 +413,32 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
         plannedWorkoutId = plannedWorkoutId,
         workoutDetail = effortLabel,
         workoutGuideline = listOf(stimulus.name, intensityModel).filter(String::isNotBlank).joinToString(" · "),
+    )
+}
+
+private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): RecordingLaunchConfiguration {
+    val recordingGoal = when (goal) {
+        TodayGoalChoice.DISTANCE -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
+        TodayGoalChoice.TIME -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds)
+        TodayGoalChoice.CALORIES -> RecordingGoal(RecordingGoalType.CALORIES, targetCalories = calories)
+        TodayGoalChoice.CURATED -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = curatedWorkout?.targetDurationSeconds?.toLong() ?: durationSeconds)
+        TodayGoalChoice.FREE -> RecordingGoal()
+    }
+    return RecordingLaunchConfiguration(
+        activityKind = when (activity) {
+            TodayActivityChoice.WALK -> ActivityKind.WALKING
+            TodayActivityChoice.HIKE -> ActivityKind.HIKING
+            TodayActivityChoice.BIKE -> ActivityKind.CYCLING
+            else -> ActivityKind.RUNNING
+        },
+        title = curatedWorkout?.title,
+        goal = recordingGoal,
+        workoutSteps = curatedWorkout?.steps?.map { StructuredWorkoutStep(it.label, it.detail, it.durationSeconds, it.coachingTarget?.phase, it.coachingTarget?.pace?.targetSecondsPerKilometer) }.orEmpty(),
+        entrySource = "today_manual",
+        gearId = defaultGearId,
+        indoor = indoor,
+        voiceGuideEnabled = voiceGuideEnabled,
+        startImmediately = true,
     )
 }
 

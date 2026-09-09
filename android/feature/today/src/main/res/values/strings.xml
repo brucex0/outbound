@@ -11,6 +11,13 @@
     <string name="today_start_workout">Start %1$s</string>
     <string name="today_expand_card">Expand workout card</string>
     <string name="today_collapse_card">Collapse workout card</string>
+    <string name="today_planned">Planned</string><string name="today_run">Run</string><string name="today_walk">Walk</string><string name="today_hike">Hike</string><string name="today_bike">Bike</string>
+    <string name="today_curated">Curated</string><string name="today_free">Free</string><string name="today_distance">Distance</string><string name="today_time">Time</string><string name="today_calories">Calories</string>
+    <string name="today_curated_value">Choose a workout</string><string name="today_distance_value">5.0 km</string><string name="today_time_value">30 min</string><string name="today_calories_value">300 kcal</string>
+    <string name="today_goal_edit_hint">Tap a goal pill to change the activity target.</string>
+    <string name="today_music">Music</string><string name="today_voice_guide">Voice Guide</string><string name="today_cheer">Cheer me on</string><string name="today_shoes">Shoes</string><string name="today_indoor">Indoor</string><string name="today_outdoor">Outdoor</string>
+    <string name="today_inbox">Notifications</string><string name="today_inbox_count">Notifications · %1$d</string><string name="today_done">Done</string>
+    <string name="today_choose_curated">Choose a curated workout</string><string name="today_no_curated">No curated workouts are available for this activity yet.</string>
     <string name="today_cached_at">Updated %1$s · you can start offline</string>
     <string name="today_updating">Updating today…</string>
     <string name="today_launch_dock">Planned</string>

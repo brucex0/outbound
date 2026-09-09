@@ -115,8 +115,6 @@ fun RecordingRoute(
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
 
-    LaunchedEffect(launch) { viewModel.configure(launch) }
-
     fun permissionState(): LocationPermissionState {
         val precise = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val approximate = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -134,6 +132,11 @@ fun RecordingRoute(
         if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
             viewModel.updateCountdown(3)
         } else showLocationEducation = true
+    }
+
+    LaunchedEffect(launch) {
+        viewModel.configure(launch)
+        if (launch.startImmediately && snapshot.status == RecordingStatus.IDLE) beginCountdown()
     }
 
     LaunchedEffect(accountId) { viewModel.recover(accountId, permissionState()) }

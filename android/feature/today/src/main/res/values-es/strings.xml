@@ -11,6 +11,13 @@
     <string name="today_start_workout">Iniciar %1$s</string>
     <string name="today_expand_card">Expandir tarjeta de entrenamiento</string>
     <string name="today_collapse_card">Contraer tarjeta de entrenamiento</string>
+    <string name="today_planned">Plan</string><string name="today_run">Correr</string><string name="today_walk">Caminar</string><string name="today_hike">Senderismo</string><string name="today_bike">Bici</string>
+    <string name="today_curated">Guiado</string><string name="today_free">Libre</string><string name="today_distance">Distancia</string><string name="today_time">Tiempo</string><string name="today_calories">Calorías</string>
+    <string name="today_curated_value">Elegir entrenamiento</string><string name="today_distance_value">5,0 km</string><string name="today_time_value">30 min</string><string name="today_calories_value">300 kcal</string>
+    <string name="today_goal_edit_hint">Toca un objetivo para cambiar la meta de la actividad.</string>
+    <string name="today_music">Música</string><string name="today_voice_guide">Guía de voz</string><string name="today_cheer">Anímame</string><string name="today_shoes">Zapatillas</string><string name="today_indoor">Interior</string><string name="today_outdoor">Exterior</string>
+    <string name="today_inbox">Notificaciones</string><string name="today_inbox_count">Notificaciones · %1$d</string><string name="today_done">Listo</string>
+    <string name="today_choose_curated">Elige un entrenamiento guiado</string><string name="today_no_curated">Aún no hay entrenamientos guiados para esta actividad.</string>
     <string name="today_cached_at">Actualizado a las %1$s · puedes empezar sin conexión</string>
     <string name="today_updating">Actualizando hoy…</string>
     <string name="today_launch_dock">Planificado</string>

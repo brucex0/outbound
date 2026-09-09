@@ -201,6 +201,20 @@ class TodayViewModel @Inject constructor(
         ),
     )
 
+    fun trackLaunchConfiguration(changeType: String, selection: String) = analytics.record(
+        AnalyticsEvent(
+            "activity_configuration_changed",
+            mapOf(AnalyticsProperty.ChangeType to changeType, AnalyticsProperty.SelectionType to selection),
+        ),
+    )
+
+    fun trackManualWorkoutStarted(activity: TodayActivityChoice, goal: TodayGoalChoice) = analytics.record(
+        AnalyticsEvent(
+            "workout_started",
+            mapOf(AnalyticsProperty.Source to "today_manual", AnalyticsProperty.ActivityType to activity.name.lowercase(), AnalyticsProperty.GoalType to goal.name.lowercase()),
+        ),
+    )
+
     fun setUpPlan() {
         if (mutationInFlight.value) return
         viewModelScope.launch {

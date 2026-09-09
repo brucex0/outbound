@@ -191,6 +191,7 @@ class RecordingViewModel @Inject constructor(
             })
             activities.save(base.copy(
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
+                indoorJson="{\"indoor\":${mutableState.value.launch.indoor}}",
                 followedRouteId=mutableState.value.launch.followedRoute?.id,
                 followedRouteCompleted=mutableState.value.launch.followedRoute?.let{route->snapshot.latestLocation?.let{last->route.points.lastOrNull()?.let{end->distanceMeters(last.latitude,last.longitude,end.latitude,end.longitude)<=50}}}==true,
                 reflection = ActivityReflection(

@@ -1,5 +1,6 @@
 package com.plainstride.outbound.core.designsystem
 
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,17 +16,22 @@ import androidx.compose.ui.semantics.semantics
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.maps.android.compose.*
 
 data class MapCoordinate(val latitude: Double, val longitude: Double)
 
 /** Shared route renderer. Missing credentials fail closed to an accessible non-map state. */
 @Composable
+@SuppressLint("MissingPermission")
 fun PlainstrideRouteMap(
     points: List<MapCoordinate>,
     modifier: Modifier = Modifier,
     showUserLocation: Boolean = false,
     preciseLocationGranted: Boolean = false,
+    focusOnUser: Boolean = false,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -40,6 +46,23 @@ fun PlainstrideRouteMap(
         return
     }
     val camera = rememberCameraPositionState()
+    var didFocusOnUser by remember { mutableStateOf(false) }
+    LaunchedEffect(focusOnUser, preciseLocationGranted) {
+        if (focusOnUser && preciseLocationGranted && !didFocusOnUser) {
+            val client = LocationServices.getFusedLocationProviderClient(context)
+            fun focus(location: android.location.Location?) {
+                if (location != null && !didFocusOnUser) {
+                    didFocusOnUser = true
+                    camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(location.latitude, location.longitude), 15f))
+                }
+            }
+            client.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) focus(location)
+                    else client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, CancellationTokenSource().token).addOnSuccessListener(::focus)
+                }
+        }
+    }
     LaunchedEffect(points) {
         if (points.isNotEmpty()) {
             val bounds = LatLngBounds.builder().also { builder -> points.forEach { builder.include(LatLng(it.latitude, it.longitude)) } }.build()

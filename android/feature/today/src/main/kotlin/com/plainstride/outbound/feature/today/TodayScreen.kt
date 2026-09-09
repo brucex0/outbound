@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,7 +62,23 @@ import java.text.DateFormat
 import java.util.Date
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
+import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
+
+enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
+enum class TodayGoalChoice { CURATED, FREE, DISTANCE, TIME, CALORIES }
+
+data class TodayManualLaunch(
+    val activity: TodayActivityChoice,
+    val goal: TodayGoalChoice,
+    val distanceMeters: Double = 5_000.0,
+    val durationSeconds: Long = 1_800,
+    val calories: Int = 300,
+    val indoor: Boolean = false,
+    val voiceGuideEnabled: Boolean = true,
+    val curatedWorkout: StandaloneWorkout? = null,
+)
+data class TodayLaunchOptions(val indoor: Boolean, val voiceGuideEnabled: Boolean)
 
 @Composable
 fun TodayRoute(
@@ -69,10 +87,16 @@ fun TodayRoute(
     viewModel: TodayViewModel,
     activeSession: Boolean,
     completedToday: Boolean,
-    onStartWorkout: (WorkoutLaunchIntent) -> Unit,
+    onStartWorkout: (WorkoutLaunchIntent, TodayLaunchOptions) -> Unit,
     onStartFreestyle: () -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
+    onStartManual: (TodayManualLaunch) -> Unit,
+    onOpenMusic: () -> Unit,
+    onOpenLiveTrack: () -> Unit,
+    onOpenShoes: () -> Unit,
+    onOpenInbox: () -> Unit,
+    inboxCount: Int,
     onMessage: suspend (TodayMessage) -> Unit,
     initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
@@ -96,16 +120,23 @@ fun TodayRoute(
         state = state,
         weather = weather,
         onRefresh = viewModel::refresh,
-        onStart = { suggestion, source ->
+        onStart = { suggestion, source, options ->
             viewModel.trackWorkoutStarted(source)
-            onStartWorkout(viewModel.launchIntent(suggestion, source))
+            onStartWorkout(viewModel.launchIntent(suggestion, source), options)
         },
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
         onSetUpPlan = { viewModel.setUpPlan(); onSetUpPlan() },
+        onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
+        onOpenMusic = onOpenMusic,
+        onOpenLiveTrack = onOpenLiveTrack,
+        onOpenShoes = onOpenShoes,
+        onOpenInbox = onOpenInbox,
+        inboxCount = inboxCount,
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
+        onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
         guidanceContent = guidanceContent,
         initialWorkoutId = initialWorkoutId,
         locationGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED,
@@ -118,13 +149,20 @@ fun TodayScreen(
     state: TodayUiState,
     weather: WeatherGuidance?,
     onRefresh: () -> Unit,
-    onStart: (ActivitySuggestion, String) -> Unit,
+    onStart: (ActivitySuggestion, String, TodayLaunchOptions) -> Unit,
     onStartFreestyle: () -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
+    onStartManual: (TodayManualLaunch) -> Unit = {},
+    onOpenMusic: () -> Unit = {},
+    onOpenLiveTrack: () -> Unit = {},
+    onOpenShoes: () -> Unit = {},
+    onOpenInbox: () -> Unit = {},
+    inboxCount: Int = 0,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
+    onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     guidanceContent: @Composable () -> Unit = {},
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
@@ -132,9 +170,16 @@ fun TodayScreen(
 ) {
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
+    var showsWeather by rememberSaveable { mutableStateOf(false) }
+    var showsCatalog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val displayPreferences = remember(context) { context.getSharedPreferences("today_display", android.content.Context.MODE_PRIVATE) }
-    var cardMinimized by rememberSaveable { mutableStateOf(displayPreferences.getBoolean("planned_workout_minimized", false)) }
+    var cardMinimized by rememberSaveable { mutableStateOf(displayPreferences.getBoolean("planned_workout_minimized", true)) }
+    var activityChoice by rememberSaveable { mutableStateOf(TodayActivityChoice.PLANNED) }
+    var goalChoice by rememberSaveable { mutableStateOf(TodayGoalChoice.FREE) }
+    var indoor by rememberSaveable { mutableStateOf(false) }
+    var voiceGuideEnabled by rememberSaveable { mutableStateOf(true) }
+    var curatedWorkout by remember { mutableStateOf<StandaloneWorkout?>(null) }
     val suggestion = state.primarySuggestion
     LaunchedEffect(initialWorkoutId, suggestion?.id, suggestion?.plannedWorkoutId) {
         if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
@@ -146,6 +191,7 @@ fun TodayScreen(
             modifier = Modifier.fillMaxSize(),
             showUserLocation = locationGranted,
             preciseLocationGranted = locationGranted,
+            focusOnUser = true,
         )
         Column(
             Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -155,9 +201,10 @@ fun TodayScreen(
                 Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                TodayTopControls(weather, inboxCount, { showsWeather = true }, onOpenInbox)
                 when {
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
-                    suggestion != null -> WorkoutRecommendationCard(
+                    suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
                         suggestion = suggestion,
                         stale = state.isStale,
                         updatedAtEpochMs = state.suggestionUpdatedAtEpochMs,
@@ -179,6 +226,9 @@ fun TodayScreen(
                         onRefresh = onRefresh,
                     )
                 }
+                if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
+                    ManualGoalCard(activityChoice, goalChoice)
+                }
                 guidanceContent()
                 if (state.refreshing) Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp) {
                     Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -188,13 +238,27 @@ fun TodayScreen(
                     }
                 }
             }
-            LaunchDock(
+            ActivityLaunchDock(
                 suggestion = suggestion,
                 activeSession = state.activeSession,
                 completedToday = state.completedToday,
-                onStart = { suggestion?.let { onStart(it, "today_planned") } ?: onStartFreestyle() },
+                activityChoice = activityChoice,
+                goalChoice = goalChoice,
+                indoor = indoor,
+                voiceGuideEnabled = voiceGuideEnabled,
+                onActivityChoice = { activityChoice = it; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
+                onGoalChoice = { goalChoice = it; if (it == TodayGoalChoice.CURATED) showsCatalog = true; onLaunchConfigurationChanged("goal", it.name.lowercase()) },
+                onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
+                onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
+                onStart = {
+                    if (activityChoice == TodayActivityChoice.PLANNED) suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) } ?: onStartFreestyle()
+                    else onStartManual(TodayManualLaunch(activityChoice, goalChoice, indoor = indoor, voiceGuideEnabled = voiceGuideEnabled, curatedWorkout = curatedWorkout))
+                },
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
+                onOpenMusic = onOpenMusic,
+                onOpenLiveTrack = onOpenLiveTrack,
+                onOpenShoes = onOpenShoes,
             )
         }
     }
@@ -202,7 +266,7 @@ fun TodayScreen(
     if (showsDetail && suggestion != null) WorkoutDetailSheet(
         suggestion,
         onDismiss = { showsDetail = false },
-        onStart = { showsDetail = false; onStart(suggestion, "today_detail") },
+        onStart = { showsDetail = false; onStart(suggestion, "today_detail", TodayLaunchOptions(indoor, voiceGuideEnabled)) },
     )
     if (showsChange && suggestion != null) ChangeWorkoutSheet(
         original = suggestion,
@@ -212,6 +276,54 @@ fun TodayScreen(
         onSubmit = onSubmitConstraint,
         onDecision = { id, accept -> onDecideAdjustment(id, accept); showsChange = false },
     )
+    if (showsWeather && weather != null) AlertDialog(
+        onDismissRequest = { showsWeather = false },
+        title = { Text(weather.headline) },
+        text = { Text(weather.detail) },
+        confirmButton = { TextButton(onClick = { showsWeather = false }) { Text(stringResource(R.string.today_done)) } },
+    )
+    if (showsCatalog) CuratedWorkoutSheet(
+        workouts = (state.catalog as? CachedResource.Available)?.value?.workouts.orEmpty().filter { it.sport.equals(activityChoice.name, true) || (activityChoice == TodayActivityChoice.RUN && it.sport.equals("running", true)) },
+        onDismiss = { showsCatalog = false; if (curatedWorkout == null) goalChoice = TodayGoalChoice.FREE },
+        onChoose = { curatedWorkout = it; showsCatalog = false },
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun CuratedWorkoutSheet(workouts: List<StandaloneWorkout>, onDismiss: () -> Unit, onChoose: (StandaloneWorkout) -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(R.string.today_choose_curated), style = MaterialTheme.typography.headlineSmall)
+            if (workouts.isEmpty()) Text(stringResource(R.string.today_no_curated), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            workouts.forEach { workout -> OutlinedButton(onClick = { onChoose(workout) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("${workout.title} · ${workout.durationLabel}") } }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun TodayTopControls(weather: WeatherGuidance?, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+        if (weather != null) Surface(onClick = onWeather, shape = CircleShape, tonalElevation = 4.dp) {
+            Text(weather.headline, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+        Spacer(Modifier.width(8.dp))
+        Surface(onClick = onInbox, shape = CircleShape, tonalElevation = 4.dp) {
+            Text(if (inboxCount > 0) stringResource(R.string.today_inbox_count, inboxCount.coerceAtMost(99)) else stringResource(R.string.today_inbox), Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(stringResource(activity.labelResource()), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(goal.valueResource()), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.today_goal_edit_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
@@ -282,17 +394,48 @@ private fun PhasePreview(steps: List<String>) {
 }
 
 @Composable
-private fun LaunchDock(
+private fun ActivityLaunchDock(
     suggestion: ActivitySuggestion?,
     activeSession: Boolean,
     completedToday: Boolean,
+    activityChoice: TodayActivityChoice,
+    goalChoice: TodayGoalChoice,
+    indoor: Boolean,
+    voiceGuideEnabled: Boolean,
+    onActivityChoice: (TodayActivityChoice) -> Unit,
+    onGoalChoice: (TodayGoalChoice) -> Unit,
+    onIndoorChanged: (Boolean) -> Unit,
+    onVoiceGuideChanged: (Boolean) -> Unit,
     onStart: () -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
+    onOpenMusic: () -> Unit,
+    onOpenLiveTrack: () -> Unit,
+    onOpenShoes: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .97f))) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (activityChoice != TodayActivityChoice.PLANNED) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TodayGoalChoice.entries.filter { it != TodayGoalChoice.CALORIES || activityChoice == TodayActivityChoice.RUN || activityChoice == TodayActivityChoice.WALK }.forEach { choice ->
+                    GoalPill(stringResource(choice.labelResource()), choice == goalChoice) { onGoalChoice(choice) }
+                }
+            }
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .97f))) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TodayActivityChoice.entries.forEach { choice ->
+                    ChoiceButton(stringResource(choice.labelResource()), choice == activityChoice) { onActivityChoice(choice) }
+                }
+            }
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                UtilityButton(stringResource(R.string.today_music), onOpenMusic)
+                UtilityButton(stringResource(R.string.today_voice_guide), { onVoiceGuideChanged(!voiceGuideEnabled) }, voiceGuideEnabled)
+                UtilityButton(stringResource(R.string.today_cheer), onOpenLiveTrack)
+                UtilityButton(stringResource(R.string.today_shoes), onOpenShoes)
+                UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), { onIndoorChanged(!indoor) }, true)
+            }
             when {
                 activeSession -> Button(onClick = onReturnToSession, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.today_return_run)) }
                 completedToday -> {
@@ -305,6 +448,52 @@ private fun LaunchDock(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun ChoiceButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(15.dp), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+        Text(label, Modifier.width(76.dp).heightIn(min = 54.dp).padding(horizontal = 8.dp, vertical = 17.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun GoalPill(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = CircleShape, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) {
+        Text(label, Modifier.padding(horizontal = 18.dp, vertical = 12.dp), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean = false) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(14.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
+        Text(label, Modifier.width(82.dp).heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 15.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+    }
+}
+
+private fun TodayActivityChoice.labelResource() = when (this) {
+    TodayActivityChoice.PLANNED -> R.string.today_planned
+    TodayActivityChoice.RUN -> R.string.today_run
+    TodayActivityChoice.WALK -> R.string.today_walk
+    TodayActivityChoice.HIKE -> R.string.today_hike
+    TodayActivityChoice.BIKE -> R.string.today_bike
+}
+
+private fun TodayGoalChoice.labelResource() = when (this) {
+    TodayGoalChoice.CURATED -> R.string.today_curated
+    TodayGoalChoice.FREE -> R.string.today_free
+    TodayGoalChoice.DISTANCE -> R.string.today_distance
+    TodayGoalChoice.TIME -> R.string.today_time
+    TodayGoalChoice.CALORIES -> R.string.today_calories
+}
+
+private fun TodayGoalChoice.valueResource() = when (this) {
+    TodayGoalChoice.CURATED -> R.string.today_curated_value
+    TodayGoalChoice.FREE -> R.string.today_free
+    TodayGoalChoice.DISTANCE -> R.string.today_distance_value
+    TodayGoalChoice.TIME -> R.string.today_time_value
+    TodayGoalChoice.CALORIES -> R.string.today_calories_value
 }
 
 @Composable
