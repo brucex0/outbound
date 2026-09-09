@@ -140,12 +140,7 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
   if (decision === "accept") {
     for (const change of changes) {
       const minutes = minutesFromTitle(change.afterTitle);
-      if (minutes) {
-        await prisma.plannedWorkout.updateMany({
-          where: { id: change.workoutId, userId, status: "planned" },
-          data: { title: change.afterTitle, durationSeconds: minutes * 60 },
-        });
-      }
+      if (minutes) await resizePlannedWorkout(userId, change.workoutId, change.afterTitle, minutes * 60);
     }
   }
 
@@ -155,6 +150,38 @@ export async function decideAdjustment(userId: string, adjustmentId: string, dec
   });
   await persistModelVersion(userId, decision === "accept" ? "adjustmentApplied" : "adjustmentRejected");
   return adjustmentRecordToDTO(updated);
+}
+
+async function resizePlannedWorkout(userId: string, workoutId: string, title: string, durationSeconds: number) {
+  const prisma = getPrismaClient();
+  const workout = await prisma.plannedWorkout.findFirst({
+    where: { id: workoutId, userId, status: "planned" },
+    include: { blocks: { include: { steps: true } } },
+  });
+  if (!workout || workout.durationSeconds <= 0) return;
+  const ratio = durationSeconds / workout.durationSeconds;
+  await prisma.$transaction(async (tx) => {
+    for (const block of workout.blocks) {
+      if (block.durationSeconds != null) {
+        await tx.workoutBlock.update({
+          where: { id: block.id },
+          data: { durationSeconds: Math.max(1, Math.round(block.durationSeconds * ratio)) },
+        });
+      }
+      for (const step of block.steps) {
+        if (step.durationSeconds != null) {
+          await tx.workoutStep.update({
+            where: { id: step.id },
+            data: { durationSeconds: Math.max(1, Math.round(step.durationSeconds * ratio)) },
+          });
+        }
+      }
+    }
+    await tx.plannedWorkout.update({
+      where: { id: workout.id },
+      data: { title, durationSeconds },
+    });
+  });
 }
 
 async function ensureCalibration(userId: string, start = false) {
