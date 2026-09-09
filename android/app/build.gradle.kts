@@ -60,6 +60,9 @@ android {
             versionNameSuffix = "-debug"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8787\"")
             buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "true")
+            val debugFirebaseApplicationId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_DEBUG_APPLICATION_ID")
+                .orElse("1:186140050970:android:37ef5d92b7cbcc67a033a3")
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${debugFirebaseApplicationId.get()}\"")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {

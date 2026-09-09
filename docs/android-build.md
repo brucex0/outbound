@@ -30,6 +30,8 @@ The build must not require Firebase files, signing secrets, provider credentials
 - `debug`: uses the emulator loopback API URL and permits explicit debug identity tooling.
 - `release`: uses the production API URL, disables debug identity tooling, enables code shrinking, and contains no debug credentials or endpoints.
 
+The debug package is registered in Firebase as `com.plainstride.outbound.debug` and uses its own Firebase application ID. Override that ID with `PLAINSTRIDE_FIREBASE_DEBUG_APPLICATION_ID` only when targeting a different Firebase project; the Google server client ID remains shared with release.
+
 Application startup enforces that debug identity support cannot be enabled in a release build.
 
 ## Tests
