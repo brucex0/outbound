@@ -136,7 +136,11 @@ class AuthViewModel @Inject constructor(
         ApiErrorCode.ServerUnavailable, ApiErrorCode.RateLimited -> AuthMessage.Unavailable
         ApiErrorCode.Unauthenticated -> if (operation.value == AuthOperation.Redeem) AuthMessage.InvalidTransfer else AuthMessage.InvalidCredential
         ApiErrorCode.Conflict -> AuthMessage.Conflict
-        ApiErrorCode.InvalidRequest -> AuthMessage.Configuration
+        ApiErrorCode.InvalidRequest -> if (error.httpStatus == null) {
+            AuthMessage.Configuration
+        } else {
+            AuthMessage.InvalidCredential
+        }
         ApiErrorCode.Cancelled -> AuthMessage.Cancelled
         else -> AuthMessage.Generic
     }
