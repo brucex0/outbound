@@ -80,10 +80,10 @@ class OfflineFirstSocialRepository @Inject constructor(
                 is ApiResult.Success -> {
                     val circleResult = circles.await()
                     ApiResult.Success(core.value.copy(
-                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
+                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
                     invitations = (core.value.invitations + (circleInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"circle",it.circle.name,it.sender,it.circle.id) }).distinctBy(SocialInvitation::id),
                     recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
-                    circles = (circleResult as? ApiResult.Success)?.value?.circles.orEmpty(),
+                    circles = (circleResult as? ApiResult.Success)?.value?.let { response -> response.circles.map { circle -> circle.copy(primary = circle.id == response.primaryCircleId) }.sortedByDescending { it.primary } }.orEmpty(),
                 )) }
             }
         } }.onSuccess { home ->
@@ -93,7 +93,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     }
 
     override suspend fun loadFeed(cursor: String?) = authenticated { apiCall { api.feed(it, cursor) } }.map { SocialPage(it.posts, it.nextCursor) }
-    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) }, response.nextCursor) }
+    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) }, response.nextCursor) }
     override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
     override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }

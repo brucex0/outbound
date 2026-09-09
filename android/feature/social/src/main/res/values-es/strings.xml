@@ -46,4 +46,9 @@
     <string name="social_past_activities">Actividades anteriores</string>
     <string name="social_past_empty">Aún no hay resultados de actividades compartidas.</string>
     <string name="social_feed_empty">Aquí aparecerán las actividades que compartan tú y tus conexiones.</string>
+    <string name="social_conditions">Condiciones</string>
+    <string name="social_community">Comunidad</string>
+    <string name="social_distance">Distancia</string>
+    <string name="social_time">Tiempo</string>
+    <string name="social_pace">Ritmo</string>
 </resources>

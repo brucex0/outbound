@@ -61,18 +61,34 @@ import kotlinx.serialization.json.JsonElement
     val currentUserAttendanceMode: String? = null,
 )
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
-@Serializable data class CircleMember(val person: SocialPerson, val completed: Int = 0, val target: Int? = null, val skipped: Boolean = false)
+@Serializable data class CircleCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
+@Serializable data class CircleMember(
+    val id: String = "",
+    @SerialName("user") val person: SocialPerson,
+    val role: String = "member",
+    val isCurrentUser: Boolean = false,
+    @SerialName("contributedCount") val completed: Int = 0,
+    val commitment: CircleCommitment? = null,
+) {
+    val target: Int? get() = commitment?.targetCount
+    val skipped: Boolean get() = commitment?.skipped == true
+}
+@Serializable data class CircleFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
+@Serializable data class CircleWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
 @Serializable data class CircleSummary(
     val id: String,
     val name: String,
     val lifecycle: String,
     val primary: Boolean = false,
     val eligibleForToday: Boolean = false,
-    val focusMode: String = "none",
-    val completed: Int = 0,
-    val target: Int? = null,
+    val upcomingFocus: CircleFocus = CircleFocus(),
+    val week: CircleWeek = CircleWeek(),
     val members: List<CircleMember> = emptyList(),
-)
+) {
+    val focusMode: String get() = week.focusMode
+    val completed: Int get() = week.contributedCount
+    val target: Int? get() = week.targetCount
+}
 @Serializable data class SocialHome(
     val connections: List<SocialPerson> = emptyList(),
     val posts: List<SocialPost> = emptyList(),

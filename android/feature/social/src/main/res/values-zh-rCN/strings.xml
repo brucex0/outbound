@@ -46,4 +46,9 @@
     <string name="social_past_activities">往期活动</string>
     <string name="social_past_empty">目前还没有共享活动结果。</string>
     <string name="social_feed_empty">你和好友分享的活动会显示在这里。</string>
+    <string name="social_conditions">天气</string>
+    <string name="social_community">运动社区</string>
+    <string name="social_distance">距离</string>
+    <string name="social_time">时间</string>
+    <string name="social_pace">配速</string>
 </resources>
