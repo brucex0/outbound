@@ -28,13 +28,26 @@ data class SanitizedAnalyticsEvent(
 )
 
 interface AnalyticsSink {
+    fun setUserId(userId: String?)
     fun record(event: SanitizedAnalyticsEvent)
 }
 
 class ProductAnalytics(
     private val sink: AnalyticsSink,
 ) {
+    @Volatile
+    private var hasValidUserId = false
+
+    @Synchronized
+    fun setUserId(userId: String?) {
+        val validUserId = userId?.takeIf(String::isNotBlank)?.take(MAX_USER_ID_LENGTH)
+        hasValidUserId = false
+        sink.setUserId(validUserId)
+        hasValidUserId = validUserId != null
+    }
+
     fun record(event: AnalyticsEvent) {
+        if (!hasValidUserId) return
         val safeName = event.name.takeIf(EVENT_NAME::matches) ?: return
         val safeProperties = buildMap {
             put("platform", "android")
@@ -57,6 +70,7 @@ class ProductAnalytics(
 
     private companion object {
         const val MAX_VALUE_LENGTH = 40
+        const val MAX_USER_ID_LENGTH = 256
         val EVENT_NAME = Regex("[a-z][a-z0-9_]{1,39}")
         val SAFE_VALUE = Regex("[a-z0-9_\\-]{1,40}")
         val LOCALE_VALUE = Regex("[a-z]{2,3}(?:-[A-Za-z]{2,8}){0,2}")

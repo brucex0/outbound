@@ -54,7 +54,19 @@ class AuthViewModel @Inject constructor(
     private val mutableMessages = MutableSharedFlow<AuthMessage>(extraBufferCapacity = 1)
     val messages = mutableMessages.asSharedFlow()
 
-    init { viewModelScope.launch { sessions.restore() } }
+    init {
+        viewModelScope.launch {
+            sessions.state.collect { session ->
+                val accountId = when (session) {
+                    is SessionState.SignedIn -> session.accountId
+                    is SessionState.Refreshing -> session.accountId
+                    SessionState.Loading, SessionState.SignedOut -> null
+                }
+                analytics.setUserId(accountId)
+            }
+        }
+        viewModelScope.launch { sessions.restore() }
+    }
 
     fun signIn() = perform(AuthOperation.SignIn, "auth_sign_in") {
         google.identityToken().fold(

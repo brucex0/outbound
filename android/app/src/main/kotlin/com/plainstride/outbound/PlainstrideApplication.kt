@@ -9,6 +9,7 @@ import androidx.work.Configuration
 import javax.inject.Inject
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.plainstride.outbound.notifications.PlainstrideMessagingService
 
 @HiltAndroidApp
@@ -21,6 +22,7 @@ class PlainstrideApplication : Application(), Configuration.Provider {
         if (FirebaseApp.getApps(this).isEmpty() && BuildConfig.FIREBASE_APPLICATION_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() && BuildConfig.FIREBASE_PROJECT_ID.isNotBlank()) {
             FirebaseApp.initializeApp(this, FirebaseOptions.Builder().setApplicationId(BuildConfig.FIREBASE_APPLICATION_ID).setApiKey(BuildConfig.FIREBASE_API_KEY).setProjectId(BuildConfig.FIREBASE_PROJECT_ID).build())
         }
+        runCatching { FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(false) }
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(
                 PlainstrideMessagingService.CHANNEL_SOCIAL,

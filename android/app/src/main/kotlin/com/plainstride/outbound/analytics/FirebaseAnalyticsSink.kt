@@ -16,6 +16,12 @@ class FirebaseAnalyticsSink @Inject constructor(
 ) : AnalyticsSink {
     private val firebase = runCatching { FirebaseAnalytics.getInstance(context) }.getOrNull()
 
+    override fun setUserId(userId: String?) {
+        firebase?.setAnalyticsCollectionEnabled(false)
+        firebase?.setUserId(userId)
+        if (userId != null) firebase?.setAnalyticsCollectionEnabled(true)
+    }
+
     override fun record(event: SanitizedAnalyticsEvent) {
         val parameters = Bundle().apply {
             event.properties.forEach { (key, value) ->
