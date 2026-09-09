@@ -41,6 +41,7 @@ struct OutboundApp: App {
     @StateObject private var workoutNotificationScheduler = WorkoutNotificationScheduler.shared
     @StateObject private var communityRouteStore = CommunityRouteStore()
     @StateObject private var userPreferencesSyncStore = UserPreferencesSyncStore()
+    @StateObject private var tooltipCoordinator: TooltipCoordinator
     @State private var startupDestination: AppStartupDestination = .launching
     @State private var startupBeganAt = Date()
     @State private var hasTrackedInitialStartup = false
@@ -54,6 +55,7 @@ struct OutboundApp: App {
         _authStore = StateObject(wrappedValue: AuthStore(analyticsManager: manager))
         _activityStore = StateObject(wrappedValue: ActivityStore(analyticsManager: manager))
         _recognitionStore = StateObject(wrappedValue: RecognitionStore(analyticsManager: manager))
+        _tooltipCoordinator = StateObject(wrappedValue: TooltipCoordinator(analyticsManager: manager))
         Task { await manager.initialize() }
     }
 
@@ -64,7 +66,8 @@ struct OutboundApp: App {
                 .environment(\.outboundTheme, guideCatalogStore.selectedTheme)
                 .environment(\.analyticsManager, analyticsManager)
                 .environmentObject(appearancePreferences)
-                .preferredColorScheme(appearancePreferences.mode.colorScheme)
+                .environmentObject(tooltipCoordinator)
+                .preferredColorScheme(effectiveColorScheme)
                 .task(id: authStore.user?.id) {
                     await analyticsManager.setUserId(userId: authStore.user?.id)
                 }
@@ -91,10 +94,25 @@ struct OutboundApp: App {
         }
     }
 
+    private var effectiveColorScheme: ColorScheme? {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-OutboundDebugLiveCheerFollower")
+            || arguments.contains("-OutboundDebugCommunityRoutes") {
+            return .light
+        }
+        #endif
+        return appearancePreferences.mode.colorScheme
+    }
+
     @ViewBuilder
     private var rootView: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugLiveCheerFollower") {
+            DebugLiveCheerFollowerHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCommunityRoutes") {
+            DebugCommunityRouteLibraryHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
                 .environmentObject(personalizationStore)

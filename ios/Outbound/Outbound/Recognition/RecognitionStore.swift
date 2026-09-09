@@ -756,7 +756,15 @@ struct RecognitionHistoryView: View {
     }
 
     private func awards(for family: RecognitionFamily) -> [RecognitionAward] {
-        recognitionStore.awards.filter { RecognitionStore.definition(for: $0.badgeID).family == family }
+        recognitionStore.awards
+            .filter { RecognitionStore.definition(for: $0.badgeID).family == family }
+            .sorted { left, right in
+                if left.earnedAt != right.earnedAt {
+                    return left.earnedAt > right.earnedAt
+                }
+                return RecognitionStore.definition(for: left.badgeID).priority
+                    < RecognitionStore.definition(for: right.badgeID).priority
+            }
     }
 }
 

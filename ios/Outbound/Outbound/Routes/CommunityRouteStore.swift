@@ -192,7 +192,9 @@ final class CommunityRouteStore: ObservableObject {
     private var hasBegunAutomaticMineLoad = false
     private var loadingOperationCount = 0
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, initialDiscovered: [CommunityRoute] = []) {
+        discovered = initialDiscovered
+        hasBegunAutomaticDiscoveryLoad = !initialDiscovered.isEmpty
         let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.temporaryDirectory
         let directory = applicationSupport.appendingPathComponent("Plainstride", isDirectory: true)

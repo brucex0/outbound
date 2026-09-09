@@ -11,10 +11,20 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     @Published var statusMessage: String?
     private var recorder: AVAudioRecorder?
     private var recordingStartedAt: Date?
+    private let usesFixture: Bool
     private let api = APIClient.shared
 
+    init(initialSession: InvitedLiveShareDTO? = nil) {
+        session = initialSession
+        usesFixture = initialSession != nil
+        super.init()
+    }
+
     func refreshSessions() async { sessions = (try? await api.fetchInvitedLiveShares().sessions) ?? sessions }
-    func refresh(id: String) async { if let value = try? await api.fetchInvitedLiveShare(id: id) { session = value } }
+    func refresh(id: String) async {
+        guard !usesFixture else { return }
+        if let value = try? await api.fetchInvitedLiveShare(id: id) { session = value }
+    }
 
     func beginRecording() {
         guard !isRecording else { return }
@@ -54,9 +64,15 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
 
 struct LiveCheerView: View {
     let sessionID: String
-    var entrySource = "social"
-    @StateObject private var store = LiveCheerStore()
+    let entrySource: String
+    @StateObject private var store: LiveCheerStore
     @Environment(\.analyticsManager) private var analyticsManager
+
+    init(sessionID: String, entrySource: String = "social", initialSession: InvitedLiveShareDTO? = nil) {
+        self.sessionID = sessionID
+        self.entrySource = entrySource
+        _store = StateObject(wrappedValue: LiveCheerStore(initialSession: initialSession))
+    }
 
     var body: some View {
         Group {
@@ -107,3 +123,57 @@ struct LiveCheerView: View {
     private func metric(_ value: String, _ label: LocalizedStringKey) -> some View { VStack { Text(value).font(.headline); Text(label).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity) }
     private static func pace(_ seconds: Double) -> String { "\(Int(seconds) / 60):\(String(format: "%02d", Int(seconds) % 60))/km" }
 }
+
+#if DEBUG
+struct DebugLiveCheerFollowerHarness: View {
+    var body: some View {
+        NavigationStack {
+            LiveCheerView(
+                sessionID: Self.session.id,
+                entrySource: "debug_screenshot",
+                initialSession: Self.session
+            )
+        }
+        .preferredColorScheme(.light)
+    }
+
+    private static let session = InvitedLiveShareDTO(
+        id: "debug-live-cheer-follower",
+        status: "active",
+        runner: LiveShareRunnerDTO(
+            id: "debug-runner",
+            displayName: "Sage Runner",
+            username: "sage-runner",
+            avatarUrl: nil
+        ),
+        sport: "running",
+        title: "Golden Gate recovery run",
+        startedAt: Date(timeIntervalSince1970: 1_788_500_000),
+        expiresAt: Date(timeIntervalSince1970: 1_788_507_200),
+        endedAt: nil,
+        lastLocationAt: Date(timeIntervalSince1970: 1_788_501_718),
+        lastLocation: point(37.7696, -122.4863, offset: 1_718),
+        routePreview: [
+            point(37.7702, -122.4548, offset: 0),
+            point(37.7699, -122.4631, offset: 280),
+            point(37.7695, -122.4718, offset: 560),
+            point(37.7698, -122.4794, offset: 840),
+            point(37.7696, -122.4863, offset: 1_120),
+            point(37.7700, -122.4948, offset: 1_400),
+            point(37.7705, -122.5023, offset: 1_718),
+        ],
+        elapsedSeconds: 1_718,
+        distanceM: 4_730,
+        currentPaceSecsPerKm: 362,
+        heartRate: 148
+    )
+
+    private static func point(_ latitude: Double, _ longitude: Double, offset: TimeInterval) -> LiveSharePointDTO {
+        LiveSharePointDTO(
+            recordedAt: Date(timeIntervalSince1970: 1_788_500_000 + offset),
+            latitude: latitude,
+            longitude: longitude
+        )
+    }
+}
+#endif

@@ -562,6 +562,50 @@ struct CommunityRouteDetailView: View {
     }
 }
 
+#if DEBUG
+struct DebugCommunityRouteLibraryHarness: View {
+    @StateObject private var store = CommunityRouteStore(initialDiscovered: [Self.redmondRoute])
+    @StateObject private var measurementPreferences = MeasurementPreferences()
+
+    var body: some View {
+        NavigationStack {
+            CommunityRouteLibraryView()
+        }
+        .environmentObject(store)
+        .environmentObject(measurementPreferences)
+        .preferredColorScheme(.light)
+    }
+
+    private static let redmondRoute = CommunityRoute(
+        id: HarvestHalfMarathonSimulation.routeID,
+        name: "Redmond Harvest Half Marathon",
+        description: "A scenic out-and-back half marathon through Redmond.",
+        activityType: "running",
+        visibility: "public",
+        geometry: .init(
+            type: "LineString",
+            coordinates: HarvestHalfMarathonSimulation.route.points.map { point in
+                [point.longitude, point.latitude, point.altitude ?? 0]
+            }
+        ),
+        distanceM: 21_097.5,
+        elevationGainM: 112,
+        routeShape: "out_and_back",
+        bookmarkCount: 1,
+        completionCount: 18,
+        isBookmarked: true,
+        isOwnedByCurrentUser: false,
+        owner: .init(
+            id: "debug-active-runner",
+            username: "test-active-runner",
+            displayName: "Avery Runner",
+            avatarUrl: nil
+        ),
+        distanceFromSearchM: nil
+    )
+}
+#endif
+
 private struct PreparedRoutePreview: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager

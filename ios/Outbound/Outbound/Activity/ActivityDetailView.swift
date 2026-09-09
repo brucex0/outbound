@@ -21,6 +21,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
+    @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
     @State private var shareURL: URL?
     @State private var shareImage: UIImage?
     @State private var shareError: ShareRouteError?
@@ -182,6 +183,7 @@ struct ActivityDetailView: View {
 
                 if canPublishRoute {
                     Button {
+                        tooltipCoordinator.dismiss(.saveRoute, outcome: "opened")
                         isPublishRoutePresented = true
                     } label: {
                         ZStack(alignment: .bottomTrailing) {
@@ -197,6 +199,12 @@ struct ActivityDetailView: View {
                             localized: "activity.route.publish.accessibility_label",
                             defaultValue: "Save route to the community"
                         )
+                    )
+                    .coordinatedTooltip(
+                        .saveRoute,
+                        isEligible: canPublishRoute && !isPublishRoutePresented,
+                        text: String(localized: "tooltip.save_route", defaultValue: "Save this route to use again"),
+                        arrowEdge: .top
                     )
                 }
 
@@ -1295,14 +1303,12 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
             guard let photoAnnotation = annotation as? ActivityRoutePhotoAnnotation else { return nil }
             let identifier = "activity-photo"
             let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                ?? ActivityRoutePhotoAnnotationView(annotation: annotation, reuseIdentifier: identifier)
             view.annotation = annotation
-            if let markerView = view as? MKMarkerAnnotationView {
-                markerView.glyphImage = UIImage(systemName: "camera.fill")
-                markerView.markerTintColor = .systemOrange
-                markerView.glyphTintColor = .white
-                markerView.displayPriority = .required
-                markerView.transform = photoAnnotation.photoID == selectedPhotoID
+            if let photoView = view as? ActivityRoutePhotoAnnotationView {
+                photoView.setImage(photoAnnotation.image)
+                photoView.displayPriority = .required
+                photoView.transform = photoAnnotation.photoID == selectedPhotoID
                     ? CGAffineTransform(scaleX: 1.22, y: 1.22)
                     : .identity
             }
@@ -1404,15 +1410,54 @@ private final class ActivityRoutePolyline: MKPolyline {
 private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let photoID: UUID
+    let image: UIImage?
 
     nonisolated init?(photo: SavedPhoto) {
         guard let photoCoordinate = photo.coordinate else { return nil }
         photoID = photo.id
+        let imageURL = ActivityPersistence.imageURL(for: photo)
+        image = imageURL.isFileURL ? UIImage(contentsOfFile: imageURL.path) : nil
         coordinate = CLLocationCoordinate2D(
             latitude: photoCoordinate.latitude,
             longitude: photoCoordinate.longitude
         )
         super.init()
+    }
+}
+
+private final class ActivityRoutePhotoAnnotationView: MKAnnotationView {
+    private let thumbnailView = UIImageView()
+
+    override init(annotation: (any MKAnnotation)?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 42, height: 42)
+        centerOffset = CGPoint(x: 0, y: -21)
+        collisionMode = .circle
+        canShowCallout = false
+
+        thumbnailView.frame = bounds
+        thumbnailView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        thumbnailView.contentMode = .scaleAspectFill
+        thumbnailView.clipsToBounds = true
+        thumbnailView.layer.cornerRadius = 21
+        thumbnailView.layer.borderColor = UIColor.white.cgColor
+        thumbnailView.layer.borderWidth = 1.5
+        addSubview(thumbnailView)
+
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 4
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setImage(_ image: UIImage?) {
+        thumbnailView.image = image ?? UIImage(systemName: "camera.fill")
+        thumbnailView.tintColor = .white
+        thumbnailView.backgroundColor = image == nil ? .systemOrange : .secondarySystemBackground
     }
 }
 

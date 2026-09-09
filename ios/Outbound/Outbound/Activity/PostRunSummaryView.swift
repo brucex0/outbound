@@ -7,6 +7,7 @@ struct PostRunSummaryView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var personalizationStore: PersonalizationStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
     @Environment(\.analyticsManager) private var analyticsManager
     let summary: ActivitySummary
     let activityType: ActivityType
@@ -463,6 +464,25 @@ struct PostRunSummaryView: View {
                 MapPolyline(coordinates: segment.map(\.coordinate))
                     .stroke(.orange, lineWidth: 4)
             }
+            ForEach(draftPhotos) { photo in
+                if let coordinate = photo.metadata.coordinate {
+                    Annotation(
+                        String(localized: "activity.map.photo", defaultValue: "Activity photo"),
+                        coordinate: coordinate
+                    ) {
+                        Image(uiImage: photo.image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 42, height: 42)
+                            .clipShape(Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(.white, lineWidth: 1.5)
+                            }
+                            .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .disabled(true)
@@ -539,6 +559,12 @@ struct PostRunSummaryView: View {
                     .accessibilityIdentifier("ImportFinishPhotoButton")
                 }
             }
+            .coordinatedTooltip(
+                .photoManagement,
+                isEligible: draftPhotos.count >= 2 && selectedPhotoIDs.isEmpty,
+                text: String(localized: "tooltip.photos", defaultValue: "Press and hold to select, delete, or reorder photos"),
+                arrowEdge: .bottom
+            )
 
             if draftPhotos.isEmpty {
                 Text(String(localized: "summary.photos.empty", defaultValue: "No photo added"))
@@ -619,6 +645,7 @@ struct PostRunSummaryView: View {
     }
 
     private func togglePhotoSelection(_ photoID: UUID) {
+        tooltipCoordinator.dismiss(.photoManagement, outcome: "used")
         if selectedPhotoIDs.contains(photoID) {
             selectedPhotoIDs.remove(photoID)
         } else {

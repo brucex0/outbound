@@ -12,6 +12,7 @@ struct CameraHUDView: View {
     @EnvironmentObject var liveShareStore: LiveShareStore
     @EnvironmentObject var liveGroupStore: LiveGroupStore
     @EnvironmentObject var onboardingStore: OnboardingStore
+    @EnvironmentObject var tooltipCoordinator: TooltipCoordinator
     @ObservedObject var recorder: ActivityRecorder
     @ObservedObject var guide: VirtualGuide
     @ObservedObject var musicStore: MusicStore
@@ -209,7 +210,10 @@ struct CameraHUDView: View {
             }
             .accessibilityLabel(String(localized: "camera.action.flip", defaultValue: "Flip Camera"))
 
-            Button { activePage = .map } label: {
+            Button {
+                tooltipCoordinator.dismiss(.swipeToMap, outcome: "opened")
+                activePage = .map
+            } label: {
                 Image(systemName: "map.fill")
                     .font(.title2)
                     .foregroundStyle(.white)
@@ -217,6 +221,12 @@ struct CameraHUDView: View {
                     .background(Circle().fill(.black.opacity(0.42)))
             }
             .accessibilityLabel(String(localized: "camera.action.show_map", defaultValue: "Show Map"))
+            .coordinatedTooltip(
+                .swipeToMap,
+                isEligible: recorder.state == .paused,
+                text: String(localized: "tooltip.swipe_to_map", defaultValue: "Swipe to map"),
+                arrowEdge: .trailing
+            )
 
             ShutterButton {
                 capturePhoto()

@@ -100,6 +100,7 @@ struct RecordView: View {
     @EnvironmentObject var connectivityStore: ConnectivityStore
     @EnvironmentObject var communityRouteStore: CommunityRouteStore
     @EnvironmentObject var weatherStore: SituationalWeatherStore
+    @EnvironmentObject var tooltipCoordinator: TooltipCoordinator
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -107,7 +108,6 @@ struct RecordView: View {
     @StateObject private var launchPreferenceStore: ActivityLaunchPreferenceStore
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
-    @AppStorage("music_discovery_tip_dismissed_v1") private var hasDismissedMusicDiscoveryTip = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var isLiveWorkoutPanelExpanded = false
@@ -166,7 +166,6 @@ struct RecordView: View {
     @State private var intentBeforeSelectedRoute: SessionIntent?
     @State private var selectedRouteDistanceMeters: Double?
     @State private var selectedGuidanceChallenge: LiveGuidanceChallenge = .off
-    @State private var showsMusicDiscoveryTip = false
     @State private var didTrackRecoveryPresentation = false
     @State private var didRestoreSessionPhotos = false
     @State private var isCapturingSessionPhoto = false
@@ -302,11 +301,10 @@ struct RecordView: View {
             configureRequestedRunSimulationIfNeeded()
 #endif
             if wasVisible, !isNowVisible {
-                dismissMusicDiscoveryTip(result: "dismissed")
+                tooltipCoordinator.withdraw(.musicDiscovery)
                 return
             }
             guard !wasVisible, isNowVisible else { return }
-            presentMusicDiscoveryTipIfNeeded()
         }
         .onChange(of: startRequest) { _, _ in
             guard isEmbeddedInToday, isVisible, !showCamera else { return }
@@ -358,7 +356,6 @@ struct RecordView: View {
             await guideCatalog.refreshServerCatalog()
             guide.setSpeechEnabled(voiceGuideSpeechEnabled)
             applyWorkoutMusicSuggestion()
-            presentMusicDiscoveryTipIfNeeded()
             guide.speechEventHandler = { event in
                 Task { await musicStore.handleGuideSpeechEvent(event) }
             }
@@ -1715,18 +1712,15 @@ struct RecordView: View {
                             isConfigured: musicIsConfigured
                         ) {
                             trackFeatureExposure("music")
-                            hasDismissedMusicDiscoveryTip = true
                             dismissMusicDiscoveryTip(result: "opened")
                             setupSheet = .music
                         }
-                        .popover(isPresented: musicDiscoveryTipPresentation, arrowEdge: .bottom) {
-                            OutboundTooltip(
-                                text: String(
-                                    localized: "record.music.discovery.tip",
-                                    defaultValue: "Tap to add music"
-                                )
-                            )
-                        }
+                        .coordinatedTooltip(
+                            .musicDiscovery,
+                            isEligible: canRequestMusicDiscoveryTip,
+                            text: String(localized: "record.music.discovery.tip", defaultValue: "Tap to add music"),
+                            arrowEdge: .bottom
+                        )
 
                         setupUtilityButton(
                             title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
@@ -1738,10 +1732,17 @@ struct RecordView: View {
                             systemImage: voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
                             isConfigured: voiceGuideSpeechEnabled
                         ) {
+                            tooltipCoordinator.dismiss(.voiceGuide, outcome: "opened")
                             setVoiceGuideEnabled(
                                 isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
                             )
                         }
+                        .coordinatedTooltip(
+                            .voiceGuide,
+                            isEligible: isVisible && !showCamera && activityStore.activities.count == 1,
+                            text: String(localized: "tooltip.voice_guide", defaultValue: "Get coaching cues while you move"),
+                            arrowEdge: .bottom
+                        )
 
                         setupUtilityButton(
                             title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
@@ -1749,8 +1750,15 @@ struct RecordView: View {
                             systemImage: liveShareStore.isArmedForNextActivity ? "waveform.circle.fill" : "waveform.circle",
                             isConfigured: liveShareStore.isArmedForNextActivity
                         ) {
+                            tooltipCoordinator.dismiss(.cheerMeOn, outcome: "opened")
                             showsTrustedContacts = true
                         }
+                        .coordinatedTooltip(
+                            .cheerMeOn,
+                            isEligible: isVisible && !showCamera && socialStore.connections.contains { $0.status == "accepted" },
+                            text: String(localized: "tooltip.cheer_me_on", defaultValue: "Invite loved ones to follow along and cheer you on"),
+                            arrowEdge: .bottom
+                        )
 
                         launchShoeControl
 
@@ -1927,7 +1935,16 @@ struct RecordView: View {
                 value: String(localized: "common.none", defaultValue: "None"),
                 systemImage: "shoeprints.fill",
                 isConfigured: false
-            ) { isAddShoePresented = true }
+            ) {
+                tooltipCoordinator.dismiss(.shoes, outcome: "opened")
+                isAddShoePresented = true
+            }
+            .coordinatedTooltip(
+                .shoes,
+                isEligible: isVisible && !showCamera && activityStore.activities.count >= 1,
+                text: String(localized: "tooltip.shoes", defaultValue: "Track mileage and know when to replace your shoes"),
+                arrowEdge: .bottom
+            )
         } else {
             Menu {
                 ForEach(gearStore.activeShoes) { shoe in
@@ -2696,40 +2713,16 @@ struct RecordView: View {
         Task { await musicStore.preloadCatalog(musicSearchText) }
     }
 
-    private func presentMusicDiscoveryTipIfNeeded() {
-        guard !hasDismissedMusicDiscoveryTip,
-              !showsMusicDiscoveryTip,
-              isVisible,
-              !showCamera,
-              musicStore.snapshot.connectionState == .notConnected
-                || musicStore.snapshot.connectionState == .denied
-                || musicStore.needsPlaybackSetup
-        else { return }
-        showsMusicDiscoveryTip = true
-        trackFeatureExposure("music_discovery_tip")
-    }
-
     private func dismissMusicDiscoveryTip(result: String) {
-        guard showsMusicDiscoveryTip else { return }
-        hasDismissedMusicDiscoveryTip = true
-        showsMusicDiscoveryTip = false
-        track(.init(.activityConfigurationChanged, properties: [
-            .changeType: .string("music_discovery_tip"),
-            .selectionType: .string(result)
-        ]))
+        tooltipCoordinator.dismiss(.musicDiscovery, outcome: result)
     }
 
-    private var musicDiscoveryTipPresentation: Binding<Bool> {
-        Binding(
-            get: { showsMusicDiscoveryTip },
-            set: { isPresented in
-                if isPresented {
-                    showsMusicDiscoveryTip = true
-                } else {
-                    dismissMusicDiscoveryTip(result: "dismissed")
-                }
-            }
-        )
+    private var canRequestMusicDiscoveryTip: Bool {
+        isVisible
+            && !showCamera
+            && (musicStore.snapshot.connectionState == .notConnected
+                || musicStore.snapshot.connectionState == .denied
+                || musicStore.needsPlaybackSetup)
     }
 
     private func applyWorkoutMusicSuggestion() {

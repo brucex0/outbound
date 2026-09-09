@@ -5,6 +5,9 @@ import Foundation
 final class GuideAudioPackStore {
     static let shared = GuideAudioPackStore()
     static let sessionControlCueKeys = ["workout.pause", "workout.resume"]
+    static let countdownCueKeys = [
+        "countdown.five", "countdown.four", "countdown.three", "countdown.two", "countdown.one", "countdown.go"
+    ]
 
     private struct Manifest: Decodable {
         let contractVersion: Int

@@ -857,10 +857,7 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
-    @AppStorage("theme_discovery_tip_dismissed_v1") private var hasDismissedThemeTip = false
-    @AppStorage("theme_discovery_tip_presentation_count_v1") private var themeTipPresentationCount = 0
-    @AppStorage("activity_overflow_tip_dismissed_v1") private var hasDismissedActivityOverflowTip = false
-    @AppStorage("activity_overflow_tip_presentation_count_v1") private var activityOverflowTipPresentationCount = 0
+    @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
     @AppStorage("today_planned_workout_card_minimized_v1") private var isPlannedWorkoutCardMinimized = false
     let isSelected: Bool
     let activitySessionState: ActivitySessionPortalState
@@ -889,8 +886,6 @@ private struct SimplifiedTodayView: View {
     @State private var isCompanionInsightLoading = false
     @State private var companionRequestID: UUID?
     @State private var currentDay = Calendar.current.startOfDay(for: Date())
-    @State private var showsThemeTip = false
-    @State private var showsActivityOverflowTip = false
     @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
@@ -948,7 +943,7 @@ private struct SimplifiedTodayView: View {
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .tabBar)
             .toolbar {
-                if canPresentThemeTip || showsThemeTip {
+                if tooltipCoordinator.canEventuallyPresent(.themeDiscovery) {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             openThemeChooserFromTip()
@@ -956,14 +951,12 @@ private struct SimplifiedTodayView: View {
                             Image(systemName: "paintpalette.fill")
                         }
                         .accessibilityLabel("Change appearance")
-                        .popover(isPresented: $showsThemeTip, arrowEdge: .top) {
-                            OutboundTooltip(
-                                text: String(
-                                    localized: "theme.discovery.tip",
-                                    defaultValue: "Tap to change appearance"
-                                )
-                            )
-                        }
+                        .coordinatedTooltip(
+                            .themeDiscovery,
+                            isEligible: isSelected && activitySessionState == .idle,
+                            text: String(localized: "theme.discovery.tip", defaultValue: "Tap to change appearance"),
+                            arrowEdge: .top
+                        )
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1003,35 +996,13 @@ private struct SimplifiedTodayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCurrentDayIfNeeded()
             }
-            .task(id: isSelected) {
-                guard isSelected else { return }
-                do {
-                    try await Task.sleep(for: .milliseconds(650))
-                } catch {
-                    return
-                }
-                guard isSelected else { return }
-                if canPresentActivityOverflowTip {
-                    presentActivityOverflowTip()
-                } else if canPresentThemeTip {
-                    presentThemeTip()
-                }
-            }
             .onChange(of: isSelected) { _, isSelected in
-                if !isSelected {
-                    showsThemeTip = false
-                    showsActivityOverflowTip = false
-                } else {
+                if isSelected {
                     trackTodayCircleExposureIfNeeded()
                 }
             }
             .onChange(of: circleStore.eligiblePrimaryCircle?.id) { _, _ in
                 trackTodayCircleExposureIfNeeded()
-            }
-            .onChange(of: activitySessionState) { _, state in
-                if state != .idle {
-                    showsActivityOverflowTip = false
-                }
             }
         }
         .sheet(isPresented: $showsPlannedWorkoutDetails) {
@@ -1109,14 +1080,12 @@ private struct SimplifiedTodayView: View {
         }
         .accessibilityLabel(String(localized: "record.more_actions", defaultValue: "More activity options"))
         .accessibilityValue(activityOverflowAccessibilityValue)
-        .popover(isPresented: $showsActivityOverflowTip, arrowEdge: .top) {
-            OutboundTooltip(
-                text: String(
-                    localized: "record.more_actions.discovery.tip",
-                    defaultValue: "Tap for photos and routes"
-                )
-            )
-        }
+        .coordinatedTooltip(
+            .activityOverflow,
+            isEligible: isSelected && showsActivityOverflowMenu && activitySessionState == .idle,
+            text: String(localized: "record.more_actions.discovery.tip", defaultValue: "Tap for photos and routes"),
+            arrowEdge: .top
+        )
     }
 
     @ViewBuilder
@@ -1158,34 +1127,9 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var canPresentActivityOverflowTip: Bool {
-        showsActivityOverflowMenu
-            && activitySessionState == .idle
-            && !hasDismissedActivityOverflowTip
-            && activityOverflowTipPresentationCount < 2
-    }
-
-    private func presentActivityOverflowTip() {
-        activityOverflowTipPresentationCount += 1
-        showsThemeTip = false
-        showsActivityOverflowTip = true
-        Task {
-            await analyticsManager?.track(.init(.featureExposed, properties: [
-                .feature: .string("activity_overflow_tip")
-            ]))
-        }
-    }
-
-    private func dismissActivityOverflowTip(permanently: Bool) {
-        if permanently {
-            hasDismissedActivityOverflowTip = true
-        }
-        showsActivityOverflowTip = false
-    }
-
     private func performActivityOverflowAction(_ action: ActivityOverflowAction) {
-        let waitsForTipDismissal = showsActivityOverflowTip
-        dismissActivityOverflowTip(permanently: true)
+        let waitsForTipDismissal = tooltipCoordinator.isPresented(.activityOverflow)
+        tooltipCoordinator.dismiss(.activityOverflow, outcome: "opened")
         guard waitsForTipDismissal else {
             executeActivityOverflowAction(action)
             return
@@ -1211,25 +1155,9 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private var canPresentThemeTip: Bool {
-        !hasDismissedThemeTip && themeTipPresentationCount < 3
-    }
-
-    private func presentThemeTip() {
-        guard canPresentThemeTip else { return }
-        themeTipPresentationCount += 1
-        showsThemeTip = true
-        Task {
-            await analyticsManager?.track(.init(.featureExposed, properties: [
-                .feature: .string("theme_discovery_tip")
-            ]))
-        }
-    }
-
     private func openThemeChooserFromTip() {
-        hasDismissedThemeTip = true
-        let waitsForTipDismissal = showsThemeTip
-        showsThemeTip = false
+        let waitsForTipDismissal = tooltipCoordinator.isPresented(.themeDiscovery)
+        tooltipCoordinator.dismiss(.themeDiscovery, outcome: "opened")
         guard waitsForTipDismissal else {
             showsThemeChooser = true
             return

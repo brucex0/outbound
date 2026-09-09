@@ -24,6 +24,7 @@ backend/.local/
 .build/
 dist/
 build/
+artifacts/
 
 # Prisma
 backend/prisma/*.db

@@ -156,7 +156,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         sessionControlAudioPreloadTask?.cancel()
         sessionControlAudioPreloadTask = Task {
             await GuideAudioPackStore.shared.preloadAudio(
-                for: GuideAudioPackStore.sessionControlCueKeys
+                for: GuideAudioPackStore.sessionControlCueKeys + GuideAudioPackStore.countdownCueKeys
             )
         }
         self.profile = profile
@@ -570,6 +570,8 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private static func countdownCueKey(for text: String) -> String? {
         switch text.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "5": "countdown.five"
+        case "4": "countdown.four"
         case "3": "countdown.three"
         case "2": "countdown.two"
         case "1": "countdown.one"
