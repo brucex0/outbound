@@ -37,6 +37,7 @@ android {
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${spotifyClientId.get()}\"")
         buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"com.plainstride.outbound://spotify-callback\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["appLabel"] = "Plainstride"
         manifestPlaceholders["appAuthRedirectScheme"] = "com.plainstride.outbound"
         val mapsApiKey = providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orElse("")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey.get()
@@ -71,6 +72,7 @@ android {
             buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${debugFirebaseApplicationId.get()}\"")
             resValue("string", "google_app_id", debugFirebaseApplicationId.get())
             manifestPlaceholders["usesCleartextTraffic"] = "true"
+            manifestPlaceholders["appLabel"] = "PlainstrideD"
         }
         release {
             isMinifyEnabled = true
