@@ -41,23 +41,33 @@ import com.plainstride.outbound.core.designsystem.*
 
 @Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openTarget:(String,String)->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
+    val acceptedConnections = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }.sortedWith(compareByDescending<SocialPerson> { it.isActive }.thenBy { it.displayName.substringBefore(' ').lowercase() })
+    val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
+    val circleInvitations = state.home.invitations.filter { it.kind == "circle" }
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.social_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); IconButton(refresh) { Icon(Icons.Outlined.Refresh, stringResource(R.string.social_refresh)) }; IconButton(notifications) { BadgedBox({ if (state.home.invitations.isNotEmpty()) Badge() }) { Icon(Icons.Outlined.Notifications, stringResource(R.string.social_notifications)) } } } }
         if (state.offline) item { AssistChip({}, { Text(stringResource(R.string.social_offline)) }, leadingIcon = { Icon(Icons.Outlined.CloudOff, null) }) }
         item { OutlinedTextField(state.search, search, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }) }
         if (state.searchResults.isNotEmpty()) item { ElevatedCard { state.searchResults.forEach { PersonRow(it) { openProfile(it) } } } }
+        if (incomingRequests.isNotEmpty()) item { ElevatedCard({ openProfile(incomingRequests.first()) }, Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.PersonAdd, null); Spacer(Modifier.width(12.dp)); Text(stringResource(R.string.social_incoming_requests, incomingRequests.size), Modifier.weight(1f)); Icon(Icons.Outlined.ChevronRight, null) } } }
         item { SectionTitle(stringResource(R.string.social_connections)) }
-        item { if (state.home.connections.isEmpty()) EmptyCard(stringResource(R.string.social_connections_empty)) else LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) { items(state.home.connections, key = SocialPerson::id) { PersonChip(it) { openProfile(it) } } } }
+        item { when { state.loading -> OutlinedCard(Modifier.fillMaxWidth().height(72.dp)) { LinearProgressIndicator(Modifier.fillMaxWidth()) }; acceptedConnections.isEmpty() -> EmptyCard(stringResource(R.string.social_connections_empty)); else -> LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) { items(acceptedConnections, key = SocialPerson::id) { PersonChip(it) { openProfile(it) } } } } }
         item { Row(verticalAlignment=Alignment.CenterVertically){Box(Modifier.weight(1f)){SectionTitle(stringResource(R.string.social_circle))};TextButton(createCircle){Icon(Icons.Outlined.Add,null);Text(stringResource(R.string.social_circle_create))}} }
+        items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
         if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle -> OutlinedCard({ openCircle(circle) }, Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp)) { Text(circle.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold); circle.target?.let { Text("${circle.completed}/$it") } } } }
-        else item { if (state.home.invitations.isNotEmpty()) InvitationCard(state.home.invitations.first()) { openTarget("invitation",it.id) } else EmptyCard(stringResource(R.string.social_circle_empty)) }
+        else if (!state.loading && acceptedConnections.isNotEmpty()) item { EmptyCard(stringResource(R.string.social_circle_empty)) }
+        if (state.home.recognitions.isNotEmpty()) item { ElevatedCard(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned)) } } } }
         item { SectionTitle(stringResource(R.string.social_upcoming)) }
         items(state.home.upcomingRuns, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
         if (state.home.upcomingRuns.isEmpty()) item { EmptyCard(stringResource(R.string.social_upcoming_empty)) }
+        item { SectionTitle(stringResource(R.string.social_past_activities)) }
+        items(state.home.pastEvents, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
+        if (state.home.pastEvents.isEmpty()) item { EmptyCard(stringResource(R.string.social_past_empty)) }
         item { SectionTitle(stringResource(R.string.social_groups)) }
         items(state.home.groups, key = SocialGroup::id) { GroupCard(it) { group(it) } }
         item { SectionTitle(stringResource(R.string.social_feed)) }
         items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { cheer(post) }, { comments(post) }, { safetyPost = post }) }
+        if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty)) }
         if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
     }

@@ -40,4 +40,10 @@
     <string name="social_title">动态</string>
     <string name="social_upcoming">即将开始</string>
     <string name="social_upcoming_empty">暂时没有即将开始的活动。</string>
+    <string name="social_incoming_requests">%1$d 个好友请求</string>
+    <string name="social_guide_noticed">向导发现了这个</string>
+    <string name="social_recognition_earned">你获得了新的社交里程碑。</string>
+    <string name="social_past_activities">往期活动</string>
+    <string name="social_past_empty">目前还没有共享活动结果。</string>
+    <string name="social_feed_empty">你和好友分享的活动会显示在这里。</string>
 </resources>

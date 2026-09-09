@@ -9,17 +9,19 @@ import kotlinx.serialization.json.JsonElement
     val displayName: String,
     val username: String? = null,
     val avatarUrl: String? = null,
-    val relationship: String = "none",
+    @SerialName("relationship") val relationshipDetails: SocialRelationship? = null,
+    @kotlinx.serialization.Transient val relationship: String = relationshipDetails?.status ?: "none",
     val isActive: Boolean = false,
     val recognitions: List<RecognitionAward> = emptyList(),
-    val connectionId: String? = null,
-    val connectionDirection: String? = null,
+    @kotlinx.serialization.Transient val connectionId: String? = relationshipDetails?.id,
+    @kotlinx.serialization.Transient val connectionDirection: String? = relationshipDetails?.direction,
 )
+@Serializable data class SocialRelationship(val id: String, val status: String, val direction: String)
 @Serializable data class RecognitionAward(val badgeId: String, val awardedAt: String, val shareable: Boolean = false)
 @Serializable data class RoutePoint(val latitude: Double, val longitude: Double)
 @Serializable data class FeedActivity(
     val id: String,
-    val title: String,
+    val title: String = "Activity",
     val type: String = "running",
     val startedAt: String,
     val distanceM: Double? = null,
@@ -40,6 +42,8 @@ import kotlinx.serialization.json.JsonElement
     val commentCount: Int = 0,
     @SerialName("currentUserCheered")
     val viewerHasCheered: Boolean = false,
+    val isCurrentUser: Boolean = false,
+    val createdAt: String? = null,
 )
 @Serializable data class SocialGroup(val id: String, val name: String, val description: String? = null, val memberCount: Int = 0, val joined: Boolean = false)
 @Serializable data class SocialEvent(
@@ -50,6 +54,11 @@ import kotlinx.serialization.json.JsonElement
     val locationName: String? = null,
     val participationMode: String = "hybrid",
     @SerialName("currentUserGoing") val joined: Boolean = false,
+    val status: String = "scheduled",
+    val note: String? = null,
+    val attendeeCount: Int = 0,
+    val currentUserRole: String = "viewer",
+    val currentUserAttendanceMode: String? = null,
 )
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
 @Serializable data class CircleMember(val person: SocialPerson, val completed: Int = 0, val target: Int? = null, val skipped: Boolean = false)
@@ -83,3 +92,10 @@ enum class ReportReason(val wireValue:String){ HARASSMENT("harassment"),HATE("ha
 
 enum class SocialError { SIGNED_OUT, OFFLINE, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, SERVER, INVALID_RESPONSE, UNEXPECTED }
 class SocialException(val reason: SocialError) : Exception(reason.name)
+
+@Serializable data class BlockedAccount(val person: SocialPerson, val blockedAt: String? = null)
+@Serializable data class ConnectionLink(val code: String, val url: String)
+@Serializable data class ConnectionLinkResult(val result: String, val person: SocialPerson)
+@Serializable data class SocialNotification(val id: String, val type: String, val objectId: String, val message: String, val readAt: String? = null)
+@Serializable data class EventParticipant(val person: SocialPerson, val status: String, val outcome: String? = null, val attendanceMode: String? = null, val recordedActivity: FeedActivity? = null)
+@Serializable data class ActivityEventResult(val event: SocialEvent? = null, val participants: List<EventParticipant> = emptyList())

@@ -30,6 +30,10 @@ interface SocialRepository {
     suspend fun setGroupMembership(groupId: String, joined: Boolean): Result<Unit>
     suspend fun reportPost(postId: String, reason: ReportReason): Result<Unit>
     suspend fun block(personId: String): Result<Unit>
+    suspend fun blockedAccounts(): Result<List<BlockedAccount>>
+    suspend fun unblock(personId: String): Result<Unit>
+    suspend fun connectionLink(): Result<ConnectionLink>
+    suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
     suspend fun circles(): Result<List<CircleSummary>>
     suspend fun circle(id: String): Result<CircleSummary>
     suspend fun cheerCircle(id: String, recipientId: String, preset: String): Result<Unit>
@@ -44,6 +48,11 @@ interface SocialRepository {
     suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean):Result<CircleSummary>
     suspend fun setCircleArchived(circleId:String,archived:Boolean):Result<CircleSummary>
     suspend fun event(id:String):Result<SocialEvent>
+    suspend fun createEvent(body:CreateEventBody):Result<SocialEvent>
+    suspend fun eventResults(id:String):Result<ActivityEventResult>
+    suspend fun linkActivity(eventId:String,activityId:String):Result<Unit>
+    suspend fun markEventWithoutRecording(eventId:String):Result<Unit>
+    suspend fun setWorkoutPresence(clientSessionId:String,active:Boolean):Result<Unit>
     suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean):Result<Unit>
 }
 
@@ -94,6 +103,10 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun setGroupMembership(groupId: String, joined: Boolean) = authenticated { auth -> apiCall { if (joined) api.joinGroup(auth, groupId) else api.leaveGroup(auth, groupId) } }
     override suspend fun reportPost(postId: String, reason: ReportReason) = authenticated { apiCall { api.reportPost(it, ReportBody("post", postId, reason.wireValue)) } }
     override suspend fun block(personId: String) = authenticated { apiCall { api.block(it, personId) } }
+    override suspend fun blockedAccounts() = authenticated { apiCall { api.blocks(it) } }.map { it.blocks }
+    override suspend fun unblock(personId: String) = authenticated { apiCall { api.unblock(it, personId) } }
+    override suspend fun connectionLink() = authenticated { apiCall { api.connectionLink(it) } }
+    override suspend fun consumeConnectionLink(code: String) = authenticated { apiCall { api.consumeConnectionLink(it, code) } }
     override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
     override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }
     override suspend fun cheerCircle(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.circleCheer(it, id, CheerBody(recipientId, preset)) } }
@@ -108,6 +121,11 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusCircle(it,circleId,CircleFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
     override suspend fun setCircleArchived(circleId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveCircle(auth,circleId)else api.reactivateCircle(auth,circleId)}}
     override suspend fun event(id:String)=authenticated{apiCall{api.event(it,id)}}
+    override suspend fun createEvent(body:CreateEventBody)=authenticated{apiCall{api.createEvent(it,body)}}
+    override suspend fun eventResults(id:String)=authenticated{apiCall{api.eventResults(it,id)}}
+    override suspend fun linkActivity(eventId:String,activityId:String)=authenticated{apiCall{api.linkActivity(it,eventId,LinkActivityBody(activityId))}}
+    override suspend fun markEventWithoutRecording(eventId:String)=authenticated{apiCall{api.noRecording(it,eventId)}}
+    override suspend fun setWorkoutPresence(clientSessionId:String,active:Boolean)=authenticated{auth->apiCall{if(active)api.setPresence(auth,PresenceBody(clientSessionId))else api.clearPresence(auth,clientSessionId)}}
     override suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=authenticated{auth->when{
         invitation.kind=="circle"&&accept->apiCall{api.acceptCircleInvitation(auth,invitation.id)}.map{Unit}
         invitation.kind=="circle"->apiCall{api.declineCircleInvitation(auth,invitation.id)}

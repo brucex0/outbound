@@ -12,7 +12,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class FeedResponse(val posts: List<SocialPost> = emptyList(), val nextCursor: String? = null)
 @Serializable data class ConnectionDto(val id: String, val status: String, val direction: String, val person: SocialPerson, val isInActiveWorkout: Boolean = false)
 @Serializable data class ConnectionsResponse(val connections: List<ConnectionDto> = emptyList(), val nextCursor: String? = null)
-@Serializable data class PeopleResponse(val people: List<SocialPerson> = emptyList())
+@Serializable data class PeopleResponse(val people: List<SocialPerson> = emptyList(), val matchMode: String = "unknown")
 @Serializable data class ProfileResponse(val person: SocialPerson, val recognitions: List<RecognitionAward> = emptyList())
 @Serializable data class GroupsResponse(val groups: List<SocialGroup> = emptyList())
 @Serializable data class CirclesResponse(val circles: List<CircleSummary> = emptyList(), val primaryCircleId: String? = null)
@@ -32,6 +32,12 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class CircleInvitationCircle(val id:String,val name:String)
 @Serializable data class CircleInvitationDto(val id:String,val sender:SocialPerson,val circle:CircleInvitationCircle)
 @Serializable data class CircleInvitationsResponse(val invitations:List<CircleInvitationDto> = emptyList())
+@Serializable data class BlocksResponse(val blocks: List<BlockedAccount> = emptyList())
+@Serializable data class NotificationsResponse(val notifications: List<SocialNotification> = emptyList())
+@Serializable data class PresenceBody(val clientSessionId: String)
+@Serializable data class CreateEventBody(val title:String,val startsAt:String,val durationMinutes:Int=60,val locationName:String?=null,val latitude:Double?=null,val longitude:Double?=null,val note:String?=null,val sourceCircleId:String?=null)
+@Serializable data class EventInviteBatchBody(val recipientUserIds:List<String>)
+@Serializable data class LinkActivityBody(val activityId:String)
 
 interface SocialApiService {
     @GET("v1/social/home") suspend fun home(@Header("Authorization") auth: String): Response<SocialHome>
@@ -50,6 +56,14 @@ interface SocialApiService {
     @DELETE("v1/social/posts/{id}") suspend fun deletePost(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @POST("v1/social/reports") suspend fun reportPost(@Header("Authorization") auth: String, @Body body: ReportBody): Response<Unit>
     @POST("v1/social/users/{id}/block") suspend fun block(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @DELETE("v1/social/users/{id}/block") suspend fun unblock(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @GET("v1/social/blocks") suspend fun blocks(@Header("Authorization") auth: String): Response<BlocksResponse>
+    @POST("v1/social/connection-links") suspend fun connectionLink(@Header("Authorization") auth: String): Response<ConnectionLink>
+    @POST("v1/social/connection-links/{code}/request") suspend fun consumeConnectionLink(@Header("Authorization") auth: String, @Path("code") code: String): Response<ConnectionLinkResult>
+    @PUT("v1/social/workout-presence") suspend fun setPresence(@Header("Authorization") auth: String, @Body body: PresenceBody): Response<Unit>
+    @DELETE("v1/social/workout-presence/{id}") suspend fun clearPresence(@Header("Authorization") auth: String, @Path("id") clientSessionId: String): Response<Unit>
+    @GET("v1/social/notifications") suspend fun notifications(@Header("Authorization") auth: String): Response<NotificationsResponse>
+    @POST("v1/social/notifications/read-all") suspend fun readNotifications(@Header("Authorization") auth: String): Response<Unit>
     @GET("v1/social/posts/{id}/comments") suspend fun comments(@Header("Authorization") auth:String,@Path("id") id:String):Response<CommentsResponse>
     @POST("v1/social/posts/{id}/comments") suspend fun comment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CommentBody):Response<SocialComment>
     @DELETE("v1/social/comments/{id}") suspend fun deleteComment(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
@@ -57,6 +71,12 @@ interface SocialApiService {
     @DELETE("v1/social/activity-events/{id}/rsvp") suspend fun leaveEvent(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @POST("v1/social/activity-events/{id}/invitations") suspend fun inviteEvent(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:EventInviteBody):Response<EventInvitation>
     @GET("v1/social/activity-events/{id}") suspend fun event(@Header("Authorization") auth:String,@Path("id") id:String):Response<SocialEvent>
+    @POST("v1/social/activity-events") suspend fun createEvent(@Header("Authorization") auth:String,@Body body:CreateEventBody):Response<SocialEvent>
+    @POST("v1/social/activity-events/{id}/invitations/batch") suspend fun inviteEventBatch(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:EventInviteBatchBody):Response<Unit>
+    @DELETE("v1/social/activity-events/{eventId}/invitations/{invitationId}") suspend fun cancelEventInvitation(@Header("Authorization") auth:String,@Path("eventId") eventId:String,@Path("invitationId") invitationId:String):Response<Unit>
+    @POST("v1/social/activity-events/{id}/link-activity") suspend fun linkActivity(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:LinkActivityBody):Response<Unit>
+    @POST("v1/social/activity-events/{id}/no-recording") suspend fun noRecording(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @GET("v1/social/activity-events/{id}/results") suspend fun eventResults(@Header("Authorization") auth:String,@Path("id") id:String):Response<ActivityEventResult>
     @POST("v1/social/invitations/{id}/accept") suspend fun acceptEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody=AttendanceBody()):Response<Unit>
     @POST("v1/social/invitations/{id}/decline") suspend fun declineEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/circles") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
