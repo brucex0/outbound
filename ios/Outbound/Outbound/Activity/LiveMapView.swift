@@ -127,7 +127,7 @@ struct LiveMapView: View {
             }
             if let currentCoordinate {
                 Annotation(
-                    String(localized: "map.annotation.current_activity", defaultValue: "Current activity position"),
+                    "",
                     coordinate: currentCoordinate
                 ) {
                     LiveActivityAvatar(
@@ -136,6 +136,10 @@ struct LiveMapView: View {
                         course: locationManager.location?.course,
                         isMoving: recorder.state == .active,
                         reduceMotion: reduceMotion
+                    )
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(
+                        String(localized: "map.annotation.current_activity", defaultValue: "Current activity position")
                     )
                 }
             }
@@ -515,7 +519,6 @@ private struct LiveActivityAvatar: View {
                 .frame(width: 30, height: 30)
                 .shadow(color: .white.opacity(0.9), radius: 1.5)
                 .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                .accessibilityHidden(true)
         }
     }
 
