@@ -22,6 +22,8 @@
     <string name="today_curated_value">Elegir entrenamiento</string>
     <string name="today_detail_summary">%1$d minutos · %2$s</string>
     <string name="today_details">Detalles</string>
+    <string name="today_plan">Plan</string>
+    <string name="today_change_plan">Cambiar plan</string>
     <string name="today_distance">Distancia</string>
     <string name="today_distance_value">5,0 km</string>
     <string name="today_done">Listo</string>

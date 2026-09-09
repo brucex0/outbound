@@ -22,6 +22,8 @@
     <string name="today_curated_value">Choose a workout</string>
     <string name="today_detail_summary">%1$d minutes · %2$s</string>
     <string name="today_details">Details</string>
+    <string name="today_plan">Plan</string>
+    <string name="today_change_plan">Change plan</string>
     <string name="today_distance">Distance</string>
     <string name="today_distance_value">5.0 km</string>
     <string name="today_done">Done</string>
