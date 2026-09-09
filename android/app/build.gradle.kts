@@ -24,9 +24,15 @@ android {
         val firebaseApplicationId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_APPLICATION_ID").orElse("")
         val firebaseApiKey = providers.gradleProperty("PLAINSTRIDE_FIREBASE_API_KEY").orElse("")
         val firebaseProjectId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_PROJECT_ID").orElse("")
+        val firebaseMessagingSenderId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_MESSAGING_SENDER_ID")
+            .orElse("186140050970")
         buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${firebaseApplicationId.get()}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebaseApiKey.get()}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebaseProjectId.get()}\"")
+        resValue("string", "google_app_id", firebaseApplicationId.get())
+        resValue("string", "google_api_key", firebaseApiKey.get())
+        resValue("string", "project_id", firebaseProjectId.get())
+        resValue("string", "gcm_defaultSenderId", firebaseMessagingSenderId.get())
         val spotifyClientId = providers.gradleProperty("PLAINSTRIDE_SPOTIFY_CLIENT_ID").orElse("")
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${spotifyClientId.get()}\"")
         buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"com.plainstride.outbound://spotify-callback\"")
@@ -63,6 +69,7 @@ android {
             val debugFirebaseApplicationId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_DEBUG_APPLICATION_ID")
                 .orElse("1:186140050970:android:37ef5d92b7cbcc67a033a3")
             buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${debugFirebaseApplicationId.get()}\"")
+            resValue("string", "google_app_id", debugFirebaseApplicationId.get())
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {
@@ -81,6 +88,7 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+        resValues = true
     }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
