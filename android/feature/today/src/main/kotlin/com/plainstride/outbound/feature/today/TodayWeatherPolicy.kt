@@ -21,6 +21,9 @@ sealed interface TodayWeatherResult {
 }
 
 data class WeatherGuidance(
+    val placeName: String?,
+    val symbolName: String,
+    val temperatureCelsius: Double,
     val headline: String,
     val detail: String,
     val attribution: String,
@@ -39,6 +42,9 @@ class DefaultTodayWeatherPolicy @Inject constructor(
             val snapshot = result.snapshot
             TodayWeatherResult.Available(
                 WeatherGuidance(
+                    placeName = snapshot.placeName,
+                    symbolName = snapshot.symbolName,
+                    temperatureCelsius = snapshot.temperatureCelsius,
                     headline = context.getString(headlineResource(snapshot.headlineKey)),
                     detail = snapshot.guidanceKey?.let { context.getString(guidanceResource(it)) }
                         ?: snapshot.condition.replaceFirstChar { it.titlecase(Locale.getDefault()) },

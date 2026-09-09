@@ -149,6 +149,7 @@ private fun SignedInApp(
     navigationUri: android.net.Uri?,
     onNavigationUriConsumed: () -> Unit,
 ) {
+    val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
     var onboardingResolved by remember { mutableStateOf(false) }
     var forceOnboardingReplay by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -272,6 +273,7 @@ private fun SignedInApp(
                             onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
+                            useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
                             inboxCount = integration.notifications.size,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))

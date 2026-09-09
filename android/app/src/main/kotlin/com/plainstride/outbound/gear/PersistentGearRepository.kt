@@ -32,7 +32,7 @@ class PersistentGearRepository @Inject constructor(
     }
     override suspend fun activityDistances(): List<ActivityGearDistance> {
         val id = accountId ?: return emptyList()
-        return activities.observePage(id, 0, 500).first().activities.mapNotNull { activity ->
+        return activities.observePage(id, offset = 0, limit = 200).first().activities.mapNotNull { activity ->
             val gearId = activity.gearJson?.let { raw -> UUID_REGEX.find(raw)?.value?.let { runCatching { UUID.fromString(it) }.getOrNull() } } ?: return@mapNotNull null
             ActivityGearDistance(gearId, activity.distanceM, Instant.parse(activity.startedAt))
         }

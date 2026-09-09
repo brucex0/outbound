@@ -30,6 +30,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +58,7 @@ import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Route
@@ -88,6 +91,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.StandaloneWorkout
@@ -125,6 +129,7 @@ fun TodayRoute(
     onOpenShoes: () -> Unit,
     onOpenInbox: () -> Unit,
     onFindRoute: () -> Unit,
+    useFahrenheit: Boolean,
     inboxCount: Int,
     onMessage: suspend (TodayMessage) -> Unit,
     initialWorkoutId: String? = null,
@@ -162,6 +167,7 @@ fun TodayRoute(
         onOpenShoes = onOpenShoes,
         onOpenInbox = onOpenInbox,
         onFindRoute = onFindRoute,
+        useFahrenheit = useFahrenheit,
         inboxCount = inboxCount,
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
@@ -189,6 +195,7 @@ fun TodayScreen(
     onOpenShoes: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
     onFindRoute: () -> Unit = {},
+    useFahrenheit: Boolean = false,
     inboxCount: Int = 0,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
@@ -236,7 +243,7 @@ fun TodayScreen(
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().weight(1f)) {
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TodayTopControls(weather, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)
+                TodayTopControls(weather, useFahrenheit, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)
                 Box {
                     Surface(onClick = { overflowExpanded = true }, shape = CircleShape, tonalElevation = 4.dp) {
                         setupPhoto?.let { Image(it.asImageBitmap(), stringResource(R.string.today_more), Modifier.size(44.dp).clip(CircleShape)) }
@@ -362,21 +369,28 @@ private fun CuratedWorkoutSheet(workouts: List<StandaloneWorkout>, onDismiss: ()
 }
 
 @Composable
-private fun TodayTopControls(weather: WeatherGuidance?, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
+private fun TodayTopControls(weather: WeatherGuidance?, useFahrenheit: Boolean, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Surface(onClick = onWeather, shape = CircleShape, tonalElevation = 4.dp) {
             Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Cloud, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp))
-                Text(weather?.headline ?: stringResource(R.string.today_weather), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Text(weather?.compactLabel(useFahrenheit) ?: stringResource(R.string.today_weather), style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
         }
         Surface(onClick = onInbox, shape = CircleShape, tonalElevation = 4.dp) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Mail, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp))
-                Text(if (inboxCount > 0) stringResource(R.string.today_inbox_count, inboxCount.coerceAtMost(99)) else stringResource(R.string.today_inbox), style = MaterialTheme.typography.labelLarge)
+            Box(Modifier.padding(11.dp)) {
+                BadgedBox(badge = { if (inboxCount > 0) Badge { Text(inboxCount.coerceAtMost(99).toString()) } }) {
+                    Icon(Icons.Default.Notifications, stringResource(R.string.today_inbox), Modifier.size(22.dp))
+                }
             }
         }
     }
+}
+
+private fun WeatherGuidance.compactLabel(useFahrenheit: Boolean): String {
+    val temperature = if (useFahrenheit) temperatureCelsius * 9 / 5 + 32 else temperatureCelsius
+    val unit = if (useFahrenheit) "°F" else "°C"
+    return listOfNotNull(placeName?.takeIf(String::isNotBlank), "${temperature.roundToInt()}$unit").joinToString(" ")
 }
 
 @Composable
