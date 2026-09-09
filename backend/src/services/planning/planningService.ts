@@ -336,6 +336,41 @@ export async function rebuildPlan(
   return assemblePlanningState(userId, "updated");
 }
 
+export async function requestPlanReview(userId: string): Promise<{
+  status: "proposed" | "unchanged" | "deferred" | "noPlan";
+  adjustmentId?: string;
+  explanation: string;
+}> {
+  const prisma = getPrismaClient();
+  const plan = await activePlanForUser(userId);
+  if (!plan) return { status: "noPlan", explanation: "You need an active training plan before I can recalibrate it." };
+
+  const existing = await prisma.personalizationAdjustment.findFirst({
+    where: { userId, status: "proposed" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) return { status: "proposed", adjustmentId: existing.id, explanation: existing.explanation };
+
+  const event = await enqueuePlanningEvent({
+    userId,
+    planId: plan.id,
+    type: "planReviewRequested",
+    priority: 95,
+    dedupeKey: `user:${userId}:plan:${plan.id}:assistant_plan_review`,
+  });
+  const result = await processPlanningEventById(event.id);
+  if (result.message.toLowerCase().includes("deferred")) {
+    return { status: "deferred", explanation: result.message };
+  }
+
+  const adjustment = await prisma.personalizationAdjustment.findFirst({
+    where: { userId, status: "proposed" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (adjustment) return { status: "proposed", adjustmentId: adjustment.id, explanation: adjustment.explanation };
+  return { status: "unchanged", explanation: result.message };
+}
+
 export async function getAdjustments(userId: string) {
   return getPrismaClient().planAdjustmentEvent.findMany({
     where: { userId },

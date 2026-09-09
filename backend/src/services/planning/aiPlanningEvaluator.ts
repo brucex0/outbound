@@ -34,13 +34,13 @@ export async function evaluateAndProposePlanAdjustment(input: {
   eventType: PlanningEventType;
   eventId: string;
   athleteState: AthleteTrainingStateSnapshot;
-}): Promise<{ status: "proposed" | "unchanged" | "existing"; provider: "gemini" | "fallback"; candidateId: string }> {
+}): Promise<{ status: "proposed" | "unchanged" | "existing"; provider: "gemini" | "fallback"; candidateId: string; adjustmentId?: string; explanation: string }> {
   const prisma = getPrismaClient();
   const existing = await prisma.personalizationAdjustment.findFirst({
     where: { userId: input.userId, status: "proposed" },
     orderBy: { createdAt: "desc" },
   });
-  if (existing) return { status: "existing", provider: "fallback", candidateId: "existing" };
+  if (existing) return { status: "existing", provider: "fallback", candidateId: "existing", adjustmentId: existing.id, explanation: existing.explanation };
 
   const [workouts, completions, feedback] = await Promise.all([
     latestUpcomingWorkouts(input.userId),
@@ -55,7 +55,7 @@ export async function evaluateAndProposePlanAdjustment(input: {
       select: { effort: true, continuationCapacity: true },
     }),
   ]);
-  if (workouts.length === 0) return { status: "unchanged", provider: "fallback", candidateId: "maintain" };
+  if (workouts.length === 0) return { status: "unchanged", provider: "fallback", candidateId: "maintain", explanation: "There are no upcoming planned workouts to recalibrate." };
 
   const candidates = safeCandidates(input.athleteState, input.eventType);
   const context = {
@@ -82,7 +82,7 @@ export async function evaluateAndProposePlanAdjustment(input: {
 
   const generated = await chooseWithGemini(context).catch(() => null);
   const selection = validateSelection(generated ?? fallbackSelection(input.eventType, input.athleteState), candidates, input.athleteState, input.eventType);
-  if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain" };
+  if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain", explanation: selection.explanation };
 
   const candidate = candidates.find((item) => item.id === selection.candidateId)!;
   const changes = workouts.slice(0, 3).map((workout) => {
@@ -96,9 +96,9 @@ export async function evaluateAndProposePlanAdjustment(input: {
       scheduledDate: workout.scheduledDate.toISOString(),
     };
   }).filter((change) => change.beforeDurationSeconds !== change.afterDurationSeconds);
-  if (changes.length === 0) return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: selection.candidateId };
+  if (changes.length === 0) return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: selection.candidateId, explanation: selection.explanation };
 
-  await prisma.personalizationAdjustment.create({
+  const adjustment = await prisma.personalizationAdjustment.create({
     data: {
       userId: input.userId,
       reasonCode: selection.reasonCode,
@@ -108,7 +108,7 @@ export async function evaluateAndProposePlanAdjustment(input: {
       policyVersion: `${POLICY_VERSION}:${generated ? "gemini" : "fallback"}:${selection.confidence}`,
     },
   });
-  return { status: "proposed", provider: generated ? "gemini" : "fallback", candidateId: selection.candidateId };
+  return { status: "proposed", provider: generated ? "gemini" : "fallback", candidateId: selection.candidateId, adjustmentId: adjustment.id, explanation: adjustment.explanation };
 }
 
 async function latestUpcomingWorkouts(userId: string): Promise<UpcomingWorkout[]> {

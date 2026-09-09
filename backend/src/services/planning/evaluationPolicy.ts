@@ -23,7 +23,7 @@ export async function evaluationAdmission(
   if (CRITICAL_EVENTS.has(type)) return { allowed: true, critical: true };
 
   const prisma = getPrismaClient();
-  if (type === "manualRebuild") {
+  if (type === "manualRebuild" || type === "planReviewRequested") {
     const cooldownMinutes = positiveInteger(
       process.env.PLANNING_MANUAL_COOLDOWN_MINUTES,
       DEFAULT_MANUAL_COOLDOWN_MINUTES
@@ -32,7 +32,7 @@ export async function evaluationAdmission(
     const prior = await prisma.planningEvent.findFirst({
       where: {
         userId: event.userId,
-        type: "manualRebuild",
+        type: { in: ["manualRebuild", "planReviewRequested"] },
         status: { in: ["completed", "ignored"] },
         processedAt: { gte: since },
         id: { not: event.id },

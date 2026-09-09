@@ -30,6 +30,7 @@ export type PlanningEventType =
   | "scheduleUpdated"
   | "weeklyRollover"
   | "manualRebuild"
+  | "planReviewRequested"
   | "healthImportCompleted"
   | "painFlagged"
   | "workoutMissed"

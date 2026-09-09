@@ -11,6 +11,17 @@ export function generateCandidateAction(prompt: string, context: CompiledContext
   const unsafeWeather = ["weather.heat_risk", "weather.lightning", "weather.air_quality_risk"].some((type) => signalTypes.has(type));
   const requestedCalories = parseRequestedCalories(normalized);
   const asksForCaloriePreference = /(make|set|use|prefer).*(easy|recovery|regular).*(calorie|kcal)|calorie[- ]based.*(easy|recovery|run)/.test(normalized);
+  const asksForPlanRecalibration = /\b(recalibrat(?:e|ion)|replan|reassess)\b.*\b(plan|training|workouts?)\b|\b(review|adjust|update)\b.*\b(my|the)\b.*\b(training )?plan\b/.test(normalized);
+
+  if (asksForPlanRecalibration) {
+    return {
+      actionType: "recalibrate_plan",
+      permissionTier: 1,
+      requiresConfirmation: false,
+      evidenceIds: context.includedRefs.map((reference) => reference.id),
+      rationale: "The runner explicitly requested an AI review of the current training plan.",
+    };
+  }
 
   if (asksForCaloriePreference) {
     return {

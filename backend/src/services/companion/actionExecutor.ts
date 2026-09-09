@@ -4,6 +4,7 @@ import { appendRunnerEvidence } from "./evidenceService.js";
 import { persistCompanionModelVersion } from "./runnerModelProjector.js";
 import { rebuildPlan } from "../planning/planningService.js";
 import { estimateCalorieRunFromTarget, resolveLearnedRunPace } from "../planning/runGoalEstimator.js";
+import { decideAdjustment } from "../personalization/personalizationService.js";
 
 export async function createAgentAction(
   prisma: PrismaClient,
@@ -51,13 +52,16 @@ export async function decideAndExecuteAgentAction(
   const action = await prisma.agentAction.findFirst({ where: { id: actionId, userId } });
   if (!action) throw new Error("Companion action not found.");
   if (action.status !== "proposed") return action;
+  const proposal = action.proposal as unknown as CompanionActionProposal;
   if (decision === "reject") {
+    if (proposal.actionType === "recalibrate_plan" && proposal.adjustmentId) {
+      await decideAdjustment(userId, proposal.adjustmentId, "reject");
+    }
     const rejected = await prisma.agentAction.update({ where: { id: action.id }, data: { status: "rejected", decidedAt: new Date() } });
     await recordOutcome(prisma, userId, action.id, "rejected", {});
     return rejected;
   }
 
-  const proposal = action.proposal as unknown as CompanionActionProposal;
   let beforeState: Prisma.InputJsonValue | undefined;
   let afterState: Prisma.InputJsonValue | undefined;
   let rollback: Prisma.InputJsonValue | undefined;
@@ -179,6 +183,10 @@ export async function decideAndExecuteAgentAction(
       summary: "Updated the recurring run-goal preference and rebuilt eligible upcoming workouts.",
     };
     rollback = beforeState;
+  } else if (proposal.actionType === "recalibrate_plan" && proposal.adjustmentId) {
+    beforeState = { adjustmentId: proposal.adjustmentId, status: "proposed" };
+    const applied = await decideAdjustment(userId, proposal.adjustmentId, "accept");
+    afterState = { adjustmentId: proposal.adjustmentId, status: "applied", adjustment: applied } as unknown as Prisma.InputJsonValue;
   } else {
     throw new Error("Unsupported companion action.");
   }

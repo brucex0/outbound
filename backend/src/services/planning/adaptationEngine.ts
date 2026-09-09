@@ -101,6 +101,8 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
 }
 
 function shouldCreateVersion(input: AdaptationInput): boolean {
+  if (input.eventType === "planReviewRequested") return false;
+
   if (input.eventType === "readinessSubmitted") {
     return Boolean(
       input.latestReadiness?.illnessOrPain ||
@@ -190,6 +192,8 @@ function adjustmentMessageFor(input: AdaptationInput): string {
       return "Generated the next planning window.";
     case "manualRebuild":
       return "Rebuilt the near-term plan.";
+    case "planReviewRequested":
+      return "Reviewed the near-term plan at the runner's request.";
     case "goalUpdated":
       return "Updated the plan around the new goal.";
     case "scheduleUpdated":

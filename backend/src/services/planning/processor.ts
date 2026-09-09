@@ -201,9 +201,9 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       return {
         eventId: event.id,
         status: "completed",
-        message: aiEvaluation.status === "proposed"
-          ? "Reassessed athlete state and prepared a reviewable plan adjustment."
-          : "Reassessed athlete state; no plan version change needed.",
+        message: aiEvaluation.status === "proposed" || aiEvaluation.status === "existing"
+          ? `Reassessed athlete state and prepared a reviewable plan adjustment. ${aiEvaluation.explanation}`
+          : `Reassessed athlete state; no plan version change needed. ${aiEvaluation.explanation}`,
       };
     }
 

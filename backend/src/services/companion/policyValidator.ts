@@ -26,7 +26,11 @@ export function validateCompanionProposal(
     if (!proposal.goalType) reasonCodes.push("missing_goal_type");
     if (proposal.permissionTier < 2 || !proposal.requiresConfirmation) reasonCodes.push("meaningful_change_requires_confirmation");
   }
-  if (proposal.evidenceIds.length === 0 && !["set_workout_calories", "update_run_goal_preference"].includes(proposal.actionType)) {
+  if (proposal.actionType === "recalibrate_plan") {
+    if (!proposal.adjustmentId) reasonCodes.push("missing_adjustment_id");
+    if (proposal.permissionTier < 2 || !proposal.requiresConfirmation) reasonCodes.push("meaningful_change_requires_confirmation");
+  }
+  if (proposal.evidenceIds.length === 0 && !["set_workout_calories", "update_run_goal_preference", "recalibrate_plan"].includes(proposal.actionType)) {
     reasonCodes.push("missing_evidence");
   }
   const approved = reasonCodes.every((code) => code === "context_budget_exceeded");
