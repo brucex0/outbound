@@ -263,7 +263,7 @@ export class LiveCoachStreamingService {
 }
 
 function exactTranscript(session: LiveCoachSessionSnapshot, input: RequestLiveCoachCueInput): string {
-  if (input.moment === "progress" || input.moment === "segment_countdown") {
+  if (input.moment === "progress") {
     return transcriptForLiveCoachCue({
       locale: session.locale,
       moment: input.moment,

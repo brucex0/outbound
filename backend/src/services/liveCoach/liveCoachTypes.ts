@@ -16,7 +16,6 @@ export const LIVE_COACH_REACTIVE_MOMENTS = [
   "climb_start",
   "crest_recovery",
   "segment_transition",
-  "segment_countdown",
   "finish_opportunity",
   "race_start_restraint",
   "race_pace_locked",

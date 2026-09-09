@@ -125,7 +125,7 @@ export class LiveCoachOrchestrator {
     const startedAt = Date.now();
     const cueExpiresAt = new Date(startedAt + input.validForMilliseconds);
     try {
-      const exactTranscript = input.moment === "progress" || input.moment === "segment_countdown"
+      const exactTranscript = input.moment === "progress"
         ? transcriptForLiveCoachCue({
             locale: session.locale,
             moment: input.moment,

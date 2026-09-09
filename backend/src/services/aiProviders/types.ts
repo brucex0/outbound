@@ -56,7 +56,6 @@ export type LiveCoachLiveState = {
   gradePercent?: number;
   workoutSegmentIndex?: number;
   workoutSegmentPhase?: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
-  segmentCountdownSeconds?: number;
   routeGuidanceActive: boolean;
 };
 

@@ -118,7 +118,6 @@ const liveStateSchema = z.object({
   gradePercent: z.number().finite().min(-40).max(40).optional(),
   workoutSegmentIndex: z.number().int().min(0).max(200).optional(),
   workoutSegmentPhase: z.enum(["warmup", "easy", "work", "recovery", "walk", "cooldown", "open"]).optional(),
-  segmentCountdownSeconds: z.number().int().min(1).max(5).optional(),
   routeGuidanceActive: z.boolean(),
 }).strict();
 
