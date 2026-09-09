@@ -268,7 +268,7 @@ private fun SignedInApp(
                             viewModel = settingsViewModel,
                             appVersion = BuildConfig.VERSION_NAME,
                             debugToolsEnabled = BuildConfig.DEBUG,
-                            onLinkGoogle = authViewModel::linkGoogle,
+                            onLinkGoogle = { authViewModel.linkGoogle(context) },
                             onSignOut = authViewModel::signOut,
                             onDeleteAccount = authViewModel::requestDeletion,
                             onReplayOnboarding = {
@@ -341,7 +341,7 @@ private fun SignedInApp(
         onDismissRequest = authViewModel::cancelDeletion,
         title = { Text(stringResource(R.string.delete_account_title)) },
         text = { Text(stringResource(R.string.delete_account_body)) },
-        confirmButton = { TextButton(onClick = authViewModel::deleteAccount) { Text(stringResource(R.string.delete_account_confirm)) } },
+        confirmButton = { TextButton(onClick = { authViewModel.deleteAccount(context) }) { Text(stringResource(R.string.delete_account_confirm)) } },
         dismissButton = { TextButton(onClick = authViewModel::cancelDeletion) { Text(stringResource(R.string.cancel)) } },
     )
 }
@@ -406,6 +406,7 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
 
 @Composable
 private fun FoundationScreen(destination: TopLevelDestination, authState: AuthUiState, authViewModel: AuthViewModel) {
+    val context = LocalContext.current
     Box(
         modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center,
@@ -426,7 +427,7 @@ private fun FoundationScreen(destination: TopLevelDestination, authState: AuthUi
                 textAlign = TextAlign.Center,
             )
             if (destination == TopLevelDestination.Me) {
-                Button(onClick = authViewModel::linkGoogle, enabled = authState.operation == null) {
+                Button(onClick = { authViewModel.linkGoogle(context) }, enabled = authState.operation == null) {
                     Text(stringResource(R.string.link_google))
                 }
                 TextButton(onClick = authViewModel::signOut, enabled = authState.operation == null) {
@@ -448,6 +449,7 @@ private fun SignInScreen(
     initialTransferCode: String?,
     onTransferCodeConsumed: () -> Unit,
 ) {
+    val context = LocalContext.current
     var showsTransfer by remember { mutableStateOf(initialTransferCode != null) }
     var transferCode by remember { mutableStateOf(initialTransferCode.orEmpty()) }
     LaunchedEffect(initialTransferCode) {
@@ -464,7 +466,7 @@ private fun SignInScreen(
         ) {
             Text(stringResource(R.string.auth_welcome), style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
             Text(stringResource(R.string.auth_welcome_body), modifier = Modifier.padding(vertical = 16.dp), textAlign = TextAlign.Center)
-            Button(onClick = viewModel::signIn, enabled = state.operation == null) {
+            Button(onClick = { viewModel.signIn(context) }, enabled = state.operation == null) {
                 Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in))
             }
             TextButton(onClick = { showsTransfer = !showsTransfer }, enabled = state.operation == null) {
@@ -487,7 +489,7 @@ private fun SignInScreen(
                 )
                 Button(
                     onClick = {
-                        viewModel.redeemTransfer(transferCode)
+                        viewModel.redeemTransfer(context, transferCode)
                         onTransferCodeConsumed()
                     },
                     enabled = state.operation == null && transferCode.isNotBlank(),

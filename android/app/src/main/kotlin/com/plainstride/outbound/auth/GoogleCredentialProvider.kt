@@ -1,21 +1,21 @@
 package com.plainstride.outbound.auth
 
 import android.content.Context
+import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class GoogleCredentialProvider @Inject constructor(
-    @param:ApplicationContext private val context: Context,
     private val credentialManager: CredentialManager,
     @param:GoogleServerClientId
     private val serverClientId: String,
 ) {
-    suspend fun identityToken(): Result<String> = runCatching {
+    suspend fun identityToken(context: Context): Result<String> = runCatching {
         check(serverClientId.isNotBlank()) { "google_client_not_configured" }
         val option = GetGoogleIdOption.Builder()
             .setServerClientId(serverClientId)
@@ -30,6 +30,9 @@ class GoogleCredentialProvider @Inject constructor(
             "unsupported_google_credential"
         }
         GoogleIdTokenCredential.createFrom(response.credential.data).idToken
+    }.onFailure { error ->
+        val credentialType = (error as? GetCredentialException)?.type ?: "non_credential_exception"
+        Log.w(TAG, "Credential Manager failed: type=$credentialType class=${error.javaClass.name}")
     }
 
     suspend fun clear() {
@@ -40,3 +43,5 @@ class GoogleCredentialProvider @Inject constructor(
 @javax.inject.Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class GoogleServerClientId
+
+private const val TAG = "PlainstrideGoogleAuth"

@@ -68,26 +68,26 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch { sessions.restore() }
     }
 
-    fun signIn() = perform(AuthOperation.SignIn, "auth_sign_in") {
-        google.identityToken().fold(
+    fun signIn(activityContext: Context) = perform(AuthOperation.SignIn, "auth_sign_in") {
+        google.identityToken(activityContext).fold(
             onSuccess = { repository.signIn(it, CURRENT_TERMS_VERSION, Build.MODEL.take(100)) },
             onFailure = { credentialFailure(it) },
         )
     }
 
-    fun linkGoogle() = perform(AuthOperation.Link, "auth_link_google", AuthMessage.Linked) {
-        google.identityToken().fold(
+    fun linkGoogle(activityContext: Context) = perform(AuthOperation.Link, "auth_link_google", AuthMessage.Linked) {
+        google.identityToken(activityContext).fold(
             onSuccess = { repository.linkGoogle(it) },
             onFailure = { credentialFailure(it) },
         )
     }
 
-    fun redeemTransfer(code: String) = perform(AuthOperation.Redeem, "account_transfer_redeemed", AuthMessage.Transferred) {
+    fun redeemTransfer(activityContext: Context, code: String) = perform(AuthOperation.Redeem, "account_transfer_redeemed", AuthMessage.Transferred) {
         val normalized = code.trim().uppercase().replace(Regex("[^2-9A-Z]"), "")
         if (normalized.length != 16) return@perform ApiResult.Failure(
             com.plainstride.outbound.core.network.ApiFailure(ApiErrorCode.InvalidRequest, retryable = false)
         )
-        google.identityToken().fold(
+        google.identityToken(activityContext).fold(
             onSuccess = { repository.redeemGoogleLink(it, normalized, CURRENT_TERMS_VERSION, Build.MODEL.take(100)) },
             onFailure = { credentialFailure(it) },
         )
@@ -102,13 +102,13 @@ class AuthViewModel @Inject constructor(
 
     fun requestDeletion() { confirmDeletion.value = true }
     fun cancelDeletion() { confirmDeletion.value = false }
-    fun deleteAccount() {
+    fun deleteAccount(activityContext: Context) {
         confirmDeletion.value = false
         perform(AuthOperation.Delete, "auth_delete_account", AuthMessage.Deleted) {
             val accountId = (sessions.state.value as? SessionState.SignedIn)?.accountId
                 ?: (sessions.state.value as? SessionState.Refreshing)?.accountId
             unregisterPush()
-            google.identityToken().fold(
+            google.identityToken(activityContext).fold(
                 onSuccess = { token -> repository.deleteAccount(token).also { result -> if (result is ApiResult.Success && accountId != null) accountData.clearAccount(accountId) } },
                 onFailure = { credentialFailure(it) },
             )
