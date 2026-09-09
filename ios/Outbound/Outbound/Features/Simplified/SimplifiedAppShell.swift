@@ -1010,11 +1010,25 @@ private struct SimplifiedTodayView: View {
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showsChangeSheet) {
-            TodayChangeSheet(originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)") { reason, note, minutes, startsRun in
-                Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID, note: note) }
-                showsChangeSheet = false
-                if startsRun { onStartRun(changedRunIntent(minutes: minutes, reason: reason)) }
-            }
+            TodayChangeSheet(
+                originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)",
+                pendingAdjustment: personalizationStore.snapshot.pendingAdjustment,
+                onApply: { reason, note, minutes, startsRun in
+                    Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID, note: note) }
+                    showsChangeSheet = false
+                    if startsRun { onStartRun(changedRunIntent(minutes: minutes, reason: reason)) }
+                },
+                onDecision: { accept in
+                    Task {
+                        await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
+                            .result: .string(accept ? "accepted" : "kept_original")
+                        ]))
+                        await personalizationStore.decideAdjustment(accept: accept)
+                        try? await trainingPlanStore.refetchAfterWorkoutMutation()
+                    }
+                    showsChangeSheet = false
+                }
+            )
             .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showsThemeChooser) {
@@ -2439,7 +2453,9 @@ private struct CompactIntervalPreview: View {
 private struct TodayChangeSheet: View {
     @Environment(\.dismiss) private var dismiss
     let originalTitle: String
+    let pendingAdjustment: AdjustmentProposalDTO?
     let onApply: (ReadinessChoice, String?, Int, Bool) -> Void
+    let onDecision: (Bool) -> Void
     @State private var reason: ReadinessChoice?
     @State private var note = ""
     @State private var availableMinutes = 15
@@ -2447,7 +2463,32 @@ private struct TodayChangeSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                if let reason {
+                if let pendingAdjustment {
+                    Text(String(localized: "today.adjustment.recommendation.title", defaultValue: "Recommended plan update"))
+                        .font(.title2.weight(.semibold))
+                    Text(pendingAdjustment.explanation)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach(Array(pendingAdjustment.changes.enumerated()), id: \.offset) { _, change in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(change.beforeTitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .strikethrough()
+                            Label(change.afterTitle, systemImage: "arrow.triangle.2.circlepath")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                    Spacer()
+                    OutboundPrimaryButton(
+                        title: String(localized: "today.adjustment.apply", defaultValue: "Apply update"),
+                        systemImage: "checkmark.circle.fill"
+                    ) { onDecision(true) }
+                    Button(String(localized: "today.adjustment.keep", defaultValue: "Keep original plan")) {
+                        onDecision(false)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else if let reason {
                     Text(reasonHeading(reason)).font(.title2.weight(.semibold))
                     Text(recommendationText(reason)).font(.subheadline).foregroundStyle(.secondary)
 

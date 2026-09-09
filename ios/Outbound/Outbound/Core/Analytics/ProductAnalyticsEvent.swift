@@ -89,6 +89,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case assistantLauncherOpened = "assistant_launcher_opened"
     case assistantMeaningfulEngagement = "assistant_meaningful_engagement"
     case todayCardDisplayChanged = "today_card_display_changed"
+    case todayAdjustmentDecided = "today_adjustment_decided"
     case planningSurfaceOpened = "planning_surface_opened"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
