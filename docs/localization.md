@@ -139,6 +139,14 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 
 ## Translation Workflow
 
+### Shared Android generation
+
+- `ios/Outbound/Outbound/Localizable.xcstrings` remains the canonical translation catalog.
+- Android module ownership is declared in `shared-resources/localization/android-modules.json`; semantic catalog prefixes route generated resources to the app, feature, core, and Wear modules.
+- Run `shared-resources/scripts/generate-android-strings` after catalog edits. Never edit generated Android `strings.xml` files by hand.
+- Run `shared-resources/scripts/validate-resources` for the single drift check. It rejects stale outputs, missing or unreviewed translations, and placeholder mismatches.
+- `--adopt-existing` is a migration-only option for bringing an existing Android resource into the catalog. Normal development must not use it because the catalog is authoritative.
+
 - English source copy should be product-reviewed before translation to avoid repeatedly translating unstable text.
 - Translate from the product meaning and full UI context; never use word-by-word Google Translate output. Write natural Simplified Chinese and Spanish copy directly, preserving Plainstride's running terminology, privacy meaning, and conversational tone.
 - Export catalogs through Xcode/XLIFF or provide `.xcstrings` directly to translators.

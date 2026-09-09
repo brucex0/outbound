@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+root="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
+check=false
+if [ "${1:-}" = "--check" ]; then check=true; fi
+source_file="$root/shared-resources/icons/source/launch-mark.svg"
+output_file="$root/ios/Outbound/Outbound/Assets.xcassets/LaunchMark.imageset/LaunchMark.svg"
+if cmp -s "$source_file" "$output_file"; then exit 0; fi
+if [ "$check" = true ]; then echo "stale: $output_file" >&2; exit 1; fi
+cp "$source_file" "$output_file"
+echo "updated: $output_file" >&2

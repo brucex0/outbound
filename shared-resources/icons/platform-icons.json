@@ -1,0 +1,8 @@
+{
+  "icons": [
+    {
+      "source": "source/launch-mark.svg",
+      "outputs": ["ios/Outbound/Outbound/Assets.xcassets/LaunchMark.imageset/LaunchMark.svg"]
+    }
+  ]
+}

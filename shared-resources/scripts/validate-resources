@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+script_dir="$(dirname "$0")"
+node "$script_dir/generate-android-strings.mjs" --check
+node "$script_dir/../../scripts/import-android-localizations.mjs" --check
+exec "$script_dir/generate-platform-icons" --check
