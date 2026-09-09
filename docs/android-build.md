@@ -34,6 +34,20 @@ The debug package is registered in Firebase as `com.plainstride.outbound.debug` 
 
 Application startup enforces that debug identity support cannot be enabled in a release build.
 
+## Signed Release Install
+
+With the release signing environment variables and production Gradle properties
+from `android-release.md` configured, connect and authorize an Android phone,
+then run from the repository root:
+
+```sh
+./scripts/build-install-android-release.sh
+```
+
+The helper validates the Play release configuration, builds the minified signed
+phone APK, verifies its certificate, and installs it with `adb install -r`. Set
+`ANDROID_SERIAL` first when more than one device is connected.
+
 ## Tests
 
 Do not run the test suite unless explicitly requested. Each Android phase still needs its documented build, lint, static, and manual verification gate.
