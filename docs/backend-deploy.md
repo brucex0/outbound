@@ -112,6 +112,22 @@ Useful overrides:
 
 The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, and concurrency 100. A normal deploy explicitly routes production traffic to the latest ready revision before checking `/health`, preventing a stale pinned revision from making a new deploy look successful. Passing `--no-traffic` preserves candidate-only behavior for guarded rollout scripts. For the canonical production target (`outbound-494602/outbound-api`), its defaults are the approved production profile: one warm instance, a three-instance ceiling, dynamic live coaching at 100%, founding/trial access, planner enabled, and the published `2026-09-01.1` audio pack. Other project/service targets retain the fail-closed minimal-cost defaults: scale to zero, a one-instance ceiling, and live coaching disabled. Every setting remains explicitly overrideable. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed.
 
+Adaptive planning uses Vertex AI through the runtime service account. Production deploys explicitly set `AI_PLANNING_ENABLED=true`, `AI_PLANNING_MODEL=gemini-3.1-pro-preview`, `AI_PLANNING_DEADLINE_MILLISECONDS=20000`, `GEMINI_VERTEX_PROJECT_ID=outbound-494602`, and `GEMINI_VERTEX_LOCATION=global`. Redeploy with `AI_PLANNING_ENABLED=false ./scripts/deploy-backend-gcloud.sh` for the immediate AI-planning kill switch; deterministic planning remains available.
+
+## Daily Planning Maintenance
+
+The `outbound-planning-maintenance` Cloud Run Job uses the latest ready `outbound-api` image, the same runtime service account, Cloud SQL attachment, database secret, and adaptive-planning environment. Its container command is `npm run planning:maintenance`. Cloud Scheduler invokes it daily at 02:15 in `America/Los_Angeles` using the runtime service account's OAuth identity.
+
+After each backend deployment, update the job to the new immutable service image digest before executing it. Verify both resources with:
+
+```sh
+$HOME/google-cloud-sdk/bin/gcloud run jobs describe outbound-planning-maintenance \
+  --project=outbound-494602 --region=us-central1
+
+$HOME/google-cloud-sdk/bin/gcloud scheduler jobs describe outbound-planning-maintenance-daily \
+  --project=outbound-494602 --location=us-central1
+```
+
 `CIRCLE_MEMBER_LIMIT` controls the capacity assigned to newly created Circles and defaults to `6`. The backend accepts values from `2` through `100`, returns the active policy to clients, and snapshots the value onto each Circle so later experiments do not unexpectedly shrink or expand existing groups.
 
 Android weather uses the authenticated `GET /v1/weather/current` proxy. The proxy rounds coordinates to two decimals, keeps account/locale/location results in memory for 30 minutes, honors MET Norway conditional responses, and never logs coordinates. It uses the keyless global Locationforecast API because Google Weather requires billing and a server credential; the provider boundary can move to Google without changing the Android contract. Set `WEATHER_PROVIDER_USER_AGENT` to an identifying application/domain plus support contact before production deployment (for example `Plainstride/1.0 https://plainstride.run`). Display the response attribution wherever weather data appears; the response is derived from MET Norway data licensed under CC BY 4.0.

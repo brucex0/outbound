@@ -43,6 +43,9 @@ Environment overrides:
   GEMINI_LIVE_COACH_PLANNER_MODEL default: gemini-3.1-pro-preview
   GEMINI_VERTEX_PROJECT_ID    default: PROJECT_ID
   GEMINI_VERTEX_LOCATION      default: global
+  AI_PLANNING_ENABLED         default: true for production; false otherwise (kill switch)
+  AI_PLANNING_MODEL           default: gemini-3.1-pro-preview
+  AI_PLANNING_DEADLINE_MILLISECONDS default: 20000
   GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS default: 20000
   LIVE_COACH_AUDIO_PACK_PUBLISHED default: true for production; false otherwise
   LIVE_COACH_AUDIO_MANIFEST_URL defaults to the approved production pack in production
@@ -99,6 +102,7 @@ if [[ "$production_profile" == "1" ]]; then
   default_live_coach_config_version=2
   default_live_coach_rollout_percent=100
   default_live_coach_planner_enabled=true
+  default_ai_planning_enabled=true
   default_live_coach_pack_published=true
   default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-01.1/manifest.json"
   default_live_coach_asset_base_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-01.1/assets"
@@ -111,6 +115,7 @@ else
   default_live_coach_config_version=1
   default_live_coach_rollout_percent=0
   default_live_coach_planner_enabled=false
+  default_ai_planning_enabled=false
   default_live_coach_pack_published=false
   default_live_coach_manifest_url=""
   default_live_coach_asset_base_url=""
@@ -144,6 +149,9 @@ LIVE_COACH_PLANNER_ENABLED="${LIVE_COACH_PLANNER_ENABLED:-$default_live_coach_pl
 GEMINI_LIVE_COACH_PLANNER_MODEL="${GEMINI_LIVE_COACH_PLANNER_MODEL:-gemini-3.1-pro-preview}"
 GEMINI_VERTEX_PROJECT_ID="${GEMINI_VERTEX_PROJECT_ID:-$PROJECT_ID}"
 GEMINI_VERTEX_LOCATION="${GEMINI_VERTEX_LOCATION:-global}"
+AI_PLANNING_ENABLED="${AI_PLANNING_ENABLED:-$default_ai_planning_enabled}"
+AI_PLANNING_MODEL="${AI_PLANNING_MODEL:-gemini-3.1-pro-preview}"
+AI_PLANNING_DEADLINE_MILLISECONDS="${AI_PLANNING_DEADLINE_MILLISECONDS:-20000}"
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS="${GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS:-20000}"
 LIVE_COACH_AUDIO_PACK_PUBLISHED="${LIVE_COACH_AUDIO_PACK_PUBLISHED:-$default_live_coach_pack_published}"
 LIVE_COACH_AUDIO_MANIFEST_URL="${LIVE_COACH_AUDIO_MANIFEST_URL:-$default_live_coach_manifest_url}"
@@ -258,6 +266,9 @@ environment_bindings=(
   "GEMINI_LIVE_COACH_PLANNER_MODEL=$GEMINI_LIVE_COACH_PLANNER_MODEL"
   "GEMINI_VERTEX_PROJECT_ID=$GEMINI_VERTEX_PROJECT_ID"
   "GEMINI_VERTEX_LOCATION=$GEMINI_VERTEX_LOCATION"
+  "AI_PLANNING_ENABLED=$AI_PLANNING_ENABLED"
+  "AI_PLANNING_MODEL=$AI_PLANNING_MODEL"
+  "AI_PLANNING_DEADLINE_MILLISECONDS=$AI_PLANNING_DEADLINE_MILLISECONDS"
   "GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=$GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS"
   "LIVE_COACH_AUDIO_PACK_PUBLISHED=$LIVE_COACH_AUDIO_PACK_PUBLISHED"
   "GOOGLE_CLOUD_TTS_ENABLED=$GOOGLE_CLOUD_TTS_ENABLED"
