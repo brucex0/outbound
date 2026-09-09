@@ -65,7 +65,9 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8787\"")
+            val debugApiBaseUrl = providers.gradleProperty("PLAINSTRIDE_DEBUG_API_BASE_URL")
+                .orElse("https://outbound-api-186140050970.us-central1.run.app")
+            buildConfigField("String", "API_BASE_URL", "\"${debugApiBaseUrl.get()}\"")
             buildConfigField("boolean", "DEBUG_IDENTITY_ENABLED", "true")
             val debugFirebaseApplicationId = providers.gradleProperty("PLAINSTRIDE_FIREBASE_DEBUG_APPLICATION_ID")
                 .orElse("1:186140050970:android:37ef5d92b7cbcc67a033a3")

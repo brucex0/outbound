@@ -29,7 +29,9 @@ class GoogleCredentialProvider @Inject constructor(
         check(response.credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             "unsupported_google_credential"
         }
-        GoogleIdTokenCredential.createFrom(response.credential.data).idToken
+        GoogleIdTokenCredential.createFrom(response.credential.data).idToken.also {
+            Log.i(TAG, "Credential Manager returned a Google identity token")
+        }
     }.onFailure { error ->
         val credentialType = (error as? GetCredentialException)?.type ?: "non_credential_exception"
         Log.w(TAG, "Credential Manager failed: type=$credentialType class=${error.javaClass.name}")

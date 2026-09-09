@@ -1,6 +1,7 @@
 package com.plainstride.outbound.di
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -127,9 +128,32 @@ object FoundationModule {
 
     @Provides @GoogleServerClientId fun googleServerClientId(): String = BuildConfig.GOOGLE_SERVER_CLIENT_ID
 
-    @Provides @Singleton fun httpClient(): OkHttpClient = OkHttpClient.Builder()
-        .retryOnConnectionFailure(true)
-        .build()
+    @Provides @Singleton fun httpClient(): OkHttpClient {
+        Log.i(NETWORK_TAG, "Configuring API client: baseUrl=${BuildConfig.API_BASE_URL}")
+        return OkHttpClient.Builder()
+            .retryOnConnectionFailure(true)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val route = "${request.url.scheme}://${request.url.host}${request.url.encodedPath}"
+                val startedAt = System.nanoTime()
+                Log.d(NETWORK_TAG, "--> ${request.method} $route")
+                try {
+                    chain.proceed(request).also { response ->
+                        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+                        val requestId = response.header("x-request-id") ?: "none"
+                        Log.d(NETWORK_TAG, "<-- ${response.code} ${request.method} $route (${elapsedMs}ms) requestId=$requestId")
+                    }
+                } catch (error: Exception) {
+                    val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+                    Log.e(
+                        NETWORK_TAG,
+                        "<-- FAILED ${request.method} $route (${elapsedMs}ms) ${error.javaClass.simpleName}: ${error.message}",
+                    )
+                    throw error
+                }
+            }
+            .build()
+    }
 
     @Provides @Singleton fun authApi(client: OkHttpClient): AuthApiService =
         createAuthApi(BuildConfig.API_BASE_URL, client)
@@ -212,3 +236,5 @@ object FoundationModule {
     @Provides
     fun monotonicClock(): MonotonicClock = AndroidMonotonicClock
 }
+
+private const val NETWORK_TAG = "PlainstrideNetwork"

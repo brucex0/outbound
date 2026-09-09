@@ -1,6 +1,7 @@
 package com.plainstride.outbound.auth
 
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -84,6 +85,7 @@ class AuthViewModel @Inject constructor(
 
     fun redeemTransfer(activityContext: Context, code: String) = perform(AuthOperation.Redeem, "account_transfer_redeemed", AuthMessage.Transferred) {
         val normalized = code.trim().uppercase().replace(Regex("[^2-9A-Z]"), "")
+        Log.i(TAG, "Transfer redemption requested: normalizedCodeLength=${normalized.length}")
         if (normalized.length != 16) return@perform ApiResult.Failure(
             com.plainstride.outbound.core.network.ApiFailure(ApiErrorCode.InvalidRequest, retryable = false)
         )
@@ -125,8 +127,18 @@ class AuthViewModel @Inject constructor(
         if (operation.value != null) return
         viewModelScope.launch {
             operation.value = operationValue
+            Log.i(TAG, "Auth operation started: operation=$operationValue")
             val result = block()
             val outcome = if (result is ApiResult.Success) "success" else "failure"
+            when (result) {
+                is ApiResult.Success -> Log.i(TAG, "Auth operation succeeded: operation=$operationValue")
+                is ApiResult.Failure -> Log.w(
+                    TAG,
+                    "Auth operation failed: operation=$operationValue code=${result.error.code} " +
+                        "httpStatus=${result.error.httpStatus} retryable=${result.error.retryable} " +
+                        "requestId=${result.error.requestId ?: "none"}",
+                )
+            }
             analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to outcome)))
             if (result is ApiResult.Success) successMessage?.let { mutableMessages.emit(it) }
             if (result is ApiResult.Failure) mutableMessages.emit(result.toMessage())
@@ -157,5 +169,8 @@ class AuthViewModel @Inject constructor(
         else -> AuthMessage.Generic
     }
 
-    private companion object { const val CURRENT_TERMS_VERSION = 2 }
+    private companion object {
+        const val CURRENT_TERMS_VERSION = 2
+        const val TAG = "PlainstrideAuth"
+    }
 }

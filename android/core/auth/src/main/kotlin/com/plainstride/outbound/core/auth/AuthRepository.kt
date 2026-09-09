@@ -1,5 +1,6 @@
 package com.plainstride.outbound.core.auth
 
+import android.util.Log
 import java.time.Instant
 import com.plainstride.outbound.core.network.ApiErrorCode
 import com.plainstride.outbound.core.network.ApiFailure
@@ -56,10 +57,19 @@ class DefaultAuthRepository(
 
     private suspend fun ApiResult<SessionResponseDto>.installSession(): ApiResult<Unit> = when (this) {
         is ApiResult.Success -> {
+            Log.i(AUTH_REPOSITORY_TAG, "Auth response decoded; installing session")
             sessions.install(value.credentials())
+            Log.i(AUTH_REPOSITORY_TAG, "Session installed")
             ApiResult.Success(Unit)
         }
-        is ApiResult.Failure -> this
+        is ApiResult.Failure -> {
+            Log.w(
+                AUTH_REPOSITORY_TAG,
+                "Auth request failed: code=${error.code} httpStatus=${error.httpStatus} " +
+                    "retryable=${error.retryable} requestId=${error.requestId ?: "none"}",
+            )
+            this
+        }
     }
 }
 
@@ -81,3 +91,5 @@ private fun SessionResponseDto.credentials() = SessionCredentials(
         onboardingCompleted = user.onboardingCompleted,
     ),
 )
+
+private const val AUTH_REPOSITORY_TAG = "PlainstrideAuthRepo"
