@@ -1,6 +1,8 @@
 {
-  "catalogVersion": "2026-09-01.1",
+  "catalogVersion": "2026-09-08.1",
   "entries": [
+    { "cueKey": "countdown.five", "scriptStyleId": "standard", "texts": { "en": "Five.", "es": "Cinco.", "zh-Hans": "五。" } },
+    { "cueKey": "countdown.four", "scriptStyleId": "standard", "texts": { "en": "Four.", "es": "Cuatro.", "zh-Hans": "四。" } },
     { "cueKey": "countdown.three", "scriptStyleId": "standard", "texts": { "en": "Three.", "es": "Tres.", "zh-Hans": "三。" } },
     { "cueKey": "countdown.two", "scriptStyleId": "standard", "texts": { "en": "Two.", "es": "Dos.", "zh-Hans": "二。" } },
     { "cueKey": "countdown.one", "scriptStyleId": "standard", "texts": { "en": "One.", "es": "Uno.", "zh-Hans": "一。" } },

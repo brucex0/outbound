@@ -15,7 +15,7 @@ Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech 
 4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
 5. Generated plans prewarm up to eight likely WAV phrases in the background, with selected-workout instructions first. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the catalog cue in English, a localized generic segment cue in other locales, the reviewed local pack, or the session-pinned on-device system voice.
 
-Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter distance crossing window. The first zero trigger may fire immediately. Reliable distance is required after the initial cue, stale crossings are skipped, route guidance wins, and elapsed catalog cues replace only the generic timed transition at the same boundary. Other timed-step transitions now use the same live-coach phrase/cache/TTS path; countdown and completion behavior remains deterministic on device.
+Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter distance crossing window. The first zero trigger may fire immediately. Reliable distance is required after the initial cue, stale crossings are skipped, route guidance wins, and elapsed catalog cues replace only the generic timed transition at the same boundary. Other timed-step transitions use the live-coach phrase/cache/TTS path. Static five-through-one segment countdowns never request server synthesis: iOS preloads their reviewed fixed-pack recordings and uses the pinned on-device system voice only if the matching recording is unavailable. Completion behavior remains deterministic on device.
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 
@@ -101,6 +101,8 @@ gcloud auth application-default set-quota-project outbound-494602
 Never copy the generated ADC file, a service-account key, or an OAuth plist into this repository.
 
 ## Fixed Pack Inventory
+
+Catalog `2026-09-08.1` adds `countdown.five` and `countdown.four`, bringing the successor pack to 36 cues × 3 locales × 2 voices = 216 files. It must be generated, reviewed, signed, and published before changing the production manifest from `2026-09-01.1`.
 
 The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-09-01.1` contains 34 semantic cues:
 

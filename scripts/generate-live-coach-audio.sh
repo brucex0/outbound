@@ -29,7 +29,7 @@ export ALIBABA_AI_ENABLED=false
 cd "$ROOT_DIR/backend"
 if [[ "$SMOKE" == "1" ]]; then
   npm run live-coach:generate-audio -- \
-    --catalog-version 2026-09-01.1 \
+    --catalog-version 2026-09-08.1 \
     --provider google_cloud_tts \
     --voice-profile plainstride_warm_1 \
     --locale en \
@@ -39,13 +39,13 @@ if [[ "$SMOKE" == "1" ]]; then
   exit 0
 fi
 if [[ " $* " == *" --voice-profile "* ]]; then
-  npm run live-coach:generate-audio -- --catalog-version 2026-09-01.1 --provider google_cloud_tts "$@"
+  npm run live-coach:generate-audio -- --catalog-version 2026-09-08.1 --provider google_cloud_tts "$@"
   exit 0
 fi
 
 for voice_profile in plainstride_warm_1 plainstride_clear_1; do
   npm run live-coach:generate-audio -- \
-    --catalog-version 2026-09-01.1 \
+    --catalog-version 2026-09-08.1 \
     --provider google_cloud_tts \
     --voice-profile "$voice_profile" \
     "$@"

@@ -7,6 +7,14 @@ type CueDeliveryContext = {
 };
 
 const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
+  "countdown.five": {
+    situation: "The first beat of a five-second structured-workout segment countdown.",
+    delivery: "Crisp and compact, with controlled anticipation and an even one-second cadence.",
+  },
+  "countdown.four": {
+    situation: "The second beat of a five-second structured-workout segment countdown.",
+    delivery: "Crisp and compact, maintaining the same even cadence without stretching the word.",
+  },
   "countdown.three": {
     situation: "The first beat of a three-two-one workout start countdown.",
     delivery: "Crisp and compact, with controlled anticipation and the same cadence as the next two numbers.",
