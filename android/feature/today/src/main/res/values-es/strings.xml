@@ -6,6 +6,11 @@
     <string name="today_minutes">%1$d min</string>
     <string name="today_change">Cambiar</string>
     <string name="today_why">¿Por qué?</string>
+    <string name="today_details">Detalles</string>
+    <string name="today_change_workout">Cambiar entrenamiento</string>
+    <string name="today_start_workout">Iniciar %1$s</string>
+    <string name="today_expand_card">Expandir tarjeta de entrenamiento</string>
+    <string name="today_collapse_card">Contraer tarjeta de entrenamiento</string>
     <string name="today_cached_at">Actualizado a las %1$s · puedes empezar sin conexión</string>
     <string name="today_updating">Actualizando hoy…</string>
     <string name="today_launch_dock">Planificado</string>

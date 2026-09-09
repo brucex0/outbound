@@ -191,6 +191,16 @@ class TodayViewModel @Inject constructor(
         AnalyticsEvent("workout_started", mapOf(AnalyticsProperty.Source to source)),
     )
 
+    fun trackCardDisplayChanged(minimized: Boolean) = analytics.record(
+        AnalyticsEvent(
+            "today_card_display_changed",
+            mapOf(
+                AnalyticsProperty.SourceType to "planned_workout",
+                AnalyticsProperty.SelectionType to if (minimized) "minimized" else "expanded",
+            ),
+        ),
+    )
+
     fun setUpPlan() {
         if (mutationInFlight.value) return
         viewModelScope.launch {

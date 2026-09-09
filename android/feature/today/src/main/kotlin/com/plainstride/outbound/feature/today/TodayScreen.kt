@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -58,6 +60,7 @@ import java.text.DateFormat
 import java.util.Date
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
+import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 
 @Composable
 fun TodayRoute(
@@ -75,6 +78,7 @@ fun TodayRoute(
     guidanceContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     LaunchedEffect(accountId, localeTag) { viewModel.configure(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
@@ -101,8 +105,10 @@ fun TodayRoute(
         onSetUpPlan = { viewModel.setUpPlan(); onSetUpPlan() },
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
+        onCardDisplayChanged = viewModel::trackCardDisplayChanged,
         guidanceContent = guidanceContent,
         initialWorkoutId = initialWorkoutId,
+        locationGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED,
         modifier = modifier,
     )
 }
@@ -118,58 +124,79 @@ fun TodayScreen(
     onSetUpPlan: () -> Unit,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
+    onCardDisplayChanged: (Boolean) -> Unit = {},
     guidanceContent: @Composable () -> Unit = {},
     initialWorkoutId: String? = null,
+    locationGranted: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val displayPreferences = remember(context) { context.getSharedPreferences("today_display", android.content.Context.MODE_PRIVATE) }
+    var cardMinimized by rememberSaveable { mutableStateOf(displayPreferences.getBoolean("planned_workout_minimized", false)) }
     val suggestion = state.primarySuggestion
     LaunchedEffect(initialWorkoutId, suggestion?.id, suggestion?.plannedWorkoutId) {
         if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
     }
 
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.today_quote), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.today_companion_line), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        when {
-            state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
-            suggestion != null -> WorkoutRecommendationCard(
-                suggestion = suggestion,
-                stale = state.isStale,
-                updatedAtEpochMs = state.suggestionUpdatedAtEpochMs,
-                completedToday = state.completedToday,
-                weather = weather,
-                onOpen = { showsDetail = true },
-                onChange = { showsChange = true },
-            )
-            state.hasNoCachedSuggestion -> NoSuggestionCard(
-                noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
-                onStartFreestyle = onStartFreestyle,
-                onSetUpPlan = onSetUpPlan,
-                onRefresh = onRefresh,
-            )
-        }
-        guidanceContent()
-
-        if (state.refreshing) Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.today_updating), style = MaterialTheme.typography.labelLarge)
-        }
-
-        LaunchDock(
-            suggestion = suggestion,
-            activeSession = state.activeSession,
-            completedToday = state.completedToday,
-            onStart = { suggestion?.let { onStart(it, "today_planned") } ?: onStartFreestyle() },
-            onReturnToSession = onReturnToSession,
-            onOpenDetails = { showsDetail = true },
+    Box(modifier.fillMaxSize()) {
+        PlainstrideRouteMap(
+            points = emptyList(),
+            modifier = Modifier.fillMaxSize(),
+            showUserLocation = locationGranted,
+            preciseLocationGranted = locationGranted,
         )
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                when {
+                    state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
+                    suggestion != null -> WorkoutRecommendationCard(
+                        suggestion = suggestion,
+                        stale = state.isStale,
+                        updatedAtEpochMs = state.suggestionUpdatedAtEpochMs,
+                        completedToday = state.completedToday,
+                        weather = weather,
+                        minimized = cardMinimized,
+                        onToggleMinimized = {
+                            cardMinimized = !cardMinimized
+                            displayPreferences.edit().putBoolean("planned_workout_minimized", cardMinimized).apply()
+                            onCardDisplayChanged(cardMinimized)
+                        },
+                        onOpen = { showsDetail = true },
+                        onChange = { showsChange = true },
+                    )
+                    state.hasNoCachedSuggestion -> NoSuggestionCard(
+                        noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
+                        onStartFreestyle = onStartFreestyle,
+                        onSetUpPlan = onSetUpPlan,
+                        onRefresh = onRefresh,
+                    )
+                }
+                guidanceContent()
+                if (state.refreshing) Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.today_updating), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+            LaunchDock(
+                suggestion = suggestion,
+                activeSession = state.activeSession,
+                completedToday = state.completedToday,
+                onStart = { suggestion?.let { onStart(it, "today_planned") } ?: onStartFreestyle() },
+                onReturnToSession = onReturnToSession,
+                onOpenDetails = { showsDetail = true },
+            )
+        }
     }
 
     if (showsDetail && suggestion != null) WorkoutDetailSheet(
@@ -194,41 +221,47 @@ private fun WorkoutRecommendationCard(
     updatedAtEpochMs: Long?,
     completedToday: Boolean,
     weather: WeatherGuidance?,
+    minimized: Boolean,
+    onToggleMinimized: () -> Unit,
     onOpen: () -> Unit,
     onChange: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-        Column(Modifier.clickable(role = Role.Button, onClick = onOpen).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
+                Column(Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen)) {
                     Text(stringResource(if (completedToday) R.string.today_up_next else R.string.today_workout), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Text(suggestion.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 Text(stringResource(R.string.today_minutes, suggestion.durationMinutes), style = MaterialTheme.typography.titleSmall)
+                TextButton(
+                    onClick = onToggleMinimized,
+                    modifier = Modifier.size(48.dp).semantics {
+                        contentDescription = toggleDescription
+                    },
+                ) {
+                    Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_change)) }
-                TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.today_why)) }
-            }
-            PhasePreview(suggestion.steps)
-            weather?.let {
-                Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    it.attribution,
-                    modifier = Modifier.clickable(role = Role.Button) { uriHandler.openUri(it.attributionUrl) },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+            if (!minimized) {
+                weather?.let {
+                    Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it.attribution, modifier = Modifier.clickable(role = Role.Button) { uriHandler.openUri(it.attributionUrl) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+                PhasePreview(suggestion.steps)
+                if (stale) Text(
+                    stringResource(R.string.today_cached_at, updatedAtEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }.orEmpty()),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.today_details)) }
+                    TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.today_change_workout)) }
+                }
             }
-            if (stale) Text(
-                stringResource(
-                    R.string.today_cached_at,
-                    updatedAtEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }.orEmpty(),
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.tertiary,
-            )
         }
     }
 }
@@ -256,18 +289,19 @@ private fun LaunchDock(
     onStart: () -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedCard {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.today_launch_dock), style = MaterialTheme.typography.labelLarge)
-            if (suggestion != null) Text(suggestion.title, style = MaterialTheme.typography.bodyMedium)
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .97f))) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
                 activeSession -> Button(onClick = onReturnToSession, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.today_return_run)) }
                 completedToday -> {
                     Text(stringResource(R.string.today_completed_reflection), style = MaterialTheme.typography.titleMedium)
                     OutlinedButton(onClick = onOpenDetails, enabled = suggestion != null, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.today_view_next)) }
                 }
-                else -> Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.today_start)) }
+                else -> Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                    Text(if (suggestion == null) stringResource(R.string.today_freestyle) else stringResource(R.string.today_start_workout, suggestion.title))
+                }
             }
         }
     }

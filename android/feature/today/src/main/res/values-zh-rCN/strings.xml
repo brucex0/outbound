@@ -6,6 +6,11 @@
     <string name="today_minutes">%1$d 分钟</string>
     <string name="today_change">调整</string>
     <string name="today_why">为什么？</string>
+    <string name="today_details">详情</string>
+    <string name="today_change_workout">更改训练</string>
+    <string name="today_start_workout">开始%1$s</string>
+    <string name="today_expand_card">展开训练卡片</string>
+    <string name="today_collapse_card">收起训练卡片</string>
     <string name="today_cached_at">更新于 %1$s · 离线也能开始</string>
     <string name="today_updating">正在更新今日内容…</string>
     <string name="today_launch_dock">计划训练</string>

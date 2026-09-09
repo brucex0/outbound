@@ -6,6 +6,11 @@
     <string name="today_minutes">%1$d min</string>
     <string name="today_change">Change</string>
     <string name="today_why">Why?</string>
+    <string name="today_details">Details</string>
+    <string name="today_change_workout">Change workout</string>
+    <string name="today_start_workout">Start %1$s</string>
+    <string name="today_expand_card">Expand workout card</string>
+    <string name="today_collapse_card">Collapse workout card</string>
     <string name="today_cached_at">Updated %1$s · you can start offline</string>
     <string name="today_updating">Updating today…</string>
     <string name="today_launch_dock">Planned</string>
