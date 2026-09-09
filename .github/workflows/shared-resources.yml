@@ -1,0 +1,32 @@
+name: Shared resources
+
+on:
+  pull_request:
+    paths:
+      - "ios/Outbound/Outbound/Localizable.xcstrings"
+      - "android/**/src/main/res/values*/strings.xml"
+      - "android/app/src/main/res/values*/auth_strings.xml"
+      - "shared-resources/**"
+      - "scripts/import-android-localizations.mjs"
+  push:
+    paths:
+      - "ios/Outbound/Outbound/Localizable.xcstrings"
+      - "android/**/src/main/res/values*/strings.xml"
+      - "android/app/src/main/res/values*/auth_strings.xml"
+      - "shared-resources/**"
+      - "scripts/import-android-localizations.mjs"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate generated resources and ownership
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: shared-resources/scripts/validate-resources --base="$BASE_SHA"

@@ -145,6 +145,8 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 - Android module ownership is declared in `shared-resources/localization/android-modules.json`; semantic catalog prefixes route generated resources to the app, feature, core, and Wear modules.
 - Run `shared-resources/scripts/generate-android-strings` after catalog edits. Never edit generated Android `strings.xml` files by hand.
 - Run `shared-resources/scripts/validate-resources` for the single drift check. It rejects stale outputs, missing or unreviewed translations, and placeholder mismatches.
+- CI runs the same command whenever shared sources or generated outputs change. A new key under a routed prefix must include `[android:<module>]` in its catalog comment, or `[platform:ios]` when it is intentionally native-only.
+- Every file added under `shared-resources/icons/source` must be registered in `shared-resources/icons/platform-icons.json`; CI rejects orphaned artwork.
 - `--adopt-existing` is a migration-only option for bringing an existing Android resource into the catalog. Normal development must not use it because the catalog is authoritative.
 
 - English source copy should be product-reviewed before translation to avoid repeatedly translating unstable text.
