@@ -1927,10 +1927,9 @@ struct RecordView: View {
         .accessibilityValue(value)
     }
 
-    @ViewBuilder
-    private var launchShoeControl: some View {
+    private var launchShoeControl: AnyView {
         if gearStore.activeShoes.isEmpty {
-            setupUtilityButton(
+            AnyView(setupUtilityButton(
                 title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
                 value: String(localized: "common.none", defaultValue: "None"),
                 systemImage: "shoeprints.fill",
@@ -1944,9 +1943,9 @@ struct RecordView: View {
                 isEligible: isVisible && !showCamera && activityStore.activities.count >= 1,
                 text: String(localized: "tooltip.shoes", defaultValue: "Track mileage and know when to replace your shoes"),
                 arrowEdge: .bottom
-            )
+            ))
         } else {
-            Menu {
+            AnyView(Menu {
                 ForEach(gearStore.activeShoes) { shoe in
                     Button(shoe.displayName) {
                         selectedSessionShoeID = shoe.id
@@ -1972,7 +1971,7 @@ struct RecordView: View {
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-            .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
+            .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None")))
         }
     }
 
