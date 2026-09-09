@@ -1,9 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="onboarding_back">Back</string><string name="onboarding_progress">%1$d of %2$d</string><string name="onboarding_continue">Continue</string><string name="onboarding_skip">Skip for now</string><string name="onboarding_build_week">Build my first week</string>
-    <string name="onboarding_identity_title">Tell us what to call you</string><string name="onboarding_identity_subtitle">This helps people recognize you. Your training details stay private.</string><string name="onboarding_display_name">Display name</string><string name="onboarding_username">Username</string><string name="onboarding_email">Email</string><string name="onboarding_username_help">Use 3–30 letters, numbers, underscores, or hyphens.</string>
-    <string name="onboarding_goal_title">What are you working toward?</string><string name="onboarding_goal_subtitle">Your companion will turn this into a realistic first week.</string><string name="onboarding_goal_consistency">Run consistently</string><string name="onboarding_goal_start">Start running</string><string name="onboarding_goal_comeback">Return after a break</string><string name="onboarding_goal_race">Train for a race</string><string name="onboarding_goal_faster">Run faster</string>
-    <string name="onboarding_baseline_title">What does running look like lately?</string><string name="onboarding_baseline_subtitle">A starting estimate is enough. Your runs will make it more accurate.</string><string name="onboarding_recent_frequency">RECENT FREQUENCY</string><string name="onboarding_frequency_none">Not running yet</string><string name="onboarding_frequency_occasional">Occasionally</string><string name="onboarding_frequency_one_two">1–2 times a week</string><string name="onboarding_frequency_three_plus">3+ times a week</string><string name="onboarding_comfortable_minutes">Comfortable run · %1$d min</string>
-    <string name="onboarding_week_title">What can most weeks support?</string><string name="onboarding_week_subtitle">Choose what feels realistic, not ideal.</string><string name="onboarding_runs_per_week">%1$d runs per week</string><string name="onboarding_weekday_minutes">About %1$d min on weekdays</string>
-    <string name="onboarding_profile_title">Add private training details</string><string name="onboarding_profile_subtitle">Optional details can improve your starting guidance. You can change these later.</string><string name="onboarding_health_connect">Connect Health Connect</string><string name="onboarding_health_connecting">Connecting…</string><string name="onboarding_profile_manual">OR ADD THEM YOURSELF</string><string name="onboarding_add_birthday">Add birthday</string><string name="onboarding_date_confirm">Use date</string><string name="onboarding_date_clear">Cancel</string><string name="onboarding_height_cm">Height (cm)</string><string name="onboarding_weight_kg">Weight (kg)</string><string name="onboarding_sex_not_provided">Not provided</string><string name="onboarding_sex_female">Female</string><string name="onboarding_sex_male">Male</string><string name="onboarding_measurement_error">Use 90–250 cm and 25–350 kg, or leave the fields blank.</string><string name="onboarding_profile_private">These details stay private and are never shared.</string>
-    <string name="onboarding_ready_title">Here’s what I understand</string><string name="onboarding_ready_subtitle">Correct anything by going back. Plainstride will keep learning after setup.</string><string name="onboarding_summary_goal">GOAL</string><string name="onboarding_summary_start">STARTING POINT</string><string name="onboarding_summary_week">REALISTIC WEEK</string><string name="onboarding_summary_start_value">%1$s · %2$d min comfortable</string><string name="onboarding_summary_week_value">%1$d runs · about %2$d min</string><string name="onboarding_calibration_one">Comfortable run</string><string name="onboarding_calibration_one_detail">Learn your natural easy effort</string><string name="onboarding_calibration_two">Easy + pickups</string><string name="onboarding_calibration_two_detail">Observe controlled faster running</string><string name="onboarding_calibration_three">Longer relaxed run</string><string name="onboarding_calibration_three_detail">Learn endurance and recovery</string><string name="onboarding_ai_explanation">Your first runs will tune effort, endurance, and recovery. These are starting estimates, not judgments.</string>
+    <string name="onboarding_add_birthday">Add birthday</string>
+    <string name="onboarding_ai_explanation">Your first runs will tune effort, endurance, and recovery. These are starting estimates, not judgments.</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_baseline_subtitle">A starting estimate is enough. Your runs will make it more accurate.</string>
+    <string name="onboarding_baseline_title">What does running look like lately?</string>
+    <string name="onboarding_build_week">Build my first week</string>
+    <string name="onboarding_calibration_one">Comfortable run</string>
+    <string name="onboarding_calibration_one_detail">Learn your natural easy effort</string>
+    <string name="onboarding_calibration_three">Longer relaxed run</string>
+    <string name="onboarding_calibration_three_detail">Learn endurance and recovery</string>
+    <string name="onboarding_calibration_two">Easy + pickups</string>
+    <string name="onboarding_calibration_two_detail">Observe controlled faster running</string>
+    <string name="onboarding_comfortable_minutes">Comfortable run · %1$d min</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_date_clear">Cancel</string>
+    <string name="onboarding_date_confirm">Use date</string>
+    <string name="onboarding_display_name">Display name</string>
+    <string name="onboarding_email">Email</string>
+    <string name="onboarding_frequency_none">Not running yet</string>
+    <string name="onboarding_frequency_occasional">Occasionally</string>
+    <string name="onboarding_frequency_one_two">1–2 times a week</string>
+    <string name="onboarding_frequency_three_plus">3+ times a week</string>
+    <string name="onboarding_goal_comeback">Return after a break</string>
+    <string name="onboarding_goal_consistency">Run consistently</string>
+    <string name="onboarding_goal_faster">Run faster</string>
+    <string name="onboarding_goal_race">Train for a race</string>
+    <string name="onboarding_goal_start">Start running</string>
+    <string name="onboarding_goal_subtitle">Your companion will turn this into a realistic first week.</string>
+    <string name="onboarding_goal_title">What are you working toward?</string>
+    <string name="onboarding_health_connect">Connect Health Connect</string>
+    <string name="onboarding_health_connecting">Connecting…</string>
+    <string name="onboarding_height_cm">Height (cm)</string>
+    <string name="onboarding_identity_subtitle">This helps people recognize you. Your training details stay private.</string>
+    <string name="onboarding_identity_title">Tell us what to call you</string>
+    <string name="onboarding_measurement_error">Use 90–250 cm and 25–350 kg, or leave the fields blank.</string>
+    <string name="onboarding_profile_manual">OR ADD THEM YOURSELF</string>
+    <string name="onboarding_profile_private">These details stay private and are never shared.</string>
+    <string name="onboarding_profile_subtitle">Optional details can improve your starting guidance. You can change these later.</string>
+    <string name="onboarding_profile_title">Add private training details</string>
+    <string name="onboarding_progress">%1$d of %2$d</string>
+    <string name="onboarding_ready_subtitle">Correct anything by going back. Plainstride will keep learning after setup.</string>
+    <string name="onboarding_ready_title">Here’s what I understand</string>
+    <string name="onboarding_recent_frequency">RECENT FREQUENCY</string>
+    <string name="onboarding_runs_per_week">%1$d runs per week</string>
+    <string name="onboarding_sex_female">Female</string>
+    <string name="onboarding_sex_male">Male</string>
+    <string name="onboarding_sex_not_provided">Not provided</string>
+    <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_summary_goal">GOAL</string>
+    <string name="onboarding_summary_start">STARTING POINT</string>
+    <string name="onboarding_summary_start_value">%1$s · %2$d min comfortable</string>
+    <string name="onboarding_summary_week">REALISTIC WEEK</string>
+    <string name="onboarding_summary_week_value">%1$d runs · about %2$d min</string>
+    <string name="onboarding_username">Username</string>
+    <string name="onboarding_username_help">Use 3–30 letters, numbers, underscores, or hyphens.</string>
+    <string name="onboarding_week_subtitle">Choose what feels realistic, not ideal.</string>
+    <string name="onboarding_week_title">What can most weeks support?</string>
+    <string name="onboarding_weekday_minutes">About %1$d min on weekdays</string>
+    <string name="onboarding_weight_kg">Weight (kg)</string>
 </resources>

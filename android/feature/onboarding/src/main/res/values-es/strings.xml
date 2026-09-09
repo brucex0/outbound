@@ -1,9 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="onboarding_back">Atrás</string><string name="onboarding_progress">%1$d de %2$d</string><string name="onboarding_continue">Continuar</string><string name="onboarding_skip">Omitir por ahora</string><string name="onboarding_build_week">Crear mi primera semana</string>
-    <string name="onboarding_identity_title">Dinos cómo llamarte</string><string name="onboarding_identity_subtitle">Así podrán reconocerte. Tus datos de entrenamiento son privados.</string><string name="onboarding_display_name">Nombre visible</string><string name="onboarding_username">Nombre de usuario</string><string name="onboarding_email">Correo electrónico</string><string name="onboarding_username_help">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string>
-    <string name="onboarding_goal_title">¿Qué quieres conseguir?</string><string name="onboarding_goal_subtitle">Tu compañero lo convertirá en una primera semana realista.</string><string name="onboarding_goal_consistency">Correr con constancia</string><string name="onboarding_goal_start">Empezar a correr</string><string name="onboarding_goal_comeback">Volver después de una pausa</string><string name="onboarding_goal_race">Preparar una carrera</string><string name="onboarding_goal_faster">Correr más rápido</string>
-    <string name="onboarding_baseline_title">¿Cuánto corres últimamente?</string><string name="onboarding_baseline_subtitle">Una estimación inicial basta. Tus carreras la harán más precisa.</string><string name="onboarding_recent_frequency">FRECUENCIA RECIENTE</string><string name="onboarding_frequency_none">Aún no corro</string><string name="onboarding_frequency_occasional">De vez en cuando</string><string name="onboarding_frequency_one_two">1–2 veces por semana</string><string name="onboarding_frequency_three_plus">3+ veces por semana</string><string name="onboarding_comfortable_minutes">Carrera cómoda · %1$d min</string>
-    <string name="onboarding_week_title">¿Qué permite una semana normal?</string><string name="onboarding_week_subtitle">Elige algo realista, no ideal.</string><string name="onboarding_runs_per_week">%1$d carreras por semana</string><string name="onboarding_weekday_minutes">Unos %1$d min entre semana</string>
-    <string name="onboarding_profile_title">Añade datos privados de entrenamiento</string><string name="onboarding_profile_subtitle">Estos datos opcionales pueden mejorar la guía inicial. Podrás cambiarlos más tarde.</string><string name="onboarding_health_connect">Conectar Health Connect</string><string name="onboarding_health_connecting">Conectando…</string><string name="onboarding_profile_manual">O AÑÁDELOS TÚ</string><string name="onboarding_add_birthday">Añadir fecha de nacimiento</string><string name="onboarding_date_confirm">Usar fecha</string><string name="onboarding_date_clear">Cancelar</string><string name="onboarding_height_cm">Altura (cm)</string><string name="onboarding_weight_kg">Peso (kg)</string><string name="onboarding_sex_not_provided">Prefiero no indicarlo</string><string name="onboarding_sex_female">Femenino</string><string name="onboarding_sex_male">Masculino</string><string name="onboarding_measurement_error">Usa 90–250 cm y 25–350 kg, o deja los campos vacíos.</string><string name="onboarding_profile_private">Estos datos son privados y nunca se comparten.</string>
-    <string name="onboarding_ready_title">Esto es lo que he entendido</string><string name="onboarding_ready_subtitle">Vuelve atrás para corregir algo. Plainstride seguirá aprendiendo después.</string><string name="onboarding_summary_goal">OBJETIVO</string><string name="onboarding_summary_start">PUNTO DE PARTIDA</string><string name="onboarding_summary_week">SEMANA REALISTA</string><string name="onboarding_summary_start_value">%1$s · %2$d min con comodidad</string><string name="onboarding_summary_week_value">%1$d carreras · unos %2$d min</string><string name="onboarding_calibration_one">Carrera cómoda</string><string name="onboarding_calibration_one_detail">Conocer tu esfuerzo suave natural</string><string name="onboarding_calibration_two">Suave + aceleraciones</string><string name="onboarding_calibration_two_detail">Observar ritmos más rápidos y controlados</string><string name="onboarding_calibration_three">Carrera relajada más larga</string><string name="onboarding_calibration_three_detail">Conocer tu resistencia y recuperación</string><string name="onboarding_ai_explanation">Tus primeras carreras ajustarán el esfuerzo, la resistencia y la recuperación. Son estimaciones iniciales, no valoraciones.</string>
+    <string name="onboarding_add_birthday">Añadir fecha de nacimiento</string>
+    <string name="onboarding_ai_explanation">Tus primeras carreras ajustarán el esfuerzo, la resistencia y la recuperación. Son estimaciones iniciales, no valoraciones.</string>
+    <string name="onboarding_back">Atrás</string>
+    <string name="onboarding_baseline_subtitle">Una estimación inicial basta. Tus carreras la harán más precisa.</string>
+    <string name="onboarding_baseline_title">¿Cuánto corres últimamente?</string>
+    <string name="onboarding_build_week">Crear mi primera semana</string>
+    <string name="onboarding_calibration_one">Carrera cómoda</string>
+    <string name="onboarding_calibration_one_detail">Conocer tu esfuerzo suave natural</string>
+    <string name="onboarding_calibration_three">Carrera relajada más larga</string>
+    <string name="onboarding_calibration_three_detail">Conocer tu resistencia y recuperación</string>
+    <string name="onboarding_calibration_two">Suave + aceleraciones</string>
+    <string name="onboarding_calibration_two_detail">Observar ritmos más rápidos y controlados</string>
+    <string name="onboarding_comfortable_minutes">Carrera cómoda · %1$d min</string>
+    <string name="onboarding_continue">Continuar</string>
+    <string name="onboarding_date_clear">Cancelar</string>
+    <string name="onboarding_date_confirm">Usar fecha</string>
+    <string name="onboarding_display_name">Nombre visible</string>
+    <string name="onboarding_email">Correo electrónico</string>
+    <string name="onboarding_frequency_none">Aún no corro</string>
+    <string name="onboarding_frequency_occasional">De vez en cuando</string>
+    <string name="onboarding_frequency_one_two">1–2 veces por semana</string>
+    <string name="onboarding_frequency_three_plus">3+ veces por semana</string>
+    <string name="onboarding_goal_comeback">Volver después de una pausa</string>
+    <string name="onboarding_goal_consistency">Correr con constancia</string>
+    <string name="onboarding_goal_faster">Correr más rápido</string>
+    <string name="onboarding_goal_race">Preparar una carrera</string>
+    <string name="onboarding_goal_start">Empezar a correr</string>
+    <string name="onboarding_goal_subtitle">Tu compañero lo convertirá en una primera semana realista.</string>
+    <string name="onboarding_goal_title">¿Qué quieres conseguir?</string>
+    <string name="onboarding_health_connect">Conectar Health Connect</string>
+    <string name="onboarding_health_connecting">Conectando…</string>
+    <string name="onboarding_height_cm">Altura (cm)</string>
+    <string name="onboarding_identity_subtitle">Así podrán reconocerte. Tus datos de entrenamiento son privados.</string>
+    <string name="onboarding_identity_title">Dinos cómo llamarte</string>
+    <string name="onboarding_measurement_error">Usa 90–250 cm y 25–350 kg, o deja los campos vacíos.</string>
+    <string name="onboarding_profile_manual">O AÑÁDELOS TÚ</string>
+    <string name="onboarding_profile_private">Estos datos son privados y nunca se comparten.</string>
+    <string name="onboarding_profile_subtitle">Estos datos opcionales pueden mejorar la guía inicial. Podrás cambiarlos más tarde.</string>
+    <string name="onboarding_profile_title">Añade datos privados de entrenamiento</string>
+    <string name="onboarding_progress">%1$d de %2$d</string>
+    <string name="onboarding_ready_subtitle">Vuelve atrás para corregir algo. Plainstride seguirá aprendiendo después.</string>
+    <string name="onboarding_ready_title">Esto es lo que he entendido</string>
+    <string name="onboarding_recent_frequency">FRECUENCIA RECIENTE</string>
+    <string name="onboarding_runs_per_week">%1$d carreras por semana</string>
+    <string name="onboarding_sex_female">Femenino</string>
+    <string name="onboarding_sex_male">Masculino</string>
+    <string name="onboarding_sex_not_provided">Prefiero no indicarlo</string>
+    <string name="onboarding_skip">Omitir por ahora</string>
+    <string name="onboarding_summary_goal">OBJETIVO</string>
+    <string name="onboarding_summary_start">PUNTO DE PARTIDA</string>
+    <string name="onboarding_summary_start_value">%1$s · %2$d min con comodidad</string>
+    <string name="onboarding_summary_week">SEMANA REALISTA</string>
+    <string name="onboarding_summary_week_value">%1$d carreras · unos %2$d min</string>
+    <string name="onboarding_username">Nombre de usuario</string>
+    <string name="onboarding_username_help">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string>
+    <string name="onboarding_week_subtitle">Elige algo realista, no ideal.</string>
+    <string name="onboarding_week_title">¿Qué permite una semana normal?</string>
+    <string name="onboarding_weekday_minutes">Unos %1$d min entre semana</string>
+    <string name="onboarding_weight_kg">Peso (kg)</string>
 </resources>

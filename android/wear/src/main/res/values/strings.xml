@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="active">Active</string>
     <string name="app_name">Plainstride</string>
-    <string name="ready">Ready</string><string name="active">Active</string><string name="paused">Paused</string><string name="finished">Finished</string>
-    <string name="start">Start</string><string name="pause">Pause</string><string name="resume">Resume</string><string name="finish">Finish</string>
-    <string name="elapsed_distance">%1$d s · %2$.2f km</string><string name="heart_rate">%1$d bpm</string><string name="workout_in_progress">Workout in progress</string><string name="workout_channel">Workout</string>
+    <string name="elapsed_distance">%1$d s · %2$.2f km</string>
+    <string name="finish">Finish</string>
+    <string name="finished">Finished</string>
+    <string name="heart_rate">%1$d bpm</string>
+    <string name="pause">Pause</string>
+    <string name="paused">Paused</string>
     <string name="permissions_required">Location and health permissions are required to record.</string>
+    <string name="ready">Ready</string>
+    <string name="resume">Resume</string>
+    <string name="start">Start</string>
+    <string name="workout_channel">Workout</string>
+    <string name="workout_in_progress">Workout in progress</string>
 </resources>

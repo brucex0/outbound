@@ -1,16 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="health_connect_title">Conecta tus datos de salud</string>
-    <string name="health_connect_body">Importa en Plainstride tus carreras, caminatas y salidas en bici recientes, con distancia, calorías, rutas y frecuencia cardíaca. También puedes compartir con Health Connect las actividades completadas en Plainstride.</string>
-    <string name="health_connect_privacy">Tú eliges cada permiso. Plainstride solo lee o escribe los tipos de datos que autorizas y puedes retirar el acceso cuando quieras.</string>
-    <string name="health_connect_connected">Health Connect está conectado.</string>
-    <string name="health_connect_partial">Algunos permisos de Health Connect están desactivados. Los datos disponibles seguirán funcionando.</string>
-    <string name="health_connect_review_permissions">Revisar permisos</string>
-    <string name="health_connect_revoked">Se retiró el acceso a Health Connect. Vuelve a conectarlo para importar y compartir actividades.</string>
-    <string name="health_connect_permission_prompt">Autoriza los tipos de datos que quieras usar con Plainstride.</string>
     <string name="health_connect_allow">Elegir permisos</string>
-    <string name="health_connect_update_required">Debes actualizar Health Connect para poder conectarlo con Plainstride.</string>
-    <string name="health_connect_update">Actualizar Health Connect</string>
-    <string name="health_connect_unavailable">Health Connect no está disponible en este dispositivo. Puedes seguir usando Plainstride con normalidad.</string>
+    <string name="health_connect_body">Importa en Plainstride tus carreras, caminatas y salidas en bici recientes, con distancia, calorías, rutas y frecuencia cardíaca. También puedes compartir con Health Connect las actividades completadas en Plainstride.</string>
+    <string name="health_connect_connected">Health Connect está conectado.</string>
     <string name="health_connect_manage">Gestionar acceso</string>
     <string name="health_connect_not_now">Ahora no</string>
+    <string name="health_connect_partial">Algunos permisos de Health Connect están desactivados. Los datos disponibles seguirán funcionando.</string>
+    <string name="health_connect_permission_prompt">Autoriza los tipos de datos que quieras usar con Plainstride.</string>
+    <string name="health_connect_privacy">Tú eliges cada permiso. Plainstride solo lee o escribe los tipos de datos que autorizas y puedes retirar el acceso cuando quieras.</string>
+    <string name="health_connect_review_permissions">Revisar permisos</string>
+    <string name="health_connect_revoked">Se retiró el acceso a Health Connect. Vuelve a conectarlo para importar y compartir actividades.</string>
+    <string name="health_connect_title">Conecta tus datos de salud</string>
+    <string name="health_connect_unavailable">Health Connect no está disponible en este dispositivo. Puedes seguir usando Plainstride con normalidad.</string>
+    <string name="health_connect_update">Actualizar Health Connect</string>
+    <string name="health_connect_update_required">Debes actualizar Health Connect para poder conectarlo con Plainstride.</string>
 </resources>

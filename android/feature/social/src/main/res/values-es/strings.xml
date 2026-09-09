@@ -1,12 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="social_title">Social</string><string name="social_refresh">Actualizar Social</string><string name="social_notifications">Notificaciones</string><string name="social_offline">Mostrando la actividad social guardada</string>
-    <string name="social_search_people">Buscar personas</string><string name="social_connections">Conexiones</string><string name="social_connections_empty">Mejor en compañía. Encuentra a gente que conoces y comparte el movimiento.</string>
-    <string name="social_circle">Tu Círculo</string><string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Círculo privado con quienes te ayudan a seguir en movimiento.</string>
-    <string name="social_upcoming">Próximas</string><string name="social_upcoming_empty">Aún no hay actividades próximas.</string><string name="social_groups">Grupos</string><string name="social_feed">Actividad reciente</string>
-    <string name="social_load_more">Cargar más</string><string name="social_invited_by">Invitación de %1$s</string><string name="social_review">Revisar</string><string name="social_hybrid">Reúnete o participa desde donde estés</string>
-    <string name="social_members">%1$d miembros</string><string name="social_leave">Salir</string><string name="social_join">Unirme</string><string name="social_more">Más acciones</string><string name="social_route">Ruta de la actividad</string>
-    <string name="social_safety_title">Opciones de seguridad</string><string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string><string name="social_report">Reportar publicación</string><string name="social_block">Bloquear persona</string>
-    <string name="social_milestones">%1$d logros compartidos</string><string name="social_done">Listo</string><string name="social_circle_progress">%1$d de %2$d actividades esta semana</string><string name="social_cheer">Enviar un ánimo privado</string>
-    <string name="social_relationship">Relación: %1$s</string><string name="social_connect">Conectar</string><string name="social_share_award">Compartir logro</string><string name="social_share_award_text">%1$s consiguió un logro en Plainstride</string>
-    <string name="social_circle_create">Crear Círculo</string><string name="social_remove_connection">Eliminar conexión</string><string name="social_circle_reactivate">Reactivar</string><string name="social_invite">Invitar</string><string name="social_invite_person">Invitar a %1$s</string>
+    <string name="social_block">Bloquear persona</string>
+    <string name="social_cheer">Enviar un ánimo privado</string>
+    <string name="social_circle">Tu Círculo</string>
+    <string name="social_circle_create">Crear Círculo</string>
+    <string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Círculo privado con quienes te ayudan a seguir en movimiento.</string>
+    <string name="social_circle_progress">%1$d de %2$d actividades esta semana</string>
+    <string name="social_circle_reactivate">Reactivar</string>
+    <string name="social_connect">Conectar</string>
+    <string name="social_connections">Conexiones</string>
+    <string name="social_connections_empty">Mejor en compañía. Encuentra a gente que conoces y comparte el movimiento.</string>
+    <string name="social_done">Listo</string>
+    <string name="social_feed">Actividad reciente</string>
+    <string name="social_groups">Grupos</string>
+    <string name="social_hybrid">Reúnete o participa desde donde estés</string>
+    <string name="social_invite">Invitar</string>
+    <string name="social_invite_person">Invitar a %1$s</string>
+    <string name="social_invited_by">Invitación de %1$s</string>
+    <string name="social_join">Unirme</string>
+    <string name="social_leave">Salir</string>
+    <string name="social_load_more">Cargar más</string>
+    <string name="social_members">%1$d miembros</string>
+    <string name="social_milestones">%1$d logros compartidos</string>
+    <string name="social_more">Más acciones</string>
+    <string name="social_notifications">Notificaciones</string>
+    <string name="social_offline">Mostrando la actividad social guardada</string>
+    <string name="social_refresh">Actualizar Social</string>
+    <string name="social_relationship">Relación: %1$s</string>
+    <string name="social_remove_connection">Eliminar conexión</string>
+    <string name="social_report">Reportar publicación</string>
+    <string name="social_review">Revisar</string>
+    <string name="social_route">Ruta de la actividad</string>
+    <string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string>
+    <string name="social_safety_title">Opciones de seguridad</string>
+    <string name="social_search_people">Buscar personas</string>
+    <string name="social_share_award">Compartir logro</string>
+    <string name="social_share_award_text">%1$s consiguió un logro en Plainstride</string>
+    <string name="social_title">Social</string>
+    <string name="social_upcoming">Próximas</string>
+    <string name="social_upcoming_empty">Aún no hay actividades próximas.</string>
 </resources>

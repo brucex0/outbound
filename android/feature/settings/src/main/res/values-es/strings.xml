@@ -1,19 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="me_title">Yo</string><string name="runner">Corredor</string><string name="refresh">Actualizar</string>
-    <string name="settings_title">Ajustes</string><string name="open_settings">Abrir ajustes</string><string name="back">Atrás</string>
-    <string name="this_week">Esta semana</string><string name="minutes">Minutos</string><string name="kilometers">Kilómetros</string><string name="consistency">Constancia</string>
-    <string name="current_plan">Plan actual</string><string name="no_active_plan">Sin plan activo</string><string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string><string name="plan_synced">Sincronizado con tu plan de entrenamiento adaptativo.</string>
-    <string name="account">Cuenta</string><string name="account_connected">Cuenta de Plainstride conectada</string><string name="edit_profile">Editar perfil</string>
-    <string name="display_name">Nombre visible</string><string name="username">Nombre de usuario</string><string name="contact_email">Correo de contacto</string><string name="save">Guardar</string>
-    <string name="link_google">Vincular cuenta de Google</string><string name="sign_out">Cerrar sesión</string><string name="sign_out_question">¿Cerrar sesión en Plainstride?</string><string name="cancel">Cancelar</string>
-    <string name="units">Unidades</string><string name="measurement">Medidas</string><string name="metric">Métrico</string><string name="imperial">Imperial</string>
-    <string name="temperature">Temperatura</string><string name="celsius">Celsius</string><string name="fahrenheit">Fahrenheit</string>
-    <string name="appearance">Apariencia</string><string name="mode">Modo</string><string name="system_mode">Sistema</string><string name="light_mode">Claro</string><string name="dark_mode">Oscuro</string><string name="theme">Tema</string>
-    <string name="theme_victory_gold">Oro triunfal</string><string name="theme_indigo">Índigo</string><string name="theme_ocean">Océano</string><string name="theme_forest">Bosque</string>
-    <string name="theme_rose">Rosa</string><string name="theme_aurora">Aurora</string><string name="theme_electric_lime">Lima eléctrica</string><string name="theme_neon_pulse">Pulso neón</string>
-    <string name="help_and_legal">Ayuda y legal</string><string name="terms">Términos de servicio</string><string name="privacy">Política de privacidad</string><string name="support">Ayuda</string>
-    <string name="replay_onboarding">Repetir la bienvenida</string><string name="version">Versión</string>
-    <string name="privacy_note">Plainstride mantiene los datos privados de salud fuera de Social y nunca los incluye en los análisis.</string><string name="delete_account">Eliminar cuenta</string>
-    <string name="settings_refreshed">Cuenta actualizada.</string><string name="settings_saved">Guardado.</string><string name="settings_save_failed">Guardado en este dispositivo. Se sincronizará al recuperar la conexión.</string><string name="settings_refresh_failed">No se pudo actualizar. Se muestran los ajustes guardados.</string>
-    <string name="activity_history_title">Historial de actividades</string><string name="activity_history_body">Consulta mapas, parciales, fotos y tu progreso en cada actividad.</string>
-<string name="username_cooldown">Puedes cambiar tu nombre de usuario una vez cada 30 días.</string><string name="username_invalid">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string></resources>
+    <string name="account">Cuenta</string>
+    <string name="account_connected">Cuenta de Plainstride conectada</string>
+    <string name="activity_history_body">Consulta mapas, parciales, fotos y tu progreso en cada actividad.</string>
+    <string name="activity_history_title">Historial de actividades</string>
+    <string name="appearance">Apariencia</string>
+    <string name="back">Atrás</string>
+    <string name="cancel">Cancelar</string>
+    <string name="celsius">Celsius</string>
+    <string name="consistency">Constancia</string>
+    <string name="contact_email">Correo de contacto</string>
+    <string name="current_plan">Plan actual</string>
+    <string name="dark_mode">Oscuro</string>
+    <string name="delete_account">Eliminar cuenta</string>
+    <string name="display_name">Nombre visible</string>
+    <string name="edit_profile">Editar perfil</string>
+    <string name="fahrenheit">Fahrenheit</string>
+    <string name="help_and_legal">Ayuda y legal</string>
+    <string name="imperial">Imperial</string>
+    <string name="kilometers">Kilómetros</string>
+    <string name="light_mode">Claro</string>
+    <string name="link_google">Vincular cuenta de Google</string>
+    <string name="me_title">Yo</string>
+    <string name="measurement">Medidas</string>
+    <string name="metric">Métrico</string>
+    <string name="minutes">Minutos</string>
+    <string name="mode">Modo</string>
+    <string name="no_active_plan">Sin plan activo</string>
+    <string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string>
+    <string name="open_settings">Abrir ajustes</string>
+    <string name="plan_synced">Sincronizado con tu plan de entrenamiento adaptativo.</string>
+    <string name="privacy">Política de privacidad</string>
+    <string name="privacy_note">Plainstride mantiene los datos privados de salud fuera de Social y nunca los incluye en los análisis.</string>
+    <string name="refresh">Actualizar</string>
+    <string name="replay_onboarding">Repetir la bienvenida</string>
+    <string name="runner">Corredor</string>
+    <string name="save">Guardar</string>
+    <string name="settings_refresh_failed">No se pudo actualizar. Se muestran los ajustes guardados.</string>
+    <string name="settings_refreshed">Cuenta actualizada.</string>
+    <string name="settings_save_failed">Guardado en este dispositivo. Se sincronizará al recuperar la conexión.</string>
+    <string name="settings_saved">Guardado.</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="sign_out">Cerrar sesión</string>
+    <string name="sign_out_question">¿Cerrar sesión en Plainstride?</string>
+    <string name="support">Ayuda</string>
+    <string name="system_mode">Sistema</string>
+    <string name="temperature">Temperatura</string>
+    <string name="terms">Términos de servicio</string>
+    <string name="theme">Tema</string>
+    <string name="theme_aurora">Aurora</string>
+    <string name="theme_electric_lime">Lima eléctrica</string>
+    <string name="theme_forest">Bosque</string>
+    <string name="theme_indigo">Índigo</string>
+    <string name="theme_neon_pulse">Pulso neón</string>
+    <string name="theme_ocean">Océano</string>
+    <string name="theme_rose">Rosa</string>
+    <string name="theme_victory_gold">Oro triunfal</string>
+    <string name="this_week">Esta semana</string>
+    <string name="units">Unidades</string>
+    <string name="username">Nombre de usuario</string>
+    <string name="username_cooldown">Puedes cambiar tu nombre de usuario una vez cada 30 días.</string>
+    <string name="username_invalid">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string>
+    <string name="version">Versión</string>
+</resources>

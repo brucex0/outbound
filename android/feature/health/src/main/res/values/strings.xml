@@ -1,16 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="health_connect_title">Connect your health data</string>
-    <string name="health_connect_body">Bring recent runs, walks, rides, distance, calories, routes, and heart rate into Plainstride. Completed Plainstride activities can also be shared with Health Connect.</string>
-    <string name="health_connect_privacy">You choose each permission. Plainstride only reads or writes the data types you allow, and you can revoke access at any time.</string>
-    <string name="health_connect_connected">Health Connect is connected.</string>
-    <string name="health_connect_partial">Some Health Connect permissions are off. Available data will still work.</string>
-    <string name="health_connect_review_permissions">Review permissions</string>
-    <string name="health_connect_revoked">Health Connect access was removed. Reconnect to resume importing and sharing activities.</string>
-    <string name="health_connect_permission_prompt">Allow the data types you want Plainstride to use.</string>
     <string name="health_connect_allow">Choose permissions</string>
-    <string name="health_connect_update_required">Health Connect needs an update before Plainstride can connect.</string>
-    <string name="health_connect_update">Update Health Connect</string>
-    <string name="health_connect_unavailable">Health Connect is not available on this device. You can continue using Plainstride normally.</string>
+    <string name="health_connect_body">Bring recent runs, walks, rides, distance, calories, routes, and heart rate into Plainstride. Completed Plainstride activities can also be shared with Health Connect.</string>
+    <string name="health_connect_connected">Health Connect is connected.</string>
     <string name="health_connect_manage">Manage access</string>
     <string name="health_connect_not_now">Not now</string>
+    <string name="health_connect_partial">Some Health Connect permissions are off. Available data will still work.</string>
+    <string name="health_connect_permission_prompt">Allow the data types you want Plainstride to use.</string>
+    <string name="health_connect_privacy">You choose each permission. Plainstride only reads or writes the data types you allow, and you can revoke access at any time.</string>
+    <string name="health_connect_review_permissions">Review permissions</string>
+    <string name="health_connect_revoked">Health Connect access was removed. Reconnect to resume importing and sharing activities.</string>
+    <string name="health_connect_title">Connect your health data</string>
+    <string name="health_connect_unavailable">Health Connect is not available on this device. You can continue using Plainstride normally.</string>
+    <string name="health_connect_update">Update Health Connect</string>
+    <string name="health_connect_update_required">Health Connect needs an update before Plainstride can connect.</string>
 </resources>

@@ -1,19 +1,22 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-  <string name="routes_title">&#x793E;&#x533A;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_refresh">&#x5237;&#x65B0;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_discover">&#x53D1;&#x73B0;</string>
-  <string name="routes_mine">&#x6211;&#x7684;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_nearby">&#x9644;&#x8FD1;</string>
-  <string name="routes_search">&#x641C;&#x7D22;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_offline">&#x6B63;&#x5728;&#x663E;&#x793A;&#x5DF2;&#x4FDD;&#x5B58;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_bookmark">&#x6536;&#x85CF;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_summary">%1$.1f &#x516C;&#x91CC; &#xB7; &#x722C;&#x5347; %2$.0f &#x7C73;</string>
-  <string name="routes_community_counts">%1$d &#x6B21;&#x6536;&#x85CF; &#xB7; %2$d &#x6B21;&#x5B8C;&#x6210;</string>
-  <string name="routes_empty">&#x672A;&#x627E;&#x5230;&#x8DEF;&#x7EBF;&#xFF0C;&#x8BF7;&#x5C1D;&#x8BD5;&#x5176;&#x4ED6;&#x5173;&#x952E;&#x8BCD;&#x6216;&#x5730;&#x56FE;&#x533A;&#x57DF;&#x3002;</string>
-  <string name="routes_reverse">&#x53CD;&#x5411;&#x8DDF;&#x968F;</string>
-  <string name="routes_export">&#x5BFC;&#x51FA; GPX</string>
-  <string name="routes_follow">&#x8DDF;&#x968F;&#x8DEF;&#x7EBF;</string>
-  <string name="routes_close">&#x5173;&#x95ED;</string>
-  <string name="routes_location_title">查找附近路线</string><string name="routes_location_body">允许使用大致位置以搜索附近区域。Plainstride 会先对坐标取整，且不会公开你的位置。</string><string name="routes_location_allow">允许大致位置</string>
+    <string name="routes_bookmark">&amp;#x6536;&amp;#x85CF;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_close">&amp;#x5173;&amp;#x95ED;</string>
+    <string name="routes_community_counts">%1$d &amp;#x6B21;&amp;#x6536;&amp;#x85CF; &amp;#xB7; %2$d &amp;#x6B21;&amp;#x5B8C;&amp;#x6210;</string>
+    <string name="routes_discover">&amp;#x53D1;&amp;#x73B0;</string>
+    <string name="routes_empty">&amp;#x672A;&amp;#x627E;&amp;#x5230;&amp;#x8DEF;&amp;#x7EBF;&amp;#xFF0C;&amp;#x8BF7;&amp;#x5C1D;&amp;#x8BD5;&amp;#x5176;&amp;#x4ED6;&amp;#x5173;&amp;#x952E;&amp;#x8BCD;&amp;#x6216;&amp;#x5730;&amp;#x56FE;&amp;#x533A;&amp;#x57DF;&amp;#x3002;</string>
+    <string name="routes_export">&amp;#x5BFC;&amp;#x51FA; GPX</string>
+    <string name="routes_follow">&amp;#x8DDF;&amp;#x968F;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_location_allow">允许大致位置</string>
+    <string name="routes_location_body">允许使用大致位置以搜索附近区域。Plainstride 会先对坐标取整，且不会公开你的位置。</string>
+    <string name="routes_location_title">查找附近路线</string>
+    <string name="routes_mine">&amp;#x6211;&amp;#x7684;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_nearby">&amp;#x9644;&amp;#x8FD1;</string>
+    <string name="routes_offline">&amp;#x6B63;&amp;#x5728;&amp;#x663E;&amp;#x793A;&amp;#x5DF2;&amp;#x4FDD;&amp;#x5B58;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_refresh">&amp;#x5237;&amp;#x65B0;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_reverse">&amp;#x53CD;&amp;#x5411;&amp;#x8DDF;&amp;#x968F;</string>
+    <string name="routes_search">&amp;#x641C;&amp;#x7D22;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_summary">%1$.1f &amp;#x516C;&amp;#x91CC; &amp;#xB7; &amp;#x722C;&amp;#x5347; %2$.0f &amp;#x7C73;</string>
+    <string name="routes_title">&amp;#x793E;&amp;#x533A;&amp;#x8DEF;&amp;#x7EBF;</string>
 </resources>

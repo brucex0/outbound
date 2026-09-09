@@ -1,1 +1,8 @@
-<resources><string name="route_map_description">路线地图</string><string name="route_map_unavailable">地图不可用</string><string name="route_start">起点</string><string name="route_finish">终点</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="route_finish">终点</string>
+    <string name="route_map_description">路线地图</string>
+    <string name="route_map_unavailable">地图不可用</string>
+    <string name="route_start">起点</string>
+</resources>

@@ -1,19 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="me_title">Me</string><string name="runner">Runner</string><string name="refresh">Refresh</string>
-    <string name="settings_title">Settings</string><string name="open_settings">Open settings</string><string name="back">Back</string>
-    <string name="this_week">This week</string><string name="minutes">Minutes</string><string name="kilometers">Kilometers</string><string name="consistency">Consistency</string>
-    <string name="current_plan">Current plan</string><string name="no_active_plan">No active plan</string><string name="no_active_plan_body">Set up a plan from Today when you’re ready.</string><string name="plan_synced">Synced with your adaptive training plan.</string>
-    <string name="account">Account</string><string name="account_connected">Plainstride account connected</string><string name="edit_profile">Edit profile</string>
-    <string name="display_name">Display name</string><string name="username">Username</string><string name="contact_email">Contact email</string><string name="save">Save</string>
-    <string name="link_google">Link Google account</string><string name="sign_out">Sign out</string><string name="sign_out_question">Sign out of Plainstride?</string><string name="cancel">Cancel</string>
-    <string name="units">Units</string><string name="measurement">Measurement</string><string name="metric">Metric</string><string name="imperial">Imperial</string>
-    <string name="temperature">Temperature</string><string name="celsius">Celsius</string><string name="fahrenheit">Fahrenheit</string>
-    <string name="appearance">Appearance</string><string name="mode">Mode</string><string name="system_mode">System</string><string name="light_mode">Light</string><string name="dark_mode">Dark</string><string name="theme">Theme</string>
-    <string name="theme_victory_gold">Victory Gold</string><string name="theme_indigo">Indigo</string><string name="theme_ocean">Ocean</string><string name="theme_forest">Forest</string>
-    <string name="theme_rose">Rose</string><string name="theme_aurora">Aurora</string><string name="theme_electric_lime">Electric Lime</string><string name="theme_neon_pulse">Neon Pulse</string>
-    <string name="help_and_legal">Help &amp; legal</string><string name="terms">Terms of Service</string><string name="privacy">Privacy Policy</string><string name="support">Support</string>
-    <string name="replay_onboarding">Run onboarding flow</string><string name="version">Version</string>
-    <string name="privacy_note">Plainstride keeps private health details out of Social and never includes them in analytics.</string><string name="delete_account">Delete account</string>
-    <string name="settings_refreshed">Account refreshed.</string><string name="settings_saved">Saved.</string><string name="settings_save_failed">Saved on this device. Cloud sync will retry when you reconnect.</string><string name="settings_refresh_failed">Couldn’t refresh. Showing saved settings.</string>
-    <string name="activity_history_title">Activity history</string><string name="activity_history_body">Review maps, splits, photos, and progress from every activity.</string>
-<string name="username_cooldown">Usernames can be changed once every 30 days.</string><string name="username_invalid">Use 3–30 letters, numbers, underscores, or hyphens.</string></resources>
+    <string name="account">Account</string>
+    <string name="account_connected">Plainstride account connected</string>
+    <string name="activity_history_body">Review maps, splits, photos, and progress from every activity.</string>
+    <string name="activity_history_title">Activity history</string>
+    <string name="appearance">Appearance</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="celsius">Celsius</string>
+    <string name="consistency">Consistency</string>
+    <string name="contact_email">Contact email</string>
+    <string name="current_plan">Current plan</string>
+    <string name="dark_mode">Dark</string>
+    <string name="delete_account">Delete account</string>
+    <string name="display_name">Display name</string>
+    <string name="edit_profile">Edit profile</string>
+    <string name="fahrenheit">Fahrenheit</string>
+    <string name="help_and_legal">Help &amp; legal</string>
+    <string name="imperial">Imperial</string>
+    <string name="kilometers">Kilometers</string>
+    <string name="light_mode">Light</string>
+    <string name="link_google">Link Google account</string>
+    <string name="me_title">Me</string>
+    <string name="measurement">Measurement</string>
+    <string name="metric">Metric</string>
+    <string name="minutes">Minutes</string>
+    <string name="mode">Mode</string>
+    <string name="no_active_plan">No active plan</string>
+    <string name="no_active_plan_body">Set up a plan from Today when you’re ready.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="plan_synced">Synced with your adaptive training plan.</string>
+    <string name="privacy">Privacy Policy</string>
+    <string name="privacy_note">Plainstride keeps private health details out of Social and never includes them in analytics.</string>
+    <string name="refresh">Refresh</string>
+    <string name="replay_onboarding">Run onboarding flow</string>
+    <string name="runner">Runner</string>
+    <string name="save">Save</string>
+    <string name="settings_refresh_failed">Couldn’t refresh. Showing saved settings.</string>
+    <string name="settings_refreshed">Account refreshed.</string>
+    <string name="settings_save_failed">Saved on this device. Cloud sync will retry when you reconnect.</string>
+    <string name="settings_saved">Saved.</string>
+    <string name="settings_title">Settings</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_question">Sign out of Plainstride?</string>
+    <string name="support">Support</string>
+    <string name="system_mode">System</string>
+    <string name="temperature">Temperature</string>
+    <string name="terms">Terms of Service</string>
+    <string name="theme">Theme</string>
+    <string name="theme_aurora">Aurora</string>
+    <string name="theme_electric_lime">Electric Lime</string>
+    <string name="theme_forest">Forest</string>
+    <string name="theme_indigo">Indigo</string>
+    <string name="theme_neon_pulse">Neon Pulse</string>
+    <string name="theme_ocean">Ocean</string>
+    <string name="theme_rose">Rose</string>
+    <string name="theme_victory_gold">Victory Gold</string>
+    <string name="this_week">This week</string>
+    <string name="units">Units</string>
+    <string name="username">Username</string>
+    <string name="username_cooldown">Usernames can be changed once every 30 days.</string>
+    <string name="username_invalid">Use 3–30 letters, numbers, underscores, or hyphens.</string>
+    <string name="version">Version</string>
+</resources>

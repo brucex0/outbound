@@ -1,1 +1,18 @@
-<resources><string name="safety_title">Safety &amp; live sharing</string><string name="safety_explanation">Share a time-limited private link with people you trust. Live sharing is off by default and ends when you stop or finish.</string><string name="safety_notification_title">Stay informed</string><string name="safety_notification_body">Allow notifications for invitations, Cheers, and important Circle updates. Your inbox still works if you decline.</string><string name="safety_settings">Open settings</string><string name="safety_allow">Allow notifications</string><string name="safety_contacts">Trusted contacts</string><string name="safety_add_contact">Add trusted contact</string><string name="safety_remove_contact">Remove trusted contact</string><string name="safety_sms">Text message</string><string name="safety_push">Push notification</string><string name="safety_disclaimer">Plainstride live sharing is not an emergency service. Call local emergency services when you need urgent help.</string><string name="inbox_title">Notifications</string><string name="inbox_empty">You’re all caught up.</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="inbox_empty">You’re all caught up.</string>
+    <string name="inbox_title">Notifications</string>
+    <string name="safety_add_contact">Add trusted contact</string>
+    <string name="safety_allow">Allow notifications</string>
+    <string name="safety_contacts">Trusted contacts</string>
+    <string name="safety_disclaimer">Plainstride live sharing is not an emergency service. Call local emergency services when you need urgent help.</string>
+    <string name="safety_explanation">Share a time-limited private link with people you trust. Live sharing is off by default and ends when you stop or finish.</string>
+    <string name="safety_notification_body">Allow notifications for invitations, Cheers, and important Circle updates. Your inbox still works if you decline.</string>
+    <string name="safety_notification_title">Stay informed</string>
+    <string name="safety_push">Push notification</string>
+    <string name="safety_remove_contact">Remove trusted contact</string>
+    <string name="safety_settings">Open settings</string>
+    <string name="safety_sms">Text message</string>
+    <string name="safety_title">Safety &amp; live sharing</string>
+</resources>

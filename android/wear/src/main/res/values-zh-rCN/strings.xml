@@ -1,1 +1,18 @@
-<resources><string name="app_name">Plainstride</string><string name="ready">准备就绪</string><string name="active">运动中</string><string name="paused">已暂停</string><string name="finished">已完成</string><string name="start">开始</string><string name="pause">暂停</string><string name="resume">继续</string><string name="finish">结束</string><string name="elapsed_distance">%1$d 秒 · %2$.2f 公里</string><string name="heart_rate">%1$d 次/分钟</string><string name="workout_in_progress">运动进行中</string><string name="workout_channel">运动</string><string name="permissions_required">需要位置和健康权限才能记录。</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="active">运动中</string>
+    <string name="app_name">Plainstride</string>
+    <string name="elapsed_distance">%1$d 秒 · %2$.2f 公里</string>
+    <string name="finish">结束</string>
+    <string name="finished">已完成</string>
+    <string name="heart_rate">%1$d 次/分钟</string>
+    <string name="pause">暂停</string>
+    <string name="paused">已暂停</string>
+    <string name="permissions_required">需要位置和健康权限才能记录。</string>
+    <string name="ready">准备就绪</string>
+    <string name="resume">继续</string>
+    <string name="start">开始</string>
+    <string name="workout_channel">运动</string>
+    <string name="workout_in_progress">运动进行中</string>
+</resources>

@@ -1,19 +1,22 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-  <string name="routes_title">Rutas de la comunidad</string>
-  <string name="routes_refresh">Actualizar rutas</string>
-  <string name="routes_discover">Descubrir</string>
-  <string name="routes_mine">Mis rutas</string>
-  <string name="routes_nearby">Cercanas</string>
-  <string name="routes_search">Buscar rutas</string>
-  <string name="routes_offline">Mostrando rutas guardadas</string>
-  <string name="routes_bookmark">Guardar ruta</string>
-  <string name="routes_summary">%1$.1f km &#xB7; %2$.0f m de desnivel</string>
-  <string name="routes_community_counts">%1$d guardadas &#xB7; %2$d completadas</string>
-  <string name="routes_empty">No se encontraron rutas. Prueba otra b&#xFA;squeda o zona.</string>
-  <string name="routes_reverse">Seguir en sentido inverso</string>
-  <string name="routes_export">Exportar GPX</string>
-  <string name="routes_follow">Seguir ruta</string>
-  <string name="routes_close">Cerrar</string>
-  <string name="routes_location_title">Busca rutas cercanas</string><string name="routes_location_body">Permite la ubicación aproximada para buscar en una zona amplia. Plainstride redondea las coordenadas y no publica tu ubicación.</string><string name="routes_location_allow">Permitir ubicación aproximada</string>
+    <string name="routes_bookmark">Guardar ruta</string>
+    <string name="routes_close">Cerrar</string>
+    <string name="routes_community_counts">%1$d guardadas &amp;#xB7; %2$d completadas</string>
+    <string name="routes_discover">Descubrir</string>
+    <string name="routes_empty">No se encontraron rutas. Prueba otra b&amp;#xFA;squeda o zona.</string>
+    <string name="routes_export">Exportar GPX</string>
+    <string name="routes_follow">Seguir ruta</string>
+    <string name="routes_location_allow">Permitir ubicación aproximada</string>
+    <string name="routes_location_body">Permite la ubicación aproximada para buscar en una zona amplia. Plainstride redondea las coordenadas y no publica tu ubicación.</string>
+    <string name="routes_location_title">Busca rutas cercanas</string>
+    <string name="routes_mine">Mis rutas</string>
+    <string name="routes_nearby">Cercanas</string>
+    <string name="routes_offline">Mostrando rutas guardadas</string>
+    <string name="routes_refresh">Actualizar rutas</string>
+    <string name="routes_reverse">Seguir en sentido inverso</string>
+    <string name="routes_search">Buscar rutas</string>
+    <string name="routes_summary">%1$.1f km &amp;#xB7; %2$.0f m de desnivel</string>
+    <string name="routes_title">Rutas de la comunidad</string>
 </resources>

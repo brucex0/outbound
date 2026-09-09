@@ -1,1 +1,18 @@
-<resources><string name="app_name">Plainstride</string><string name="ready">Listo</string><string name="active">En curso</string><string name="paused">En pausa</string><string name="finished">Finalizado</string><string name="start">Iniciar</string><string name="pause">Pausar</string><string name="resume">Reanudar</string><string name="finish">Finalizar</string><string name="elapsed_distance">%1$d s · %2$.2f km</string><string name="heart_rate">%1$d lpm</string><string name="workout_in_progress">Entrenamiento en curso</string><string name="workout_channel">Entrenamiento</string><string name="permissions_required">Se necesitan permisos de ubicación y salud para grabar.</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="active">En curso</string>
+    <string name="app_name">Plainstride</string>
+    <string name="elapsed_distance">%1$d s · %2$.2f km</string>
+    <string name="finish">Finalizar</string>
+    <string name="finished">Finalizado</string>
+    <string name="heart_rate">%1$d lpm</string>
+    <string name="pause">Pausar</string>
+    <string name="paused">En pausa</string>
+    <string name="permissions_required">Se necesitan permisos de ubicación y salud para grabar.</string>
+    <string name="ready">Listo</string>
+    <string name="resume">Reanudar</string>
+    <string name="start">Iniciar</string>
+    <string name="workout_channel">Entrenamiento</string>
+    <string name="workout_in_progress">Entrenamiento en curso</string>
+</resources>

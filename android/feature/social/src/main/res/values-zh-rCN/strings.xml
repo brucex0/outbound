@@ -1,12 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="social_title">动态</string><string name="social_refresh">刷新动态</string><string name="social_notifications">通知</string><string name="social_offline">正在显示已保存的动态</string>
-    <string name="social_search_people">搜索用户</string><string name="social_connections">好友</string><string name="social_connections_empty">一起更有动力。找到你认识的人，让每次运动都有陪伴。</string>
-    <string name="social_circle">你的圈子</string><string name="social_circle_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密圈子。</string>
-    <string name="social_upcoming">即将开始</string><string name="social_upcoming_empty">暂时没有即将开始的活动。</string><string name="social_groups">群组</string><string name="social_feed">近期动态</string>
-    <string name="social_load_more">加载更多</string><string name="social_invited_by">%1$s 邀请了你</string><string name="social_review">查看</string><string name="social_hybrid">线下集合或随地加入</string>
-    <string name="social_members">%1$d 位成员</string><string name="social_leave">退出</string><string name="social_join">加入</string><string name="social_more">更多操作</string><string name="social_route">活动路线</string>
-    <string name="social_safety_title">安全选项</string><string name="social_safety_body">举报内容会保密。屏蔽后双方将解除好友关系，并互相隐藏内容。</string><string name="social_report">举报动态</string><string name="social_block">屏蔽此人</string>
-    <string name="social_milestones">%1$d 个公开里程碑</string><string name="social_done">完成</string><string name="social_circle_progress">本周已完成 %1$d/%2$d 次活动</string><string name="social_cheer">发送私密鼓励</string>
-    <string name="social_relationship">关系：%1$s</string><string name="social_connect">添加好友</string><string name="social_share_award">分享成就</string><string name="social_share_award_text">%1$s 在 Plainstride 获得了一项成就</string>
-    <string name="social_circle_create">创建圈子</string><string name="social_remove_connection">解除好友关系</string><string name="social_circle_reactivate">重新启用</string><string name="social_invite">邀请</string><string name="social_invite_person">邀请 %1$s</string>
+    <string name="social_block">屏蔽此人</string>
+    <string name="social_cheer">发送私密鼓励</string>
+    <string name="social_circle">你的圈子</string>
+    <string name="social_circle_create">创建圈子</string>
+    <string name="social_circle_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密圈子。</string>
+    <string name="social_circle_progress">本周已完成 %1$d/%2$d 次活动</string>
+    <string name="social_circle_reactivate">重新启用</string>
+    <string name="social_connect">添加好友</string>
+    <string name="social_connections">好友</string>
+    <string name="social_connections_empty">一起更有动力。找到你认识的人，让每次运动都有陪伴。</string>
+    <string name="social_done">完成</string>
+    <string name="social_feed">近期动态</string>
+    <string name="social_groups">群组</string>
+    <string name="social_hybrid">线下集合或随地加入</string>
+    <string name="social_invite">邀请</string>
+    <string name="social_invite_person">邀请 %1$s</string>
+    <string name="social_invited_by">%1$s 邀请了你</string>
+    <string name="social_join">加入</string>
+    <string name="social_leave">退出</string>
+    <string name="social_load_more">加载更多</string>
+    <string name="social_members">%1$d 位成员</string>
+    <string name="social_milestones">%1$d 个公开里程碑</string>
+    <string name="social_more">更多操作</string>
+    <string name="social_notifications">通知</string>
+    <string name="social_offline">正在显示已保存的动态</string>
+    <string name="social_refresh">刷新动态</string>
+    <string name="social_relationship">关系：%1$s</string>
+    <string name="social_remove_connection">解除好友关系</string>
+    <string name="social_report">举报动态</string>
+    <string name="social_review">查看</string>
+    <string name="social_route">活动路线</string>
+    <string name="social_safety_body">举报内容会保密。屏蔽后双方将解除好友关系，并互相隐藏内容。</string>
+    <string name="social_safety_title">安全选项</string>
+    <string name="social_search_people">搜索用户</string>
+    <string name="social_share_award">分享成就</string>
+    <string name="social_share_award_text">%1$s 在 Plainstride 获得了一项成就</string>
+    <string name="social_title">动态</string>
+    <string name="social_upcoming">即将开始</string>
+    <string name="social_upcoming_empty">暂时没有即将开始的活动。</string>
 </resources>

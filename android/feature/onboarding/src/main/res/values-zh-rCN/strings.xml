@@ -1,9 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="onboarding_back">返回</string><string name="onboarding_progress">第 %1$d 步，共 %2$d 步</string><string name="onboarding_continue">继续</string><string name="onboarding_skip">暂时跳过</string><string name="onboarding_build_week">制定我的第一周计划</string>
-    <string name="onboarding_identity_title">告诉我们如何称呼你</string><string name="onboarding_identity_subtitle">便于其他跑者认出你。训练详情会保持私密。</string><string name="onboarding_display_name">显示名称</string><string name="onboarding_username">用户名</string><string name="onboarding_email">电子邮箱</string><string name="onboarding_username_help">请输入 3–30 个字母、数字、下划线或连字符。</string>
-    <string name="onboarding_goal_title">你正在为哪个目标努力？</string><string name="onboarding_goal_subtitle">你的跑步伙伴会据此制定切实可行的第一周计划。</string><string name="onboarding_goal_consistency">保持规律跑步</string><string name="onboarding_goal_start">开始跑步</string><string name="onboarding_goal_comeback">休整后重返跑步</string><string name="onboarding_goal_race">备战比赛</string><string name="onboarding_goal_faster">提升速度</string>
-    <string name="onboarding_baseline_title">你最近的跑步情况如何？</string><string name="onboarding_baseline_subtitle">大致估计即可。之后的跑步会让判断更准确。</string><string name="onboarding_recent_frequency">近期频率</string><string name="onboarding_frequency_none">还没开始跑</string><string name="onboarding_frequency_occasional">偶尔</string><string name="onboarding_frequency_one_two">每周 1–2 次</string><string name="onboarding_frequency_three_plus">每周 3 次以上</string><string name="onboarding_comfortable_minutes">舒适跑 · %1$d 分钟</string>
-    <string name="onboarding_week_title">大多数星期实际能安排多少？</string><string name="onboarding_week_subtitle">请选择现实可行的安排，而非理想状态。</string><string name="onboarding_runs_per_week">每周跑 %1$d 次</string><string name="onboarding_weekday_minutes">工作日约 %1$d 分钟</string>
-    <string name="onboarding_profile_title">添加私密训练资料</string><string name="onboarding_profile_subtitle">这些选填资料能优化初始建议，之后也可随时修改。</string><string name="onboarding_health_connect">连接健康互联</string><string name="onboarding_health_connecting">正在连接…</string><string name="onboarding_profile_manual">或手动添加</string><string name="onboarding_add_birthday">添加出生日期</string><string name="onboarding_date_confirm">使用此日期</string><string name="onboarding_date_clear">取消</string><string name="onboarding_height_cm">身高（厘米）</string><string name="onboarding_weight_kg">体重（公斤）</string><string name="onboarding_sex_not_provided">暂不提供</string><string name="onboarding_sex_female">女性</string><string name="onboarding_sex_male">男性</string><string name="onboarding_measurement_error">身高请输入 90–250 厘米，体重请输入 25–350 公斤，也可留空。</string><string name="onboarding_profile_private">这些资料会保持私密，绝不会分享。</string>
-    <string name="onboarding_ready_title">这是我目前对你的了解</string><string name="onboarding_ready_subtitle">如需更正，请返回修改。设置完成后，Plainstride 仍会继续了解你。</string><string name="onboarding_summary_goal">目标</string><string name="onboarding_summary_start">起点</string><string name="onboarding_summary_week">实际安排</string><string name="onboarding_summary_start_value">%1$s · 舒适跑 %2$d 分钟</string><string name="onboarding_summary_week_value">跑 %1$d 次 · 每次约 %2$d 分钟</string><string name="onboarding_calibration_one">舒适跑</string><string name="onboarding_calibration_one_detail">了解你自然的轻松强度</string><string name="onboarding_calibration_two">轻松跑 + 加速跑</string><string name="onboarding_calibration_two_detail">观察可控的提速表现</string><string name="onboarding_calibration_three">较长距离轻松跑</string><string name="onboarding_calibration_three_detail">了解耐力与恢复情况</string><string name="onboarding_ai_explanation">前三次跑步会帮助调整强度、耐力和恢复建议。这只是起始估计，并非对你的评判。</string>
+    <string name="onboarding_add_birthday">添加出生日期</string>
+    <string name="onboarding_ai_explanation">前三次跑步会帮助调整强度、耐力和恢复建议。这只是起始估计，并非对你的评判。</string>
+    <string name="onboarding_back">返回</string>
+    <string name="onboarding_baseline_subtitle">大致估计即可。之后的跑步会让判断更准确。</string>
+    <string name="onboarding_baseline_title">你最近的跑步情况如何？</string>
+    <string name="onboarding_build_week">制定我的第一周计划</string>
+    <string name="onboarding_calibration_one">舒适跑</string>
+    <string name="onboarding_calibration_one_detail">了解你自然的轻松强度</string>
+    <string name="onboarding_calibration_three">较长距离轻松跑</string>
+    <string name="onboarding_calibration_three_detail">了解耐力与恢复情况</string>
+    <string name="onboarding_calibration_two">轻松跑 + 加速跑</string>
+    <string name="onboarding_calibration_two_detail">观察可控的提速表现</string>
+    <string name="onboarding_comfortable_minutes">舒适跑 · %1$d 分钟</string>
+    <string name="onboarding_continue">继续</string>
+    <string name="onboarding_date_clear">取消</string>
+    <string name="onboarding_date_confirm">使用此日期</string>
+    <string name="onboarding_display_name">显示名称</string>
+    <string name="onboarding_email">电子邮箱</string>
+    <string name="onboarding_frequency_none">还没开始跑</string>
+    <string name="onboarding_frequency_occasional">偶尔</string>
+    <string name="onboarding_frequency_one_two">每周 1–2 次</string>
+    <string name="onboarding_frequency_three_plus">每周 3 次以上</string>
+    <string name="onboarding_goal_comeback">休整后重返跑步</string>
+    <string name="onboarding_goal_consistency">保持规律跑步</string>
+    <string name="onboarding_goal_faster">提升速度</string>
+    <string name="onboarding_goal_race">备战比赛</string>
+    <string name="onboarding_goal_start">开始跑步</string>
+    <string name="onboarding_goal_subtitle">你的跑步伙伴会据此制定切实可行的第一周计划。</string>
+    <string name="onboarding_goal_title">你正在为哪个目标努力？</string>
+    <string name="onboarding_health_connect">连接健康互联</string>
+    <string name="onboarding_health_connecting">正在连接…</string>
+    <string name="onboarding_height_cm">身高（厘米）</string>
+    <string name="onboarding_identity_subtitle">便于其他跑者认出你。训练详情会保持私密。</string>
+    <string name="onboarding_identity_title">告诉我们如何称呼你</string>
+    <string name="onboarding_measurement_error">身高请输入 90–250 厘米，体重请输入 25–350 公斤，也可留空。</string>
+    <string name="onboarding_profile_manual">或手动添加</string>
+    <string name="onboarding_profile_private">这些资料会保持私密，绝不会分享。</string>
+    <string name="onboarding_profile_subtitle">这些选填资料能优化初始建议，之后也可随时修改。</string>
+    <string name="onboarding_profile_title">添加私密训练资料</string>
+    <string name="onboarding_progress">第 %1$d 步，共 %2$d 步</string>
+    <string name="onboarding_ready_subtitle">如需更正，请返回修改。设置完成后，Plainstride 仍会继续了解你。</string>
+    <string name="onboarding_ready_title">这是我目前对你的了解</string>
+    <string name="onboarding_recent_frequency">近期频率</string>
+    <string name="onboarding_runs_per_week">每周跑 %1$d 次</string>
+    <string name="onboarding_sex_female">女性</string>
+    <string name="onboarding_sex_male">男性</string>
+    <string name="onboarding_sex_not_provided">暂不提供</string>
+    <string name="onboarding_skip">暂时跳过</string>
+    <string name="onboarding_summary_goal">目标</string>
+    <string name="onboarding_summary_start">起点</string>
+    <string name="onboarding_summary_start_value">%1$s · 舒适跑 %2$d 分钟</string>
+    <string name="onboarding_summary_week">实际安排</string>
+    <string name="onboarding_summary_week_value">跑 %1$d 次 · 每次约 %2$d 分钟</string>
+    <string name="onboarding_username">用户名</string>
+    <string name="onboarding_username_help">请输入 3–30 个字母、数字、下划线或连字符。</string>
+    <string name="onboarding_week_subtitle">请选择现实可行的安排，而非理想状态。</string>
+    <string name="onboarding_week_title">大多数星期实际能安排多少？</string>
+    <string name="onboarding_weekday_minutes">工作日约 %1$d 分钟</string>
+    <string name="onboarding_weight_kg">体重（公斤）</string>
 </resources>

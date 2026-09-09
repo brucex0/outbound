@@ -1,16 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="health_connect_title">连接健康数据</string>
-    <string name="health_connect_body">将近期跑步、步行和骑行的距离、热量、路线及心率导入 Plainstride。你也可以把在 Plainstride 完成的活动共享到健康数据共享。</string>
-    <string name="health_connect_privacy">每项权限都由你决定。Plainstride 只会读写你允许的数据类型，你也可以随时撤销授权。</string>
-    <string name="health_connect_connected">已连接健康数据共享。</string>
-    <string name="health_connect_partial">部分健康数据权限尚未开启，已授权的数据仍可正常使用。</string>
-    <string name="health_connect_review_permissions">查看权限</string>
-    <string name="health_connect_revoked">健康数据访问权限已被撤销。重新连接后可继续导入和共享活动。</string>
-    <string name="health_connect_permission_prompt">请选择允许 Plainstride 使用的数据类型。</string>
     <string name="health_connect_allow">选择权限</string>
-    <string name="health_connect_update_required">需要更新健康数据共享，才能与 Plainstride 连接。</string>
-    <string name="health_connect_update">更新健康数据共享</string>
-    <string name="health_connect_unavailable">此设备不支持健康数据共享，你仍可正常使用 Plainstride。</string>
+    <string name="health_connect_body">将近期跑步、步行和骑行的距离、热量、路线及心率导入 Plainstride。你也可以把在 Plainstride 完成的活动共享到健康数据共享。</string>
+    <string name="health_connect_connected">已连接健康数据共享。</string>
     <string name="health_connect_manage">管理权限</string>
     <string name="health_connect_not_now">暂不连接</string>
+    <string name="health_connect_partial">部分健康数据权限尚未开启，已授权的数据仍可正常使用。</string>
+    <string name="health_connect_permission_prompt">请选择允许 Plainstride 使用的数据类型。</string>
+    <string name="health_connect_privacy">每项权限都由你决定。Plainstride 只会读写你允许的数据类型，你也可以随时撤销授权。</string>
+    <string name="health_connect_review_permissions">查看权限</string>
+    <string name="health_connect_revoked">健康数据访问权限已被撤销。重新连接后可继续导入和共享活动。</string>
+    <string name="health_connect_title">连接健康数据</string>
+    <string name="health_connect_unavailable">此设备不支持健康数据共享，你仍可正常使用 Plainstride。</string>
+    <string name="health_connect_update">更新健康数据共享</string>
+    <string name="health_connect_update_required">需要更新健康数据共享，才能与 Plainstride 连接。</string>
 </resources>

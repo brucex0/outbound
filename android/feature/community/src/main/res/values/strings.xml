@@ -1,1 +1,22 @@
-<resources><string name="routes_title">Community routes</string><string name="routes_refresh">Refresh routes</string><string name="routes_discover">Discover</string><string name="routes_mine">My routes</string><string name="routes_nearby">Nearby</string><string name="routes_search">Search routes</string><string name="routes_offline">Showing saved routes</string><string name="routes_bookmark">Save route</string><string name="routes_summary">%1$.1f km · %2$.0f m elevation</string><string name="routes_community_counts">%1$d saves · %2$d completions</string><string name="routes_empty">No routes found. Try another search or map area.</string><string name="routes_reverse">Follow in reverse</string><string name="routes_export">Export GPX</string><string name="routes_follow">Follow route</string><string name="routes_close">Close</string><string name="routes_location_title">Find routes near you</string><string name="routes_location_body">Allow approximate location to search a broad nearby area. Plainstride rounds coordinates before requesting routes and does not publish your location.</string><string name="routes_location_allow">Allow approximate location</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="routes_bookmark">Save route</string>
+    <string name="routes_close">Close</string>
+    <string name="routes_community_counts">%1$d saves · %2$d completions</string>
+    <string name="routes_discover">Discover</string>
+    <string name="routes_empty">No routes found. Try another search or map area.</string>
+    <string name="routes_export">Export GPX</string>
+    <string name="routes_follow">Follow route</string>
+    <string name="routes_location_allow">Allow approximate location</string>
+    <string name="routes_location_body">Allow approximate location to search a broad nearby area. Plainstride rounds coordinates before requesting routes and does not publish your location.</string>
+    <string name="routes_location_title">Find routes near you</string>
+    <string name="routes_mine">My routes</string>
+    <string name="routes_nearby">Nearby</string>
+    <string name="routes_offline">Showing saved routes</string>
+    <string name="routes_refresh">Refresh routes</string>
+    <string name="routes_reverse">Follow in reverse</string>
+    <string name="routes_search">Search routes</string>
+    <string name="routes_summary">%1$.1f km · %2$.0f m elevation</string>
+    <string name="routes_title">Community routes</string>
+</resources>

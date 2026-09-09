@@ -1,17 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="weather_headline_unsafe">Outdoor running may be unsafe</string>
-    <string name="weather_guidance_unsafe">Choose an indoor option or wait until the storm has passed.</string>
-    <string name="weather_headline_heat">Heat will raise the effort</string>
-    <string name="weather_guidance_heat">Run by effort instead of pace, carry fluids, and consider a shorter or cooler window.</string>
-    <string name="weather_headline_cold">Very cold conditions</string>
-    <string name="weather_guidance_cold">Warm up indoors, cover exposed skin, and keep the first minutes especially easy.</string>
-    <string name="weather_headline_wind">Strong wind nearby</string>
-    <string name="weather_guidance_wind">Use effort rather than pace and choose a sheltered route when possible.</string>
-    <string name="weather_headline_slippery">Slippery surfaces are possible</string>
-    <string name="weather_guidance_slippery">Choose a clear route or move the workout indoors.</string>
-    <string name="weather_headline_rain">Rain is likely</string>
-    <string name="weather_guidance_rain">The workout still fits; choose visible layers and watch for slick surfaces.</string>
-    <string name="weather_headline_good">Good conditions for today’s run</string>
     <string name="weather_attribution">Weather data from MET Norway · CC BY 4.0</string>
+    <string name="weather_guidance_cold">Warm up indoors, cover exposed skin, and keep the first minutes especially easy.</string>
+    <string name="weather_guidance_heat">Run by effort instead of pace, carry fluids, and consider a shorter or cooler window.</string>
+    <string name="weather_guidance_rain">The workout still fits; choose visible layers and watch for slick surfaces.</string>
+    <string name="weather_guidance_slippery">Choose a clear route or move the workout indoors.</string>
+    <string name="weather_guidance_unsafe">Choose an indoor option or wait until the storm has passed.</string>
+    <string name="weather_guidance_wind">Use effort rather than pace and choose a sheltered route when possible.</string>
+    <string name="weather_headline_cold">Very cold conditions</string>
+    <string name="weather_headline_good">Good conditions for today’s run</string>
+    <string name="weather_headline_heat">Heat will raise the effort</string>
+    <string name="weather_headline_rain">Rain is likely</string>
+    <string name="weather_headline_slippery">Slippery surfaces are possible</string>
+    <string name="weather_headline_unsafe">Outdoor running may be unsafe</string>
+    <string name="weather_headline_wind">Strong wind nearby</string>
     <string name="weather_location_explanation">Plainstride uses approximate location for this forecast. Weather advice does not automatically change your plan.</string>
 </resources>

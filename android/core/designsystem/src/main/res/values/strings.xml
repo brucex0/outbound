@@ -1,1 +1,8 @@
-<resources><string name="route_map_description">Route map</string><string name="route_map_unavailable">Map unavailable</string><string name="route_start">Start</string><string name="route_finish">Finish</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="route_finish">Finish</string>
+    <string name="route_map_description">Route map</string>
+    <string name="route_map_unavailable">Map unavailable</string>
+    <string name="route_start">Start</string>
+</resources>
