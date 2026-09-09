@@ -19,7 +19,9 @@ class PersistentGearRepository @Inject constructor(
     override suspend fun collection(): GearCollection {
         val id = accountId ?: return GearCollection()
         val entities = database.gearDao().forAccount(id)
-        return GearCollection(entities.map(GearEntity::toDomain), entities.firstOrNull { it.isDefault }?.gearId?.let(UUID::fromString))
+        val shoes = entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
+        val defaultId = entities.firstOrNull { it.isDefault }?.gearId?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+        return GearCollection(shoes, defaultId?.takeIf { id -> shoes.any { it.id == id } })
     }
     override suspend fun replace(collection: GearCollection) {
         val id = accountId ?: return

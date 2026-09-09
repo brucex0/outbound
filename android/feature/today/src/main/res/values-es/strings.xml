@@ -22,6 +22,14 @@
     <string name="today_curated_value">Elegir entrenamiento</string>
     <string name="today_detail_summary">%1$d minutos · %2$s</string>
     <string name="today_details">Detalles</string>
+    <string name="today_weather">Tiempo</string>
+    <string name="today_more">Más opciones de preparación</string>
+    <string name="today_take_photo">Hacer foto</string>
+    <string name="today_find_route">Buscar ruta</string>
+    <string name="today_change_goal">Cambiar objetivo</string>
+    <string name="today_distance_format">%1$.1f km</string>
+    <string name="today_time_format">%1$d min</string>
+    <string name="today_calories_format">%1$d kcal</string>
     <string name="today_plan">Plan</string>
     <string name="today_change_plan">Cambiar plan</string>
     <string name="today_distance">Distancia</string>

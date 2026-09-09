@@ -2,11 +2,13 @@ package com.plainstride.outbound
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
@@ -268,6 +271,7 @@ private fun SignedInApp(
                             onOpenLiveTrack = { navController.navigate(SAFETY_ROUTE) },
                             onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
+                            onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
                             inboxCount = integration.notifications.size,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
@@ -502,6 +506,11 @@ private fun SignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            Image(
+                painter = painterResource(R.drawable.plainstride_app_icon),
+                contentDescription = null,
+                modifier = Modifier.size(144.dp),
+            )
             Text(stringResource(R.string.auth_welcome), style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
             Text(stringResource(R.string.auth_welcome_body), modifier = Modifier.padding(vertical = 16.dp), textAlign = TextAlign.Center)
             Button(onClick = { viewModel.signIn(context) }, enabled = state.operation == null) {
