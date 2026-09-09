@@ -3,7 +3,7 @@ import type { LiveCoachLiveState, SupportedAILocale } from "../aiProviders/types
 import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import type { LiveCoachMoment } from "./liveCoachTypes.js";
 
-const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoachMoment, "progress">, string[]>>> = {
+const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoachMoment, "progress" | "segment_countdown">, string[]>>> = {
   en: {
     pace_drift: [
       "Relax your shoulders, quicken the rhythm slightly, and rebuild smoothly.",
@@ -93,6 +93,11 @@ export function transcriptForLiveCoachCue(input: {
 }): string {
   if (input.moment === "progress") {
     return progressTranscript(input.locale, input.liveState, input.measurementUnitSystem);
+  }
+  if (input.moment === "segment_countdown") {
+    const seconds = input.liveState.segmentCountdownSeconds;
+    if (seconds == null || seconds < 1 || seconds > 5) throw new Error("A valid segment countdown value is required.");
+    return String(seconds);
   }
   const variants = authoredVariants[input.locale][input.moment] ?? defaultVariants[input.locale];
   const index = createHash("sha256").update(input.cueRequestId).digest().readUInt32BE(0) % variants.length;
