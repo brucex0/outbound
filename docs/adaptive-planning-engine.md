@@ -61,6 +61,17 @@ Recommended layers:
 
 ## Planning Horizon
 
+### Evaluation cadence and cost controls
+
+- Reassessment is event-driven, not continuous polling.
+- Normal events are aggregated with a 45-minute debounce and capped at two evaluations per user per UTC day by default.
+- Pain/illness, goal changes, and schedule changes bypass the normal daily cap. Manual rebuilds bypass that cap but have a two-hour cooldown.
+- Deferred events remain durable until the next budget window; stable per-user jitter avoids a midnight traffic spike.
+- A daily maintenance job considers only active-plan users with plan creation, activity, or readiness in the previous 14 days.
+- It detects overdue workouts and requests one aggregated reassessment. With no missed workout, it evaluates only when activity or readiness changed after the latest athlete-state snapshot.
+- Run `npm run planning:maintenance` from `backend/` as a once-daily Cloud Run Job or equivalent quiet-hours schedule. The API does not keep a permanent planning poller alive.
+- Tune defaults with `PLANNING_EVENT_DEBOUNCE_MINUTES`, `PLANNING_NORMAL_EVALUATIONS_PER_DAY`, `PLANNING_MANUAL_COOLDOWN_MINUTES`, and `PLANNING_ACTIVE_USER_WINDOW_DAYS`.
+
 The engine should not regenerate the entire future plan on every event.
 
 Use different adaptation speeds:

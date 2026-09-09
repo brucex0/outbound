@@ -5,6 +5,7 @@ import { claimDuePlanningEvents, failPlanningEvent } from "./events.js";
 import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { getPrismaClient } from "../prisma.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
+import { evaluationAdmission } from "./evaluationPolicy.js";
 import type {
   ActivityForPlanning,
   PlanningEventResult,
@@ -27,6 +28,19 @@ export async function processDuePlanningEventsForUser(
 
 export async function processPlanningEventById(eventId: string): Promise<PlanningEventResult> {
   const prisma = getPrismaClient();
+  const pending = await prisma.planningEvent.findUniqueOrThrow({ where: { id: eventId } });
+  const admission = await evaluationAdmission(pending);
+  if (!admission.allowed) {
+    await prisma.planningEvent.update({
+      where: { id: eventId },
+      data: { status: "pending", runAfter: admission.retryAt },
+    });
+    return {
+      eventId,
+      status: "ignored",
+      message: `Evaluation deferred by ${admission.reason.replace("_", " ")}.`,
+    };
+  }
   const event = await prisma.planningEvent.update({
     where: { id: eventId },
     data: {
@@ -41,6 +55,18 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
   const prisma = getPrismaClient();
 
   try {
+    const admission = await evaluationAdmission(event);
+    if (!admission.allowed) {
+      await prisma.planningEvent.update({
+        where: { id: event.id },
+        data: { status: "pending", runAfter: admission.retryAt },
+      });
+      return {
+        eventId: event.id,
+        status: "ignored",
+        message: `Evaluation deferred by ${admission.reason.replace("_", " ")}.`,
+      };
+    }
     const plan = await prisma.trainingPlan.findFirst({
       where: {
         userId: event.userId,

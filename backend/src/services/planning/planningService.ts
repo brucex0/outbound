@@ -230,10 +230,11 @@ export async function submitReadiness(
     type: checkIn.illnessOrPain ? "painFlagged" : "readinessSubmitted",
     sourceId: checkIn.id,
     priority: checkIn.illnessOrPain ? 100 : 80,
-    dedupeKey: `user:${userId}:plan:${plan?.id ?? "none"}:today_readiness:${checkIn.date.toISOString().slice(0, 10)}`,
+    dedupeKey: `user:${userId}:plan:${plan?.id ?? "none"}:normal_reassessment`,
+    runAfter: checkIn.illnessOrPain ? new Date() : addMinutes(new Date(), planningDebounceMinutes()),
   });
 
-  await processPlanningEventById(event.id);
+  if (checkIn.illnessOrPain) await processPlanningEventById(event.id);
   return assemblePlanningState(userId, "updated");
 }
 
@@ -257,11 +258,11 @@ export async function skipWorkout(userId: string, workoutId: string): Promise<Pl
     type: "workoutSkipped",
     sourceId: workout.id,
     priority: 90,
-    dedupeKey: `user:${userId}:plan:${workout.planVersion.planId}:skip:${workout.id}`,
+    dedupeKey: `user:${userId}:plan:${workout.planVersion.planId}:normal_reassessment`,
+    runAfter: addMinutes(new Date(), planningDebounceMinutes()),
   });
 
-  await processPlanningEventById(event.id);
-  return assemblePlanningState(userId, "updated");
+  return assemblePlanningState(userId, event.runAfter <= new Date() ? "updated" : "reassessing");
 }
 
 export async function completeWorkout(
@@ -309,8 +310,8 @@ export async function completeWorkout(
     type: "activityCompleted",
     sourceId: input.activityId ?? workout.id,
     priority: 50,
-    dedupeKey: `user:${userId}:plan:${workout.planVersion.planId}:near_term_replan`,
-    runAfter: addMinutes(new Date(), 2),
+    dedupeKey: `user:${userId}:plan:${workout.planVersion.planId}:normal_reassessment`,
+    runAfter: addMinutes(new Date(), planningDebounceMinutes()),
   });
 
   if (event.runAfter <= new Date()) {
@@ -353,8 +354,8 @@ export async function enqueueActivityCompletedEvent(userId: string, activityId: 
     type: "activityCompleted",
     sourceId: activityId,
     priority: 40,
-    dedupeKey: `user:${userId}:plan:${plan.id}:near_term_replan`,
-    runAfter: addMinutes(new Date(), 2),
+    dedupeKey: `user:${userId}:plan:${plan.id}:normal_reassessment`,
+    runAfter: addMinutes(new Date(), planningDebounceMinutes()),
   });
 }
 
@@ -521,4 +522,9 @@ function addMinutes(date: Date, minutes: number): Date {
   const result = new Date(date);
   result.setMinutes(result.getMinutes() + minutes);
   return result;
+}
+
+function planningDebounceMinutes(): number {
+  const configured = Number(process.env.PLANNING_EVENT_DEBOUNCE_MINUTES);
+  return Number.isInteger(configured) && configured >= 0 ? configured : 45;
 }

@@ -80,6 +80,8 @@ const rebuildSchema = z.object({
     "manualRebuild",
     "healthImportCompleted",
     "painFlagged",
+    "workoutMissed",
+    "dailyReview",
   ]).optional(),
 }).optional();
 

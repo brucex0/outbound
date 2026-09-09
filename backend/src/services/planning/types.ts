@@ -31,7 +31,9 @@ export type PlanningEventType =
   | "weeklyRollover"
   | "manualRebuild"
   | "healthImportCompleted"
-  | "painFlagged";
+  | "painFlagged"
+  | "workoutMissed"
+  | "dailyReview";
 
 export type PlanningStatus = "stable" | "reassessing" | "updated" | "needsAttention";
 

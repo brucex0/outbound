@@ -77,7 +77,7 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
     }
   }
 
-  if (input.eventType === "workoutSkipped") {
+  if (input.eventType === "workoutSkipped" || input.eventType === "workoutMissed") {
     return {
       ...base,
       summary: "Replanned after a skipped workout without cramming the missed work.",
@@ -118,6 +118,7 @@ function shouldCreateVersion(input: AdaptationInput): boolean {
     "manualRebuild",
     "painFlagged",
     "healthImportCompleted",
+    "workoutMissed",
   ].includes(input.eventType) || input.athleteState.fatigueRisk === "high";
 }
 
@@ -175,6 +176,10 @@ function adjustmentMessageFor(input: AdaptationInput): string {
       return "Adjusted the plan using today's readiness.";
     case "workoutSkipped":
       return "Moved forward without cramming the skipped workout.";
+    case "workoutMissed":
+      return "Moved forward without cramming the missed workout.";
+    case "dailyReview":
+      return "Checked the plan during the daily review.";
     case "activityCompleted":
       return "Reassessed training state after the completed activity.";
     case "healthImportCompleted":

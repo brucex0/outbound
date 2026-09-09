@@ -32,6 +32,8 @@ export async function enqueuePlanningEvent(
       return client.planningEvent.update({
         where: { id: existing.id },
         data: {
+          type: input.type,
+          sourceId: input.sourceId ?? existing.sourceId,
           runAfter: input.runAfter ?? existing.runAfter,
           priority: Math.max(existing.priority, input.priority ?? existing.priority),
           payload: json(input.payload ?? {}),
