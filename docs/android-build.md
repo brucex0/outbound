@@ -36,17 +36,20 @@ Application startup enforces that debug identity support cannot be enabled in a 
 
 ## Signed Release Install
 
-With the release signing environment variables and production Gradle properties
-from `android-release.md` configured, connect and authorize an Android phone,
-then run from the repository root:
+Connect and authorize an Android phone, then run from the repository root:
 
 ```sh
 ./scripts/build-install-android-release.sh
 ```
 
-The helper validates the Play release configuration, builds the minified signed
-phone APK, verifies its certificate, and installs it with `adb install -r`. Set
-`ANDROID_SERIAL` first when more than one device is connected.
+The helper loads the existing upload-key passwords from macOS Keychain, uses the
+keystore at `~/.config/plainstride/android-upload.jks`, and reads production
+Gradle properties from `~/.gradle/gradle.properties`. It validates the Play
+release configuration, builds the minified signed phone APK, verifies its
+certificate, and installs it with `adb install -r`. Set `ANDROID_SERIAL` first
+when more than one device is connected. Override `PLAINSTRIDE_VERSION_CODE` and
+`PLAINSTRIDE_VERSION_NAME` when preparing an upload; local installs default to
+version code `1` and version name `1.0`.
 
 ## Tests
 
