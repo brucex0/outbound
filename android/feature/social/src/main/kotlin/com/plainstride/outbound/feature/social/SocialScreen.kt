@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.social
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -91,9 +94,82 @@ import com.plainstride.outbound.core.designsystem.*
 @Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
 @Composable private fun EventCard(event: SocialEvent, open:()->Unit) = SocialCard(onClick = open) { Text(event.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_hybrid), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall); event.locationName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun GroupCard(group: SocialGroup, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(group.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }
-@Composable private fun PostCard(post: SocialPost, profile: () -> Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) = Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) { val cheerLabel=stringResource(if(post.viewerHasCheered)R.string.social_remove_cheer else R.string.social_add_cheer);Column { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { TextButton(profile, Modifier.weight(1f)) { SocialAvatar(post.author,36.dp); Spacer(Modifier.width(10.dp)); Column(horizontalAlignment=Alignment.Start){Text(post.author.displayName,fontWeight=FontWeight.SemiBold);post.activity?.startedAt?.let{Text(formatSocialDate(it),style=MaterialTheme.typography.bodySmall)}} }; IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) } }; Box { post.activity?.route.routeCoordinates().takeIf { it.size > 1 }?.let { PlainstrideRouteMap(it, Modifier.fillMaxWidth().height(210.dp)) } ?: Surface(Modifier.fillMaxWidth().height(210.dp), color = MaterialTheme.colorScheme.surfaceVariant) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Route, stringResource(R.string.social_route), Modifier.size(44.dp)) } };post.activity?.let{activity->Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(),color=MaterialTheme.colorScheme.scrim.copy(alpha=.72f)){Row(Modifier.padding(12.dp),horizontalArrangement=Arrangement.SpaceEvenly){ActivityStat(formatDistance(activity.distanceM),stringResource(R.string.social_distance));ActivityStat(formatDuration(activity.durationSecs),stringResource(R.string.social_time));ActivityStat(formatPace(activity.averagePaceSecsPerKm),stringResource(R.string.social_pace))}}} }; Column(Modifier.padding(16.dp)) { post.activity?.let { Text(it.title, fontWeight = FontWeight.SemiBold) }; post.caption?.let { Text(it, Modifier.padding(top = 6.dp)) }; Row(verticalAlignment = Alignment.CenterVertically) { IconButton(cheer, Modifier.sizeIn(minWidth=48.dp,minHeight=48.dp).semantics { contentDescription = cheerLabel }) { Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null) }; Text(post.cheerCount.toString()); Spacer(Modifier.width(18.dp)); IconButton(comments,Modifier.sizeIn(minWidth=48.dp,minHeight=48.dp)){Icon(Icons.Outlined.ChatBubbleOutline,stringResource(R.string.social_comments))};Text(post.commentCount.toString()) } } } }
+@Composable
+private fun PostCard(post: SocialPost, profile: () -> Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp),
+    ) {
+        val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(profile, Modifier.weight(1f), contentPadding = PaddingValues(0.dp)) {
+                    SocialAvatar(post.author, 36.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                        Text(post.author.displayName, fontWeight = FontWeight.SemiBold)
+                        post.activity?.startedAt?.let { Text(formatSocialDate(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                }
+                IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) }
+            }
+            post.activity?.let { activity ->
+                Text(activity.title, fontWeight = FontWeight.SemiBold)
+                Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(16.dp))) {
+                    val route = activity.route.routeCoordinates()
+                    if (route.size > 1) {
+                        PlainstrideRouteMap(
+                            points = route,
+                            modifier = Modifier.fillMaxSize(),
+                            interactive = false,
+                            showEndpointMarkers = false,
+                        )
+                    } else {
+                        Box(
+                            Modifier.fillMaxSize().background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = .28f),
+                                        MaterialTheme.colorScheme.background,
+                                    ),
+                                ),
+                            ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Route,
+                                stringResource(R.string.social_route),
+                                Modifier.size(54.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = .65f),
+                            )
+                        }
+                    }
+                    Surface(
+                        Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
+                    ) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
+                            ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
+                            ActivityStat(formatPace(activity.averagePaceSecsPerKm), stringResource(R.string.social_pace))
+                        }
+                    }
+                }
+            }
+            post.caption?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(cheer, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = cheerLabel }) { Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null) }
+                Text(post.cheerCount.toString())
+                Spacer(Modifier.width(18.dp))
+                IconButton(comments, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) { Icon(Icons.Outlined.ChatBubbleOutline, stringResource(R.string.social_comments)) }
+                Text(post.commentCount.toString())
+            }
+        }
+    }
 
-@Composable private fun ActivityStat(value:String,label:String)=Column(horizontalAlignment=Alignment.CenterHorizontally){Text(value,color=MaterialTheme.colorScheme.inverseOnSurface,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.inverseOnSurface,style=MaterialTheme.typography.labelSmall)}
+@Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
 private fun formatDistance(value:Double?)=value?.let{"%.2f km".format(it/1000)} ?: "—"
 private fun formatDuration(value:Int?)=value?.let{"%d:%02d".format(it/60,it%60)} ?: "—"
 private fun formatPace(value:Double?)=value?.let{"%d:%02d /km".format(it.toInt()/60,it.toInt()%60)} ?: "—"

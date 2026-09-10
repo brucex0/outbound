@@ -32,6 +32,8 @@ fun PlainstrideRouteMap(
     showUserLocation: Boolean = false,
     preciseLocationGranted: Boolean = false,
     focusOnUser: Boolean = false,
+    interactive: Boolean = true,
+    showEndpointMarkers: Boolean = true,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -73,10 +75,23 @@ fun PlainstrideRouteMap(
         modifier = modifier.semantics { contentDescription = description },
         cameraPositionState = camera,
         properties = MapProperties(isMyLocationEnabled = showUserLocation && preciseLocationGranted),
-        uiSettings = MapUiSettings(myLocationButtonEnabled = showUserLocation && preciseLocationGranted, zoomControlsEnabled = false),
+        uiSettings = MapUiSettings(
+            compassEnabled = interactive,
+            indoorLevelPickerEnabled = interactive,
+            mapToolbarEnabled = interactive,
+            myLocationButtonEnabled = interactive && showUserLocation && preciseLocationGranted,
+            rotationGesturesEnabled = interactive,
+            scrollGesturesEnabled = interactive,
+            scrollGesturesEnabledDuringRotateOrZoom = interactive,
+            tiltGesturesEnabled = interactive,
+            zoomControlsEnabled = false,
+            zoomGesturesEnabled = interactive,
+        ),
     ) {
         if (points.size > 1) Polyline(points = points.map { LatLng(it.latitude, it.longitude) }, color = MaterialTheme.colorScheme.primary, width = 12f)
-        points.firstOrNull()?.let { Marker(state = rememberUpdatedMarkerState(LatLng(it.latitude, it.longitude)), title = stringResource(R.string.route_start)) }
-        points.lastOrNull()?.takeIf { points.size > 1 }?.let { Marker(state = rememberUpdatedMarkerState(LatLng(it.latitude, it.longitude)), title = stringResource(R.string.route_finish)) }
+        if (showEndpointMarkers) {
+            points.firstOrNull()?.let { Marker(state = rememberUpdatedMarkerState(LatLng(it.latitude, it.longitude)), title = stringResource(R.string.route_start)) }
+            points.lastOrNull()?.takeIf { points.size > 1 }?.let { Marker(state = rememberUpdatedMarkerState(LatLng(it.latitude, it.longitude)), title = stringResource(R.string.route_finish)) }
+        }
     }
 }
