@@ -161,7 +161,7 @@ private struct ActivityShareCardView: View {
             Spacer()
 
             VStack(alignment: .leading, spacing: 34) {
-                Image(systemName: "figure.run.circle.fill")
+                Image(systemName: SportType(activityType: activity.activityType).systemImage)
                     .font(.system(size: 78, weight: .semibold))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.white)
