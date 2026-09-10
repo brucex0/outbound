@@ -224,6 +224,11 @@ private fun SignedInApp(
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
+    LaunchedEffect(hasActiveSession, currentDestination?.route) {
+        if (hasActiveSession && currentDestination?.route != RECORDING_ROUTE) {
+            navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+        }
+    }
     LaunchedEffect(navigationUri) {
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         when (destination) {

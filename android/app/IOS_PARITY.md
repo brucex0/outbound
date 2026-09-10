@@ -18,6 +18,7 @@
 - [x] Closing Assistant returns to the primary destination that opened it.
 - [x] Assistant deep links open the same destination.
 - [x] Recording is full-screen and hides primary navigation.
+- [x] A live, paused, or awaiting-save session is restored directly into the recording surface instead of leaving Today in a non-startable state.
 - [x] The shell-owned bottom row clears gesture and three-button system navigation insets.
 - [ ] Direct tab presses and restored navigation have side-by-side evidence.
 - [ ] Launcher motion, foreground restart, and reduced-motion behavior match iOS.
