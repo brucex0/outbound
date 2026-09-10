@@ -3,6 +3,9 @@
 <resources>
     <string name="social_all">Ver todo</string>
     <string name="social_block">Bloquear persona</string>
+    <string name="social_block_confirmation_message">Al bloquear se elimina la conexión y se oculta el contenido de ambas personas.</string>
+    <string name="social_block_confirmation_title">¿Bloquear a esta persona?</string>
+    <string name="social_cancel">Cancelar</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
     <string name="social_circle">Tu Círculo</string>
     <string name="social_circle_create">Crear Círculo</string>
@@ -41,6 +44,8 @@
     <string name="social_refresh">Actualizar Social</string>
     <string name="social_relationship">Relación: %1$s</string>
     <string name="social_remove_connection">Eliminar conexión</string>
+    <string name="social_remove_connection_confirmation_message">¿Seguro que quieres eliminar a %1$s de tus conexiones?</string>
+    <string name="social_remove_connection_confirmation_title">¿Eliminar conexión?</string>
     <string name="social_report">Reportar publicación</string>
     <string name="social_requests">Solicitudes</string>
     <string name="social_review">Revisar</string>

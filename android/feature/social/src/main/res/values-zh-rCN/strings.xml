@@ -3,6 +3,9 @@
 <resources>
     <string name="social_all">全部</string>
     <string name="social_block">屏蔽此人</string>
+    <string name="social_block_confirmation_message">屏蔽后双方将解除好友关系，并互相隐藏内容。</string>
+    <string name="social_block_confirmation_title">屏蔽此人？</string>
+    <string name="social_cancel">取消</string>
     <string name="social_cheer">发送私密鼓励</string>
     <string name="social_circle">你的圈子</string>
     <string name="social_circle_create">创建圈子</string>
@@ -41,6 +44,8 @@
     <string name="social_refresh">刷新动态</string>
     <string name="social_relationship">关系：%1$s</string>
     <string name="social_remove_connection">解除好友关系</string>
+    <string name="social_remove_connection_confirmation_message">确定要解除与 %1$s 的好友关系吗？</string>
+    <string name="social_remove_connection_confirmation_title">解除好友关系？</string>
     <string name="social_report">举报动态</string>
     <string name="social_requests">好友请求</string>
     <string name="social_review">查看</string>

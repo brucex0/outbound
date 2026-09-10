@@ -3,6 +3,9 @@
 <resources>
     <string name="social_all">All</string>
     <string name="social_block">Block person</string>
+    <string name="social_block_confirmation_message">Blocking removes the connection and hides each person’s content.</string>
+    <string name="social_block_confirmation_title">Block this person?</string>
+    <string name="social_cancel">Cancel</string>
     <string name="social_cheer">Send a private Cheer</string>
     <string name="social_circle">Your Circle</string>
     <string name="social_circle_create">Create Circle</string>
@@ -41,6 +44,8 @@
     <string name="social_refresh">Refresh Social</string>
     <string name="social_relationship">Relationship: %1$s</string>
     <string name="social_remove_connection">Remove connection</string>
+    <string name="social_remove_connection_confirmation_message">Are you sure you want to remove %1$s from your connections?</string>
+    <string name="social_remove_connection_confirmation_title">Remove connection?</string>
     <string name="social_report">Report post</string>
     <string name="social_requests">Requests</string>
     <string name="social_review">Review</string>
