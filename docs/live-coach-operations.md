@@ -10,16 +10,16 @@ Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech 
 
 1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. A standalone selection is sent as a catalog reference; the backend resolves its guide-relevant execution projection before Gemini returns a strict-JSON phase-aware and instruction-ID-aware phrase plan.
 2. iOS keeps semantic detection, selected-workout distance/time trigger crossings, and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
-   Final 300-meter/100-meter (or imperial-equivalent) countdowns use the same cloud coach voice with a bounded remaining-distance value; the pinned on-device voice is only the deadline/offline fallback.
+   Final 300-meter/100-meter (or imperial-equivalent) countdowns use the same cloud coach voice with a bounded remaining-distance value. Missing generated or recorded audio remains silent; the app never switches to a system-synthesized voice.
 3. Google TTS receives only the finalized sentence, selected voice, language, and 24 kHz PCM settings.
 4. Google `streamingSynthesize` chunks are forwarded in a framed HTTP/2 response and played through `AVAudioEngine` as they arrive.
-5. Generated plans prewarm up to eight likely WAV phrases in the background, with selected-workout instructions first. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and immediately uses the catalog cue in English, a localized generic segment cue in other locales, the reviewed local pack, or the session-pinned on-device system voice.
+5. Generated plans prewarm up to eight likely WAV phrases in the background, with selected-workout instructions first. The whole device request, including the wait for response metadata, is raced against a 1.5 second deadline. If cloud audio loses that race, iOS cancels it and uses matching reviewed recorded audio when available; otherwise it remains silent.
 
-Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter distance crossing window. The first zero trigger may fire immediately. Reliable distance is required after the initial cue, stale crossings are skipped, route guidance wins, and elapsed catalog cues replace only the generic timed transition at the same boundary. Other timed-step transitions use the live-coach phrase/cache/TTS path. Static five-through-one segment countdowns never request server synthesis: iOS preloads their reviewed fixed-pack recordings and uses the pinned on-device system voice only if the matching recording is unavailable. Completion behavior remains deterministic on device.
+Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter distance crossing window. The first zero trigger may fire immediately. Reliable distance is required after the initial cue, stale crossings are skipped, route guidance wins, and elapsed catalog cues replace only the generic timed transition at the same boundary. Other timed-step transitions use the live-coach phrase/cache/TTS path. Static five-through-one segment countdowns never request runtime synthesis: iOS preloads and validates the complete reviewed fixed-pack sequence before playing its first beat. If the sequence is incomplete or the five-second opening is missed, that countdown remains silent and reports bounded availability telemetry. Completion behavior remains deterministic on device.
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 
-At live-session activation, iOS preloads the selected voice's reviewed `workout.pause` and `workout.resume` clips. Auto-pause can begin soon after countdown, so these controls cannot rely on a prior cue having opportunistically populated the fixed-pack cache. If the network and last-known-good cache are both unavailable, the session-pinned same-language device voice remains the final fallback.
+At live-session activation, iOS preloads the selected voice's reviewed `workout.pause` and `workout.resume` clips. Auto-pause can begin soon after countdown, so these controls cannot rely on a prior cue having opportunistically populated the fixed-pack cache. If the network and last-known-good cache are both unavailable, the cue remains silent.
 
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
@@ -35,8 +35,8 @@ Later that day, a simulated Responsive session showed why request duration must 
 
 ## Current Production Deployment
 
-- Revision: `outbound-api-voicepack901`
-- Image digest: `sha256:6afba19cff0585e2f095f564f63330db2a35abf3d144ac87d942fe0bfd23e53f`
+- Revision: `outbound-api-00116-jzf`
+- Image digest: `sha256:0476362130c186a737147c86bb9e5ac33bbc718fb81d775892ee7608da7da6da`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
@@ -44,12 +44,12 @@ Later that day, a simulated Responsive session showed why request duration must 
 - Planner: enabled, `gemini-3.1-pro-preview`, Vertex `global`
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
-- Fixed pack: signed `2026-09-01.1` manifest; 204 two-voice assets are published, while the enabled EN/ZH subset uses 136
+- Fixed pack: signed `2026-09-08.1` manifest; 216 two-voice assets are published, while the enabled EN/ZH subset uses 144
 - Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
 
 The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
 
-There is no per-workout cue allowance. Once a workout has dynamic access, both coaching interventions and periodic distance/time/pace announcements remain eligible for the full session. If cloud or recorded audio is unavailable, iOS resolves and pins a same-language system voice matching the selected female/male product presentation at session start; it never substitutes the opposite presentation mid-session.
+There is no per-workout cue allowance. Once a workout has dynamic access, both coaching interventions and periodic distance/time/pace announcements remain eligible for the full session. If cloud or recorded audio is unavailable, iOS remains silent rather than switching to a system voice.
 
 ## Approved Google Route And Voices
 
@@ -102,7 +102,7 @@ Never copy the generated ADC file, a service-account key, or an OAuth plist into
 
 ## Fixed Pack Inventory
 
-Catalog `2026-09-08.1` adds `countdown.five` and `countdown.four`, bringing the successor pack to 36 cues × 3 locales × 2 voices = 216 files. It must be generated, reviewed, signed, and published before changing the production manifest from `2026-09-01.1`.
+Catalog `2026-09-08.1` adds `countdown.five` and `countdown.four`, bringing the active pack to 36 cues × 3 locales × 2 voices = 216 files.
 
 The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-09-01.1` contains 34 semantic cues:
 
@@ -145,7 +145,7 @@ After ADC is configured:
 ./scripts/generate-live-coach-audio.sh
 ```
 
-`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-09-01.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
+`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-09-08.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
 
 Fixed generation sends Google the exact transcript and selected voice, then validates the resulting 24 kHz mono PCM WAV before storage. The wrapper generates only `plainstride_warm_1` and `plainstride_clear_1` unless an explicit `--voice-profile` is supplied. It writes content-addressed assets and `review-manifest.json` under the gitignored review directory; reruns validate and reuse completed files, and provider/model/voice identity remains part of the content hash.
 
@@ -185,7 +185,7 @@ The prior fixed-only pilot was deliberately limited to English and Simplified Ch
 - Former active runtime subset: 26 cues × 2 locales × 2 enabled voices = 104 WAV files
 - Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
 
-The pilot remains published as a rollback artifact but is no longer configured. Production uses the signed `2026-09-01.1` manifest: 34 cues × 3 locales × 2 voices = 204 assets, with 136 EN/ZH assets enabled. The successor reuses 196 approved `2026-08-30.1` renditions byte-for-byte and replaces the four countdown cues for English female Aoede and Simplified Chinese male Charon with the owner-selected, independently synthesized energetic renditions. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
+The pilot and `2026-09-01.1` packs remain published as rollback artifacts but are no longer configured. Production uses the signed `2026-09-08.1` manifest: 36 cues × 3 locales × 2 voices = 216 assets, with 144 EN/ZH assets enabled. It carries forward the approved `2026-09-01.1` recordings and adds the twelve reviewed `countdown.five` and `countdown.four` variants. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
 
 For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The 68 Spanish assets are signed and published, but enabling Spanish still requires explicit product approval and listening QA.
 
@@ -198,7 +198,7 @@ Publish a successor only after every in-scope entry is approved:
 ```sh
 cd backend
 npm run live-coach:publish-audio -- \
-  --review-manifest .local/live-coach-review/2026-09-01.1/review-manifest.json \
+  --review-manifest .local/live-coach-review/2026-09-08.1/review-manifest.json \
   --approved
 ```
 
@@ -240,4 +240,4 @@ A trial is consumed only after the first successful dynamic cue in that workout,
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
-Production now points at `2026-09-01.1`. All 204 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 136 English/Simplified-Chinese assets and keeps the 68 Spanish assets unavailable. The English female and Simplified Chinese male countdowns use the owner-selected energetic refresh; the other fixed renditions carry forward unchanged. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.
+Production now points at `2026-09-08.1` on revision `outbound-api-00116-jzf`. All 216 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 144 English/Simplified-Chinese assets and keeps the 72 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.

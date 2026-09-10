@@ -15,7 +15,7 @@ Environment overrides:
   PROJECT_ID                       default: outbound-494602
   REGION                           default: us-central1
   SERVICE                          default: outbound-api
-  LIVE_COACH_CATALOG_VERSION       default: 2026-09-01.1
+  LIVE_COACH_CATALOG_VERSION       default: 2026-09-08.1
   LIVE_COACH_AUDIO_BUCKET          default: PROJECT_ID-live-coach-audio
   LIVE_COACH_ENABLED_LOCALES       default: en,zh-Hans
   LIVE_COACH_AUDIO_PUBLIC_BASE_URL default: Google Cloud Storage public URL
@@ -36,7 +36,7 @@ SERVICE="${SERVICE:-outbound-api}"
 GCLOUD_BIN="${GCLOUD_BIN:-$HOME/google-cloud-sdk/bin/gcloud}"
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 CANDIDATE_TAG="${CANDIDATE_TAG:-live-coach-voice-candidate}"
-LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-09-01.1}"
+LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-09-08.1}"
 LIVE_COACH_AUDIO_BUCKET="${LIVE_COACH_AUDIO_BUCKET:-$PROJECT_ID-live-coach-audio}"
 LIVE_COACH_AUDIO_PUBLIC_BASE_URL="${LIVE_COACH_AUDIO_PUBLIC_BASE_URL:-https://storage.googleapis.com/$LIVE_COACH_AUDIO_BUCKET}"
 LIVE_COACH_ENABLED_LOCALES="${LIVE_COACH_ENABLED_LOCALES:-en,zh-Hans}"
