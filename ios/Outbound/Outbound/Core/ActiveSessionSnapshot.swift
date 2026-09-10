@@ -138,24 +138,38 @@ struct SessionCoachingTarget: Codable, Hashable {
 }
 
 struct SessionIntentStep: Identifiable, Hashable, Codable {
+    enum TransitionCountdown: String, Codable, Hashable {
+        case none
+        case fiveSecond = "five_second"
+    }
+
     let id: String
     let label: String
     let durationSeconds: Int
     let detail: String?
     let coachingTarget: SessionCoachingTarget?
+    let transitionInstruction: String?
+    let transitionLeadSeconds: Int?
+    let transitionCountdown: TransitionCountdown?
 
     init(
         id: String,
         label: String,
         durationSeconds: Int,
         detail: String?,
-        coachingTarget: SessionCoachingTarget? = nil
+        coachingTarget: SessionCoachingTarget? = nil,
+        transitionInstruction: String? = nil,
+        transitionLeadSeconds: Int? = nil,
+        transitionCountdown: TransitionCountdown? = nil
     ) {
         self.id = id
         self.label = label
         self.durationSeconds = durationSeconds
         self.detail = detail
         self.coachingTarget = coachingTarget
+        self.transitionInstruction = transitionInstruction
+        self.transitionLeadSeconds = transitionLeadSeconds
+        self.transitionCountdown = transitionCountdown
     }
 }
 

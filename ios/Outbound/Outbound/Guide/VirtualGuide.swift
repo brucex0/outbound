@@ -908,11 +908,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         guard var cue = nextTimedBoundaryCue(at: snapshot.elapsedSeconds) else { return false }
         if cue.isSegmentTransition {
             spokenTimedBoundaryCues.insert(cue.id)
-            if sessionIntent?.workoutCues.contains(where: {
+            if let authoredCue = sessionIntent?.workoutCues.first(where: {
                 $0.trigger.type == .elapsedTime
                     && $0.trigger.startSeconds == cue.boundarySeconds
-            }) == true {
-                return false
+            }) {
+                processedWorkoutCueIDs.insert(authoredCue.id)
             }
             lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
             let moment = DetectedLiveGuidanceMoment(
@@ -1010,7 +1010,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     )? {
         guard let sessionIntent else { return nil }
         let steps = sessionIntent.workoutSteps.filter { $0.durationSeconds > 0 }
-        let boundaries: [(seconds: Int, nextLabel: String?)]
+        let boundaries: [(seconds: Int, nextStep: SessionIntentStep?)]
         if steps.isEmpty {
             guard let duration = sessionIntent.resolvedTargetDurationSeconds, duration > 0 else { return nil }
             boundaries = [(duration, nil)]
@@ -1018,7 +1018,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             var cumulative = 0
             boundaries = steps.enumerated().map { index, step in
                 cumulative += step.durationSeconds
-                return (cumulative, index + 1 < steps.count ? steps[index + 1].label : nil)
+                return (cumulative, index + 1 < steps.count ? steps[index + 1] : nil)
             }
         }
 
@@ -1027,25 +1027,35 @@ final class VirtualGuide: NSObject, ObservableObject {
                 continue
             }
             let remaining = boundary.seconds - elapsedSeconds
-            if (1...5).contains(remaining) {
+            let usesBreakCountdown = boundary.nextStep.map(usesBreakCountdown) ?? steps.isEmpty
+            let transitionLeadSeconds = min(max(boundary.nextStep?.transitionLeadSeconds ?? 5, 1), 30)
+            if usesBreakCountdown, (1...5).contains(remaining) {
                 let id = "boundary-\(index)-count-\(remaining)"
                 if !spokenTimedBoundaryCues.contains(id) {
                     return (id, "\(remaining)", false, false, boundary.seconds)
                 }
-            } else if remaining <= 0 {
-                let id = "boundary-\(index)-complete"
-                guard !spokenTimedBoundaryCues.contains(id) else { continue }
-                if let nextLabel = boundary.nextLabel {
+            } else if let nextStep = boundary.nextStep,
+                      !usesBreakCountdown,
+                      (1...transitionLeadSeconds).contains(remaining) {
+                let id = "boundary-\(index)-transition"
+                if !spokenTimedBoundaryCues.contains(id) {
                     return (
                         id,
-                        String(
-                            format: String(
-                                localized: "live_guidance.segment_transition.format",
-                                defaultValue: "Go. %@."
-                            ),
-                            locale: .autoupdatingCurrent,
-                            nextLabel
-                        ),
+                        transitionInstruction(for: nextStep),
+                        false,
+                        true,
+                        boundary.seconds
+                    )
+                }
+            } else if remaining <= 0 {
+                let id = boundary.nextStep == nil
+                    ? "boundary-\(index)-complete"
+                    : "boundary-\(index)-transition"
+                guard !spokenTimedBoundaryCues.contains(id) else { continue }
+                if let nextStep = boundary.nextStep {
+                    return (
+                        id,
+                        transitionInstruction(for: nextStep),
                         false,
                         true,
                         boundary.seconds
@@ -1055,6 +1065,35 @@ final class VirtualGuide: NSObject, ObservableObject {
             }
         }
         return nil
+    }
+
+    private func usesBreakCountdown(_ step: SessionIntentStep) -> Bool {
+        if let policy = step.transitionCountdown {
+            return policy == .fiveSecond
+        }
+        return step.coachingTarget.map { [.recovery, .walk].contains($0.phase) } ?? false
+    }
+
+    private func transitionInstruction(for step: SessionIntentStep) -> String {
+        if AppLanguage.current == .english,
+           let instruction = step.transitionInstruction?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !instruction.isEmpty {
+            return instruction
+        }
+        let fallback = switch step.coachingTarget?.phase {
+        case .recovery:
+            String(localized: "live_guidance.transition.recovery", defaultValue: "Ease into recovery and let your breathing settle.")
+        case .walk:
+            String(localized: "live_guidance.transition.walk", defaultValue: "Shift into the walk and let the effort settle.")
+        case .cooldown:
+            String(localized: "live_guidance.transition.cooldown", defaultValue: "Bring the effort down smoothly for your cooldown.")
+        case .work:
+            String(localized: "live_guidance.transition.work", defaultValue: "Build into the next effort with control.")
+        default:
+            String(localized: "live_guidance.transition.default", defaultValue: "Flow smoothly into the next effort.")
+        }
+        guard AppLanguage.current == .english, !step.label.isEmpty else { return fallback }
+        return "\(fallback) \(step.label)."
     }
 
     private func speakPriorityIfNeeded(

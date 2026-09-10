@@ -18627,6 +18627,46 @@
         }
       }
     },
+    "live_guidance.transition.cooldown": {
+      "comment": "Fallback spoken just before a structured workout enters cooldown.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Bring the effort down smoothly for your cooldown." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Baja el esfuerzo gradualmente para entrar en la vuelta a la calma." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "平稳降低强度，进入放松阶段。" } }
+      }
+    },
+    "live_guidance.transition.default": {
+      "comment": "Fallback spoken just before a structured workout changes segments.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Flow smoothly into the next effort." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Entra con fluidez en el siguiente esfuerzo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "顺畅衔接到下一段训练。" } }
+      }
+    },
+    "live_guidance.transition.recovery": {
+      "comment": "Fallback spoken just before a structured workout enters recovery.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ease into recovery and let your breathing settle." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Entra suavemente en la recuperación y deja que se calme la respiración." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "放缓进入恢复段，让呼吸平稳下来。" } }
+      }
+    },
+    "live_guidance.transition.walk": {
+      "comment": "Fallback spoken just before a structured workout enters a walking break.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shift into the walk and let the effort settle." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Pasa a caminar y deja que baje el esfuerzo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "切换到步行，让强度降下来。" } }
+      }
+    },
+    "live_guidance.transition.work": {
+      "comment": "Fallback spoken just before a structured workout enters a work interval.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Build into the next effort with control." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Aumenta el esfuerzo con control para entrar en el siguiente tramo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "有控制地提升强度，进入下一段。" } }
+      }
+    },
     "live_guidance.workout_instruction": {
       "comment": "Fallback spoken at a curated workout instruction boundary when a localized planned phrase is unavailable.",
       "localizations": {

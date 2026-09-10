@@ -278,7 +278,10 @@ final class LiveCoachSessionController {
                 phase: step.coachingTarget?.phase.rawValue,
                 targetPaceSecondsPerKilometer: step.coachingTarget?.pace?.resolvedTarget(
                     athleteReferencePace: athletePace
-                )
+                ),
+                transitionInstruction: step.transitionInstruction,
+                transitionLeadSeconds: step.transitionLeadSeconds,
+                transitionCountdown: step.transitionCountdown?.rawValue
             )
         }
         return .init(

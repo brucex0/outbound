@@ -154,6 +154,9 @@ struct CreateLiveCoachSessionRequest: Encodable {
             let detail: String?
             let phase: String?
             let targetPaceSecondsPerKilometer: Double?
+            let transitionInstruction: String?
+            let transitionLeadSeconds: Int?
+            let transitionCountdown: String?
         }
 
         struct RouteDTO: Encodable {
