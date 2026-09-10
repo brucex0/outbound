@@ -18,6 +18,8 @@ struct SocialHomeView: View {
     @State private var showsConnections = false
     @State private var pushedLiveCheerSessionID: String?
     @State private var toastMessage: String?
+    @State private var postPendingReport: TogetherPostDTO?
+    @State private var postPendingBlock: TogetherPostDTO?
     @StateObject private var liveCheerStore = LiveCheerStore()
 
     private var shouldShowConnectionPrompt: Bool {
@@ -232,6 +234,41 @@ struct SocialHomeView: View {
             .sheet(isPresented: $isCreateActivityEventPresented) {
                 CreateActivityEventView()
                     .environmentObject(socialStore)
+            }
+            .confirmationDialog(
+                String(localized: "social.report.reason.title", defaultValue: "Why are you reporting this post?"),
+                isPresented: Binding(
+                    get: { postPendingReport != nil },
+                    set: { if !$0 { postPendingReport = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                ForEach(SocialPostReportReason.allCases) { reason in
+                    Button(reason.localizedLabel, role: .destructive) {
+                        guard let post = postPendingReport else { return }
+                        postPendingReport = nil
+                        Task { await socialStore.reportPost(post, reason: reason.rawValue) }
+                    }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) { postPendingReport = nil }
+            } message: {
+                Text(String(localized: "social.report.confirmation", defaultValue: "Select a reason to confirm your private report."))
+            }
+            .alert(
+                String(localized: "social.block.confirmation.title", defaultValue: "Block this person?"),
+                isPresented: Binding(
+                    get: { postPendingBlock != nil },
+                    set: { if !$0 { postPendingBlock = nil } }
+                )
+            ) {
+                Button(String(localized: "social.block", defaultValue: "Block person"), role: .destructive) {
+                    guard let post = postPendingBlock else { return }
+                    postPendingBlock = nil
+                    Task { await socialStore.blockAuthor(of: post) }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) { postPendingBlock = nil }
+            } message: {
+                Text(String(localized: "social.block.confirmation.message", defaultValue: "Blocking removes the connection and hides each person’s content."))
             }
         }
     }
@@ -693,10 +730,10 @@ struct SocialHomeView: View {
                                     }
                                 } else {
                                     Button("Report post", role: .destructive) {
-                                        Task { await socialStore.reportPost(post, reason: "other") }
+                                        postPendingReport = post
                                     }
                                     Button("Block \(post.user.displayName)", role: .destructive) {
-                                        Task { await socialStore.blockAuthor(of: post) }
+                                        postPendingBlock = post
                                     }
                                 }
                             } label: {
@@ -896,6 +933,24 @@ struct SocialHomeView: View {
         case "admin": String(localized: "Admin")
         case "member": String(localized: "Member")
         default: role
+        }
+    }
+}
+
+private enum SocialPostReportReason: String, CaseIterable, Identifiable {
+    case harassment, hate, spam, sexual, violence, privacy, other
+
+    var id: String { rawValue }
+
+    var localizedLabel: String {
+        switch self {
+        case .harassment: String(localized: "social.report.reason.harassment", defaultValue: "Harassment")
+        case .hate: String(localized: "social.report.reason.hate", defaultValue: "Hate speech")
+        case .spam: String(localized: "social.report.reason.spam", defaultValue: "Spam")
+        case .sexual: String(localized: "social.report.reason.sexual", defaultValue: "Sexual content")
+        case .violence: String(localized: "social.report.reason.violence", defaultValue: "Violence")
+        case .privacy: String(localized: "social.report.reason.privacy", defaultValue: "Privacy")
+        case .other: String(localized: "social.report.reason.other", defaultValue: "Other")
         }
     }
 }

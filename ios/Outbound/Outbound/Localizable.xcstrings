@@ -44501,6 +44501,79 @@
         }
       }
     },
+    "social.block.confirmation.message": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_block_confirmation_message.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Blocking removes the connection and hides each person’s content." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Al bloquear se elimina la conexión y se oculta el contenido de ambas personas." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "屏蔽后双方将解除好友关系，并互相隐藏内容。" } }
+      }
+    },
+    "social.block.confirmation.title": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_block_confirmation_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Block this person?" } },
+        "es": { "stringUnit": { "state": "translated", "value": "¿Bloquear a esta persona?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "屏蔽此人？" } }
+      }
+    },
+    "social.report.confirmation": {
+      "localizations": {
+        "es": { "stringUnit": { "state": "translated", "value": "Selecciona un motivo para confirmar tu reporte privado." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择原因以确认提交私密举报。" } }
+      }
+    },
+    "social.report.reason.harassment": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Acoso" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "骚扰" } } }
+    },
+    "social.report.reason.hate": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Discurso de odio" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "仇恨言论" } } }
+    },
+    "social.report.reason.other": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Otro motivo" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "其他" } } }
+    },
+    "social.report.reason.privacy": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Privacidad" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "隐私问题" } } }
+    },
+    "social.report.reason.sexual": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Contenido sexual" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "色情内容" } } }
+    },
+    "social.report.reason.spam": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Contenido no deseado" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "垃圾内容" } } }
+    },
+    "social.report.reason.title": {
+      "localizations": {
+        "es": { "stringUnit": { "state": "translated", "value": "¿Por qué reportas esta publicación?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为什么举报这条动态？" } }
+      }
+    },
+    "social.report.reason.violence": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Violencia" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "暴力内容" } } }
+    },
+    "social.cancel": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_cancel.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Cancelar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "取消" } }
+      }
+    },
+    "social.remove.connection.confirmation.message": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_remove_connection_confirmation_message.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Are you sure you want to remove %@ from your connections?" } },
+        "es": { "stringUnit": { "state": "translated", "value": "¿Seguro que quieres eliminar a %@ de tus conexiones?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "确定要解除与 %@ 的好友关系吗？" } }
+      }
+    },
+    "social.remove.connection.confirmation.title": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_remove_connection_confirmation_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove connection?" } },
+        "es": { "stringUnit": { "state": "translated", "value": "¿Eliminar conexión?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "解除好友关系？" } }
+      }
+    },
     "social.report": {
       "comment": "Shared with Android social; generated Android name: social_report. [android:social] Generated Android name: social_report.",
       "localizations": {
