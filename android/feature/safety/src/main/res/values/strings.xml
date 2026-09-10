@@ -15,4 +15,5 @@
     <string name="safety_settings">Open settings</string>
     <string name="safety_sms">Text message</string>
     <string name="safety_title">Safety &amp; live sharing</string>
+    <string name="cheer_title">Cheer %1$s on</string><string name="cheer_distance">Distance</string><string name="cheer_pace">Pace</string><string name="cheer_heart_rate">Heart rate</string><string name="cheer_runner_moving">%1$s is moving</string><string name="cheer_activity_ended">%1$s’s activity has ended</string><string name="cheer_hold_to_send">Hold to cheer</string><string name="cheer_release_to_send">Release to send</string><string name="cheer_sent">Voice Cheer sent</string><string name="cheer_send_failed">Couldn’t send your Cheer.</string><string name="cheer_load_failed">This live activity isn’t available.</string>
 </resources>

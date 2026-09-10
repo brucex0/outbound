@@ -76,10 +76,16 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
     fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
-    fun createCircle(name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("circle_created"){repository.createCircle(name,members.map{it.id},timeZone).getOrThrow();refresh()}
+    fun createCircle(name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("circle_created"){repository.createCircle(name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedCircle=created)}};refresh()}
     fun inviteToCircle(circle:CircleSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("circle_invitation_sent"){repository.inviteToCircle(circle.id,members.map{it.id},idempotencyKey).getOrThrow();openCircle(circle)}
     fun setCircleFocus(circle:CircleSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("circle_focus_changed"){repository.setCircleFocus(circle.id,mode,target,nextWeek).getOrThrow();openCircle(circle)}
     fun setCircleArchived(circle:CircleSummary,archived:Boolean)=mutate("circle_lifecycle_changed"){repository.setCircleArchived(circle.id,archived).getOrThrow();closeCircle();refresh()}
+    fun renameCircle(circle:CircleSummary,name:String)=mutate("circle_renamed"){repository.renameCircle(circle.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
+    fun setCircleCommitment(circle:CircleSummary,target:Int?,skipped:Boolean)=mutate("circle_personal_target_changed"){repository.setCircleCommitment(circle.id,target,skipped).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
+    fun setPrimaryCircle(circle:CircleSummary)=mutate("circle_primary_changed"){repository.setPrimaryCircle(circle.id).getOrThrow();refresh()}
+    fun muteCircle(circle:CircleSummary,muted:Boolean)=mutate("circle_notifications_changed"){repository.muteCircle(circle.id,muted).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}}}
+    fun leaveCircle(circle:CircleSummary)=mutate("circle_member_left"){repository.leaveCircle(circle.id).getOrThrow();closeCircle();refresh()}
+    fun removeCircleMember(circle:CircleSummary,userId:String)=mutate("circle_member_removed"){repository.removeCircleMember(circle.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
     private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
 }

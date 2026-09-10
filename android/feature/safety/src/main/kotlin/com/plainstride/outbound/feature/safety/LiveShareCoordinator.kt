@@ -29,6 +29,9 @@ class LiveShareCoordinator @Inject constructor(private val api:SafetyApi,private
  suspend fun joinGroupRun(invite:String)=authenticated{apiCall{api.joinGroupRun(it,JoinGroupRunRequest(invite.trim()))}}.onSuccess(::saveGroup)
  suspend fun groupRun(id:String)=authenticated{apiCall{api.groupRun(it,id)}}.onSuccess(::saveGroup)
  suspend fun liveShare(id:String)=authenticated{apiCall{api.liveShare(it,id)}}.onSuccess{mutableActive.value=it;preferences.edit().putString(ACTIVE,PlainstrideJson.encodeToString(it)).apply()}
+ suspend fun invitedShares()=authenticated{apiCall{api.invitedShares(it)}}.map{it.sessions}
+ suspend fun invitedShare(id:String)=authenticated{apiCall{api.invitedShare(it,id)}}
+ suspend fun sendVoiceCheer(id:String,audioBase64:String,durationMs:Int)=authenticated{apiCall{api.sendVoiceCheer(it,id,VoiceCheerRequest(audioBase64=audioBase64,durationMs=durationMs.coerceIn(250,15_000)))}}.also{result->analytics.record(AnalyticsEvent("live_voice_cheer_sent",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
  suspend fun updateGroupRun(id:String,point:GroupLocationUpdate)=authenticated{apiCall{api.updateGroupLocation(it,id,point)}}.onSuccess(::saveGroup)
  suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{clearGroup()}
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?){update(point);mutableGroup.value?.let{group->updateGroupRun(group.id,GroupLocationUpdate(point.recordedAt,point.latitude,point.longitude,point.altitudeM,point.accuracyM,point.elapsedSeconds,point.distanceM,paceSecondsPerKilometer))}}

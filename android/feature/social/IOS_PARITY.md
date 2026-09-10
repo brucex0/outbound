@@ -29,5 +29,10 @@
 ## Status And Exceptions
 
 - Home presentation and avatar delivery are aligned with the current iOS implementation.
+- Circle creation is a full-screen, multi-select flow with optional naming and account-timezone creation. Circle detail now includes weekly progress, member contribution and recent-workout context, preset Cheers, focus/skip controls, invitations, primary selection, notification muting, rename, member removal, leave, archive, and reactivation operations.
 - Android uses a full-screen Compose dialog for Connections because the current feature module does not yet own a nested navigation graph; this preserves the iOS information hierarchy and back behavior without a platform-visible modal card.
 - Broader Social journey items outside this focused home-polish change remain tracked by `docs/android-social-parity-prompt.md` and must not be considered complete based on this manifest.
+
+## Circle Reference Scenarios
+
+- No Circle with accepted connections, creation with one or several invitees, generated or custom name, awaiting-members state, active progress with and without a numeric focus, personal skip, shared focus now/next week, owner/member management, archived/reactivated lifecycle, and transient mutation failure.

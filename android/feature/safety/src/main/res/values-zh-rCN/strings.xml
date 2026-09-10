@@ -15,4 +15,5 @@
     <string name="safety_settings">打开设置</string>
     <string name="safety_sms">短信</string>
     <string name="safety_title">安全与实时位置</string>
+    <string name="cheer_title">为%1$s加油</string><string name="cheer_distance">距离</string><string name="cheer_pace">配速</string><string name="cheer_heart_rate">心率</string><string name="cheer_runner_moving">%1$s正在运动</string><string name="cheer_activity_ended">%1$s的运动已结束</string><string name="cheer_hold_to_send">按住为好友加油</string><string name="cheer_release_to_send">松开发送</string><string name="cheer_sent">语音加油已发送</string><string name="cheer_send_failed">无法发送语音加油。</string><string name="cheer_load_failed">此实时运动不可用。</string>
 </resources>

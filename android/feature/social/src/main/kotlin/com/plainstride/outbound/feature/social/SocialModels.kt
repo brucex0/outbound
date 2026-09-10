@@ -69,16 +69,22 @@ import kotlinx.serialization.json.JsonElement
     val isCurrentUser: Boolean = false,
     @SerialName("contributedCount") val completed: Int = 0,
     val commitment: CircleCommitment? = null,
+    val recentActivity: CircleRecentActivity? = null,
 ) {
     val target: Int? get() = commitment?.targetCount
     val skipped: Boolean get() = commitment?.skipped == true
 }
+@Serializable data class CircleRecentActivity(val type:String="running",val title:String?=null,val startedAt:String,val durationSecs:Int?=null,val distanceM:Double?=null,val elevationM:Double?=null,val avgPace:Double?=null,val avgHeartRate:Int?=null,val energyKilocalories:Int?=null)
 @Serializable data class CircleFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
 @Serializable data class CircleWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
 @Serializable data class CircleSummary(
     val id: String,
     val name: String,
     val lifecycle: String,
+    val role: String? = null,
+    val memberLimit: Int = 6,
+    val memberCount: Int = 0,
+    val currentUserMuted: Boolean = false,
     val primary: Boolean = false,
     val eligibleForToday: Boolean = false,
     val upcomingFocus: CircleFocus = CircleFocus(),

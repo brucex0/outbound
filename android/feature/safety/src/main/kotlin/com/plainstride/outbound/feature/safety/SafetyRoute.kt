@@ -23,6 +23,9 @@ fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewMode
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
+    val follower by viewModel.follower.collectAsStateWithLifecycle()
+    val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
+    val followerMessage by viewModel.followerMessage.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
     val permissionPrefs=remember{context.getSharedPreferences("notification_permission",android.content.Context.MODE_PRIVATE)}
     var requested by remember { mutableStateOf(permissionPrefs.getBoolean("requested",false)) }
@@ -48,6 +51,7 @@ fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewMode
     val share: (String) -> Unit = { url ->
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url), null))
     }
+    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerLoading,followerMessage,viewModel::sendVoiceCheer);return}
     SafetySettingsScreen(
         contacts = contacts,
         permission = permission,

@@ -28,6 +28,10 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class CreateCircleBody(val name:String?=null,val memberUserIds:List<String> = emptyList(),val timeZone:String?=null,val resetWeekday:Int?=null)
 @Serializable data class CircleInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
 @Serializable data class CircleFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
+@Serializable data class RenameCircleBody(val name:String)
+@Serializable data class CircleCommitmentBody(val targetCount:Int?=null,val skipped:Boolean=false)
+@Serializable data class CircleMuteBody(val muted:Boolean)
+@Serializable data class CirclePrimaryResponse(val primaryCircleId:String,val circle:CircleSummary)
 @Serializable data class CircleMutationResponse(val circle:CircleSummary)
 @Serializable data class CircleInvitationCircle(val id:String,val name:String)
 @Serializable data class CircleInvitationDto(val id:String,val sender:SocialPerson,val circle:CircleInvitationCircle)
@@ -81,6 +85,12 @@ interface SocialApiService {
     @POST("v1/social/invitations/{id}/decline") suspend fun declineEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/circles") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
     @GET("v1/circles/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
+    @PATCH("v1/circles/{id}") suspend fun renameCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameCircleBody):Response<CircleSummary>
+    @PUT("v1/circles/{id}/commitment") suspend fun circleCommitment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleCommitmentBody):Response<CircleSummary>
+    @PUT("v1/circles/{id}/primary") suspend fun primaryCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CirclePrimaryResponse>
+    @PUT("v1/circles/{id}/notifications") suspend fun muteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleMuteBody):Response<CircleSummary>
+    @POST("v1/circles/{id}/leave") suspend fun leaveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @DELETE("v1/circles/{id}/members/{userId}") suspend fun removeCircleMember(@Header("Authorization") auth:String,@Path("id") id:String,@Path("userId") userId:String):Response<CircleSummary>
     @POST("v1/circles/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
     @POST("v1/circles") suspend fun createCircle(@Header("Authorization") auth:String,@Body body:CreateCircleBody):Response<CircleSummary>
     @POST("v1/circles/{id}/invitations") suspend fun inviteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleInviteBody):Response<CircleMutationResponse>

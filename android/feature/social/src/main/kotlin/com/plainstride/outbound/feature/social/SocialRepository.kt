@@ -37,6 +37,12 @@ interface SocialRepository {
     suspend fun circles(): Result<List<CircleSummary>>
     suspend fun circle(id: String): Result<CircleSummary>
     suspend fun cheerCircle(id: String, recipientId: String, preset: String): Result<Unit>
+    suspend fun renameCircle(id:String,name:String):Result<CircleSummary>
+    suspend fun setCircleCommitment(id:String,target:Int?,skipped:Boolean):Result<CircleSummary>
+    suspend fun setPrimaryCircle(id:String):Result<CircleSummary>
+    suspend fun muteCircle(id:String,muted:Boolean):Result<CircleSummary>
+    suspend fun leaveCircle(id:String):Result<Unit>
+    suspend fun removeCircleMember(id:String,userId:String):Result<CircleSummary>
     suspend fun awards(): Result<List<RecognitionAward>>
     suspend fun comments(postId:String):Result<List<SocialComment>>
     suspend fun addComment(postId:String,body:String):Result<SocialComment>
@@ -110,6 +116,12 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
     override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }
     override suspend fun cheerCircle(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.circleCheer(it, id, CheerBody(recipientId, preset)) } }
+    override suspend fun renameCircle(id:String,name:String)=authenticated{apiCall{api.renameCircle(it,id,RenameCircleBody(name.trim()))}}
+    override suspend fun setCircleCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.circleCommitment(it,id,CircleCommitmentBody(target,skipped))}}
+    override suspend fun setPrimaryCircle(id:String)=authenticated{apiCall{api.primaryCircle(it,id)}}.map{it.circle}
+    override suspend fun muteCircle(id:String,muted:Boolean)=authenticated{apiCall{api.muteCircle(it,id,CircleMuteBody(muted))}}
+    override suspend fun leaveCircle(id:String)=authenticated{apiCall{api.leaveCircle(it,id)}}
+    override suspend fun removeCircleMember(id:String,userId:String)=authenticated{apiCall{api.removeCircleMember(it,id,userId)}}
     override suspend fun awards() = authenticated { apiCall { api.awards(it) } }.map { it.awards }
     override suspend fun comments(postId:String)=authenticated{apiCall{api.comments(it,postId)}}.map{it.comments}
     override suspend fun addComment(postId:String,body:String):Result<SocialComment>{val clean=body.trim();if(clean.isEmpty()||clean.length>500)return Result.failure(SocialException(SocialError.INVALID_RESPONSE));return authenticated{apiCall{api.comment(it,postId,CommentBody(clean))}}}
