@@ -103,11 +103,12 @@ Workout reminders are an on-device feature owned by `WorkoutNotificationSchedule
 
 - Reminders are off until the runner enables them in Settings.
 - Enabling reminders requests notification authorization contextually. Activation and authentication never request the system prompt.
-- The runner chooses one local reminder time. The scheduler maintains a rolling 14-day set from the cached training-plan schedule and replaces requests idempotently with stable `plainstride.workout.*` identifiers.
+- The runner chooses one local reminder time. The scheduler maintains a rolling 14-day set from backend-scheduled workouts or the current and next cached template weeks, and replaces requests idempotently with stable `plainstride.workout.*` identifiers.
 - Only planned workout days are eligible. Rest days, optional/rest entries, removed workouts, and completed days are silent. There is never a missed-workout debt or make-up reminder.
 - The scheduler reconciles after app activation, account changes, plan refresh/change/removal, reminder preference changes, locale-sensitive plan refreshes, and local activity saves. A qualifying activity on the same calendar day cancels the remaining reminder for that day.
 - Lock-screen copy is concise, localized English, Spanish, or Simplified Chinese, and excludes readiness, health, cycle, location, and private plan details. Taps route to Today and the matching start-confirmation context when the cached workout is still available; otherwise they land safely on Today.
 - Local reminder payloads use `type = local_workout_reminder` and remain distinct from durable Social payloads. Social authorization, foreground presentation, APNs registration, FCM token registration, and Social tap routing remain owned by `PushNotificationCoordinator` and `AppDelegate`.
+- Debug builds show authorization status, the pending-request count, the next reminder time, and a `Send test notification in 10 seconds` action in Workout reminder settings. The test action validates local iOS presentation independently from plan scheduling.
 
 ### Local Reminder Analytics
 

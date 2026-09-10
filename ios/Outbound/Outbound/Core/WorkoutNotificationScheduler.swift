@@ -64,6 +64,14 @@ struct ScheduledWorkoutReminder: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+#if DEBUG
+struct WorkoutNotificationDiagnostics: Sendable {
+    let authorizationStatus: String
+    let pendingCount: Int
+    let nextFireDate: Date?
+}
+#endif
+
 @MainActor
 final class WorkoutNotificationScheduler: ObservableObject {
     static let shared = WorkoutNotificationScheduler()
@@ -93,17 +101,18 @@ final class WorkoutNotificationScheduler: ObservableObject {
         cachedWorkouts = Self.decode([ScheduledWorkoutReminder].self, from: defaults.data(forKey: Self.scheduleKey)) ?? []
     }
 
-    func configure(analyticsManager: AnalyticsManager?, accountID: String?) {
+    func configure(analyticsManager: AnalyticsManager?, accountID: String?) async {
         self.analyticsManager = analyticsManager
         if currentAccountID != accountID || accountID == nil {
             currentAccountID = accountID
-            Task { await cancelAll(reason: "account_changed") }
+            await cancelAll(reason: "account_changed")
         }
     }
 
     func requestPermissionAndEnable(
         preferences: WorkoutReminderPreferences,
-        activities: [SavedActivity]
+        activities: [SavedActivity],
+        workouts: [ScheduledWorkoutReminder]
     ) async -> Bool {
         let settings = await center.notificationSettings()
         let status: UNAuthorizationStatus
@@ -127,7 +136,12 @@ final class WorkoutNotificationScheduler: ObservableObject {
             .result: .string(enabled ? "authorized" : "denied")
         ])
         if enabled {
-            await reschedule(preferences: preferences, activities: activities, reason: "setting_enabled")
+            await reschedule(
+                preferences: preferences,
+                activities: activities,
+                workouts: workouts,
+                reason: "setting_enabled"
+            )
         }
         return enabled
     }
@@ -154,10 +168,13 @@ final class WorkoutNotificationScheduler: ObservableObject {
             return
         }
 
+        let now = Date()
+        let horizon = calendar.date(byAdding: .day, value: Self.horizonDays, to: now) ?? now
         let resolvedWorkouts = deduplicated((workouts ?? cachedWorkouts)
             .filter { reminder in
-                reminder.date >= Date()
-                    && reminder.date < calendar.date(byAdding: .day, value: Self.horizonDays, to: Date())!
+                let fireDate = reminder.dateWithPreferredTime(preferences: preferences, calendar: calendar)
+                return fireDate > now
+                    && reminder.date < horizon
                     && !isCompleted(reminder, activities: activities)
                     && reminder.durationSeconds > 0
             }
@@ -267,6 +284,62 @@ final class WorkoutNotificationScheduler: ObservableObject {
         Self.identifier(for: reminderID)
     }
 
+#if DEBUG
+    func diagnostics() async -> WorkoutNotificationDiagnostics {
+        let settings = await center.notificationSettings()
+        let requests = await center.pendingNotificationRequests().filter {
+            $0.identifier.hasPrefix(Self.identifierPrefix) || $0.identifier == "plainstride.debug.workout-test"
+        }
+        return WorkoutNotificationDiagnostics(
+            authorizationStatus: Self.authorizationLabel(settings.authorizationStatus),
+            pendingCount: requests.count,
+            nextFireDate: requests.compactMap { request in
+                if let trigger = request.trigger as? UNCalendarNotificationTrigger {
+                    return trigger.nextTriggerDate()
+                }
+                if let trigger = request.trigger as? UNTimeIntervalNotificationTrigger {
+                    return trigger.nextTriggerDate()
+                }
+                return nil
+            }.min()
+        )
+    }
+
+    func scheduleDebugTestNotification() async -> Bool {
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+            return false
+        }
+        let identifier = "plainstride.debug.workout-test"
+        center.removePendingNotificationRequests(withIdentifiers: [identifier])
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "workout.reminder.debug_test_title", defaultValue: "Workout reminder test")
+        content.body = String(localized: "workout.reminder.debug_test_body", defaultValue: "Local workout notifications are working.")
+        content.sound = .default
+        do {
+            try await center.add(UNNotificationRequest(
+                identifier: identifier,
+                content: content,
+                trigger: UNTimeIntervalNotificationTrigger(timeInterval: 10, repeats: false)
+            ))
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func authorizationLabel(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: String(localized: "workout.reminder.debug.not_requested", defaultValue: "Not requested")
+        case .denied: String(localized: "workout.reminder.debug.denied", defaultValue: "Denied")
+        case .authorized: String(localized: "workout.reminder.debug.authorized", defaultValue: "Authorized")
+        case .provisional: String(localized: "workout.reminder.debug.provisional", defaultValue: "Provisional")
+        case .ephemeral: String(localized: "workout.reminder.debug.ephemeral", defaultValue: "Ephemeral")
+        @unknown default: String(localized: "workout.reminder.debug.unknown", defaultValue: "Unknown")
+        }
+    }
+#endif
+
     private func deduplicated(_ workouts: [ScheduledWorkoutReminder]) -> [ScheduledWorkoutReminder] {
         var seenDays = Set<String>()
         return workouts.filter { workout in
@@ -321,8 +394,13 @@ struct WorkoutReminderSettingsView: View {
     @EnvironmentObject private var preferences: WorkoutReminderPreferences
     @EnvironmentObject private var scheduler: WorkoutNotificationScheduler
     @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @State private var selectedTime = Date()
+#if DEBUG
+    @State private var diagnostics: WorkoutNotificationDiagnostics?
+    @State private var testResult: Bool?
+#endif
 
     var body: some View {
         Form {
@@ -336,9 +414,13 @@ struct WorkoutReminderSettingsView: View {
                                 if enabled {
                                     _ = await scheduler.requestPermissionAndEnable(
                                         preferences: preferences,
-                                        activities: activityStore.activities
+                                        activities: activityStore.activities,
+                                        workouts: trainingPlanStore.scheduledWorkouts
                                     )
                                     await pushNotifications.activate()
+#if DEBUG
+                                    await refreshDiagnostics()
+#endif
                                 } else {
                                     await scheduler.disable(preferences: preferences)
                                 }
@@ -366,6 +448,36 @@ struct WorkoutReminderSettingsView: View {
             } footer: {
                 Text(String(localized: "workout.reminders.help", defaultValue: "Only planned workout days get a reminder. Rest days stay quiet."))
             }
+#if DEBUG
+            Section(String(localized: "workout.reminder.debug.section", defaultValue: "Debug")) {
+                LabeledContent(
+                    String(localized: "workout.reminder.debug.authorization", defaultValue: "Authorization"),
+                    value: diagnostics?.authorizationStatus ?? String(localized: "workout.reminder.debug.loading", defaultValue: "Loading…")
+                )
+                LabeledContent(
+                    String(localized: "workout.reminder.debug.pending", defaultValue: "Pending reminders"),
+                    value: String(diagnostics?.pendingCount ?? 0)
+                )
+                if let nextFireDate = diagnostics?.nextFireDate {
+                    LabeledContent(
+                        String(localized: "workout.reminder.debug.next", defaultValue: "Next reminder"),
+                        value: nextFireDate.formatted(date: .abbreviated, time: .shortened)
+                    )
+                }
+                Button(String(localized: "workout.reminder.debug.send_test", defaultValue: "Send test notification in 10 seconds")) {
+                    Task {
+                        testResult = await scheduler.scheduleDebugTestNotification()
+                        await refreshDiagnostics()
+                    }
+                }
+                if let testResult {
+                    Text(testResult
+                        ? String(localized: "workout.reminder.debug.test_scheduled", defaultValue: "Test notification scheduled.")
+                        : String(localized: "workout.reminder.debug.test_unavailable", defaultValue: "Enable notifications before scheduling a test."))
+                        .foregroundColor(testResult ? .secondary : .red)
+                }
+            }
+#endif
         }
         .navigationTitle(String(localized: "workout.reminders.title", defaultValue: "Workout reminders"))
         .navigationBarTitleDisplayMode(.inline)
@@ -374,8 +486,17 @@ struct WorkoutReminderSettingsView: View {
             components.hour = preferences.reminderHour
             components.minute = preferences.reminderMinute
             selectedTime = Calendar.current.date(from: components) ?? Date()
+#if DEBUG
+            Task { await refreshDiagnostics() }
+#endif
         }
     }
+
+#if DEBUG
+    private func refreshDiagnostics() async {
+        diagnostics = await scheduler.diagnostics()
+    }
+#endif
 }
 
 private extension ScheduledWorkoutReminder {

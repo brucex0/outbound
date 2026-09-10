@@ -640,6 +640,118 @@
         }
       }
     },
+    "workout.reminder.debug.authorization": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Authorization" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Autorización" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "授权状态" } }
+      }
+    },
+    "workout.reminder.debug.authorized": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Authorized" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Autorizado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已授权" } }
+      }
+    },
+    "workout.reminder.debug.denied": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Denied" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Denegado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已拒绝" } }
+      }
+    },
+    "workout.reminder.debug.ephemeral": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Temporary" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Temporal" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "临时授权" } }
+      }
+    },
+    "workout.reminder.debug.loading": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Loading…" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Cargando…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在载入…" } }
+      }
+    },
+    "workout.reminder.debug.next": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Next reminder" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Próximo recordatorio" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "下次提醒" } }
+      }
+    },
+    "workout.reminder.debug.not_requested": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not requested" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No solicitado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "尚未请求" } }
+      }
+    },
+    "workout.reminder.debug.pending": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Pending reminders" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Recordatorios pendientes" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "待发送提醒" } }
+      }
+    },
+    "workout.reminder.debug.provisional": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Provisional" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Provisional" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "临时授权" } }
+      }
+    },
+    "workout.reminder.debug.section": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Debug" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Diagnóstico" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "调试" } }
+      }
+    },
+    "workout.reminder.debug.send_test": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Send test notification in 10 seconds" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Enviar notificación de prueba en 10 segundos" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "10 秒后发送测试通知" } }
+      }
+    },
+    "workout.reminder.debug.test_scheduled": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Test notification scheduled." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Notificación de prueba programada." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "测试通知已安排。" } }
+      }
+    },
+    "workout.reminder.debug.test_unavailable": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enable notifications before scheduling a test." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Activa las notificaciones antes de programar una prueba." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先启用通知，再安排测试。" } }
+      }
+    },
+    "workout.reminder.debug.unknown": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unknown" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Desconocido" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "未知" } }
+      }
+    },
+    "workout.reminder.debug_test_body": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Local workout notifications are working." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Las notificaciones locales de entrenamiento funcionan correctamente." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "本地训练通知运行正常。" } }
+      }
+    },
+    "workout.reminder.debug_test_title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Workout reminder test" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Prueba de recordatorio de entrenamiento" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "训练提醒测试" } }
+      }
+    },
     "workout.reminders.section": {
       "localizations": {
         "en": {

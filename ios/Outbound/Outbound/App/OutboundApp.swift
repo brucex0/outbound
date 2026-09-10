@@ -234,7 +234,7 @@ struct OutboundApp: App {
                     circleInvitationsRefresh
                 )
                 await consumePendingInviteIfPossible()
-                workoutNotificationScheduler.configure(
+                await workoutNotificationScheduler.configure(
                     analyticsManager: analyticsManager,
                     accountID: authStore.user?.id
                 )
@@ -265,10 +265,12 @@ struct OutboundApp: App {
                 }
             }
             .onChange(of: authStore.user?.id) { _, userID in
-                workoutNotificationScheduler.configure(
-                    analyticsManager: analyticsManager,
-                    accountID: userID
-                )
+                Task {
+                    await workoutNotificationScheduler.configure(
+                        analyticsManager: analyticsManager,
+                        accountID: userID
+                    )
+                }
             }
             .onChange(of: trainingPlanStore.scheduledWorkouts) { _, workouts in
                 Task {
@@ -1612,31 +1614,40 @@ private extension TrainingPlanStore {
         calendar: Calendar,
         now: Date
     ) -> [ScheduledWorkoutReminder] {
-        guard let week else { return [] }
+        guard let week, let template = templateLookup[plan.templateID] else { return [] }
         let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
         var seenDays = Set<String>()
-        return week.scheduledWorkouts.compactMap { workout in
-            guard workout.durationSeconds > 0,
-                  !workout.title.localizedCaseInsensitiveContains("rest"),
-                  !workout.isOptional else { return nil }
-            let normalized = workout.dayLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let weekday = calendar.shortWeekdaySymbols.firstIndex {
-                normalized.hasPrefix($0.lowercased()) || $0.lowercased().hasPrefix(normalized)
-            } ?? calendar.firstWeekday - 1
-            let dayOffset = (weekday - (calendar.firstWeekday - 1) + 7) % 7
-            let date = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) ?? weekStart
-            let dayKey = calendar.startOfDay(for: date).description
-            guard seenDays.insert(dayKey).inserted else { return nil }
-            return ScheduledWorkoutReminder(
-                id: "\(plan.id)-\(workout.id)-\(dayKey)",
-                workoutID: workout.id,
-                date: date,
-                title: workout.title,
-                durationSeconds: workout.durationSeconds,
-                sport: plan.sport,
-                source: "local_plan_cache"
-            )
+        var reminders: [ScheduledWorkoutReminder] = []
+        for relativeWeek in 0...1 {
+            let templateIndex = week.currentWeekIndex - 1 + relativeWeek
+            guard templateIndex < min(plan.durationWeeks, template.weeks.count) else { continue }
+            let reminderWeekStart = calendar.date(byAdding: .day, value: relativeWeek * 7, to: weekStart) ?? weekStart
+            for workout in template.weeks[templateIndex].workouts {
+                guard workout.durationSeconds > 0,
+                      !workout.title.localizedCaseInsensitiveContains("rest"),
+                      !workout.isOptional else { continue }
+                let normalized = workout.dayLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let weekday = calendar.shortWeekdaySymbols.firstIndex {
+                    normalized.hasPrefix($0.lowercased()) || $0.lowercased().hasPrefix(normalized)
+                } ?? calendar.firstWeekday - 1
+                let dayOffset = (weekday - (calendar.firstWeekday - 1) + 7) % 7
+                let date = workout.scheduledDate
+                    ?? calendar.date(byAdding: .day, value: dayOffset, to: reminderWeekStart)
+                    ?? reminderWeekStart
+                let dayKey = calendar.startOfDay(for: date).description
+                guard seenDays.insert(dayKey).inserted else { continue }
+                reminders.append(ScheduledWorkoutReminder(
+                    id: "\(plan.id)-\(workout.id)-\(dayKey)",
+                    workoutID: workout.id,
+                    date: date,
+                    title: workout.title,
+                    durationSeconds: workout.durationSeconds,
+                    sport: plan.sport,
+                    source: "local_plan_cache"
+                ))
+            }
         }
+        return reminders
     }
 
     static func makeTodaySuggestion(plan: ActiveTrainingPlan, week: TrainingPlanWeekSnapshot?, readiness: DailyReadiness?, calendar: Calendar, now: Date) -> TodayTrainingSuggestion {
