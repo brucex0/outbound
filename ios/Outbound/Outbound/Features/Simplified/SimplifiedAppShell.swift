@@ -2955,63 +2955,15 @@ private struct SimplifiedMeView: View {
         await socialStore.refreshConnections()
     }
 
-    private var connectionPreview: [SocialConnectionDTO] {
-        Array(
-            socialStore.connections
-                .filter { $0.status == "accepted" }
-                .sorted(by: SocialConnectionDTO.previewOrder)
-                .prefix(4)
-        )
-    }
-
     private var connectionsPreview: some View {
-        OutboundCard {
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text("Connections")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-
-                HStack(spacing: 12) {
-                    if socialStore.isConnectionsLoading && !socialStore.hasLoadedConnections {
-                        ProgressView()
-                            .frame(width: 44, height: 44)
-                    } else if connectionPreview.isEmpty {
-                        Text("Find people")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(connectionPreview) { connection in
-                            SocialProfileLink(
-                                person: connection.person,
-                                connection: connection,
-                                entrySource: "me_connections_preview"
-                            ) {
-                                SocialAvatar(
-                                    name: connection.person.displayName,
-                                    avatarURL: connection.person.avatarUrl
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Button(action: openConnections) {
-                        Image(systemName: "ellipsis")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(String(
-                        localized: "me.connections.more",
-                        defaultValue: "View all connections"
-                    ))
-                }
-            }
-        }
+        SocialConnectionsPreviewCard(
+            connections: socialStore.connections
+                .filter { $0.status == "accepted" }
+                .sorted(by: SocialConnectionDTO.previewOrder),
+            isLoading: socialStore.isConnectionsLoading && !socialStore.hasLoadedConnections,
+            entrySource: "me_connections_preview",
+            onOpenAll: openConnections
+        )
     }
 
     private func openConnections() {

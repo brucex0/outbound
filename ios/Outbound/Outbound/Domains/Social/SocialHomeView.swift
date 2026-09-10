@@ -62,11 +62,21 @@ struct SocialHomeView: View {
                     }
 
                     if !socialStore.hasLoadedConnections {
-                        connectionsLoadingSection
+                        SocialConnectionsPreviewCard(
+                            connections: [],
+                            isLoading: true,
+                            entrySource: "social_connections_section",
+                            onOpenAll: openConnections
+                        )
                     } else if shouldShowConnectionPrompt {
                         connectionGrowthCard
                     } else if !acceptedConnections.isEmpty {
-                        connectionsSection
+                        SocialConnectionsPreviewCard(
+                            connections: acceptedConnections,
+                            isLoading: false,
+                            entrySource: "social_connections_section",
+                            onOpenAll: openConnections
+                        )
                     }
 
                     yourCircleSection
@@ -477,85 +487,6 @@ struct SocialHomeView: View {
                 }
             }
         }
-    }
-
-    private var connectionsSection: some View {
-        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            HStack {
-                Text("Connections").socialSectionLabel()
-                Spacer()
-                Button("All", action: openConnections)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
-            }
-
-            OutboundCard {
-                ScrollView(.horizontal) {
-                    HStack(spacing: OutboundSpacing.standard) {
-                        ForEach(acceptedConnections.prefix(8)) { connection in
-                            SocialProfileLink(
-                                person: connection.person,
-                                connection: connection,
-                                entrySource: "social_connections_section"
-                            ) {
-                                VStack(spacing: 6) {
-                                    ZStack(alignment: .bottomTrailing) {
-                                        SocialAvatar(
-                                            name: connection.person.displayName,
-                                            avatarURL: connection.person.avatarUrl
-                                        )
-                                        if connection.isInActiveWorkout == true {
-                                            Circle()
-                                                .fill(.green)
-                                                .frame(width: 12, height: 12)
-                                                .overlay {
-                                                    Circle().stroke(OutboundPalette.surface, lineWidth: 2)
-                                                }
-                                        }
-                                    }
-                                    Text(connection.firstName)
-                                        .font(.caption)
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                        .frame(width: 58)
-                                }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityValue(connection.isInActiveWorkout == true ? String(localized: "Workout in progress") : "")
-                            }
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-            }
-        }
-    }
-
-    private var connectionsLoadingSection: some View {
-        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            HStack {
-                Text("Connections").socialSectionLabel()
-                Spacer()
-                Text("All")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
-            }
-
-            OutboundCard {
-                HStack(spacing: OutboundSpacing.standard) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        VStack(spacing: 6) {
-                            Circle()
-                                .fill(OutboundPalette.companion.opacity(0.12))
-                                .frame(width: 40, height: 40)
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(Color.secondary.opacity(0.12))
-                                .frame(width: 48, height: 12)
-                        }
-                    }
-                }
-            }
-        }
-        .accessibilityHidden(true)
     }
 
     private func openConnections() {
