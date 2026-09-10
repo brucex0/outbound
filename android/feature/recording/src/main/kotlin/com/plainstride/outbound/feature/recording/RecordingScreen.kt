@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +42,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -374,20 +374,16 @@ private fun LiveRecordingScreen(
     onDashboardChanged: (Boolean) -> Unit,
 ) {
     var dashboardExpanded by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
+    Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface).pointerInput(mode) {
+        detectHorizontalDragGestures { _, amount ->
+            if (amount < -18 && mode == RecordingSurfaceMode.CAMERA) onMode(RecordingSurfaceMode.MAP)
+            if (amount > 18 && mode == RecordingSurfaceMode.MAP) onMode(RecordingSurfaceMode.CAMERA)
+        }
+    }) {
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot.track, Modifier.fillMaxSize())
         else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
 
         Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(shape = CircleShape, tonalElevation = 6.dp) {
-                IconButton(onClick = onListen) {
-                    Icon(
-                        Icons.Default.Mic,
-                        contentDescription = stringResource(R.string.recording_voice_command),
-                        tint = if (voiceListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
             Surface(shape = CircleShape, tonalElevation = 6.dp) {
                 IconButton(onClick = { onMode(if (mode == RecordingSurfaceMode.MAP) RecordingSurfaceMode.CAMERA else RecordingSurfaceMode.MAP) }) {
                     Icon(if (mode == RecordingSurfaceMode.MAP) Icons.Default.CameraAlt else Icons.Default.Map,

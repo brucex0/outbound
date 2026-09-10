@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
+    implementation("com.google.zxing:core:3.5.3")
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     debugImplementation(libs.compose.ui.tooling)

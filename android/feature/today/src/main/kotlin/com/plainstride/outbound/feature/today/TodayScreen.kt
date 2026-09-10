@@ -86,7 +86,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.DateFormat
@@ -430,16 +432,20 @@ private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice,
 
 @Composable
 private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durationSeconds: Long, calories: Int, onDismiss: () -> Unit, onDistance: (Double) -> Unit, onTime: (Long) -> Unit, onCalories: (Int) -> Unit) {
+    var customValue by rememberSaveable(goal) { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.today_change_goal)) }, text = {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (goal) {
-                TodayGoalChoice.DISTANCE -> listOf(3_000.0, 5_000.0, 10_000.0).forEach { value -> OutlinedButton({ onDistance(value) }) { Text(stringResource(R.string.today_distance_format, value / 1_000), fontWeight = if (value == distanceMeters) FontWeight.Bold else FontWeight.Normal) } }
-                TodayGoalChoice.TIME -> listOf(1_200L, 1_800L, 2_700L).forEach { value -> OutlinedButton({ onTime(value) }) { Text(stringResource(R.string.today_time_format, value / 60), fontWeight = if (value == durationSeconds) FontWeight.Bold else FontWeight.Normal) } }
-                TodayGoalChoice.CALORIES -> listOf(200, 300, 500).forEach { value -> OutlinedButton({ onCalories(value) }) { Text(stringResource(R.string.today_calories_format, value), fontWeight = if (value == calories) FontWeight.Bold else FontWeight.Normal) } }
-                else -> Text(stringResource(R.string.today_goal_edit_hint))
+        Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (goal) {
+                    TodayGoalChoice.DISTANCE -> listOf(3_000.0, 5_000.0, 10_000.0).forEach { value -> OutlinedButton({ onDistance(value) }) { Text(stringResource(R.string.today_distance_format, value / 1_000), fontWeight = if (value == distanceMeters) FontWeight.Bold else FontWeight.Normal) } }
+                    TodayGoalChoice.TIME -> listOf(1_200L, 1_800L, 2_700L).forEach { value -> OutlinedButton({ onTime(value) }) { Text(stringResource(R.string.today_time_format, value / 60), fontWeight = if (value == durationSeconds) FontWeight.Bold else FontWeight.Normal) } }
+                    TodayGoalChoice.CALORIES -> listOf(200, 300, 500).forEach { value -> OutlinedButton({ onCalories(value) }) { Text(stringResource(R.string.today_calories_format, value), fontWeight = if (value == calories) FontWeight.Bold else FontWeight.Normal) } }
+                    else -> Text(stringResource(R.string.today_goal_edit_hint))
+                }
             }
+            if(goal in setOf(TodayGoalChoice.DISTANCE,TodayGoalChoice.TIME,TodayGoalChoice.CALORIES)) OutlinedTextField(customValue,{customValue=it.filter{character->character.isDigit()||character=='.'}.take(7)},Modifier.fillMaxWidth(),singleLine=true,label={Text(stringResource(when(goal){TodayGoalChoice.DISTANCE->R.string.today_distance;TodayGoalChoice.TIME->R.string.today_time;else->R.string.today_calories}))},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))
         }
-    }, confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_done)) } })
+    }, confirmButton = { TextButton(onClick={when(goal){TodayGoalChoice.DISTANCE->customValue.toDoubleOrNull()?.takeIf{it>0}?.let{onDistance(it*1_000)};TodayGoalChoice.TIME->customValue.toLongOrNull()?.takeIf{it>0}?.let{onTime(it*60)};TodayGoalChoice.CALORIES->customValue.toIntOrNull()?.takeIf{it>0}?.let(onCalories);else->onDismiss()}},enabled=customValue.toDoubleOrNull()?.let{it>0}==true){Text(stringResource(R.string.today_done))} }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_change)) } })
 }
 
 @Composable

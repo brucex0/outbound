@@ -2,6 +2,7 @@ package com.plainstride.outbound.feature.recording
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import android.media.AudioAttributes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
@@ -98,6 +99,7 @@ class RecordingVoiceCoordinator @Inject constructor(
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeechReady = true
                 engine.language = Locale.getDefault()
+                engine.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 while (pendingSpeech.isNotEmpty()) {
                     val (pendingMessage, pendingQueueMode) = pendingSpeech.removeFirst()
                     speakNow(engine, pendingMessage, pendingQueueMode)

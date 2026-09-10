@@ -17,7 +17,7 @@ data class SocialUiState(
     val selectedProfile: SocialPerson? = null, val selectedCircle: CircleSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
     val selectedEvent:SocialEvent?=null,val selectedGroup:SocialGroup?=null,val selectedInvitation:SocialInvitation?=null,
-    val feedCursor: String? = null, val feedLoading: Boolean = false,
+    val feedCursor: String? = null, val feedLoading: Boolean = false, val connectionLink: ConnectionLink? = null,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
 
@@ -69,13 +69,26 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun cheerCircle(circle: CircleSummary, recipientId: String, preset: String) = mutate("circle_cheer_sent") { repository.cheerCircle(circle.id, recipientId, preset).getOrThrow() }
     fun openComments(post:SocialPost)=viewModelScope.launch{repository.comments(post.id).onSuccess{comments->mutableState.update{it.copy(selectedPost=post,comments=comments)}};analytics.record(AnalyticsEvent("social_comments_opened"))}
     fun closeComments()=mutableState.update{it.copy(selectedPost=null,comments=emptyList())}
-    fun addComment(body:String){val post=mutableState.value.selectedPost?:return;mutate("social_comment_created"){repository.addComment(post.id,body).getOrThrow();openComments(post)}}
-    fun deleteComment(comment:SocialComment){val post=mutableState.value.selectedPost?:return;mutate("social_comment_deleted"){repository.deleteComment(comment.id).getOrThrow();openComments(post)}}
+    fun addComment(body:String){
+        val post=mutableState.value.selectedPost?:return
+        val clean=body.trim();if(clean.isEmpty())return
+        viewModelScope.launch { repository.addComment(post.id,clean).fold(onSuccess={comment->
+            mutableState.update{state->state.copy(comments=state.comments+comment,selectedPost=state.selectedPost?.copy(commentCount=state.selectedPost.commentCount+1),home=state.home.copy(posts=state.home.posts.map{if(it.id==post.id)it.copy(commentCount=it.commentCount+1)else it}))}
+            messages.emit(SocialMessage.ACTION_COMPLETE);analytics.record(AnalyticsEvent("social_comment_created",mapOf(AnalyticsProperty.Result to "success")))
+        },onFailure={messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("social_comment_created",mapOf(AnalyticsProperty.Result to "failure")))}) }
+    }
+    fun deleteComment(comment:SocialComment){
+        val post=mutableState.value.selectedPost?:return;val previous=mutableState.value
+        mutableState.update{state->state.copy(comments=state.comments.filterNot{it.id==comment.id},selectedPost=state.selectedPost?.copy(commentCount=(state.selectedPost.commentCount-1).coerceAtLeast(0)),home=state.home.copy(posts=state.home.posts.map{if(it.id==post.id)it.copy(commentCount=(it.commentCount-1).coerceAtLeast(0))else it}))}
+        viewModelScope.launch { repository.deleteComment(comment.id).onSuccess{messages.emit(SocialMessage.ACTION_COMPLETE);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "success")))}.onFailure{mutableState.value=previous;messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "failure")))}}
+    }
     fun setEventRsvp(event:SocialEvent,going:Boolean,mode:String="in_person")=mutate("social_event_rsvp_changed"){repository.setEventRsvp(event.id,going,mode).getOrThrow();refresh()}
     fun inviteToEvent(event:SocialEvent,person:SocialPerson?)=mutate("social_event_invitation_sent"){repository.inviteToEvent(event.id,person?.id).getOrThrow()}
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
     fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
+    fun requestConnectionLink()=viewModelScope.launch{repository.connectionLink().fold(onSuccess={link->mutableState.update{it.copy(connectionLink=link)};analytics.record(AnalyticsEvent("connection_qr_code_request_result",mapOf(AnalyticsProperty.Result to "success")))},onFailure={messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("connection_qr_code_request_result",mapOf(AnalyticsProperty.Result to "failure")))})}
+    fun closeConnectionLink()=mutableState.update{it.copy(connectionLink=null)}
     fun createCircle(name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("circle_created"){repository.createCircle(name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedCircle=created)}};refresh()}
     fun inviteToCircle(circle:CircleSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("circle_invitation_sent"){repository.inviteToCircle(circle.id,members.map{it.id},idempotencyKey).getOrThrow();openCircle(circle)}
     fun setCircleFocus(circle:CircleSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("circle_focus_changed"){repository.setCircleFocus(circle.id,mode,target,nextWeek).getOrThrow();openCircle(circle)}

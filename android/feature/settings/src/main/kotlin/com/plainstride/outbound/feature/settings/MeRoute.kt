@@ -157,7 +157,7 @@ private fun MeOverview(
             IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings_title)) }
         }) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onSettings)) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Icon(Icons.Outlined.AccountCircle, null, Modifier.size(58.dp), tint = MaterialTheme.colorScheme.primary)
@@ -341,7 +341,7 @@ private fun SettingsScreen(
     )
 }
 
-@Composable private fun SectionTitle(text: String) = Text(text, Modifier.padding(horizontal = 20.dp, vertical = 12.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+@Composable private fun SectionTitle(text: String) = Text(text, Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 2.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
 @Composable fun SettingsGroupTitle(text: String) = SectionTitle(text)
 
