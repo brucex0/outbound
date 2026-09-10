@@ -189,9 +189,13 @@ fun RecordingRoute(
 
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
+        if (ui.launch.voiceGuideEnabled) viewModel.speakCountdown(current)
         delay(1_000)
         if (current > 1) viewModel.updateCountdown(current - 1)
-        else viewModel.start(accountId, permissionState())
+        else {
+            if (ui.launch.voiceGuideEnabled) viewModel.speakStart()
+            viewModel.start(accountId, permissionState())
+        }
     }
 
     LaunchedEffect(snapshot.status, snapshot.saveEligibility) {
@@ -289,11 +293,17 @@ fun RecordingRoute(
         onDismissRequest = viewModel::cancelDiscard,
         title = { Text(stringResource(R.string.recording_discard_title)) },
         text = { Text(stringResource(R.string.recording_discard_body)) },
-        confirmButton = { TextButton(onClick = {
-            ui.photoPath?.let(::File)?.delete()
-            viewModel.discard()
-            onExit()
-        }) { Text(stringResource(R.string.recording_discard)) } },
+        confirmButton = { TextButton(
+            enabled = !ui.discarding,
+            onClick = {
+                scope.launch {
+                    if (viewModel.discard()) {
+                        ui.photoPath?.let(::File)?.delete()
+                        onExit()
+                    }
+                }
+            },
+        ) { Text(stringResource(R.string.recording_discard)) } },
         dismissButton = { TextButton(onClick = viewModel::cancelDiscard) { Text(stringResource(R.string.recording_cancel)) } },
     )
 }

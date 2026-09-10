@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 import com.plainstride.outbound.feature.livecoach.network.CoachingContract
 
 data class LiveCoachPreferences(
-    val enabled: Boolean = false,
+    val enabled: Boolean = true,
     val personaId: String = "plainstride_supportive_v1",
     val voiceProfileId: String = "plainstride_warm_1",
     val scriptStyleId: String = "standard",
@@ -25,7 +25,7 @@ interface LiveCoachPreferencesRepository {
 
 @Singleton class DataStoreLiveCoachPreferences @Inject constructor(private val store: DataStore<Preferences>) : LiveCoachPreferencesRepository {
     override val preferences = store.data.map { values -> LiveCoachPreferences(
-        enabled = values[Enabled] == "true", personaId = values[Persona] ?: "plainstride_supportive_v1",
+        enabled = values[Enabled]?.toBooleanStrictOrNull() ?: true, personaId = values[Persona] ?: "plainstride_supportive_v1",
         voiceProfileId = values[Voice] ?: "plainstride_warm_1", scriptStyleId = values[Style] ?: "standard",
         contract = CoachingContract.entries.firstOrNull { it.name == values[Contract] } ?: CoachingContract.Responsive,
     ) }

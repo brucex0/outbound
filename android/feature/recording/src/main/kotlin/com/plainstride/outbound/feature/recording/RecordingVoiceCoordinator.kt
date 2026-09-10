@@ -31,7 +31,8 @@ class RecordingVoiceCoordinator @Inject constructor(
     private val mutableListening = MutableStateFlow(false)
     val listening: StateFlow<Boolean> = mutableListening.asStateFlow()
     private var textToSpeech: TextToSpeech? = null
-    private var pendingSpeech: String? = null
+    private var textToSpeechReady = false
+    private val pendingSpeech = ArrayDeque<Pair<String, Int>>()
 
     fun observe(
         scope: CoroutineScope,
@@ -52,7 +53,7 @@ class RecordingVoiceCoordinator @Inject constructor(
                     formatDistance(current.distanceMeters),
                     formatPace(current.currentPaceSecondsPerKilometer),
                 )
-                speak(message)
+                speak(message, TextToSpeech.QUEUE_FLUSH)
             }
             override suspend fun pauseMusic() { music.pause() }
             override suspend fun resumeMusic() { music.resume() }
@@ -79,31 +80,44 @@ class RecordingVoiceCoordinator @Inject constructor(
 
     fun listen(permissionGranted: Boolean) = recognizer.start(permissionGranted)
 
-    private fun speak(message: String) {
-        pendingSpeech = message
+    fun speakCountdown(value: Int) = speak(value.toString(), TextToSpeech.QUEUE_ADD)
+
+    fun speakStart() = speak(context.getString(R.string.recording_start), TextToSpeech.QUEUE_ADD)
+
+    private fun speak(message: String, queueMode: Int) {
         val existing = textToSpeech
-        if (existing != null) {
-            speakPending(existing)
+        if (existing != null && textToSpeechReady) {
+            speakNow(existing, message, queueMode)
             return
         }
+        if (queueMode == TextToSpeech.QUEUE_FLUSH) pendingSpeech.clear()
+        pendingSpeech.addLast(message to queueMode)
+        if (existing != null) return
         textToSpeech = TextToSpeech(context.applicationContext) { status ->
-            textToSpeech?.takeIf { status == TextToSpeech.SUCCESS }?.let(::speakPending)
+            val engine = textToSpeech ?: return@TextToSpeech
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeechReady = true
+                engine.language = Locale.getDefault()
+                while (pendingSpeech.isNotEmpty()) {
+                    val (pendingMessage, pendingQueueMode) = pendingSpeech.removeFirst()
+                    speakNow(engine, pendingMessage, pendingQueueMode)
+                }
+            } else {
+                pendingSpeech.clear()
+            }
         }
     }
 
-    private fun speakPending(engine: TextToSpeech) {
-        val message = pendingSpeech ?: return
-        pendingSpeech = null
-        engine.language = Locale.getDefault()
-        engine.speak(message, TextToSpeech.QUEUE_FLUSH, null, "recording-stats-${System.nanoTime()}")
-    }
+    private fun speakNow(engine: TextToSpeech, message: String, queueMode: Int) =
+        engine.speak(message, queueMode, null, "recording-speech-${System.nanoTime()}")
 
     override fun close() {
         recognizer.close()
         textToSpeech?.stop()
         textToSpeech?.shutdown()
         textToSpeech = null
-        pendingSpeech = null
+        textToSpeechReady = false
+        pendingSpeech.clear()
     }
 }
 

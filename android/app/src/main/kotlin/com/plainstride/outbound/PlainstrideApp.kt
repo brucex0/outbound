@@ -208,6 +208,7 @@ private fun SignedInApp(
     var todayStartRequest by remember { mutableStateOf(0) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
+    var suppressRecordingRecovery by remember { mutableStateOf(false) }
     val accountId = when (val session = authState.session) {
         is SessionState.SignedIn -> session.accountId
         is SessionState.Refreshing -> session.accountId
@@ -225,7 +226,8 @@ private fun SignedInApp(
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
     LaunchedEffect(hasActiveSession, currentDestination?.route) {
-        if (hasActiveSession && currentDestination?.route != RECORDING_ROUTE) {
+        if (!hasActiveSession) suppressRecordingRecovery = false
+        if (hasActiveSession && !suppressRecordingRecovery && currentDestination?.route != RECORDING_ROUTE) {
             navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
         }
     }
@@ -289,10 +291,13 @@ private fun SignedInApp(
                                             destination == TopLevelDestination.Today -> Icons.Default.Today
                                             else -> Icons.Default.Person
                                         },
-                                        contentDescription = if (isContextualStart) stringResource(TodayR.string.today_start) else null,
+                                        contentDescription = stringResource(
+                                            if (isContextualStart) TodayR.string.today_start else destination.label,
+                                        ),
                                     )
                                 },
-                                label = if (isContextualStart) null else {{ Text(stringResource(destination.label)) }},
+                                label = null,
+                                alwaysShowLabel = false,
                             )
                         }
                     }
@@ -391,6 +396,7 @@ private fun SignedInApp(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
                     onSaved = { review: RecordedActivityReview ->
+                        suppressRecordingRecovery = true
                         healthViewModel.export(review)
                         integrationViewModel.completePlannedWorkout(recordingLaunch, review)
                         navController.navigate(TopLevelDestination.Me.route) {
@@ -398,6 +404,7 @@ private fun SignedInApp(
                         }
                     },
                     onExit = {
+                        suppressRecordingRecovery = true
                         navController.navigate(TopLevelDestination.Today.route) {
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
                         }

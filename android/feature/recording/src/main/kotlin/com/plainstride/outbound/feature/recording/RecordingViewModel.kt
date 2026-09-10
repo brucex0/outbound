@@ -13,6 +13,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
@@ -28,6 +29,7 @@ import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivityReflection
 import com.plainstride.outbound.core.model.activity.ActivityType
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class RecordingUiState(
     val launch: RecordingLaunchConfiguration = RecordingLaunchConfiguration(),
@@ -39,6 +41,7 @@ data class RecordingUiState(
     val showDiscardConfirmation: Boolean = false,
     val startRequested: Boolean = false,
     val saving: Boolean = false,
+    val discarding: Boolean = false,
     val pendingMedia:Boolean=false,
 )
 
@@ -117,12 +120,25 @@ class RecordingViewModel @Inject constructor(
         analytics.record(AnalyticsEvent("activity_discard_prompted"))
     }
     fun cancelDiscard() { mutableState.value = mutableState.value.copy(showDiscardConfirmation = false) }
-    fun discard() {
-        mutableState.value = RecordingUiState(launch = mutableState.value.launch)
+    suspend fun discard(): Boolean {
+        if (mutableState.value.discarding) return false
+        mutableState.value = mutableState.value.copy(showDiscardConfirmation = false, discarding = true)
         client.discard(newCommandId())
+        val discarded = withTimeoutOrNull(5_000) {
+            snapshot.first { it.status == RecordingStatus.IDLE }
+        } != null
+        if (!discarded) {
+            mutableState.value = mutableState.value.copy(discarding = false, showDiscardConfirmation = true)
+            return false
+        }
+        mutableState.value = RecordingUiState(launch = mutableState.value.launch)
         clearLaunch()
         analytics.record(AnalyticsEvent("activity_discarded"))
+        return true
     }
+
+    fun speakCountdown(value: Int) = voice.speakCountdown(value)
+    fun speakStart() = voice.speakStart()
     fun setMode(mode: RecordingSurfaceMode) {
         mutableState.value = mutableState.value.copy(mode = mode)
         analytics.record(AnalyticsEvent("activity_surface_changed", mapOf(AnalyticsProperty.Result to mode.name.lowercase())))
