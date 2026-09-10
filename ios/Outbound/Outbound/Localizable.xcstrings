@@ -4765,6 +4765,17 @@
         }
       }
     },
+    "social.conditions": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Conditions"}},"es":{"stringUnit":{"state":"translated","value":"Condiciones"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"天气"}}}},
+    "social.community": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Social community"}},"es":{"stringUnit":{"state":"translated","value":"Comunidad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"运动社区"}}}},
+    "social.distance": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Distance"}},"es":{"stringUnit":{"state":"translated","value":"Distancia"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"距离"}}}},
+    "social.feed.empty": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Activities shared by you and your connections will appear here."}},"es":{"stringUnit":{"state":"translated","value":"Aquí aparecerán las actividades que compartan tú y tus conexiones."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你和好友分享的活动会显示在这里。"}}}},
+    "social.guide.noticed": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Guide noticed this"}},"es":{"stringUnit":{"state":"translated","value":"Tu guía se fijó en esto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"向导发现了这个"}}}},
+    "social.incoming.requests": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d connection requests"}},"es":{"stringUnit":{"state":"translated","value":"%d solicitudes de conexión"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 个好友请求"}}}},
+    "social.pace": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Pace"}},"es":{"stringUnit":{"state":"translated","value":"Ritmo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"配速"}}}},
+    "social.past.activities": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Past activities"}},"es":{"stringUnit":{"state":"translated","value":"Actividades anteriores"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"往期活动"}}}},
+    "social.past.empty": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"No shared activity results yet."}},"es":{"stringUnit":{"state":"translated","value":"Aún no hay resultados de actividades compartidas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"目前还没有共享活动结果。"}}}},
+    "social.recognition.earned": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"You earned a new Social milestone."}},"es":{"stringUnit":{"state":"translated","value":"Has conseguido un nuevo logro social."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你获得了新的社交里程碑。"}}}},
+    "social.time": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Time"}},"es":{"stringUnit":{"state":"translated","value":"Tiempo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"时间"}}}},
     "social.feed.load_more_failed": {
       "localizations": {
         "en": {
@@ -7100,6 +7111,16 @@
         }
       }
     },
+    "today.calories.format": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d kcal"}},"es":{"stringUnit":{"state":"translated","value":"%d kcal"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 千卡"}}}},
+    "today.change.goal": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Change goal"}},"es":{"stringUnit":{"state":"translated","value":"Cambiar objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"更改目标"}}}},
+    "today.change.plan": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Change plan"}},"es":{"stringUnit":{"state":"translated","value":"Cambiar plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"更改计划"}}}},
+    "today.distance.format": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%.1f km"}},"es":{"stringUnit":{"state":"translated","value":"%.1f km"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%.1f 公里"}}}},
+    "today.find.route": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Find route"}},"es":{"stringUnit":{"state":"translated","value":"Buscar ruta"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查找路线"}}}},
+    "today.more": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"More setup options"}},"es":{"stringUnit":{"state":"translated","value":"Más opciones de preparación"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"更多训练设置"}}}},
+    "today.plan": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan"}},"es":{"stringUnit":{"state":"translated","value":"Plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划"}}}},
+    "today.take.photo": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Take photo"}},"es":{"stringUnit":{"state":"translated","value":"Hacer foto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"拍照"}}}},
+    "today.time.format": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d min"}},"es":{"stringUnit":{"state":"translated","value":"%d min"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 分钟"}}}},
+    "today.weather": {"comment":"Shared with Android today. [android:today]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Weather"}},"es":{"stringUnit":{"state":"translated","value":"Tiempo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"天气"}}}},
     "today.calorie_goal.summary_format": {
       "comment": "The first %@ is a calorie target, the second %@ is approximate distance, and %d is approximate whole minutes.",
       "localizations": {
