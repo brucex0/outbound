@@ -132,6 +132,10 @@ class RecordingViewModel @Inject constructor(
     fun trackPhotoAttempt() = analytics.record(AnalyticsEvent("activity_photo_capture_attempted", mapOf(
         AnalyticsProperty.Source to "recording",
     )))
+    fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
+        "activity_dashboard_changed",
+        mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),
+    ))
     fun newCommandId(): String = UUID.randomUUID().toString()
     fun markSaved(){client.markSaved(newCommandId());clearLaunch()}
     private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}

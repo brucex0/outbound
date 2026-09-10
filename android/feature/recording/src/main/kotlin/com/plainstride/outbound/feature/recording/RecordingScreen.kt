@@ -13,6 +13,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Mic
@@ -69,6 +72,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -237,7 +241,7 @@ fun RecordingRoute(
                 finishEnabled=!ui.pendingMedia,
                 onListen = ::listenForCommand,
                 voiceListening = voiceListening,
-                onDiscard = viewModel::requestDiscard,
+                onDashboardChanged = viewModel::trackDashboardChanged,
             )
             else -> ActivitySetupScreen(ui.launch, permissionState(), onStart = ::beginCountdown, onExit = onExit)
         }
@@ -349,8 +353,9 @@ private fun LiveRecordingScreen(
     finishEnabled:Boolean,
     onListen: () -> Unit,
     voiceListening: Boolean,
-    onDiscard: () -> Unit,
+    onDashboardChanged: (Boolean) -> Unit,
 ) {
+    var dashboardExpanded by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot.track, Modifier.fillMaxSize())
         else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
@@ -372,7 +377,10 @@ private fun LiveRecordingScreen(
                 }
             }
         }
-        SessionDashboard(snapshot, configuration, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish,finishEnabled, onDiscard)
+        SessionDashboard(snapshot, configuration, dashboardExpanded, {
+            dashboardExpanded = it
+            onDashboardChanged(it)
+        }, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish, finishEnabled)
     }
 }
 
@@ -400,26 +408,51 @@ private fun CameraSurface(photoPath: String?, onCaptured: (String) -> Unit, onTa
 private fun SessionDashboard(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
+    expanded: Boolean,
+    onExpandedChanged: (Boolean) -> Unit,
     modifier: Modifier,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: () -> Unit,
     finishEnabled:Boolean,
-    onDiscard: () -> Unit,
 ) {
-    Card(modifier.fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(28.dp), elevation = CardDefaults.cardElevation(10.dp)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Card(
+        modifier.fillMaxWidth()
+            .then(if (expanded) Modifier.fillMaxSize().padding(top = 72.dp) else Modifier.padding(12.dp))
+            .pointerInput(expanded) {
+                detectVerticalDragGestures { _, amount ->
+                    if (amount < -12) onExpandedChanged(true)
+                    if (amount > 12) onExpandedChanged(false)
+                }
+            },
+        shape = if (expanded) RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp) else RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(10.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(if (expanded) 24.dp else 12.dp)) {
+            IconButton(onClick = { onExpandedChanged(!expanded) }, modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp)) {
+                Icon(
+                    if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                    contentDescription = stringResource(R.string.recording_activity_in_progress),
+                )
+            }
             Text(configuration.title ?: stringResource(R.string.recording_activity_in_progress), style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
-                Metric(stringResource(R.string.recording_distance), formatDistance(snapshot.distanceMeters))
-                Metric(stringResource(R.string.recording_pace), formatPace(snapshot.currentPaceSecondsPerKilometer))
+            PrimaryGoalMetric(snapshot, configuration.goal, expanded)
+            if (expanded) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
+                    Metric(stringResource(R.string.recording_distance), formatDistance(snapshot.distanceMeters))
+                    Metric(stringResource(R.string.recording_pace), formatPace(snapshot.currentPaceSecondsPerKilometer))
+                }
+                configuration.workoutSteps.firstOrNull()?.let { step ->
+                    Text(step.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    step.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                configuration.followedRoute?.let { Text(it.name, style = MaterialTheme.typography.titleMedium) }
             }
             goalProgress(snapshot, configuration.goal)?.let { progress ->
                 androidx.compose.material3.LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onDiscard, modifier = Modifier.size(56.dp)) { Icon(Icons.Default.Delete, stringResource(R.string.recording_discard)) }
                 Button(onClick = if (snapshot.status == RecordingStatus.ACTIVE) onPause else onResume, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
                     Icon(if (snapshot.status == RecordingStatus.ACTIVE) Icons.Default.Pause else Icons.Default.PlayArrow, null)
                     Spacer(Modifier.width(8.dp)); Text(stringResource(if (snapshot.status == RecordingStatus.ACTIVE) R.string.recording_pause else R.string.recording_resume))
@@ -429,6 +462,20 @@ private fun SessionDashboard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PrimaryGoalMetric(snapshot: RecordingSnapshot, goal: RecordingGoal, expanded: Boolean) {
+    val (label, value) = when (goal.type) {
+        RecordingGoalType.TIME -> stringResource(R.string.recording_time) to "${formatDuration(snapshot.elapsedSeconds)} / ${formatDuration(goal.targetDurationSeconds ?: 0)}"
+        RecordingGoalType.DISTANCE -> stringResource(R.string.recording_distance) to "${formatDistance(snapshot.distanceMeters)} / ${formatDistance(goal.targetDistanceMeters ?: 0.0)}"
+        RecordingGoalType.CALORIES -> stringResource(R.string.recording_goal_workout) to stringResource(R.string.recording_goal_calories, goal.targetCalories ?: 0)
+        RecordingGoalType.FREESTYLE, RecordingGoalType.WORKOUT -> stringResource(R.string.recording_distance) to formatDistance(snapshot.distanceMeters)
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = if (expanded) MaterialTheme.typography.displayMedium else MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
