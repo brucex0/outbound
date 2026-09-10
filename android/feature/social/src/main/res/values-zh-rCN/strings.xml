@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_all">全部</string>
     <string name="social_block">屏蔽此人</string>
     <string name="social_cheer">发送私密鼓励</string>
     <string name="social_circle">你的圈子</string>
@@ -13,6 +14,7 @@
     <string name="social_connect">添加好友</string>
     <string name="social_connections">好友</string>
     <string name="social_connections_empty">一起更有动力。找到你认识的人，让每次运动都有陪伴。</string>
+    <string name="social_discover">发现</string>
     <string name="social_distance">距离</string>
     <string name="social_done">完成</string>
     <string name="social_feed">近期动态</string>
@@ -40,6 +42,7 @@
     <string name="social_relationship">关系：%1$s</string>
     <string name="social_remove_connection">解除好友关系</string>
     <string name="social_report">举报动态</string>
+    <string name="social_requests">好友请求</string>
     <string name="social_review">查看</string>
     <string name="social_route">活动路线</string>
     <string name="social_safety_body">举报内容会保密。屏蔽后双方将解除好友关系，并互相隐藏内容。</string>

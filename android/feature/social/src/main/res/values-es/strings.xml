@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_all">Ver todo</string>
     <string name="social_block">Bloquear persona</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
     <string name="social_circle">Tu Círculo</string>
@@ -13,6 +14,7 @@
     <string name="social_connect">Conectar</string>
     <string name="social_connections">Conexiones</string>
     <string name="social_connections_empty">Mejor en compañía. Encuentra a gente que conoces y comparte el movimiento.</string>
+    <string name="social_discover">Descubrir</string>
     <string name="social_distance">Distancia</string>
     <string name="social_done">Listo</string>
     <string name="social_feed">Actividad reciente</string>
@@ -40,6 +42,7 @@
     <string name="social_relationship">Relación: %1$s</string>
     <string name="social_remove_connection">Eliminar conexión</string>
     <string name="social_report">Reportar publicación</string>
+    <string name="social_requests">Solicitudes</string>
     <string name="social_review">Revisar</string>
     <string name="social_route">Ruta de la actividad</string>
     <string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string>
