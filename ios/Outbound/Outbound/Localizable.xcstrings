@@ -24079,6 +24079,75 @@
         }
       }
     },
+    "plan.adjustment.missedWorkout": {
+      "comment": "Concise explanation shown after the plan moves a missed workout forward.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missed workout moved forward—no catch-up needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento perdido reprogramado; no necesitas recuperarlo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已顺延错过的训练，无需补练。"
+          }
+        }
+      }
+    },
+    "plan.adjustment.skippedWorkout": {
+      "comment": "Concise explanation shown after the plan moves a skipped workout forward.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipped workout moved forward—no catch-up needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento omitido reprogramado; no necesitas recuperarlo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已顺延跳过的训练，无需补练。"
+          }
+        }
+      }
+    },
+    "plan.weekProgress": {
+      "comment": "Plan progress showing completed required workouts for the current week. The first number is completed and the second is the target.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld of %2$lld completed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld de %2$lld completados"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成 %1$lld / %2$lld"
+          }
+        }
+      }
+    },
     "Plan a run": {
       "localizations": {
         "es": {

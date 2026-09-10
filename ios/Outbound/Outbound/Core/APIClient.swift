@@ -1206,8 +1206,8 @@ private extension PlanningAPIStateResponse {
     }
 
     private func guideLine(fallbackFocus: TrainingPlanFocus) -> String {
-        if let latestAdjustment {
-            return latestAdjustment.message
+        if let adjustmentLine = localizedAdjustmentLine {
+            return adjustmentLine
         }
 
         if planningStatus == "reassessing" {
@@ -1224,15 +1224,33 @@ private extension PlanningAPIStateResponse {
         }
     }
 
+    private var localizedAdjustmentLine: String? {
+        guard let latestAdjustment else { return nil }
+        switch latestAdjustment.eventType {
+        case "workoutMissed":
+            return String(
+                localized: "plan.adjustment.missedWorkout",
+                defaultValue: "Missed workout moved forward—no catch-up needed."
+            )
+        case "workoutSkipped":
+            return String(
+                localized: "plan.adjustment.skippedWorkout",
+                defaultValue: "Skipped workout moved forward—no catch-up needed."
+            )
+        default:
+            return latestAdjustment.message
+        }
+    }
+
     private func makeTodaySuggestion(
         for workout: TrainingPlanWorkout,
         apiWorkout: PlanningAPIWorkout,
         readiness: DailyReadiness?
     ) -> TodayTrainingSuggestion {
         let lowReadiness = readiness == .lowEnergy || readiness == .stressed
-        let adjustmentLine = latestAdjustment?.message
+        let adjustmentLine = localizedAdjustmentLine
             ?? (lowReadiness ? "Dialed in around today's readiness." : nil)
-        let guideLine = latestAdjustment?.message ?? workout.guideCue
+        let guideLine = localizedAdjustmentLine ?? workout.guideCue
         let suggestion = SuggestedSession(
             id: "plan-\(apiWorkout.id)",
             sport: SportType.apiSport(from: apiWorkout.modality),
