@@ -20,6 +20,8 @@ struct SocialHomeView: View {
     @State private var toastMessage: String?
     @State private var postPendingReport: TogetherPostDTO?
     @State private var postPendingBlock: TogetherPostDTO?
+    @State private var postPendingDeletion: TogetherPostDTO?
+    @AppStorage("social.skipPostDeletionConfirmation") private var skipsPostDeletionConfirmation = false
     @StateObject private var liveCheerStore = LiveCheerStore()
 
     private var shouldShowConnectionPrompt: Bool {
@@ -270,6 +272,24 @@ struct SocialHomeView: View {
             } message: {
                 Text(String(localized: "social.block.confirmation.message", defaultValue: "Blocking removes the connection and hides each person’s content."))
             }
+            .confirmationDialog(
+                String(localized: "social.delete.post.confirmation.title", defaultValue: "Delete this post?"),
+                isPresented: Binding(
+                    get: { postPendingDeletion != nil },
+                    set: { if !$0 { postPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Delete post"), role: .destructive) {
+                    deletePendingPost(skipFutureConfirmations: false)
+                }
+                Button(String(localized: "social.delete.post.dont.ask.again", defaultValue: "Delete and don’t ask again"), role: .destructive) {
+                    deletePendingPost(skipFutureConfirmations: true)
+                }
+                Button(String(localized: "Cancel"), role: .cancel) { postPendingDeletion = nil }
+            } message: {
+                Text(String(localized: "social.delete.post.confirmation.message", defaultValue: "This removes the post from Social. Your saved activity is not deleted."))
+            }
         }
     }
 
@@ -291,6 +311,15 @@ struct SocialHomeView: View {
                 .selectionType: .string(destination),
             ]))
         }
+    }
+
+    private func deletePendingPost(skipFutureConfirmations: Bool) {
+        guard let post = postPendingDeletion else { return }
+        if skipFutureConfirmations {
+            skipsPostDeletionConfirmation = true
+        }
+        postPendingDeletion = nil
+        Task { await socialStore.deletePost(post) }
     }
 
     private func trackSocialInboxOpened(entrySource: String) {
@@ -726,7 +755,11 @@ struct SocialHomeView: View {
                             Menu {
                                 if post.isCurrentUser {
                                     Button("Delete post", role: .destructive) {
-                                        Task { await socialStore.deletePost(post) }
+                                        if skipsPostDeletionConfirmation {
+                                            Task { await socialStore.deletePost(post) }
+                                        } else {
+                                            postPendingDeletion = post
+                                        }
                                     }
                                 } else {
                                     Button("Report post", role: .destructive) {

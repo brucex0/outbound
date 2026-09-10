@@ -44643,6 +44643,44 @@
         }
       }
     },
+    "social.delete.post": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_delete_post.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete post" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Eliminar publicación" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "删除动态" } }
+      }
+    },
+    "social.delete.post.confirmation.message": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_delete_post_confirmation_message.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This removes the post from Social. Your saved activity is not deleted." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Esto elimina la publicación de Social. Tu actividad guardada no se eliminará." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这会从动态中删除该帖子，但不会删除你保存的活动。" } }
+      }
+    },
+    "social.delete.post.confirmation.title": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_delete_post_confirmation_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete this post?" } },
+        "es": { "stringUnit": { "state": "translated", "value": "¿Eliminar esta publicación?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "删除这条动态？" } }
+      }
+    },
+    "social.dont.ask.again": {
+      "comment": "Shared with Android social. [android:social] Generated Android name: social_dont_ask_again.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Don’t ask again" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No volver a preguntar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "不再询问" } }
+      }
+    },
+    "social.delete.post.dont.ask.again": {
+      "localizations": {
+        "es": { "stringUnit": { "state": "translated", "value": "Eliminar y no volver a preguntar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "删除且不再询问" } }
+      }
+    },
     "social.done": {
       "comment": "Shared with Android social; generated Android name: social_done. [android:social] Generated Android name: social_done.",
       "localizations": {
