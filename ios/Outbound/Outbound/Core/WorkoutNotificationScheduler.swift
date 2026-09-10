@@ -22,12 +22,19 @@ final class WorkoutReminderPreferences: ObservableObject {
     private let enabledKey = "workout_reminders_enabled_v1"
     private let hourKey = "workout_reminders_hour_v1"
     private let minuteKey = "workout_reminders_minute_v1"
+    private(set) var needsInitialAuthorization: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        isEnabled = defaults.object(forKey: enabledKey) as? Bool ?? false
-        reminderHour = defaults.object(forKey: hourKey) as? Int ?? 8
+        needsInitialAuthorization = defaults.object(forKey: enabledKey) == nil
+        isEnabled = defaults.object(forKey: enabledKey) as? Bool ?? true
+        reminderHour = defaults.object(forKey: hourKey) as? Int ?? 6
         reminderMinute = defaults.object(forKey: minuteKey) as? Int ?? 0
+    }
+
+    func markInitialAuthorizationHandled() {
+        needsInitialAuthorization = false
+        defaults.set(isEnabled, forKey: enabledKey)
     }
 
     func setTime(_ date: Date, calendar: Calendar = .current) {

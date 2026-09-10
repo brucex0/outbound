@@ -101,9 +101,9 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 
 Workout reminders are an on-device feature owned by `WorkoutNotificationScheduler`. They do not use Firebase, APNs delivery, FCM tokens, backend connectivity, or the Social notification inbox.
 
-- Reminders are off until the runner enables them in Settings.
-- Enabling reminders requests notification authorization contextually. Activation and authentication never request the system prompt.
-- The runner chooses one local reminder time. The scheduler maintains a rolling 14-day set from backend-scheduled workouts or the current and next cached template weeks, and replaces requests idempotently with stable `plainstride.workout.*` identifiers.
+- Reminders default to enabled at 6:00 AM for new installations. Existing explicit reminder choices are preserved.
+- On first entry into the authenticated app experience, the enabled default requests notification authorization once. Denial turns reminders off; later app activation does not repeatedly request permission.
+- The runner can change the local reminder time in Settings. The scheduler maintains a rolling 14-day set from backend-scheduled workouts or the current and next cached template weeks, and replaces requests idempotently with stable `plainstride.workout.*` identifiers.
 - Only planned workout days are eligible. Rest days, optional/rest entries, removed workouts, and completed days are silent. There is never a missed-workout debt or make-up reminder.
 - The scheduler reconciles after app activation, account changes, plan refresh/change/removal, reminder preference changes, locale-sensitive plan refreshes, and local activity saves. A qualifying activity on the same calendar day cancels the remaining reminder for that day.
 - Lock-screen copy is concise, localized English, Spanish, or Simplified Chinese, and excludes readiness, health, cycle, location, and private plan details. Taps route to Today and the matching start-confirmation context when the cached workout is still available; otherwise they land safely on Today.

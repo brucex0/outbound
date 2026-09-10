@@ -15,6 +15,7 @@ struct MainTabView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var connectivityStore: ConnectivityStore
     @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
+    @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -74,6 +75,15 @@ struct MainTabView: View {
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
             handlePendingWorkoutReminder()
+        }
+        .task {
+            guard workoutReminderPreferences.needsInitialAuthorization else { return }
+            _ = await workoutNotificationScheduler.requestPermissionAndEnable(
+                preferences: workoutReminderPreferences,
+                activities: activityStore.activities,
+                workouts: trainingPlanStore.scheduledWorkouts
+            )
+            workoutReminderPreferences.markInitialAuthorizationHandled()
         }
         .onChange(of: selectedAppTab) { _, tab in
             guard tab == SimplifiedAppTab.today else { return }
