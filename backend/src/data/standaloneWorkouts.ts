@@ -48,6 +48,9 @@ export type StandaloneWorkoutCatalogItem = {
     durationSeconds: number;
     detail?: string;
     coachingTarget?: StandaloneCoachingTarget;
+    transitionInstruction?: string;
+    transitionLeadSeconds?: number;
+    transitionCountdown?: "none" | "five_second";
   }>;
   coachingTarget?: StandaloneCoachingTarget;
   prerequisites: string[];
@@ -84,4 +87,33 @@ export type StandaloneWorkoutCatalog = {
   workouts: StandaloneWorkoutCatalogItem[];
 };
 
-export const standaloneWorkoutCatalog = rawStandaloneWorkoutCatalog as StandaloneWorkoutCatalog;
+const rawCatalog = rawStandaloneWorkoutCatalog as StandaloneWorkoutCatalog;
+
+function transitionInstruction(step: StandaloneWorkoutCatalogItem["steps"][number]): string {
+  const detail = step.detail?.replace(/[.!?]+$/, "");
+  const action = detail ? `${step.label}: ${detail}.` : `${step.label}.`;
+  switch (step.coachingTarget?.phase) {
+    case "recovery": return `Ease into recovery. ${action}`;
+    case "walk": return `Shift into the walk and let your effort settle. ${action}`;
+    case "cooldown": return `Bring the effort down smoothly. ${action}`;
+    case "warmup": return `Start relaxed and build gradually. ${action}`;
+    case "work": return `Make the transition with control. ${action}`;
+    default: return `Flow into the next effort. ${action}`;
+  }
+}
+
+export const standaloneWorkoutCatalog: StandaloneWorkoutCatalog = {
+  ...rawCatalog,
+  workouts: rawCatalog.workouts.map((workout) => ({
+    ...workout,
+    steps: workout.steps.map((step, index) => ({
+      ...step,
+      transitionInstruction: step.transitionInstruction ?? transitionInstruction(step),
+      transitionLeadSeconds: step.transitionLeadSeconds ?? 5,
+      transitionCountdown: step.transitionCountdown
+        ?? (index > 0 && ["recovery", "walk"].includes(step.coachingTarget?.phase ?? "")
+          ? "five_second"
+          : "none"),
+    })),
+  })),
+};

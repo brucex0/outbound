@@ -35,6 +35,9 @@ const clientWorkoutSchema = z.object({
     detail: z.string().trim().max(240).optional(),
     phase: z.enum(["warmup", "easy", "work", "recovery", "walk", "cooldown", "open"]).optional(),
     targetPaceSecondsPerKilometer: z.number().finite().min(60).max(3_600).optional(),
+    transitionInstruction: z.string().trim().min(2).max(300).optional(),
+    transitionLeadSeconds: z.number().int().min(1).max(30).optional(),
+    transitionCountdown: z.enum(["none", "five_second"]).optional(),
   }).strict()).max(80),
   route: z.object({
     name: z.string().trim().max(120).optional(),

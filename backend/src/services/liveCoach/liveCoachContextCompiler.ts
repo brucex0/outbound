@@ -260,6 +260,9 @@ function sanitizeClientWorkout(workout: LiveCoachClientWorkout | undefined): Liv
       detail: nullableClip(step.detail, 240),
       phase: step.phase ?? null,
       targetPaceSecondsPerKilometer: finiteNumber(step.targetPaceSecondsPerKilometer),
+      transitionInstruction: nullableClip(step.transitionInstruction, 300),
+      transitionLeadSeconds: step.transitionLeadSeconds ?? null,
+      transitionCountdown: step.transitionCountdown ?? null,
     })),
     route: workout.route ? {
       name: nullableClip(workout.route.name, 120),

@@ -88,6 +88,9 @@ export type LiveCoachClientWorkout = {
     detail?: string;
     phase?: "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
     targetPaceSecondsPerKilometer?: number;
+    transitionInstruction?: string;
+    transitionLeadSeconds?: number;
+    transitionCountdown?: "none" | "five_second";
   }>;
   route?: {
     name?: string;
