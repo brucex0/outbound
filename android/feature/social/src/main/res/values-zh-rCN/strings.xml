@@ -19,7 +19,11 @@
     <string name="social_connections_empty">一起更有动力。找到你认识的人，让每次运动都有陪伴。</string>
     <string name="social_discover">发现</string>
     <string name="social_distance">距离</string>
+    <string name="social_delete_post">删除动态</string>
+    <string name="social_delete_post_confirmation_message">这会从动态中删除该帖子，但不会删除你保存的活动。</string>
+    <string name="social_delete_post_confirmation_title">删除这条动态？</string>
     <string name="social_done">完成</string>
+    <string name="social_dont_ask_again">不再询问</string>
     <string name="social_feed">近期动态</string>
     <string name="social_feed_empty">你和好友分享的活动会显示在这里。</string>
     <string name="social_groups">群组</string>

@@ -65,6 +65,7 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun closeCircle() = mutableState.update { it.copy(selectedCircle = null) }
     fun joinGroup(group: SocialGroup) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, !group.joined).getOrThrow(); refresh() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
+    fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
     fun cheerCircle(circle: CircleSummary, recipientId: String, preset: String) = mutate("circle_cheer_sent") { repository.cheerCircle(circle.id, recipientId, preset).getOrThrow() }
     fun openComments(post:SocialPost)=viewModelScope.launch{repository.comments(post.id).onSuccess{comments->mutableState.update{it.copy(selectedPost=post,comments=comments)}};analytics.record(AnalyticsEvent("social_comments_opened"))}

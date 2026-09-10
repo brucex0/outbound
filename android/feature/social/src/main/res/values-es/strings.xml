@@ -19,7 +19,11 @@
     <string name="social_connections_empty">Mejor en compañía. Encuentra a gente que conoces y comparte el movimiento.</string>
     <string name="social_discover">Descubrir</string>
     <string name="social_distance">Distancia</string>
+    <string name="social_delete_post">Eliminar publicación</string>
+    <string name="social_delete_post_confirmation_message">Esto elimina la publicación de Social. Tu actividad guardada no se eliminará.</string>
+    <string name="social_delete_post_confirmation_title">¿Eliminar esta publicación?</string>
     <string name="social_done">Listo</string>
+    <string name="social_dont_ask_again">No volver a preguntar</string>
     <string name="social_feed">Actividad reciente</string>
     <string name="social_feed_empty">Aquí aparecerán las actividades que compartan tú y tus conexiones.</string>
     <string name="social_groups">Grupos</string>

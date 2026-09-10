@@ -41,7 +41,7 @@ import com.plainstride.outbound.core.designsystem.*
         if (!state.loading && targetType == "connections") connectionsOpen = true
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
-    SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, onActivity, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, {createCircle=true}, modifier)
+    SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, onActivity, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, {createCircle=true}, modifier)
     if (connectionsOpen) ConnectionsDialog(state, viewModel::search, viewModel::openProfile, { invitation -> viewModel.openTarget("invitation", invitation.id) },viewModel::requestConnectionLink) { connectionsOpen = false }
     state.connectionLink?.let{link->ConnectionQrDialog(link,viewModel::closeConnectionLink)}
     state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile, { viewModel.connect(it) }, {it.connectionId?.let(viewModel::acceptConnection)}, {it.connectionId?.let(viewModel::removeConnection)}) }
@@ -56,9 +56,14 @@ import com.plainstride.outbound.core.designsystem.*
 }
 @Composable private fun ActionDialog(title:String,action:String,onAction:()->Unit,onClose:()->Unit)=AlertDialog(onDismissRequest=onClose,title={Text(title)},confirmButton={TextButton(onAction){Text(action)}},dismissButton={TextButton(onClose){Text(stringResource(R.string.social_done))}})
 
-@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(String)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(String)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
+    var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
+    val context = LocalContext.current
+    val deletionPreferences = remember { context.getSharedPreferences("social_preferences", android.content.Context.MODE_PRIVATE) }
+    var skipDeletionConfirmation by rememberSaveable { mutableStateOf(deletionPreferences.getBoolean("skip_post_deletion_confirmation", false)) }
+    var skipFutureDeletionConfirmations by rememberSaveable { mutableStateOf(false) }
     val acceptedConnections = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }.sortedWith(compareByDescending<SocialPerson> { it.isActive }.thenBy { it.displayName.substringBefore(' ').lowercase() })
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
     val circleInvitations = state.home.invitations.filter { it.kind == "circle" }
@@ -82,13 +87,14 @@ import com.plainstride.outbound.core.designsystem.*
         item { SectionHeader(stringResource(R.string.social_groups)) }
         items(state.home.groups, key = SocialGroup::id) { GroupCard(it) { group(it) } }
         item { SectionHeader(stringResource(R.string.social_feed)) }
-        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.id?.let(openActivity) }, { cheer(post) }, { comments(post) }, { safetyPost = post }) }
+        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.id?.let(openActivity) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
         if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
         if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
     }
     safetyPost?.takeUnless(SocialPost::isCurrentUser)?.let { post -> var reason by remember { mutableStateOf(ReportReason.OTHER) }; AlertDialog(onDismissRequest = { safetyPost = null }, title = { Text(stringResource(R.string.social_safety_title)) }, text = { Column { Text(stringResource(R.string.social_safety_body)); ReportReason.entries.forEach { option -> Row(verticalAlignment=Alignment.CenterVertically){RadioButton(reason==option,{reason=option});Text(reportReasonLabel(option))} } } }, confirmButton = { TextButton({ report(post, reason.wireValue); safetyPost = null }) { Text(stringResource(R.string.social_report)) } }, dismissButton = { TextButton({ blockConfirmationPost = post; safetyPost = null }) { Text(stringResource(R.string.social_block)) } }) }
     blockConfirmationPost?.let { post -> AlertDialog(onDismissRequest = { blockConfirmationPost = null }, title = { Text(stringResource(R.string.social_block_confirmation_title)) }, text = { Text(stringResource(R.string.social_block_confirmation_message)) }, confirmButton = { TextButton({ block(post); blockConfirmationPost = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_block)) } }, dismissButton = { TextButton({ blockConfirmationPost = null }) { Text(stringResource(R.string.social_cancel)) } }) }
+    deletionConfirmationPost?.let { post -> AlertDialog(onDismissRequest = { deletionConfirmationPost = null; skipFutureDeletionConfirmations = false }, title = { Text(stringResource(R.string.social_delete_post_confirmation_title)) }, text = { Column { Text(stringResource(R.string.social_delete_post_confirmation_message)); Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(skipFutureDeletionConfirmations, { skipFutureDeletionConfirmations = it }); Text(stringResource(R.string.social_dont_ask_again)) } } }, confirmButton = { TextButton({ if (skipFutureDeletionConfirmations) { skipDeletionConfirmation = true; deletionPreferences.edit().putBoolean("skip_post_deletion_confirmation", true).apply() }; deletePost(post); deletionConfirmationPost = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_delete_post)) } }, dismissButton = { TextButton({ deletionConfirmationPost = null; skipFutureDeletionConfirmations = false }) { Text(stringResource(R.string.social_cancel)) } }) }
 }
 
 @Composable private fun SectionHeader(text: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(text.uppercase(), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant); action?.let { TextButton(onAction) { Text(it, fontWeight = FontWeight.SemiBold) } } }
@@ -139,7 +145,7 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
                         post.activity?.startedAt?.let { Text(formatSocialDate(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-                if(!post.isCurrentUser) IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) }
+                IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) }
             }
             post.activity?.let { activity ->
                 Text(activity.title, fontWeight = FontWeight.SemiBold)

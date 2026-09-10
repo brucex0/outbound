@@ -19,7 +19,11 @@
     <string name="social_connections_empty">Better together. Find people you know and make movement feel shared.</string>
     <string name="social_discover">Discover</string>
     <string name="social_distance">Distance</string>
+    <string name="social_delete_post">Delete post</string>
+    <string name="social_delete_post_confirmation_message">This removes the post from Social. Your saved activity is not deleted.</string>
+    <string name="social_delete_post_confirmation_title">Delete this post?</string>
     <string name="social_done">Done</string>
+    <string name="social_dont_ask_again">Don’t ask again</string>
     <string name="social_feed">Recent activity</string>
     <string name="social_feed_empty">Activities shared by you and your connections will appear here.</string>
     <string name="social_groups">Groups</string>
