@@ -8,6 +8,9 @@ final class GuideAudioPackStore {
     static let countdownCueKeys = [
         "countdown.five", "countdown.four", "countdown.three", "countdown.two", "countdown.one", "countdown.go"
     ]
+    static let segmentCountdownCueKeys = [
+        "countdown.five", "countdown.four", "countdown.three", "countdown.two", "countdown.one"
+    ]
 
     private struct Manifest: Decodable {
         let contractVersion: Int
@@ -105,6 +108,11 @@ final class GuideAudioPackStore {
     func localAudioData(for cueKey: String, transcript: String? = nil) -> Data? {
         guard let entry = matchingEntry(cueKey: cueKey, transcript: transcript) else { return nil }
         return localAudioData(for: entry)
+    }
+
+    func localAudioSequence(for cueKeys: [String]) -> [Data]? {
+        let clips = cueKeys.compactMap { localAudioData(for: $0) }
+        return clips.count == cueKeys.count ? clips : nil
     }
 
     private func localAudioData(for entry: Entry) -> Data? {

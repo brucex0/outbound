@@ -142,6 +142,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceProviderResult = "live_guidance_provider_result"
     case liveGuidanceAudioFirstByte = "live_guidance_audio_first_byte"
     case liveGuidanceAudioPlaybackRoute = "live_guidance_audio_playback_route"
+    case liveGuidanceFixedAudioUnavailable = "live_guidance_fixed_audio_unavailable"
     case liveGuidanceVoiceSelected = "live_guidance_voice_selected"
     case pushNotificationOpened = "push_notification_opened"
     case workoutReminderSettingChanged = "workout_reminder_setting_changed"

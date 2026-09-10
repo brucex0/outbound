@@ -4,11 +4,10 @@ import Foundation
 enum GuideAudioPlaybackRoute: String, Equatable {
     case cloudStream = "cloud_stream"
     case recordedAudio = "recorded_audio"
-    case onDeviceSpeech = "on_device_speech"
 }
 
 @MainActor
-final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @preconcurrency AVSpeechSynthesizerDelegate {
+final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
     enum StopBoundary {
         case immediate
         case currentCue
@@ -29,20 +28,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
     private var pcmPlaybackStarted = false
     private var didEmitStart = false
     private var didEmitPlaybackRoute = false
-    private var requiresPinnedOnDeviceVoice = false
-    private var pinnedOnDeviceVoice: AVSpeechSynthesisVoice?
-    private let speechSynthesizer = AVSpeechSynthesizer()
-
-    override init() {
-        super.init()
-        speechSynthesizer.delegate = self
-    }
-
-    func pinOnDeviceVoice(presentation: GuideVoicePresentation?) {
-        requiresPinnedOnDeviceVoice = presentation != nil
-        pinnedOnDeviceVoice = presentation.flatMap(Self.onDeviceVoice(for:))
-    }
-
     @discardableResult
     func play(_ data: Data, interrupt: Bool = false) -> Bool {
         if isSpeaking {
@@ -58,7 +43,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
     func play(
         _ stream: LiveCoachPCMStream,
         fallbackData: Data?,
-        fallbackText: String,
         interrupt: Bool = false
     ) -> Bool {
         if isSpeaking {
@@ -95,7 +79,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
             deadlineTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
                 guard !Task.isCancelled else { return }
-                self?.handlePCMFailureBeforePlayback(fallbackData: fallbackData, fallbackText: fallbackText)
+                self?.handlePCMFailureBeforePlayback(fallbackData: fallbackData)
             }
             streamTask = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -114,7 +98,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
                     self.finishPCMIfReady()
                 } catch {
                     if !self.pcmPlaybackStarted {
-                        self.handlePCMFailureBeforePlayback(fallbackData: fallbackData, fallbackText: fallbackText)
+                        self.handlePCMFailureBeforePlayback(fallbackData: fallbackData)
                     } else {
                         self.pcmStreamEnded = true
                         self.finishPCMIfReady()
@@ -124,34 +108,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
             return true
         } catch {
             if let fallbackData { return play(fallbackData, interrupt: interrupt) }
-            finishSpeaking()
-            return false
-        }
-    }
-
-    @discardableResult
-    func speakOnDevice(_ text: String, interrupt: Bool = false) -> Bool {
-        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalized.isEmpty else { return false }
-        if isSpeaking {
-            guard interrupt else { return false }
-            stopSpeaking(at: .immediate)
-        }
-        guard !requiresPinnedOnDeviceVoice || pinnedOnDeviceVoice != nil else { return false }
-        do {
-            try Self.activateAudioSession()
-            let utterance = AVSpeechUtterance(string: normalized)
-            utterance.voice = pinnedOnDeviceVoice
-                ?? AVSpeechSynthesisVoice(language: AppLanguage.speechLocale.identifier)
-                ?? AVSpeechSynthesisVoice(language: AppLanguage.currentIdentifier)
-            utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-            isSpeaking = true
-            didEmitStart = true
-            emitPlaybackRoute(.onDeviceSpeech)
-            eventHandler?(.didStart)
-            speechSynthesizer.speak(utterance)
-            return true
-        } catch {
             finishSpeaking()
             return false
         }
@@ -167,9 +123,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
         queuedAudio = []
         if boundary == .immediate {
             player?.stop()
-            if speechSynthesizer.isSpeaking {
-                speechSynthesizer.stopSpeaking(at: .immediate)
-            }
             stopPCMResources()
             finishSpeaking()
         }
@@ -208,14 +161,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         finishSpeaking()
-    }
-
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        finishSpeaking()
-    }
-
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        if isSpeaking { finishSpeaking() }
     }
 
     private func playNext() {
@@ -292,7 +237,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
         finishSpeaking()
     }
 
-    private func handlePCMFailureBeforePlayback(fallbackData: Data?, fallbackText: String) {
+    private func handlePCMFailureBeforePlayback(fallbackData: Data?) {
         guard !pcmPlaybackStarted else { return }
         streamTask?.cancel()
         stopPCMResources()
@@ -301,8 +246,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
             queuedAudio = [fallbackData]
             playNext()
         } else {
-            isSpeaking = false
-            _ = speakOnDevice(fallbackText, interrupt: false)
+            finishSpeaking()
         }
     }
 
@@ -324,26 +268,6 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate, @
         guard !didEmitPlaybackRoute else { return }
         didEmitPlaybackRoute = true
         playbackRouteHandler?(route)
-    }
-
-    private static func onDeviceVoice(for presentation: GuideVoicePresentation) -> AVSpeechSynthesisVoice? {
-        let requestedLocale = AppLanguage.speechLocale
-        let requestedLanguageCode = requestedLocale.language.languageCode?.identifier
-        let requestedIdentifier = requestedLocale.identifier.replacingOccurrences(of: "_", with: "-").lowercased()
-        let requestedGender: AVSpeechSynthesisVoiceGender = presentation == .female ? .female : .male
-        return AVSpeechSynthesisVoice.speechVoices()
-            .filter { voice in
-                voice.gender == requestedGender
-                    && Locale(identifier: voice.language).language.languageCode?.identifier == requestedLanguageCode
-            }
-            .sorted { left, right in
-                let leftExact = left.language.replacingOccurrences(of: "_", with: "-").lowercased() == requestedIdentifier
-                let rightExact = right.language.replacingOccurrences(of: "_", with: "-").lowercased() == requestedIdentifier
-                if leftExact != rightExact { return leftExact }
-                if left.quality != right.quality { return left.quality.rawValue > right.quality.rawValue }
-                return left.identifier < right.identifier
-            }
-            .first
     }
 
     private static func activateAudioSession() throws {

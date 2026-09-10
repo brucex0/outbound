@@ -88,6 +88,8 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var recentSpokenRoles: [GuidanceMomentRole] = []
     private var spokenGoalMilestones: Set<GoalMilestone> = []
     private var spokenTimedBoundaryCues: Set<String> = []
+    private var activeTimedCountdownBoundaries: Set<Int> = []
+    private var suppressedTimedCountdownBoundaries: Set<Int> = []
     private var lastObservedDistanceMilestone = 0
     private var lastObservedDistanceCheckpoint: (distanceMeters: Double, elapsedSeconds: Int)?
     private var latestDistanceCheckpointPace: Double?
@@ -164,7 +166,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.sessionIntent = sessionIntent
         self.companionBrief = companionBrief
         self.unitSystem = unitSystem
-        audioPlayer.pinOnDeviceVoice(presentation: persona?.voice.presentation)
         isActive = true
         snapshotHistory = []
         lastProgressAnnouncementElapsedSeconds = nil
@@ -176,6 +177,8 @@ final class VirtualGuide: NSObject, ObservableObject {
         recentSpokenRoles = []
         spokenGoalMilestones = []
         spokenTimedBoundaryCues = []
+        activeTimedCountdownBoundaries = []
+        suppressedTimedCountdownBoundaries = []
         lastObservedDistanceMilestone = 0
         lastObservedDistanceCheckpoint = nil
         latestDistanceCheckpointPace = nil
@@ -222,7 +225,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         isAnalyzing = false
         provider.endSession(report: sessionReport)
         audioPlayer.stopSpeaking(at: .immediate)
-        audioPlayer.pinOnDeviceVoice(presentation: nil)
     }
 
     func finalizedSessionReport() -> LiveGuidanceSessionReport {
@@ -932,6 +934,17 @@ final class VirtualGuide: NSObject, ObservableObject {
                 cue.text += " \(summary)"
             }
         }
+        if let countdownCueKey = Self.countdownCueKey(for: cue.text) {
+            guard prepareTimedCountdownCue(
+                countdownCueKey,
+                text: cue.text,
+                boundarySeconds: cue.boundarySeconds
+            ) else { return true }
+            spokenTimedBoundaryCues.insert(cue.id)
+            lastProgressAnnouncementElapsedSeconds = snapshot.elapsedSeconds
+            rememberGuideSpeech(at: snapshot.elapsedSeconds)
+            return true
+        }
         audioPlayer.stopSpeaking(at: .immediate)
         let cueKey = cue.isCompletion ? "workout.complete"
             : cue.isSegmentTransition ? "workout.segment_start"
@@ -951,6 +964,39 @@ final class VirtualGuide: NSObject, ObservableObject {
             spokenGoalMilestones.insert(.durationComplete)
         }
         return true
+    }
+
+    private func prepareTimedCountdownCue(
+        _ cueKey: String,
+        text: String,
+        boundarySeconds: Int
+    ) -> Bool {
+        guard !suppressedTimedCountdownBoundaries.contains(boundarySeconds) else { return false }
+
+        if text == "5" {
+            guard GuideAudioPackStore.shared.localAudioSequence(
+                for: GuideAudioPackStore.segmentCountdownCueKeys
+            ) != nil else {
+                suppressTimedCountdown(at: boundarySeconds, reason: "audio_unavailable")
+                return false
+            }
+            activeTimedCountdownBoundaries.insert(boundarySeconds)
+        } else if !activeTimedCountdownBoundaries.contains(boundarySeconds) {
+            suppressTimedCountdown(at: boundarySeconds, reason: "late_start")
+            return false
+        }
+
+        guard let data = GuideAudioPackStore.shared.localAudioData(for: cueKey, transcript: text) else {
+            suppressTimedCountdown(at: boundarySeconds, reason: "audio_unavailable")
+            return false
+        }
+        return audioPlayer.play(data, interrupt: true)
+    }
+
+    private func suppressTimedCountdown(at boundarySeconds: Int, reason: String) {
+        guard suppressedTimedCountdownBoundaries.insert(boundarySeconds).inserted else { return }
+        activeTimedCountdownBoundaries.remove(boundarySeconds)
+        guidanceEventHandler?(.fixedAudioUnavailable(cueGroup: "segment_countdown", reason: reason))
     }
 
     private func nextTimedBoundaryCue(
@@ -977,6 +1023,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
 
         for (index, boundary) in boundaries.enumerated() {
+            if suppressedTimedCountdownBoundaries.contains(boundary.seconds), elapsedSeconds < boundary.seconds {
+                continue
+            }
             let remaining = boundary.seconds - elapsedSeconds
             if (1...5).contains(remaining) {
                 let id = "boundary-\(index)-count-\(remaining)"
@@ -1183,7 +1232,6 @@ final class VirtualGuide: NSObject, ObservableObject {
             return audioPlayer.play(
                 audioStream,
                 fallbackData: audioData,
-                fallbackText: announcement,
                 interrupt: urgency == .caution
             )
         } else if let audioData {
@@ -1195,7 +1243,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         ) {
             return audioPlayer.play(data, interrupt: urgency == .caution)
         }
-        return audioPlayer.speakOnDevice(announcement, interrupt: urgency == .caution)
+        return false
     }
 
     private func canSpeakGuideMoment(

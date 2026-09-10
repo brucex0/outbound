@@ -2783,6 +2783,11 @@ struct RecordView: View {
             track(.init(.liveGuidanceAudioPlaybackRoute, properties: [
                 .sourceType: .string(route.rawValue)
             ]))
+        case .fixedAudioUnavailable(let cueGroup, let reason):
+            track(.init(.liveGuidanceFixedAudioUnavailable, properties: [
+                .selectionType: .string(cueGroup),
+                .result: .string(reason)
+            ]))
         }
     }
 
