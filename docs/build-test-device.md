@@ -141,6 +141,8 @@ Run the automated local server E2E test with one seeded persona. The runner star
 
 API and database ports can be overridden with `OUTBOUND_E2E_API_PORT` and `OUTBOUND_E2E_DATABASE_PORT`. The script refuses occupied ports and prints its temporary log directory on completion. This command tests the real local first-party session boundary; simulator UI tests remain separate.
 
+The Active Runner seed attaches three running photos to `Easy neighborhood run`. Each photo includes a deterministic distance and the matching coordinate from the seeded route so Activity Detail renders its thumbnail at the captured point on the map.
+
 The simulator ID above is the current available `iPhone 17` simulator used for stable UI test runs. If that simulator disappears, rerun `xcodebuild` once to inspect the available destination list and refresh this doc.
 
 ## Device Build And Install

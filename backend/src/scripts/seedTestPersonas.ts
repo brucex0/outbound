@@ -84,7 +84,7 @@ async function seedTestPersonas() {
     createActivity(activeRunner.id, "a11c7100-0000-4000-8000-000000000002", "Steady tempo", daysAgo(now, 5), 41 * 60, 7_000, 351),
     createActivity(activeRunner.id, "a11c7100-0000-4000-8000-000000000003", "Saturday long run", daysAgo(now, 9), 64 * 60, 10_200, 376),
   ]);
-  await seedActivityPhotos(activeRunner.id, activeActivities, now);
+  await seedActivityPhotos(activeRunner.id, activeActivities);
   await prisma.runnerInsight.createMany({
     data: [
       { userId: activeRunner.id, stableKey: "preferred_time", kind: "schedule", label: "Best rhythm", value: "Morning runs", confidence: "medium", evidenceCount: 3 },
@@ -337,15 +337,17 @@ function makeSeedRoute(startedAt: Date, durationSecs: number, distanceM: number,
   };
 }
 
-async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType<typeof createActivity>>[], now: Date) {
+async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType<typeof createActivity>>[]) {
   const seeds = [
-    { file: "coastal-trail.jpg", clientPhotoId: "2bb48b3c-8edc-49de-b109-7f96203113aa", pace: 365, heartRate: 144, distance: 2_400 },
-    { file: "waterfront-run.jpg", clientPhotoId: "22cb6d92-c7e8-494b-a0bb-1598dc0092b7", pace: 348, heartRate: 151, distance: 3_600 },
-    { file: "park-after-rain.jpg", clientPhotoId: "89df25b7-c636-4db7-b67f-29021d5f8e2b", pace: 378, heartRate: 139, distance: 6_800 },
+    { file: "coastal-trail.jpg", clientPhotoId: "2bb48b3c-8edc-49de-b109-7f96203113aa", pace: 365, heartRate: 144, distance: 1_200 },
+    { file: "waterfront-run.jpg", clientPhotoId: "22cb6d92-c7e8-494b-a0bb-1598dc0092b7", pace: 348, heartRate: 151, distance: 2_600 },
+    { file: "park-after-rain.jpg", clientPhotoId: "89df25b7-c636-4db7-b67f-29021d5f8e2b", pace: 378, heartRate: 139, distance: 4_300 },
   ];
+  const activity = activities[0];
+  if (!activity) return;
 
-  await Promise.all(seeds.map(async (seed, index) => {
-    const activity = activities[index];
+  await Promise.all(seeds.map(async (seed) => {
+    const coordinate = seedRouteCoordinateAtDistance(activity.route, seed.distance);
     const data = await readFile(path.resolve(process.cwd(), "src", "scripts", "assets", "running-photos", seed.file));
     const storageKey = activityPhotoStorageKey(userId, activity.id, seed.clientPhotoId);
     await saveActivityPhoto(storageKey, data);
@@ -358,14 +360,53 @@ async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType
         byteSize: data.length,
         sha256: activityPhotoSHA256(data),
         url: "",
-        takenAt: new Date(activity.startedAt.getTime() + Math.min(20 * 60, (activity.durationSecs ?? 0) / 2) * 1_000),
+        takenAt: new Date(activity.startedAt.getTime() + (activity.durationSecs ?? 0) * Math.min(seed.distance / (activity.distanceM ?? 1), 1) * 1_000),
         paceAtShot: seed.pace,
         hrAtShot: seed.heartRate,
         distAtShot: seed.distance,
+        lat: coordinate?.latitude,
+        lng: coordinate?.longitude,
         captureContext: "active",
       },
     });
   }));
+}
+
+function seedRouteCoordinateAtDistance(route: Prisma.JsonValue, targetDistanceM: number) {
+  if (typeof route !== "object" || route == null || Array.isArray(route)) return null;
+  const geometry = "geometry" in route ? route.geometry : null;
+  if (typeof geometry !== "object" || geometry == null || Array.isArray(geometry) || !("coordinates" in geometry)) return null;
+  const coordinates = Array.isArray(geometry.coordinates)
+    ? geometry.coordinates.filter((coordinate): coordinate is number[] =>
+        Array.isArray(coordinate) && typeof coordinate[0] === "number" && typeof coordinate[1] === "number")
+    : [];
+  if (coordinates.length === 0) return null;
+
+  let traversedM = 0;
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const start = coordinates[index - 1];
+    const end = coordinates[index];
+    const segmentM = seedCoordinateDistanceM(start, end);
+    if (traversedM + segmentM >= targetDistanceM) {
+      const progress = segmentM > 0 ? (targetDistanceM - traversedM) / segmentM : 0;
+      return {
+        longitude: start[0] + (end[0] - start[0]) * progress,
+        latitude: start[1] + (end[1] - start[1]) * progress,
+      };
+    }
+    traversedM += segmentM;
+  }
+  const last = coordinates.at(-1)!;
+  return { longitude: last[0], latitude: last[1] };
+}
+
+function seedCoordinateDistanceM(start: number[], end: number[]) {
+  const radians = Math.PI / 180;
+  const latitudeDelta = (end[1] - start[1]) * radians;
+  const longitudeDelta = (end[0] - start[0]) * radians;
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(start[1] * radians) * Math.cos(end[1] * radians) * Math.sin(longitudeDelta / 2) ** 2;
+  return 12_742_000 * Math.asin(Math.sqrt(Math.min(1, haversine)));
 }
 
 function daysAgo(origin: Date, days: number) {
