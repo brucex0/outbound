@@ -18,6 +18,8 @@ enum class AnalyticsProperty(val wireName: String) {
     Locale("locale"),
     UnitSystem("unit_system"),
     Enabled("enabled"),
+    Destination("destination"),
+    EntrySource("entry_source"),
 }
 
 data class AnalyticsEvent(

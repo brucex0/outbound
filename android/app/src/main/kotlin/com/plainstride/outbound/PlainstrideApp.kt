@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
@@ -40,6 +43,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Today
 import android.content.pm.PackageManager
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -107,7 +115,6 @@ private enum class TopLevelDestination(
 ) {
     Social("social", R.string.tab_social, R.string.social_headline, R.string.social_body),
     Today("today", R.string.tab_today, R.string.today_headline, R.string.today_body),
-    Assistant("assistant", R.string.tab_assistant, R.string.assistant_headline, R.string.assistant_body),
     Me("me", R.string.tab_me, R.string.me_headline, R.string.me_body),
 }
 
@@ -205,7 +212,7 @@ private fun SignedInApp(
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         when (destination) {
             "today" -> { reminderWorkoutId=navigationUri.getQueryParameter("workout");navController.navigate(TopLevelDestination.Today.route) }
-            "assistant" -> navController.navigate(TopLevelDestination.Assistant.route)
+            "assistant" -> navController.navigate(ASSISTANT_ROUTE)
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
             "connections", "event", "circle", "group", "post", "invitation" -> { socialTarget=destination to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(TopLevelDestination.Social.route) }
@@ -218,8 +225,20 @@ private fun SignedInApp(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButtonPosition = FabPosition.Start,
+        floatingActionButton = {
+            val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
+            if (primaryDestination != null) {
+                FloatingActionButton(onClick = {
+                    integrationViewModel.trackAssistantOpened(primaryDestination.route)
+                    navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
+                }) {
+                    Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant))
+                }
+            }
+        },
         bottomBar = {
-            if (currentDestination?.route != RECORDING_ROUTE && currentDestination?.route != ACTIVITY_HISTORY_ROUTE) NavigationBar {
+            if (TopLevelDestination.entries.any { it.route == currentDestination?.route }) NavigationBar {
                 TopLevelDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any {
@@ -232,7 +251,16 @@ private fun SignedInApp(
                                 restoreState = true
                             }
                         },
-                        icon = { Text(stringResource(destination.label).take(1)) },
+                        icon = {
+                            Icon(
+                                imageVector = when (destination) {
+                                    TopLevelDestination.Social -> Icons.Default.Groups
+                                    TopLevelDestination.Today -> Icons.Default.Today
+                                    TopLevelDestination.Me -> Icons.Default.Person
+                                },
+                                contentDescription = null,
+                            )
+                        },
                         label = { Text(stringResource(destination.label)) },
                     )
                 }
@@ -313,12 +341,16 @@ private fun SignedInApp(
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
                         SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)})
-                    } else if (destination == TopLevelDestination.Assistant && accountId != null) {
-                        AssistantRoute(accountId, onClose = { navController.navigate(TopLevelDestination.Today.route) })
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
                 }
+            }
+            composable(ASSISTANT_ROUTE) {
+                AssistantRoute(
+                    requireNotNull(accountId),
+                    onClose = { navController.popBackStack() },
+                )
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
@@ -365,6 +397,7 @@ private fun SignedInApp(
 }
 
 private const val RECORDING_ROUTE = "recording"
+private const val ASSISTANT_ROUTE = "assistant"
 private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
 private const val PROGRESS_ROUTE = "progress"

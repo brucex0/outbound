@@ -24,6 +24,9 @@ import com.plainstride.outbound.feature.recording.*
 import com.plainstride.outbound.feature.today.TodayRepository
 import com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest
 import com.plainstride.outbound.reminders.PlannedWorkoutReminderCoordinator
+import com.plainstride.outbound.core.analytics.AnalyticsEvent
+import com.plainstride.outbound.core.analytics.AnalyticsProperty
+import com.plainstride.outbound.core.analytics.ProductAnalytics
 
 data class P0IntegrationState(
     val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY,
@@ -41,6 +44,7 @@ data class P0IntegrationState(
     private val today: TodayRepository,
     private val gear: GearRepository,
     private val reminderCoordinator: PlannedWorkoutReminderCoordinator,
+    private val analytics: ProductAnalytics,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
@@ -63,5 +67,9 @@ data class P0IntegrationState(
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
     private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);if(!preferences.getBoolean(PUSH_ENABLED,true))return@launch;val cached=preferences.getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}
     fun setPushEnabled(enabled:Boolean)=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);preferences.edit().putBoolean(PUSH_ENABLED,enabled).apply();mutable.update{it.copy(pushEnabled=enabled)};val token=preferences.getString(PlainstrideMessagingService.TOKEN,null)?:return@launch;if(enabled)safety.registerToken(token,context.packageName,locale)else safety.unregisterToken(token)}
+    fun trackAssistantOpened(destination: String) = analytics.record(AnalyticsEvent("assistant_launcher_opened", mapOf(
+        AnalyticsProperty.Destination to destination,
+        AnalyticsProperty.EntrySource to "persistent_launcher",
+    )))
     private companion object{const val PUSH_ENABLED="push_enabled"}
 }

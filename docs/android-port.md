@@ -10,10 +10,13 @@ This is not a reduced beta port. Camera recording, live coaching, Social, safety
 
 Mainland China remains a separate market and infrastructure project. The first Android release targets Google Play devices with Google Play services.
 
-## Product And Engineering Principles
+## Porting Authority And Fidelity
 
-- Build a native Kotlin and Jetpack Compose client; do not translate SwiftUI line by line.
-- Preserve product behavior, data semantics, privacy, and safety rather than platform-specific presentation details.
+- The current production iOS app is the authoritative, executable product specification for Android.
+- Implement with native Kotlin and Jetpack Compose, but reproduce the iOS information hierarchy, navigation, visible states, interaction model, copy, assets, spacing, typography, color semantics, motion intent, and accessibility behavior. Native implementation is not permission to reinterpret the product.
+- Mirror iOS architectural responsibilities with traceable Android counterparts: SwiftUI view to Compose screen/component, observable store to ViewModel/repository, coordinator to coordinator/service, persistence model to Room entity/mapper, and domain engine to pure Kotlin engine.
+- Limit platform substitutions to platform boundaries such as Keychain/Keystore, HealthKit/Health Connect, MapKit/Google Maps, AVFoundation/CameraX, and background execution. Document every user-visible or behavioral exception and obtain an explicit product decision for it.
+- An Android type with no iOS counterpart must document the Android platform need it owns. An iOS responsibility with no Android counterpart is a parity defect.
 - Reuse the existing Plainstride backend and first-party access/refresh sessions.
 - Keep recording, local save, offline history, active-session recovery, and immediate coaching policy on-device.
 - Keep identity, synchronized activities, planning, companion orchestration, Social, safety sessions, recognition, media, and notification routing on the backend.
@@ -23,13 +26,37 @@ Mainland China remains a separate market and infrastructure project. The first A
 - Treat Android background execution and device variation as core product constraints, not late QA concerns.
 - Prefer clean current contracts over backward compatibility with pre-release local or backend data.
 
+### Shared Resources And Assets
+
+- Reuse shared resources; never solve parity by copying strings, icons, audio, fixtures, or other assets into Android feature modules.
+- `ios/Outbound/Outbound/Localizable.xcstrings` is the canonical localization catalog. Android ownership and generated names come from `shared-resources/localization/android-modules.json`; run `shared-resources/scripts/generate-android-strings` after catalog changes and never hand-edit generated `strings.xml` files.
+- Shared artwork originates in `shared-resources/icons/source` and must be registered in `shared-resources/icons/platform-icons.json`; run `shared-resources/scripts/generate-platform-icons` rather than creating platform copies manually.
+- Reuse the signed live-coach catalog and audio assets through the existing manifest/cache pipeline. Do not add feature-owned renditions of an existing semantic cue.
+- Before adding any resource, search the canonical catalog, shared icon registry, and owning module. Add a resource only when no semantic equivalent exists.
+
+## Screen-Level Parity Workflow
+
+Port one complete iOS journey slice at a time rather than declaring a broad product area complete.
+
+1. Record the exact authoritative iOS root and every dependent view, store, coordinator, service, model, asset, localization key, and analytics event.
+2. Inventory every reachable state and transition, including loading, cached, empty, offline, error, disabled, permission, active, paused, resumed, completed, and deep-linked states.
+3. Capture deterministic iOS references for the supported themes, locales, text sizes, and device class required by the slice.
+4. Map each iOS responsibility to its Android counterpart before implementation. Reuse shared contracts/resources and identify only genuine platform substitutions.
+5. Implement the complete vertical slice, including navigation, persistence, recovery, analytics, accessibility, and transient feedback.
+6. Capture Android references with the same fixture content and compare hierarchy, dimensions, spacing, typography, colors, icons, scrolling, sheets/dialogs, motion, and interaction results.
+7. Keep the slice open until every discrepancy is fixed or recorded here as an explicit owner-approved exception.
+
+Each Android feature directory must maintain an `IOS_PARITY.md` manifest containing authoritative files and counterparts, states and transitions, shared resources, analytics and accessibility coverage, reference scenarios, current status, and approved exceptions.
+
+“Implemented” or “ported” means that manifest is complete and its evidence passes. A similarly named screen or connected endpoint is not sufficient.
+
 ## iOS Baseline And Later Parity Catch-Up
 
 `android/ios-baseline.toml` records the immutable repository commit used as the iOS and shared-backend baseline for this Android port. The initial baseline is `cc5d3011755e35aa89263c78cb6f830e3ed09ea9`.
 
-Do not advance this marker during the phase plan. Keeping it fixed makes iOS features, behavior changes, contract changes, and fixes added during Android development discoverable after the current plan completes.
+Do not advance this marker while any changed iOS surface remains unaudited. Audit changes continuously at the end of every completed journey slice instead of postponing catch-up until Phase 9.
 
-After Phase 9, compare the baseline to the then-current integration commit:
+At the end of every journey slice, compare the baseline to the then-current integration commit:
 
 ```sh
 git diff --name-status cc5d3011755e35aa89263c78cb6f830e3ed09ea9..<integration-commit> -- ios backend contracts Package.swift Tests docs
@@ -43,7 +70,7 @@ Review each result as one of:
 - iOS-only platform behavior with an Android equivalent required;
 - documentation or tooling with no product parity impact.
 
-Complete and commit the resulting catch-up work before moving the marker to the audited integration commit. A baseline update must never be bundled with unreviewed iOS changes.
+Complete and commit the resulting catch-up work before moving the marker to the audited integration commit. A baseline update must never be bundled with unreviewed iOS changes, and a broad phase may not hide unresolved screen-level parity defects.
 
 ## Release Parity Contract
 
