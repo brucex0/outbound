@@ -326,7 +326,6 @@ fun TodayScreen(
                 onGoalChoice = { goalChoice = it; if (it == TodayGoalChoice.CURATED) showsCatalog = true; onLaunchConfigurationChanged("goal", it.name.lowercase()) },
                 onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
                 onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
-                onStart = launchPreparedActivity,
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
                 onOpenMusic = onOpenMusic,
@@ -531,7 +530,6 @@ private fun ActivityLaunchDock(
     onGoalChoice: (TodayGoalChoice) -> Unit,
     onIndoorChanged: (Boolean) -> Unit,
     onVoiceGuideChanged: (Boolean) -> Unit,
-    onStart: () -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
     onOpenMusic: () -> Unit,
@@ -575,11 +573,7 @@ private fun ActivityLaunchDock(
                         Text(stringResource(R.string.today_view_next))
                     }
                 }
-                else -> Button(onClick = onStart, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 56.dp)) {
-                    Icon(Icons.Default.PlayArrow, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (suggestion == null) stringResource(R.string.today_freestyle) else stringResource(R.string.today_start_workout, suggestion.title))
-                }
+                else -> Unit
             }
         }
     }

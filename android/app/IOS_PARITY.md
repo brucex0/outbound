@@ -18,6 +18,7 @@
 - [x] Closing Assistant returns to the primary destination that opened it.
 - [x] Assistant deep links open the same destination.
 - [x] Recording is full-screen and hides primary navigation.
+- [x] The shell-owned bottom row clears gesture and three-button system navigation insets.
 - [ ] Direct tab presses and restored navigation have side-by-side evidence.
 - [ ] Launcher motion, foreground restart, and reduced-motion behavior match iOS.
 - [ ] Inbox action and unread badge appear on every primary screen.
@@ -32,6 +33,7 @@
 
 - Authentication legal links emit `legal_document_opened` with the authentication entry source and never send the URL.
 - Assistant opening emits `assistant_launcher_opened` with `destination` and `entry_source`.
+- Opening the notification inbox emits `notification_inbox_opened`; unread state clears locally when the inbox becomes visible and is synchronized through the read-all endpoint.
 - Navigation items and the assistant launcher expose generated localized labels.
 
 ## Platform Substitutions

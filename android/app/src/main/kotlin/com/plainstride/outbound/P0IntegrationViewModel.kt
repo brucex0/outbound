@@ -62,7 +62,15 @@ data class P0IntegrationState(
     }}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
     fun publishRoute(activityId:String,name:String,description:String?)=viewModelScope.launch{routes.publish(activityId,name,description).onSuccess{refreshRoutes()}}
-    fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)};safety.markInboxRead()}}
+    fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)}}}
+    fun openInbox() {
+        val readAt = Instant.now().toString()
+        mutable.update { state -> state.copy(notifications = state.notifications.map { notification ->
+            if (notification.readAt == null) notification.copy(readAt = readAt) else notification
+        }) }
+        analytics.record(AnalyticsEvent("notification_inbox_opened"))
+        viewModelScope.launch { safety.markInboxRead() }
+    }
     fun completePlannedWorkout(launch: RecordingLaunchConfiguration, review: RecordedActivityReview) { val id=accountId?:return; val workoutId=launch.plannedWorkoutId?:return; viewModelScope.launch { today.completeWorkout(id,locale,workoutId,PlannedWorkoutCompletionRequest(completedAt=Instant.now().toString(),durationSeconds=review.snapshot.elapsedSeconds.toInt(),distanceMeters=review.snapshot.distanceMeters,completionQuality=review.reflection.name.lowercase())) } }
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
     private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);if(!preferences.getBoolean(PUSH_ENABLED,true))return@launch;val cached=preferences.getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}

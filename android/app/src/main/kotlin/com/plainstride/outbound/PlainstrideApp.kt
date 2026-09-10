@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -244,7 +245,7 @@ private fun SignedInApp(
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
             if (primaryDestination != null) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlainstrideFloatingAction(onClick = {
@@ -283,12 +284,10 @@ private fun SignedInApp(
                                             destination == TopLevelDestination.Today -> Icons.Default.Today
                                             else -> Icons.Default.Person
                                         },
-                                        contentDescription = null,
+                                        contentDescription = if (isContextualStart) stringResource(TodayR.string.today_start) else null,
                                     )
                                 },
-                                label = {
-                                    Text(if (isContextualStart) stringResource(TodayR.string.today_start) else stringResource(destination.label))
-                                },
+                                label = if (isContextualStart) null else {{ Text(stringResource(destination.label)) }},
                             )
                         }
                     }
@@ -331,7 +330,7 @@ private fun SignedInApp(
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
-                            inboxCount = integration.notifications.size,
+                            inboxCount = integration.notifications.count { it.readAt == null },
                             startRequest = todayStartRequest,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
@@ -414,7 +413,10 @@ private fun SignedInApp(
             composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute) }
             composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group") }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
-            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) { NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } } }
+            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {
+                LaunchedEffect(Unit) { integrationViewModel.openInbox() }
+                NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } }
+            }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
