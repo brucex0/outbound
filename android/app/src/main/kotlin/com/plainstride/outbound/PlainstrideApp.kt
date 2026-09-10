@@ -6,16 +6,21 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +53,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.PlayCircle
 import android.content.pm.PackageManager
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -62,6 +68,7 @@ import com.plainstride.outbound.auth.AuthOperation
 import com.plainstride.outbound.auth.AuthUiState
 import com.plainstride.outbound.auth.AuthViewModel
 import com.plainstride.outbound.core.auth.SessionState
+import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 import com.plainstride.outbound.feature.activity.ActivityHistoryRoute
 import com.plainstride.outbound.feature.activity.ActivityMessage
 import com.plainstride.outbound.feature.activity.RecentActivitiesRoute
@@ -71,6 +78,7 @@ import com.plainstride.outbound.feature.onboarding.OnboardingRoute
 import com.plainstride.outbound.feature.today.TodayMessage
 import com.plainstride.outbound.feature.today.TodayRoute
 import com.plainstride.outbound.feature.today.TodayViewModel
+import com.plainstride.outbound.feature.today.R as TodayR
 import com.plainstride.outbound.feature.settings.MeRoute
 import com.plainstride.outbound.feature.settings.SettingsMessage
 import com.plainstride.outbound.feature.settings.SettingsViewModel
@@ -190,6 +198,7 @@ private fun SignedInApp(
     var activityTarget by remember { mutableStateOf<String?>(null) }
     var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
     var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
+    var todayStartRequest by remember { mutableStateOf(0) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     val accountId = when (val session = authState.session) {
@@ -225,44 +234,58 @@ private fun SignedInApp(
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButtonPosition = FabPosition.Start,
-        floatingActionButton = {
+        bottomBar = {
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
             if (primaryDestination != null) {
-                FloatingActionButton(onClick = {
-                    integrationViewModel.trackAssistantOpened(primaryDestination.route)
-                    navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
-                }) {
-                    Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant))
-                }
-            }
-        },
-        bottomBar = {
-            if (TopLevelDestination.entries.any { it.route == currentDestination?.route }) NavigationBar {
-                TopLevelDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentDestination?.hierarchy?.any {
-                            it.route == destination.route
-                        } == true,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = when (destination) {
-                                    TopLevelDestination.Social -> Icons.Default.Groups
-                                    TopLevelDestination.Today -> Icons.Default.Today
-                                    TopLevelDestination.Me -> Icons.Default.Person
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlainstrideFloatingAction(onClick = {
+                        integrationViewModel.trackAssistantOpened(primaryDestination.route)
+                        navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
+                    }) {
+                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant), Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
+                    NavigationBar(
+                        modifier = Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(32.dp)),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp,
+                    ) {
+                        TopLevelDestination.entries.forEach { destination ->
+                            val isContextualStart = destination == TopLevelDestination.Today && contextualStart
+                            NavigationBarItem(
+                                selected = destination == primaryDestination,
+                                onClick = {
+                                    if (isContextualStart) {
+                                        todayStartRequest += 1
+                                    } else {
+                                        navController.navigate(destination.route) {
+                                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
                                 },
-                                contentDescription = null,
+                                icon = {
+                                    Icon(
+                                        imageVector = when {
+                                            isContextualStart -> Icons.Default.PlayCircle
+                                            destination == TopLevelDestination.Social -> Icons.Default.Groups
+                                            destination == TopLevelDestination.Today -> Icons.Default.Today
+                                            else -> Icons.Default.Person
+                                        },
+                                        contentDescription = null,
+                                    )
+                                },
+                                label = {
+                                    Text(if (isContextualStart) stringResource(TodayR.string.today_start) else stringResource(destination.label))
+                                },
                             )
-                        },
-                        label = { Text(stringResource(destination.label)) },
-                    )
+                        }
+                    }
                 }
             }
         },
@@ -303,6 +326,7 @@ private fun SignedInApp(
                             onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
                             inboxCount = integration.notifications.size,
+                            startRequest = todayStartRequest,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },

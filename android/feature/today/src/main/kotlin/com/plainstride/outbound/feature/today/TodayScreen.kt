@@ -96,6 +96,7 @@ import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
+import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 
 enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
 enum class TodayGoalChoice { CURATED, FREE, DISTANCE, TIME, CALORIES }
@@ -134,6 +135,7 @@ fun TodayRoute(
     onMessage: suspend (TodayMessage) -> Unit,
     initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
+    startRequest: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -174,6 +176,7 @@ fun TodayRoute(
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
         onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
         guidanceContent = guidanceContent,
+        startRequest = startRequest,
         initialWorkoutId = initialWorkoutId,
         locationGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED,
         modifier = modifier,
@@ -202,6 +205,7 @@ fun TodayScreen(
     onCardDisplayChanged: (Boolean) -> Unit = {},
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     guidanceContent: @Composable () -> Unit = {},
+    startRequest: Int = 0,
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
     modifier: Modifier = Modifier,
@@ -223,11 +227,26 @@ fun TodayScreen(
     var calories by rememberSaveable { mutableStateOf(300) }
     var editingGoal by rememberSaveable { mutableStateOf(false) }
     var overflowExpanded by rememberSaveable { mutableStateOf(false) }
+    var handledStartRequest by rememberSaveable { mutableStateOf(startRequest) }
     var setupPhoto by remember { mutableStateOf<Bitmap?>(null) }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { photo ->
         if (photo != null) setupPhoto = photo
     }
     val suggestion = state.primarySuggestion
+    val launchPreparedActivity = {
+        if (activityChoice == TodayActivityChoice.PLANNED) {
+            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) }
+                ?: onStartFreestyle()
+        } else {
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout))
+        }
+    }
+    LaunchedEffect(startRequest) {
+        if (startRequest != handledStartRequest) {
+            handledStartRequest = startRequest
+            if (!state.activeSession) launchPreparedActivity()
+        }
+    }
     LaunchedEffect(initialWorkoutId, suggestion?.id, suggestion?.plannedWorkoutId) {
         if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
     }
@@ -245,9 +264,9 @@ fun TodayScreen(
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TodayTopControls(weather, useFahrenheit, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)
                 Box {
-                    Surface(onClick = { overflowExpanded = true }, shape = CircleShape, tonalElevation = 4.dp) {
-                        setupPhoto?.let { Image(it.asImageBitmap(), stringResource(R.string.today_more), Modifier.size(44.dp).clip(CircleShape)) }
-                            ?: Icon(Icons.Default.MoreVert, stringResource(R.string.today_more), Modifier.padding(11.dp))
+                    PlainstrideFloatingAction(onClick = { overflowExpanded = true }) {
+                        setupPhoto?.let { Image(it.asImageBitmap(), stringResource(R.string.today_more), Modifier.size(48.dp).clip(CircleShape)) }
+                            ?: Icon(Icons.Default.MoreVert, stringResource(R.string.today_more), Modifier.size(22.dp))
                     }
                     DropdownMenu(overflowExpanded, { overflowExpanded = false }) {
                         DropdownMenuItem({ Text(stringResource(R.string.today_take_photo)) }, { overflowExpanded = false; photoLauncher.launch(null) }, leadingIcon = { Icon(Icons.Default.PhotoCamera, null) })
@@ -307,10 +326,7 @@ fun TodayScreen(
                 onGoalChoice = { goalChoice = it; if (it == TodayGoalChoice.CURATED) showsCatalog = true; onLaunchConfigurationChanged("goal", it.name.lowercase()) },
                 onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
                 onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
-                onStart = {
-                    if (activityChoice == TodayActivityChoice.PLANNED) suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) } ?: onStartFreestyle()
-                    else onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout))
-                },
+                onStart = launchPreparedActivity,
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
                 onOpenMusic = onOpenMusic,
@@ -371,14 +387,14 @@ private fun CuratedWorkoutSheet(workouts: List<StandaloneWorkout>, onDismiss: ()
 @Composable
 private fun TodayTopControls(weather: WeatherGuidance?, useFahrenheit: Boolean, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(onClick = onWeather, shape = CircleShape, tonalElevation = 4.dp) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(onClick = onWeather, shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp, shadowElevation = 6.dp) {
+            Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Cloud, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp))
                 Text(weather?.compactLabel(useFahrenheit) ?: stringResource(R.string.today_weather), style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
         }
-        Surface(onClick = onInbox, shape = CircleShape, tonalElevation = 4.dp) {
-            Box(Modifier.padding(11.dp)) {
+        PlainstrideFloatingAction(onClick = onInbox) {
+            Box {
                 BadgedBox(badge = { if (inboxCount > 0) Badge { Text(inboxCount.coerceAtMost(99).toString()) } }) {
                     Icon(Icons.Default.Notifications, stringResource(R.string.today_inbox), Modifier.size(22.dp))
                 }

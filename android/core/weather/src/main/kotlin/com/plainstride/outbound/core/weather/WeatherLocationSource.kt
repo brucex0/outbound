@@ -3,16 +3,21 @@ package com.plainstride.outbound.core.weather
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.coroutines.resume
 
 interface WeatherLocationSource {
     fun hasPermission(): Boolean
     suspend fun currentApproximateLocation(): ApproximateLocation?
+    suspend fun placeName(location: ApproximateLocation, localeTag: String): String?
 }
 
 class FusedWeatherLocationSource(
@@ -44,5 +49,22 @@ class FusedWeatherLocationSource(
                 .addOnFailureListener { continuation.resume(null) }
                 .addOnCanceledListener { continuation.cancel() }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override suspend fun placeName(location: ApproximateLocation, localeTag: String): String? = withContext(Dispatchers.IO) {
+        if (!Geocoder.isPresent()) return@withContext null
+        runCatching {
+            Geocoder(context, Locale.forLanguageTag(localeTag))
+                .getFromLocation(location.latitude, location.longitude, 1)
+                ?.firstOrNull()
+                ?.let { address ->
+                    address.locality
+                        ?: address.subAdminArea
+                        ?: address.adminArea
+                }
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+        }.getOrNull()
     }
 }

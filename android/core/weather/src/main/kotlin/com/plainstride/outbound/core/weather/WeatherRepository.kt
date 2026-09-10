@@ -36,7 +36,16 @@ class DefaultWeatherRepository(
         val location = locationSource.currentApproximateLocation()?.rounded()
             ?: return WeatherResult.LocationUnavailable.also { record("weather_location_unavailable") }
         val key = cacheKey(accountId, locale, location)
-        val cached = memoryCache?.takeIf { it.key == key } ?: diskCache()?.takeIf { it.key == key }
+        var cached = memoryCache?.takeIf { it.key == key } ?: diskCache()?.takeIf { it.key == key }
+        if (cached != null && cached.snapshot.placeName.isNullOrBlank()) {
+            val placeName = locationSource.placeName(location, locale)
+            if (placeName != null) {
+                val enriched = cached.copy(snapshot = cached.snapshot.copy(placeName = placeName))
+                cached = enriched
+                memoryCache = enriched
+                dataStore.edit { it[CACHE] = Json.encodeToString(enriched) }
+            }
+        }
         if (!force && cached?.isFresh(nowEpochMilliseconds()) == true) {
             val source = if (cached === memoryCache) WeatherResult.Source.MemoryCache else WeatherResult.Source.DiskCache
             memoryCache = cached
@@ -55,7 +64,12 @@ class DefaultWeatherRepository(
                 force = force.takeIf { it },
             )
             if (!response.isSuccessful) error("http_${response.code()}")
-            val snapshot = requireNotNull(response.body())
+            val providerSnapshot = requireNotNull(response.body())
+            val snapshot = if (providerSnapshot.placeName.isNullOrBlank()) {
+                providerSnapshot.copy(placeName = locationSource.placeName(location, locale))
+            } else {
+                providerSnapshot
+            }
             val entry = CachedSnapshot(key, nowEpochMilliseconds(), snapshot)
             memoryCache = entry
             dataStore.edit { it[CACHE] = Json.encodeToString(entry) }
