@@ -526,7 +526,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         at elapsedSeconds: Int
     ) -> Bool {
         if isWorkoutBoundaryMoment(moment.type) {
-            return true
+            // Countdown beats are fixed local clips, while the instruction for the
+            // next segment is prepared independently. Keep the instruction queued
+            // until the last countdown beat releases the audio path so a delayed
+            // snapshot cannot turn "five" straight into the next-segment guide.
+            return !audioPlayer.isSpeaking
         }
         if moment.type == .challengeComplete {
             return canSpeakProgressUpdate(at: elapsedSeconds)
