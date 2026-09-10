@@ -36,6 +36,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -123,26 +124,17 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
         }) },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.AccountCircle, null, Modifier.size(52.dp), tint = MaterialTheme.colorScheme.primary)
+            item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onSettings)) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Icon(Icons.Outlined.AccountCircle, null, Modifier.size(58.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f)) {
-                        Text(state.account?.displayName ?: stringResource(R.string.runner), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(state.account?.displayName ?: stringResource(R.string.runner), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         state.account?.username?.let { Text("@$it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
+                    Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
                 }
-            }
-            item { SectionTitle(stringResource(R.string.this_week)) }
-            item {
-                OutlinedCard(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        SummaryStat(state.summary?.weeklyMinutes?.toString() ?: "—", stringResource(R.string.minutes))
-                        SummaryStat(state.summary?.weeklyDistanceMeters?.let { "%.1f".format(it / 1000) } ?: "—", stringResource(R.string.kilometers))
-                        SummaryStat(state.summary?.consistencyPercent?.let { "$it%" } ?: "—", stringResource(R.string.consistency))
-                    }
-                }
-            }
-            item { SectionTitle(stringResource(R.string.current_plan)) }
+            } }
+            item { SectionTitle(stringResource(R.string.current_focus)) }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -151,7 +143,23 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
                     }
                 }
             }
-            item { SectionTitle(stringResource(R.string.activity_history_title)) }
+            item { SectionTitle(stringResource(R.string.this_week)) }
+            item {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        LinearProgressIndicator(
+                            progress = { (state.summary?.consistencyPercent ?: 0).coerceIn(0, 100) / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SummaryStat(state.summary?.weeklyMinutes?.toString() ?: "—", stringResource(R.string.minutes))
+                            SummaryStat(formatWeeklyDistance(state), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
+                            SummaryStat(state.summary?.consistencyPercent?.let { "$it%" } ?: "—", stringResource(R.string.consistency))
+                        }
+                    }
+                }
+            }
+            item { SectionTitle(stringResource(R.string.recent)) }
             item { activityContent() }
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onActivityHistory)) {
                 ListItem(
@@ -165,6 +173,11 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
         }
     }
 }
+
+private fun formatWeeklyDistance(state: SettingsUiState): String = state.summary?.weeklyDistanceMeters?.let { meters ->
+    if (state.preferences.measurement == MeasurementSystem.Metric) "%.1f".format(meters / 1_000)
+    else "%.1f".format(meters / 1_609.344)
+} ?: "—"
 
 @Composable private fun SummaryStat(value: String, label: String) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
     Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

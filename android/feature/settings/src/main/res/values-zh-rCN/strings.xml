@@ -12,6 +12,7 @@
     <string name="consistency">坚持度</string>
     <string name="contact_email">联系邮箱</string>
     <string name="current_plan">当前计划</string>
+    <string name="current_focus">当前重点</string>
     <string name="dark_mode">深色</string>
     <string name="delete_account">删除账户</string>
     <string name="display_name">显示名称</string>
@@ -26,6 +27,7 @@
     <string name="measurement">计量单位</string>
     <string name="metric">公制</string>
     <string name="minutes">分钟</string>
+    <string name="miles">英里</string>
     <string name="mode">模式</string>
     <string name="no_active_plan">暂无训练计划</string>
     <string name="no_active_plan_body">准备好后，可在“今天”中创建计划。</string>
@@ -34,6 +36,7 @@
     <string name="privacy">隐私政策</string>
     <string name="privacy_note">Plainstride 不会在社交功能或分析数据中包含你的私密健康信息。</string>
     <string name="refresh">刷新</string>
+    <string name="recent">最近活动</string>
     <string name="replay_onboarding">重新体验新手引导</string>
     <string name="runner">跑者</string>
     <string name="save">保存</string>

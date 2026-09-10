@@ -19,6 +19,7 @@
     <string name="recording_discard_title">丢弃本次活动？</string>
     <string name="recording_distance">距离</string>
     <string name="recording_elevation">爬升</string>
+    <string name="recording_avg_pace">平均配速</string>
     <string name="recording_finish">结束</string>
     <string name="recording_finish_body">停止记录并查看本次活动。</string>
     <string name="recording_finish_title">结束活动？</string>
@@ -45,6 +46,11 @@
     <string name="recording_pace">配速</string>
     <string name="recording_pause">暂停</string>
     <string name="recording_reflection_prompt">这次活动感觉如何？</string>
+    <string name="recording_reflection_optional">选填。你的回答可以帮助 Plainstride 优化训练计划。</string>
+    <string name="recording_reflection_body">你如约出发，让今天变得真实。记住这份简单的满足感。</string>
+    <string name="recording_reflection_promise_title">说到做到。</string>
+    <string name="recording_reflection_promise_body">即使训练不长，你依然完成了约定。短训练同样有意义。</string>
+    <string name="recording_reflection_highlight">已完成 %1$s</string>
     <string name="recording_reflection_steady">稳定</string>
     <string name="recording_reflection_strong">状态很好</string>
     <string name="recording_reflection_title">活动后感受</string>
@@ -55,6 +61,8 @@
     <string name="recording_save_failed">未能保存活动。记录仍安全保留，请重试。</string>
     <string name="recording_saving_activity">正在保存…</string>
     <string name="recording_short_activity">短活动也可以保存，始终由你决定。</string>
+    <string name="recording_too_short_to_save">时间太短，无法保存</string>
+    <string name="recording_save_ineligible_explanation">至少记录 5 分钟或 500 米，才可保存本次活动。</string>
     <string name="recording_show_camera">显示相机</string>
     <string name="recording_show_map">显示地图</string>
     <string name="recording_spoken_stats">用时 %1$s，距离 %2$s，当前配速 %3$s</string>

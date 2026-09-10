@@ -17,6 +17,17 @@
     <string name="auth_unavailable">暂时无法登录，请稍后重试。</string>
     <string name="auth_welcome">欢迎使用 Plainstride</string>
     <string name="auth_welcome_body">用一个私密账户，连接个性化训练与每一步跑步历程。</string>
+    <string name="auth_wordmark">PLAINSTRIDE</string>
+    <string name="auth_companion_eyebrow">你的 AI 跑步伙伴</string>
+    <string name="auth_companion_headline">有目标地训练，\n和伙伴们一起跑。</string>
+    <string name="auth_google_explanation">我们使用你的邮箱创建账户、跨设备同步训练，并帮助你在新手机上恢复访问。</string>
+    <string name="auth_terms_link">服务条款</string>
+    <string name="auth_privacy_link">隐私政策</string>
+    <string name="auth_orbit_family">家人</string>
+    <string name="auth_orbit_friends">朋友</string>
+    <string name="auth_orbit_groups">跑团</string>
+    <string name="auth_orbit_you">你</string>
+    <string name="auth_better_together">一起跑，更有动力</string>
     <string name="cancel">取消</string>
     <string name="continue_with_google">使用 Google 继续</string>
     <string name="delete_account">删除账户</string>

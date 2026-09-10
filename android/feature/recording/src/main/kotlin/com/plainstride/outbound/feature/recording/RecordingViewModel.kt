@@ -105,17 +105,23 @@ class RecordingViewModel @Inject constructor(
     fun finish() {
         mutableState.value = mutableState.value.copy(showFinishConfirmation = false)
         client.finish(newCommandId())
+        val current = snapshot.value
+        analytics.record(AnalyticsEvent("activity_finished", mapOf(
+            AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
+            AnalyticsProperty.DurationBucket to durationBucket(current.elapsedSeconds),
+            AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
+        )))
     }
     fun requestDiscard() {
         mutableState.value = mutableState.value.copy(showDiscardConfirmation = true)
-        analytics.record(AnalyticsEvent("activity_discard_warning_shown"))
+        analytics.record(AnalyticsEvent("activity_discard_prompted"))
     }
     fun cancelDiscard() { mutableState.value = mutableState.value.copy(showDiscardConfirmation = false) }
     fun discard() {
         mutableState.value = RecordingUiState(launch = mutableState.value.launch)
         client.discard(newCommandId())
         clearLaunch()
-        analytics.record(AnalyticsEvent("activity_discard_confirmed"))
+        analytics.record(AnalyticsEvent("activity_discarded"))
     }
     fun setMode(mode: RecordingSurfaceMode) {
         mutableState.value = mutableState.value.copy(mode = mode)
@@ -132,6 +138,14 @@ class RecordingViewModel @Inject constructor(
     fun trackPhotoAttempt() = analytics.record(AnalyticsEvent("activity_photo_capture_attempted", mapOf(
         AnalyticsProperty.Source to "recording",
     )))
+    fun trackSaveIneligible() {
+        val current = snapshot.value
+        analytics.record(AnalyticsEvent("activity_save_ineligible_shown", mapOf(
+            AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
+            AnalyticsProperty.DurationBucket to durationBucket(current.elapsedSeconds),
+            AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
+        )))
+    }
     fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
         "activity_dashboard_changed",
         mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),
@@ -225,6 +239,20 @@ class RecordingViewModel @Inject constructor(
         super.onCleared()
     }
     private companion object{const val LAUNCH_PREFERENCES="recording_launch";const val LAUNCH_KEY="active"}
+}
+
+private fun durationBucket(seconds: Long) = when {
+    seconds < 300 -> "under_5m"
+    seconds < 1_800 -> "5_29m"
+    seconds < 3_600 -> "30_59m"
+    else -> "60m_plus"
+}
+
+private fun distanceBucket(meters: Double) = when {
+    meters < 500 -> "under_500m"
+    meters < 5_000 -> "500m_4k"
+    meters < 10_000 -> "5k_9k"
+    else -> "10k_plus"
 }
 
 private fun distanceMeters(aLat:Double,aLon:Double,bLat:Double,bLon:Double):Double{val p1=Math.toRadians(aLat);val p2=Math.toRadians(bLat);val dp=p2-p1;val dl=Math.toRadians(bLon-aLon);val h=kotlin.math.sin(dp/2)*kotlin.math.sin(dp/2)+kotlin.math.cos(p1)*kotlin.math.cos(p2)*kotlin.math.sin(dl/2)*kotlin.math.sin(dl/2);return 6371000*2*kotlin.math.atan2(kotlin.math.sqrt(h),kotlin.math.sqrt(1-h))}

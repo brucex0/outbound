@@ -17,6 +17,17 @@
     <string name="auth_unavailable">Sign-in is temporarily unavailable. Please try again.</string>
     <string name="auth_welcome">Welcome to Plainstride</string>
     <string name="auth_welcome_body">Personal coaching and your running story, together in one private account.</string>
+    <string name="auth_wordmark">PLAINSTRIDE</string>
+    <string name="auth_companion_eyebrow">YOUR AI RUNNING COMPANION</string>
+    <string name="auth_companion_headline">Train with purpose.\nRun with your people.</string>
+    <string name="auth_google_explanation">We use your email to create your account, sync training across devices, and help you recover access on a new phone.</string>
+    <string name="auth_terms_link">Terms of Service</string>
+    <string name="auth_privacy_link">Privacy Policy</string>
+    <string name="auth_orbit_family">Family</string>
+    <string name="auth_orbit_friends">Friends</string>
+    <string name="auth_orbit_groups">Groups</string>
+    <string name="auth_orbit_you">You</string>
+    <string name="auth_better_together">Better together</string>
     <string name="cancel">Cancel</string>
     <string name="continue_with_google">Continue with Google</string>
     <string name="delete_account">Delete account</string>

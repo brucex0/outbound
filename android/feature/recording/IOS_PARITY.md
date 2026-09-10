@@ -16,11 +16,13 @@
 - The primary live metric follows the selected distance, time, calorie, structured-workout, or freestyle goal.
 - Recovery returns to the live surface paused; completion stays in the same route for reflection, local save, or confirmed discard.
 - Finish remains disabled while required photo persistence is pending.
+- Post-run review leads with the recorded route (or a non-route activity hero), a contextual motivation reflection, core stats, optional perceived effort, photo review, and Save Activity.
+- Save is disabled below the shared iOS threshold of five minutes or 500 meters; closing the review always requires destructive confirmation.
 
 ## Resources, Analytics, And Accessibility
 
 - Visible strings use generated shared localization resources in `src/main/res`.
-- Setup, start, pause, resume, finish, save, discard, surface, media, and dashboard-state events use sanitized Android analytics properties.
+- Setup, start, pause, resume, finish, save eligibility, discard, surface, media, and dashboard-state events use the canonical sanitized iOS event names and Android platform property.
 - Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone.
 
 ## Reference Scenarios

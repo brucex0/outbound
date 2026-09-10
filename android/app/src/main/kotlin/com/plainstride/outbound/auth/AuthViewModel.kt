@@ -83,6 +83,16 @@ class AuthViewModel @Inject constructor(
         )
     }
 
+    fun trackLegal(document: String) = analytics.record(
+        AnalyticsEvent(
+            "legal_document_opened",
+            mapOf(
+                AnalyticsProperty.EntrySource to "authentication",
+                AnalyticsProperty.Result to document,
+            ),
+        ),
+    )
+
     fun redeemTransfer(activityContext: Context, code: String) = perform(AuthOperation.Redeem, "account_transfer_redeemed", AuthMessage.Transferred) {
         val normalized = code.trim().uppercase().replace(Regex("[^2-9A-Z]"), "")
         Log.i(TAG, "Transfer redemption requested: normalizedCodeLength=${normalized.length}")

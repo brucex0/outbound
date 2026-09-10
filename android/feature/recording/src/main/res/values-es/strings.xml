@@ -19,6 +19,7 @@
     <string name="recording_discard_title">¿Descartar esta actividad?</string>
     <string name="recording_distance">Distancia</string>
     <string name="recording_elevation">Desnivel</string>
+    <string name="recording_avg_pace">Ritmo medio</string>
     <string name="recording_finish">Finalizar</string>
     <string name="recording_finish_body">Detén el registro y revisa esta actividad.</string>
     <string name="recording_finish_title">¿Finalizar la actividad?</string>
@@ -45,6 +46,11 @@
     <string name="recording_pace">Ritmo</string>
     <string name="recording_pause">Pausar</string>
     <string name="recording_reflection_prompt">¿Cómo sentiste el esfuerzo?</string>
+    <string name="recording_reflection_optional">Opcional. Tu respuesta puede ayudar a Plainstride a mejorar tu plan.</string>
+    <string name="recording_reflection_body">Te presentaste y convertiste el día en algo real. Quédate con esa sensación.</string>
+    <string name="recording_reflection_promise_title">Promesa cumplida.</string>
+    <string name="recording_reflection_promise_body">Mantuviste la sesión breve y aun así cumpliste. Las sesiones cortas también cuentan.</string>
+    <string name="recording_reflection_highlight">%1$s completados</string>
     <string name="recording_reflection_steady">Constante</string>
     <string name="recording_reflection_strong">Fuerte</string>
     <string name="recording_reflection_title">Reflexión después de la actividad</string>
@@ -55,6 +61,8 @@
     <string name="recording_save_failed">No se pudo guardar la actividad. Tu registro está a salvo; inténtalo de nuevo.</string>
     <string name="recording_saving_activity">Guardando…</string>
     <string name="recording_short_activity">También puedes guardar actividades cortas. Tú decides.</string>
+    <string name="recording_too_short_to_save">Demasiado breve para guardar</string>
+    <string name="recording_save_ineligible_explanation">Registra al menos 5 minutos o 500 metros para guardar esta actividad.</string>
     <string name="recording_show_camera">Mostrar cámara</string>
     <string name="recording_show_map">Mostrar mapa</string>
     <string name="recording_spoken_stats">Tiempo %1$s, distancia %2$s, ritmo actual %3$s</string>

@@ -12,6 +12,7 @@
     <string name="consistency">Constancia</string>
     <string name="contact_email">Correo de contacto</string>
     <string name="current_plan">Plan actual</string>
+    <string name="current_focus">Enfoque actual</string>
     <string name="dark_mode">Oscuro</string>
     <string name="delete_account">Eliminar cuenta</string>
     <string name="display_name">Nombre visible</string>
@@ -26,6 +27,7 @@
     <string name="measurement">Medidas</string>
     <string name="metric">Métrico</string>
     <string name="minutes">Minutos</string>
+    <string name="miles">Millas</string>
     <string name="mode">Modo</string>
     <string name="no_active_plan">Sin plan activo</string>
     <string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string>
@@ -34,6 +36,7 @@
     <string name="privacy">Política de privacidad</string>
     <string name="privacy_note">Plainstride mantiene los datos privados de salud fuera de Social y nunca los incluye en los análisis.</string>
     <string name="refresh">Actualizar</string>
+    <string name="recent">Reciente</string>
     <string name="replay_onboarding">Repetir la bienvenida</string>
     <string name="runner">Corredor</string>
     <string name="save">Guardar</string>

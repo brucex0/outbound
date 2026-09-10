@@ -19,6 +19,7 @@
     <string name="recording_discard_title">Discard this activity?</string>
     <string name="recording_distance">Distance</string>
     <string name="recording_elevation">Elevation</string>
+    <string name="recording_avg_pace">Avg Pace</string>
     <string name="recording_finish">Finish</string>
     <string name="recording_finish_body">Stop recording and review this activity.</string>
     <string name="recording_finish_title">Finish activity?</string>
@@ -45,6 +46,11 @@
     <string name="recording_pace">Pace</string>
     <string name="recording_pause">Pause</string>
     <string name="recording_reflection_prompt">How did that effort feel?</string>
+    <string name="recording_reflection_optional">Optional. Your answer can help Plainstride improve your plan.</string>
+    <string name="recording_reflection_body">You showed up and made the day real. Keep that feeling simple.</string>
+    <string name="recording_reflection_promise_title">Promise kept.</string>
+    <string name="recording_reflection_promise_body">You kept the session small and still followed through. Short sessions still count.</string>
+    <string name="recording_reflection_highlight">%1$s completed</string>
     <string name="recording_reflection_steady">Steady</string>
     <string name="recording_reflection_strong">Strong</string>
     <string name="recording_reflection_title">Post-activity reflection</string>
@@ -55,6 +61,8 @@
     <string name="recording_save_failed">Couldn’t save the activity. Your recording is safe—try again.</string>
     <string name="recording_saving_activity">Saving…</string>
     <string name="recording_short_activity">Short activities are saved too. You’re always in control.</string>
+    <string name="recording_too_short_to_save">Too short to save</string>
+    <string name="recording_save_ineligible_explanation">Record at least 5 minutes or 500 meters to save this activity.</string>
     <string name="recording_show_camera">Show camera</string>
     <string name="recording_show_map">Show map</string>
     <string name="recording_spoken_stats">Time %1$s, distance %2$s, current pace %3$s</string>

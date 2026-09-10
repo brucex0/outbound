@@ -35,7 +35,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
@@ -193,18 +194,25 @@ fun RecordingRoute(
         else viewModel.start(accountId, permissionState())
     }
 
+    LaunchedEffect(snapshot.status, snapshot.saveEligibility) {
+        if (snapshot.status == RecordingStatus.AWAITING_SAVE && snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
+            viewModel.trackSaveIneligible()
+        }
+    }
+
     val content: @Composable () -> Unit = {
         when {
             ui.countdown != null -> CountdownScreen(ui.countdown!!, onCancel = { viewModel.updateCountdown(null) })
             snapshot.status == RecordingStatus.AWAITING_SAVE -> ReflectionScreen(
                 snapshot = snapshot,
+                launch = ui.launch,
                 selected = ui.reflection,
                 photoPath = ui.photoPath,
                 onSelect = viewModel::setReflection,
                 onTakePhoto = ::capturePhoto,
                 onRemovePhoto = { ui.photoPath?.let(::File)?.delete(); viewModel.setPhotoPath(null) },
                 onSave = {
-                    val reflection = ui.reflection ?: return@ReflectionScreen
+                    val reflection = ui.reflection ?: ReflectionChoice.STEADY
                     scope.launch {
                         val review = RecordedActivityReview(snapshot, reflection, ui.photoPath)
                         if (viewModel.saveFinished(review)) {
@@ -487,6 +495,7 @@ private fun PrimaryGoalMetric(snapshot: RecordingSnapshot, goal: RecordingGoal, 
 @Composable
 private fun ReflectionScreen(
     snapshot: RecordingSnapshot,
+    launch: RecordingLaunchConfiguration,
     selected: ReflectionChoice?,
     photoPath: String?,
     onSelect: (ReflectionChoice) -> Unit,
@@ -497,22 +506,46 @@ private fun ReflectionScreen(
     onClose: () -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.recording_nice_work), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = onClose) { Icon(Icons.Default.Delete, stringResource(R.string.recording_close)) }
+                Box(Modifier.fillMaxWidth().height(280.dp).background(MaterialTheme.colorScheme.primaryContainer)) {
+                    if (snapshot.track.size > 1) TrackMap(snapshot.track, Modifier.fillMaxSize())
+                    else Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, Modifier.size(72.dp).align(Alignment.Center), tint = MaterialTheme.colorScheme.primary)
+                    Surface(shape = CircleShape, tonalElevation = 6.dp, modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
+                        IconButton(onClick = onClose, enabled = !saving) { Icon(Icons.Default.Close, stringResource(R.string.recording_discard)) }
+                    }
                 }
-                Text(stringResource(R.string.recording_reflection_prompt), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
+                val shortSession = snapshot.elapsedSeconds <= 600
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(if (shortSession) R.string.recording_reflection_promise_title else R.string.recording_nice_work), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(if (shortSession) R.string.recording_reflection_promise_body else R.string.recording_reflection_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        launch.workoutGuideline?.takeIf(String::isNotBlank)?.let { Text(it, fontWeight = FontWeight.SemiBold) }
+                        Text(stringResource(R.string.recording_reflection_highlight, formatDuration(snapshot.elapsedSeconds)), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) { Column(Modifier.padding(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
                     Metric(stringResource(R.string.recording_distance), formatDistance(snapshot.distanceMeters))
+                    Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
+                    Metric(stringResource(R.string.recording_avg_pace), formatPace(snapshot.distanceMeters.takeIf { it > 0 }?.let { snapshot.elapsedSeconds / (it / 1000.0) }))
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     Metric(stringResource(R.string.recording_elevation), "${snapshot.elevationGainMeters.toInt()} m")
                 }
+                } }
             }
             item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.recording_reflection_prompt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ReflectionChoice.entries.forEach { choice ->
                         val label = stringResource(when (choice) {
@@ -524,22 +557,24 @@ private fun ReflectionScreen(
                         else OutlinedButton(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
                     }
                 }
+                Text(stringResource(R.string.recording_reflection_optional), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             item {
-                if (photoPath == null) OutlinedButton(onClick = onTakePhoto, modifier = Modifier.fillMaxWidth()) {
+                if (photoPath == null) OutlinedButton(onClick = onTakePhoto, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                     Icon(Icons.Default.CameraAlt, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.recording_add_photo))
-                } else Card(Modifier.fillMaxWidth().clickable(onClick = onTakePhoto)) {
+                } else Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable(onClick = onTakePhoto)) {
                     val bitmap = remember(photoPath) { BitmapFactory.decodeFile(photoPath) }
                     bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.recording_activity_photo), Modifier.fillMaxWidth().aspectRatio(16f / 9f)) }
                     TextButton(onClick = onRemovePhoto) { Text(stringResource(R.string.recording_remove_photo)) }
                 }
             }
             item {
-                Button(onClick = onSave, enabled = selected != null && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                    Text(stringResource(if (saving) R.string.recording_saving_activity else R.string.recording_save_activity))
+                Button(onClick = onSave, enabled = snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE && !saving, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 56.dp)) {
+                    Text(stringResource(if (saving) R.string.recording_saving_activity else if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) R.string.recording_too_short_to_save else R.string.recording_save_activity))
                 }
                 if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
-                    Text(stringResource(R.string.recording_short_activity), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    Text(stringResource(R.string.recording_save_ineligible_explanation), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
                 }
             }
         }

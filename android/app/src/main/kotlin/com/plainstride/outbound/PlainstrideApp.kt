@@ -31,6 +31,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -48,12 +50,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Groups2
 import android.content.pm.PackageManager
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -551,6 +557,7 @@ private fun SignInScreen(
     onTransferCodeConsumed: () -> Unit,
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var showsTransfer by remember { mutableStateOf(initialTransferCode != null) }
     var transferCode by remember { mutableStateOf(initialTransferCode.orEmpty()) }
     LaunchedEffect(initialTransferCode) {
@@ -560,21 +567,20 @@ private fun SignInScreen(
         }
     }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.plainstride_app_icon),
-                contentDescription = null,
-                modifier = Modifier.size(144.dp),
-            )
-            Text(stringResource(R.string.auth_welcome), style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
-            Text(stringResource(R.string.auth_welcome_body), modifier = Modifier.padding(vertical = 16.dp), textAlign = TextAlign.Center)
-            Button(onClick = { viewModel.signIn(context) }, enabled = state.operation == null) {
-                Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in))
-            }
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp, vertical = 18.dp)) {
+            Text(stringResource(R.string.auth_wordmark), style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.weight(0.35f))
+            WelcomeOrbit(Modifier.fillMaxWidth())
+            Text(stringResource(R.string.auth_companion_eyebrow), Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.auth_companion_headline), Modifier.fillMaxWidth().padding(top = 10.dp), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+            Spacer(Modifier.weight(0.65f))
+            OutlinedButton(
+                onClick = { viewModel.signIn(context) },
+                enabled = state.operation == null,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in)) }
+            Text(stringResource(R.string.auth_google_explanation), Modifier.fillMaxWidth().padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             TextButton(onClick = { showsTransfer = !showsTransfer }, enabled = state.operation == null) {
                 Text(stringResource(R.string.transfer_existing_account))
             }
@@ -604,7 +610,38 @@ private fun SignInScreen(
                     Text(stringResource(if (state.operation == AuthOperation.Redeem) R.string.transfer_connecting else R.string.transfer_connect))
                 }
             }
-            Text(stringResource(R.string.auth_terms_notice), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 16.dp), textAlign = TextAlign.Center)
+            Text(stringResource(R.string.auth_terms_notice), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                TextButton(onClick = { viewModel.trackLegal("terms"); uriHandler.openUri("https://run.plainstride.com/terms") }) { Text(stringResource(R.string.auth_terms_link)) }
+                TextButton(onClick = { viewModel.trackLegal("privacy"); uriHandler.openUri("https://run.plainstride.com/privacy") }) { Text(stringResource(R.string.auth_privacy_link)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WelcomeOrbit(modifier: Modifier = Modifier) {
+    Box(modifier.height(220.dp), contentAlignment = Alignment.Center) {
+        Surface(shape = RoundedCornerShape(120.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), modifier = Modifier.size(275.dp, 132.dp)) {}
+        OrbitPerson(R.string.auth_orbit_family, Icons.Default.Favorite, Modifier.align(Alignment.TopStart).padding(start = 26.dp, top = 22.dp))
+        OrbitPerson(R.string.auth_orbit_friends, Icons.Default.Group, Modifier.align(Alignment.TopEnd).padding(end = 26.dp, top = 34.dp))
+        OrbitPerson(R.string.auth_orbit_groups, Icons.Default.Groups2, Modifier.align(Alignment.BottomStart).padding(start = 36.dp, bottom = 20.dp))
+        Surface(shape = RoundedCornerShape(40.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(76.dp)) {
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, stringResource(R.string.auth_orbit_you), Modifier.size(34.dp)) }
+        }
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.align(Alignment.BottomCenter)) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.auth_better_together), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrbitPerson(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+    Surface(shape = RoundedCornerShape(34.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier.size(66.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Icon(icon, null, Modifier.size(21.dp)); Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
         }
     }
 }

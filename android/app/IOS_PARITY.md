@@ -2,6 +2,7 @@
 
 ## Authority And Mapping
 
+- iOS login: `ios/Outbound/Outbound/App/AuthView.swift`
 - iOS shell: `ios/Outbound/Outbound/Features/Simplified/SimplifiedAppShell.swift`
 - iOS session owner: `ios/Outbound/Outbound/App/MainTabView.swift`
 - Android shell: `android/app/src/main/kotlin/com/plainstride/outbound/PlainstrideApp.kt`
@@ -9,6 +10,8 @@
 
 ## Contract
 
+- [x] Signed-out presentation carries the same brand story, companion positioning, provider explanation, and legal destinations; Google is the Android-native identity provider.
+- [x] Existing iPhone accounts can enter the deliberate one-time transfer/link flow without weakening normal Google sign-in.
 - [x] Primary navigation contains exactly Social, Today, and Me.
 - [x] Today is initially selected.
 - [x] Assistant is a persistent launcher on every primary destination, not a fourth tab.
@@ -27,6 +30,7 @@
 
 ## Analytics And Accessibility
 
+- Authentication legal links emit `legal_document_opened` with the authentication entry source and never send the URL.
 - Assistant opening emits `assistant_launcher_opened` with `destination` and `entry_source`.
 - Navigation items and the assistant launcher expose generated localized labels.
 

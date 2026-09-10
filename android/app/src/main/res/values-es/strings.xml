@@ -17,6 +17,17 @@
     <string name="auth_unavailable">El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo.</string>
     <string name="auth_welcome">Te damos la bienvenida a Plainstride</string>
     <string name="auth_welcome_body">Tu entrenamiento personalizado y tu historia como corredor, reunidos en una cuenta privada.</string>
+    <string name="auth_wordmark">PLAINSTRIDE</string>
+    <string name="auth_companion_eyebrow">TU COMPAÑERO DE RUNNING CON IA</string>
+    <string name="auth_companion_headline">Entrena con intención.\nCorre con los tuyos.</string>
+    <string name="auth_google_explanation">Usamos tu correo para crear la cuenta, sincronizar tus entrenamientos y ayudarte a recuperar el acceso en un teléfono nuevo.</string>
+    <string name="auth_terms_link">Términos del servicio</string>
+    <string name="auth_privacy_link">Política de privacidad</string>
+    <string name="auth_orbit_family">Familia</string>
+    <string name="auth_orbit_friends">Amigos</string>
+    <string name="auth_orbit_groups">Grupos</string>
+    <string name="auth_orbit_you">Tú</string>
+    <string name="auth_better_together">Mejor juntos</string>
     <string name="cancel">Cancelar</string>
     <string name="continue_with_google">Continuar con Google</string>
     <string name="delete_account">Eliminar cuenta</string>
