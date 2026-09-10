@@ -560,11 +560,7 @@ private fun ActivityLaunchDock(
                 UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), if (indoor) Icons.Default.HomeWork else Icons.Default.WbSunny, { onIndoorChanged(!indoor) }, true)
             }
             when {
-                activeSession -> Button(onClick = onReturnToSession, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 52.dp)) {
-                    Icon(Icons.Default.DirectionsRun, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.today_return_run))
-                }
+                activeSession -> Unit
                 completedToday -> {
                     Text(stringResource(R.string.today_completed_reflection), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.titleMedium)
                     OutlinedButton(onClick = onOpenDetails, enabled = suggestion != null, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 52.dp)) {
