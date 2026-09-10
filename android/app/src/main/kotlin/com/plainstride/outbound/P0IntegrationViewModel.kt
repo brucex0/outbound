@@ -22,6 +22,12 @@ import com.plainstride.outbound.feature.safety.*
 import com.plainstride.outbound.notifications.PlainstrideMessagingService
 import com.plainstride.outbound.feature.recording.*
 import com.plainstride.outbound.feature.today.TodayRepository
+import com.plainstride.outbound.feature.today.CachedResource
+import com.plainstride.outbound.core.model.RunnerInsight
+import com.plainstride.outbound.feature.social.CachedSocialHome
+import com.plainstride.outbound.feature.social.RecognitionAward
+import com.plainstride.outbound.feature.social.SocialPerson
+import com.plainstride.outbound.feature.social.SocialRepository
 import com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest
 import com.plainstride.outbound.reminders.PlannedWorkoutReminderCoordinator
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
@@ -36,12 +42,16 @@ data class P0IntegrationState(
     val defaultGearId: String? = null,
     val publishableActivities: List<Pair<String,String>> = emptyList(),
     val pushEnabled: Boolean = true,
+    val connections: List<SocialPerson> = emptyList(),
+    val recognitions: List<RecognitionAward> = emptyList(),
+    val insights: List<RunnerInsight> = emptyList(),
 )
 
 @HiltViewModel class P0IntegrationViewModel @Inject constructor(
     private val routes: CommunityRouteRepository, private val safety: LiveShareCoordinator,
     private val activities: ActivityRepository,
     private val today: TodayRepository,
+    private val social: SocialRepository,
     private val gear: GearRepository,
     private val reminderCoordinator: PlannedWorkoutReminderCoordinator,
     private val analytics: ProductAnalytics,
@@ -49,7 +59,50 @@ data class P0IntegrationState(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
-    fun start(accountId:String,locale:String){if(this.accountId==accountId&&this.locale==locale)return;this.accountId=accountId;this.locale=locale;observeRoutes();reminderCoordinator.observe(viewModelScope,accountId,locale);viewModelScope.launch{gear.configure(accountId);mutable.update{it.copy(defaultGearId=gear.collection().defaultShoe?.id?.toString())}};viewModelScope.launch{activities.observePage(accountId,limit=200).collect{page->val items=page.activities.map{ProgressActivity(it.id,it.title,Instant.parse(it.startedAt),it.durationSecs,it.distanceM,it.elevationGainM,it.averageHeartRateBpm)};mutable.update{s->s.copy(progress=ProgressScreenState(ProgressStatsEngine.snapshot(items),emptyList()),publishableActivities=page.activities.filter{it.track.size>1}.take(20).map{it.id to it.title})}}};refreshRoutes();refreshInbox();registerPush()}
+    fun start(accountId: String, locale: String) {
+        if (this.accountId == accountId && this.locale == locale) return
+        this.accountId = accountId
+        this.locale = locale
+        observeRoutes()
+        reminderCoordinator.observe(viewModelScope, accountId, locale)
+        viewModelScope.launch {
+            gear.configure(accountId)
+            mutable.update { it.copy(defaultGearId = gear.collection().defaultShoe?.id?.toString()) }
+        }
+        viewModelScope.launch {
+            activities.observePage(accountId, limit = 200).collect { page ->
+                val items = page.activities.map { ProgressActivity(it.id, it.title, Instant.parse(it.startedAt), it.durationSecs, it.distanceM, it.elevationGainM, it.averageHeartRateBpm) }
+                mutable.update { state -> state.copy(
+                    progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), emptyList()),
+                    publishableActivities = page.activities.filter { it.track.size > 1 }.take(20).map { it.id to it.title },
+                ) }
+            }
+        }
+        viewModelScope.launch {
+            today.observePersonalization(accountId, locale).collect { resource ->
+                val snapshot = when (resource) {
+                    is CachedResource.Available -> resource.value
+                    is CachedResource.Failed -> resource.cachedValue
+                    CachedResource.Loading -> null
+                }
+                snapshot?.let { value -> mutable.update { it.copy(insights = value.insights) } }
+            }
+        }
+        viewModelScope.launch {
+            launch {
+                social.observeHome(accountId, locale).collect { cached ->
+                    if (cached is CachedSocialHome.Available) mutable.update { state -> state.copy(
+                        connections = cached.value.connections.filter { it.relationship in setOf("accepted", "connected") },
+                        recognitions = cached.value.recognitions,
+                    ) }
+                }
+            }
+            social.refresh(accountId, locale)
+        }
+        refreshRoutes()
+        refreshInbox()
+        registerPush()
+    }
     fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value)};observeRoutes();refreshRoutes()}
     fun search(value:String){if(value.length==1||value.length%3==0)refreshRoutes(value)}
     fun refreshRoutes(query:String=""){val id=accountId?:return;viewModelScope.launch(Dispatchers.IO){

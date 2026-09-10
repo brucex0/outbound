@@ -23,9 +23,12 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Stars
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material3.AlertDialog
@@ -70,7 +73,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
 
-private enum class MePage { Overview, Settings }
+private enum class MePage { Overview, Settings, Milestones }
+
+data class MeConnection(val id: String, val displayName: String)
+data class MeInsight(val id: String, val label: String, val value: String, val confidence: String)
+data class MeMilestone(val id: String, val label: String)
 
 @Composable
 fun MeRoute(
@@ -82,6 +89,12 @@ fun MeRoute(
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
     onActivityHistory: () -> Unit,
+    connections: List<MeConnection> = emptyList(),
+    insights: List<MeInsight> = emptyList(),
+    milestones: List<MeMilestone> = emptyList(),
+    onConnections: () -> Unit = {},
+    onMyRoutes: () -> Unit = {},
+    onMeDestination: (String) -> Unit = {},
     activityContent: @Composable () -> Unit = {},
     settingsContent: @Composable () -> Unit = {},
     onMessage: suspend (SettingsMessage) -> Unit,
@@ -91,7 +104,14 @@ fun MeRoute(
     var page by rememberSaveable { mutableStateOf(MePage.Overview) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     when (page) {
-        MePage.Overview -> MeOverview(state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh, onActivityHistory, activityContent, modifier)
+        MePage.Overview -> MeOverview(
+            state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
+            onActivityHistory, connections, insights, milestones,
+            onConnections = { onMeDestination("connections"); onConnections() },
+            onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
+            onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
+            activityContent, modifier,
+        )
         MePage.Settings -> SettingsScreen(
             state = state,
             appVersion = appVersion,
@@ -110,12 +130,26 @@ fun MeRoute(
             settingsContent = settingsContent,
             modifier = modifier,
         )
+        MePage.Milestones -> MilestonesScreen(milestones, onBack = { page = MePage.Overview }, modifier)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh: () -> Unit, onActivityHistory: () -> Unit, activityContent: @Composable () -> Unit, modifier: Modifier) {
+private fun MeOverview(
+    state: SettingsUiState,
+    onSettings: () -> Unit,
+    onRefresh: () -> Unit,
+    onActivityHistory: () -> Unit,
+    connections: List<MeConnection>,
+    insights: List<MeInsight>,
+    milestones: List<MeMilestone>,
+    onConnections: () -> Unit,
+    onMyRoutes: () -> Unit,
+    onMilestones: () -> Unit,
+    activityContent: @Composable () -> Unit,
+    modifier: Modifier,
+) {
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text(stringResource(R.string.me_title)) }, actions = {
@@ -134,12 +168,31 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
                     Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
                 }
             } }
+            item { NavigationCard(R.string.me_connections, R.string.me_connections_body, Icons.Outlined.People, onConnections) {
+                if (connections.isEmpty()) Text(stringResource(R.string.me_connections_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else Text(connections.take(4).joinToString("  ·  ") { it.displayName.substringBefore(' ') }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } }
             item { SectionTitle(stringResource(R.string.current_focus)) }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(state.summary?.phase ?: stringResource(R.string.no_active_plan), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(if (state.summary?.phase == null) R.string.no_active_plan_body else R.string.plan_synced), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            item { NavigationCard(R.string.me_my_routes, R.string.me_my_routes_body, Icons.Outlined.Map, onMyRoutes) }
+            if (insights.isNotEmpty()) item {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(stringResource(R.string.me_learned), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        insights.take(3).forEach { insight ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(insight.label, fontWeight = FontWeight.SemiBold)
+                                Text(insight.confidence, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(insight.value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
@@ -159,6 +212,9 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
                     }
                 }
             }
+            item { NavigationCard(R.string.me_milestones, R.string.me_milestones_body, Icons.Outlined.Stars, onMilestones) {
+                Text(if (milestones.isEmpty()) stringResource(R.string.me_milestones_empty) else stringResource(R.string.me_milestones_count, milestones.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } }
             item { SectionTitle(stringResource(R.string.recent)) }
             item { activityContent() }
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onActivityHistory)) {
@@ -170,6 +226,33 @@ private fun MeOverview(state: SettingsUiState, onSettings: () -> Unit, onRefresh
             } }
             item { Button(onClick = onSettings, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Outlined.Settings, null); Text(stringResource(R.string.open_settings), Modifier.padding(start = 8.dp)) } }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        }
+    }
+}
+
+@Composable
+private fun NavigationCard(label: Int, body: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit, extra: @Composable (() -> Unit)? = null) {
+    OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick)) {
+        ListItem(
+            headlineContent = { Text(stringResource(label), fontWeight = FontWeight.SemiBold) },
+            supportingContent = { Column { Text(stringResource(body)); extra?.invoke() } },
+            leadingContent = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MilestonesScreen(milestones: List<MeMilestone>, onBack: () -> Unit, modifier: Modifier) {
+    Scaffold(modifier, topBar = { TopAppBar(
+        title = { Text(stringResource(R.string.me_milestones)) },
+        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
+    ) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (milestones.isEmpty()) item { Text(stringResource(R.string.me_milestones_empty), Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            items(milestones, key = MeMilestone::id) { milestone ->
+                OutlinedCard(Modifier.fillMaxWidth()) { ListItem(headlineContent = { Text(milestone.label) }, leadingContent = { Icon(Icons.Outlined.Stars, null, tint = MaterialTheme.colorScheme.primary) }) }
+            }
         }
     }
 }
@@ -259,6 +342,8 @@ private fun SettingsScreen(
 }
 
 @Composable private fun SectionTitle(text: String) = Text(text, Modifier.padding(horizontal = 20.dp, vertical = 12.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+@Composable fun SettingsGroupTitle(text: String) = SectionTitle(text)
 
 @Composable private fun SettingsAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, action: () -> Unit) = ListItem(
     headlineContent = { Text(stringResource(label)) }, leadingContent = { Icon(icon, null) },

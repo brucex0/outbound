@@ -89,6 +89,11 @@ import com.plainstride.outbound.feature.today.R as TodayR
 import com.plainstride.outbound.feature.settings.MeRoute
 import com.plainstride.outbound.feature.settings.SettingsMessage
 import com.plainstride.outbound.feature.settings.SettingsViewModel
+import com.plainstride.outbound.feature.settings.MeConnection
+import com.plainstride.outbound.feature.settings.MeInsight
+import com.plainstride.outbound.feature.settings.MeMilestone
+import com.plainstride.outbound.feature.settings.SettingsGroupTitle
+import com.plainstride.outbound.feature.settings.R as SettingsR
 import com.plainstride.outbound.feature.recording.ActivityKind
 import com.plainstride.outbound.feature.recording.RecordedActivityReview
 import com.plainstride.outbound.feature.recording.RecordingGoal
@@ -361,20 +366,37 @@ private fun SignedInApp(
                                 onboardingResolved = false
                             },
                             onActivityHistory = { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } },
+                            connections = integration.connections.map { MeConnection(it.id, it.displayName) },
+                            insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
+                            milestones = integration.recognitions.map { MeMilestone("${it.badgeId}:${it.awardedAt}", it.badgeId.replace('_', ' ').replaceFirstChar(Char::uppercase)) },
+                            onConnections = {
+                                socialTarget = "connections" to ""
+                                navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
+                            },
+                            onMyRoutes = {
+                                integrationViewModel.scope(com.plainstride.outbound.feature.community.RouteScope.MINE)
+                                navController.navigate(COMMUNITY_ROUTES_ROUTE) { launchSingleTop = true }
+                            },
+                            onMeDestination = settingsViewModel::trackMeDestination,
                             activityContent = {
                                 accountId?.let { id -> RecentActivitiesRoute(id, { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } }) }
                             },
                             settingsContent = {
+                                SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
+                                ReminderSettingsRow(reminderViewModel)
+                                SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
+                                ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, supportingContent = { Text(stringResource(SettingsR.string.settings_safety_body)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
+                                SettingsGroupTitle(stringResource(SettingsR.string.settings_live_guidance))
                                 LiveCoachSettingsSection()
+                                SettingsGroupTitle(stringResource(SettingsR.string.settings_health_and_body))
                                 accountId?.let { CycleAwareSection(it,cycleViewModel) }
+                                SettingsGroupTitle(stringResource(SettingsR.string.settings_integrations))
                                 ListItem(headlineContent = { Text(stringResource(R.string.music_settings_title)) }, supportingContent = { Text(stringResource(R.string.music_settings_body)) }, modifier = Modifier.clickable { navController.navigate(MUSIC_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.progress_destination)) }, modifier = Modifier.clickable { navController.navigate(PROGRESS_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.routes_destination)) }, modifier = Modifier.clickable { navController.navigate(COMMUNITY_ROUTES_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.health_destination)) }, modifier = Modifier.clickable { navController.navigate(HEALTH_ROUTE) })
-                                ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
                                 ListItem(headlineContent={Text(stringResource(R.string.push_notifications_setting))},supportingContent={Text(stringResource(R.string.push_notifications_body))},trailingContent={Switch(integration.pushEnabled,integrationViewModel::setPushEnabled)})
-                                ReminderSettingsRow(reminderViewModel)
                             },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )

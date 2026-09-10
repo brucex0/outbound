@@ -74,6 +74,10 @@ class SettingsViewModel @Inject constructor(
         AnalyticsEvent("onboarding_replay_requested", mapOf(AnalyticsProperty.Source to "settings"))
     )
 
+    fun trackMeDestination(destination: String) = analytics.record(
+        AnalyticsEvent("me_destination_opened", mapOf(AnalyticsProperty.Destination to destination, AnalyticsProperty.EntrySource to "me"))
+    )
+
     private fun save(type: String, selection: String?, block: suspend () -> Result<Unit>) {
         if (saving.value) return
         viewModelScope.launch {

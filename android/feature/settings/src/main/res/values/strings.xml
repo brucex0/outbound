@@ -66,4 +66,20 @@
     <string name="username_cooldown">Usernames can be changed once every 30 days.</string>
     <string name="username_invalid">Use 3–30 letters, numbers, underscores, or hyphens.</string>
     <string name="version">Version</string>
+    <string name="me_connections">Connections</string>
+    <string name="me_connections_body">Your people in Plainstride</string>
+    <string name="me_connections_empty">Find people</string>
+    <string name="me_my_routes">My Routes</string>
+    <string name="me_my_routes_body">Saved and published routes</string>
+    <string name="me_learned">WHAT I’VE LEARNED</string>
+    <string name="me_milestones">Milestones</string>
+    <string name="me_milestones_body">Recognition from your running story</string>
+    <string name="me_milestones_empty">No milestones yet. Keep moving—your first one is ahead.</string>
+    <string name="me_milestones_count">%1$d reached</string>
+    <string name="settings_planned_workouts">Planned workouts</string>
+    <string name="settings_safety">Safety</string>
+    <string name="settings_safety_body">Trusted contacts and private live sharing</string>
+    <string name="settings_live_guidance">Live guidance</string>
+    <string name="settings_health_and_body">Health &amp; body</string>
+    <string name="settings_integrations">Integrations</string>
 </resources>

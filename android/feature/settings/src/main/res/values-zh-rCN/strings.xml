@@ -66,4 +66,20 @@
     <string name="username_cooldown">用户名每 30 天可更改一次。</string>
     <string name="username_invalid">请输入 3 至 30 个字母、数字、下划线或连字符。</string>
     <string name="version">版本</string>
+    <string name="me_connections">好友</string>
+    <string name="me_connections_body">你在 Plainstride 上的伙伴</string>
+    <string name="me_connections_empty">寻找伙伴</string>
+    <string name="me_my_routes">我的路线</string>
+    <string name="me_my_routes_body">已收藏和发布的路线</string>
+    <string name="me_learned">我对你的了解</string>
+    <string name="me_milestones">里程碑</string>
+    <string name="me_milestones_body">记录你跑步历程中的每一次突破</string>
+    <string name="me_milestones_empty">还没有里程碑。继续前进，第一次突破就在前方。</string>
+    <string name="me_milestones_count">已达成 %1$d 个</string>
+    <string name="settings_planned_workouts">计划训练</string>
+    <string name="settings_safety">安全</string>
+    <string name="settings_safety_body">信任联系人和私密实时位置</string>
+    <string name="settings_live_guidance">实时指导</string>
+    <string name="settings_health_and_body">健康与身体</string>
+    <string name="settings_integrations">集成服务</string>
 </resources>

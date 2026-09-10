@@ -28,7 +28,10 @@ import com.plainstride.outbound.core.designsystem.*
     var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(targetType,targetId,state.loading){if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)}
+    LaunchedEffect(targetType,targetId,state.loading){
+        if (!state.loading && targetType == "connections") connectionsOpen = true
+        else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
+    }
     SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, {createCircle=true}, modifier)
     if (connectionsOpen) ConnectionsDialog(state, viewModel::search, viewModel::openProfile) { connectionsOpen = false }
     state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile, { viewModel.connect(it) }, {it.connectionId?.let(viewModel::acceptConnection)}, {it.connectionId?.let(viewModel::removeConnection)}) }

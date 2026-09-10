@@ -66,4 +66,20 @@
     <string name="username_cooldown">Puedes cambiar tu nombre de usuario una vez cada 30 días.</string>
     <string name="username_invalid">Usa entre 3 y 30 letras, números, guiones bajos o guiones.</string>
     <string name="version">Versión</string>
+    <string name="me_connections">Conexiones</string>
+    <string name="me_connections_body">Tu gente en Plainstride</string>
+    <string name="me_connections_empty">Encuentra a gente</string>
+    <string name="me_my_routes">Mis rutas</string>
+    <string name="me_my_routes_body">Rutas guardadas y publicadas</string>
+    <string name="me_learned">LO QUE HE APRENDIDO</string>
+    <string name="me_milestones">Logros</string>
+    <string name="me_milestones_body">Reconocimientos de tu historia como corredor</string>
+    <string name="me_milestones_empty">Aún no hay logros. Sigue avanzando: el primero está cerca.</string>
+    <string name="me_milestones_count">%1$d conseguidos</string>
+    <string name="settings_planned_workouts">Entrenamientos planificados</string>
+    <string name="settings_safety">Seguridad</string>
+    <string name="settings_safety_body">Contactos de confianza y ubicación privada en vivo</string>
+    <string name="settings_live_guidance">Guía en vivo</string>
+    <string name="settings_health_and_body">Salud y cuerpo</string>
+    <string name="settings_integrations">Integraciones</string>
 </resources>

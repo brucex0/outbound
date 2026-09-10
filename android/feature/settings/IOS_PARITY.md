@@ -28,8 +28,9 @@
 
 ## Current Status
 
-- Core Me hierarchy, profile editing, current focus, weekly summary, recent activity navigation, settings/preferences, integrations, legal links, sign-out, and deletion are implemented.
-- Connections preview, recognition presentation, and deterministic visual-reference captures remain open parity work.
+- Core Me hierarchy, profile editing, Connections preview, current focus, My Routes, learned insights, weekly summary, Milestones, recent activity navigation, settings/preferences, integrations, legal links, sign-out, and deletion are implemented.
+- Settings exposes planned-workout reminders and Safety as named sections matching the iOS hierarchy instead of burying them among integrations.
+- Deterministic visual-reference captures remain open parity work.
 
 ## Platform Substitutions
 
