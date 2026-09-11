@@ -1701,6 +1701,7 @@ struct RecordView: View {
                 }
                 .padding(.horizontal, 16)
             }
+            .defaultScrollAnchor(isEmbeddedInToday ? .center : .leading, for: .alignment)
 
             HStack(spacing: 10) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -1779,6 +1780,7 @@ struct RecordView: View {
                     .padding(.trailing, isEmbeddedInToday ? 16 : 0)
                 }
                 .frame(maxWidth: .infinity)
+                .defaultScrollAnchor(isEmbeddedInToday ? .center : .leading, for: .alignment)
 
                 if !isEmbeddedInToday {
                     Divider()
@@ -1843,20 +1845,29 @@ struct RecordView: View {
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: choice.systemImage)
-                    .font(.body.weight(.semibold))
-                Text(choice.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .font((isEmbeddedInToday ? Font.title3 : .body).weight(.semibold))
+                if !isEmbeddedInToday {
+                    Text(choice.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
             }
             .foregroundStyle(choice == selectedWorkoutChoice ? Color.white : Color.primary)
-            .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
+            .frame(
+                width: isEmbeddedInToday ? 52 : ActivityLaunchLayout.controlWidth,
+                height: isEmbeddedInToday ? 52 : ActivityLaunchLayout.controlHeight
+            )
             .background(
                 choice == selectedWorkoutChoice ? theme.accentColor : Color(.secondarySystemBackground),
-                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+                in: isEmbeddedInToday
+                    ? AnyShape(Circle())
+                    : AnyShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                (isEmbeddedInToday
+                    ? AnyShape(Circle())
+                    : AnyShape(RoundedRectangle(cornerRadius: 15, style: .continuous)))
                     .stroke(choice == selectedWorkoutChoice ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
             }
         }
@@ -1907,24 +1918,51 @@ struct RecordView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isConfigured ? Color.white : theme.accentColor)
-                    .frame(width: 30, height: 30)
-                    .background(isConfigured ? theme.accentColor : Color.clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                Text(title)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+            Group {
+                if isEmbeddedInToday {
+                    HStack(spacing: 8) {
+                        utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
+                        utilityButtonLabel(title)
+                    }
+                    .padding(.horizontal, 12)
+                } else {
+                    VStack(spacing: 4) {
+                        utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
+                        utilityButtonLabel(title)
+                    }
+                }
             }
-            .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(
+                width: ActivityLaunchLayout.controlWidth,
+                height: ActivityLaunchLayout.controlHeight
+            )
+            .background(
+                Color(.secondarySystemBackground),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityValue(value)
+    }
+
+    private func utilityButtonIcon(systemImage: String, isConfigured: Bool) -> some View {
+        Image(systemName: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isConfigured ? Color.white : theme.accentColor)
+            .frame(width: 30, height: 30)
+            .background(
+                isConfigured ? theme.accentColor : Color.clear,
+                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+            )
+    }
+
+    private func utilityButtonLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
     }
 
     private var launchShoeControl: AnyView {
@@ -1957,18 +1995,34 @@ struct RecordView: View {
                     track(.init(.shoeSelected, properties: [.selectionType: .string("none")]))
                 }
             } label: {
-                VStack(spacing: 4) {
-                    Image(systemName: "shoeprints.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(selectedSessionShoe == nil ? theme.accentColor : Color.white)
-                        .frame(width: 30, height: 30)
-                        .background(selectedSessionShoe == nil ? Color.clear : theme.accentColor, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    Text(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.primary)
+                Group {
+                    if isEmbeddedInToday {
+                        HStack(spacing: 8) {
+                            utilityButtonIcon(
+                                systemImage: "shoeprints.fill",
+                                isConfigured: selectedSessionShoe != nil
+                            )
+                            utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
+                        }
+                        .padding(.horizontal, 12)
+                    } else {
+                        VStack(spacing: 4) {
+                            utilityButtonIcon(
+                                systemImage: "shoeprints.fill",
+                                isConfigured: selectedSessionShoe != nil
+                            )
+                            utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
+                        }
+                    }
                 }
-                .frame(width: ActivityLaunchLayout.controlWidth, height: ActivityLaunchLayout.controlHeight)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(
+                    width: ActivityLaunchLayout.controlWidth,
+                    height: ActivityLaunchLayout.controlHeight
+                )
+                .background(
+                    Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
             }
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
             .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None")))
