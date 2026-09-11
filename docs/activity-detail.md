@@ -4,7 +4,9 @@ Open this when redesigning, polishing, or adding features to the activity detail
 
 ## Current Implementation
 
-File: `ios/Outbound/Outbound/Activity/ActivityDetailView.swift`
+Authoritative file: `ios/Outbound/Outbound/Activity/ActivityDetailView.swift`
+
+Android counterpart: `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityScreen.kt`, with its parity inventory in `android/feature/activity/IOS_PARITY.md`.
 
 My Activities and other local activity consumers receive activities ordered by `startedAt` descending, so the newest activity is always first, including after imports, sync restoration, and date edits.
 The history screen supports swipe-to-delete for one activity and selection mode for deleting multiple activities after a destructive confirmation.
@@ -21,6 +23,8 @@ The current view is a Strava-style layered detail page:
 8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
 
 Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing and route publication: `Save Route` remains available on the current runner's own Social posts but is omitted from another runner's activity. Unavailable private source/gear metadata and route privacy are omitted.
+
+The Android stored-activity detail now follows the same map-first hierarchy: an interactive full-screen Google map, pace-colored route segments with pause gaps, GPS photo pins, a draggable collapsed/split/expanded information sheet, two-column stats, a horizontal photo strip and lightbox, collapsible elevation and split sections, private metadata, and the companion reflection. It derives split/elevation values from route points, follows the saved metric/imperial preference on-screen and in the share card, and hides GPX/GeoJSON export from the current UI. Android-specific remaining work is recorded in its parity manifest rather than treated as an implicit platform exception.
 
 Connection photos are delivered in the visible social-post payload as ordered metadata plus 15-minute signed read URLs. Storage keys never cross the social response boundary. The iOS adapter maps those records into the shared photo-strip model, and the shared image view supports both local file URLs and signed HTTPS media.
 
@@ -134,6 +138,9 @@ Future phases needing backend:
 - `ios/Outbound/Outbound/Activity/ActivityDetailView.swift` — main detail view
 - `ios/Outbound/Outbound/Core/LocalActivityStore.swift` — `SavedActivity`, `SavedRoutePoint`, `RouteExportFormat`
 - `ios/Outbound/Outbound/Activity/ActivityStore.swift` — `exportRoute()`
+- `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityScreen.kt` — stored-activity map, sheet, stats, photos, elevation, splits, and metadata
+- `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityViewModel.kt` — mutations, share-card rendering, and analytics
+- `android/feature/activity/IOS_PARITY.md` — Android parity inventory, reference scenarios, and remaining gaps
 
 ## Layout Decisions (Revised Per UX Feedback)
 

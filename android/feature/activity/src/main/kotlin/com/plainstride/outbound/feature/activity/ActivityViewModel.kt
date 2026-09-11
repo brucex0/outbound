@@ -33,7 +33,9 @@ import com.plainstride.outbound.core.data.ManualActivityFactory
 import com.plainstride.outbound.core.data.ManualActivityInput
 import com.plainstride.outbound.core.model.activity.ActivityPage
 import com.plainstride.outbound.core.model.activity.ActivityType
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.SavedActivity
+import com.plainstride.outbound.core.model.activity.SessionFormatting
 
 enum class ActivityMessage { SAVED, UPDATED, DELETED, FAILED, EXPORT_UNAVAILABLE }
 enum class ActivityExportFormat(val extension: String, val mimeType: String) {
@@ -119,7 +121,10 @@ class ActivityViewModel @Inject constructor(
         repository.delete(current.accountId, current.id)
         current.photos.mapNotNull { it.localRelativePath }.forEach(mediaStore::delete)
         mutableState.value = mutableState.value.copy(selected = null)
-        analytics.record(AnalyticsEvent("activity_deleted", mapOf(AnalyticsProperty.Result to "success")))
+        analytics.record(AnalyticsEvent("activity_deleted", mapOf(
+            AnalyticsProperty.SourceType to "activity_history",
+            AnalyticsProperty.CountBucket to "one",
+        )))
     }
 
     fun createManual(
@@ -157,7 +162,7 @@ class ActivityViewModel @Inject constructor(
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), format.mimeType, target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
 
-    fun shareCard(activity: SavedActivity): ActivityExport? = runCatching {
+    fun shareCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem): ActivityExport? = runCatching {
         val directory = File(context.cacheDir, "activity_exports").apply { mkdirs() }
         val target = File(directory, "plainstride-${activity.id.filter(Char::isLetterOrDigit).take(64)}.png")
         val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
@@ -173,9 +178,15 @@ class ActivityViewModel @Inject constructor(
         paint.isFakeBoldText = false
         paint.color = Color.rgb(232, 126, 62)
         paint.textSize = 58f
-        canvas.drawText(context.getString(R.string.activity_share_distance_value, activity.distanceM / 1_000), 72f, 1400f, paint)
+        val distance = SessionFormatting.distance(activity.distanceM, unitSystem)
+        val distanceUnit = if (unitSystem == MeasurementUnitSystem.metric) "km" else "mi"
+        canvas.drawText("%.2f %s".format(distance.value, distanceUnit), 72f, 1400f, paint)
         canvas.drawText(formatDurationForCard(activity.durationSecs), 390f, 1400f, paint)
-        activity.averagePaceSecsPerKm?.let { canvas.drawText(context.getString(R.string.activity_share_pace_value, it.toInt() / 60, it.toInt() % 60), 700f, 1400f, paint) }
+        activity.averagePaceSecsPerKm?.let { rawPace ->
+            SessionFormatting.pace(rawPace, unitSystem)?.let { pace ->
+                canvas.drawText("%d:%02d /%s".format(pace.minutes, pace.seconds, distanceUnit), 700f, 1400f, paint)
+            }
+        }
         paint.color = Color.LTGRAY
         paint.textSize = 30f
         canvas.drawText(context.getString(R.string.activity_distance).uppercase(), 72f, 1460f, paint)
@@ -184,9 +195,22 @@ class ActivityViewModel @Inject constructor(
         drawQr(canvas, "https://run.plainstride.com/invite", 790, 1600, 220)
         target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 95, it) }
         bitmap.recycle()
-        analytics.record(AnalyticsEvent("activity_share_card_created", mapOf(AnalyticsProperty.Result to "success")))
+        analytics.record(AnalyticsEvent("activity_share_previewed", mapOf(AnalyticsProperty.SourceType to "activity_detail")))
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), "image/png", target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
+
+    fun trackShareAction(result: String) {
+        analytics.record(AnalyticsEvent("activity_share_action", mapOf(
+            AnalyticsProperty.SourceType to "activity_detail",
+            AnalyticsProperty.Result to result,
+        )))
+    }
+
+    fun trackCalorieExposure() {
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "completed_workout_calories",
+        )))
+    }
 
     private fun drawRouteBackdrop(canvas: Canvas, activity: SavedActivity) {
         val points = activity.track

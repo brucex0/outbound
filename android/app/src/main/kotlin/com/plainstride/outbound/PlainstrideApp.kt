@@ -115,6 +115,7 @@ import com.plainstride.outbound.feature.today.TodayManualLaunch
 import com.plainstride.outbound.feature.today.TodayActivityChoice
 import com.plainstride.outbound.feature.today.TodayGoalChoice
 import com.plainstride.outbound.core.model.Modality
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.feature.community.CommunityRouteScreen
 import com.plainstride.outbound.feature.community.guidancePoints
 import com.plainstride.outbound.feature.health.*
@@ -177,6 +178,11 @@ private fun SignedInApp(
     onNavigationUriConsumed: () -> Unit,
 ) {
     val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
+    val measurementUnitSystem = if (settingsState.preferences.measurement == com.plainstride.outbound.feature.settings.MeasurementSystem.Imperial) {
+        MeasurementUnitSystem.imperial
+    } else {
+        MeasurementUnitSystem.metric
+    }
     var onboardingResolved by remember { mutableStateOf(false) }
     var forceOnboardingReplay by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -251,7 +257,7 @@ private fun SignedInApp(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = if (currentDestination?.route == ACTIVITY_HISTORY_ROUTE) WindowInsets(0) else WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
@@ -388,7 +394,7 @@ private fun SignedInApp(
                             },
                             onMeDestination = settingsViewModel::trackMeDestination,
                             activityContent = {
-                                accountId?.let { id -> RecentActivitiesRoute(id, { selectedId ->
+                                accountId?.let { id -> RecentActivitiesRoute(id, measurementUnitSystem, { selectedId ->
                                     activityTarget = selectedId
                                     navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
                                 }) }
@@ -449,6 +455,8 @@ private fun SignedInApp(
             composable(ACTIVITY_HISTORY_ROUTE) {
                 ActivityHistoryRoute(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
+                    unitSystem = measurementUnitSystem,
+                    weightKilograms = integration.weightKilograms,
                     initialActivityId = activityTarget,
                     onBack = { navController.popBackStack() },
                     onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },

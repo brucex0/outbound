@@ -45,6 +45,7 @@ data class P0IntegrationState(
     val connections: List<SocialPerson> = emptyList(),
     val recognitions: List<RecognitionAward> = emptyList(),
     val insights: List<RunnerInsight> = emptyList(),
+    val weightKilograms: Double? = null,
 )
 
 @HiltViewModel class P0IntegrationViewModel @Inject constructor(
@@ -63,11 +64,15 @@ data class P0IntegrationState(
         if (this.accountId == accountId && this.locale == locale) return
         this.accountId = accountId
         this.locale = locale
+        mutable.update { it.copy(weightKilograms = null) }
         observeRoutes()
         reminderCoordinator.observe(viewModelScope, accountId, locale)
         viewModelScope.launch {
             gear.configure(accountId)
             mutable.update { it.copy(defaultGearId = gear.collection().defaultShoe?.id?.toString()) }
+        }
+        viewModelScope.launch {
+            today.trainingProfile().onSuccess { profile -> mutable.update { it.copy(weightKilograms = profile.weightKilograms) } }
         }
         viewModelScope.launch {
             activities.observePage(accountId, limit = 200).collect { page ->

@@ -20,6 +20,7 @@ enum class AnalyticsProperty(val wireName: String) {
     Enabled("enabled"),
     Destination("destination"),
     EntrySource("entry_source"),
+    Feature("feature"),
 }
 
 data class AnalyticsEvent(
