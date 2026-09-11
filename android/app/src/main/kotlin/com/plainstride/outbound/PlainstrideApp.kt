@@ -413,13 +413,14 @@ private fun SignedInApp(
                             },
                             settingsContent = {
                                 SettingsGroupTitle(stringResource(R.string.rewards_plus))
+                                ListItem(headlineContent = { Text(stringResource(R.string.rewards_plus)) }, supportingContent = { Text(stringResource(R.string.rewards_plus_settings_body)) }, modifier = Modifier.clickable { navController.navigate(PLUS_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.rewards_settings_title)) }, supportingContent = { Text(stringResource(R.string.rewards_settings_body)) }, modifier = Modifier.clickable { navController.navigate(REWARDS_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
                                 ReminderSettingsRow(reminderViewModel, BuildConfig.DEBUG)
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
                                 ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, supportingContent = { Text(stringResource(SettingsR.string.settings_safety_body)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_live_guidance))
-                                LiveCoachSettingsSection()
+                                LiveCoachSettingsSection(onPlus = { navController.navigate(PLUS_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_health_and_body))
                                 accountId?.let { CycleAwareSection(it,cycleViewModel) }
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_integrations))
@@ -491,6 +492,7 @@ private fun SignedInApp(
                 NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } }
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }) }
+            composable(PLUS_ROUTE) { PlusRoute(onBack = { navController.popBackStack() }) }
         }
     }
     if (authState.confirmDeletion) AlertDialog(
@@ -512,6 +514,7 @@ private const val SAFETY_ROUTE = "safety"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val REWARDS_ROUTE = "rewards"
+private const val PLUS_ROUTE = "plus"
 
 private fun recordingLocationPermission(context: android.content.Context): LocationPermissionState = when {
     context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.PRECISE

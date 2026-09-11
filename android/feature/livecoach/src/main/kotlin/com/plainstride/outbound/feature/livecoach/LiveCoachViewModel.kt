@@ -26,6 +26,7 @@ import com.plainstride.outbound.feature.livecoach.network.CueRequest
 import com.plainstride.outbound.feature.livecoach.network.EndSessionRequest
 import com.plainstride.outbound.feature.livecoach.network.Environment
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachCatalog
+import com.plainstride.outbound.feature.livecoach.network.LiveCoachConfig
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachMode
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachMoment
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachRepository
@@ -62,6 +63,7 @@ import kotlinx.coroutines.launch
 data class LiveCoachUiState(
     val preferences: LiveCoachPreferences = LiveCoachPreferences(),
     val catalog: LiveCoachCatalog? = null,
+    val configuration: LiveCoachConfig? = null,
     val loading: Boolean = false,
     val error: Boolean = false,
 )
@@ -121,16 +123,25 @@ class LiveCoachViewModel @Inject constructor(
         mutableUi.value = mutableUi.value.copy(loading = true, error = false)
         val token = tokens.validAccessToken()
         val locale = supportedLocale()
-        val result = token?.let { repository.catalog(it, locale) }
-        mutableUi.value = when (result) {
-            is ApiResult.Success -> mutableUi.value.copy(catalog = result.value, loading = false)
+        val configResult = token?.let { repository.config(it) }
+        val catalogResult = token?.let { repository.catalog(it, locale) }
+        val configuration = when (configResult) {
+            is ApiResult.Success -> configResult.value
+            else -> null
+        }
+        mutableUi.value = when (catalogResult) {
+            is ApiResult.Success -> mutableUi.value.copy(
+                catalog = catalogResult.value,
+                configuration = configuration,
+                loading = false,
+            )
             else -> mutableUi.value.copy(loading = false, error = true)
         }
         analytics.record(
             AnalyticsEvent(
                 "live_coach_catalog_loaded",
                 mapOf(
-                    AnalyticsProperty.Result to if (result is ApiResult.Success) "success" else "failure",
+                    AnalyticsProperty.Result to if (catalogResult is ApiResult.Success) "success" else "failure",
                     AnalyticsProperty.Locale to locale,
                 ),
             ),

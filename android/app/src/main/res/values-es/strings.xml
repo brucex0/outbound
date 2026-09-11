@@ -79,6 +79,10 @@
     <string name="rewards_settings_title">Invitaciones y recompensas</string>
     <string name="rewards_settings_body">Comparte tu código, gana Plus o canjea una recompensa por contribuir.</string>
     <string name="rewards_plus">Plainstride Plus</string>
+    <string name="rewards_plus_settings_body">Planificación adaptativa, entrenamiento personalizado en vivo y ánimos de voz.</string>
+    <string name="rewards_plus_tagline">Un entrenador que se adapta a ti</string>
+    <string name="rewards_plus_options_detail">Elige una suscripción semanal, mensual o anual. Verás los precios y las condiciones antes de comprar.</string>
+    <string name="rewards_plus_active_detail">Tus ventajas de Plus están activas. Gestiona la renovación, la facturación o la cancelación en el Centro de clientes.</string>
     <string name="rewards_ai_planning">Planificación adaptativa con IA</string>
     <string name="rewards_ai_planning_detail">Creación personalizada y ajustes continuos</string>
     <string name="rewards_live_coach">Guía de voz dinámica en vivo</string>

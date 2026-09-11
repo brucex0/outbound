@@ -39,12 +39,22 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
     }
 }
 
-@Composable fun LiveCoachSettingsSection(viewModel: LiveCoachViewModel = hiltViewModel()) {
+@Composable fun LiveCoachSettingsSection(
+    onPlus: () -> Unit,
+    viewModel: LiveCoachViewModel = hiltViewModel(),
+) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) { viewModel.loadCatalog() }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         HorizontalDivider()
         Text(stringResource(R.string.live_coach_settings_title), Modifier.padding(horizontal = 20.dp, vertical = 12.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        if (state.configuration?.access?.paywallAvailable == true) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.live_coach_plus_upgrade)) },
+                supportingContent = { Text(stringResource(R.string.live_coach_plus_upgrade_detail)) },
+                modifier = Modifier.clickable(onClick = onPlus).heightIn(min = 64.dp),
+            )
+        }
         ListItem(
             headlineContent = { Text(stringResource(R.string.live_coach_enable)) },
             supportingContent = { Text(stringResource(R.string.live_coach_enable_detail)) },

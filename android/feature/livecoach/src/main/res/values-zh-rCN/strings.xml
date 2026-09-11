@@ -52,6 +52,8 @@
     <string name="live_coach_notification_paused">指导已暂停</string>
     <string name="live_coach_notification_title">Plainstride 教练</string>
     <string name="live_coach_persona">指导风格</string>
+    <string name="live_coach_plus_upgrade">继续使用自适应指导</string>
+    <string name="live_coach_plus_upgrade_detail">升级 Plus，获取个性化实时提示。</string>
     <string name="live_coach_privacy">每次生成提示时，实时教练只发送有限的运动摘要。分析数据不包含精确位置、心率或语音内容。</string>
     <string name="live_coach_quiet">安静</string>
     <string name="live_coach_responsive">适时</string>

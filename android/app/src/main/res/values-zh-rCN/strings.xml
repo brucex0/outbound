@@ -79,6 +79,10 @@
     <string name="rewards_settings_title">邀请与奖励</string>
     <string name="rewards_settings_body">分享邀请码赢取 Plus，或兑换贡献奖励。</string>
     <string name="rewards_plus">平步青云 Plus</string>
+    <string name="rewards_plus_settings_body">自适应计划、个性化实时指导和语音加油。</string>
+    <string name="rewards_plus_tagline">与你一起进步的自适应教练</string>
+    <string name="rewards_plus_options_detail">可选择周订阅、月订阅或年订阅。购买前会显示价格和条款。</string>
+    <string name="rewards_plus_active_detail">你的 Plus 权益已生效。可在客户中心管理续订、账单或取消订阅。</string>
     <string name="rewards_ai_planning">AI 自适应训练计划</string>
     <string name="rewards_ai_planning_detail">个性化创建，并持续动态调整</string>
     <string name="rewards_live_coach">动态实时语音指导</string>

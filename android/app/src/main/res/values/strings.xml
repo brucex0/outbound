@@ -79,6 +79,10 @@
     <string name="rewards_settings_title">Invitations and rewards</string>
     <string name="rewards_settings_body">Share your code, earn Plus, or redeem a contribution reward.</string>
     <string name="rewards_plus">Plainstride Plus</string>
+    <string name="rewards_plus_settings_body">Adaptive planning, personalized live coaching, and voice cheers.</string>
+    <string name="rewards_plus_tagline">A coach that adapts with you</string>
+    <string name="rewards_plus_options_detail">Choose a weekly, monthly, or yearly subscription. Prices and terms are shown before purchase.</string>
+    <string name="rewards_plus_active_detail">Your Plus benefits are active. Manage renewal, billing, or cancellation in Customer Center.</string>
     <string name="rewards_ai_planning">Adaptive AI planning</string>
     <string name="rewards_ai_planning_detail">Personalized creation and ongoing adjustments</string>
     <string name="rewards_live_coach">Dynamic live voice guide</string>

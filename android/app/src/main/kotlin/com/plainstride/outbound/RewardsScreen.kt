@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
@@ -55,7 +55,6 @@ class RewardsViewModel @Inject constructor(
     val state: StateFlow<RewardsUiState> = mutableState
 
     init {
-        analytics.record(AnalyticsEvent("rewards_center_opened"))
         viewModelScope.launch {
             revenueCat.ready.collect { ready -> mutableState.value = mutableState.value.copy(subscriptionAvailable = ready) }
         }
@@ -64,6 +63,8 @@ class RewardsViewModel @Inject constructor(
         }
         refresh()
     }
+
+    fun rewardsCenterOpened() = analytics.record(AnalyticsEvent("rewards_center_opened"))
 
     fun refresh() = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(loading = true)
@@ -94,9 +95,9 @@ class RewardsViewModel @Inject constructor(
 
     fun shared() = analytics.record(AnalyticsEvent("referral_code_shared", mapOf(AnalyticsProperty.SourceType to "rewards_center")))
 
-    fun paywallOpened() = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to "rewards_center")))
+    fun paywallOpened(source: String) = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to source)))
 
-    fun customerCenterOpened() = analytics.record(AnalyticsEvent("subscription_customer_center_opened", mapOf(AnalyticsProperty.EntrySource to "rewards_center")))
+    fun customerCenterOpened(source: String) = analytics.record(AnalyticsEvent("subscription_customer_center_opened", mapOf(AnalyticsProperty.EntrySource to source)))
 
     fun reconcileSubscription(source: String) = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(working = true, message = null)
@@ -118,11 +119,13 @@ class RewardsViewModel @Inject constructor(
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPreviewRevenueCatUIPurchasesAPI::class)
-@Composable fun RewardsRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+@Composable fun PlusRoute(
+    onBack: () -> Unit,
+    entrySource: String = "settings",
+    viewModel: RewardsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var invitationCode by remember { mutableStateOf("") }
-    var entitlementCode by remember { mutableStateOf("") }
     var showPaywall by remember { mutableStateOf(false) }
     var showCustomerCenter by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
@@ -159,11 +162,16 @@ class RewardsViewModel @Inject constructor(
         )
         return
     }
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_title)) }, navigationIcon = {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_plus)) }, navigationIcon = {
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
     }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(stringResource(R.string.rewards_plus), style = MaterialTheme.typography.titleMedium) }
+            item {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.rewards_plus), style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(R.string.rewards_plus_tagline), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             items(capabilities) { capability ->
                 val allowed = state.status?.entitlements?.firstOrNull { it.capability == capability.first }?.allowed == true
                 ListItem(
@@ -177,10 +185,10 @@ class RewardsViewModel @Inject constructor(
                 item {
                     Button(onClick = {
                         if (state.subscriptionActive) {
-                            viewModel.customerCenterOpened()
+                            viewModel.customerCenterOpened(entrySource)
                             showCustomerCenter = true
                         } else {
-                            viewModel.paywallOpened()
+                            viewModel.paywallOpened(entrySource)
                             showPaywall = true
                         }
                     }, Modifier.fillMaxWidth(), enabled = !state.working) {
@@ -188,8 +196,38 @@ class RewardsViewModel @Inject constructor(
                     }
                 }
             }
+            item {
+                Text(
+                    stringResource(if (state.subscriptionActive) R.string.rewards_plus_active_detail else R.string.rewards_plus_options_detail),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun RewardsRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+    var invitationCode by remember { mutableStateOf("") }
+    var entitlementCode by remember { mutableStateOf("") }
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) { viewModel.rewardsCenterOpened() }
+    state.message?.let { message ->
+        LaunchedEffect(message) {
+            snackbar.showSnackbar(context.getString(message))
+            viewModel.clearMessage()
+        }
+    }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_title)) }, navigationIcon = {
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
+    }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.status?.referral?.let { referral ->
-                item { HorizontalDivider(); Text(stringResource(R.string.rewards_invite), style = MaterialTheme.typography.titleMedium) }
+                item { Text(stringResource(R.string.rewards_invite), style = MaterialTheme.typography.titleMedium) }
                 item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
                 item { Button(onClick = {
                     viewModel.shared()

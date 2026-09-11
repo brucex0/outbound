@@ -52,6 +52,8 @@
     <string name="live_coach_notification_paused">Entrenamiento en pausa</string>
     <string name="live_coach_notification_title">Entrenador de Plainstride</string>
     <string name="live_coach_persona">Estilo de entrenamiento</string>
+    <string name="live_coach_plus_upgrade">Conservar el entrenamiento adaptativo</string>
+    <string name="live_coach_plus_upgrade_detail">Pásate a Plus para recibir indicaciones personalizadas en vivo.</string>
     <string name="live_coach_privacy">El entrenador envía un resumen limitado de la actividad para cada indicación. Las analíticas no incluyen la ubicación exacta, el pulso ni el audio hablado.</string>
     <string name="live_coach_quiet">Tranquilo</string>
     <string name="live_coach_responsive">Adaptable</string>

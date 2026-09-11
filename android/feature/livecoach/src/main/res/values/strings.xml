@@ -52,6 +52,8 @@
     <string name="live_coach_notification_paused">Coaching paused</string>
     <string name="live_coach_notification_title">Plainstride coach</string>
     <string name="live_coach_persona">Coaching style</string>
+    <string name="live_coach_plus_upgrade">Keep adaptive coaching</string>
+    <string name="live_coach_plus_upgrade_detail">Upgrade to Plus for personalized live cues.</string>
     <string name="live_coach_privacy">Live coach sends a bounded activity snapshot for each cue. Exact location, heart-rate data, and spoken audio are not included in analytics.</string>
     <string name="live_coach_quiet">Quiet</string>
     <string name="live_coach_responsive">Responsive</string>
