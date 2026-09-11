@@ -86,6 +86,10 @@
     <string name="rewards_voice_cheers">Live voice cheers</string>
     <string name="rewards_voice_cheers_detail">Receive original encouragement while you move</string>
     <string name="rewards_free_fallback">Core plans, fixed voice guidance, and live safety sharing remain available without Plus.</string>
+    <string name="rewards_view_subscription">View Plus subscription options</string>
+    <string name="rewards_manage_subscription">Manage Plus subscription</string>
+    <string name="rewards_subscription_synced">Your Plus access is up to date.</string>
+    <string name="rewards_subscription_sync_failed">Plus access could not be refreshed yet. Please try again shortly.</string>
     <string name="rewards_invite">Invite and earn</string>
     <string name="rewards_your_code">Your invitation code</string>
     <string name="rewards_share_invitation">Share invitation</string>

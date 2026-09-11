@@ -26,26 +26,51 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import com.plainstride.outbound.subscriptions.RevenueCatCoordinator
+import com.revenuecat.purchases.CustomerInfo
+import com.revenuecat.purchases.models.StoreTransaction
+import com.revenuecat.purchases.ui.revenuecatui.ExperimentalPreviewRevenueCatUIPurchasesAPI
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialog
+import com.revenuecat.purchases.ui.revenuecatui.PaywallDialogOptions
+import com.revenuecat.purchases.ui.revenuecatui.PaywallListener
+import com.revenuecat.purchases.ui.revenuecatui.customercenter.CustomerCenter
 
-data class RewardsUiState(val status: RewardsStatusDto? = null, val loading: Boolean = true, val working: Boolean = false, val message: Int? = null)
+data class RewardsUiState(
+    val status: RewardsStatusDto? = null,
+    val loading: Boolean = true,
+    val working: Boolean = false,
+    val subscriptionAvailable: Boolean = false,
+    val subscriptionActive: Boolean = false,
+    val message: Int? = null,
+)
 
 @HiltViewModel
 class RewardsViewModel @Inject constructor(
     private val api: RewardsApiService,
     private val tokens: AccessTokenProvider,
     private val analytics: ProductAnalytics,
+    revenueCat: RevenueCatCoordinator,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(RewardsUiState())
     val state: StateFlow<RewardsUiState> = mutableState
 
-    init { analytics.record(AnalyticsEvent("rewards_center_opened")); refresh() }
+    init {
+        analytics.record(AnalyticsEvent("rewards_center_opened"))
+        viewModelScope.launch {
+            revenueCat.ready.collect { ready -> mutableState.value = mutableState.value.copy(subscriptionAvailable = ready) }
+        }
+        viewModelScope.launch {
+            revenueCat.hasProEntitlement.collect { active -> mutableState.value = mutableState.value.copy(subscriptionActive = active) }
+        }
+        refresh()
+    }
 
     fun refresh() = viewModelScope.launch {
         mutableState.value = mutableState.value.copy(loading = true)
         val token = tokens.validAccessToken()
         val result = token?.let { runCatching { api.status("Bearer $it") }.getOrNull() }
-        mutableState.value = if (result?.isSuccessful == true) RewardsUiState(status = result.body(), loading = false)
-        else RewardsUiState(loading = false, message = R.string.rewards_load_failed)
+        mutableState.value = if (result?.isSuccessful == true) mutableState.value.copy(status = result.body(), loading = false)
+        else mutableState.value.copy(loading = false, message = R.string.rewards_load_failed)
     }
 
     fun redeem(code: String, invitation: Boolean) = viewModelScope.launch {
@@ -68,15 +93,73 @@ class RewardsViewModel @Inject constructor(
     }
 
     fun shared() = analytics.record(AnalyticsEvent("referral_code_shared", mapOf(AnalyticsProperty.SourceType to "rewards_center")))
+
+    fun paywallOpened() = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to "rewards_center")))
+
+    fun customerCenterOpened() = analytics.record(AnalyticsEvent("subscription_customer_center_opened", mapOf(AnalyticsProperty.EntrySource to "rewards_center")))
+
+    fun reconcileSubscription(source: String) = viewModelScope.launch {
+        mutableState.value = mutableState.value.copy(working = true, message = null)
+        val token = tokens.validAccessToken()
+        val response = token?.let { runCatching { api.reconcileSubscription("Bearer $it") }.getOrNull() }
+        val success = response?.isSuccessful == true
+        analytics.record(AnalyticsEvent("subscription_reconciled", mapOf(
+            AnalyticsProperty.SourceType to source,
+            AnalyticsProperty.Result to if (success) "success" else "failure",
+        )))
+        mutableState.value = mutableState.value.copy(
+            working = false,
+            message = if (success) R.string.rewards_subscription_synced else R.string.rewards_subscription_sync_failed,
+        )
+        if (success) refresh()
+    }
+
+    fun clearMessage() { mutableState.value = mutableState.value.copy(message = null) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPreviewRevenueCatUIPurchasesAPI::class)
 @Composable fun RewardsRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     var invitationCode by remember { mutableStateOf("") }
     var entitlementCode by remember { mutableStateOf("") }
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_title)) }, navigationIcon = {
+    var showPaywall by remember { mutableStateOf(false) }
+    var showCustomerCenter by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    state.message?.let { message ->
+        LaunchedEffect(message) {
+            snackbar.showSnackbar(context.getString(message))
+            viewModel.clearMessage()
+        }
+    }
+    if (showPaywall) {
+        PaywallDialog(
+            PaywallDialogOptions.Builder()
+                .setDismissRequest { showPaywall = false }
+                .setListener(object : PaywallListener {
+                    override fun onPurchaseCompleted(customerInfo: CustomerInfo, storeTransaction: StoreTransaction) {
+                        showPaywall = false
+                        viewModel.reconcileSubscription("purchase")
+                    }
+                    override fun onRestoreCompleted(customerInfo: CustomerInfo) {
+                        showPaywall = false
+                        viewModel.reconcileSubscription("restore")
+                    }
+                })
+                .build(),
+        )
+    }
+    if (showCustomerCenter) {
+        CustomerCenter(
+            modifier = Modifier.fillMaxSize(),
+            onDismiss = {
+                showCustomerCenter = false
+                viewModel.reconcileSubscription("customer_center")
+            },
+        )
+        return
+    }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_title)) }, navigationIcon = {
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
     }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -90,6 +173,21 @@ class RewardsViewModel @Inject constructor(
                 )
             }
             item { Text(stringResource(R.string.rewards_free_fallback), style = MaterialTheme.typography.bodySmall) }
+            if (state.subscriptionAvailable) {
+                item {
+                    Button(onClick = {
+                        if (state.subscriptionActive) {
+                            viewModel.customerCenterOpened()
+                            showCustomerCenter = true
+                        } else {
+                            viewModel.paywallOpened()
+                            showPaywall = true
+                        }
+                    }, Modifier.fillMaxWidth(), enabled = !state.working) {
+                        Text(stringResource(if (state.subscriptionActive) R.string.rewards_manage_subscription else R.string.rewards_view_subscription))
+                    }
+                }
+            }
             state.status?.referral?.let { referral ->
                 item { HorizontalDivider(); Text(stringResource(R.string.rewards_invite), style = MaterialTheme.typography.titleMedium) }
                 item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
@@ -109,7 +207,6 @@ class RewardsViewModel @Inject constructor(
             item { OutlinedTextField(entitlementCode, { entitlementCode = it.take(64) }, label = { Text(stringResource(R.string.rewards_entitlement_code)) }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
             item { Button({ viewModel.redeem(entitlementCode, false); entitlementCode = "" }, Modifier.fillMaxWidth(), enabled = !state.working && entitlementCode.isNotBlank()) { Text(stringResource(R.string.rewards_redeem_reward)) } }
             if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.message?.let { message -> item { Text(stringResource(message), color = MaterialTheme.colorScheme.secondary) } }
         }
     }
 }

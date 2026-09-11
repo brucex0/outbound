@@ -86,6 +86,10 @@
     <string name="rewards_voice_cheers">Ánimos de voz en vivo</string>
     <string name="rewards_voice_cheers_detail">Recibe mensajes de ánimo originales mientras te mueves</string>
     <string name="rewards_free_fallback">Los planes básicos, la guía de voz fija y las funciones de seguridad en vivo siguen disponibles sin Plus.</string>
+    <string name="rewards_view_subscription">Ver opciones de suscripción Plus</string>
+    <string name="rewards_manage_subscription">Gestionar la suscripción Plus</string>
+    <string name="rewards_subscription_synced">Tu acceso a Plus está actualizado.</string>
+    <string name="rewards_subscription_sync_failed">Todavía no se pudo actualizar tu acceso a Plus. Vuelve a intentarlo en unos instantes.</string>
     <string name="rewards_invite">Invita y gana</string>
     <string name="rewards_your_code">Tu código de invitación</string>
     <string name="rewards_share_invitation">Compartir invitación</string>

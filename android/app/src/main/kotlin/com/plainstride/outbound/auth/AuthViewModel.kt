@@ -28,6 +28,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.plainstride.outbound.notifications.PlainstrideMessagingService
 import com.plainstride.outbound.feature.safety.LiveShareCoordinator
 import com.plainstride.outbound.core.database.AccountDatabaseOperations
+import com.plainstride.outbound.subscriptions.RevenueCatCoordinator
 
 data class AuthUiState(
     val session: SessionState = SessionState.Loading,
@@ -46,6 +47,7 @@ class AuthViewModel @Inject constructor(
     private val analytics: ProductAnalytics,
     private val push: LiveShareCoordinator,
     private val accountData: AccountDatabaseOperations,
+    private val revenueCat: RevenueCatCoordinator,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val operation = MutableStateFlow<AuthOperation?>(null)
@@ -64,6 +66,7 @@ class AuthViewModel @Inject constructor(
                     SessionState.Loading, SessionState.SignedOut -> null
                 }
                 analytics.setUserId(accountId)
+                revenueCat.activate(accountId)
             }
         }
         viewModelScope.launch { sessions.restore() }

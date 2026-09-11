@@ -36,6 +36,8 @@ android {
         val spotifyClientId = providers.gradleProperty("PLAINSTRIDE_SPOTIFY_CLIENT_ID").orElse("")
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${spotifyClientId.get()}\"")
         buildConfigField("String", "SPOTIFY_REDIRECT_URI", "\"com.plainstride.outbound://spotify-callback\"")
+        val revenueCatPublicSdkKey = providers.gradleProperty("PLAINSTRIDE_REVENUECAT_PUBLIC_SDK_KEY").orElse("")
+        buildConfigField("String", "REVENUECAT_PUBLIC_SDK_KEY", "\"${revenueCatPublicSdkKey.get()}\"")
         manifestPlaceholders["usesCleartextTraffic"] = "false"
         manifestPlaceholders["appLabel"] = "Plainstride"
         manifestPlaceholders["appAuthRedirectScheme"] = "com.plainstride.outbound"
@@ -73,6 +75,9 @@ android {
                 .orElse("1:186140050970:android:37ef5d92b7cbcc67a033a3")
             buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${debugFirebaseApplicationId.get()}\"")
             resValue("string", "google_app_id", debugFirebaseApplicationId.get())
+            val debugRevenueCatPublicSdkKey = providers.gradleProperty("PLAINSTRIDE_REVENUECAT_DEBUG_PUBLIC_SDK_KEY")
+                .orElse("test_MnITpspzmjJgKDrvApGBIsSKlWs")
+            buildConfigField("String", "REVENUECAT_PUBLIC_SDK_KEY", "\"${debugRevenueCatPublicSdkKey.get()}\"")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             manifestPlaceholders["appLabel"] = "PlainstrideD"
         }
@@ -109,6 +114,8 @@ tasks.register("verifyPlayReleaseConfiguration") {
         check(!providers.gradleProperty("PLAINSTRIDE_MAPS_API_KEY").orNull.isNullOrBlank()) { "PLAINSTRIDE_MAPS_API_KEY is required for Play artifacts." }
         check(!providers.gradleProperty("PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID").orNull.isNullOrBlank()) { "PLAINSTRIDE_GOOGLE_SERVER_CLIENT_ID is required for Play artifacts." }
         check(listOf("PLAINSTRIDE_FIREBASE_APPLICATION_ID", "PLAINSTRIDE_FIREBASE_API_KEY", "PLAINSTRIDE_FIREBASE_PROJECT_ID").all { !providers.gradleProperty(it).orNull.isNullOrBlank() }) { "Firebase application ID, API key, and project ID are required for Play artifacts." }
+        val revenueCatKey = providers.gradleProperty("PLAINSTRIDE_REVENUECAT_PUBLIC_SDK_KEY").orNull
+        check(!revenueCatKey.isNullOrBlank() && !revenueCatKey.startsWith("test_")) { "A production Google RevenueCat SDK key is required for Play artifacts." }
     }
 }
 
@@ -166,6 +173,8 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
     implementation(libs.appauth)
+    implementation(libs.revenuecat.purchases)
+    implementation(libs.revenuecat.purchases.ui)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.health.connect)
     implementation(libs.androidx.hilt.work)

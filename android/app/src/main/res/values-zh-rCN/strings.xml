@@ -86,6 +86,10 @@
     <string name="rewards_voice_cheers">实时语音加油</string>
     <string name="rewards_voice_cheers_detail">运动途中接收好友的原创语音鼓励</string>
     <string name="rewards_free_fallback">无需 Plus 也可继续使用基础计划、固定语音指导和实时安全共享。</string>
+    <string name="rewards_view_subscription">查看 Plus 订阅方案</string>
+    <string name="rewards_manage_subscription">管理 Plus 订阅</string>
+    <string name="rewards_subscription_synced">你的 Plus 权益已更新。</string>
+    <string name="rewards_subscription_sync_failed">Plus 权益暂时无法刷新，请稍后重试。</string>
     <string name="rewards_invite">邀请好友，赢取权益</string>
     <string name="rewards_your_code">你的邀请码</string>
     <string name="rewards_share_invitation">分享邀请</string>

@@ -36,11 +36,17 @@ import retrofit2.http.POST
     val durationDays: Int? = null,
     val bundle: String? = null,
 )
+@Serializable data class SubscriptionReconciliationDto(
+    val reconciled: Boolean,
+    val active: Boolean,
+    val expiresAt: String? = null,
+)
 
 interface RewardsApiService {
     @GET("v1/rewards") suspend fun status(@Header("Authorization") authorization: String): Response<RewardsStatusDto>
     @POST("v1/rewards/referrals/claim") suspend fun claimInvitation(@Header("Authorization") authorization: String, @Body body: RewardCodeRequestDto): Response<RewardRedemptionDto>
     @POST("v1/rewards/codes/redeem") suspend fun redeemEntitlement(@Header("Authorization") authorization: String, @Body body: RewardCodeRequestDto): Response<RewardRedemptionDto>
+    @POST("v1/rewards/subscription/reconcile") suspend fun reconcileSubscription(@Header("Authorization") authorization: String): Response<SubscriptionReconciliationDto>
 }
 
 fun createRewardsApi(baseUrl: String, client: OkHttpClient): RewardsApiService = Retrofit.Builder()

@@ -32,6 +32,8 @@ The build must not require Firebase files, signing secrets, provider credentials
 
 The debug package is registered in Firebase as `com.plainstride.outbound.debug` and uses its own Firebase application ID. Override that ID with `PLAINSTRIDE_FIREBASE_DEBUG_APPLICATION_ID` only when targeting a different Firebase project; the Google server client ID remains shared with release. Gradle also emits the Firebase application ID, API key, project ID, and messaging sender ID as Android string resources so Firebase's startup provider can initialize Analytics and Messaging before `Application.onCreate`. Override the default sender ID with `PLAINSTRIDE_FIREBASE_MESSAGING_SENDER_ID` when targeting another project.
 
+Debug builds use the RevenueCat Test Store key by default; override it with `PLAINSTRIDE_REVENUECAT_DEBUG_PUBLIC_SDK_KEY`. Set the production Google RevenueCat SDK key as `PLAINSTRIDE_REVENUECAT_PUBLIC_SDK_KEY`; Play release verification rejects an absent key or a `test_` key. See `docs/subscriptions.md` before enabling it in a store build.
+
 Application startup enforces that debug identity support cannot be enabled in a release build.
 
 To develop against a backend running on the Android emulator host, override the debug API URL:
