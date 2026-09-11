@@ -116,8 +116,10 @@ fun ActivityHistoryRoute(
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(accountId) { viewModel.start(accountId) }
-    LaunchedEffect(initialActivityId, state.loading) { if (!state.loading && initialActivityId != null) viewModel.open(initialActivityId) }
+    LaunchedEffect(accountId, initialActivityId) {
+        viewModel.start(accountId)
+        initialActivityId?.let(viewModel::open)
+    }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     val selected = state.selected
     if (selected == null) ActivityHistoryScreen(state, viewModel::open, viewModel::loadMore, viewModel::createManual, onBack, modifier)

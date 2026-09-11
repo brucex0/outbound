@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.social
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,6 +8,7 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,14 +36,19 @@ import kotlinx.serialization.json.*
 import com.plainstride.outbound.core.designsystem.*
 
 @Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
-    var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
+    var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(targetType,targetId,state.loading){
         if (!state.loading && targetType == "connections") connectionsOpen = true
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
-    SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, onActivity, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, {createCircle=true}, modifier)
+    if (selectedActivity == null) {
+        SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, {createCircle=true}, modifier)
+    } else {
+        BackHandler { selectedActivity = null }
+        SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
+    }
     if (connectionsOpen) ConnectionsDialog(state, viewModel::search, viewModel::openProfile, { invitation -> viewModel.openTarget("invitation", invitation.id) },viewModel::requestConnectionLink) { connectionsOpen = false }
     state.connectionLink?.let{link->ConnectionQrDialog(link,viewModel::closeConnectionLink)}
     state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile, { viewModel.connect(it) }, {it.connectionId?.let(viewModel::acceptConnection)}, {it.connectionId?.let(viewModel::removeConnection)}) }
@@ -56,7 +63,7 @@ import com.plainstride.outbound.core.designsystem.*
 }
 @Composable private fun ActionDialog(title:String,action:String,onAction:()->Unit,onClose:()->Unit)=AlertDialog(onDismissRequest=onClose,title={Text(title)},confirmButton={TextButton(onAction){Text(action)}},dismissButton={TextButton(onClose){Text(stringResource(R.string.social_done))}})
 
-@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(String)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -87,7 +94,7 @@ import com.plainstride.outbound.core.designsystem.*
         item { SectionHeader(stringResource(R.string.social_groups)) }
         items(state.home.groups, key = SocialGroup::id) { GroupCard(it) { group(it) } }
         item { SectionHeader(stringResource(R.string.social_feed)) }
-        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.id?.let(openActivity) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.let(openActivity) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
         if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
         if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
@@ -200,6 +207,58 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
             }
         }
     }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SocialActivityDetail(activity: FeedActivity, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val route = remember(activity.route) { activity.route.routeCoordinates() }
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            TopAppBar(
+                title = { Text(activity.title, maxLines = 1) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(formatSocialDate(activity.startedAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
+                        ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
+                        ActivityStat(formatPace(activity.averagePaceSecsPerKm), stringResource(R.string.social_pace))
+                    }
+                }
+            }
+            if (route.size > 1) {
+                item {
+                    Text(
+                        stringResource(R.string.social_route),
+                        Modifier.padding(horizontal = 20.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    PlainstrideRouteMap(
+                        points = route,
+                        modifier = Modifier.fillMaxWidth().height(300.dp).padding(top = 10.dp),
+                        showEndpointMarkers = true,
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
 private fun formatDistance(value:Double?)=value?.let{"%.2f km".format(it/1000)} ?: "—"
