@@ -49,12 +49,20 @@ struct RewardsCenterView: View {
             if let referral = status?.referral {
                 LabeledContent(text("rewards.your_code"), value: referral.code)
                     .textSelection(.enabled)
-                ShareLink(item: referral.shareURL, message: Text(text("rewards.share_message"))) {
+                Button {
+                    let message = text("rewards.share_message")
+                    let invitation = "\(message)\n\n\(referral.shareURL.absoluteString)"
+                    Task {
+                        await SystemSharePresenter.present(activityItems: [invitation])
+                    }
+                    Task {
+                        await analyticsManager?.track(.init(.referralCodeShared, properties: [
+                            .sourceType: .string("rewards_center")
+                        ]))
+                    }
+                } label: {
                     Label(text("rewards.share_invitation"), systemImage: "square.and.arrow.up")
                 }
-                .simultaneousGesture(TapGesture().onEnded {
-                    Task { await analyticsManager?.track(.init(.referralCodeShared, properties: [.sourceType: .string("rewards_center")])) }
-                })
                 LabeledContent(text("rewards.qualified_invites"), value: "\(referral.qualifiedCount)")
                 if referral.pendingCount > 0 {
                     LabeledContent(text("rewards.pending_invites"), value: "\(referral.pendingCount)")
