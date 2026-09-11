@@ -28,12 +28,10 @@ router.get("/standalone-workouts", async (c) => {
 });
 
 const objectiveSchema = z.enum(["eventPreparation", "endurance", "speed", "strength", "weightLoss", "fitnessMaintenance", "healthEnergy", "other"]);
-const modalitySchema = z.enum(["run", "walk", "bike", "strength", "mobility"]);
+const activitySchema = z.enum(["run", "walk", "bike"]);
 const goalSchema = z.object({
   type: objectiveSchema,
-  supportingObjectives: z.array(objectiveSchema).max(2).optional(),
-  primaryModality: modalitySchema.optional(),
-  supportingModalities: z.array(modalitySchema).max(4).optional(),
+  activities: z.array(activitySchema).min(1).max(3),
   baselineContext: z.enum(["startingOut", "currentlyActive", "returningAfterBreak"]).optional(),
   targetDate: z.string().optional().nullable(),
   targetDistanceMeters: z.number().positive().optional().nullable(),

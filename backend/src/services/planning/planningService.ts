@@ -85,9 +85,7 @@ export async function createGoal(
       data: {
         userId,
         type: normalized.type,
-        supportingObjectives: normalized.supportingObjectives,
-        primaryModality: normalized.primaryModality,
-        supportingModalities: normalized.supportingModalities,
+        activities: normalized.activities,
         baselineContext: normalized.baselineContext,
         targetDate: input.targetDate ? new Date(input.targetDate) : null,
         targetDistanceMeters: input.targetDistanceMeters ?? null,

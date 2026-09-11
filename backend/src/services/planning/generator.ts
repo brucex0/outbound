@@ -13,9 +13,7 @@ import type {
 export interface GeneratePlanInput {
   goal: {
     type: string;
-    supportingObjectives: string[];
-    primaryModality: string;
-    supportingModalities: Modality[];
+    activities: Modality[];
     baselineContext: string;
     preferredDays: string[];
     preferredLongSessionDay: string | null;
@@ -33,9 +31,7 @@ export interface GeneratePlanInput {
 export function normalizeGoalInput(input: CreateTrainingGoalInput) {
   return {
     type: input.type,
-    supportingObjectives: [...new Set(input.supportingObjectives ?? [])].filter((value) => value !== input.type).slice(0, 2),
-    primaryModality: input.primaryModality ?? "run",
-    supportingModalities: [...new Set(input.supportingModalities ?? [])].filter((value) => value !== input.primaryModality),
+    activities: [...new Set(input.activities)].slice(0, 3),
     baselineContext: input.baselineContext ?? "currentlyActive",
     priority: input.priority ?? defaultPriorityFor(input.type),
     preferredDays: normalizePreferredDays(input.preferredDays),
@@ -85,9 +81,8 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       reason: input.reason ?? "initial",
       horizonDays: 14,
       sessions: workouts.length,
-      modality: input.goal.primaryModality,
-      supportingModalities: input.goal.supportingModalities,
-      objectives: [input.goal.type, ...input.goal.supportingObjectives],
+      activities: input.goal.activities,
+      objective: input.goal.type,
       baselineContext: input.goal.baselineContext,
       preferredRunGoalType: input.goal.preferredRunGoalType,
       fatigueRisk: input.athleteState.fatigueRisk,
@@ -133,28 +128,31 @@ function stimulusFor(
   if (athleteState.fatigueRisk === "high") {
     return index % 2 === 0 ? "recovery" : "mobility";
   }
-  if (goal.primaryModality === "strength") {
-    return "strength";
-  }
   const sessionsPerWeek = Math.max(1, goal.daysPerWeekTarget);
   if (sessionsPerWeek > 1 && isPreferredLongSessionDay) return "longEndurance";
   const positionInWeek = index % sessionsPerWeek;
   if (positionInWeek === sessionsPerWeek - 1 && total >= 2) return "longEndurance";
   if (sessionsPerWeek >= 3 && positionInWeek === 1 && athleteState.fatigueRisk === "low") {
-    return goal.type === "eventPreparation" || goal.type === "speed" ? "threshold" : "easyAerobic";
+    const hasQualityActivity = goal.activities.some((activity) => activity === "run" || activity === "bike");
+    return hasQualityActivity && (goal.type === "eventPreparation" || goal.type === "speed") ? "threshold" : "easyAerobic";
   }
   return "easyAerobic";
 }
 
 function modalityFor(goal: GeneratePlanInput["goal"], stimulus: TrainingStimulus, index: number): Modality {
-  if (stimulus === "mobility" || stimulus === "recovery" && goal.primaryModality === "mobility") return "mobility";
+  if (stimulus === "mobility") return "mobility";
   if (stimulus === "strength" || stimulus === "hypertrophy") return "strength";
-  const supporting = goal.supportingModalities;
-  const chosen = index > 0 && supporting.length > 0 && index % 2 === 1
-    ? supporting[(index - 1) % supporting.length]
-    : goal.primaryModality;
-  if (["run", "walk", "bike", "strength", "mobility"].includes(chosen)) return chosen as Modality;
-  throw new Error(`Unsupported planning modality: ${chosen}`);
+  const activities: Modality[] = goal.activities.length > 0 ? goal.activities : ["run"];
+  const rotated = activities.map((_, offset) => activities[(index + offset) % activities.length]);
+  return rotated.find((activity) => activitySupports(activity, stimulus)) ?? activities[index % activities.length];
+}
+
+function activitySupports(activity: Modality, stimulus: TrainingStimulus): boolean {
+  if (activity === "walk") return ["easyAerobic", "longEndurance", "recovery"].includes(stimulus);
+  if (activity === "run" || activity === "bike") {
+    return ["easyAerobic", "longEndurance", "threshold", "speed", "recovery"].includes(stimulus);
+  }
+  return false;
 }
 
 function durationFor(

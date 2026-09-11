@@ -708,9 +708,7 @@ model TrainingGoal {
   userId               String
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type                 String
-  supportingObjectives String[]  @default([])
-  primaryModality      String
-  supportingModalities String[]  @default([])
+  activities           String[]  @default(["run"])
   baselineContext      String    @default("currentlyActive")
   targetDate           DateTime?
   targetDistanceMeters Float?
