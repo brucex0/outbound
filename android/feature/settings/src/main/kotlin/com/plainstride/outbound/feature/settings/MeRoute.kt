@@ -58,18 +58,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
-import android.graphics.BitmapFactory
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -81,6 +72,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
+import com.plainstride.outbound.feature.social.SocialAvatar
+import com.plainstride.outbound.feature.social.SocialConnectionsPreview
+import com.plainstride.outbound.feature.social.SocialPerson
 
 private enum class MePage { Overview, Settings, Milestones }
 
@@ -176,7 +170,14 @@ private fun MeOverview(
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onSettings)) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ProfileAvatar(state.account?.avatarUrl, state.account?.displayName ?: stringResource(R.string.runner))
+                    SocialAvatar(
+                        person = SocialPerson(
+                            id = state.account?.id.orEmpty(),
+                            displayName = state.account?.displayName ?: stringResource(R.string.runner),
+                            avatarUrl = state.account?.avatarUrl,
+                        ),
+                        size = 58.dp,
+                    )
                     Column(Modifier.weight(1f)) {
                         Text(state.account?.displayName ?: stringResource(R.string.runner), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         state.account?.username?.let { Text("@$it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -276,39 +277,6 @@ private fun MilestonesScreen(milestones: List<MeMilestone>, onBack: () -> Unit, 
 private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): String = (state.summary?.weeklyDistanceMeters ?: localMeters).let { meters ->
     if (state.preferences.measurement == MeasurementSystem.Metric) "%.1f".format(meters / 1_000)
     else "%.1f".format(meters / 1_609.344)
-}
-
-@Composable
-private fun ProfileAvatar(url: String?, name: String) {
-    val bitmap by produceState<android.graphics.Bitmap?>(null, url) {
-        value = withContext(Dispatchers.IO) {
-            url?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
-                ?.let { source ->
-                    runCatching {
-                        java.net.URL(source).openStream().use(BitmapFactory::decodeStream)
-                    }.getOrNull()
-                }
-        }
-    }
-    Box(
-        Modifier.size(58.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap!!.asImageBitmap(),
-                contentDescription = name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            Text(
-                name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase(),
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
 }
 
 @Composable private fun SummaryStat(value: String, label: String) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
