@@ -15,6 +15,7 @@ The backend is authoritative. A live-sharing session snapshots voice-cheer acces
 ## Personal Invitation Rewards
 
 - Existing `ReferralLink` codes are each user's permanent personal invitation code.
+- Referral share copy tells recipients who install the app to return to the original message and tap the link again. The web invitation landing page repeats these steps because App Store installation does not preserve the referral URL.
 - A new account can claim one inviter during its first seven days.
 - The invitee immediately receives 14 days of Plus.
 - The inviter receives 14 days after the invitee saves an activity lasting at least 10 minutes.

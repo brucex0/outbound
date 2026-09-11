@@ -118,7 +118,9 @@ async function inviteLanding(c: Context<AppEnv>) {
     main { width: min(30rem, calc(100% - 3rem)); padding: 2.5rem; border-radius: 2rem; background: #fff; box-shadow: 0 1.5rem 5rem #29291f1a; text-align: center; }
     .mark { margin: 0 auto 1.25rem; width: 4rem; height: 4rem; display: grid; place-items: center; border-radius: 1.25rem; background: #e5ef9a; font-size: 2rem; }
     h1 { margin: 0; font-size: 2rem; letter-spacing: -.04em; }
-    p { margin: .8rem 0 1.8rem; color: #66665e; line-height: 1.5; }
+    p { margin: .8rem 0 1.25rem; color: #66665e; line-height: 1.5; }
+    ol { margin: 0 0 1.8rem; padding-left: 1.4rem; color: #4f4f48; line-height: 1.5; text-align: left; }
+    li + li { margin-top: .65rem; }
     .stores { display: flex; flex-wrap: wrap; justify-content: center; gap: .7rem; }
     a.button { display: inline-block; padding: .9rem 1.3rem; border-radius: 999px; background: #171714; color: #fff; font-weight: 650; text-decoration: none; }
     .beta { margin-top: 1.5rem; display: grid; gap: .55rem; }
@@ -130,8 +132,12 @@ async function inviteLanding(c: Context<AppEnv>) {
 <body>
   <main>
     <div class="mark" aria-hidden="true">🏃</div>
-    <h1>Run together.</h1>
-    <p>Open this invitation in Plainstride. If you don't have the app yet, choose the version for your device.</p>
+    <h1>Install, then reopen your invitation.</h1>
+    <p>This link contains your Plainstride invitation code.</p>
+    <ol>
+      <li>Download Plainstride for your device.</li>
+      <li>Return to the original invitation message and tap the same link again. Plainstride will claim the code after you sign in.</li>
+    </ol>
     <div class="stores">${storeButtons}</div>
     ${betaButtons}
     <small>This same invitation works after you install or update the app.</small>
