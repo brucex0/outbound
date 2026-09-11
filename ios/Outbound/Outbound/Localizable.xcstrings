@@ -4608,7 +4608,7 @@
       }
     },
     "activity.completed.duration.format": {
-      "comment": "%d is the completed workout duration rounded to whole minutes.",
+      "comment": "%d is the completed workout duration rounded to whole minutes. [android:activity] Generated Android name: activity_completed_duration_format.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4631,7 +4631,7 @@
       }
     },
     "activity.completed.duration_calories.format": {
-      "comment": "The first %d is workout minutes and the second %d is calculated dietary Calories (kilocalories).",
+      "comment": "The first %d is workout minutes and the second %d is calculated dietary Calories (kilocalories). [android:activity] Generated Android name: activity_completed_duration_calories_format.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -36754,6 +36754,75 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成第一次活动后，这里会显示活动亮点。"
+          }
+        }
+      }
+    },
+    "activity.recent.title": {
+      "comment": "Compact heading for the recent activity card on Android Me. [android:activity] Generated Android name: activity_recent_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RECENT"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RECIENTE"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近"
+          }
+        }
+      }
+    },
+    "activity.recent.import": {
+      "comment": "Accessibility label for importing recent workouts from Android Health Connect. [android:activity] Generated Android name: activity_recent_import.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import from Health Connect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar desde Health Connect"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从健康数据同步导入"
+          }
+        }
+      }
+    },
+    "activity.recent.all": {
+      "comment": "Link from the recent activity card to full activity history. [android:activity] Generated Android name: activity_recent_all.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
           }
         }
       }
