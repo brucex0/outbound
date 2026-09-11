@@ -230,6 +230,8 @@ final class LiveCoachSessionController {
         case .walk: "walking"
         case .hike: "hiking"
         case .swim: "swimming"
+        case .strength: "strength"
+        case .mobility: "mobility"
         }
     }
 

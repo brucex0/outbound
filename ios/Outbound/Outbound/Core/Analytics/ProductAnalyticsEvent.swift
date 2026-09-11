@@ -155,6 +155,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case onboardingIdentityCompleted = "onboarding_identity_completed"
     case onboardingTrainingProfileViewed = "onboarding_training_profile_viewed"
     case onboardingTrainingProfileCompleted = "onboarding_training_profile_completed"
+    case onboardingResolved = "onboarding_resolved"
+    case planBuilderOpened = "plan_builder_opened"
+    case planBuilderExited = "plan_builder_exited"
+    case planCreationCompleted = "plan_creation_completed"
     case authenticationSessionRecovered = "authentication_session_recovered"
     case accountTransferIntentCreated = "account_transfer_intent_created"
     case accountTransferShared = "account_transfer_shared"
@@ -183,6 +187,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
+    case stepName = "step_name"
     case timestampSource = "timestamp_source"
     case direction
     case activityType = "activity_type"
@@ -394,6 +399,10 @@ enum ProductAnalyticsSchema {
         .onboardingIdentityCompleted: [.missingDisplayName, .missingEmail],
         .onboardingTrainingProfileViewed: [],
         .onboardingTrainingProfileCompleted: [.result, .sourceType],
+        .onboardingResolved: [.result],
+        .planBuilderOpened: [.entrySource],
+        .planBuilderExited: [.stepName],
+        .planCreationCompleted: [.result, .latencyBucket],
         .authenticationSessionRecovered: [.result],
         .accountTransferIntentCreated: [.result, .errorCategory],
         .accountTransferShared: [.sourceType],

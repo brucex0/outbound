@@ -419,6 +419,7 @@ final class LocationManager: NSObject, ObservableObject {
         case .walking, .hiking: 150...3_600
         case .running: 150...1_500
         case .swimming: 150...3_600
+        case .strengthTraining, .mobility: 150...3_600
         }
         return bounds.contains(pace) ? pace : nil
     }

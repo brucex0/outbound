@@ -6,6 +6,8 @@ enum SportType: String, Codable, CaseIterable, Identifiable {
     case walk
     case hike
     case swim
+    case strength
+    case mobility
 
     var id: String { rawValue }
 
@@ -16,6 +18,8 @@ enum SportType: String, Codable, CaseIterable, Identifiable {
         case .walk: String(localized: "activity.type.walk", defaultValue: "Walk")
         case .hike: String(localized: "activity.type.hike", defaultValue: "Hike")
         case .swim: String(localized: "activity.type.swim", defaultValue: "Swim")
+        case .strength: String(localized: "plan_builder.activity.strength", defaultValue: "Strength")
+        case .mobility: String(localized: "plan_builder.activity.mobility", defaultValue: "Mobility")
         }
     }
 
@@ -26,6 +30,8 @@ enum SportType: String, Codable, CaseIterable, Identifiable {
         case .walk: "figure.walk"
         case .hike: "figure.hiking"
         case .swim: "figure.pool.swim"
+        case .strength: "dumbbell.fill"
+        case .mobility: "figure.flexibility"
         }
     }
 }
@@ -38,6 +44,8 @@ extension SportType {
         case .walk: .walking
         case .hike: .hiking
         case .swim: .swimming
+        case .strength: .strengthTraining
+        case .mobility: .mobility
         }
     }
 
@@ -47,6 +55,8 @@ extension SportType {
         case .walking: self = .walk
         case .hiking: self = .hike
         case .swimming: self = .swim
+        case .strengthTraining: self = .strength
+        case .mobility: self = .mobility
         case .running, .none: self = .run
         }
     }

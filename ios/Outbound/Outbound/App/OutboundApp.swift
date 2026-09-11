@@ -295,10 +295,7 @@ struct OutboundApp: App {
     }
 
     private var onboardingRoot: some View {
-        SimplifiedOnboardingFlow { profile in
-            measurementPreferences.unitSystem = profile.bodyProfile.unitSystem
-            dailyCheckInStore.select(profile.suggestedReadiness)
-        }
+        SimplifiedOnboardingFlow { }
         .environmentObject(authStore)
         .environmentObject(onboardingStore)
         .environmentObject(personalizationStore)
@@ -332,10 +329,10 @@ struct OutboundApp: App {
                 break
             }
             let identity = authStore.user?.id ?? authStore.localSessionLabel ?? "local"
-            let decision = await onboardingCompletionDecision(identity: identity)
+            let decision = await onboardingStatusDecision(identity: identity)
             onboardingStore.prepareForAuthenticatedUser(
                 identity: identity,
-                authoritativeCompletion: decision.completed,
+                authoritativeStatus: decision.status,
                 failOpenOnUnknown: true
             )
             destination = onboardingStore.isPresented ? .onboarding : .main
@@ -346,35 +343,32 @@ struct OutboundApp: App {
         trackInitialStartupIfNeeded(destination, source: source)
     }
 
-    private func onboardingCompletionDecision(identity: String) async -> OnboardingCompletionDecision {
-        if onboardingStore.hasCompletedOnboardingLocally(identity: identity) {
-            return OnboardingCompletionDecision(completed: true, source: "local_cache")
+    private func onboardingStatusDecision(identity: String) async -> OnboardingStatusDecision {
+        if let status = authStore.user?.resolvedOnboardingStatus {
+            return OnboardingStatusDecision(status: status, source: "auth_session")
         }
 
-        if authStore.user?.onboardingCompleted == true {
-            return OnboardingCompletionDecision(completed: true, source: "auth_session")
+        if let status = onboardingStore.resolvedStatusLocally(identity: identity) {
+            return OnboardingStatusDecision(status: status, source: "local_cache")
         }
 
         if authStore.sessionOrigin == .server {
-            guard let completed = authStore.user?.onboardingCompleted else {
-                return OnboardingCompletionDecision(completed: nil, source: "fail_open_unavailable")
-            }
-            return OnboardingCompletionDecision(completed: completed, source: "auth_session")
+            return OnboardingStatusDecision(status: nil, source: "fail_open_unavailable")
         }
 
-        switch await reconcileOnboardingCompletionWithTimeout() {
-        case .resolved(let completed):
-            guard let completed else {
-                return OnboardingCompletionDecision(completed: nil, source: "fail_open_unavailable")
+        switch await reconcileOnboardingStatusWithTimeout() {
+        case .resolved(let status):
+            guard let status else {
+                return OnboardingStatusDecision(status: nil, source: "fail_open_unavailable")
             }
-            return OnboardingCompletionDecision(completed: completed, source: "session_refresh")
+            return OnboardingStatusDecision(status: status, source: "session_refresh")
         case .timedOut:
-            return OnboardingCompletionDecision(completed: nil, source: "fail_open_timeout")
+            return OnboardingStatusDecision(status: nil, source: "fail_open_timeout")
         }
     }
 
-    private func reconcileOnboardingCompletionWithTimeout() async -> TimedOnboardingCompletion {
-        let stream = AsyncStream<TimedOnboardingCompletion> { continuation in
+    private func reconcileOnboardingStatusWithTimeout() async -> TimedOnboardingStatus {
+        let stream = AsyncStream<TimedOnboardingStatus> { continuation in
             let timeoutTask = Task {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 guard !Task.isCancelled else { return }
@@ -384,8 +378,8 @@ struct OutboundApp: App {
             continuation.onTermination = { @Sendable _ in timeoutTask.cancel() }
 
             Task { @MainActor in
-                let completed = await authStore.reconcileOnboardingCompletion()
-                continuation.yield(.resolved(completed))
+                let status = await authStore.reconcileOnboardingStatus()
+                continuation.yield(.resolved(status))
                 continuation.finish()
             }
         }
@@ -470,13 +464,13 @@ private enum AppStartupDestination: String {
     case main
 }
 
-private struct OnboardingCompletionDecision {
-    let completed: Bool?
+private struct OnboardingStatusDecision {
+    let status: OnboardingStatus?
     let source: String
 }
 
-private enum TimedOnboardingCompletion: Sendable {
-    case resolved(Bool?)
+private enum TimedOnboardingStatus: Sendable {
+    case resolved(OnboardingStatus?)
     case timedOut
 }
 
@@ -638,6 +632,8 @@ enum TrainingPlanSport: String, Codable, CaseIterable, Identifiable {
     case walk
     case bike
     case mixed
+    case strength
+    case mobility
 
     var id: String { rawValue }
 
@@ -647,6 +643,8 @@ enum TrainingPlanSport: String, Codable, CaseIterable, Identifiable {
         case .walk: return "Walk"
         case .bike: return "Bike"
         case .mixed: return "Mixed"
+        case .strength: return String(localized: "plan_builder.activity.strength", defaultValue: "Strength")
+        case .mobility: return String(localized: "plan_builder.activity.mobility", defaultValue: "Mobility")
         }
     }
 
@@ -656,6 +654,8 @@ enum TrainingPlanSport: String, Codable, CaseIterable, Identifiable {
         case .walk: return "figure.walk"
         case .bike: return "bicycle"
         case .mixed: return "square.grid.2x2.fill"
+        case .strength: return "dumbbell.fill"
+        case .mobility: return "figure.flexibility"
         }
     }
 }
@@ -673,7 +673,7 @@ enum TrainingPlanFocus: String, Codable, CaseIterable, Identifiable {
 
     var shortTitle: String {
         switch self {
-        case .consistency: return "Consistency"
+        case .consistency: return String(localized: "training_plan.focus.base", defaultValue: "Base")
         case .comeback: return "Comeback"
         case .fiveK: return "5K"
         case .tenK: return "10K"
@@ -1119,6 +1119,15 @@ final class TrainingPlanStore: ObservableObject {
                 persistState()
             }
         }
+    }
+
+    func createPersonalizedPlan(_ request: PlanningGoalRequest, now: Date = Date()) async throws {
+        refreshTask?.cancel()
+        recommendationRefreshTask?.cancel()
+        isRefreshingPlanRecommendations = false
+        let state = try await api.createPersonalizedTrainingPlan(request, readiness: lastReadiness)
+        try Task.checkCancellation()
+        applyServerState(state, now: now)
     }
 
     func clearActivePlan(now: Date = Date()) {

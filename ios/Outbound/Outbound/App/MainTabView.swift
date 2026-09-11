@@ -28,7 +28,7 @@ struct MainTabView: View {
     @State private var routeRemovalRequest = 0
     @State private var preActivityPhoto: UIImage?
     @State private var preActivityRoute: PreparedRoute?
-    @State private var launchGoalMode: SessionGoalMode = .planned
+    @State private var launchGoalMode: SessionGoalMode = .freestyle
     @State private var customizedTodayIntent: SessionIntent?
     @State private var isActivityFullscreenVisible = false
 
@@ -53,9 +53,7 @@ struct MainTabView: View {
         .animation(.easeInOut(duration: 0.22), value: connectivityStore.isOffline)
         .animation(.easeInOut(duration: 0.22), value: activityStore.isSyncing)
         .fullScreenCover(isPresented: onboardingPresentation) {
-            SimplifiedOnboardingFlow { profile in
-                applyOnboardingProfile(profile)
-            }
+            SimplifiedOnboardingFlow { prepareTodayLaunchForCurrentPlan() }
             .environmentObject(onboardingStore)
             .environmentObject(personalizationStore)
             .environmentObject(trainingPlanStore)
@@ -138,10 +136,14 @@ struct MainTabView: View {
 
     private func handlePendingWorkoutReminder() {
         guard let reminder = workoutNotificationScheduler.pendingReminder else { return }
+        guard let sport = SportType(trainingPlanSport: reminder.sport) else {
+            workoutNotificationScheduler.consumePendingReminder()
+            return
+        }
         selectedAppTab = .today
         presentActivity(intent: SessionIntent(
             id: "reminder-\(reminder.id)",
-            sport: SportType(trainingPlanSport: reminder.sport),
+            sport: sport,
             title: reminder.title,
             detail: String(
                 format: String(localized: "workout.reminder.intent_detail", defaultValue: "%d min planned workout"),
@@ -218,6 +220,9 @@ struct MainTabView: View {
                 routeSelectionRequest: routeSelectionRequest,
                 routeRemovalRequest: routeRemovalRequest,
                 onGoalModeChange: { launchGoalMode = $0 },
+                onPlanBuilderRequested: {
+                    onboardingStore.beginPlanBuilder(source: .plannedButton)
+                },
                 onPreActivityPhotoChange: { preActivityPhoto = $0 },
                 onPreActivityRouteChange: { preActivityRoute = $0 },
                 onCloseRequest: handleActivityClose,
@@ -269,10 +274,11 @@ struct MainTabView: View {
     }
 
     private var defaultTodayIntent: SessionIntent {
-        customizedTodayIntent
+        if trainingPlanStore.activePlan == nil { return .freestyleRun }
+        return customizedTodayIntent
             ?? personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
             ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
-            ?? .todayComfortableRun
+            ?? .freestyleRun
     }
 
     private func prepareTodayLaunchIfNeeded() {
@@ -283,9 +289,11 @@ struct MainTabView: View {
         isActivityVisible = true
     }
 
-    private func applyOnboardingProfile(_ profile: OnboardingProfile) {
-        measurementPreferences.unitSystem = profile.bodyProfile.unitSystem
-        dailyCheckInStore.select(profile.suggestedReadiness)
+    private func prepareTodayLaunchForCurrentPlan() {
+        let intent = defaultTodayIntent
+        activeLaunch = RecordLaunch(intent: trainingPlanStore.activePlan == nil ? nil : intent)
+        launchGoalMode = trainingPlanStore.activePlan == nil ? .freestyle : .planned
+        isActivityVisible = true
     }
 
     private func consumeStoredPreparedActivityIfNeeded() {
@@ -361,12 +369,14 @@ enum ActivitySessionPortalState {
 }
 
 private extension SportType {
-    init(trainingPlanSport: TrainingPlanSport) {
+    init?(trainingPlanSport: TrainingPlanSport) {
         switch trainingPlanSport {
         case .run: self = .run
         case .walk: self = .walk
         case .bike: self = .bike
-        case .mixed: self = .run
+        case .mixed: return nil
+        case .strength: self = .strength
+        case .mobility: self = .mobility
         }
     }
 }

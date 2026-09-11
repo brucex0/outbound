@@ -1126,7 +1126,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private var maximumReliableProgressAverageSpeedMetersPerSecond: Double {
         switch persona?.template.sport ?? sessionIntent?.sport ?? .run {
-        case .run, .walk, .hike, .swim:
+        case .run, .walk, .hike, .swim, .strength, .mobility:
             return maximumRunningProgressAverageSpeedMetersPerSecond
         case .bike:
             return maximumCyclingProgressAverageSpeedMetersPerSecond
@@ -1319,7 +1319,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var currentProgressDistanceIntervalMeters: Double {
         if let planned = provider.progressPolicy?.announceEveryMeters { return planned }
         return switch persona?.template.sport ?? .run {
-        case .run, .walk, .hike, .swim:
+        case .run, .walk, .hike, .swim, .strength, .mobility:
             unitSystem == .imperial ? 1_609.344 : 1_000
         case .bike:
             unitSystem == .imperial ? 8_046.72 : 5_000

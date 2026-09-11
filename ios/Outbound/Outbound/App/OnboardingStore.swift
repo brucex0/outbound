@@ -1,6 +1,73 @@
 import Combine
 import Foundation
 
+enum PlanBuilderSource: String, Codable {
+    case onboarding
+    case plannedButton = "planned_button"
+    case allPlans = "all_plans"
+}
+
+enum PlanObjective: String, Codable, CaseIterable, Identifiable {
+    case eventPreparation, endurance, speed, strength, weightLoss, fitnessMaintenance, healthEnergy, other
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .eventPreparation: String(localized: "plan_builder.objective.event", defaultValue: "Prepare for an event")
+        case .endurance: String(localized: "plan_builder.objective.endurance", defaultValue: "Build endurance or go farther")
+        case .speed: String(localized: "plan_builder.objective.speed", defaultValue: "Improve speed")
+        case .strength: String(localized: "plan_builder.objective.strength", defaultValue: "Build strength")
+        case .weightLoss: String(localized: "plan_builder.objective.weight_loss", defaultValue: "Lose weight")
+        case .fitnessMaintenance: String(localized: "plan_builder.objective.maintenance", defaultValue: "Maintain fitness")
+        case .healthEnergy: String(localized: "plan_builder.objective.health", defaultValue: "Improve health and energy")
+        case .other: String(localized: "plan_builder.objective.other", defaultValue: "Something else")
+        }
+    }
+}
+
+enum PlanActivity: String, Codable, CaseIterable, Identifiable {
+    case run, walk, bike, strength, mobility
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .run: String(localized: "activity.type.run", defaultValue: "Run")
+        case .walk: String(localized: "plan_builder.activity.walk_hike", defaultValue: "Walk / Hike")
+        case .bike: String(localized: "activity.type.bike", defaultValue: "Bike")
+        case .strength: String(localized: "plan_builder.activity.strength", defaultValue: "Strength")
+        case .mobility: String(localized: "plan_builder.activity.mobility", defaultValue: "Mobility")
+        }
+    }
+}
+
+enum PlanBaselineContext: String, Codable, CaseIterable, Identifiable {
+    case startingOut, currentlyActive, returningAfterBreak
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .startingOut: String(localized: "plan_builder.baseline.starting", defaultValue: "Starting out")
+        case .currentlyActive: String(localized: "plan_builder.baseline.active", defaultValue: "Currently active")
+        case .returningAfterBreak: String(localized: "plan_builder.baseline.returning", defaultValue: "Returning after a break")
+        }
+    }
+}
+
+struct PlanBuilderDraft: Codable, Equatable {
+    var primaryObjective: PlanObjective = .endurance
+    var supportingObjectives: [PlanObjective] = []
+    var otherObjective = ""
+    var primaryActivity: PlanActivity = .run
+    var supportingActivities: [PlanActivity] = []
+    var baselineContext: PlanBaselineContext = .currentlyActive
+    var recentSessionsPerWeek = 2
+    var comfortableMinutes = 30
+    var sessionsPerWeek = 3
+    var availableMinutes = 30
+    var preferredDays: [String] = []
+    var preferredLongSessionDay: String?
+    var eventDistanceMeters: Double?
+    var eventDate: Date?
+    var constraints = ""
+}
+
 enum OnboardingStep: Int, CaseIterable, Identifiable {
     case welcome
     case goal
@@ -248,6 +315,8 @@ struct OnboardingProfile: Codable, Equatable {
             return String(format: String(localized: "onboarding.first_session.hike.format", defaultValue: "%d min easy hike"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
         case (_, .swim):
             return String(format: String(localized: "onboarding.first_session.swim.format", defaultValue: "%d min easy swim"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
+        case (_, .strength), (_, .mobility):
+            return String(format: String(localized: "activity.freestyle.title.format", defaultValue: "Freestyle %@"), locale: .autoupdatingCurrent, intakeSummary.sport.displayName.lowercased())
         }
     }
 
@@ -263,6 +332,8 @@ struct OnboardingProfile: Codable, Equatable {
             return String(localized: "activity.type.hike", defaultValue: "Hike")
         case .swim:
             return String(localized: "activity.type.swim", defaultValue: "Swim")
+        case .strength, .mobility:
+            return intakeSummary.sport.displayName
         }
     }
 
@@ -307,10 +378,13 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var step: OnboardingStep = .welcome
     @Published private(set) var draft: OnboardingDraft = .fresh
     @Published private(set) var completedProfile: OnboardingProfile?
+    @Published private(set) var presentationSource: PlanBuilderSource = .onboarding
 
     private let defaults: UserDefaults
     private let completedKeyPrefix = "new_user_onboarding_completed_v2"
     private let profileKeyPrefix = "new_user_onboarding_profile_v2"
+    private let statusKeyPrefix = "new_user_onboarding_status_v3"
+    private let planDraftKeyPrefix = "plan_builder_draft_v1"
     private var activeIdentity = "local"
 
     init(defaults: UserDefaults = .standard) {
@@ -365,14 +439,16 @@ final class OnboardingStore: ObservableObject {
         makeProfile(completedAt: Date())
     }
 
-    func hasCompletedOnboardingLocally(identity: String?) -> Bool {
+    func resolvedStatusLocally(identity: String?) -> OnboardingStatus? {
         let resolvedIdentity = identity?.isEmpty == false ? identity! : "local"
-        return hasCompletedOnboarding(for: resolvedIdentity)
+        if let raw = defaults.string(forKey: statusKey(for: resolvedIdentity)),
+           let status = OnboardingStatus(rawValue: raw), status != .pending { return status }
+        return hasCompletedOnboarding(for: resolvedIdentity) ? .completed : nil
     }
 
     func prepareForAuthenticatedUser(
         identity: String?,
-        authoritativeCompletion: Bool? = nil,
+        authoritativeStatus: OnboardingStatus? = nil,
         failOpenOnUnknown: Bool = false
     ) {
         #if DEBUG
@@ -393,9 +469,14 @@ final class OnboardingStore: ObservableObject {
             step = .welcome
         }
 
-        if authoritativeCompletion == true {
-            defaults.set(true, forKey: completedKey(for: resolvedIdentity))
-            isPresented = false
+        if let authoritativeStatus {
+            if authoritativeStatus != .pending {
+                markResolved(authoritativeStatus)
+                isPresented = false
+                return
+            }
+            presentationSource = .onboarding
+            begin(resetDraft: false)
             return
         }
 
@@ -404,16 +485,48 @@ final class OnboardingStore: ObservableObject {
             return
         }
 
-        if authoritativeCompletion == nil, failOpenOnUnknown {
+        if authoritativeStatus == nil, failOpenOnUnknown {
             isPresented = false
             return
         }
 
-        if !isPresented { begin() }
+        if !isPresented {
+            presentationSource = .onboarding
+            begin(resetDraft: false)
+        }
     }
 
     func restartForDebug() {
-        begin()
+        presentationSource = .onboarding
+        begin(resetDraft: false)
+    }
+
+    func beginPlanBuilder(source: PlanBuilderSource) {
+        presentationSource = source
+        begin(resetDraft: false)
+    }
+
+    func finishLater() {
+        isPresented = false
+    }
+
+    func markResolved(_ status: OnboardingStatus) {
+        guard status != .pending else { return }
+        defaults.set(status.rawValue, forKey: statusKey(for: activeIdentity))
+        if status == .completed { defaults.set(true, forKey: completedKey(for: activeIdentity)) }
+    }
+
+    func loadPlanBuilderDraft() -> PlanBuilderDraft {
+        Self.decode(PlanBuilderDraft.self, from: defaults.data(forKey: planDraftKey(for: activeIdentity))) ?? PlanBuilderDraft()
+    }
+
+    func savePlanBuilderDraft(_ draft: PlanBuilderDraft) {
+        guard let data = try? JSONEncoder().encode(draft) else { return }
+        defaults.set(data, forKey: planDraftKey(for: activeIdentity))
+    }
+
+    func clearPlanBuilderDraft() {
+        defaults.removeObject(forKey: planDraftKey(for: activeIdentity))
     }
 
     func updateGoalText(_ text: String) {
@@ -525,8 +638,8 @@ final class OnboardingStore: ObservableObject {
         return profile
     }
 
-    private func begin() {
-        draft = .fresh
+    private func begin(resetDraft: Bool) {
+        if resetDraft { draft = .fresh }
         step = .welcome
         isPresented = true
     }
@@ -558,6 +671,9 @@ final class OnboardingStore: ObservableObject {
     private func profileKey(for identity: String) -> String {
         "\(profileKeyPrefix).\(identity)"
     }
+
+    private func statusKey(for identity: String) -> String { "\(statusKeyPrefix).\(identity)" }
+    private func planDraftKey(for identity: String) -> String { "\(planDraftKeyPrefix).\(identity)" }
 
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }

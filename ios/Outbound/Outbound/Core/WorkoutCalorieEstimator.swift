@@ -151,8 +151,10 @@ enum WorkoutCalorieEstimator {
                 ? metabolicEquivalent(for: .walking, speedKilometersPerHour: speedKilometersPerHour)
                 : 3.5
             levelKilocalories = walkingMET * weightKilograms * durationHours
-        case .hiking, .swimming:
+        case .hiking, .swimming, .strengthTraining:
             levelKilocalories = 6 * weightKilograms * (Double(durationSeconds) / 3_600)
+        case .mobility:
+            levelKilocalories = 2.5 * weightKilograms * (Double(durationSeconds) / 3_600)
         }
         return levelKilocalories + uphillEnergyKilocalories(
             activityType: activityType,
@@ -284,6 +286,7 @@ enum WorkoutCalorieEstimator {
         case .walking: 1.5...9
         case .hiking: 1...10
         case .swimming: 0.5...8
+        case .strengthTraining, .mobility: 0...1
         }
     }
 
@@ -347,6 +350,8 @@ enum WorkoutCalorieEstimator {
             case ..<4.1: 8.0
             default: 10.5
             }
+        case .strengthTraining: 6.0
+        case .mobility: 2.5
         }
     }
 
@@ -374,7 +379,7 @@ enum WorkoutCalorieEstimator {
             kilocaloriesPerKilogramMeter = 0.009
         case .cycling:
             kilocaloriesPerKilogramMeter = 9.80665 / (4_184 * 0.25)
-        case .swimming:
+        case .swimming, .strengthTraining, .mobility:
             return 0
         }
         return weightKilograms

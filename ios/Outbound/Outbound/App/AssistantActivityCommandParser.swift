@@ -94,7 +94,7 @@ enum AssistantActivityCommandParser {
                 guideLine: "Keep it easy at the start, then build into the ride.",
                 startLabel: "Start Bike"
             )
-        case .walk, .hike, .swim:
+        case .walk, .hike, .swim, .strength, .mobility:
             return SessionIntent(
                 id: "freestyle-\(sport.rawValue)",
                 sport: sport,

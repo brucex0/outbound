@@ -182,6 +182,7 @@ struct RecordView: View {
     private let routeRemovalRequest: Int
     private let shouldApplySmartGoalDefault: Bool
     private let onGoalModeChange: ((SessionGoalMode) -> Void)?
+    private let onPlanBuilderRequested: (() -> Void)?
     private let onPreActivityPhotoChange: ((UIImage?) -> Void)?
     private let onPreActivityRouteChange: ((PreparedRoute?) -> Void)?
     private let onCloseRequest: ((Bool) -> Void)?
@@ -198,6 +199,7 @@ struct RecordView: View {
         routeSelectionRequest: Int = 0,
         routeRemovalRequest: Int = 0,
         onGoalModeChange: ((SessionGoalMode) -> Void)? = nil,
+        onPlanBuilderRequested: (() -> Void)? = nil,
         onPreActivityPhotoChange: ((UIImage?) -> Void)? = nil,
         onPreActivityRouteChange: ((PreparedRoute?) -> Void)? = nil,
         onCloseRequest: ((Bool) -> Void)? = nil,
@@ -225,6 +227,7 @@ struct RecordView: View {
         self.routeSelectionRequest = routeSelectionRequest
         self.routeRemovalRequest = routeRemovalRequest
         self.onGoalModeChange = onGoalModeChange
+        self.onPlanBuilderRequested = onPlanBuilderRequested
         self.onPreActivityPhotoChange = onPreActivityPhotoChange
         self.onPreActivityRouteChange = onPreActivityRouteChange
         self.onCloseRequest = onCloseRequest
@@ -2130,6 +2133,7 @@ struct RecordView: View {
         switch choice {
         case .planned:
             guard let plannedWorkoutIntent else {
+                onPlanBuilderRequested?()
                 return
             }
             selectedWorkoutChoice = .planned
@@ -4165,7 +4169,7 @@ struct RecordView: View {
                 targetCalories: target,
                 weightKilograms: weightKilograms
             )
-        case .bike, .hike, .swim:
+        case .bike, .hike, .swim, .strength, .mobility:
             estimate = nil
         }
         guard let estimate else { return nil }
@@ -4288,7 +4292,7 @@ struct RecordView: View {
                     targetCalories: targetCalories,
                     weightKilograms: weightKilograms
                 )
-            case .bike, .hike, .swim:
+            case .bike, .hike, .swim, .strength, .mobility:
                 estimate = nil
             }
             guard let estimate else { return false }

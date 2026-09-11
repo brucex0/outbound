@@ -47,6 +47,9 @@ struct LocationFilterConfiguration {
         case .swimming:
             maximumSpeedMetersPerSecond = 5
             stationarySpeedMetersPerSecond = 0.35
+        case .strengthTraining, .mobility:
+            maximumSpeedMetersPerSecond = 3
+            stationarySpeedMetersPerSecond = 0
         }
         maximumHorizontalAccuracyMeters = 50
     }

@@ -531,7 +531,7 @@ private struct LiveActivityAvatar: View {
                 stride: stride,
                 strideAngle: strideAngle
             )
-        case .cycling, .swimming:
+        case .cycling, .swimming, .strengthTraining, .mobility:
             Image(systemName: systemImage)
                 .font(.system(size: 19, weight: .bold))
                 .symbolRenderingMode(.monochrome)
@@ -546,6 +546,8 @@ private struct LiveActivityAvatar: View {
         case .hiking: "figure.hiking"
         case .walking: "figure.walk"
         case .swimming: "figure.open.water.swim"
+        case .strengthTraining: "dumbbell.fill"
+        case .mobility: "figure.flexibility"
         }
     }
 
@@ -567,7 +569,7 @@ private struct LiveActivityAvatar: View {
         case .running: 38
         case .walking: 24
         case .hiking: 28
-        case .cycling, .swimming: 0
+        case .cycling, .swimming, .strengthTraining, .mobility: 0
         }
     }
 }

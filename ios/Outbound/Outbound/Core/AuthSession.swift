@@ -1,5 +1,11 @@
 import Foundation
 
+nonisolated enum OnboardingStatus: String, Codable, Equatable, Sendable {
+    case pending
+    case skipped
+    case completed
+}
+
 nonisolated struct AuthenticatedUser: Codable, Equatable, Sendable {
     let id: String
     let username: String
@@ -8,16 +14,22 @@ nonisolated struct AuthenticatedUser: Codable, Equatable, Sendable {
     let email: String?
     // Optional so sessions written before this field existed remain decodable.
     let onboardingCompleted: Bool?
+    let onboardingStatus: OnboardingStatus?
     let termsAcceptedVersion: Int?
 
-    nonisolated func withOnboardingCompleted(_ completed: Bool) -> AuthenticatedUser {
+    nonisolated var resolvedOnboardingStatus: OnboardingStatus? {
+        onboardingStatus ?? onboardingCompleted.map { $0 ? .completed : .pending }
+    }
+
+    nonisolated func withOnboardingStatus(_ status: OnboardingStatus) -> AuthenticatedUser {
         AuthenticatedUser(
             id: id,
             username: username,
             displayName: displayName,
             avatarUrl: avatarUrl,
             email: email,
-            onboardingCompleted: completed,
+            onboardingCompleted: status != .pending,
+            onboardingStatus: status,
             termsAcceptedVersion: termsAcceptedVersion
         )
     }
@@ -30,6 +42,7 @@ nonisolated struct AuthenticatedUser: Codable, Equatable, Sendable {
             avatarUrl: avatarUrl,
             email: email,
             onboardingCompleted: onboardingCompleted,
+            onboardingStatus: onboardingStatus,
             termsAcceptedVersion: version
         )
     }
@@ -49,7 +62,7 @@ nonisolated struct AuthSession: Codable, Equatable, Sendable {
         accessTokenExpiresAt.timeIntervalSince(date) > leeway
     }
 
-    nonisolated func withOnboardingCompleted(_ completed: Bool) -> AuthSession {
+    nonisolated func withOnboardingStatus(_ status: OnboardingStatus) -> AuthSession {
         AuthSession(
             accessToken: accessToken,
             accessTokenExpiresAt: accessTokenExpiresAt,
@@ -57,7 +70,7 @@ nonisolated struct AuthSession: Codable, Equatable, Sendable {
             refreshTokenExpiresAt: refreshTokenExpiresAt,
             refreshRecovery: refreshRecovery,
             currentTermsVersion: currentTermsVersion,
-            user: user.withOnboardingCompleted(completed)
+            user: user.withOnboardingStatus(status)
         )
     }
 

@@ -6,12 +6,28 @@ struct TrainingPlanPickerView: View {
     let recommendations: [TrainingPlanRecommendation]
     let isRefreshing: Bool
     let accentColor: Color
+    let onBuildPlan: () -> Void
     let onSelectPlan: (TrainingPlanRecommendation) -> Void
     let onUsePlan: (TrainingPlanRecommendation) -> Void
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                Button(action: onBuildPlan) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "sparkles").font(.title2.weight(.bold))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(String(localized: "plan_builder.build", defaultValue: "Build my plan")).font(.headline)
+                            Text(String(localized: "plan_builder.build.detail", defaultValue: "Create a plan around your goals, activities, and week.")).font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }
+                    .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
                 if recommendations.isEmpty {
                     HStack(spacing: 10) {
                         if isRefreshing {

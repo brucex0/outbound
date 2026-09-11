@@ -21,7 +21,7 @@ enum GoalFocusTheme: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .consistency:
-            return String(localized: "Build consistency")
+            return String(localized: "goal.focus.aerobic_base", defaultValue: "Build aerobic fitness")
         case .comeback:
             return String(localized: "Get back into rhythm")
         case .lightMovement:

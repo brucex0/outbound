@@ -379,10 +379,11 @@ private extension HealthKitService {
                     return
                 }
 
-                let workouts = (samples as? [HKWorkout] ?? [])
-                    .filter { !isOutboundWorkout($0) && $0.workoutActivityType.isSupportedByOutbound }
-                    .map { workout in
-                    ImportedWorkout(
+                let workouts: [ImportedWorkout] = (samples as? [HKWorkout] ?? [])
+                    .filter { !isOutboundWorkout($0) }
+                    .compactMap { workout -> ImportedWorkout? in
+                        guard let activityType = workout.workoutActivityType.outboundActivityType else { return nil }
+                        return ImportedWorkout(
                         id: workout.uuid.uuidString,
                         activityName: workout.workoutActivityType.displayName,
                         sourceName: workout.sourceRevision.source.name,
@@ -391,9 +392,9 @@ private extension HealthKitService {
                         durationSeconds: Int(workout.duration.rounded()),
                         distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
                         energyBurnedKilocalories: energyBurnedKilocalories(for: workout),
-                        activityType: workout.workoutActivityType.outboundActivityType
-                    )
-                }
+                        activityType: activityType
+                        )
+                    }
 
                 continuation.resume(returning: workouts)
             }
@@ -458,6 +459,8 @@ private extension HealthKitService {
         case .walking: .walking
         case .hiking: .hiking
         case .swimming: .swimming
+        case .strengthTraining: .functionalStrengthTraining
+        case .mobility: .flexibility
         }
         configuration.locationType = activity.indoor?.isIndoor == true ? .indoor : .outdoor
         let workoutBuilder = HKWorkoutBuilder(
@@ -473,7 +476,7 @@ private extension HealthKitService {
         let distanceIdentifier: HKQuantityTypeIdentifier = switch activity.activityType {
         case .cycling: .distanceCycling
         case .swimming: .distanceSwimming
-        case .running, .walking, .hiking: .distanceWalkingRunning
+        case .running, .walking, .hiking, .strengthTraining, .mobility: .distanceWalkingRunning
         }
         if activity.distanceM > 0,
            let distanceType = HKQuantityType.quantityType(forIdentifier: distanceIdentifier) {
@@ -658,20 +661,16 @@ private extension HealthKitService {
 }
 
 private extension HKWorkoutActivityType {
-    var isSupportedByOutbound: Bool {
-        switch self {
-        case .running, .cycling, .hiking, .walking, .swimming: true
-        default: false
-        }
-    }
-
-    var outboundActivityType: ActivityType {
+    var outboundActivityType: ActivityType? {
         switch self {
         case .cycling: .cycling
         case .hiking: .hiking
         case .walking: .walking
         case .swimming: .swimming
-        default: .running
+        case .running: .running
+        case .traditionalStrengthTraining, .functionalStrengthTraining: .strengthTraining
+        case .flexibility, .yoga: .mobility
+        default: nil
         }
     }
 }

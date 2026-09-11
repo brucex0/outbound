@@ -61,6 +61,9 @@ final class ActivityRecorder: ObservableObject {
     private var lastJournalSaveAt: Date?
     private var lastJournaledTrackPointCount = 0
     private var activityType: ActivityType = .running
+    private var tracksLocation: Bool {
+        activityType != .strengthTraining && activityType != .mobility
+    }
     private var routeGuidance: ActiveRouteGuidanceJournal?
     private var routeGuidanceEngine: RouteGuidanceEngine?
 #if DEBUG
@@ -73,6 +76,7 @@ final class ActivityRecorder: ObservableObject {
         case .cycling: 1.5
         case .walking, .hiking: 0.35
         case .swimming: 0.2
+        case .strengthTraining, .mobility: 0
         case .running: 1.0
         }
     }
@@ -82,6 +86,7 @@ final class ActivityRecorder: ObservableObject {
         case .cycling: 2.5
         case .walking, .hiking: 0.75
         case .swimming: 0.5
+        case .strengthTraining, .mobility: 0
         case .running: 1.5
         }
     }
@@ -128,7 +133,9 @@ final class ActivityRecorder: ObservableObject {
         currentPace = nil
         heartRate = nil
         heartRateSamples.removeAll()
-        locationManager.startTracking(activityType: activityType)
+        if tracksLocation {
+            locationManager.startTracking(activityType: activityType)
+        }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
         ActivityDiagnosticLog.notice(
@@ -152,7 +159,9 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = nil
         autoPauseCandidateStart = nil
         autoResumeCandidateStart = nil
-        if !autoTriggered {
+        if !tracksLocation {
+            timer?.cancel()
+        } else if !autoTriggered {
             timer?.cancel()
             locationManager.pauseTracking()
         } else {
@@ -174,7 +183,9 @@ final class ActivityRecorder: ObservableObject {
         autoPauseCandidateStart = nil
         autoResumeCandidateStart = nil
         currentSegmentStartDate = Date()
-        locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
+        if tracksLocation {
+            locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
+        }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
         ActivityDiagnosticLog.notice(

@@ -592,6 +592,8 @@ nonisolated enum ActivityType: String, Codable, CaseIterable, Hashable {
     case hiking
     case walking
     case swimming
+    case strengthTraining = "strength"
+    case mobility
 }
 
 nonisolated struct ActivitySourceMetadata: Codable, Hashable {

@@ -308,6 +308,19 @@ final class APIClient {
         return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
     }
 
+    func skipOnboarding() async throws -> OnboardingResolutionResponse {
+        try await post("/auth/onboarding/skip", body: EmptyBody())
+    }
+
+    func createPersonalizedTrainingPlan(
+        _ request: PlanningGoalRequest,
+        readiness: DailyReadiness?
+    ) async throws -> TrainingPlanStateResponse {
+        let state: PlanningAPIStateResponse = try await post("/planning/goals", body: request)
+        let activitySuggestion = try? await fetchActivitySuggestion()
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
+    }
+
     func createTrainingPlan(
         from recommendation: TrainingPlanRecommendation,
         readiness: DailyReadiness?
@@ -1246,14 +1259,15 @@ private extension PlanningAPIStateResponse {
         for workout: TrainingPlanWorkout,
         apiWorkout: PlanningAPIWorkout,
         readiness: DailyReadiness?
-    ) -> TodayTrainingSuggestion {
+    ) -> TodayTrainingSuggestion? {
+        guard let sport = SportType.apiSport(from: apiWorkout.modality) else { return nil }
         let lowReadiness = readiness == .lowEnergy || readiness == .stressed
         let adjustmentLine = localizedAdjustmentLine
             ?? (lowReadiness ? "Dialed in around today's readiness." : nil)
         let guideLine = localizedAdjustmentLine ?? workout.guideCue
         let suggestion = SuggestedSession(
             id: "plan-\(apiWorkout.id)",
-            sport: SportType.apiSport(from: apiWorkout.modality),
+            sport: sport,
             title: workout.title,
             durationLabel: workout.durationLabel,
             activityLabel: workout.kind.displayName,
@@ -1417,7 +1431,10 @@ private extension TrainingPlanSport {
         switch self {
         case .run: return "run"
         case .walk: return "walk"
-        case .bike, .mixed: return "run"
+        case .bike: return "bike"
+        case .strength: return "strength"
+        case .mobility: return "mobility"
+        case .mixed: return "mixed"
         }
     }
 
@@ -1426,14 +1443,23 @@ private extension TrainingPlanSport {
         case "walk": return .walk
         case "bike": return .bike
         case "run": return .run
+        case "strength": return .strength
+        case "mobility": return .mobility
         default: return .mixed
         }
     }
 }
 
 private extension SportType {
-    static func apiSport(from modality: String) -> SportType {
-        modality == "bike" ? .bike : .run
+    static func apiSport(from modality: String) -> SportType? {
+        switch modality {
+        case "bike": .bike
+        case "walk": .walk
+        case "strength": .strength
+        case "mobility": .mobility
+        case "run": .run
+        default: nil
+        }
     }
 }
 
@@ -1715,7 +1741,8 @@ extension ActivitySuggestionResponse {
 }
 
 extension ActivitySuggestionPayload {
-    func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion {
+    func todayTrainingSuggestion(guideLine: String) -> TodayTrainingSuggestion? {
+        guard let sport = SportType.apiSport(from: modality) else { return nil }
         let durationSeconds = durationMinutes * 60
         let calorieDetail = targetCalories.map { targetCalories in
             let target = String(
@@ -1780,7 +1807,7 @@ extension ActivitySuggestionPayload {
         )
         let suggestion = SuggestedSession(
             id: plannedWorkoutId ?? archetypeId ?? id,
-            sport: SportType.apiSport(from: modality),
+            sport: sport,
             title: title,
             durationLabel: "\(durationMinutes) min",
             activityLabel: effortLabel.lowercased(),
@@ -1808,39 +1835,73 @@ extension ActivitySuggestionPayload {
     }
 }
 
-private struct PlanningGoalRequest: Encodable {
+struct PlanningGoalRequest: Encodable {
     let type: String
+    let supportingObjectives: [String]
     let primaryModality: String
+    let supportingModalities: [String]
+    let baselineContext: String
+    let targetDate: String?
     let targetDistanceMeters: Double?
     let priority: String
+    let preferredDays: [String]
+    let preferredLongSessionDay: String?
     let daysPerWeekTarget: Int
     let maxSessionMinutes: Int
     let riskTolerance: String
-    let constraints: PlanningGoalConstraints
+    let constraints: [String: String]
+
+    init(
+        type: String,
+        supportingObjectives: [String],
+        primaryModality: String,
+        supportingModalities: [String],
+        baselineContext: String,
+        targetDate: String?,
+        targetDistanceMeters: Double?,
+        priority: String,
+        preferredDays: [String],
+        preferredLongSessionDay: String?,
+        daysPerWeekTarget: Int,
+        maxSessionMinutes: Int,
+        riskTolerance: String,
+        constraints: [String: String]
+    ) {
+        self.type = type
+        self.supportingObjectives = supportingObjectives
+        self.primaryModality = primaryModality
+        self.supportingModalities = supportingModalities
+        self.baselineContext = baselineContext
+        self.targetDate = targetDate
+        self.targetDistanceMeters = targetDistanceMeters
+        self.priority = priority
+        self.preferredDays = preferredDays
+        self.preferredLongSessionDay = preferredLongSessionDay
+        self.daysPerWeekTarget = daysPerWeekTarget
+        self.maxSessionMinutes = maxSessionMinutes
+        self.riskTolerance = riskTolerance
+        self.constraints = constraints
+    }
 
     init(recommendation: TrainingPlanRecommendation) {
         type = recommendation.template.focus.rawValue
+        supportingObjectives = []
         primaryModality = recommendation.template.sport.apiPlanningModality
+        supportingModalities = []
+        baselineContext = "currentlyActive"
+        targetDate = nil
         targetDistanceMeters = recommendation.template.focus.targetDistanceMeters
         priority = recommendation.template.focus == .comeback ? "rebuild" : "fitness"
+        preferredDays = []
+        preferredLongSessionDay = nil
         daysPerWeekTarget = recommendation.sessionsPerWeek
         maxSessionMinutes = recommendation.longSessionMinutes
         riskTolerance = "balanced"
-        constraints = PlanningGoalConstraints(
-            candidateID: recommendation.id,
-            templateID: recommendation.template.id,
-            targetWeeklyMinutes: recommendation.targetWeeklyMinutes,
-            durationWeeks: recommendation.durationWeeks
-        )
+        constraints = ["candidateID": recommendation.id, "templateID": recommendation.template.id]
     }
 }
 
-private struct PlanningGoalConstraints: Encodable {
-    let candidateID: String
-    let templateID: String
-    let targetWeeklyMinutes: Int
-    let durationWeeks: Int
-}
+struct OnboardingResolutionResponse: Decodable { let onboardingStatus: OnboardingStatus }
 
 private struct PlanningReadinessRequest: Encodable {
     let energy: Int

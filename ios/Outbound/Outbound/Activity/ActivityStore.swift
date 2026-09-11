@@ -855,6 +855,8 @@ private extension ActivityType {
         case .hiking: String(localized: "health.import.title.hike", defaultValue: "Imported Hike")
         case .walking: String(localized: "health.import.title.walk", defaultValue: "Imported Walk")
         case .swimming: String(localized: "health.import.title.swim", defaultValue: "Imported Swim")
+        case .strengthTraining: String(localized: "health.import.title.strength", defaultValue: "Imported Strength Workout")
+        case .mobility: String(localized: "health.import.title.mobility", defaultValue: "Imported Mobility Workout")
         }
     }
 }

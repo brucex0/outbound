@@ -179,13 +179,15 @@ Add typed, bounded events for:
 
 Objective and activity categories may be bounded enum values. Never send free text, body details, dates, exact measurements, constraints, workout details, or account identifiers through analytics.
 
-## Current Implementation Gap
+## Implementation Map
 
-The shipped iOS flow in `Features/Onboarding/SimplifiedOnboardingFlow.swift` is still run-specific: it requires 2–6 runs, hard-codes Saturday as the long-run day, treats consistency as a goal, presents three calibration runs as the first-week result, and accepts the first recommendation after `Build my first week`.
+- Backend account state: `backend/prisma/schema.prisma`, `backend/src/services/authSessions.ts`, and `backend/src/routes/auth.ts` own the durable `pending` / `skipped` / `completed` contract and skip mutation.
+- Backend plan creation: `backend/src/routes/planning.ts` and `backend/src/services/planning/` own structured objectives, modality mix, weekly capacity, scheduling preferences, and the adaptive 14-day starting window.
+- iOS routing and persistence: `App/OutboundApp.swift`, `App/AuthStore.swift`, `Core/AuthSession.swift`, and `App/OnboardingStore.swift` use the server status as the authority and keep account-scoped builder drafts locally.
+- Reusable iOS builder: `Features/Onboarding/SimplifiedOnboardingFlow.swift` is shared by first use, Today's `Planned` control, and the All Plans entry.
+- No-plan behavior: `App/MainTabView.swift` keeps Today in manual Run mode while `Features/Planning/TrainingPlanViews.swift` leads All Plans with `Build my plan`.
 
-Startup in `App/OutboundApp.swift` and the backend auth session derive onboarding completion from `RunnerProfile.completedAt`. Today currently routes a user without an active plan to the plan picker rather than the reusable personalized builder. `TrainingPlanPickerView` does not yet lead with `Build my plan`.
-
-Use `docs/onboarding-plan-setup-implementation-prompt.md` for the implementation handoff.
+Use `docs/onboarding-plan-setup-implementation-prompt.md` when revisiting the full acceptance contract.
 
 ## Debugging
 

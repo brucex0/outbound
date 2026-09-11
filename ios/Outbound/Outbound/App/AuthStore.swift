@@ -155,22 +155,32 @@ final class AuthStore: ObservableObject {
             avatarUrl: user.avatarUrl,
             email: user.email,
             onboardingCompleted: user.onboardingCompleted,
+            onboardingStatus: user.onboardingStatus,
             termsAcceptedVersion: user.termsAcceptedVersion
         )
     }
 
-    func markOnboardingCompleted() {
-        if let user {
-            self.user = user.withOnboardingCompleted(true)
-        }
-        Task { try? await SessionCoordinator.shared.markOnboardingCompleted() }
+    func markOnboardingResolved(_ status: OnboardingStatus) {
+        if let user { self.user = user.withOnboardingStatus(status) }
+        Task { try? await SessionCoordinator.shared.markOnboardingResolved(status) }
     }
 
-    func reconcileOnboardingCompletion() async -> Bool? {
+    func resolveOnboardingAsSkipped() async -> Bool {
+        do {
+            let response = try await APIClient.shared.skipOnboarding()
+            markOnboardingResolved(response.onboardingStatus)
+            return true
+        } catch {
+            authError = error.localizedDescription
+            return false
+        }
+    }
+
+    func reconcileOnboardingStatus() async -> OnboardingStatus? {
         do {
             let session = try await SessionCoordinator.shared.refreshStoredSession()
             apply(session, origin: .server)
-            return session.user.onboardingCompleted
+            return session.user.resolvedOnboardingStatus
         } catch {
             return nil
         }

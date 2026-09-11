@@ -281,6 +281,8 @@ extension ActivityType {
         case .hiking: return String(localized: "Hike")
         case .walking: return String(localized: "Walk")
         case .swimming: return String(localized: "Swim")
+        case .strengthTraining: return String(localized: "plan_builder.activity.strength", defaultValue: "Strength")
+        case .mobility: return String(localized: "plan_builder.activity.mobility", defaultValue: "Mobility")
         }
     }
 

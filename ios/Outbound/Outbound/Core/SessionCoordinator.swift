@@ -30,18 +30,12 @@ actor SessionCoordinator {
 
     func storedSession() -> AuthSession? { session }
     func replace(_ value: AuthSession) throws {
-        let resolvedValue: AuthSession
-        if session?.user.id == value.user.id, session?.user.onboardingCompleted == true {
-            resolvedValue = value.withOnboardingCompleted(true)
-        } else {
-            resolvedValue = value
-        }
-        try repository.replace(resolvedValue)
-        session = resolvedValue
+        try repository.replace(value)
+        session = value
     }
-    func markOnboardingCompleted() throws {
+    func markOnboardingResolved(_ status: OnboardingStatus) throws {
         guard let session else { return }
-        try replace(session.withOnboardingCompleted(true))
+        try replace(session.withOnboardingStatus(status))
     }
     func markTermsAccepted(version: Int) throws {
         guard let session else { return }

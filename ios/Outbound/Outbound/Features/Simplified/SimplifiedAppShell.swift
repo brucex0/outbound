@@ -173,6 +173,7 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
@@ -370,6 +371,10 @@ struct SimplifiedAppShell: View {
                     recommendations: trainingPlanStore.planOptions,
                     isRefreshing: trainingPlanStore.isRefreshingPlanRecommendations,
                     accentColor: theme.accentColor,
+                    onBuildPlan: {
+                        showsPlanPicker = false
+                        onboardingStore.beginPlanBuilder(source: .allPlans)
+                    },
                     onSelectPlan: {
                         showsPlanPicker = false
                         selectedPlanRecommendation = $0
