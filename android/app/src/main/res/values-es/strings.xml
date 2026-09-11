@@ -73,4 +73,5 @@
     <string name="transfer_existing_account">Usar mi cuenta actual del iPhone</string>
     <string name="transfer_explanation">Pega el código de un solo uso de Plainstride en tu iPhone y elige la misma cuenta de Google que quieras usar aquí.</string>
     <string name="transfer_invalid">El código de transferencia no es válido o ha caducado. Crea otro en tu iPhone e inténtalo de nuevo.</string>
+    <string name="reminder_debug_test">Depuración: enviar un recordatorio de prueba en 10 segundos</string>
 </resources>

@@ -73,4 +73,5 @@
     <string name="transfer_existing_account">使用我现有的 iPhone 账号</string>
     <string name="transfer_explanation">粘贴 iPhone 版 Plainstride 中的一次性转移码，然后选择你准备在此设备上使用的 Google 账号。</string>
     <string name="transfer_invalid">转移码无效或已过期。请在 iPhone 上创建新转移码后重试。</string>
+    <string name="reminder_debug_test">&#x8C03;&#x8BD5;&#xFF1A;10 &#x79D2;&#x540E;&#x53D1;&#x9001;&#x6D4B;&#x8BD5;&#x63D0;&#x9192;</string>
 </resources>

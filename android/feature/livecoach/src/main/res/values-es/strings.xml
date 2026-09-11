@@ -22,4 +22,10 @@
     <string name="live_coach_responsive">Adaptable</string>
     <string name="live_coach_settings_title">Entrenador en vivo</string>
     <string name="live_coach_voice">Voz</string>
+    <string name="live_coach_voice_warm">Cálida</string>
+    <string name="live_coach_voice_warm_detail">Motivadora y natural</string>
+    <string name="live_coach_voice_gentle">Suave</string>
+    <string name="live_coach_voice_gentle_detail">Tranquila y reconfortante</string>
+    <string name="live_coach_voice_composed">Serena</string>
+    <string name="live_coach_voice_composed_detail">Clara y constante</string>
 </resources>

@@ -22,4 +22,10 @@
     <string name="live_coach_responsive">Responsive</string>
     <string name="live_coach_settings_title">Live coach</string>
     <string name="live_coach_voice">Voice</string>
+    <string name="live_coach_voice_warm">Warm</string>
+    <string name="live_coach_voice_warm_detail">Encouraging and natural</string>
+    <string name="live_coach_voice_gentle">Gentle</string>
+    <string name="live_coach_voice_gentle_detail">Calm and reassuring</string>
+    <string name="live_coach_voice_composed">Composed</string>
+    <string name="live_coach_voice_composed_detail">Clear and steady</string>
 </resources>

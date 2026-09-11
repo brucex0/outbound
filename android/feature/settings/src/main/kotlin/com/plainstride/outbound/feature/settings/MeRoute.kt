@@ -78,7 +78,6 @@ import com.plainstride.outbound.feature.social.SocialPerson
 
 private enum class MePage { Overview, Settings, Milestones }
 
-data class MeConnection(val id: String, val displayName: String)
 data class MeInsight(val id: String, val label: String, val value: String, val confidence: String)
 data class MeMilestone(val id: String, val label: String)
 
@@ -92,7 +91,7 @@ fun MeRoute(
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
     onActivityHistory: () -> Unit,
-    connections: List<MeConnection> = emptyList(),
+    connections: List<SocialPerson> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
     localWeeklyMinutes: Int = 0,
@@ -148,7 +147,7 @@ private fun MeOverview(
     onSettings: () -> Unit,
     onRefresh: () -> Unit,
     onActivityHistory: () -> Unit,
-    connections: List<MeConnection>,
+    connections: List<SocialPerson>,
     insights: List<MeInsight>,
     milestones: List<MeMilestone>,
     localWeeklyMinutes: Int,
@@ -185,10 +184,8 @@ private fun MeOverview(
                     Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
                 }
             } }
-            item { NavigationCard(R.string.me_connections, R.string.me_connections_body, Icons.Outlined.People, onConnections) {
-                if (connections.isEmpty()) Text(stringResource(R.string.me_connections_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                else Text(connections.take(4).joinToString("  ·  ") { it.displayName.substringBefore(' ') }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } }
+            item { SectionTitle(stringResource(R.string.me_connections)) }
+            item { SocialConnectionsPreview(connections, onOpenAll = onConnections) }
             item { SectionTitle(stringResource(R.string.current_focus)) }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {

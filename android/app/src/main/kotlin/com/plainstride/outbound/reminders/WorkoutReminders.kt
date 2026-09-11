@@ -29,6 +29,15 @@ import com.plainstride.outbound.MainActivity
 import com.plainstride.outbound.R
 
 class WorkoutReminderScheduler @Inject constructor(@ApplicationContext private val context: Context) {
+    fun enableByDefault() {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.contains(ENABLED)) schedule(prefs.getInt(HOUR, 7), prefs.getInt(MINUTE, 0))
+    }
+
+    fun scheduleDebugTest() {
+        val alarm = context.getSystemService(AlarmManager::class.java)
+        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10_000, pending(context))
+    }
     fun schedule(hour: Int, minute: Int, workoutDate: LocalDate? = null, workoutId: String? = null) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(ENABLED, true).putInt(HOUR, hour).putInt(MINUTE, minute).putString(WORKOUT_DATE, workoutDate?.toString()).putString(WORKOUT_ID, workoutId).apply()
@@ -50,7 +59,7 @@ class WorkoutReminderScheduler @Inject constructor(@ApplicationContext private v
 
     fun restore() {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(ENABLED, false)) schedule(
+        if (prefs.getBoolean(ENABLED, true)) schedule(
             prefs.getInt(HOUR, 7),
             prefs.getInt(MINUTE, 0),
             prefs.getString(WORKOUT_DATE, null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() },

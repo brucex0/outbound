@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.feature.livecoach.network.CoachingContract
+import com.plainstride.outbound.feature.livecoach.network.VoiceProfile
 import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
 
 @Composable fun LiveCoachRecordingEffect(launch: RecordingLaunchConfiguration, viewModel: LiveCoachViewModel = hiltViewModel()) {
@@ -53,6 +54,9 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
                 catalog.coachPersonas.forEach { persona -> Choice(persona.displayName, persona.id == state.preferences.personaId, persona.description) { viewModel.savePreferences(state.preferences.copy(personaId = persona.id, voiceProfileId = persona.defaultVoiceProfileId, scriptStyleId = persona.fixedScriptStyleId)) } }
                 Text(stringResource(R.string.live_coach_voice), Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = MaterialTheme.typography.titleSmall)
                 catalog.voices.filter { it.id in (catalog.coachPersonas.firstOrNull { p -> p.id == state.preferences.personaId }?.allowedVoiceProfileIds ?: emptyList()) }.forEach { voice -> Choice(voice.displayName, voice.id == state.preferences.voiceProfileId, voice.description) { viewModel.savePreferences(state.preferences.copy(voiceProfileId = voice.id)) } }
+            } ?: run {
+                Text(stringResource(R.string.live_coach_voice), Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = MaterialTheme.typography.titleSmall)
+                fallbackVoices().forEach { voice -> Choice(voice.displayName, voice.id == state.preferences.voiceProfileId, voice.description) { viewModel.savePreferences(state.preferences.copy(voiceProfileId = voice.id)) } }
             }
             Text(stringResource(R.string.live_coach_privacy), Modifier.padding(20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -64,3 +68,8 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
     modifier = Modifier.clickable(role = Role.RadioButton, onClick = select).heightIn(min = 56.dp),
 )
 @Composable private fun contractLabel(value: CoachingContract) = stringResource(when (value) { CoachingContract.Quiet -> R.string.live_coach_quiet; CoachingContract.Responsive -> R.string.live_coach_responsive; CoachingContract.CoachMe -> R.string.live_coach_coach_me })
+@Composable private fun fallbackVoices() = listOf(
+    VoiceProfile("plainstride_warm_1", stringResource(R.string.live_coach_voice_warm), stringResource(R.string.live_coach_voice_warm_detail), "warm", "female", ""),
+    VoiceProfile("plainstride_gentle_1", stringResource(R.string.live_coach_voice_gentle), stringResource(R.string.live_coach_voice_gentle_detail), "gentle", "female", ""),
+    VoiceProfile("plainstride_composed_1", stringResource(R.string.live_coach_voice_composed), stringResource(R.string.live_coach_voice_composed_detail), "composed", "male", ""),
+)

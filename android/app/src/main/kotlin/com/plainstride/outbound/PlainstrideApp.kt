@@ -89,7 +89,6 @@ import com.plainstride.outbound.feature.today.R as TodayR
 import com.plainstride.outbound.feature.settings.MeRoute
 import com.plainstride.outbound.feature.settings.SettingsMessage
 import com.plainstride.outbound.feature.settings.SettingsViewModel
-import com.plainstride.outbound.feature.settings.MeConnection
 import com.plainstride.outbound.feature.settings.MeInsight
 import com.plainstride.outbound.feature.settings.MeMilestone
 import com.plainstride.outbound.feature.settings.SettingsGroupTitle
@@ -366,9 +365,15 @@ private fun SignedInApp(
                                 onboardingResolved = false
                             },
                             onActivityHistory = { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } },
-                            connections = integration.connections.map { MeConnection(it.id, it.displayName) },
+                            connections = integration.connections,
                             insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
-                            milestones = integration.recognitions.map { MeMilestone("${it.badgeId}:${it.awardedAt}", it.badgeId.replace('_', ' ').replaceFirstChar(Char::uppercase)) },
+                            milestones = buildList {
+                                addAll(integration.recognitions.map { MeMilestone("${it.badgeId}:${it.awardedAt}", it.badgeId.replace('_', ' ').replaceFirstChar(Char::uppercase)) })
+                                val stats = integration.progress.stats
+                                if (stats.eligibleActivityCount >= 1) add(MeMilestone("local:first_activity", resources.getString(SettingsR.string.milestone_first_activity)))
+                                if (stats.eligibleActivityCount >= 10) add(MeMilestone("local:ten_activities", resources.getString(SettingsR.string.milestone_ten_activities)))
+                                if (stats.weeklyBuckets.sumOf { it.distanceMeters } >= 100_000) add(MeMilestone("local:hundred_km", resources.getString(SettingsR.string.milestone_hundred_km)))
+                            }.distinctBy(MeMilestone::id),
                             localWeeklyMinutes = integration.progress.stats.currentWeek.durationSeconds / 60,
                             localWeeklyDistanceMeters = integration.progress.stats.currentWeek.distanceMeters,
                             localWeeklyActivityCount = integration.progress.stats.currentWeek.activityCount,
@@ -382,11 +387,14 @@ private fun SignedInApp(
                             },
                             onMeDestination = settingsViewModel::trackMeDestination,
                             activityContent = {
-                                accountId?.let { id -> RecentActivitiesRoute(id, { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } }) }
+                                accountId?.let { id -> RecentActivitiesRoute(id, { selectedId ->
+                                    activityTarget = selectedId
+                                    navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
+                                }) }
                             },
                             settingsContent = {
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
-                                ReminderSettingsRow(reminderViewModel)
+                                ReminderSettingsRow(reminderViewModel, BuildConfig.DEBUG)
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
                                 ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, supportingContent = { Text(stringResource(SettingsR.string.settings_safety_body)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_live_guidance))
@@ -447,7 +455,7 @@ private fun SignedInApp(
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
             composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
-            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute) }
+            composable(COMMUNITY_ROUTES_ROUTE) { CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute,integrationViewModel::trackRouteImport) }
             composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group") }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {

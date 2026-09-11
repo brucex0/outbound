@@ -82,4 +82,7 @@
     <string name="settings_live_guidance">实时指导</string>
     <string name="settings_health_and_body">健康与身体</string>
     <string name="settings_integrations">集成服务</string>
+    <string name="milestone_first_activity">&#x9996;&#x6B21;&#x6D3B;&#x52A8;</string>
+    <string name="milestone_ten_activities">&#x5B8C;&#x6210;&#x5341;&#x6B21;&#x6D3B;&#x52A8;</string>
+    <string name="milestone_hundred_km">&#x7D2F;&#x8BA1;&#x5B8C;&#x6210; 100 &#x516C;&#x91CC;</string>
 </resources>

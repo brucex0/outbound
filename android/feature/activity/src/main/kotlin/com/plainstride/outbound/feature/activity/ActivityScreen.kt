@@ -92,14 +92,14 @@ import com.plainstride.outbound.core.model.activity.SavedActivity
 @Composable
 fun RecentActivitiesRoute(
     accountId: String,
-    onOpenHistory: () -> Unit,
+    onOpenActivity: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ActivityViewModel = hiltViewModel(key = "me_recent_activities"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { viewModel.start(accountId) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.page.activities.take(3).forEach { activity -> ActivityRow(activity, onOpenHistory) }
+        state.page.activities.take(3).forEach { activity -> ActivityRow(activity) { onOpenActivity(activity.id) } }
         if (!state.loading && state.page.activities.isEmpty()) {
             Text(stringResource(R.string.activity_recent_empty), Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

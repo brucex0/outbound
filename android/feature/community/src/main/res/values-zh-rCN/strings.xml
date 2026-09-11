@@ -19,4 +19,5 @@
     <string name="routes_search">&amp;#x641C;&amp;#x7D22;&amp;#x8DEF;&amp;#x7EBF;</string>
     <string name="routes_summary">%1$.1f &amp;#x516C;&amp;#x91CC; &amp;#xB7; &amp;#x722C;&amp;#x5347; %2$.0f &amp;#x7C73;</string>
     <string name="routes_title">&amp;#x793E;&amp;#x533A;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_import">&#x5BFC;&#x5165; GPX &#x6216; GeoJSON</string>
 </resources>

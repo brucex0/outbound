@@ -82,10 +82,10 @@ fun PlainstrideTheme(
 ) {
     val brand = plainstrideThemeColors(theme, darkTheme)
     val materialColors = if (darkTheme) {
-        darkColorScheme(primary = brand.action, onPrimary = brand.heroForeground, secondary = brand.secondary, tertiary = brand.accent,
+        darkColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .28f), onPrimaryContainer = brand.accent, secondary = brand.secondary, tertiary = brand.accent,
             background = Color(0xFF101512), surface = Color(0xFF171D19), onSurface = Color(0xFFE0E6E1))
     } else {
-        lightColorScheme(primary = brand.action, onPrimary = brand.heroForeground, secondary = brand.secondary, tertiary = brand.accent,
+        lightColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .16f), onPrimaryContainer = brand.action, secondary = brand.secondary, tertiary = brand.accent,
             background = Color(0xFFF8FAF7), surface = Color.White, onSurface = Color(0xFF18201C))
     }
     CompositionLocalProvider(LocalPlainstrideThemeColors provides brand) {

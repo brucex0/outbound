@@ -20,22 +20,32 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import java.io.File
+import java.util.UUID
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.put
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->}) {
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={}) {
  val context=LocalContext.current
  var pendingNearby by remember { mutableStateOf(false) }
  val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){onScope(RouteScope.NEARBY);onRefresh()}}
  var query by remember { mutableStateOf("") }
  var selected by remember { mutableStateOf<CommunityRoute?>(null) }
+ var imported by remember { mutableStateOf<List<CommunityRoute>>(emptyList()) }
  var publish by remember { mutableStateOf<Pair<String,String>?>(null) }
+ val importFile=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
+  uri ?: return@rememberLauncherForActivityResult
+  val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
+  if(route!=null){imported=listOf(route)+imported.filterNot{it.id==route.id};selected=route;onImport(true)}else onImport(false)
+ }
  LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-  item { Row { Text(stringResource(R.string.routes_title), style=MaterialTheme.typography.headlineMedium, fontWeight=FontWeight.Bold, modifier=Modifier.weight(1f)); IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))} } }
+  item { Row { Text(stringResource(R.string.routes_title), style=MaterialTheme.typography.headlineMedium, fontWeight=FontWeight.Bold, modifier=Modifier.weight(1f)); IconButton({importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain"))}){Icon(Icons.Outlined.FileOpen,stringResource(R.string.routes_import))}; IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))} } }
   if(scope==RouteScope.MINE&&publishableActivities.isNotEmpty())item{publishableActivities.forEach{activity->TextButton({publish=activity}){Icon(Icons.Outlined.Publish,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.routes_publish_activity,activity.second))}}}
   item { SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()){ RouteScope.entries.forEachIndexed { index,item->SegmentedButton(item==scope,{if(item==RouteScope.NEARBY&&context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)pendingNearby=true else onScope(item)},SegmentedButtonDefaults.itemShape(index,RouteScope.entries.size)){Text(stringResource(when(item){RouteScope.DISCOVERY->R.string.routes_discover;RouteScope.MINE->R.string.routes_mine;RouteScope.NEARBY->R.string.routes_nearby}))} } } }
   if(scope==RouteScope.DISCOVERY) item { OutlinedTextField(query,{query=it;onSearch(it)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.routes_search))},leadingIcon={Icon(Icons.Outlined.Search,null)}) }
   if(library.stale) item { Text(stringResource(R.string.routes_offline),style=MaterialTheme.typography.labelMedium) }
-  items(library.routes,key=CommunityRoute::id){ route->ElevatedCard({selected=route},Modifier.fillMaxWidth()){Column{ route.coordinates().takeIf{it.size>1}?.let { PlainstrideRouteMap(it,Modifier.fillMaxWidth().height(150.dp)) }; Column(Modifier.padding(16.dp)){Row{Text(route.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);IconButton({onBookmark(route)}){Icon(if(route.isBookmarked) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,stringResource(R.string.routes_bookmark))}};Text(stringResource(R.string.routes_summary,route.distanceM/1000,route.elevationGainM?:0.0));Text(stringResource(R.string.routes_community_counts,route.bookmarkCount,route.completionCount),style=MaterialTheme.typography.bodySmall)}}} }
-  if(library.routes.isEmpty()) item { Text(stringResource(R.string.routes_empty),Modifier.padding(24.dp)) }
+  items(imported + library.routes,key=CommunityRoute::id){ route->ElevatedCard({selected=route},Modifier.fillMaxWidth()){Column{ route.coordinates().takeIf{it.size>1}?.let { PlainstrideRouteMap(it,Modifier.fillMaxWidth().height(150.dp)) }; Column(Modifier.padding(16.dp)){Row{Text(route.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);if(!route.id.startsWith("import:"))IconButton({onBookmark(route)}){Icon(if(route.isBookmarked) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,stringResource(R.string.routes_bookmark))}};Text(stringResource(R.string.routes_summary,route.distanceM/1000,route.elevationGainM?:0.0));if(!route.id.startsWith("import:"))Text(stringResource(R.string.routes_community_counts,route.bookmarkCount,route.completionCount),style=MaterialTheme.typography.bodySmall)}}} }
+  if(library.routes.isEmpty()&&imported.isEmpty()) item { Text(stringResource(R.string.routes_empty),Modifier.padding(24.dp)) }
  }
  selected?.let { route -> RouteDetailDialog(route,{selected=null}) { reverse -> selected=null;onFollow(CommunityRecordingCoordinator.launch(route,reverse)) } }
  publish?.let{activity->var name by remember(activity){mutableStateOf(activity.second)};var description by remember(activity){mutableStateOf("")};AlertDialog({publish=null},title={Text(stringResource(R.string.routes_publish))},text={Column{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.routes_publish_name))});OutlinedTextField(description,{description=it.take(300)},label={Text(stringResource(R.string.routes_publish_description))})}},confirmButton={TextButton({onPublish(activity.first,name,description.takeIf(String::isNotBlank));publish=null},enabled=name.isNotBlank()){Text(stringResource(R.string.routes_publish))}},dismissButton={TextButton({publish=null}){Text(stringResource(R.string.routes_close))}})}
@@ -51,3 +61,19 @@ private fun CommunityRoute.coordinates(): List<MapCoordinate> {
   return line.mapNotNull { pair -> val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull; val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull; if(lat!=null&&lon!=null) MapCoordinate(lat,lon) else null }
 }
 fun CommunityRoute.guidancePoints()=coordinates().map{GuidancePoint(it.latitude,it.longitude)}
+
+private fun importRoute(text:String,fileName:String?):CommunityRoute?{
+ val trimmed=text.trim()
+ val points=if(trimmed.startsWith("{")){
+  val root=Json.parseToJsonElement(trimmed).jsonObject
+  val geometry=(root["geometry"] as? JsonObject)?:root
+  val coordinates=geometry["coordinates"] as? JsonArray ?: return null
+  val line=if(coordinates.firstOrNull() is JsonPrimitive) listOf(coordinates) else coordinates.mapNotNull{it as? JsonArray}
+  line.mapNotNull{pair->val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull;val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull;if(lat!=null&&lon!=null)MapCoordinate(lat,lon)else null}
+ }else Regex("<trkpt[^>]*lat=[\"']([^\"']+)[\"'][^>]*lon=[\"']([^\"']+)[\"']",RegexOption.IGNORE_CASE).findAll(trimmed).mapNotNull{match->val lat=match.groupValues[1].toDoubleOrNull();val lon=match.groupValues[2].toDoubleOrNull();if(lat!=null&&lon!=null)MapCoordinate(lat,lon)else null}.toList()
+ if(points.size<2)return null
+ val geometry=buildJsonObject{put("type","LineString");put("coordinates",buildJsonArray{points.forEach{point->add(buildJsonArray{add(point.longitude);add(point.latitude)})}})}
+ val name=fileName?.substringAfterLast('/')?.substringBeforeLast('.')?.takeIf(String::isNotBlank)?:"Imported route"
+ return CommunityRoute("import:${UUID.randomUUID()}",name,null,"run",routeDistance(points),null,"full",owner=RouteOwner("local","You"),geometry=geometry)
+}
+private fun routeDistance(points:List<MapCoordinate>)=points.zipWithNext().sumOf{(a,b)->val radius=6371000.0;val dLat=Math.toRadians(b.latitude-a.latitude);val dLon=Math.toRadians(b.longitude-a.longitude);val x=kotlin.math.sin(dLat/2)*kotlin.math.sin(dLat/2)+kotlin.math.cos(Math.toRadians(a.latitude))*kotlin.math.cos(Math.toRadians(b.latitude))*kotlin.math.sin(dLon/2)*kotlin.math.sin(dLon/2);radius*2*kotlin.math.atan2(kotlin.math.sqrt(x),kotlin.math.sqrt(1-x))}

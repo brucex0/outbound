@@ -93,7 +93,7 @@ import com.plainstride.outbound.core.designsystem.*
         if (state.offline) item { AssistChip({}, { Text(stringResource(R.string.social_offline)) }, leadingIcon = { Icon(Icons.Outlined.CloudOff, null) }) }
         if (incomingRequests.isNotEmpty()) item { SocialCard(onClick = { openProfile(incomingRequests.first()) }) { Row(verticalAlignment = Alignment.CenterVertically) { SocialAvatar(incomingRequests.first()); Spacer(Modifier.width(12.dp)); Text(stringResource(R.string.social_incoming_requests, incomingRequests.size), Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_review), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) } } }
         item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
-        item { when { state.loading -> ConnectionsPlaceholder(); acceptedConnections.isEmpty() -> EmptyCard(stringResource(R.string.social_connections_empty), Icons.Outlined.PersonAdd); else -> SocialCard { LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(acceptedConnections.take(8), key = SocialPerson::id) { PersonPreview(it) { openProfile(it) } } } } } }
+        item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
         item { SectionHeader(stringResource(R.string.social_circle), action = if (state.home.circles.isNotEmpty()) stringResource(R.string.social_circle_create) else null, onAction = createCircle) }
         items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
         if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle -> SocialCard(onClick = { openCircle(circle) }, containerColor = MaterialTheme.colorScheme.primaryContainer) { Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(circle.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, circle.members.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; circle.target?.let { Text("${circle.completed}/$it", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) }; Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } } }
@@ -124,6 +124,25 @@ import com.plainstride.outbound.core.designsystem.*
 @Composable private fun EmptyCard(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun ConnectionsPlaceholder() = SocialCard { Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { repeat(4) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Surface(Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}; Spacer(Modifier.height(6.dp)); LinearProgressIndicator(Modifier.width(48.dp)) } } } }
 @Composable private fun PersonPreview(person: SocialPerson, click: () -> Unit) = TextButton(click, contentPadding = PaddingValues(horizontal = 3.dp)) { Column(Modifier.width(64.dp),horizontalAlignment = Alignment.CenterHorizontally) { Box { SocialAvatar(person, 40.dp); if (person.isActive) Surface(Modifier.size(12.dp).align(Alignment.BottomEnd), shape = CircleShape, color = androidx.compose.ui.graphics.Color(0xFF34C759), border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)) {} }; Spacer(Modifier.height(6.dp)); Text(person.displayName.substringBefore(' '), Modifier.fillMaxWidth(), maxLines = 1, textAlign=androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelSmall) } }
+
+/** Shared Connections element used by both Social and Me. */
+@Composable
+fun SocialConnectionsPreview(
+    connections: List<SocialPerson>,
+    loading: Boolean = false,
+    onOpenAll: () -> Unit,
+    onOpenProfile: (SocialPerson) -> Unit = { onOpenAll() },
+) = when {
+    loading -> ConnectionsPlaceholder()
+    connections.isEmpty() -> EmptyCard(stringResource(R.string.social_connections_empty), Icons.Outlined.PersonAdd)
+    else -> SocialCard(onClick = onOpenAll) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            items(connections.take(8), key = SocialPerson::id) { person ->
+                PersonPreview(person) { onOpenProfile(person) }
+            }
+        }
+    }
+}
 @Composable private fun SocialIconButton(onClick: () -> Unit, label: String, content: @Composable () -> Unit) = IconButton(onClick, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = label }) { Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = .10f)) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { content() } } }
 @Composable private fun PersonRow(person: SocialPerson, click: () -> Unit) = TextButton(click, Modifier.fillMaxWidth()) { SocialAvatar(person); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) { Text(person.displayName); person.username?.let { Text("@$it", style = MaterialTheme.typography.bodySmall) } } }
 @Composable

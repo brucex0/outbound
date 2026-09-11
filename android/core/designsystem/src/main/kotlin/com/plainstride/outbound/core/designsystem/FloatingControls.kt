@@ -22,7 +22,8 @@ fun PlainstrideFloatingAction(
         onClick = onClick,
         modifier = modifier,
         shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.primary,
         tonalElevation = 8.dp,
         shadowElevation = 6.dp,
     ) {

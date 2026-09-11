@@ -19,4 +19,5 @@
     <string name="routes_search">Search routes</string>
     <string name="routes_summary">%1$.1f km · %2$.0f m elevation</string>
     <string name="routes_title">Community routes</string>
+    <string name="routes_import">Import GPX or GeoJSON</string>
 </resources>

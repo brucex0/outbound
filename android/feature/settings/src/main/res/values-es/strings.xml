@@ -82,4 +82,7 @@
     <string name="settings_live_guidance">Guía en vivo</string>
     <string name="settings_health_and_body">Salud y cuerpo</string>
     <string name="settings_integrations">Integraciones</string>
+    <string name="milestone_first_activity">Primera actividad</string>
+    <string name="milestone_ten_activities">Diez actividades</string>
+    <string name="milestone_hundred_km">100 km completados</string>
 </resources>

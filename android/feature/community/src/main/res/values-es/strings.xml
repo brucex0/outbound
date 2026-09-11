@@ -19,4 +19,5 @@
     <string name="routes_search">Buscar rutas</string>
     <string name="routes_summary">%1$.1f km &amp;#xB7; %2$.0f m de desnivel</string>
     <string name="routes_title">Rutas de la comunidad</string>
+    <string name="routes_import">Importar GPX o GeoJSON</string>
 </resources>

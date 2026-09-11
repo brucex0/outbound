@@ -132,5 +132,9 @@ data class P0IntegrationState(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to "persistent_launcher",
     )))
+    fun trackRouteImport(success: Boolean) = analytics.record(AnalyticsEvent("route_imported", mapOf(
+        AnalyticsProperty.Result to if (success) "success" else "failure",
+        AnalyticsProperty.Source to "document_picker",
+    )))
     private companion object{const val PUSH_ENABLED="push_enabled"}
 }
