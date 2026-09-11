@@ -2,7 +2,6 @@ package com.plainstride.outbound.feature.livecoach.audio
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -31,11 +30,9 @@ class LiveCoachPlaybackService : Service() {
         .setSmallIcon(android.R.drawable.ic_btn_speak_now)
         .setContentTitle(getString(R.string.live_coach_notification_title))
         .setContentText(getString(if (paused) R.string.live_coach_notification_paused else R.string.live_coach_notification_active))
-        .setOngoing(!paused)
+        .setOngoing(true)
         .setOnlyAlertOnce(true)
-        .addAction(0, getString(if (paused) R.string.live_coach_notification_active else R.string.live_coach_notification_paused), serviceIntent(if (paused) ACTION_START else ACTION_PAUSE, 1))
-        .addAction(0, getString(android.R.string.cancel), serviceIntent(ACTION_STOP, 2)).build()
-    private fun serviceIntent(action: String, code: Int) = PendingIntent.getService(this, code, Intent(this, LiveCoachPlaybackService::class.java).setAction(action), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        .build()
     companion object {
         private const val CHANNEL_ID = "live_coach_playback"; private const val NOTIFICATION_ID = 2401
         private const val ACTION_START = "com.plainstride.outbound.livecoach.START"; private const val ACTION_PAUSE = "com.plainstride.outbound.livecoach.PAUSE"; private const val ACTION_STOP = "com.plainstride.outbound.livecoach.STOP"

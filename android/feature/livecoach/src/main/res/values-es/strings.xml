@@ -1,15 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<!-- Keep visible copy aligned with iOS Localizable.xcstrings and spoken copy with ServerLiveCoachProvider. -->
 <resources>
     <string name="live_coach_catalog_error">Las opciones no están disponibles ahora. Tu selección guardada no ha cambiado.</string>
     <string name="live_coach_channel_name">Entrenamiento en vivo</string>
     <string name="live_coach_coach_me">Guíame</string>
     <string name="live_coach_cue_adjust">Haz un pequeño ajuste y mantén la fluidez.</string>
-    <string name="live_coach_cue_climb">Sube por sensaciones y mantén la relajación.</string>
-    <string name="live_coach_cue_finish">Si te sientes bien, aumenta poco a poco hasta el final.</string>
-    <string name="live_coach_cue_pause">Actividad en pausa.</string>
-    <string name="live_coach_cue_resume">Actividad reanudada.</string>
-    <string name="live_coach_cue_steady">Vas estable. Mantén este ritmo.</string>
+    <string name="live_coach_cue_climb">Acorta la zancada y sube por sensaciones, no por ritmo.</string>
+    <string name="live_coach_cue_finish">Mantén la calma y aumenta el esfuerzo gradualmente.</string>
+    <string name="live_coach_cue_pause">Entrenamiento en pausa.</string>
+    <string name="live_coach_cue_resume">Entrenamiento reanudado.</string>
+    <string name="live_coach_cue_steady">Mantén este ritmo estable.</string>
+    <string name="live_coach_cue_early_settle">Afloja un poco y entra en ritmo sin prisas.</string>
+    <string name="live_coach_cue_ease_to_target">Vas más rápido que el ritmo objetivo. Baja gradualmente y mantén el control.</string>
+    <string name="live_coach_cue_lift_to_target">Vas más lento que el ritmo objetivo. Aumenta poco a poco sin perder la relajación.</string>
+    <string name="live_coach_cue_smooth_pace">Suaviza el esfuerzo. Deja que el ritmo se estabilice antes de volver a ajustarlo.</string>
+    <string name="live_coach_cue_rebuild_rhythm">Recoloca la postura y recupera el ritmo poco a poco.</string>
+    <string name="live_coach_cue_rhythm_recovered">Ese ajuste funcionó. Recuperaste el ritmo.</string>
+    <string name="live_coach_cue_recovery_easy">Haz que esta recuperación sea suave. Deja que se calmen la respiración y las piernas.</string>
+    <string name="live_coach_cue_crest">La subida afloja. Recompón la postura antes de volver a apretar.</string>
+    <string name="live_coach_cue_segment">Nuevo segmento. Encuentra el objetivo antes de apretar.</string>
+    <string name="live_coach_cue_challenge_start">Empieza el reto. Aumenta el ritmo con suavidad.</string>
+    <string name="live_coach_cue_challenge_complete">Reto completado. Vuelve a tu ritmo de carrera.</string>
+    <string name="live_coach_progress_distance_kilometers">%1$.1f kilómetros.</string>
+    <string name="live_coach_progress_distance_miles">%1$.1f millas.</string>
+    <string name="live_coach_progress_duration_hours">%1$d horas y %2$d minutos.</string>
+    <string name="live_coach_progress_duration_minutes">%1$d minutos.</string>
+    <string name="live_coach_progress_pace_kilometer">Ritmo de %1$d minutos y %2$02d segundos por kilómetro.</string>
+    <string name="live_coach_progress_pace_mile">Ritmo de %1$d minutos y %2$02d segundos por milla.</string>
+    <string name="live_coach_progress_pace_settling">El ritmo todavía se está estabilizando.</string>
+    <string name="live_coach_progress_generic">Entra en ritmo y mantenlo suave.</string>
+    <string name="live_coach_goal_distance_one_third">Has completado un tercio de la distancia. Mantén la fluidez.</string>
+    <string name="live_coach_goal_distance_halfway">Estás a mitad de la distancia. Ten paciencia.</string>
+    <string name="live_coach_goal_distance_two_thirds">Has completado dos tercios de la distancia. Sigue sumando.</string>
+    <string name="live_coach_goal_distance_last_kilometer">Último kilómetro. Mantén una postura alta.</string>
+    <string name="live_coach_goal_distance_last_mile">Última milla. Mantén una postura alta.</string>
+    <string name="live_coach_goal_distance_300_remaining">Quedan 300 metros.</string>
+    <string name="live_coach_goal_distance_100_remaining">Quedan 100 metros.</string>
+    <string name="live_coach_goal_distance_quarter_mile_remaining">Queda un cuarto de milla.</string>
+    <string name="live_coach_goal_distance_tenth_mile_remaining">Queda una décima de milla.</string>
+    <string name="live_coach_goal_distance_complete">Objetivo de distancia completado. Suaviza el esfuerzo al terminar.</string>
+    <string name="live_coach_goal_duration_one_third">Has completado un tercio del tiempo. Entra en ritmo.</string>
+    <string name="live_coach_goal_duration_halfway">Estás a mitad del tiempo. Mantén el esfuerzo uniforme.</string>
+    <string name="live_coach_goal_duration_two_thirds">Has completado dos tercios del tiempo. Mantén la calma.</string>
+    <string name="live_coach_goal_duration_five_remaining">Últimos 5 minutos. Mantén un ritmo tranquilo.</string>
+    <string name="live_coach_goal_duration_one_remaining">Último minuto. Termina con estabilidad.</string>
+    <string name="live_coach_goal_duration_complete">Objetivo de tiempo completado. Baja el esfuerzo con suavidad.</string>
     <string name="live_coach_enable">Entrenar durante las actividades</string>
     <string name="live_coach_enable_detail">Escucha indicaciones breves y oportunas mientras te mueves.</string>
     <string name="live_coach_frequency">Frecuencia</string>

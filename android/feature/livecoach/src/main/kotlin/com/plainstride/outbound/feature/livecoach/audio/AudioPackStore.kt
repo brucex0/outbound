@@ -71,11 +71,20 @@ class VerifiedAudioPackStore @Inject constructor(
         runCatching {
             client.newCall(Request.Builder().url(url).build()).execute().use { response ->
                 check(response.isSuccessful)
+                check(response.body?.contentType()?.toString()?.startsWith("audio/wav") == true)
                 val bytes = response.body?.bytes() ?: error("Empty audio")
-                check(bytes.size <= MAX_AUDIO_BYTES && (entry.byteCount == null || bytes.size == entry.byteCount))
+                check(bytes.size in 44..MAX_AUDIO_BYTES && (entry.byteCount == null || bytes.size == entry.byteCount))
                 check(sha256(bytes) == entry.sha256)
+                check(WavPcm.isValid(bytes))
                 root.mkdirs()
-                File(root, "${entry.sha256}.wav").writeBytes(bytes)
+                val destination = File(root, "${entry.sha256}.wav")
+                val temporary = File(root, "${entry.sha256}.tmp")
+                temporary.writeBytes(bytes)
+                check(temporary.renameTo(destination) || run {
+                    temporary.copyTo(destination, overwrite = true)
+                    temporary.delete()
+                    true
+                })
                 bytes
             }
         }.getOrNull()
@@ -94,16 +103,25 @@ class VerifiedAudioPackStore @Inject constructor(
 
     private fun local(entry: AudioPackEntry): ByteArray? {
         val cached = File(root, "${entry.sha256}.wav")
-        if (cached.isFile) cached.readBytes().takeIf { sha256(it) == entry.sha256 }?.let { return it }
+        if (cached.isFile) cached.readBytes().takeIf { sha256(it) == entry.sha256 && WavPcm.isValid(it) }?.let { return it }
         val assetName = entry.bundledResourceName ?: return null
-        return runCatching { context.assets.open("LiveCoachAudio/$assetName.wav").use { it.readBytes() } }.getOrNull()?.takeIf { sha256(it) == entry.sha256 }
+        return runCatching { context.assets.open("LiveCoachAudio/$assetName.wav").use { it.readBytes() } }
+            .getOrNull()
+            ?.takeIf { sha256(it) == entry.sha256 && WavPcm.isValid(it) }
     }
 
     private fun loadManifest(file: File): AudioPackManifest? = runCatching { PlainstrideJson.decodeFromString<AudioPackManifest>(file.readText()).also { validate(it, it.catalogVersion, false) } }.getOrNull()
     private fun loadBundledManifest(): AudioPackManifest? = runCatching { context.assets.open("LiveCoachAudio/manifest.json").bufferedReader().use { PlainstrideJson.decodeFromString<AudioPackManifest>(it.readText()) }.also { value -> validate(value, value.catalogVersion, false) } }.getOrNull()
     private fun validate(value: AudioPackManifest, version: String, remote: Boolean) {
         check(value.contractVersion == 1 && value.catalogVersion == version && value.entries.isNotEmpty())
-        check(value.entries.all { it.approved && it.contentType == "audio/wav" && it.sha256.matches(Regex("[a-f0-9]{64}")) && (!remote || it.url != null) })
+        check(value.entries.all {
+            it.approved
+                && it.contentType == "audio/wav"
+                && it.sha256.matches(Regex("[a-f0-9]{64}"))
+                && (it.byteCount == null || it.byteCount in 44..MAX_AUDIO_BYTES)
+                && (it.durationMilliseconds == null || it.durationMilliseconds in 1..8_000)
+                && (!remote || it.url != null)
+        })
     }
     private fun verifyEs256(payload: ByteArray, signatureBytes: ByteArray, pem: String): Boolean {
         val der = Base64.decode(pem.replace(Regex("-----[^-]+-----|\\s"), ""), Base64.DEFAULT)

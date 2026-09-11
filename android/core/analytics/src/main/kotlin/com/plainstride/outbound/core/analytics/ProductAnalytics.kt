@@ -22,6 +22,11 @@ enum class AnalyticsProperty(val wireName: String) {
     EntrySource("entry_source"),
     Feature("feature"),
     VoiceGuideEnabled("voice_guide_enabled"),
+    MomentType("moment_type"),
+    CoachingContract("coaching_contract"),
+    AudioMode("audio_mode"),
+    AccessReason("access_reason"),
+    LatencyBucket("latency_bucket"),
 }
 
 data class AnalyticsEvent(

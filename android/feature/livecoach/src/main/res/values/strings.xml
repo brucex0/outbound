@@ -1,15 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<!-- Keep visible copy aligned with iOS Localizable.xcstrings and spoken copy with ServerLiveCoachProvider. -->
 <resources>
     <string name="live_coach_catalog_error">Coaching choices aren’t available right now. Your saved choice is unchanged.</string>
     <string name="live_coach_channel_name">Live coaching</string>
     <string name="live_coach_coach_me">Coach me</string>
     <string name="live_coach_cue_adjust">Make one small adjustment and keep it smooth.</string>
-    <string name="live_coach_cue_climb">Run this climb by effort and stay relaxed.</string>
-    <string name="live_coach_cue_finish">If it feels good, build gradually to the finish.</string>
-    <string name="live_coach_cue_pause">Activity paused.</string>
-    <string name="live_coach_cue_resume">Activity resumed.</string>
-    <string name="live_coach_cue_steady">You’re settled. Keep this rhythm.</string>
+    <string name="live_coach_cue_climb">Shorten your stride and run the climb by effort, not pace.</string>
+    <string name="live_coach_cue_finish">Stay composed and let the effort rise gradually.</string>
+    <string name="live_coach_cue_pause">Workout paused.</string>
+    <string name="live_coach_cue_resume">Workout resumed.</string>
+    <string name="live_coach_cue_steady">Keep this steady rhythm.</string>
+    <string name="live_coach_cue_early_settle">Ease off a touch. Let your body settle into the run.</string>
+    <string name="live_coach_cue_ease_to_target">You’re running faster than the target. Ease the pace down gradually.</string>
+    <string name="live_coach_cue_lift_to_target">You’re running slower than the target. Lift the pace gradually and stay relaxed.</string>
+    <string name="live_coach_cue_smooth_pace">Smooth the effort. Let the pace settle before you adjust again.</string>
+    <string name="live_coach_cue_rebuild_rhythm">Reset your posture and gently bring the rhythm back.</string>
+    <string name="live_coach_cue_rhythm_recovered">That adjustment worked. You found the rhythm again.</string>
+    <string name="live_coach_cue_recovery_easy">Make this recovery easy. Let your breathing and legs settle.</string>
+    <string name="live_coach_cue_crest">The climb is easing. Reset your form before you build again.</string>
+    <string name="live_coach_cue_segment">New segment. Settle into the target before you press.</string>
+    <string name="live_coach_cue_challenge_start">Challenge starts now. Build the pace smoothly.</string>
+    <string name="live_coach_cue_challenge_complete">Challenge complete. Settle back into your run.</string>
+    <string name="live_coach_progress_distance_kilometers">%1$.1f kilometers.</string>
+    <string name="live_coach_progress_distance_miles">%1$.1f miles.</string>
+    <string name="live_coach_progress_duration_hours">%1$d hours %2$d minutes.</string>
+    <string name="live_coach_progress_duration_minutes">%1$d minutes.</string>
+    <string name="live_coach_progress_pace_kilometer">Pace %1$d minutes %2$02d seconds per kilometer.</string>
+    <string name="live_coach_progress_pace_mile">Pace %1$d minutes %2$02d seconds per mile.</string>
+    <string name="live_coach_progress_pace_settling">Pace still settling.</string>
+    <string name="live_coach_progress_generic">Settle in and keep it easy.</string>
+    <string name="live_coach_goal_distance_one_third">One third of your distance goal done. Keep it smooth.</string>
+    <string name="live_coach_goal_distance_halfway">Halfway through your distance goal. Stay patient.</string>
+    <string name="live_coach_goal_distance_two_thirds">Two thirds of the distance goal done. Keep stacking it.</string>
+    <string name="live_coach_goal_distance_last_kilometer">Last kilometer of the distance goal. Stay tall.</string>
+    <string name="live_coach_goal_distance_last_mile">Last mile of the distance goal. Stay tall.</string>
+    <string name="live_coach_goal_distance_300_remaining">300 meters to go.</string>
+    <string name="live_coach_goal_distance_100_remaining">100 meters to go.</string>
+    <string name="live_coach_goal_distance_quarter_mile_remaining">A quarter mile to go.</string>
+    <string name="live_coach_goal_distance_tenth_mile_remaining">A tenth of a mile to go.</string>
+    <string name="live_coach_goal_distance_complete">Distance goal covered. Ease through the finish.</string>
+    <string name="live_coach_goal_duration_one_third">One third of your time goal done. Settle into the rhythm.</string>
+    <string name="live_coach_goal_duration_halfway">Halfway through your time goal. Keep the effort even.</string>
+    <string name="live_coach_goal_duration_two_thirds">Two thirds of the time goal done. Stay composed.</string>
+    <string name="live_coach_goal_duration_five_remaining">Last 5 minutes of the time goal. Keep the rhythm calm.</string>
+    <string name="live_coach_goal_duration_one_remaining">Last minute of the time goal. Finish steady.</string>
+    <string name="live_coach_goal_duration_complete">Time goal covered. Bring it down smoothly.</string>
     <string name="live_coach_enable">Coach during activities</string>
     <string name="live_coach_enable_detail">Hear timely, short guidance while you move.</string>
     <string name="live_coach_frequency">Frequency</string>

@@ -113,6 +113,7 @@ data class TodayManualLaunch(
     val indoor: Boolean = false,
     val voiceGuideEnabled: Boolean = true,
     val curatedWorkout: StandaloneWorkout? = null,
+    val curatedWorkoutCatalogVersion: Int? = null,
 )
 data class TodayLaunchOptions(val indoor: Boolean, val voiceGuideEnabled: Boolean)
 
@@ -251,7 +252,8 @@ fun TodayScreen(
             suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) }
                 ?: onStartFreestyle()
         } else {
-            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout))
+            val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion))
         }
     }
     LaunchedEffect(startRequest) {

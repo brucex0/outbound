@@ -24,12 +24,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.feature.livecoach.network.CoachingContract
 import com.plainstride.outbound.feature.livecoach.network.VoiceProfile
 import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
 
-@Composable fun LiveCoachRecordingEffect(launch: RecordingLaunchConfiguration, viewModel: LiveCoachViewModel = hiltViewModel()) {
-    if (launch.voiceGuideEnabled) LaunchedEffect(viewModel, launch) { viewModel.attachRecording(launch) }
+@Composable fun LiveCoachRecordingEffect(
+    launch: RecordingLaunchConfiguration,
+    unitSystem: MeasurementUnitSystem,
+    viewModel: LiveCoachViewModel = hiltViewModel(),
+) {
+    if (launch.voiceGuideEnabled) LaunchedEffect(viewModel, launch, unitSystem) {
+        viewModel.attachRecording(launch, unitSystem)
+    }
 }
 
 @Composable fun LiveCoachSettingsSection(viewModel: LiveCoachViewModel = hiltViewModel()) {

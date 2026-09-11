@@ -87,7 +87,7 @@ The following table is the release checklist. A row may use an Android-native re
 | Local activities | `LocalActivityStore`, `ActivityStore` | Room database plus private app media storage and sync coordinator | Offline create/read/update/delete, pagination, tombstones, routes, photos, and idempotent convergence |
 | Activity detail | Maps, elevation, splits, metadata, edit/export/share | Compose detail, Google Maps, Android share and document APIs | Equivalent metrics, segmentation, editing, GPX/GeoJSON, share card, and source attribution |
 | Progress and gear | `ProgressStatsEngine`, `ProgressView`, `GearStore` | Pure Kotlin engines and Room repositories | Shared fixtures produce equivalent weekly totals, records, predictions, momentum, and mileage |
-| Live coaching | Moment director, session planner, signed audio packs, stream/fixed/system fallback | Pure Kotlin policy, Media3/AudioTrack, Android TTS fallback, encrypted/private cache | Same semantic gates, target logic, priorities, locale/units, 1.5-second fallback, interruptions, and session access |
+| Live coaching | Moment director, session planner, signed audio packs, planned cache, stream/fixed recorded-audio fallback | Pure Kotlin policy and scheduler, AudioTrack, verified recorded-audio packs, private planned-audio cache | Same semantic gates, target logic, priorities, locale/units, 1.5-second fallback, interruptions, and session access; do not substitute system TTS |
 | Assistant and voice | Companion API, local fallback, speech recognition, App Intents | Companion API, Android speech APIs, App Actions/shortcuts where supported | Text and tap-to-talk assistant, activity preparation, live-session voice commands, and privacy boundaries |
 | Social and Circles | Connections, feed, groups, invitations, events, Cheers | Compose surfaces against existing Social and Circle APIs | Cross-platform interaction, privacy visibility, pagination, reporting, blocking, and notification routing |
 | Recognition | Local presentation plus server reconciliation | Room cache plus the same recognition APIs | Idempotent awards and identical share-eligibility behavior |
@@ -260,7 +260,7 @@ Gate:
 
 Deliverables:
 
-- Catalog and preference selection, coaching session planning, signed fixed packs, planned-audio cache, streaming/fixed/TTS playback, moment policy, audio focus, ducking, interruptions, Bluetooth routing, companion chat, local fallbacks, speech recognition, live voice commands, app shortcuts, Spotify, and supported Android music integration.
+- Catalog and preference selection, coaching session planning, signed fixed packs, planned-audio cache, streaming and fixed recorded-audio playback, moment policy and progress scheduler, audio focus, ducking, interruptions, Bluetooth routing, companion chat, local fallbacks, speech recognition, live voice commands, app shortcuts, Spotify, and supported Android music integration.
 
 Gate:
 

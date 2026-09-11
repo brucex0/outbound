@@ -17,6 +17,9 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val durationSeconds:Int?=null,
     val phase:String?=null,
     val targetPaceSecondsPerKilometer:Double?=null,
+    val fasterToleranceSeconds:Double?=null,
+    val slowerToleranceSeconds:Double?=null,
+    val recognizesTargetLock:Boolean=false,
 )
 
 @Serializable data class FollowedRouteConfiguration(val id:String,val name:String,val shape:String?=null,val distanceMeters:Double?=null,val elevationGainMeters:Double?=null,val reverse:Boolean=false,val points:List<RecordingRoutePoint> = emptyList())
@@ -30,10 +33,17 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val entrySource: String = "quick_start",
     val suggestionId: String? = null,
     val plannedWorkoutId: String? = null,
+    val standaloneWorkoutId: String? = null,
+    val standaloneWorkoutCatalogVersion: Int? = null,
     val gearId: String? = null,
     val workoutDetail: String? = null,
     val workoutGuideline: String? = null,
     val privateTrainingSignal: String? = null,
+    val workoutPhase: String? = null,
+    val workoutTargetPaceSecondsPerKilometer: Double? = null,
+    val workoutFasterToleranceSeconds: Double? = null,
+    val workoutSlowerToleranceSeconds: Double? = null,
+    val workoutRecognizesTargetLock: Boolean = false,
     val followedRoute:FollowedRouteConfiguration?=null,
     val indoor: Boolean = false,
     val voiceGuideEnabled: Boolean = true,

@@ -463,7 +463,10 @@ private fun SignedInApp(
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
                         }
                     },
-                    sessionEffect = { snapshot -> LiveCoachRecordingEffect(recordingLaunch);RecordingSafetyEffect(snapshot) },
+                    sessionEffect = { snapshot ->
+                        LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem)
+                        RecordingSafetyEffect(snapshot)
+                    },
                 )
             }
             composable(ACTIVITY_HISTORY_ROUTE) {
@@ -572,8 +575,26 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
         },
         title = curatedWorkout?.title,
         goal = recordingGoal,
-        workoutSteps = curatedWorkout?.steps?.map { StructuredWorkoutStep(it.label, it.detail, it.durationSeconds, it.coachingTarget?.phase, it.coachingTarget?.pace?.targetSecondsPerKilometer) }.orEmpty(),
+        workoutSteps = curatedWorkout?.steps?.map {
+            StructuredWorkoutStep(
+                title = it.label,
+                detail = it.detail,
+                durationSeconds = it.durationSeconds,
+                phase = it.coachingTarget?.phase,
+                targetPaceSecondsPerKilometer = it.coachingTarget?.pace?.targetSecondsPerKilometer,
+                fasterToleranceSeconds = it.coachingTarget?.pace?.fasterToleranceSeconds,
+                slowerToleranceSeconds = it.coachingTarget?.pace?.slowerToleranceSeconds,
+                recognizesTargetLock = it.coachingTarget?.recognizesTargetLock == true,
+            )
+        }.orEmpty(),
         entrySource = "today_manual",
+        standaloneWorkoutId = curatedWorkout?.id,
+        standaloneWorkoutCatalogVersion = curatedWorkoutCatalogVersion,
+        workoutPhase = curatedWorkout?.coachingTarget?.phase,
+        workoutTargetPaceSecondsPerKilometer = curatedWorkout?.coachingTarget?.pace?.targetSecondsPerKilometer,
+        workoutFasterToleranceSeconds = curatedWorkout?.coachingTarget?.pace?.fasterToleranceSeconds,
+        workoutSlowerToleranceSeconds = curatedWorkout?.coachingTarget?.pace?.slowerToleranceSeconds,
+        workoutRecognizesTargetLock = curatedWorkout?.coachingTarget?.recognizesTargetLock == true,
         gearId = defaultGearId,
         indoor = indoor,
         voiceGuideEnabled = voiceGuideEnabled,
