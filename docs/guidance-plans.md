@@ -12,6 +12,8 @@ Make Outbound useful before, during, and after activity by helping the user know
 
 The system should feel like a guide relationship, not a rigid training spreadsheet.
 
+First-launch onboarding, reusable plan setup, durable skip behavior, and no-plan entry points are defined in `docs/new-user-onboarding.md`.
+
 ## Core Product Shape
 
 Use three user-facing layers:
@@ -38,14 +40,19 @@ The recommendation engine should combine explicit inputs and observed behavior.
 
 Explicit inputs:
 
-- focus type
+- one primary outcome-oriented objective
+- up to two supporting objectives
 - event distance and event date when relevant
-- preferred sports
+- one primary activity and optional supporting activities
 - preferred days per week
 - available time per day or week
 - experience level
 - confidence and motivation mode
 - injury caution or recovery constraints
+
+Do not present consistency as a user objective. Consistency is a planning and adherence strategy used in service of an outcome such as endurance, speed, strength, event preparation, weight change, fitness maintenance, or health and energy. Treat starting out and returning after a break as baseline context.
+
+One session per week is a valid commitment. The plan should preserve that commitment and may add only clearly optional recovery or mobility work.
 
 Observed inputs:
 
@@ -135,9 +142,11 @@ Use generic concepts:
 - `ReadinessCheckIn`
 - `GuideRecommendation`
 
+An active plan has one primary objective. Supporting objectives and activities tune the same plan; they do not create parallel active plans with competing schedules. Plan stimulus first, then translate each session through a modality adapter. Never silently translate an unsupported modality into running.
+
 Recommended high-level definitions:
 
-- `Goal`: the user's intent, such as race prep, consistency, endurance, performance, recovery, or general fitness
+- `Goal`: the user's outcome, such as event preparation, endurance, speed, strength, weight change, fitness maintenance, or health and energy
 - `Sport`: run, walk, ride, strength, mobility, mixed, and future types
 - `PlanTemplate`: the versioned progression blueprint
 - `ActivePlan`: one user's personalized plan instance
@@ -179,7 +188,7 @@ Example template families:
 Current iOS/backend MVP note:
 
 - the app now ships a local plan library with structured `weeks -> workouts -> steps`
-- the primary user-facing presets are Outbound-authored or Outbound-reviewed plans for consistency, comeback, 5K, 10K, 10 mile, half marathon, marathon, and base building
+- the current catalog still contains consistency and comeback families alongside 5K, 10K, 10 mile, half marathon, marathon, and base-building plans; the plan-setup redesign in `docs/new-user-onboarding.md` removes consistency from user-facing objectives and treats comeback as starting context
 - Outbound-authored plans are benchmarked against established road-running structure rather than copied from copyrighted public plans: mostly easy running, one controlled quality day, progressive long runs, cutback weeks, and event-specific tapers
 - MIT open-source imports remain as compatibility/fallback content, but high-volume imported half-marathon plans should not lead normal recommendations
 - retained imported plain-text plans are normalized into Outbound workout kinds and step lists, and rest days are represented as rest placeholders rather than 30-minute scheduled workouts

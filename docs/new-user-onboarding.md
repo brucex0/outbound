@@ -1,151 +1,192 @@
-# New User Onboarding
+# New User Onboarding And Plan Setup
 
-## Startup authentication and completion
+Open this when changing first-launch routing, onboarding persistence, plan creation, or the no-plan experience.
 
-First-party sessions are stored in the iOS Keychain and may survive app-container replacement. Login and refresh responses embed the server-backed onboarding result derived from `RunnerProfile.completedAt`; sessions written before that field existed decode it as unknown. `UserDefaults` keeps a fast account-scoped completion cache, while the authenticated session carries completion across reinstalls and account use on another device.
+## Product Decision
 
-Startup trusts completion from either source. A restored incomplete or unknown session receives one bounded refresh through the existing auth endpoint. Confirmed incomplete accounts enter onboarding; a refresh failure or 1.5-second timeout fails open to the main UI. A timed-out refresh may still repair the stored session in the background, while later authenticated activity can retry a failed refresh. The main shell never reruns the local-only gate or forces onboarding over an already-visible UI.
+Onboarding and plan setup are separate concepts:
 
-Plainstride onboarding should create a first win, not teach the whole product.
+- `onboarding`: a one-time first-launch choice after authentication
+- `plan setup`: a reusable flow that creates a personalized training plan
+- `active plan`: independent state owned by the planning domain
 
-## Product Goal
+A person may skip onboarding and use Plainstride without a plan. Skipping permanently resolves onboarding for that account; the app must not present it again automatically on a later launch. The user can still open plan setup explicitly at any time.
 
-New authenticated users should reach a concrete success state in about 90 seconds:
+## First-Launch Flow
 
-1. Understand that Plainstride combines an adaptive running companion with people and running groups.
-2. Authenticate with Apple or Google.
-3. Choose a goal, recent baseline, and realistic weekly capacity.
-4. Review and correct the companion's understanding.
-5. See a credible first week with a concise AI explanation.
-6. Understand that the first three normal runs form a low-pressure calibration period.
-7. Optionally invite a person or find a club.
-8. Land on Today with the first session ready.
+After authentication, terms acceptance, and any identity fields required for the account:
 
-The flow should avoid feature tours, early permission prompts, mandatory essays, mandatory body-profile intake, and empty-dashboard handoffs. AI should prove its value through the generated week and explanation rather than through a chatbot-centric setup.
+1. Explain the product promise briefly.
+2. Offer two actions:
+   - `Create my plan`
+   - `Explore first`
+3. `Explore first` records onboarding as skipped and opens the main app immediately.
+4. `Create my plan` opens the reusable plan-setup flow.
 
-## Target Flow
+Do not show a feature tour, request unrelated permissions, or require a plan before the main app becomes useful.
 
-1. Welcome and authentication
-   - Eyebrow: `Your AI running companion`.
-   - Promise: `Train with purpose. Run with your people.`
-   - Show a labeled orbit with `You` at the AI-assisted center and universal `Family`, `Friends`, and `Groups` nodes. Groups include formal running clubs and casual running groups.
-   - Add one small `Better together` cue so the illustration communicates the emotional benefit of connected training rather than a generic social graph.
-   - Do not use real names, initials, or club identities in the welcome illustration.
-   - Show only Continue with Apple and Continue with Google. Each provider action handles both signup and login; do not add a redundant `Already have an account?` action.
-   - Returning users bypass onboarding after provider authentication.
+## Onboarding State
 
-2. Goal
-   - Choose run consistently, start running, return after a break, train for a race, or run faster.
-   - Offer optional free text for a different goal.
-   - Ask race distance and date only when race training is selected.
+Persist an account-scoped server-backed status with three semantic values:
 
-Before goal intake, show a short identity step only when Apple did not provide a usable display name or verified email. It collects a display name and unique username, plus a contact email only when the provider email is unavailable. Accounts with both a real display name and valid provider email skip this step.
+- `pending`: the first-launch choice has not been resolved
+- `skipped`: the user chose to explore without a plan
+- `completed`: the user created a plan through setup
 
-3. Starting point
-   - Choose recent running frequency.
-   - Choose a comfortable run duration.
+The status must survive reinstall, logout/login, and use on another device. A local account-scoped cache may accelerate startup, but it is not the source of truth.
 
-4. Realistic week
-   - Choose runs per week and typical time available.
-   - Ask preferred long-run day only when relevant.
-   - Offer one optional context field for injury, illness, travel, or schedule constraints.
+Plan state remains independent:
 
-5. First week, editable understanding, and calibration
-   - Show the three-session week, total time, and one precise AI explanation.
-   - Offer easier, different days, or Ask adjustments.
-   - Do not add another plan-confirmation screen after the editable understanding and first-week preview.
-   - Show a compact summary of goal, realistic schedule, starting baseline, and material constraints.
-   - Label runner-provided facts separately from starting estimates and allow section-level edits.
-   - Explain that the first 7-10 days use three normal training runs to tune effort, endurance, and recovery.
-   - Do not require an all-out fitness test. Offer recent race/imported benchmark input only as an optional experienced-runner path.
-   - Keep the explanation on the same final review screen instead of making calibration another read-only step.
+- `activePlan == nil` means the user has no active plan.
+- Neither `skipped` nor `completed` should be used as evidence that an active plan exists.
+- Once resolved, onboarding status preserves what happened during first use. Creating a plan later does not rewrite an earlier `skipped` outcome.
+- Ending or deleting a plan does not make onboarding pending again.
 
-6. Optional social connection
-   - Ask `Who helps you get out?`
-   - Offer invite someone, find a club, or do this later.
-   - Explain that health details are not shared.
+The current implementation derives `onboardingCompleted` from `RunnerProfile.completedAt`. That coupling cannot represent a durable skip and must be replaced by an explicit onboarding status.
 
-7. Optional private training details and Apple Health
-   - After the goal, baseline, and realistic-week intake, offer one clearly skippable screen before the final review.
-   - Let runners add any combination of birthday, height, weight, and sex assigned at birth manually; no field is required.
-   - Default birthday entry on, while keeping it optional through the toggle and one-tap skip action.
-   - Show height and weight in the runner's saved in-app measurement system when available; otherwise use the device measurement system.
-   - Explain that birthday is stored instead of a static age so it remains accurate.
-   - Offer Apple Health on the same screen as a faster alternative to manual entry, not as another onboarding page.
-   - Request access only after the user taps Connect Apple Health.
-   - Use up to eight weeks of running workouts to refine starting frequency and comfortable duration.
-   - Save available birthday, biological sex, height, and weight to the private training profile.
-   - Exclude workouts created by Plainstride and let the user continue without connecting.
+## No-Plan Experience
 
-8. Today
-   - Land on the real Today surface with the quote, first workout, and Start action.
-   - Keep the onboarding recommendation visually continuous with the product.
-   - Show small `Run 1 of 3` calibration progress without making Today feel like an assessment dashboard.
+When there is no active plan:
 
-The clickable reference is `docs/prototypes/outbound-onboarding-flow.html`. It remains visual direction; the five-step ordering in this document and `SimplifiedOnboardingFlow.swift` is canonical.
+- Today defaults to `Run`, not a generated or fallback planned workout.
+- The manual Run flow remains fully useful.
+- The `Planned` control remains visible and acts as an explicit `Build a plan` entry point.
+- Tapping `Planned` opens plan setup instead of showing an empty or syncing planned-workout state.
+- Do not show plan-setup prompts automatically at startup or insert repeated nag cards.
+
+The All Plans page should lead with:
+
+1. `Build my plan` as the personalized path.
+2. Recommended authored plans.
+3. The complete browsable plan catalog.
+
+Selecting an authored plan remains a valid shortcut and does not need to go through personalized setup.
+
+## Plan-Setup Flow
+
+Plan setup should feel like a short conversation, not a configuration form. It can be launched from first use, the Today `Planned` control, or All Plans.
+
+### 1. Objective
+
+Ask `What do you want this plan to help you achieve?`
+
+Choose one primary objective and optionally up to two supporting objectives:
+
+- prepare for an event
+- build endurance or go farther
+- improve speed
+- build strength
+- lose weight
+- maintain fitness
+- improve health and energy
+- something else
+
+Do not offer `Build consistency` or `Get active regularly` as objectives. Consistency is a means of achieving an objective and belongs in plan behavior and adherence guidance.
+
+Ask for event distance and date only when event preparation is selected. Treat `starting out` and `returning after a break` as starting context, not objectives.
+
+The primary objective controls progression and tradeoffs. Supporting objectives influence activity mix, session selection, and the explanation without creating independent competing plans.
+
+### 2. Activities
+
+Ask which activities the plan should use:
+
+- choose one primary activity
+- optionally choose supporting activities
+- expose only activities for which recording, workout generation, launching, progress, and guidance are credible
+
+The planner should reason about training stimulus first, then use modality adapters to create sport-specific sessions. Do not silently map an unsupported modality to running.
+
+### 3. Starting Point
+
+Collect only the baseline needed for the selected primary activity:
+
+- recent session frequency
+- comfortable session duration
+- `starting out`, `currently active`, or `returning after a break`
+
+Use observed Health or activity data when the user explicitly connects it. Keep manual answers editable.
+
+### 4. Realistic Week
+
+Ask what most weeks can reliably support:
+
+- `1–6 sessions per week`
+- typical time available
+- preferred days when the user cares about scheduling
+- preferred long-session day only when the plan needs one
+- optional injury, illness, travel, or schedule constraints
+
+One session per week is valid. Create one meaningful anchor session and label any mobility or recovery additions as optional. Never inflate the commitment to make the plan look fuller.
+
+### 5. Optional Private Details
+
+Birthday, height, weight, sex assigned at birth, and Apple Health remain optional and private. Explain why a field helps before requesting it. Apple Health authorization occurs only after the user taps the connection action.
+
+### 6. Create And Present The Plan
+
+Use `Create my plan` as the creation CTA.
+
+Creation establishes the overall objective, progression, activity mix, constraints, and adaptation policy. The product may concretely schedule only the next 7–14 days because later weeks adapt to actual behavior.
+
+During a non-trivial request:
+
+- replace the current content with an honest indeterminate loading state
+- use copy such as `Building a plan around your week…`
+- do not show fabricated percentages or artificial delays
+- on failure, preserve the draft and show temporary toast-style failure feedback with Retry
+
+The result should show:
+
+- `Your plan`: objective, overall direction, activity mix, and expected duration when applicable
+- `Your starting week`: concrete sessions, days, total time, and optional sessions
+- one concise explanation of why the plan fits
+- actions to make it easier, change days, or change activity mix
+- `Go to Today` as the final action
+
+Do not describe the CTA as `Build my first week`. The plan is broader than one week even though only the starting week is committed in detail.
+
+## Calibration
+
+Calibration means the first three relevant completed sessions, not three mandatory runs in the first calendar week. Show progress lightly and allow calibration to span as many weeks as needed for a low-frequency user.
+
+## Exit And Resume
+
+- First launch offers the explicit `Explore first` resolution.
+- After plan setup has begun, closing it uses `Finish later` semantics and preserves the account-scoped draft locally.
+- Optional profile and Health sections have a direct `Skip` action.
+- Exiting an explicitly launched plan setup never changes onboarding back to pending and never creates a partial active plan.
 
 ## Permission Timing
 
-- Apple Health: optional on the private training-details screen after core intake, before the combined final review and first-plan creation.
-- Location and motion: when the first outdoor run starts.
-- Notifications: after the user accepts the plan.
+- Apple Health: only from its optional plan-setup action.
+- Location and motion: when the first relevant outdoor activity starts.
+- Notifications: after a plan is created or later from Settings.
 - Camera and photos: on first use.
 - Contacts: avoid when link-based invitations are sufficient.
-- Live location: when explicitly enabling trusted-person sharing.
+- Live location: only when explicitly enabling sharing.
 
-Do not request multiple system permissions during initial signup.
+Do not request multiple system permissions during first use.
 
-## Deferred Profile Inputs
+## Analytics And Privacy
 
-Guide face, guide voice, and detailed preferences belong under Me or should be requested later when a feature has a clear need. Private training details remain editable under Me when the optional onboarding screen is skipped or needs an update. They never block the first useful plan.
+Add typed, bounded events for:
 
-## Current Implementation
+- `onboarding_resolved`, emitted once with result `skipped` or `completed`
+- `plan_builder_opened`, with entry source `onboarding`, `planned_button`, or `all_plans`
+- `plan_builder_exited`, with a bounded step name
+- `plan_creation_completed`, with success/failure and a coarse latency bucket
 
-The simplified shell uses `Features/Onboarding/SimplifiedOnboardingFlow.swift`, a five-step implementation of goal, baseline, realistic week, optional private training details, and one combined understanding/calibration review, preceded by the conditional identity step described above. The optional training-details step supports manual entry, Apple Health, or one-tap skip. Completion persists the local account-scoped onboarding marker, syncs structured runner facts through `PersonalizationStore`, and starts the recommended training plan.
+Objective and activity categories may be bounded enum values. Never send free text, body details, dates, exact measurements, constraints, workout details, or account identifiers through analytics.
 
-Settings includes a DEBUG-only replay action that restarts the simplified onboarding flow without signing out.
+## Current Implementation Gap
 
-## Implementation
+The shipped iOS flow in `Features/Onboarding/SimplifiedOnboardingFlow.swift` is still run-specific: it requires 2–6 runs, hard-codes Saturday as the long-run day, treats consistency as a goal, presents three calibration runs as the first-week result, and accepts the first recommendation after `Build my first week`.
 
-- `App/OnboardingStore.swift`
-  - Owns the fast account-scoped completion cache in `UserDefaults` and repairs it from an authoritative completed session.
-  - Keeps the in-progress draft local.
-  - Stores raw intake text, body basics, extracted intake summary, suggested readiness, and a `SuggestedSession`.
-  - Uses a deterministic local intake analyzer for V1 so onboarding remains offline and predictable; a backend or on-device model can replace the analyzer later while preserving the structured summary shape.
+Startup in `App/OutboundApp.swift` and the backend auth session derive onboarding completion from `RunnerProfile.completedAt`. Today currently routes a user without an active plan to the plan picker rather than the reusable personalized builder. `TrainingPlanPickerView` does not yet lead with `Build my plan`.
 
-- `App/OnboardingFlowView.swift`
-  - Renders the full-screen SwiftUI flow.
-  - Uses the selected guide face color as the accent.
-  - Uses text editors for goal, baseline, and schedule intake.
-  - Uses exact fields for age, height, weight, units, and body profile.
-  - Shows the extracted guide review before the recommendation.
-  - Calls back with whether the user chose to start the first session.
-
-- `App/OutboundApp.swift`
-  - Resolves authentication and account-scoped onboarding before choosing the first interactive screen, with a bounded session refresh and fail-open main destination when status cannot be obtained.
-  - Routes a new authenticated account directly from the branded launch surface into onboarding, without briefly rendering the main shell underneath it.
-
-- `App/MainTabView.swift`
-  - Presents onboarding only for the DEBUG replay action after normal startup routing is complete.
-  - Applies the profile by setting the daily readiness.
-  - Applies the onboarding unit choice to app measurement preferences.
-  - Starts `RecordView` with the personalized `SessionIntent` when requested.
-
-- `App/ProfileView.swift`
-  - Adds a DEBUG-only Settings button to replay onboarding without signing out.
-
-## Persistence
-
-Completion and profile keys are namespaced by the stable Plainstride account ID:
-
-- Authenticated users: `AuthStore.user.id`.
-- Local sessions: `AuthStore.localSessionLabel`.
-- Fallback: `local`.
-
-The auth session also stores an optional `onboardingCompleted` value. A missing value means an older session or partial rollout, not an incomplete account. `GET /v1/auth/me` returns the same authoritative boolean, derived from `RunnerProfile.completedAt`, so clients never infer onboarding completion from calibration or plan state. Completing onboarding updates the local flag and Keychain session immediately, queues a retryable runner-profile write, and lets later login, refresh, or account responses confirm the server result.
+Use `docs/onboarding-plan-setup-implementation-prompt.md` for the implementation handoff.
 
 ## Debugging
 
-Debug builds show Settings -> Debug -> Run Onboarding Flow.
-
-The debug trigger reopens the flow and resets only the in-progress draft. It does not sign out, clear activity history, clear guide settings, or remove the prior completed profile until the replayed flow is completed.
+Debug builds should continue to expose a replay action. Replay opens plan setup without clearing activity history, account identity, guide settings, prior onboarding resolution, or an existing plan unless the developer explicitly chooses a destructive reset action.
