@@ -3200,6 +3200,20 @@ private struct SimplifiedSettingsView: View {
                     Label(String(localized: "account_transfer.settings_title", table: "AccountTransfer"), systemImage: "iphone.and.arrow.forward")
                 }
                 NavigationLink {
+                    PlusView(entrySource: "settings")
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(String(localized: "rewards.plus", table: "Rewards"))
+                            Text(String(localized: "rewards.plus_settings_body", table: "Rewards"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "sparkles")
+                    }
+                }
+                NavigationLink {
                     RewardsCenterView()
                 } label: {
                     Label(String(localized: "rewards.settings_title", table: "Rewards"), systemImage: "gift")

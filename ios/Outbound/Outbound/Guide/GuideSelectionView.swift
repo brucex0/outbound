@@ -2,13 +2,36 @@ import SwiftUI
 
 struct GuideSelectionView: View {
     @EnvironmentObject var guideCatalog: GuideCatalogStore
+    @EnvironmentObject private var subscriptionStore: RevenueCatSubscriptionStore
     @Environment(\.analyticsManager) private var analyticsManager
+    @ObservedObject private var liveCoachState = LiveCoachFeatureState.shared
     @State private var previewPlayer: GuideAudioPlayer?
     @State private var previewingVoiceID: String?
     @State private var toastMessage: String?
 
     var body: some View {
         Form {
+            if liveCoachState.configuration?.access.paywallAvailable == true,
+               !subscriptionStore.hasProEntitlement {
+                Section {
+                    NavigationLink {
+                        PlusView(entrySource: "live_guidance")
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(String(localized: "rewards.live_guidance_upgrade", table: "Rewards"))
+                                Text(String(localized: "rewards.live_guidance_upgrade_detail", table: "Rewards"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+            }
+
             Section(String(localized: "guide.persona.section.title", defaultValue: "Coach")) {
                 ForEach(guideCatalog.templates) { template in
                     Button {

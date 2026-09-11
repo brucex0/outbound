@@ -1,21 +1,15 @@
-import RevenueCat
-import RevenueCatUI
 import SwiftUI
 
 struct RewardsCenterView: View {
     @Environment(\.analyticsManager) private var analyticsManager
-    @EnvironmentObject private var subscriptionStore: RevenueCatSubscriptionStore
     @State private var status: RewardsStatusDTO?
     @State private var invitationCode = ""
     @State private var entitlementCode = ""
     @State private var isWorking = false
     @State private var message: String?
-    @State private var showPaywall = false
-    @State private var showCustomerCenter = false
 
     var body: some View {
         Form {
-            plusSection
             inviteSection
             redeemSection
         }
@@ -34,60 +28,6 @@ struct RewardsCenterView: View {
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-        }
-        .sheet(isPresented: $showPaywall) {
-            PaywallView(displayCloseButton: true)
-                .onPurchaseCompleted { customerInfo in
-                    subscriptionStore.adopt(customerInfo)
-                    showPaywall = false
-                    Task { await reconcileSubscription(source: "purchase") }
-                }
-                .onRestoreCompleted { customerInfo in
-                    subscriptionStore.adopt(customerInfo)
-                    showPaywall = false
-                    Task { await reconcileSubscription(source: "restore") }
-                }
-        }
-        .sheet(isPresented: $showCustomerCenter, onDismiss: {
-            Task { await reconcileSubscription(source: "customer_center") }
-        }) {
-            CustomerCenterView()
-        }
-    }
-
-    private var plusSection: some View {
-        Section {
-            capability("ai_planning_dynamic", title: text("rewards.ai_planning"), detail: text("rewards.ai_planning_detail"))
-            capability("live_coach_dynamic", title: text("rewards.live_coach"), detail: text("rewards.live_coach_detail"))
-            capability("live_cheer_voice", title: text("rewards.voice_cheers"), detail: text("rewards.voice_cheers_detail"))
-            if subscriptionStore.isReady {
-                Button {
-                    if subscriptionStore.hasProEntitlement {
-                        showCustomerCenter = true
-                        Task {
-                            await analyticsManager?.track(.init(.subscriptionCustomerCenterOpened, properties: [
-                                .entrySource: .string("rewards_center")
-                            ]))
-                        }
-                    } else {
-                        showPaywall = true
-                        Task {
-                            await analyticsManager?.track(.init(.subscriptionPaywallOpened, properties: [
-                                .entrySource: .string("rewards_center")
-                            ]))
-                        }
-                    }
-                } label: {
-                    Text(text(subscriptionStore.hasProEntitlement
-                        ? "rewards.manage_subscription"
-                        : "rewards.view_subscription"))
-                }
-                .disabled(isWorking)
-            }
-        } header: {
-            Text(text("rewards.plus"))
-        } footer: {
-            Text(text("rewards.free_fallback"))
         }
     }
 
@@ -145,20 +85,6 @@ struct RewardsCenterView: View {
         }
     }
 
-    @ViewBuilder
-    private func capability(_ id: String, title: String, detail: String) -> some View {
-        let entitlement = status?.entitlements.first { $0.capability == id }
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: entitlement?.allowed == true ? "checkmark.circle.fill" : "lock.circle")
-                .foregroundStyle(entitlement?.allowed == true ? .green : .secondary)
-        }
-    }
-
     private func refresh() async {
         do { status = try await APIClient.shared.fetchRewardsStatus() }
         catch { show(text("rewards.load_failed")) }
@@ -187,27 +113,6 @@ struct RewardsCenterView: View {
                 .result: .string("failure")
             ]))
             show(text("rewards.redeem_failed"))
-        }
-    }
-
-    private func reconcileSubscription(source: String) async {
-        isWorking = true
-        defer { isWorking = false }
-        do {
-            _ = try await APIClient.shared.reconcileSubscription()
-            await subscriptionStore.refreshCustomerInfo()
-            await analyticsManager?.track(.init(.subscriptionReconciled, properties: [
-                .sourceType: .string(source),
-                .result: .string("success")
-            ]))
-            show(text("rewards.subscription_synced"))
-            await refresh()
-        } catch {
-            await analyticsManager?.track(.init(.subscriptionReconciled, properties: [
-                .sourceType: .string(source),
-                .result: .string("failure")
-            ]))
-            show(text("rewards.subscription_sync_failed"))
         }
     }
 
