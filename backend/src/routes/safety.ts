@@ -8,6 +8,7 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
 import type { AppEnv } from "../types/hono.js";
+import { hasActiveCapability } from "../services/entitlements.js";
 
 const router = new Hono<AppEnv>();
 
@@ -65,6 +66,7 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
   const token = randomToken();
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + (body.expiresInSeconds ?? 4 * 60 * 60) * 1000);
+  const voiceCheerEnabled = await hasActiveCapability(prisma, user.id, "live_cheer_voice", startedAt);
 
   const share = await prisma.safetyLiveShare.create({
     data: {
@@ -73,6 +75,7 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
       tokenHash: hashToken(token),
       sport: body.sport,
       title: body.title,
+      voiceCheerEnabled,
       startedAt,
       expiresAt,
       recipients: { create: recipientIds.map((recipientId) => ({ recipientId })) },
@@ -92,6 +95,7 @@ router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c)
       status: share.status,
       startedAt: share.startedAt,
       expiresAt: share.expiresAt,
+      voiceCheerEnabled: share.voiceCheerEnabled,
     },
     201
   );
@@ -125,6 +129,7 @@ router.post("/live-shares/invited/:id/cheers", zValidator("json", cheerSchema), 
   const prisma = getPrismaClient();
   const share = await prisma.safetyLiveShare.findFirst({ where: { id: c.req.param("id"), status: "active", expiresAt: { gt: new Date() }, recipients: { some: { recipientId: user.id } } } });
   if (!share) return c.json({ error: "Live session is not active." }, 404);
+  if (!share.voiceCheerEnabled) return c.json({ error: "Voice cheers require Plainstride Plus.", code: "entitlement_required" }, 402);
   const body = c.req.valid("json");
   const audio = Buffer.from(body.audioBase64, "base64");
   if (audio.length === 0 || audio.length > 1_000_000) return c.json({ error: "Voice cheer is too large." }, 413);
@@ -283,7 +288,7 @@ export async function liveShareViewer(c: Context<AppEnv>) {
 }
 
 function followerPayload(share: any) {
-  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate };
+  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", voiceCheerEnabled: share.voiceCheerEnabled, startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate };
 }
 
 async function publicLiveSharePayload(token: string) {

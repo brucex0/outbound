@@ -8,6 +8,7 @@ struct LiveShareSession: Identifiable, Hashable {
     var lastLocationAt: Date?
     var endedAt: Date?
     var status: String
+    let voiceCheerEnabled: Bool
 
     var isActive: Bool {
         endedAt == nil && status == "active" && expiresAt > Date()
@@ -76,10 +77,13 @@ final class LiveShareStore: ObservableObject {
                 expiresAt: response.expiresAt,
                 lastLocationAt: nil,
                 endedAt: nil,
-                status: response.status
+                status: response.status,
+                voiceCheerEnabled: response.voiceCheerEnabled
             )
             isArmedForNextActivity = false
-            lastSuccessMessage = String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
+            lastSuccessMessage = response.voiceCheerEnabled
+                ? String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
+                : String(localized: "rewards.live_share_basic_toast", table: "Rewards")
             lastSentAt = nil
             lastSentDistanceM = nil
         } catch {

@@ -2,6 +2,7 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { getPrismaClient } from "../prisma.js";
 import type { AthleteTrainingStateSnapshot, PlanningEventType } from "./types.js";
+import { hasActiveCapability } from "../entitlements.js";
 
 const POLICY_VERSION = "ai-planning-v1";
 const candidateIds = ["maintain", "recover", "reduce", "progress"] as const;
@@ -80,7 +81,8 @@ export async function evaluateAndProposePlanAdjustment(input: {
     candidates,
   };
 
-  const generated = await chooseWithGemini(context).catch(() => null);
+  const aiPlanningAllowed = await hasActiveCapability(prisma, input.userId, "ai_planning_dynamic");
+  const generated = aiPlanningAllowed ? await chooseWithGemini(context).catch(() => null) : null;
   const selection = validateSelection(generated ?? fallbackSelection(input.eventType, input.athleteState), candidates, input.athleteState, input.eventType);
   if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain", explanation: selection.explanation };
 

@@ -15,6 +15,7 @@ import {
   recognitionAwards,
 } from "../services/recognition.js";
 import { assertCircleMember } from "../services/circles.js";
+import { claimReferral, RewardCodeError } from "../services/entitlements.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -892,16 +893,15 @@ router.post("/referrals", async (c) => {
 router.post("/referrals/:code/claim", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const referral = await getPrismaClient().referralLink.findUnique({ where: { code: c.req.param("code") } });
-  if (!referral) return c.json({ error: "Referral not found." }, 404);
-  if (referral.creatorId === user.id) return c.json({ claimed: false, reason: "self" });
-  const existing = await getPrismaClient().referralClaim.findUnique({ where: { claimantId: user.id } });
-  if (existing) return c.json({ claimed: existing.referralLinkId === referral.id, reason: "already_claimed" });
-  await getPrismaClient().$transaction([
-    getPrismaClient().referralClaim.create({ data: { referralLinkId: referral.id, claimantId: user.id } }),
-    getPrismaClient().referralLink.update({ where: { id: referral.id }, data: { claimCount: { increment: 1 } } }),
-  ]);
-  return c.json({ claimed: true });
+  try {
+    await claimReferral(getPrismaClient(), user.id, c.req.param("code"));
+    return c.json({ claimed: true, rewardDays: 14 });
+  } catch (error) {
+    if (error instanceof RewardCodeError) {
+      return c.json({ claimed: false, reason: error.code }, error.code.includes("already") ? 409 : 422);
+    }
+    throw error;
+  }
 });
 
 router.post("/activity-shares", zValidator("json", z.object({ activityId: z.string().min(1), caption: z.string().trim().max(1000).nullable().optional(), visibility: z.enum(["connections", "public"]).default("connections") })), async (c) => {

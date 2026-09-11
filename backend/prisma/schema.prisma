@@ -98,6 +98,8 @@ model User {
   liveCoachSessions           LiveCoachSession[]
   featureEntitlements         FeatureEntitlement[]
   featureUsagePeriods         FeatureUsagePeriod[]
+  entitlementGrantLedger      EntitlementGrantLedger[]
+  entitlementCodeRedemptions  EntitlementCodeRedemption[]
   recognitionAwards           RecognitionAward[]
 
   @@index([normalizedEmail])
@@ -329,6 +331,50 @@ model FeatureUsagePeriod {
   @@unique([userId, capability, periodKey])
 }
 
+model EntitlementCode {
+  id              String    @id @default(cuid())
+  codeDigest      String    @unique
+  label           String
+  bundle           String    @default("plus")
+  durationDays     Int
+  maxRedemptions   Int       @default(1)
+  redemptionCount Int       @default(0)
+  status           String    @default("active")
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  redemptions      EntitlementCodeRedemption[]
+}
+
+model EntitlementCodeRedemption {
+  id        String          @id @default(cuid())
+  codeId    String
+  code      EntitlementCode @relation(fields: [codeId], references: [id], onDelete: Restrict)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+
+  @@unique([codeId, userId])
+  @@index([userId, createdAt])
+}
+
+model EntitlementGrantLedger {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  capability          String
+  source              String
+  sourceReferenceHash String
+  durationDays        Int?
+  startsAt            DateTime
+  expiresAt           DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime  @default(now())
+
+  @@unique([userId, capability, sourceReferenceHash])
+  @@index([userId, capability, expiresAt])
+}
+
 model Activity {
   id               String  @id @default(cuid())
   userId           String
@@ -464,6 +510,7 @@ model SafetyLiveShare {
   recipientLabel       String?
   sport                String?
   title                String?
+  voiceCheerEnabled    Boolean   @default(false)
   startedAt            DateTime  @default(now())
   expiresAt            DateTime
   endedAt              DateTime?
@@ -1526,6 +1573,10 @@ model ReferralClaim {
   claimantId     String       @unique
   claimant       User         @relation("ReferralClaimant", fields: [claimantId], references: [id], onDelete: Cascade)
   claimedAt      DateTime     @default(now())
+  status         String       @default("claimed")
+  rewardDays     Int          @default(14)
+  qualifiedAt    DateTime?
+  rewardedAt     DateTime?
 
   @@index([referralLinkId, claimedAt])
 }

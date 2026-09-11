@@ -22,6 +22,7 @@ import liveCoach from "./routes/liveCoach.js";
 import recognition from "./routes/recognition.js";
 import circles from "./routes/circles.js";
 import weather from "./routes/weather.js";
+import rewards from "./routes/rewards.js";
 import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -54,6 +55,7 @@ app.use("/v1/companion/*", rateLimit({ name: "companion", limit: 20, windowMs: 6
 app.use("/v1/guide/*", rateLimit({ name: "guide-ai", limit: 20, windowMs: 60_000 }));
 app.use("/v1/live-coach/*", rateLimit({ name: "live-coach", limit: 30, windowMs: 60_000, key: "identity" }));
 app.use("/v1/weather/*", rateLimit({ name: "weather", limit: 10, windowMs: 60_000, key: "identity" }));
+app.use("/v1/rewards/*", rateLimit({ name: "rewards", limit: 20, windowMs: 60_000, key: "identity" }));
 app.use("/v1/feedback/*", rateLimit({ name: "feedback", limit: 10, windowMs: 60_000 }));
 app.use("/v1/transcribe/*", rateLimit({ name: "transcribe", limit: 10, windowMs: 60_000 }));
 app.use("/waitlist/*", rateLimit({ name: "public-waitlist", limit: 5, windowMs: 60_000, key: "ip" }));
@@ -82,6 +84,7 @@ app.route("/v1/live-coach", liveCoach);
 app.route("/v1/recognition", recognition);
 app.route("/v1/circles", circles);
 app.route("/v1/weather", weather);
+app.route("/v1/rewards", rewards);
 
 const port = Number(process.env.PORT ?? 3000);
 console.log(`Plainstride API running on port ${port}`);

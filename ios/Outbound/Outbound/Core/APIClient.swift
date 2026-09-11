@@ -586,6 +586,18 @@ final class APIClient {
         try await post("/social/referrals/\(code)/claim", body: EmptyBody())
     }
 
+    func fetchRewardsStatus() async throws -> RewardsStatusDTO {
+        try await get("/rewards")
+    }
+
+    func claimInvitationCode(_ code: String) async throws -> RewardRedemptionDTO {
+        try await post("/rewards/referrals/claim", body: RewardCodeRequestDTO(code: code))
+    }
+
+    func redeemEntitlementCode(_ code: String) async throws -> RewardRedemptionDTO {
+        try await post("/rewards/codes/redeem", body: RewardCodeRequestDTO(code: code))
+    }
+
     func reactToTogetherPost(postID: String, type: String) async throws -> TogetherReactionDTO {
         try await post("/social/posts/\(postID)/reactions", body: TogetherReactionRequestDTO(type: type))
     }
@@ -2125,6 +2137,7 @@ struct LiveShareCreateResponse: Decodable {
     let status: String
     let startedAt: Date
     let expiresAt: Date
+    let voiceCheerEnabled: Bool
 }
 
 struct LiveShareLocationUpdateRequest: Encodable {
@@ -2156,7 +2169,7 @@ struct LiveSharePointDTO: Decodable, Identifiable {
 }
 struct InvitedLiveShareDTO: Decodable, Identifiable {
     let id: String; let status: String; let runner: LiveShareRunnerDTO; let sport: String; let title: String
-    let startedAt: Date; let expiresAt: Date; let endedAt: Date?; let lastLocationAt: Date?
+    let voiceCheerEnabled: Bool; let startedAt: Date; let expiresAt: Date; let endedAt: Date?; let lastLocationAt: Date?
     let lastLocation: LiveSharePointDTO?; let routePreview: [LiveSharePointDTO]
     let elapsedSeconds: Int; let distanceM: Double; let currentPaceSecsPerKm: Double?; let heartRate: Int?
 }
@@ -2166,6 +2179,36 @@ struct VoiceCheersResponse: Decodable { let cheers: [VoiceCheerDTO] }
 struct VoiceCheerDTO: Decodable, Identifiable {
     let id: String; let audioBase64: String; let contentType: String; let durationMs: Int; let createdAt: Date
     var audioData: Data? { Data(base64Encoded: audioBase64) }
+}
+
+struct RewardsStatusDTO: Decodable {
+    let referral: RewardsReferralDTO
+    let entitlements: [CapabilityEntitlementDTO]
+}
+
+struct RewardsReferralDTO: Decodable {
+    let code: String
+    let shareURL: URL
+    let claimStatus: String?
+    let qualifiedCount: Int
+    let pendingCount: Int
+}
+
+struct CapabilityEntitlementDTO: Decodable, Identifiable {
+    var id: String { capability }
+    let capability: String
+    let allowed: Bool
+    let expiresAt: Date?
+    let sources: [String]
+}
+
+private struct RewardCodeRequestDTO: Encodable { let code: String }
+struct RewardRedemptionDTO: Decodable {
+    let claimed: Bool?
+    let redeemed: Bool?
+    let rewardDays: Int?
+    let durationDays: Int?
+    let bundle: String?
 }
 
 struct LiveGroupCreateRequest: Encodable {
