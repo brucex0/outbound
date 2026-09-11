@@ -7,6 +7,7 @@ import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { enqueueActivityCompletedEvent } from "../services/planning/planningService.js";
+import { qualifyReferralFromActivity } from "../services/entitlements.js";
 import type { AppEnv } from "../types/hono.js";
 import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
@@ -418,6 +419,9 @@ router.post("/", zValidator("json", createSchema), async (c) => {
         enqueueActivityCompletedEvent(resolvedUserId, activity.id),
       ]);
     })().catch(console.error);
+    await qualifyReferralFromActivity(prisma, resolvedUserId, activity.durationSecs).catch((error) => {
+      console.error("[rewards] referral qualification failed", { error });
+    });
   }
 
   if (body.activityEventId) {

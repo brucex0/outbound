@@ -18,7 +18,7 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
     if (config.accessMode === "open_beta") return decision(true, "open_beta");
 
     const entitlement = await this.activeEntitlement(userId, now);
-    if (entitlement) return decision(true, promotionSources.has(entitlement.source) ? "promotion" : "verified_subscription");
+    if (entitlement) return decision(true, subscriptionSources.has(entitlement.source) ? "verified_subscription" : "promotion");
 
     if (config.accessMode === "subscription_required") return decision(false, "entitlement_required");
 
@@ -159,7 +159,7 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
   }
 }
 
-const promotionSources = new Set(["promotion", LIVE_COACH_FOUNDING_SOURCE]);
+const subscriptionSources = new Set(["app_store", "google_play", "verified_subscription"]);
 
 function decision(allowed: boolean, reason: LiveCoachAccessDecision["reason"]): LiveCoachAccessDecision {
   return { capability: "live_coach_dynamic", allowed, reason, paywallAvailable: false };
