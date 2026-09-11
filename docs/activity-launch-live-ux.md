@@ -53,6 +53,10 @@ Configure launch options from the dock:
 
 The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
+When Voice Guide is enabled, initialize local speech before displaying the countdown so `3`, `2`, `1`, and the localized `Go` cue stay synchronized with the countdown instead of spilling into the live screen. Canceling the countdown stops queued speech and returns to Today. During an active or paused activity, system Back must use the same finish-confirmation flow as the visible Finish control; it must never reveal a retained countdown or setup screen.
+
+Android records `activity_countdown_voice_prepared` with only a bounded `success` or `unavailable` result so delayed or missing device TTS initialization can be diagnosed without collecting spoken content.
+
 The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. Run, walk, and hike companions use an articulated figure whose arms and legs move with activity-specific cadence and stride; other sports retain their activity symbol. The companion follows valid GPS course, moves only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.
 
 Outdoor GPS acquisition starts with the countdown rather than after it. The countdown shows a compact localized `GPS ready`, `Improving GPS signal`, `Acquiring GPS`, or `Precise Location is off` status without blocking Start indefinitely. A fresh good-quality countdown fix becomes the recording baseline; canceling the countdown stops the temporary high-accuracy acquisition. If iOS has granted only approximate location, the workout purpose may request temporary precise access using the localized bundle explanation.

@@ -35,6 +35,7 @@ data class RecordingUiState(
     val launch: RecordingLaunchConfiguration = RecordingLaunchConfiguration(),
     val mode: RecordingSurfaceMode = RecordingSurfaceMode.MAP,
     val countdown: Int? = null,
+    val countdownVoiceReady: Boolean = false,
     val reflection: ReflectionChoice? = null,
     val photoPath: String? = null,
     val showFinishConfirmation: Boolean = false,
@@ -64,6 +65,7 @@ class RecordingViewModel @Inject constructor(
         RecordingSnapshot(),
     )
     private var recoveryAccountId: String? = null
+    private var preparingCountdown = false
     val voiceListening: StateFlow<Boolean> = voice.listening
     init { voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish) }
     fun listen(permissionGranted: Boolean) = voice.listen(permissionGranted)
@@ -80,11 +82,37 @@ class RecordingViewModel @Inject constructor(
         )))
     }
 
-    fun updateCountdown(value: Int?) { mutableState.value = mutableState.value.copy(countdown = value) }
+    suspend fun beginCountdown() {
+        if (preparingCountdown || mutableState.value.countdown != null || mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
+        preparingCountdown = true
+        val voiceGuideEnabled = mutableState.value.launch.voiceGuideEnabled
+        try {
+            val voiceReady = voiceGuideEnabled && voice.prepare()
+            if (mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
+            mutableState.value = mutableState.value.copy(countdown = 3, countdownVoiceReady = voiceReady)
+            if (voiceGuideEnabled) analytics.record(AnalyticsEvent(
+                "activity_countdown_voice_prepared",
+                mapOf(AnalyticsProperty.Result to if (voiceReady) "success" else "unavailable"),
+            ))
+        } finally {
+            preparingCountdown = false
+        }
+    }
+
+    fun updateCountdown(value: Int) { mutableState.value = mutableState.value.copy(countdown = value) }
+
+    fun cancelCountdown() {
+        voice.stopSpeech()
+        clearCountdown()
+    }
+
+    fun clearCountdown() {
+        mutableState.value = mutableState.value.copy(countdown = null, countdownVoiceReady = false)
+    }
 
     fun start(accountId: String, permission: LocationPermissionState) {
         val launch = mutableState.value.launch
-        mutableState.value = mutableState.value.copy(startRequested = true, countdown = null)
+        mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
         context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
         client.start(accountId, launch.activityKind, permission, newCommandId())
         analytics.record(AnalyticsEvent("activity_started", mapOf(
@@ -139,7 +167,7 @@ class RecordingViewModel @Inject constructor(
     }
 
     fun speakCountdown(value: Int) = voice.speakCountdown(value)
-    fun speakStart() = voice.speakStart()
+    fun speakGo() = voice.speakGo()
     fun setMode(mode: RecordingSurfaceMode) {
         mutableState.value = mutableState.value.copy(mode = mode)
         analytics.record(AnalyticsEvent("activity_surface_changed", mapOf(AnalyticsProperty.Result to mode.name.lowercase())))

@@ -67,6 +67,7 @@
     <string name="recording_show_map">显示地图</string>
     <string name="recording_spoken_stats">用时 %1$s，距离 %2$s，当前配速 %3$s</string>
     <string name="recording_start">开始活动</string>
+    <string name="recording_go">出发</string>
     <string name="recording_time">时间</string>
     <string name="recording_voice_command">使用语音指令</string>
     <string name="recording_workout_plan">训练计划</string>

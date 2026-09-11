@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -135,7 +136,7 @@ fun RecordingRoute(
         pendingResume = false
         val permission = permissionState()
         if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
-            viewModel.updateCountdown(3)
+            scope.launch { viewModel.beginCountdown() }
         } else showLocationEducation = true
     }
 
@@ -153,7 +154,7 @@ fun RecordingRoute(
         viewModel.updatePermission(permissionState())
         if (permissionState() == LocationPermissionState.DENIED) showLocationEducation = true
         else if (pendingResume) { pendingResume = false; viewModel.resume() }
-        else viewModel.updateCountdown(3)
+        else scope.launch { viewModel.beginCountdown() }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showCameraEducation = !granted
@@ -189,12 +190,31 @@ fun RecordingRoute(
 
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
-        if (ui.launch.voiceGuideEnabled) viewModel.speakCountdown(current)
+        if (ui.countdownVoiceReady) viewModel.speakCountdown(current)
         delay(1_000)
         if (current > 1) viewModel.updateCountdown(current - 1)
         else {
-            if (ui.launch.voiceGuideEnabled) viewModel.speakStart()
+            if (ui.countdownVoiceReady) viewModel.speakGo()
             viewModel.start(accountId, permissionState())
+        }
+    }
+
+    LaunchedEffect(snapshot.status) {
+        if (snapshot.status != RecordingStatus.IDLE && ui.countdown != null) {
+            if (ui.startRequested) viewModel.clearCountdown() else viewModel.cancelCountdown()
+        }
+    }
+
+    BackHandler(enabled = !ui.showFinishConfirmation && !ui.showDiscardConfirmation) {
+        when (snapshot.status) {
+            RecordingStatus.ACTIVE, RecordingStatus.PAUSED -> viewModel.requestFinish()
+            RecordingStatus.AWAITING_SAVE -> viewModel.requestDiscard()
+            RecordingStatus.IDLE -> {
+                if (!ui.startRequested) {
+                    viewModel.cancelCountdown()
+                    onExit()
+                }
+            }
         }
     }
 
@@ -206,7 +226,6 @@ fun RecordingRoute(
 
     val content: @Composable () -> Unit = {
         when {
-            ui.countdown != null -> CountdownScreen(ui.countdown!!, onCancel = { viewModel.updateCountdown(null) })
             snapshot.status == RecordingStatus.AWAITING_SAVE -> ReflectionScreen(
                 snapshot = snapshot,
                 launch = ui.launch,
@@ -255,6 +274,10 @@ fun RecordingRoute(
                 voiceListening = voiceListening,
                 onDashboardChanged = viewModel::trackDashboardChanged,
             )
+            ui.countdown != null -> CountdownScreen(ui.countdown!!, onCancel = {
+                viewModel.cancelCountdown()
+                onExit()
+            })
             else -> ActivitySetupScreen(ui.launch, permissionState(), onStart = ::beginCountdown, onExit = onExit)
         }
     }

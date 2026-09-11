@@ -67,6 +67,7 @@
     <string name="recording_show_map">Mostrar mapa</string>
     <string name="recording_spoken_stats">Tiempo %1$s, distancia %2$s, ritmo actual %3$s</string>
     <string name="recording_start">Iniciar actividad</string>
+    <string name="recording_go">¡Ya!</string>
     <string name="recording_time">Tiempo</string>
     <string name="recording_voice_command">Usar un comando de voz</string>
     <string name="recording_workout_plan">Plan de entrenamiento</string>
