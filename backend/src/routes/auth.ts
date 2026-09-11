@@ -462,7 +462,12 @@ router.patch(
     }
     try {
       await saveAvatar(user.id, data, body.contentType);
-      const origin = new URL(c.req.url).origin;
+      const requestURL = new URL(c.req.url);
+      const forwardedProtocol = c.req.header("x-forwarded-proto")?.split(",", 1)[0]?.trim();
+      if (forwardedProtocol === "http" || forwardedProtocol === "https") {
+        requestURL.protocol = `${forwardedProtocol}:`;
+      }
+      const origin = requestURL.origin;
       const avatarUrl = `${origin}/v1/auth/avatars/${user.id}?v=${Date.now()}`;
       return c.json(await getPrismaClient().user.update({
         where: { id: user.id },
