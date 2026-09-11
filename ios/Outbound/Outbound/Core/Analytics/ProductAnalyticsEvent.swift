@@ -29,6 +29,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityDiscardPrompted = "activity_discard_prompted"
     case activityDiscarded = "activity_discarded"
     case activityDeleted = "activity_deleted"
+    case activityDetailOpened = "activity_detail_opened"
     case activitySharePreviewed = "activity_share_previewed"
     case activityShareAction = "activity_share_action"
     case activitySyncCompleted = "activity_sync_completed"
@@ -265,6 +266,7 @@ enum ProductAnalyticsSchema {
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDeleted: [.sourceType, .countBucket],
+        .activityDetailOpened: [.sourceType],
         .activitySharePreviewed: [.sourceType],
         .activityShareAction: [.sourceType, .result],
         .activitySyncCompleted: [.sourceType, .routeSelected],

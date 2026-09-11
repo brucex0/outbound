@@ -13,6 +13,7 @@ struct SocialHomeView: View {
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @State private var selectedCommentPost: TogetherPostDTO?
+    @State private var selectedActivityPost: TogetherPostDTO?
     @State private var isCreateActivityEventPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
@@ -200,6 +201,7 @@ struct SocialHomeView: View {
             .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
                 LiveCheerView(sessionID: sessionID, entrySource: "push")
             }
+            .modifier(SocialActivityCardNavigation(post: $selectedActivityPost))
             .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
                 guard notificationID != nil else { return }
                 if pushNotifications.pendingNotificationType == "liveCheerInvitation",
@@ -709,35 +711,29 @@ struct SocialHomeView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Post actions")
                         }
-                        NavigationLink {
-                            SocialActivityDetailView(post: post)
-                        } label: {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
-                                if let activity = post.activity {
-                                    ZStack(alignment: .bottom) {
-                                        SocialRouteMap(route: activity.route)
-                                        HStack(spacing: 0) {
-                                            socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                            socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
-                                            socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 10)
-                                        .background(.regularMaterial)
+                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                            Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
+                            if let activity = post.activity {
+                                ZStack(alignment: .bottom) {
+                                    SocialRouteMap(route: activity.route)
+                                    HStack(spacing: 0) {
+                                        socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                        socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                        socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
                                     }
-                                    .frame(height: 210)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                    .overlay(alignment: .topLeading) {
-                                        if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
-                                            RecognitionPill(preview: milestone, compact: true).padding(12)
-                                        }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(.regularMaterial)
+                                }
+                                .frame(height: 210)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .overlay(alignment: .topLeading) {
+                                    if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
+                                        RecognitionPill(preview: milestone, compact: true).padding(12)
                                     }
                                 }
                             }
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
                         if let caption = post.caption, !caption.isEmpty {
                             Text(caption).font(.subheadline)
                         }
@@ -764,6 +760,18 @@ struct SocialHomeView: View {
                             Spacer()
                         }
                     }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedActivityPost = post
+                    Task {
+                        await analyticsManager?.track(.init(.activityDetailOpened, properties: [
+                            .sourceType: .string("social_feed"),
+                        ]))
+                    }
+                }
+                .accessibilityAction(named: String(localized: "Open activity")) {
+                    selectedActivityPost = post
                 }
                 if post.id == socialStore.state.posts.last?.id,
                    socialStore.state.nextFeedCursor != nil {
@@ -2582,6 +2590,21 @@ struct SocialPersonProfileView: View {
             return (preview.title, preview.symbolName)
         }
         return (String(localized: "recognition.title", defaultValue: "Recognition"), "sparkles")
+    }
+}
+
+private struct SocialActivityCardNavigation: ViewModifier {
+    @Binding var post: TogetherPostDTO?
+
+    func body(content: Content) -> some View {
+        content.navigationDestination(isPresented: Binding(
+            get: { post != nil },
+            set: { if !$0 { post = nil } }
+        )) {
+            if let post {
+                SocialActivityDetailView(post: post)
+            }
+        }
     }
 }
 
