@@ -96,7 +96,35 @@ import com.plainstride.outbound.core.designsystem.*
         item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
         item { SectionHeader(stringResource(R.string.social_circle), action = if (state.home.circles.isNotEmpty()) stringResource(R.string.social_circle_create) else null, onAction = createCircle) }
         items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
-        if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle -> SocialCard(onClick = { openCircle(circle) }, containerColor = MaterialTheme.colorScheme.primaryContainer) { Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(circle.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, circle.members.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; circle.target?.let { Text("${circle.completed}/$it", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) }; Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+        if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle ->
+            CompanionCard(onClick = { openCircle(circle) }) {
+                val theme = LocalPlainstrideThemeColors.current
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = CircleShape, color = theme.heroForeground.copy(alpha = .14f)) {
+                        Icon(
+                            Icons.Outlined.Groups,
+                            null,
+                            Modifier.padding(10.dp).size(24.dp),
+                            tint = theme.heroForeground,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(circle.name, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(R.string.social_members, circle.members.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = theme.heroForeground.copy(alpha = .78f),
+                        )
+                    }
+                    circle.target?.let {
+                        Text("${circle.completed}/$it", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.ChevronRight, null, tint = theme.heroForeground.copy(alpha = .78f))
+                }
+            }
+        }
         else if (!state.loading && acceptedConnections.isNotEmpty()) item { CompanionCard(onClick = createCircle) { Text(stringResource(R.string.social_circle_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_circle_create), fontWeight = FontWeight.Bold) } }
         if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
         item { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) }
@@ -120,7 +148,23 @@ import com.plainstride.outbound.core.designsystem.*
 
 @Composable private fun SectionHeader(text: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(text.uppercase(), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant); action?.let { TextButton(onAction) { Text(it, fontWeight = FontWeight.SemiBold) } } }
 @Composable private fun SocialCard(onClick: (() -> Unit)? = null, containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surface, content: @Composable ColumnScope.() -> Unit) { val shape = RoundedCornerShape(18.dp); if (onClick == null) Card(Modifier.fillMaxWidth(), shape = shape, colors = CardDefaults.cardColors(containerColor = containerColor), elevation = CardDefaults.cardElevation(2.dp)) { Column(Modifier.padding(16.dp), content = content) } else Card(onClick, Modifier.fillMaxWidth(), shape = shape, colors = CardDefaults.cardColors(containerColor = containerColor), elevation = CardDefaults.cardElevation(2.dp)) { Column(Modifier.padding(16.dp), content = content) } }
-@Composable private fun CompanionCard(onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) = Card(onClick, Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) { Column(Modifier.padding(22.dp), content = content) }
+@Composable private fun CompanionCard(onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val theme = LocalPlainstrideThemeColors.current
+    Card(
+        onClick,
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        elevation = CardDefaults.cardElevation(2.dp),
+    ) {
+        CompositionLocalProvider(LocalContentColor provides theme.heroForeground) {
+            Column(
+                Modifier.fillMaxWidth().background(Brush.linearGradient(theme.heroGradient)).padding(22.dp),
+                content = content,
+            )
+        }
+    }
+}
 @Composable private fun EmptyCard(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun ConnectionsPlaceholder() = SocialCard { Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { repeat(4) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Surface(Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {}; Spacer(Modifier.height(6.dp)); LinearProgressIndicator(Modifier.width(48.dp)) } } } }
 @Composable private fun PersonPreview(person: SocialPerson, click: () -> Unit) = TextButton(click, contentPadding = PaddingValues(horizontal = 3.dp)) { Column(Modifier.width(64.dp),horizontalAlignment = Alignment.CenterHorizontally) { Box { SocialAvatar(person, 40.dp); if (person.isActive) Surface(Modifier.size(12.dp).align(Alignment.BottomEnd), shape = CircleShape, color = androidx.compose.ui.graphics.Color(0xFF34C759), border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)) {} }; Spacer(Modifier.height(6.dp)); Text(person.displayName.substringBefore(' '), Modifier.fillMaxWidth(), maxLines = 1, textAlign=androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.labelSmall) } }

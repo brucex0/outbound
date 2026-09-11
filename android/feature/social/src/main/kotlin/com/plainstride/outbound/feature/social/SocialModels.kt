@@ -17,7 +17,11 @@ import kotlinx.serialization.json.JsonElement
     @kotlinx.serialization.Transient val connectionDirection: String? = relationshipDetails?.direction,
 )
 @Serializable data class SocialRelationship(val id: String, val status: String, val direction: String)
-@Serializable data class RecognitionAward(val badgeId: String, val awardedAt: String, val shareable: Boolean = false)
+@Serializable data class RecognitionAward(
+    val badgeId: String,
+    @SerialName("earnedAt") val awardedAt: String,
+    @SerialName("shareEligible") val shareable: Boolean = false,
+)
 @Serializable data class RoutePoint(val latitude: Double, val longitude: Double)
 @Serializable data class FeedActivity(
     val id: String,

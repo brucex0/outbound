@@ -78,6 +78,9 @@ data class P0IntegrationState(
                 ) }
             }
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            activities.synchronize(accountId)
+        }
         viewModelScope.launch {
             today.observePersonalization(accountId, locale).collect { resource ->
                 val snapshot = when (resource) {

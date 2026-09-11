@@ -9,6 +9,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 
 /** Stable theme identifiers shared with iOS and account preferences. */
 enum class PlainstrideThemeId(val serializedName: String) {
@@ -82,11 +83,13 @@ fun PlainstrideTheme(
 ) {
     val brand = plainstrideThemeColors(theme, darkTheme)
     val materialColors = if (darkTheme) {
-        darkColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .28f), onPrimaryContainer = brand.accent, secondary = brand.secondary, tertiary = brand.accent,
-            background = Color(0xFF101512), surface = Color(0xFF171D19), onSurface = Color(0xFFE0E6E1))
+        val background = Color(0xFF101512)
+        darkColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .28f).compositeOver(background), onPrimaryContainer = brand.accent, secondary = brand.secondary, tertiary = brand.accent,
+            background = background, surface = Color(0xFF171D19), onSurface = Color(0xFFE0E6E1))
     } else {
-        lightColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .16f), onPrimaryContainer = brand.action, secondary = brand.secondary, tertiary = brand.accent,
-            background = Color(0xFFF8FAF7), surface = Color.White, onSurface = Color(0xFF18201C))
+        val background = Color(0xFFF8FAF7)
+        lightColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .16f).compositeOver(background), onPrimaryContainer = brand.action, secondary = brand.secondary, tertiary = brand.accent,
+            background = background, surface = Color.White, onSurface = Color(0xFF18201C))
     }
     CompositionLocalProvider(LocalPlainstrideThemeColors provides brand) {
         MaterialTheme(colorScheme = materialColors, content = content)
