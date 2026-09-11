@@ -76,6 +76,7 @@ import com.plainstride.outbound.auth.AuthUiState
 import com.plainstride.outbound.auth.AuthViewModel
 import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
+import com.plainstride.outbound.core.designsystem.PlainstrideFloatingActionStyle
 import com.plainstride.outbound.feature.activity.ActivityHistoryRoute
 import com.plainstride.outbound.feature.activity.ActivityMessage
 import com.plainstride.outbound.feature.activity.RecentActivitiesRoute
@@ -259,7 +260,7 @@ private fun SignedInApp(
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PlainstrideFloatingAction(onClick = {
+                    PlainstrideFloatingAction(style = PlainstrideFloatingActionStyle.Accent, onClick = {
                         integrationViewModel.trackAssistantOpened(primaryDestination.route)
                         navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
                     }) {
