@@ -3183,6 +3183,11 @@ private struct SimplifiedSettingsView: View {
                 } label: {
                     Label(String(localized: "account_transfer.settings_title", table: "AccountTransfer"), systemImage: "iphone.and.arrow.forward")
                 }
+                NavigationLink {
+                    RewardsCenterView()
+                } label: {
+                    Label(String(localized: "rewards.settings_title", table: "Rewards"), systemImage: "gift")
+                }
             }
             Section(String(localized: "workout.reminders.section", defaultValue: "Planned workouts")) {
                 NavigationLink {

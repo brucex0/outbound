@@ -93,13 +93,17 @@ struct LiveCheerView: View {
                     }
                     Text(session.status == "active" ? "\(session.runner.displayName) is moving" : "This activity has ended")
                         .font(.headline)
-                    if session.status == "active" {
+                    if session.status == "active" && session.voiceCheerEnabled {
                         Image(systemName: store.isRecording ? "waveform.circle.fill" : "mic.circle.fill")
                             .font(.system(size: 70)).foregroundStyle(store.isRecording ? .red : .orange)
                             .onLongPressGesture(minimumDuration: 0.15, maximumDistance: 80, pressing: { pressing in
                                 if pressing { store.beginRecording() } else if store.isRecording { store.finishAndSend() }
                             }, perform: {})
                         Text(store.isRecording ? "Release to send" : "Hold to cheer")
+                    } else if session.status == "active" {
+                        Label(String(localized: "rewards.voice_cheer_locked", table: "Rewards"), systemImage: "lock.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     if let message = store.statusMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
                 }
@@ -148,6 +152,7 @@ struct DebugLiveCheerFollowerHarness: View {
         ),
         sport: "running",
         title: "Golden Gate recovery run",
+        voiceCheerEnabled: true,
         startedAt: Date(timeIntervalSince1970: 1_788_500_000),
         expiresAt: Date(timeIntervalSince1970: 1_788_507_200),
         endedAt: nil,
