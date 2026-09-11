@@ -2,11 +2,13 @@ import { mobilityAdapter } from "./mobilityAdapter.js";
 import { runAdapter } from "./runAdapter.js";
 import { strengthAdapter } from "./strengthAdapter.js";
 import { walkAdapter } from "./walkAdapter.js";
+import { bikeAdapter } from "./bikeAdapter.js";
 import type { Modality, ModalityAdapter, StimulusRequest } from "../types.js";
 
 const adapters: ModalityAdapter[] = [
   runAdapter,
   walkAdapter,
+  bikeAdapter,
   mobilityAdapter,
   strengthAdapter,
 ];

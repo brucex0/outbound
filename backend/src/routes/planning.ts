@@ -27,14 +27,20 @@ router.get("/standalone-workouts", async (c) => {
   return c.json(standaloneWorkoutCatalog);
 });
 
+const objectiveSchema = z.enum(["eventPreparation", "endurance", "speed", "strength", "weightLoss", "fitnessMaintenance", "healthEnergy", "other"]);
+const modalitySchema = z.enum(["run", "walk", "bike", "strength", "mobility"]);
 const goalSchema = z.object({
-  type: z.string().min(1).max(64),
-  primaryModality: z.enum(["run", "walk", "bike", "swim", "strength", "hiit", "skate", "mobility"]).optional(),
+  type: objectiveSchema,
+  supportingObjectives: z.array(objectiveSchema).max(2).optional(),
+  primaryModality: modalitySchema.optional(),
+  supportingModalities: z.array(modalitySchema).max(4).optional(),
+  baselineContext: z.enum(["startingOut", "currentlyActive", "returningAfterBreak"]).optional(),
   targetDate: z.string().optional().nullable(),
   targetDistanceMeters: z.number().positive().optional().nullable(),
   targetEventName: z.string().max(120).optional().nullable(),
   priority: z.string().min(1).max(64).optional(),
   preferredDays: z.array(z.string().min(1).max(16)).optional(),
+  preferredLongSessionDay: z.string().min(1).max(16).optional().nullable(),
   daysPerWeekTarget: z.number().int().min(1).max(6).optional(),
   maxSessionMinutes: z.number().int().min(10).max(180).optional(),
   riskTolerance: z.enum(["conservative", "balanced", "stretch"]).optional(),

@@ -64,7 +64,7 @@ export type LiveCoachCompiledContext = {
   measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
   locale: SupportedAILocale;
-  activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
+  activityType: "running" | "walking" | "cycling" | "hiking" | "swimming" | "strength" | "mobility";
   goalType: "workout" | "distance" | "time" | "calories" | "freestyle" | "race";
   race: {
     distanceMeters: number;

@@ -46,12 +46,16 @@ export type RunGoalType = "time" | "distance" | "calories";
 
 export interface CreateTrainingGoalInput {
   type: string;
+  supportingObjectives?: string[];
   primaryModality?: Modality;
+  supportingModalities?: Modality[];
+  baselineContext?: "startingOut" | "currentlyActive" | "returningAfterBreak";
   targetDate?: string | null;
   targetDistanceMeters?: number | null;
   targetEventName?: string | null;
   priority?: string;
   preferredDays?: string[];
+  preferredLongSessionDay?: string | null;
   daysPerWeekTarget?: number;
   maxSessionMinutes?: number;
   riskTolerance?: "conservative" | "balanced" | "stretch";

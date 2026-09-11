@@ -85,12 +85,16 @@ export async function createGoal(
       data: {
         userId,
         type: normalized.type,
+        supportingObjectives: normalized.supportingObjectives,
         primaryModality: normalized.primaryModality,
+        supportingModalities: normalized.supportingModalities,
+        baselineContext: normalized.baselineContext,
         targetDate: input.targetDate ? new Date(input.targetDate) : null,
         targetDistanceMeters: input.targetDistanceMeters ?? null,
         targetEventName: input.targetEventName ?? null,
         priority: normalized.priority,
         preferredDays: normalized.preferredDays,
+        preferredLongSessionDay: normalized.preferredLongSessionDay,
         daysPerWeekTarget: normalized.daysPerWeekTarget,
         maxSessionMinutes: normalized.maxSessionMinutes,
         riskTolerance: normalized.riskTolerance,
@@ -132,6 +136,10 @@ export async function createGoal(
         engineInputs: json({ athleteState: stateForJson(athleteState), goal: normalized }),
         engineDecision: json(generation.engineDecision),
       },
+    });
+    await tx.user.updateMany({
+      where: { id: userId, onboardingStatus: "pending" },
+      data: { onboardingStatus: "completed" },
     });
   });
 

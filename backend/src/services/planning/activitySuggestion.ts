@@ -589,18 +589,22 @@ function preferredModalityFrom(activities: ActivityForPlanning[]): Modality {
   const counts = new Map<Modality, number>();
   for (const activity of activities) {
     const modality = modalityForActivityType(activity.type);
+    if (!modality) continue;
     counts.set(modality, (counts.get(modality) ?? 0) + 1);
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "run";
 }
 
-function modalityForActivityType(type: string): Modality {
+function modalityForActivityType(type: string): Modality | null {
   const normalized = type.toLowerCase();
   if (normalized.includes("walk")) return "walk";
+  if (normalized.includes("hik")) return "walk";
   if (normalized.includes("bike") || normalized.includes("cycl")) return "bike";
   if (normalized.includes("swim")) return "swim";
   if (normalized.includes("strength")) return "strength";
-  return "run";
+  if (normalized.includes("mobility") || normalized.includes("flexibility") || normalized.includes("yoga")) return "mobility";
+  if (normalized.includes("run")) return "run";
+  return null;
 }
 
 function toModality(value: string): Modality {
@@ -612,9 +616,10 @@ function toModality(value: string): Modality {
     case "hiit":
     case "skate":
     case "mobility":
+    case "run":
       return value;
     default:
-      return "run";
+      throw new Error(`Unsupported planned workout modality: ${value}`);
   }
 }
 

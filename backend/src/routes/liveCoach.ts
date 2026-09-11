@@ -89,7 +89,7 @@ const createSessionSchema = z.object({
   coachingContract: z.enum(["quiet", "responsive", "coach_me"]),
   measurementUnitSystem: z.enum(["metric", "imperial"]),
   sessionIntent: z.object({
-    activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming"]),
+    activityType: z.enum(["running", "walking", "cycling", "hiking", "swimming", "strength", "mobility"]),
     goalType: z.enum(["workout", "distance", "time", "calories", "freestyle", "race"]),
     race: z.object({
       distanceMeters: z.number().finite().min(1_000).max(100_000),

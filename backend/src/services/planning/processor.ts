@@ -150,8 +150,12 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
       eventType,
       goal: {
         type: plan.goal.type,
+        supportingObjectives: plan.goal.supportingObjectives,
         primaryModality: plan.goal.primaryModality,
+        supportingModalities: plan.goal.supportingModalities as import("./types.js").Modality[],
+        baselineContext: plan.goal.baselineContext,
         preferredDays: plan.goal.preferredDays,
+        preferredLongSessionDay: plan.goal.preferredLongSessionDay,
         daysPerWeekTarget: plan.goal.daysPerWeekTarget,
         maxSessionMinutes: plan.goal.maxSessionMinutes,
         riskTolerance: plan.goal.riskTolerance,

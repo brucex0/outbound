@@ -114,10 +114,13 @@ function modalityBreakdownFor(activities: ActivityForPlanning[]): Record<string,
 function modalityForActivityType(type: string): string {
   const normalized = type.toLowerCase();
   if (normalized.includes("walk")) return "walk";
+  if (normalized.includes("hik")) return "walk";
   if (normalized.includes("bike") || normalized.includes("cycl")) return "bike";
   if (normalized.includes("swim")) return "swim";
   if (normalized.includes("strength")) return "strength";
-  return "run";
+  if (normalized.includes("mobility") || normalized.includes("flexibility") || normalized.includes("yoga")) return "mobility";
+  if (normalized.includes("run")) return "run";
+  return "unknown";
 }
 
 function weekKey(date: Date): string {

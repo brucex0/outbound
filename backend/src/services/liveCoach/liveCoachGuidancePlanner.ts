@@ -202,6 +202,7 @@ function normalizeGeneratedPlan(
 }
 
 function fallbackGuidancePlan(context: LiveCoachCompiledContext): LiveCoachGuidancePlan {
+  const isStationary = context.activityType === "strength" || context.activityType === "mobility";
   const progressDistance = context.activityType === "cycling"
     ? context.measurementUnitSystem === "imperial" ? 8_047 : 5_000
     : context.measurementUnitSystem === "imperial" ? 1_609 : 1_000;
@@ -230,7 +231,11 @@ function fallbackGuidancePlan(context: LiveCoachCompiledContext): LiveCoachGuida
     summary: context.locale === "zh-Hans" ? "使用安全、清晰的默认实时指导。"
       : context.locale === "es" ? "Usa orientación predeterminada, segura y clara."
       : "Uses safe, clear default live guidance.",
-    progressPolicy: { announceEverySeconds: 300, announceEveryMeters: progressDistance, includePace: true },
+    progressPolicy: {
+      announceEverySeconds: 300,
+      announceEveryMeters: isStationary ? 10_000 : progressDistance,
+      includePace: !isStationary,
+    },
     cues: reactiveCues.concat(fallbackWorkoutInstructions(context)),
   };
   return { ...provisional, planVersion: planHash(provisional).slice(0, 16) };

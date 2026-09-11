@@ -14,7 +14,7 @@ import { backfillActivityRecognitions } from "../services/recognition.js";
 import { reconcileActivityToCircles } from "../services/circles.js";
 
 const router = new Hono<AppEnv>();
-const activityTypes = ["running", "cycling", "hiking", "walking", "swimming"] as const;
+const activityTypes = ["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"] as const;
 const MAX_ACTIVITY_ROUTE_POINTS = 100_000;
 
 router.get("/", async (c) => {

@@ -53,7 +53,7 @@ export type CreateLiveCoachSessionInput = {
   coachingContract: CoachingContract;
   measurementUnitSystem: "metric" | "imperial";
   sessionIntent: {
-    activityType: "running" | "walking" | "cycling" | "hiking" | "swimming";
+    activityType: "running" | "walking" | "cycling" | "hiking" | "swimming" | "strength" | "mobility";
     goalType: "workout" | "distance" | "time" | "calories" | "freestyle" | "race";
     race?: {
       distanceMeters: number;

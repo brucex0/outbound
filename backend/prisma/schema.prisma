@@ -24,6 +24,7 @@ model User {
   verified             Boolean   @default(false)
   termsAcceptedVersion Int?
   termsAcceptedAt      DateTime?
+  onboardingStatus     String    @default("pending")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -336,7 +337,7 @@ model Activity {
   syncSource       String? // ios-local-store, watch-import, manual
 
   // Extensible canonical endurance-sport value. Current values are
-  // running | cycling | hiking | walking | swimming.
+  // running | cycling | hiking | walking | swimming | strength | mobility.
   type               String
   title              String?
   startedAt          DateTime
@@ -660,12 +661,16 @@ model TrainingGoal {
   userId               String
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type                 String
+  supportingObjectives String[]  @default([])
   primaryModality      String
+  supportingModalities String[]  @default([])
+  baselineContext      String    @default("currentlyActive")
   targetDate           DateTime?
   targetDistanceMeters Float?
   targetEventName      String?
   priority             String
   preferredDays        String[]  @default([])
+  preferredLongSessionDay String?
   daysPerWeekTarget    Int       @default(3)
   maxSessionMinutes    Int       @default(45)
   riskTolerance        String    @default("balanced")

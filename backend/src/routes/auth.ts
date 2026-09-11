@@ -334,17 +334,29 @@ router.get("/me", async (c) => {
     where: { id: user.id },
     include: {
       guideProfile: true,
-      runnerProfile: { select: { completedAt: true } },
     },
   });
   if (!userWithProfile) {
     return c.json({ error: "Authenticated user has not been registered yet." }, 404);
   }
-  const { runnerProfile, ...account } = userWithProfile;
   return c.json({
-    ...account,
-    onboardingCompleted: runnerProfile?.completedAt != null,
+    ...userWithProfile,
+    onboardingStatus: userWithProfile.onboardingStatus,
+    onboardingCompleted: userWithProfile.onboardingStatus !== "pending",
   });
+});
+
+router.post("/onboarding/skip", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+  const updated = await getPrismaClient().user.update({
+    where: { id: user.id },
+    data: { onboardingStatus: user.onboardingStatus === "pending" ? "skipped" : user.onboardingStatus },
+    select: { onboardingStatus: true },
+  });
+  return c.json({ onboardingStatus: updated.onboardingStatus });
 });
 
 router.get("/me/preferences", async (c) => {
