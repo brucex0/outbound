@@ -1119,7 +1119,9 @@ private extension PlanningAPIStateResponse {
             ?? APIDateParser.date(from: goal.createdAt)
             ?? Date()
         let focus = TrainingPlanFocus.apiFocus(from: goal, fallbackRecommendation: fallbackRecommendation)
-        let sport = TrainingPlanSport.apiSport(from: goal.primaryModality)
+        let sport = goal.activities.count > 1
+            ? TrainingPlanSport.mixed
+            : TrainingPlanSport.apiSport(from: goal.activities.first ?? "run")
         let weekWorkouts = currentWeekWorkouts(calendar: calendar)
         let plannedThisWeek = weekWorkouts.isEmpty
             ? Array(upcoming.prefix(goal.daysPerWeekTarget ?? fallbackRecommendation?.sessionsPerWeek ?? 3))
@@ -1849,9 +1851,7 @@ extension ActivitySuggestionPayload {
 
 struct PlanningGoalRequest: Encodable {
     let type: String
-    let supportingObjectives: [String]
-    let primaryModality: String
-    let supportingModalities: [String]
+    let activities: [String]
     let baselineContext: String
     let targetDate: String?
     let targetDistanceMeters: Double?
@@ -1865,9 +1865,7 @@ struct PlanningGoalRequest: Encodable {
 
     init(
         type: String,
-        supportingObjectives: [String],
-        primaryModality: String,
-        supportingModalities: [String],
+        activities: [String],
         baselineContext: String,
         targetDate: String?,
         targetDistanceMeters: Double?,
@@ -1880,9 +1878,7 @@ struct PlanningGoalRequest: Encodable {
         constraints: [String: String]
     ) {
         self.type = type
-        self.supportingObjectives = supportingObjectives
-        self.primaryModality = primaryModality
-        self.supportingModalities = supportingModalities
+        self.activities = activities
         self.baselineContext = baselineContext
         self.targetDate = targetDate
         self.targetDistanceMeters = targetDistanceMeters
@@ -1897,9 +1893,9 @@ struct PlanningGoalRequest: Encodable {
 
     init(recommendation: TrainingPlanRecommendation) {
         type = recommendation.template.focus.rawValue
-        supportingObjectives = []
-        primaryModality = recommendation.template.sport.apiPlanningModality
-        supportingModalities = []
+        activities = recommendation.template.sport == .mixed
+            ? ["run", "walk", "bike"]
+            : [recommendation.template.sport.apiPlanningModality]
         baselineContext = "currentlyActive"
         targetDate = nil
         targetDistanceMeters = recommendation.template.focus.targetDistanceMeters
@@ -1972,7 +1968,7 @@ private struct PlanningAPIStateResponse: Decodable {
 private struct PlanningAPIGoal: Decodable {
     let id: String
     let type: String
-    let primaryModality: String
+    let activities: [String]
     let targetDistanceMeters: Double?
     let daysPerWeekTarget: Int?
     let maxSessionMinutes: Int?

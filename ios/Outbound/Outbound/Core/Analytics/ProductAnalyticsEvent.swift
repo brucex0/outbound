@@ -408,7 +408,7 @@ enum ProductAnalyticsSchema {
         .onboardingResolved: [.result],
         .planBuilderOpened: [.entrySource],
         .planBuilderExited: [.stepName],
-        .planCreationCompleted: [.result, .latencyBucket],
+        .planCreationCompleted: [.result, .latencyBucket, .goalType, .countBucket],
         .authenticationSessionRecovered: [.result],
         .accountTransferIntentCreated: [.result, .errorCategory],
         .accountTransferShared: [.sourceType],

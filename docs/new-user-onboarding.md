@@ -70,7 +70,7 @@ Plan setup should feel like a short conversation, not a configuration form. It c
 
 Ask `What do you want this plan to help you achieve?`
 
-Choose one primary objective and optionally up to two supporting objectives:
+Choose one objective—the outcome that matters most right now:
 
 - prepare for an event
 - build endurance or go farther
@@ -86,23 +86,22 @@ Do not offer `Build consistency` or `Get active regularly` as objectives. Consis
 
 Ask for event distance and date only when event preparation is selected. Treat `starting out` and `returning after a break` as starting context, not objectives.
 
-The primary objective controls progression and tradeoffs. Supporting objectives influence activity mix, session selection, and the explanation without creating independent competing plans.
+The objective controls progression and tradeoffs. Do not collect secondary objectives until the planner can genuinely reconcile multiple competing outcomes.
 
 ### 2. Activities
 
 Ask which activities the plan should use:
 
-- choose one primary activity
-- optionally choose supporting activities
+- choose one or more activities with no primary or supporting rank
 - currently expose only `Run`, `Walk / Hike`, and `Bike`
 - expose only activities for which recording, workout generation, launching, progress, and guidance are credible
 
-The planner should reason about training stimulus first, then use modality adapters to create sport-specific sessions. Do not silently map an unsupported modality to running.
+Distribute selected activities evenly across the plan, moving to the next compatible selected activity when a workout stimulus is not supported by the current one. The planner should reason about training stimulus first, then use modality adapters to create sport-specific sessions. Do not silently map an unsupported modality to running.
 Keep `Strength` and `Mobility` hidden until they meet that full support bar; their internal planner values may remain dormant for future implementation.
 
 ### 3. Starting Point
 
-Collect only the baseline needed for the selected primary activity:
+Collect only the baseline needed for the selected activities:
 
 - recent session frequency
 - comfortable session duration
@@ -181,6 +180,7 @@ Add typed, bounded events for:
 - `plan_creation_completed`, with success/failure and a coarse latency bucket
 
 Objective and activity categories may be bounded enum values. Never send free text, body details, dates, exact measurements, constraints, workout details, or account identifiers through analytics.
+`plan_creation_completed` may include the single bounded goal type and a coarse selected-activity count bucket; it must not include profile measurements or free text.
 
 ## Implementation Map
 
@@ -189,6 +189,8 @@ Objective and activity categories may be bounded enum values. Never send free te
 - iOS routing and persistence: `App/OutboundApp.swift`, `App/AuthStore.swift`, `Core/AuthSession.swift`, and `App/OnboardingStore.swift` use the server status as the authority and keep account-scoped builder drafts locally.
 - Reusable iOS builder: `Features/Onboarding/SimplifiedOnboardingFlow.swift` is shared by first use, Today's `Planned` control, and the All Plans entry.
 - No-plan behavior: `App/MainTabView.swift` keeps Today in manual Run mode while `Features/Planning/TrainingPlanViews.swift` leads All Plans with `Build my plan`.
+
+The flat-activity migration combines each existing primary and supporting modality into `TrainingGoal.activities` and removes stored supporting objectives. Apply it with `cd backend && npx prisma migrate deploy`; no database rebuild is required. For a disposable local database, `cd backend && npm run db:rebuild` remains the clean reset path.
 
 Use `docs/onboarding-plan-setup-implementation-prompt.md` when revisiting the full acceptance contract.
 

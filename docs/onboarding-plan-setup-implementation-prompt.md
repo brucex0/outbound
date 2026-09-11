@@ -39,16 +39,16 @@ Treat `docs/new-user-onboarding.md` as the canonical product contract. Preserve 
 
 3. Replace habit-oriented goals with outcome-oriented objectives.
    - Remove `Build consistency` and `Get active regularly` from user-facing objective choices.
-   - Support one primary objective and up to two supporting objectives from: event preparation, endurance, speed, strength, weight loss, fitness maintenance, health/energy, and optional other.
+   - Support one objective from: event preparation, endurance, speed, weight loss, fitness maintenance, health/energy, and optional other.
    - Treat starting out and returning after a break as baseline context.
    - Ask event distance/date only for event preparation.
-   - Update the clean backend goal contract and persistence model rather than hiding secondary objectives in display copy.
+   - Update the clean backend goal contract and persistence model so the selected objective is not ranked against secondary goals.
    - Remove or rename user-facing `Consistency` plan/focus copy; an internal base or adherence strategy may still implement consistent training.
 
 4. Make setup and planning genuinely multi-activity.
-   - Capture one primary activity and optional supporting activities.
+   - Capture one or more unranked activities.
    - Offer only modalities that have an end-to-end credible adapter and client launch path.
-   - At minimum, make Run, Walk/Hike, Bike, Strength, and Mobility explicit and correct, adding missing modality adapters and client mappings as needed.
+   - For now, offer Run, Walk/Hike, and Bike. Keep Strength and Mobility hidden until their end-to-end planning and launch paths are credible.
    - Never fall through from Bike, Mixed, or another unsupported modality to Run.
    - Let the shared planner select stimuli and let modality adapters translate them into concrete sessions.
 
@@ -113,7 +113,7 @@ Update focused documentation when exact contracts or file ownership change.
 - A new user can choose `Explore first`, reach Today, relaunch, reinstall/sign in again, and never receive automatic onboarding.
 - A user without an active plan lands in Run mode; `Planned` opens plan setup.
 - All Plans displays `Build my plan` before catalog plans.
-- The builder has no consistency/get-active objective, supports one primary plus up to two supporting objectives, and supports 1–6 weekly sessions.
+- The builder has no consistency/get-active objective, supports one unranked objective and one or more unranked activities, and supports 1–6 weekly sessions.
 - The builder uses activity-neutral language and produces sport-correct sessions without silently converting modalities to Run.
 - `Create my plan` creates the plan that reflects the submitted inputs and shows its starting week.
 - Exiting midway preserves a draft but creates no plan.

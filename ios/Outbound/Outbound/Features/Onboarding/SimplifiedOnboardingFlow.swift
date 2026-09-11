@@ -129,43 +129,20 @@ struct SimplifiedOnboardingFlow: View {
         VStack(alignment: .leading, spacing: 14) {
             heading(
                 String(localized: "plan_builder.objective.title", defaultValue: "What do you want this plan to help you achieve?"),
-                String(localized: "plan_builder.objective.subtitle", defaultValue: "Choose one primary objective and up to two supporting objectives.")
+                String(localized: "plan_builder.objective.subtitle", defaultValue: "Choose the one outcome that matters most right now.")
             )
             LazyVGrid(columns: Self.choiceColumns, spacing: 10) {
                 ForEach(PlanObjective.availableInBuilder) { objective in
-                    optionTile(objective.title, systemImage: objective.systemImage, selected: draft.primaryObjective == objective) {
-                        draft.primaryObjective = objective
-                        draft.supportingObjectives.removeAll { $0 == objective }
+                    optionTile(objective.title, systemImage: objective.systemImage, selected: draft.objective == objective) {
+                        draft.objective = objective
                     }
                 }
             }
-            if draft.primaryObjective == .other {
+            if draft.objective == .other {
                 TextField(String(localized: "plan_builder.objective.other_prompt", defaultValue: "Describe your objective"), text: $draft.otherObjective, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
             }
-            Menu {
-                ForEach(supportingObjectiveChoices) { objective in
-                    Button {
-                        toggleSupportingObjective(objective)
-                    } label: {
-                        Label(objective.title, systemImage: draft.supportingObjectives.contains(objective) ? "checkmark" : objective.systemImage)
-                    }
-                    .disabled(draft.supportingObjectives.count >= 2 && !draft.supportingObjectives.contains(objective))
-                }
-            } label: {
-                Label(String(localized: "plan_builder.objective.supporting", defaultValue: "Supporting objectives (optional)"), systemImage: "plus.circle")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.bordered)
-
-            if !draft.supportingObjectives.isEmpty {
-                LazyVGrid(columns: Self.choiceColumns, alignment: .leading, spacing: 8) {
-                    ForEach(draft.supportingObjectives) { objective in
-                        toggleChip(objective.title, selected: true) { toggleSupportingObjective(objective) }
-                    }
-                }
-            }
-            if draft.primaryObjective == .eventPreparation { eventFields }
+            if draft.objective == .eventPreparation { eventFields }
         }
     }
 
@@ -173,23 +150,12 @@ struct SimplifiedOnboardingFlow: View {
         VStack(alignment: .leading, spacing: 14) {
             heading(
                 String(localized: "plan_builder.activities.title", defaultValue: "Which activities should your plan use?"),
-                String(localized: "plan_builder.activities.subtitle", defaultValue: "Choose a primary activity, then add any supporting activities you enjoy.")
+                String(localized: "plan_builder.activities.subtitle", defaultValue: "Choose one or more. Plainstride will balance them across your week.")
             )
             LazyVGrid(columns: Self.choiceColumns, spacing: 10) {
                 ForEach(PlanActivity.availableInBuilder) { activity in
-                    optionTile(activity.title, systemImage: activity.systemImage, selected: draft.primaryActivity == activity) {
-                        draft.primaryActivity = activity
-                        draft.supportingActivities.removeAll { $0 == activity }
-                    }
-                }
-            }
-            Text(String(localized: "plan_builder.activities.supporting", defaultValue: "Supporting activities (optional)"))
-                .font(.headline)
-            LazyVGrid(columns: Self.choiceColumns, alignment: .leading, spacing: 8) {
-                ForEach(PlanActivity.availableInBuilder.filter { $0 != draft.primaryActivity }) { activity in
-                    toggleChip(activity.title, selected: draft.supportingActivities.contains(activity)) {
-                        if let index = draft.supportingActivities.firstIndex(of: activity) { draft.supportingActivities.remove(at: index) }
-                        else { draft.supportingActivities.append(activity) }
+                    optionTile(activity.title, systemImage: activity.systemImage, selected: draft.activities.contains(activity)) {
+                        toggleActivity(activity)
                     }
                 }
             }
@@ -327,8 +293,8 @@ struct SimplifiedOnboardingFlow: View {
                 String(localized: "plan_builder.review.title", defaultValue: "Ready to create your plan"),
                 String(localized: "plan_builder.review.subtitle", defaultValue: "Plainstride will schedule the next 7–14 days and adapt what comes after.")
             )
-            summaryRow(String(localized: "plan_builder.review.objective", defaultValue: "Primary objective"), draft.primaryObjective.title)
-            summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), ([draft.primaryActivity] + draft.supportingActivities).map(\.title).joined(separator: " · "))
+            summaryRow(String(localized: "plan_builder.review.objective", defaultValue: "Goal"), draft.objective.title)
+            summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             summaryRow(String(localized: "plan_builder.review.week", defaultValue: "Realistic week"), String(format: String(localized: "plan_builder.review.week_value", defaultValue: "%1$d sessions · about %2$d min each"), locale: .autoupdatingCurrent, draft.sessionsPerWeek, draft.availableMinutes))
         }
     }
@@ -348,8 +314,8 @@ struct SimplifiedOnboardingFlow: View {
                 String(localized: "plan_builder.result.plan", defaultValue: "Your plan"),
                 trainingPlanStore.activePlan?.subtitle ?? String(localized: "plan_builder.result.direction", defaultValue: "A flexible direction built around your objective and available week.")
             )
-            summaryRow(String(localized: "plan_builder.review.objective", defaultValue: "Primary objective"), draft.primaryObjective.title)
-            summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), ([draft.primaryActivity] + draft.supportingActivities).map(\.title).joined(separator: " · "))
+            summaryRow(String(localized: "plan_builder.review.objective", defaultValue: "Goal"), draft.objective.title)
+            summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             Text(String(localized: "plan_builder.result.week", defaultValue: "Your starting week")).font(.title3.weight(.bold))
             if let week = trainingPlanStore.currentWeek {
                 let totalMinutes = week.scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded }
@@ -414,7 +380,8 @@ struct SimplifiedOnboardingFlow: View {
             || isConnectingHealth
             || isSavingTrainingProfile
             || (step == .profile && !trainingMeasurementsAreValid)
-            || (draft.primaryObjective == .other && draft.otherObjective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            || draft.activities.isEmpty
+            || (draft.objective == .other && draft.otherObjective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private func primaryAction() {
@@ -508,14 +475,12 @@ struct SimplifiedOnboardingFlow: View {
 
     private var request: PlanningGoalRequest {
         PlanningGoalRequest(
-            type: draft.primaryObjective.rawValue,
-            supportingObjectives: draft.supportingObjectives.map(\.rawValue),
-            primaryModality: draft.primaryActivity.rawValue,
-            supportingModalities: draft.supportingActivities.map(\.rawValue),
+            type: draft.objective.rawValue,
+            activities: draft.activities.map(\.rawValue),
             baselineContext: draft.baselineContext.rawValue,
-            targetDate: draft.primaryObjective == .eventPreparation ? draft.eventDate.map(Self.apiDateFormatter.string) : nil,
-            targetDistanceMeters: draft.primaryObjective == .eventPreparation ? draft.eventDistanceMeters : nil,
-            priority: draft.primaryObjective == .eventPreparation ? "finish" : "generalHealth",
+            targetDate: draft.objective == .eventPreparation ? draft.eventDate.map(Self.apiDateFormatter.string) : nil,
+            targetDistanceMeters: draft.objective == .eventPreparation ? draft.eventDistanceMeters : nil,
+            priority: draft.objective == .eventPreparation ? "finish" : "generalHealth",
             preferredDays: draft.preferredDays,
             preferredLongSessionDay: needsLongSessionDay ? draft.preferredLongSessionDay : nil,
             daysPerWeekTarget: draft.sessionsPerWeek,
@@ -659,25 +624,31 @@ struct SimplifiedOnboardingFlow: View {
     private func trackCreation(result: String) {
         let seconds = Date().timeIntervalSince(creationStartedAt ?? Date())
         let bucket = seconds < 2 ? "under_2s" : seconds < 5 ? "2s_5s" : seconds < 10 ? "5s_10s" : "10s_plus"
-        track(.planCreationCompleted, [.result: .string(result), .latencyBucket: .string(bucket)])
+        track(.planCreationCompleted, [
+            .result: .string(result),
+            .latencyBucket: .string(bucket),
+            .goalType: .string(draft.objective.rawValue),
+            .countBucket: .string("activities_\(draft.activities.count)"),
+        ])
     }
 
     private func track(_ name: ProductEventName, _ properties: [ProductPropertyKey: AnalyticsValue]) {
         Task { await analyticsManager?.track(.init(name, properties: properties)) }
     }
 
-    private func toggleSupportingObjective(_ objective: PlanObjective) {
-        if let index = draft.supportingObjectives.firstIndex(of: objective) { draft.supportingObjectives.remove(at: index) }
-        else if draft.supportingObjectives.count < 2 { draft.supportingObjectives.append(objective) }
-    }
-    private var supportingObjectiveChoices: [PlanObjective] {
-        PlanObjective.availableInBuilder.filter { $0 != draft.primaryObjective && $0 != .other }
+    private func toggleActivity(_ activity: PlanActivity) {
+        if let index = draft.activities.firstIndex(of: activity) {
+            guard draft.activities.count > 1 else { return }
+            draft.activities.remove(at: index)
+        } else {
+            draft.activities.append(activity)
+        }
     }
     private func togglePreferredDay(_ day: String) {
         if let index = draft.preferredDays.firstIndex(of: day) { draft.preferredDays.remove(at: index) }
         else if draft.preferredDays.count < draft.sessionsPerWeek { draft.preferredDays.append(day) }
     }
-    private var needsLongSessionDay: Bool { draft.sessionsPerWeek > 1 && [.run, .walk, .bike].contains(draft.primaryActivity) }
+    private var needsLongSessionDay: Bool { draft.sessionsPerWeek > 1 }
 
     private var usesMetric: Bool { measurementPreferences.unitSystem == .metric }
     private var heightLabel: String { usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)") }
@@ -720,7 +691,7 @@ struct SimplifiedOnboardingFlow: View {
         )
     }
     private var primaryMotivation: RunnerPrimaryMotivation {
-        switch draft.primaryObjective {
+        switch draft.objective {
         case .eventPreparation, .endurance, .speed: .performance
         case .weightLoss: .weightLoss
         case .fitnessMaintenance: .weightMaintenance
@@ -728,7 +699,7 @@ struct SimplifiedOnboardingFlow: View {
         }
     }
     private var preferredRunGoalType: PreferredRunGoalType {
-        switch draft.primaryObjective {
+        switch draft.objective {
         case .eventPreparation, .endurance: .distance
         case .weightLoss: .calories
         case .speed, .strength, .fitnessMaintenance, .healthEnergy, .other: .time
@@ -744,14 +715,9 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func normalizeBuilderChoices() {
-        if !PlanObjective.availableInBuilder.contains(draft.primaryObjective) { draft.primaryObjective = .endurance }
-        draft.supportingObjectives = Array(
-            draft.supportingObjectives.filter { PlanObjective.availableInBuilder.contains($0) && $0 != draft.primaryObjective }.prefix(2)
-        )
-        if !PlanActivity.availableInBuilder.contains(draft.primaryActivity) { draft.primaryActivity = .run }
-        draft.supportingActivities = draft.supportingActivities.filter {
-            PlanActivity.availableInBuilder.contains($0) && $0 != draft.primaryActivity
-        }
+        if !PlanObjective.availableInBuilder.contains(draft.objective) { draft.objective = .endurance }
+        draft.activities = PlanActivity.availableInBuilder.filter(draft.activities.contains)
+        if draft.activities.isEmpty { draft.activities = [.run] }
     }
 
     private var eventFields: some View {

@@ -76,11 +76,9 @@ enum PlanBaselineContext: String, Codable, CaseIterable, Identifiable {
 }
 
 struct PlanBuilderDraft: Codable, Equatable {
-    var primaryObjective: PlanObjective = .endurance
-    var supportingObjectives: [PlanObjective] = []
+    var objective: PlanObjective = .endurance
     var otherObjective = ""
-    var primaryActivity: PlanActivity = .run
-    var supportingActivities: [PlanActivity] = []
+    var activities: [PlanActivity] = [.run]
     var baselineContext: PlanBaselineContext = .currentlyActive
     var recentSessionsPerWeek = 2
     var comfortableMinutes = 30
