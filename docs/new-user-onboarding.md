@@ -75,11 +75,12 @@ Choose one primary objective and optionally up to two supporting objectives:
 - prepare for an event
 - build endurance or go farther
 - improve speed
-- build strength
 - lose weight
 - maintain fitness
 - improve health and energy
 - something else
+
+Keep strength hidden as both an objective and activity until Plainstride has dedicated recording, workout generation, launching, progress, and guidance for it.
 
 Do not offer `Build consistency` or `Get active regularly` as objectives. Consistency is a means of achieving an objective and belongs in plan behavior and adherence guidance.
 
@@ -93,9 +94,11 @@ Ask which activities the plan should use:
 
 - choose one primary activity
 - optionally choose supporting activities
+- currently expose only `Run`, `Walk / Hike`, and `Bike`
 - expose only activities for which recording, workout generation, launching, progress, and guidance are credible
 
 The planner should reason about training stimulus first, then use modality adapters to create sport-specific sessions. Do not silently map an unsupported modality to running.
+Keep `Strength` and `Mobility` hidden until they meet that full support bar; their internal planner values may remain dormant for future implementation.
 
 ### 3. Starting Point
 
@@ -121,7 +124,7 @@ One session per week is valid. Create one meaningful anchor session and label an
 
 ### 5. Optional Private Details
 
-Birthday, height, weight, sex assigned at birth, and Apple Health remain optional and private. Explain why a field helps before requesting it. Apple Health authorization occurs only after the user taps the connection action.
+Birthday, height, weight, sex assigned at birth, and Apple Health remain optional and private. Keep the body fields manually editable; Apple Health is an optional autofill path, not a replacement for manual entry. Explain why a field helps before requesting it. Apple Health authorization occurs only after the user taps the connection action.
 
 ### 6. Create And Present The Plan
 

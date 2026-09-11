@@ -7,6 +7,7 @@ struct SimplifiedOnboardingFlow: View {
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     let onComplete: () -> Void
 
     @State private var step: Step = .welcome
@@ -19,11 +20,14 @@ struct SimplifiedOnboardingFlow: View {
     @State private var identityError: String?
     @State private var isResolvingSkip = false
     @State private var isConnectingHealth = false
+    @State private var didConnectHealth = false
+    @State private var isSavingTrainingProfile = false
     @State private var healthMessage: String?
     @State private var toastMessage: String?
     @State private var toastRetry: ToastRetry?
     @State private var creationStartedAt: Date?
     @State private var hasTrackedOpen = false
+    @State private var hasTrackedProfileView = false
 
     private var isFirstUse: Bool {
         onboardingStore.presentationSource == .onboarding
@@ -68,6 +72,9 @@ struct SimplifiedOnboardingFlow: View {
         .interactiveDismissDisabled(isFirstUse)
         .onAppear { configure() }
         .onChange(of: draft) { _, value in onboardingStore.savePlanBuilderDraft(value) }
+        .onChange(of: step) { _, value in
+            if value == .profile { trackProfileViewIfNeeded() }
+        }
         .animation(.snappy, value: toastMessage)
     }
 
@@ -124,21 +131,38 @@ struct SimplifiedOnboardingFlow: View {
                 String(localized: "plan_builder.objective.title", defaultValue: "What do you want this plan to help you achieve?"),
                 String(localized: "plan_builder.objective.subtitle", defaultValue: "Choose one primary objective and up to two supporting objectives.")
             )
-            ForEach(PlanObjective.allCases) { objective in
-                selectionRow(objective.title, selected: draft.primaryObjective == objective) {
-                    draft.primaryObjective = objective
-                    draft.supportingObjectives.removeAll { $0 == objective }
+            LazyVGrid(columns: Self.choiceColumns, spacing: 10) {
+                ForEach(PlanObjective.availableInBuilder) { objective in
+                    optionTile(objective.title, systemImage: objective.systemImage, selected: draft.primaryObjective == objective) {
+                        draft.primaryObjective = objective
+                        draft.supportingObjectives.removeAll { $0 == objective }
+                    }
                 }
             }
             if draft.primaryObjective == .other {
                 TextField(String(localized: "plan_builder.objective.other_prompt", defaultValue: "Describe your objective"), text: $draft.otherObjective, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
             }
-            Text(String(localized: "plan_builder.objective.supporting", defaultValue: "Supporting objectives (optional)"))
-                .font(.headline)
-            LazyVGrid(columns: Self.choiceColumns, alignment: .leading, spacing: 8) {
-                ForEach(PlanObjective.allCases.filter { $0 != draft.primaryObjective && $0 != .other }) { objective in
-                    toggleChip(objective.title, selected: draft.supportingObjectives.contains(objective)) { toggleSupportingObjective(objective) }
+            Menu {
+                ForEach(supportingObjectiveChoices) { objective in
+                    Button {
+                        toggleSupportingObjective(objective)
+                    } label: {
+                        Label(objective.title, systemImage: draft.supportingObjectives.contains(objective) ? "checkmark" : objective.systemImage)
+                    }
+                    .disabled(draft.supportingObjectives.count >= 2 && !draft.supportingObjectives.contains(objective))
+                }
+            } label: {
+                Label(String(localized: "plan_builder.objective.supporting", defaultValue: "Supporting objectives (optional)"), systemImage: "plus.circle")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.bordered)
+
+            if !draft.supportingObjectives.isEmpty {
+                LazyVGrid(columns: Self.choiceColumns, alignment: .leading, spacing: 8) {
+                    ForEach(draft.supportingObjectives) { objective in
+                        toggleChip(objective.title, selected: true) { toggleSupportingObjective(objective) }
+                    }
                 }
             }
             if draft.primaryObjective == .eventPreparation { eventFields }
@@ -151,16 +175,18 @@ struct SimplifiedOnboardingFlow: View {
                 String(localized: "plan_builder.activities.title", defaultValue: "Which activities should your plan use?"),
                 String(localized: "plan_builder.activities.subtitle", defaultValue: "Choose a primary activity, then add any supporting activities you enjoy.")
             )
-            ForEach(PlanActivity.allCases) { activity in
-                selectionRow(activity.title, selected: draft.primaryActivity == activity) {
-                    draft.primaryActivity = activity
-                    draft.supportingActivities.removeAll { $0 == activity }
+            LazyVGrid(columns: Self.choiceColumns, spacing: 10) {
+                ForEach(PlanActivity.availableInBuilder) { activity in
+                    optionTile(activity.title, systemImage: activity.systemImage, selected: draft.primaryActivity == activity) {
+                        draft.primaryActivity = activity
+                        draft.supportingActivities.removeAll { $0 == activity }
+                    }
                 }
             }
             Text(String(localized: "plan_builder.activities.supporting", defaultValue: "Supporting activities (optional)"))
                 .font(.headline)
             LazyVGrid(columns: Self.choiceColumns, alignment: .leading, spacing: 8) {
-                ForEach(PlanActivity.allCases.filter { $0 != draft.primaryActivity }) { activity in
+                ForEach(PlanActivity.availableInBuilder.filter { $0 != draft.primaryActivity }) { activity in
                     toggleChip(activity.title, selected: draft.supportingActivities.contains(activity)) {
                         if let index = draft.supportingActivities.firstIndex(of: activity) { draft.supportingActivities.remove(at: index) }
                         else { draft.supportingActivities.append(activity) }
@@ -228,13 +254,68 @@ struct SimplifiedOnboardingFlow: View {
             )
             Button { connectHealth() } label: {
                 Label(
-                    isConnectingHealth ? String(localized: "onboarding.health.connecting", defaultValue: "Connecting…") : String(localized: "onboarding.health.connect", defaultValue: "Connect Apple Health"),
-                    systemImage: "heart.fill"
+                    healthConnectionTitle,
+                    systemImage: didConnectHealth ? "checkmark.circle.fill" : "heart.fill"
                 ).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(isConnectingHealth)
+            .disabled(isConnectingHealth || didConnectHealth || isSavingTrainingProfile)
             if let healthMessage { Text(healthMessage).font(.subheadline).foregroundStyle(.secondary) }
+
+            Text(String(localized: "onboarding.profile.manual", defaultValue: "Or add them yourself"))
+                .textCase(.uppercase)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            OutboundCard {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    Toggle(
+                        String(localized: "Add birthday"),
+                        isOn: Binding(
+                            get: { draft.birthDate != nil },
+                            set: { draft.birthDate = $0 ? (draft.birthDate ?? Self.defaultBirthDate) : nil }
+                        )
+                    )
+                    if let birthDate = draft.birthDate {
+                        DatePicker(
+                            String(localized: "Birthday"),
+                            selection: Binding(get: { birthDate }, set: { draft.birthDate = $0 }),
+                            in: oldestBirthDate...Date(),
+                            displayedComponents: .date
+                        )
+                    }
+                    Text(String(
+                        localized: "profile.training_details.birthday_footer",
+                        defaultValue: "Birthday is stored instead of age so your details stay accurate over time."
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                trainingMeasurementField(heightLabel, text: $draft.heightText)
+                trainingMeasurementField(weightLabel, text: $draft.weightText)
+            }
+
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(String(localized: "Sex assigned at birth"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker(String(localized: "Sex assigned at birth"), selection: $draft.sexAtBirth) {
+                    Text(String(localized: "Not provided")).tag(nil as TrainingProfileSex?)
+                    ForEach(TrainingProfileSex.allCases) { value in
+                        Text(value.title).tag(value as TrainingProfileSex?)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            if !trainingMeasurementsAreValid {
+                Text(trainingMeasurementError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
             Label(String(localized: "onboarding.profile.private", defaultValue: "These details stay private and are never shared."), systemImage: "lock.shield")
                 .font(.subheadline).foregroundStyle(.secondary)
         }
@@ -309,8 +390,9 @@ struct SimplifiedOnboardingFlow: View {
                 Button(String(localized: "plan_builder.explore", defaultValue: "Explore first")) { exploreFirst() }
                     .font(.headline).disabled(isResolvingSkip)
             } else if step == .profile {
-                Button(String(localized: "onboarding.profile.skip", defaultValue: "Skip for now")) { step = .review }
+                Button(String(localized: "onboarding.profile.skip", defaultValue: "Skip for now")) { skipTrainingProfile() }
                     .font(.subheadline.weight(.semibold))
+                    .disabled(isConnectingHealth || isSavingTrainingProfile)
             }
         }
     }
@@ -318,6 +400,8 @@ struct SimplifiedOnboardingFlow: View {
     private var primaryButtonTitle: String {
         if shouldShowIdentityPrompt { return isSavingIdentity ? String(localized: "onboarding.identity.saving", defaultValue: "Saving…") : String(localized: "onboarding.identity.continue", defaultValue: "Continue") }
         switch step {
+        case .profile where isSavingTrainingProfile:
+            return String(localized: "onboarding.identity.saving", defaultValue: "Saving…")
         case .welcome, .review: return String(localized: "plan_builder.create", defaultValue: "Create my plan")
         case .result: return String(localized: "plan_builder.go_today", defaultValue: "Go to Today")
         default: return String(localized: "onboarding.action.continue", defaultValue: "Continue")
@@ -325,13 +409,19 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private var primaryDisabled: Bool {
-        isSavingIdentity || isResolvingSkip || (draft.primaryObjective == .other && draft.otherObjective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        isSavingIdentity
+            || isResolvingSkip
+            || isConnectingHealth
+            || isSavingTrainingProfile
+            || (step == .profile && !trainingMeasurementsAreValid)
+            || (draft.primaryObjective == .other && draft.otherObjective.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private func primaryAction() {
         if shouldShowIdentityPrompt { Task { await saveIdentity() }; return }
         switch step {
         case .welcome: step = .objective
+        case .profile: Task { await saveTrainingProfileAndContinue() }
         case .review: createPlan()
         case .result: onboardingStore.finishLater(); onComplete()
         default: step = step.next
@@ -340,6 +430,7 @@ struct SimplifiedOnboardingFlow: View {
 
     private func configure() {
         draft = onboardingStore.loadPlanBuilderDraft()
+        normalizeBuilderChoices()
         step = isFirstUse ? .welcome : .objective
         displayName = validDisplayName ? (authStore.user?.displayName ?? "") : ""
         username = authStore.user?.username == "runner" ? "" : (authStore.user?.username ?? "")
@@ -410,6 +501,7 @@ struct SimplifiedOnboardingFlow: View {
         switch toastRetry {
         case .skip: exploreFirst()
         case .create: createPlan()
+        case .profile: Task { await saveTrainingProfileAndContinue() }
         case nil: break
         }
     }
@@ -457,14 +549,86 @@ struct SimplifiedOnboardingFlow: View {
     private func connectHealth() {
         isConnectingHealth = true
         Task {
+            await trackHealth(.healthConnectionRequested)
             await healthAuthorizationStore.requestAuthorization()
             if healthAuthorizationStore.lastErrorMessage == nil {
                 let since = Calendar.current.date(byAdding: .weekOfYear, value: -8, to: Date()) ?? .distantPast
-                if let data = try? await healthImportStore.personalizationData(since: since) {
+                do {
+                    let data = try await healthImportStore.personalizationData(since: since)
+                    applyHealthData(data)
+                    didConnectHealth = true
                     healthMessage = String(format: String(localized: "plan_builder.health.connected", defaultValue: "Connected. Found %d recent activities."), locale: .autoupdatingCurrent, data.recentWorkouts.count)
+                    await trackHealth(.healthConnectionCompleted, result: "connected")
+                } catch {
+                    healthMessage = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.")
+                    await trackHealth(.healthConnectionCompleted, result: "failed")
                 }
-            } else { healthMessage = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.") }
+            } else {
+                healthMessage = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.")
+                await trackHealth(.healthConnectionCompleted, result: "failed")
+            }
             isConnectingHealth = false
+        }
+    }
+
+    private func saveTrainingProfileAndContinue() async {
+        guard trainingMeasurementsAreValid, !isSavingTrainingProfile else { return }
+        guard hasTrainingProfileDetails else {
+            skipTrainingProfile()
+            return
+        }
+
+        isSavingTrainingProfile = true
+        do {
+            let profile = try await APIClient.shared.updateTrainingProfile(trainingProfileRequest)
+            onboardingStore.applyTrainingProfile(profile)
+            isSavingTrainingProfile = false
+            await trackTrainingProfileCompletion(result: "saved", source: didConnectHealth ? "health" : "manual")
+            step = .review
+        } catch {
+            isSavingTrainingProfile = false
+            showToast(String(localized: "Could not save profile. Try again."), retry: .profile)
+        }
+    }
+
+    private func skipTrainingProfile() {
+        track(
+            .onboardingTrainingProfileCompleted,
+            [.result: .string("skipped"), .sourceType: .string(didConnectHealth ? "health" : "manual")]
+        )
+        step = .review
+    }
+
+    private func trackProfileViewIfNeeded() {
+        guard !hasTrackedProfileView else { return }
+        hasTrackedProfileView = true
+        track(.onboardingTrainingProfileViewed, [:])
+    }
+
+    private func trackTrainingProfileCompletion(result: String, source: String) async {
+        await analyticsManager?.track(.init(
+            .onboardingTrainingProfileCompleted,
+            properties: [.result: .string(result), .sourceType: .string(source)]
+        ))
+    }
+
+    private func trackHealth(_ name: ProductEventName, result: String? = nil) async {
+        let properties: [ProductPropertyKey: AnalyticsValue] = result.map { [.result: .string($0)] } ?? [:]
+        await analyticsManager?.track(.init(name, properties: properties))
+    }
+
+    private func applyHealthData(_ data: HealthPersonalizationData) {
+        if let dateOfBirth = data.dateOfBirth { draft.birthDate = dateOfBirth }
+        switch data.biologicalSex {
+        case .female: draft.sexAtBirth = .female
+        case .male: draft.sexAtBirth = .male
+        case .notSpecified: break
+        }
+        if let heightCentimeters = data.heightCentimeters {
+            draft.heightText = formattedMeasurement(usesMetric ? heightCentimeters : heightCentimeters / 2.54)
+        }
+        if let weightKilograms = data.weightKilograms {
+            draft.weightText = formattedMeasurement(usesMetric ? weightKilograms : weightKilograms / 0.45359237)
         }
     }
 
@@ -506,11 +670,89 @@ struct SimplifiedOnboardingFlow: View {
         if let index = draft.supportingObjectives.firstIndex(of: objective) { draft.supportingObjectives.remove(at: index) }
         else if draft.supportingObjectives.count < 2 { draft.supportingObjectives.append(objective) }
     }
+    private var supportingObjectiveChoices: [PlanObjective] {
+        PlanObjective.availableInBuilder.filter { $0 != draft.primaryObjective && $0 != .other }
+    }
     private func togglePreferredDay(_ day: String) {
         if let index = draft.preferredDays.firstIndex(of: day) { draft.preferredDays.remove(at: index) }
         else if draft.preferredDays.count < draft.sessionsPerWeek { draft.preferredDays.append(day) }
     }
     private var needsLongSessionDay: Bool { draft.sessionsPerWeek > 1 && [.run, .walk, .bike].contains(draft.primaryActivity) }
+
+    private var usesMetric: Bool { measurementPreferences.unitSystem == .metric }
+    private var heightLabel: String { usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)") }
+    private var weightLabel: String { usesMetric ? String(localized: "Weight (kg)") : String(localized: "Weight (lb)") }
+    private var healthConnectionTitle: String {
+        if didConnectHealth { return String(localized: "onboarding.health.connected", defaultValue: "Apple Health connected") }
+        if isConnectingHealth { return String(localized: "onboarding.health.connecting", defaultValue: "Connecting…") }
+        return String(localized: "onboarding.health.connect", defaultValue: "Connect Apple Health")
+    }
+    private var oldestBirthDate: Date { Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? .distantPast }
+    private var trainingMeasurementsAreValid: Bool {
+        let heightIsValid = parsedMeasurement(draft.heightText)
+            .map { usesMetric ? (90...250).contains($0) : (35...98.5).contains($0) }
+            ?? draft.heightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let weightIsValid = parsedMeasurement(draft.weightText)
+            .map { usesMetric ? (25...350).contains($0) : (55...772).contains($0) }
+            ?? draft.weightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return heightIsValid && weightIsValid
+    }
+    private var trainingMeasurementError: String {
+        if usesMetric {
+            return String(localized: "onboarding.profile.measurement_error.metric", defaultValue: "Use 90–250 cm for height and 25–350 kg for weight, or leave them blank.")
+        }
+        return String(localized: "onboarding.profile.measurement_error.imperial", defaultValue: "Use 35–98.5 in for height and 55–772 lb for weight, or leave them blank.")
+    }
+    private var hasTrainingProfileDetails: Bool {
+        draft.birthDate != nil
+            || draft.sexAtBirth != nil
+            || parsedMeasurement(draft.heightText) != nil
+            || parsedMeasurement(draft.weightText) != nil
+    }
+    private var trainingProfileRequest: TrainingProfileUpdateDTO {
+        TrainingProfileUpdateDTO(
+            sexAtBirth: draft.sexAtBirth,
+            birthDate: draft.birthDate.map(Self.birthDateFormatter.string),
+            heightCentimeters: parsedMeasurement(draft.heightText).map { usesMetric ? $0 : $0 * 2.54 },
+            weightKilograms: parsedMeasurement(draft.weightText).map { usesMetric ? $0 : $0 * 0.45359237 },
+            primaryMotivation: primaryMotivation,
+            preferredRunGoalType: preferredRunGoalType
+        )
+    }
+    private var primaryMotivation: RunnerPrimaryMotivation {
+        switch draft.primaryObjective {
+        case .eventPreparation, .endurance, .speed: .performance
+        case .weightLoss: .weightLoss
+        case .fitnessMaintenance: .weightMaintenance
+        case .strength, .healthEnergy, .other: .generalFitness
+        }
+    }
+    private var preferredRunGoalType: PreferredRunGoalType {
+        switch draft.primaryObjective {
+        case .eventPreparation, .endurance: .distance
+        case .weightLoss: .calories
+        case .speed, .strength, .fitnessMaintenance, .healthEnergy, .other: .time
+        }
+    }
+
+    private func parsedMeasurement(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func formattedMeasurement(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
+    }
+
+    private func normalizeBuilderChoices() {
+        if !PlanObjective.availableInBuilder.contains(draft.primaryObjective) { draft.primaryObjective = .endurance }
+        draft.supportingObjectives = Array(
+            draft.supportingObjectives.filter { PlanObjective.availableInBuilder.contains($0) && $0 != draft.primaryObjective }.prefix(2)
+        )
+        if !PlanActivity.availableInBuilder.contains(draft.primaryActivity) { draft.primaryActivity = .run }
+        draft.supportingActivities = draft.supportingActivities.filter {
+            PlanActivity.availableInBuilder.contains($0) && $0 != draft.primaryActivity
+        }
+    }
 
     private var eventFields: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -527,13 +769,48 @@ struct SimplifiedOnboardingFlow: View {
     private func heading(_ title: String, _ subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 8) { Text(title).font(.title2.weight(.semibold)); Text(subtitle).foregroundStyle(.secondary) }
     }
+    private func optionTile(_ title: String, systemImage: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: systemImage)
+                    Spacer()
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
+            .padding(12)
+            .background(selected ? OutboundPalette.companion.opacity(0.14) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.control))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(selected ? OutboundPalette.companion : .primary)
+    }
     private func selectionRow(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) { HStack { Text(title); Spacer(); Image(systemName: selected ? "checkmark.circle.fill" : "circle") }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading) }
             .buttonStyle(.bordered).tint(selected ? OutboundPalette.companion : .secondary)
     }
     private func toggleChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 12).frame(minHeight: 40).background(selected ? OutboundPalette.companion.opacity(0.18) : Color(.secondarySystemBackground), in: Capsule()) }
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Text(title)
+                if selected { Image(systemName: "xmark").font(.caption2.weight(.bold)) }
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 12)
+            .frame(minHeight: 40)
+            .background(selected ? OutboundPalette.companion.opacity(0.18) : Color(.secondarySystemBackground), in: Capsule())
+        }
             .buttonStyle(.plain)
+    }
+    private func trainingMeasurementField(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            TextField(title, text: text).keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
+        }
+        .frame(maxWidth: .infinity)
     }
     private func summaryRow(_ label: String, _ value: String) -> some View {
         OutboundCard { VStack(alignment: .leading, spacing: 4) { Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text(value).font(.headline) } }
@@ -559,12 +836,15 @@ struct SimplifiedOnboardingFlow: View {
     private static let choiceColumns = [GridItem(.flexible()), GridItem(.flexible())]
     private static let dayColumns = Array(repeating: GridItem(.flexible()), count: 4)
     private static let apiDateFormatter: DateFormatter = { let formatter = DateFormatter(); formatter.calendar = Calendar(identifier: .gregorian); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"; return formatter }()
+    private static let birthDateFormatter: DateFormatter = { let formatter = DateFormatter(); formatter.calendar = Calendar(identifier: .gregorian); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = TimeZone(secondsFromGMT: 0); formatter.dateFormat = "yyyy-MM-dd"; return formatter }()
+    private static let defaultBirthDate = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date()
 }
 
 private extension SimplifiedOnboardingFlow {
     enum ToastRetry {
         case skip
         case create
+        case profile
     }
 
     enum Step: Int, CaseIterable {

@@ -10,6 +10,21 @@ enum PlanBuilderSource: String, Codable {
 enum PlanObjective: String, Codable, CaseIterable, Identifiable {
     case eventPreparation, endurance, speed, strength, weightLoss, fitnessMaintenance, healthEnergy, other
     var id: Self { self }
+    static let availableInBuilder: [Self] = [
+        .eventPreparation, .endurance, .speed, .weightLoss, .fitnessMaintenance, .healthEnergy, .other,
+    ]
+    var systemImage: String {
+        switch self {
+        case .eventPreparation: "flag.checkered"
+        case .endurance: "arrow.up.right"
+        case .speed: "bolt.fill"
+        case .strength: "dumbbell.fill"
+        case .weightLoss: "scalemass.fill"
+        case .fitnessMaintenance: "repeat"
+        case .healthEnergy: "heart.fill"
+        case .other: "ellipsis"
+        }
+    }
     var title: String {
         switch self {
         case .eventPreparation: String(localized: "plan_builder.objective.event", defaultValue: "Prepare for an event")
@@ -27,6 +42,16 @@ enum PlanObjective: String, Codable, CaseIterable, Identifiable {
 enum PlanActivity: String, Codable, CaseIterable, Identifiable {
     case run, walk, bike, strength, mobility
     var id: Self { self }
+    static let availableInBuilder: [Self] = [.run, .walk, .bike]
+    var systemImage: String {
+        switch self {
+        case .run: "figure.run"
+        case .walk: "figure.walk"
+        case .bike: "bicycle"
+        case .strength: "dumbbell.fill"
+        case .mobility: "figure.flexibility"
+        }
+    }
     var title: String {
         switch self {
         case .run: String(localized: "activity.type.run", defaultValue: "Run")
@@ -66,6 +91,10 @@ struct PlanBuilderDraft: Codable, Equatable {
     var eventDistanceMeters: Double?
     var eventDate: Date?
     var constraints = ""
+    var birthDate: Date?
+    var heightText = ""
+    var weightText = ""
+    var sexAtBirth: TrainingProfileSex?
 }
 
 enum OnboardingStep: Int, CaseIterable, Identifiable {
