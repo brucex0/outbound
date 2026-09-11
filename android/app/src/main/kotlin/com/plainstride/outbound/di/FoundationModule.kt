@@ -56,6 +56,8 @@ import com.plainstride.outbound.core.network.createAccountApi
 import com.plainstride.outbound.core.network.createAuthApi
 import com.plainstride.outbound.core.network.createPlanningApi
 import com.plainstride.outbound.core.network.createActivitiesApi
+import com.plainstride.outbound.core.network.RewardsApiService
+import com.plainstride.outbound.core.network.createRewardsApi
 import com.google.android.gms.location.LocationServices
 import com.plainstride.outbound.core.weather.DefaultWeatherRepository
 import com.plainstride.outbound.core.weather.FusedWeatherLocationSource
@@ -166,6 +168,9 @@ object FoundationModule {
 
     @Provides @Singleton fun activitiesApi(client: OkHttpClient): ActivitiesApiService =
         createActivitiesApi(BuildConfig.API_BASE_URL, client)
+
+    @Provides @Singleton fun rewardsApi(client: OkHttpClient): RewardsApiService =
+        createRewardsApi(BuildConfig.API_BASE_URL, client)
 
     @Provides @Singleton fun liveCoachApi(client: OkHttpClient): LiveCoachApi =
         createLiveCoachApi(BuildConfig.API_BASE_URL, client)
